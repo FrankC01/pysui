@@ -2,6 +2,7 @@
 import sys
 
 from sui.sui_config import SuiConfig
+from sui.sui_rpc import BuildObjectsForAddress, SuiClient
 from sui.sui_types import parse_sui_object_type
 
 if sys.version_info < (3, 10):

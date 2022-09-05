@@ -13,6 +13,7 @@ class SuiBaseType(ClientType):
         self._owner = indata["owner"]["AddressOwner"]
         self._digest = indata["digest"]
         self._previous_txn = indata["previousTransaction"]
+        self._type_signature = indata["type"]
 
     @property
     def identifer(self) -> str:
@@ -29,8 +30,21 @@ class SuiBaseType(ClientType):
         """Return the types instance owner."""
         return self._owner
 
+    @property
+    def type_signature(self):
+        """Return the types type."""
+        return self._type_signature
 
-class SuiCoin(SuiBaseType):
+
+class SuiObject(SuiBaseType):
+    """Sui Object base type."""
+
+
+class SuiNft(SuiObject):
+    """Sui NFT base type."""
+
+
+class SuiCoin(SuiObject):
     """Sui Coin but not necessarily gas."""
 
     # def __init__(self, indata: dict) -> None:
@@ -38,7 +52,7 @@ class SuiCoin(SuiBaseType):
     #     super().__init__(indata)
 
 
-class SuiGas(SuiCoin):
+class SuiNativeCoin(SuiCoin):
     """Sui gas is a coin."""
 
     # def __init__(self, indata: dict) -> None:
@@ -49,7 +63,15 @@ class SuiGas(SuiCoin):
 def parse_sui_object_type(indata: dict) -> SuiBaseType:
     """Parse an inbound JSON string to a Sui type."""
     split = indata["type"].split("::", 2)
+
     if split[0] == "0x2":
-        return SuiGas(indata)
-    else:
-        return SuiBaseType(indata)
+        match split[1]:
+            case "coin":
+                split2 = split[2][5:-1].split("::")
+                if split2[2] == "SUI":
+                    return SuiNativeCoin(indata)
+                return SuiCoin(indata)
+            case "devnet_nft":
+                if split[2] == "DevNetNFT":
+                    return SuiNft(indata)
+    return SuiObject(indata)

@@ -20,6 +20,8 @@ class SuiConfig(ClientConfiguration):
                 sui_config = yaml.safe_load(file)
             except yaml.YAMLError as exc:
                 raise exc
+        # print(sui_config)
+        self._addresses = sui_config.get("addresses", [])
         self._active_address = sui_config["active_address"]
         self._current_url = sui_config["gateway"]["rpc"][0]
         self._current_keystore = sui_config["keystore"]["File"]
@@ -37,4 +39,4 @@ class SuiConfig(ClientConfiguration):
     @property
     def addresses(self) -> list[str]:
         """Return all addresses in configuration."""
-        return []
+        return self._addresses

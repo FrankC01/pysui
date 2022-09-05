@@ -6,25 +6,18 @@ import httpx
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 sys.path.append(PROJECT_ROOT)
-print(sys.path)
-from sui import SuiConfig
+
+from sui import BuildObjectsForAddress, SuiConfig, SuiClient
 from sui import parse_sui_object_type
 
 
 def main():
     """Entry point for test driving."""
     dconf = SuiConfig()
-    client = httpx.Client()
-    data = {
-        "jsonrpc": "2.0",
-        "id": 1,
-    }
-    data["method"] = "sui_getObjectsOwnedByAddress"
-    data["params"] = [dconf.active_address]
-    headers = {"Content-Type": "application/json"}
-    client = httpx.Client(headers=headers)
+    client = SuiClient(dconf)
+    builder = BuildObjectsForAddress().add_parameter(dconf.active_address)
     try:
-        result = client.post(dconf.url, json=data)
+        result = client.execute(builder)
         for sui_object in result.json()["result"]:
             sui_type = parse_sui_object_type(sui_object)
             print(f"{sui_type.__class__.__name__} {sui_type.__dict__}")

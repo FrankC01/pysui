@@ -1,4 +1,4 @@
-"""Abstraction for Types."""
+"""Type Client Abstractions."""
 from abc import ABC, abstractmethod
 
 
@@ -19,3 +19,8 @@ class ClientType(ABC):
     @abstractmethod
     def owner(self):
         """Return the types instance owner."""
+
+    @property
+    @abstractmethod
+    def type_signature(self):
+        """Return the types type."""
