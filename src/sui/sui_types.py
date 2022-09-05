@@ -10,7 +10,9 @@ class SuiBaseType(ClientType):
         """Initialize the base."""
         self._identifier = indata["objectId"]
         self._version = indata["version"]
-        self._owner = indata["owner"]
+        self._owner = indata["owner"]["AddressOwner"]
+        self._digest = indata["digest"]
+        self._previous_txn = indata["previousTransaction"]
 
     @property
     def identifer(self) -> str:
@@ -31,21 +33,23 @@ class SuiBaseType(ClientType):
 class SuiCoin(SuiBaseType):
     """Sui Coin but not necessarily gas."""
 
-    def __init__(self, indata: dict) -> None:
-        """Initialize a Sui coint object."""
-        super().__init__(indata)
+    # def __init__(self, indata: dict) -> None:
+    #     """Initialize a Sui coint object."""
+    #     super().__init__(indata)
 
 
 class SuiGas(SuiCoin):
     """Sui gas is a coin."""
 
-    def __init__(self, indata: dict) -> None:
-        """Initialize a Sui gas object."""
-        super().__init__(indata)
+    # def __init__(self, indata: dict) -> None:
+    #     """Initialize a Sui gas object."""
+    #     super().__init__(indata)
 
 
-def parse_sui_type(indata: str) -> SuiBaseType:
+def parse_sui_object_type(indata: dict) -> SuiBaseType:
     """Parse an inbound JSON string to a Sui type."""
-    match indata["type"]:
-        case "0x2::coin::Coin<0x2::sui::SUI>":
-            SuiGas(indata)
+    split = indata["type"].split("::", 2)
+    if split[0] == "0x2":
+        return SuiGas(indata)
+    else:
+        return SuiBaseType(indata)
