@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 
 
-class ClientType(ABC):
+class ClientTypeDescriptor(ABC):
     """Base type abstraction."""
 
     @property

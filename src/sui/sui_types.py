@@ -1,9 +1,9 @@
 """Sui Types."""
 
-from abstracts import ClientType
+from abstracts import ClientTypeDescriptor
 
 
-class SuiBaseType(ClientType):
+class SuiTypeDescriptor(ClientTypeDescriptor):
     """Base SUI Type."""
 
     def __init__(self, indata: dict) -> None:
@@ -36,15 +36,15 @@ class SuiBaseType(ClientType):
         return self._type_signature
 
 
-class SuiObject(SuiBaseType):
+class SuiObjectDescriptor(SuiTypeDescriptor):
     """Sui Object base type."""
 
 
-class SuiNft(SuiObject):
+class SuiNftDescriptor(SuiObjectDescriptor):
     """Sui NFT base type."""
 
 
-class SuiCoin(SuiObject):
+class SuiCoinDescriptor(SuiObjectDescriptor):
     """Sui Coin but not necessarily gas."""
 
     # def __init__(self, indata: dict) -> None:
@@ -52,7 +52,7 @@ class SuiCoin(SuiObject):
     #     super().__init__(indata)
 
 
-class SuiNativeCoin(SuiCoin):
+class SuiNativeCoinDescriptor(SuiCoinDescriptor):
     """Sui gas is a coin."""
 
     # def __init__(self, indata: dict) -> None:
@@ -60,7 +60,7 @@ class SuiNativeCoin(SuiCoin):
     #     super().__init__(indata)
 
 
-def parse_sui_object_type(indata: dict) -> SuiBaseType:
+def parse_sui_object_descriptors(indata: dict) -> SuiTypeDescriptor:
     """Parse an inbound JSON string to a Sui type."""
     split = indata["type"].split("::", 2)
 
@@ -69,9 +69,9 @@ def parse_sui_object_type(indata: dict) -> SuiBaseType:
             case "coin":
                 split2 = split[2][5:-1].split("::")
                 if split2[2] == "SUI":
-                    return SuiNativeCoin(indata)
-                return SuiCoin(indata)
+                    return SuiNativeCoinDescriptor(indata)
+                return SuiCoinDescriptor(indata)
             case "devnet_nft":
                 if split[2] == "DevNetNFT":
-                    return SuiNft(indata)
-    return SuiObject(indata)
+                    return SuiNftDescriptor(indata)
+    return SuiObjectDescriptor(indata)

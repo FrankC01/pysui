@@ -1,5 +1,6 @@
 """Default Sui Configuration."""
 
+import json
 from pathlib import Path
 import yaml
 from abstracts import ClientConfiguration
@@ -18,13 +19,15 @@ class SuiConfig(ClientConfiguration):
         with open(str(Path(use_path).expanduser())) as file:
             try:
                 sui_config = yaml.safe_load(file)
+                with open(sui_config["keystore"]["File"]) as keyfile:
+                    #   TODO: Convert base64 to keypairs
+                    self._addresses = json.load(keyfile)
             except yaml.YAMLError as exc:
                 raise exc
         # print(sui_config)
-        self._addresses = sui_config.get("addresses", [])
         self._active_address = sui_config["active_address"]
         self._current_url = sui_config["gateway"]["rpc"][0]
-        self._current_keystore = sui_config["keystore"]["File"]
+        self._current_keystore_file = sui_config["keystore"]["File"]
 
     @property
     def url(self) -> str:

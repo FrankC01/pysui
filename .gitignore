@@ -1,3 +1,4 @@
 pysuienv
 __pycache__
 sui.log*
+.pytest_cache
