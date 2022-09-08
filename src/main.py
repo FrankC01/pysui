@@ -13,7 +13,7 @@ from sui import parse_sui_object_descriptors
 
 def main():
     """Entry point for test driving."""
-    dconf = SuiConfig()
+    dconf = SuiConfig.default()
     client = SuiClient(dconf)
     builder = ObjectsForAddress().add_parameter(dconf.active_address)
     try:
