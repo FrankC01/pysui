@@ -39,7 +39,7 @@ class BaseBuilder(Builder):
         return self._method
 
 
-class ObjectsForAddress(BaseBuilder):
+class GetObjectsOwnedByAddress(BaseBuilder):
     """Fetch Objects for Address."""
 
     def __init__(self) -> None:
@@ -55,13 +55,13 @@ class ObjectsForAddress(BaseBuilder):
         return scopy
 
 
-class ObjectsForObject(BaseBuilder):
-    """Fetch Objects for Object."""
+class GetObject(BaseBuilder):
+    """Fetch Object detail for Object ID."""
 
     def __init__(self) -> None:
         """Initialize Builder."""
         super().__init__()
-        self._method = "sui_getObjectsOwnedByObject"
+        self._method = "sui_getObject"
 
     @property
     def data(self) -> dict:

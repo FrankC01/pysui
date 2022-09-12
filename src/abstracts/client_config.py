@@ -14,8 +14,3 @@ class ClientConfiguration(ABC):
     @abstractmethod
     def active_address(self) -> str:
         """Return the active address from the client configuration."""
-
-    @property
-    @abstractmethod
-    def addresses(self) -> list[str]:
-        """Return all the addresses from the client configuration."""

@@ -13,6 +13,22 @@ class SuiConfigFileError(SuiException):
         self.args = caught.args
 
 
+class SuiKeystoreFileError(SuiException):
+    """Keystore file errors."""
+
+    def __init__(self, caught: Exception) -> None:
+        """Wrap the Error."""
+        self.args = caught.args
+
+
+class SuiKeystoreAddressError(SuiException):
+    """Keystore file errors."""
+
+    def __init__(self, caught: Exception) -> None:
+        """Wrap the Error."""
+        self.args = caught.args
+
+
 class SuiFileNotFound(SuiException):
     """Exception for file missing."""
 
