@@ -1,6 +1,7 @@
 """Sui Types."""
 
 from numbers import Number
+from typing import TypeVar
 from abstracts import ClientObjectDescriptor, ClientType
 
 
@@ -35,6 +36,10 @@ class SuiObjectDescriptor(ClientObjectDescriptor):
     def type_signature(self):
         """Return the types type."""
         return self._type_signature
+
+
+class SuiDataDescriptor(SuiObjectDescriptor):
+    """Sui Data base type."""
 
 
 class SuiNftDescriptor(SuiObjectDescriptor):
@@ -106,6 +111,43 @@ class SuiNftType(SuiObjectType):
         return self._url
 
 
+DT = TypeVar("DT", bound="SuiDataType")
+
+
+class SuiDataType(SuiObjectType):
+    """Sui Data type."""
+
+    def __init__(self, indata: dict) -> None:
+        """Initialize the base Nft type."""
+        super().__init__(indata)
+        self._children = []
+        self._data = {}
+        split = self.type_signature.split("::", 2)
+        self._data_definition = dict(zip(["package_id", "module", "object_type"], split))
+        for key, value in indata["fields"].items():
+            if not key == "id":
+                self._data[key] = value
+
+    @property
+    def data_definition(self) -> dict:
+        """Get the data definition meta data."""
+        return self._data_definition
+
+    @property
+    def data(self) -> dict:
+        """Get the actual objects data."""
+        return self._data
+
+    @property
+    def children(self) -> list[DT]:
+        """Get the children of this data."""
+        return self._children
+
+    def add_child(self, child: DT) -> None:
+        """Store data child owned by self."""
+        self.children.append(child)
+
+
 class SuiCoinType(SuiObjectType):
     """Sui Coin type but not necessarily gas type."""
 
@@ -138,6 +180,10 @@ def parse_sui_object_descriptors(indata: dict) -> SuiObjectDescriptor:
             case "devnet_nft":
                 if split[2] == "DevNetNFT":
                     return SuiNftDescriptor(indata)
+    else:
+        if len(split) == 3:
+            return SuiDataDescriptor(indata)
+
     return SuiObjectDescriptor(indata)
 
 
@@ -155,4 +201,7 @@ def parse_sui_object_type(indata: dict) -> SuiObjectType:
             case "devnet_nft":
                 if split[2] == "DevNetNFT":
                     return SuiNftType(indata)
+    else:
+        if len(split) == 3:
+            return SuiDataType(indata)
     return SuiObjectType(indata)

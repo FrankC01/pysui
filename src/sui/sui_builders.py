@@ -55,6 +55,22 @@ class GetObjectsOwnedByAddress(BaseBuilder):
         return scopy
 
 
+class GetObjectsOwnedByObject(BaseBuilder):
+    """Fetch Objects for Address."""
+
+    def __init__(self) -> None:
+        """Initialize Builder."""
+        super().__init__()
+        self._method = "sui_getObjectsOwnedByObject"
+
+    @property
+    def data(self) -> dict:
+        """Overload data return with method."""
+        scopy = super().data
+        scopy["method"] = self.method
+        return scopy
+
+
 class GetObject(BaseBuilder):
     """Fetch Object detail for Object ID."""
 

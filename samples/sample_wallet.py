@@ -1,8 +1,10 @@
 """Sui Wallet Facade."""
 
+
 from numbers import Number
 import os
 import json
+
 from typing import Any
 from src.abstracts import KeyPair
 from src.abstracts import Builder
@@ -11,12 +13,21 @@ from src.sui import (
     SuiConfig,
     GetObjectsOwnedByAddress,
     GetObject,
+    GetObjectsOwnedByObject,
     parse_sui_object_descriptors,
     parse_sui_object_type,
 )
 from src.sui.sui_excepts import SuiFileNotFound, SuiKeystoreFileError, SuiKeystoreAddressError
 from src.sui.sui_crypto import keypair_from_b64address
-from sui.sui_types import SuiNativeCoinDescriptor, SuiGasType, SuiObjectDescriptor, SuiNftDescriptor, SuiNftType
+from sui.sui_types import (
+    SuiNativeCoinDescriptor,
+    SuiGasType,
+    SuiObjectDescriptor,
+    SuiNftDescriptor,
+    SuiNftType,
+    SuiDataDescriptor,
+    SuiDataType,
+)
 
 
 class SuiWallet:
@@ -69,6 +80,10 @@ class SuiWallet:
                 type_descriptors.append(sui_type)
         return type_descriptors
 
+    def get_data_descriptors(self) -> list[SuiDataDescriptor]:
+        """Get the objects descriptors."""
+        return self.get_type_descriptor(SuiDataDescriptor)
+
     def get_gas_descriptors(self) -> list[SuiNativeCoinDescriptor]:
         """Get the gas object descriptors."""
         return self.get_type_descriptor(SuiNativeCoinDescriptor)
@@ -77,8 +92,23 @@ class SuiWallet:
         """Get the gas object descriptors."""
         return self.get_type_descriptor(SuiNftDescriptor)
 
+    def data_objects(self) -> list[SuiDataType]:
+        """Get the objects from descriptors."""
+        desc = self.get_data_descriptors()
+        obj_types = []
+        for cdesc in desc:
+            result = self.execute(GetObject().add_parameter(cdesc.identifer))
+            obj_types.append(parse_sui_object_type(result.json()["result"]["details"]["data"]))
+        return obj_types
+
+    def data_object_children(self, for_parent: SuiDataType):
+        """Get the objects owned by for_parent."""
+        result = self.execute(GetObjectsOwnedByObject().add_parameter(for_parent.identifer))
+        for chld in result.json()["result"]:
+            for_parent.add_child(parse_sui_object_type(chld))
+
     def nft_objects(self) -> list[SuiNftType]:
-        """Get the gas object descriptors."""
+        """Get the nft objects from descriptors."""
         desc = self.get_nft_descriptors()
         nft_types = []
         for cdesc in desc:
