@@ -49,3 +49,29 @@ class ClientType(ABC):
     @abstractmethod
     def is_transferable(self) -> bool:
         """Return the types type."""
+
+
+class ClientFunction(ABC):
+    """Base function abstraction."""
+
+
+class ClientModule(ABC):
+    """Base module abstraction."""
+
+    @property
+    @abstractmethod
+    def functions(self) -> list[ClientFunction]:
+        """Return the modules functions."""
+
+
+class ClientPackage(ABC):
+    """Base package abstraction."""
+
+    def __init__(self) -> None:
+        """Initialize package."""
+        self._modules = []
+
+    @property
+    def modules(self) -> list[ClientModule]:
+        """Return the package's modules."""
+        return self._modules

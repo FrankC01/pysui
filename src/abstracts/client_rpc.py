@@ -24,6 +24,24 @@ class Builder(ABC):
         """Return the current header."""
 
 
+class RpcResult(ABC):
+    """Rpc Result for call returns."""
+
+    def __init__(self) -> None:
+        """Initializer for result."""
+        self._success = True
+
+    @property
+    def succeeded(self) -> bool:
+        """Return success indicator."""
+        return self._success
+
+    @property
+    def failed(self) -> bool:
+        """Return failure indicator."""
+        return not self.succeeded
+
+
 class SyncHttpRPC(ABC):
     """Synchronous HTTP RPC Client."""
 

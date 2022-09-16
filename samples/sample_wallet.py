@@ -11,9 +11,11 @@ from src.abstracts import Builder
 from src.sui import (
     SuiClient,
     SuiConfig,
+    SuiRpcResult,
     GetObjectsOwnedByAddress,
     GetObject,
     GetObjectsOwnedByObject,
+    GetPackage,
     parse_sui_object_descriptors,
     parse_sui_object_type,
 )
@@ -27,6 +29,7 @@ from sui.sui_types import (
     SuiNftType,
     SuiDataDescriptor,
     SuiDataType,
+    SuiPackage,
 )
 
 
@@ -37,6 +40,7 @@ class SuiWallet:
         """Initialize from keystore path."""
         if os.path.exists(config.keystore_file):
             self._keypairs = {}
+            self._package_ref_set = set()
             try:
                 with open(config.keystore_file, encoding="utf8") as keyfile:
                     self._keystrings = json.load(keyfile)
@@ -51,6 +55,16 @@ class SuiWallet:
                 raise SuiKeystoreAddressError(exc) from exc
         else:
             raise SuiFileNotFound(str(config.keystore_path))
+
+    @property
+    def package_ids(self) -> set[str]:
+        """Get the accumulated set of references packages."""
+        return self._package_ref_set
+
+    @package_ids.setter
+    def package_ids(self, package_id: str) -> None:
+        """Add unique package id to set."""
+        self._package_ref_set.add(package_id)
 
     @property
     def keystrings(self) -> list[str]:
@@ -69,6 +83,13 @@ class SuiWallet:
     def execute(self, builder: Builder) -> Any:
         """Execute the builder."""
         return self._client.execute(builder)
+
+    def get_package(self, package_id: str) -> SuiPackage:
+        """Get details of Sui package."""
+        result = self.execute(GetPackage().add_parameter(package_id)).json()
+        if result.get("error"):
+            return SuiRpcResult(False, result.get("error")["message"], None)
+        return SuiRpcResult(True, None, SuiPackage(package_id, result))
 
     def get_type_descriptor(self, claz: SuiObjectDescriptor) -> list[SuiObjectDescriptor]:
         """Get descriptors of claz type."""
@@ -98,14 +119,16 @@ class SuiWallet:
         obj_types = []
         for cdesc in desc:
             result = self.execute(GetObject().add_parameter(cdesc.identifer))
-            obj_types.append(parse_sui_object_type(result.json()["result"]["details"]["data"]))
+            data_object = parse_sui_object_type(result.json()["result"]["details"]["data"])
+            self.package_ids = data_object.package
+            obj_types.append(data_object)
         return obj_types
 
     def data_object_children(self, for_parent: SuiDataType):
         """Get the objects owned by for_parent."""
         result = self.execute(GetObjectsOwnedByObject().add_parameter(for_parent.identifer))
         for chld in result.json()["result"]:
-            for_parent.add_child(parse_sui_object_type(chld))
+            for_parent.add_child(parse_sui_object_type(chld["details"]["data"]))
 
     def nft_objects(self) -> list[SuiNftType]:
         """Get the nft objects from descriptors."""

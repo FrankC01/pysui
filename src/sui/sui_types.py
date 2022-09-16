@@ -2,7 +2,7 @@
 
 from numbers import Number
 from typing import TypeVar
-from abstracts import ClientObjectDescriptor, ClientType
+from abstracts import ClientObjectDescriptor, ClientType, ClientPackage
 
 
 class SuiObjectDescriptor(ClientObjectDescriptor):
@@ -123,7 +123,7 @@ class SuiDataType(SuiObjectType):
         self._children = []
         self._data = {}
         split = self.type_signature.split("::", 2)
-        self._data_definition = dict(zip(["package_id", "module", "object_type"], split))
+        self._data_definition = dict(zip(["package", "module", "structure"], split))
         for key, value in indata["fields"].items():
             if not key == "id":
                 self._data[key] = value
@@ -132,6 +132,21 @@ class SuiDataType(SuiObjectType):
     def data_definition(self) -> dict:
         """Get the data definition meta data."""
         return self._data_definition
+
+    @property
+    def package(self) -> str:
+        """Get the data objects owning package id."""
+        return self.data_definition["package"]
+
+    @property
+    def module(self) -> str:
+        """Get the data objects owning module id."""
+        return self.data_definition["module"]
+
+    @property
+    def structure(self) -> str:
+        """Get the data objects structure id."""
+        return self.data_definition["structure"]
 
     @property
     def data(self) -> dict:
@@ -164,6 +179,21 @@ class SuiGasType(SuiCoinType):
     def balance(self) -> Number:
         """Get the balance for this coin object."""
         return self._balance
+
+
+class SuiPackage(ClientPackage):
+    """Sui package."""
+
+    def __init__(self, package_id: str, blob) -> None:
+        """Initialize a package construct."""
+        super().__init__()
+        self._package_id = package_id
+        self._blob = blob
+
+    @property
+    def package_id(self) -> str:
+        """Get the packages id."""
+        return self._package_id
 
 
 def parse_sui_object_descriptors(indata: dict) -> SuiObjectDescriptor:

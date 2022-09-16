@@ -9,16 +9,17 @@ class BaseBuilder(Builder):
     def __init__(self) -> None:
         """Initialize Builder."""
         super().__init__()
-        self.__params = []
+        self._params = []
         self._method = ""
 
     @property
-    def _params(self) -> list[str]:
-        return self.__params
+    def params(self) -> list[str]:
+        """Return parameters mutable list."""
+        return self._params
 
     def add_parameter(self, param: str) -> Any:
         """Append a parameter to end."""
-        self.__params.append(param)
+        self.params.append(param)
         return self
 
     @property
@@ -26,6 +27,7 @@ class BaseBuilder(Builder):
         """Return copy of the current data state."""
         dcopy = self._data.copy()
         dcopy["params"] = self._params
+        dcopy["method"] = self.method
         return dcopy
 
     @property
@@ -47,13 +49,6 @@ class GetObjectsOwnedByAddress(BaseBuilder):
         super().__init__()
         self._method = "sui_getObjectsOwnedByAddress"
 
-    @property
-    def data(self) -> dict:
-        """Overload data return with method."""
-        scopy = super().data
-        scopy["method"] = self.method
-        return scopy
-
 
 class GetObjectsOwnedByObject(BaseBuilder):
     """Fetch Objects for Address."""
@@ -62,13 +57,6 @@ class GetObjectsOwnedByObject(BaseBuilder):
         """Initialize Builder."""
         super().__init__()
         self._method = "sui_getObjectsOwnedByObject"
-
-    @property
-    def data(self) -> dict:
-        """Overload data return with method."""
-        scopy = super().data
-        scopy["method"] = self.method
-        return scopy
 
 
 class GetObject(BaseBuilder):
@@ -79,9 +67,11 @@ class GetObject(BaseBuilder):
         super().__init__()
         self._method = "sui_getObject"
 
-    @property
-    def data(self) -> dict:
-        """Overload data return with method."""
-        scopy = super().data
-        scopy["method"] = self.method
-        return scopy
+
+class GetPackage(BaseBuilder):
+    """Fetch package definitions including modules and functions."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__()
+        self._method = "sui_getNormalizedMoveModulesByPackage"

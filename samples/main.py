@@ -11,9 +11,8 @@ sys.path += [
     os.path.join(PROJECT_DIR.parent, "src/sui"),
     os.path.join(PROJECT_DIR.parent, "src/abstracts"),
 ]
-
-from samples.sample_wallet import SuiWallet
 from src.sui import SuiConfig
+from .sample_wallet import SuiWallet
 
 
 def main():
@@ -39,7 +38,13 @@ def main():
     for obj in objects:
         print(f"Data Definition {obj.data_definition}")
         print(f"Fields {obj.data}")
-        wallet.data_object_children(obj)
+
+    if len(wallet.package_ids) > 0:
+        print()
+        print("References packages")
+        print("-------------------")
+        package = wallet.get_package(list(wallet.package_ids)[0])
+        print(package.__dict__)
 
 
 if __name__ == "__main__":
