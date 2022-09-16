@@ -18,8 +18,9 @@ from src.sui import (
     GetPackage,
     parse_sui_object_descriptors,
     parse_sui_object_type,
+    parse_keystring_to_address,
 )
-from src.sui.sui_excepts import SuiFileNotFound, SuiKeystoreFileError, SuiKeystoreAddressError
+from src.sui.sui_excepts import SuiFileNotFound, SuiKeystoreFileError, SuiKeystoreAddressError, SuiNoKeyPairs
 from src.sui.sui_crypto import keypair_from_b64address
 from sui.sui_types import (
     SuiNativeCoinDescriptor,
@@ -40,14 +41,18 @@ class SuiWallet:
         """Initialize from keystore path."""
         if os.path.exists(config.keystore_file):
             self._keypairs = {}
+            self._addresses = {}
             self._package_ref_set = set()
             try:
                 with open(config.keystore_file, encoding="utf8") as keyfile:
                     self._keystrings = json.load(keyfile)
                     if len(self._keystrings) > 0:
                         for keystr in self._keystrings:
+                            addy = parse_keystring_to_address(keystr)
+                            self._addresses[addy.address] = addy
                             self._keypairs[keystr] = keypair_from_b64address(keystr)
-
+                    else:
+                        raise SuiNoKeyPairs()
                 self._client = SuiClient(config)
             except IOError as exc:
                 raise SuiKeystoreFileError(exc) from exc
@@ -80,6 +85,11 @@ class SuiWallet:
         """Get the current address."""
         return self._client.config.active_address
 
+    @property
+    def addresses(self) -> list[str]:
+        """Get all the addresses."""
+        return list(self._addresses.keys())
+
     def execute(self, builder: Builder) -> Any:
         """Execute the builder."""
         return self._client.execute(builder)
@@ -91,9 +101,9 @@ class SuiWallet:
             return SuiRpcResult(False, result.get("error")["message"], None)
         return SuiRpcResult(True, None, SuiPackage(package_id, result))
 
-    def get_type_descriptor(self, claz: SuiObjectDescriptor) -> list[SuiObjectDescriptor]:
+    def get_type_descriptor(self, claz: SuiObjectDescriptor, address: str = None) -> list[SuiObjectDescriptor]:
         """Get descriptors of claz type."""
-        result = self.execute(GetObjectsOwnedByAddress().add_parameter(self.current_address))
+        result = self.execute(GetObjectsOwnedByAddress().add_parameter(address if address else self.current_address))
         type_descriptors = []
         for sui_objdesc in result.json()["result"]:
             sui_type = parse_sui_object_descriptors(sui_objdesc)

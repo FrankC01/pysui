@@ -37,6 +37,14 @@ class SuiFileNotFound(SuiException):
         self.args = f"Can't find file {file_name}"
 
 
+class SuiNoKeyPairs(SuiException):
+    """Exception for missing keypairs."""
+
+    def __init__(self) -> None:
+        """Initialize no keypair exception."""
+        self.args = "No keypairs found"
+
+
 class SuiInvalidKeyPair(SuiException):
     """Invalid KeyPair Exception."""
 

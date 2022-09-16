@@ -10,6 +10,7 @@ from src.sui.sui_crypto import (
     SuiPrivateKeyED25519,
     keypair_from_b64address,
 )
+from src.sui import parse_keystring_to_address
 
 
 def test_ed25519_pass() -> None:
@@ -31,3 +32,12 @@ def test_ed25519_pass() -> None:
     assert test_prvbytes == sui_privkey.key_bytes
     kpair = keypair_from_b64address(test_b64)
     assert kpair is not None
+
+
+def test_ed25519_address_pass() -> None:
+    """Test conversion from keystring to address."""
+    knwnaddy = "0x2e8c9bb1260d44fd5ba4c5ddde10bb13b47067f8"
+    keystring = "APLkwzgb263XFdZB2CloxMz4z2h4pP2m7C5y1ef56MTaHnSr41donGv0yAIhYgWc6DJUdoWE4ZTF020YAOQ9tyw="
+    suiaddress = parse_keystring_to_address(keystring)
+    assert suiaddress is not None
+    assert knwnaddy == suiaddress.address

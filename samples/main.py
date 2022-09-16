@@ -19,21 +19,29 @@ def main():
     """Entry point for test driving."""
     wallet = SuiWallet(SuiConfig.default())
 
-    print("Gas Objects")
-    print("-----------")
+    print()
+    print(f"Active address {wallet.current_address}")
+    print()
+    print("Addresses")
+    print("---------")
+    for addy in wallet.addresses:
+        print(addy)
+    print()
+    print("Gas Objects for active address")
+    print("------------------------------")
     gas_objects = wallet.gas_objects()
     for gas in gas_objects:
         print(f"{gas.identifer} | {gas.balance}")
     print(f"Total Gas = {wallet.total_gas(gas_objects)}")
     print()
-    print("NFT Objects")
-    print("-----------")
+    print("NFT Objects for active address")
+    print("------------------------------")
     nft_objects = wallet.nft_objects()
     for nft in nft_objects:
         print(f"{nft.identifer} | {nft.name} | {nft.url} | {nft.description}")
     print()
-    print("Data Objects")
-    print("------------")
+    print("Data Objects for active address")
+    print("-------------------------------")
     objects = wallet.data_objects()
     for obj in objects:
         print(f"Data Definition {obj.data_definition}")
@@ -41,8 +49,8 @@ def main():
 
     if len(wallet.package_ids) > 0:
         print()
-        print("References packages")
-        print("-------------------")
+        print("References packages for active address")
+        print("--------------------------------------")
         package = wallet.get_package(list(wallet.package_ids)[0])
         print(package.__dict__)
 
