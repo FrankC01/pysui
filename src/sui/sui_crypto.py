@@ -1,17 +1,15 @@
 """Sui Crpto Utilities."""
 
 import base64
+import binascii
+import hashlib
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
 from nacl.encoding import Base64Encoder
 
 from abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
-from sui.sui_excepts import SuiInvalidKeyPair
-
-B64_ADDRESS_LEN = 88
-B64_KEYPAIR_LEN = 87
-ED25519_KEYPAIR_BYTES_LEN = 64
-ED25519_KEY_BYTES_LEN = 32
+from sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength
+from sui import B64_ADDRESS_LEN, ED25519_KEY_BYTES_LEN, ED25519_KEYPAIR_BYTES_LEN
 
 
 class SuiPublicKeyED25519(PublicKey):
@@ -69,8 +67,42 @@ class SuiKeyPairED25519(KeyPair):
 def keypair_from_b64address(address: str) -> KeyPair:
     """Derive keypair from address string."""
     if len(address) != B64_ADDRESS_LEN:
-        raise SuiInvalidKeyPair(f"Expect str len of {B64_ADDRESS_LEN}")
+        raise SuiInvalidKeystringLength(len(address))
     addy_bytes = base64.b64decode(address)
     if addy_bytes[0] == SignatureScheme.ED25519:
         return SuiKeyPairED25519.from_bytes(addy_bytes[1:])
     raise NotImplementedError
+
+
+class SuiAddress:
+    """Sui Address Type."""
+
+    def __init__(self, scheme: SignatureScheme, address: str) -> None:
+        """Initialize address."""
+        self._scheme = scheme
+        self._address = address
+
+    @property
+    def scheme(self) -> str:
+        """Get the address scheme."""
+        return self._scheme
+
+    @property
+    def address(self) -> str:
+        """Get the address string."""
+        return f"0x{self._address}"
+
+
+def address_from_keystring(indata: str) -> SuiAddress:
+    """From a 88 byte keypair string create a SuiAddress."""
+    #   Check address is legit keypair
+    _kp = keypair_from_b64address(indata)
+    #   decode from base64
+    fromb64 = base64.b64decode(indata)
+    #   Check valid encoding (0 or 1)
+    #   hash the scheme and public key
+    glg = hashlib.sha3_256()
+    glg.update(fromb64[0:33])
+    hash_bytes = binascii.hexlify(glg.digest())[0:40]
+    # Stringify
+    return SuiAddress(fromb64[0], hash_bytes.decode("utf-8"))

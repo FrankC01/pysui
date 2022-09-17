@@ -1,6 +1,6 @@
 # pysui
 
-Experimental python toolkit for Sui - WIP and expect significant refactoring
+Experimental (pre-alpha) python toolkit for Sui - WIP and expect significant refactoring
 
 ## Run sample
 ### Setup environment

@@ -1,11 +1,16 @@
 """Sui Types."""
 
-import base64
-import binascii
-import hashlib
 from numbers import Number
 from typing import TypeVar
-from abstracts import ClientObjectDescriptor, ClientType, ClientPackage, SignatureScheme
+from abstracts import ClientObjectDescriptor, ClientType, ClientPackage
+
+
+#   Constants
+B64_ADDRESS_LEN = 88
+B64_KEYPAIR_LEN = 87
+ED25519_KEYPAIR_BYTES_LEN = 64
+SECP256K1_KEYPAIR_BYTES_LEN = 65
+ED25519_KEY_BYTES_LEN = 32
 
 
 class SuiObjectDescriptor(ClientObjectDescriptor):
@@ -199,43 +204,9 @@ class SuiPackage(ClientPackage):
         return self._package_id
 
 
-class SuiAddress:
-    """Sui Address Type."""
-
-    def __init__(self, scheme: SignatureScheme, address: str) -> None:
-        """Initialize address."""
-        self._scheme = scheme
-        self._address = address
-
-    @property
-    def scheme(self) -> str:
-        """Get the address scheme."""
-        return self._scheme
-
-    @property
-    def address(self) -> str:
-        """Get the address string."""
-        return f"0x{self._address}"
-
-
-def parse_keystring_to_address(indata: str) -> SuiAddress:
-    """From a 88 byte keypair string create a SuiAddress."""
-    #   Check address length (88)
-    #   decode from base64
-    fromb64 = base64.b64decode(indata)
-    #   Check valid encoding (0 or 1)
-    #   hash the scheme and public key
-    glg = hashlib.sha3_256()
-    glg.update(fromb64[0:33])
-    hash_bytes = binascii.hexlify(glg.digest())[0:40]
-    # Stringify
-    return SuiAddress(fromb64[0], hash_bytes.decode("utf-8"))
-
-
 def parse_sui_object_descriptors(indata: dict) -> SuiObjectDescriptor:
     """Parse an inbound JSON string to a Sui type."""
     split = indata["type"].split("::", 2)
-
     if split[0] == "0x2":
         match split[1]:
             case "coin":

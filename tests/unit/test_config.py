@@ -18,7 +18,7 @@ def test_wallet_pass() -> None:
     assert config is not None
 
 
+@pytest.mark.xfail(raises=Exception)
 def test_user_config_fail() -> None:
     """Fail test with path that does not exist."""
-    with pytest.raises(Exception):
-        SuiConfig.from_path(pathlib.Path("foo/bar"))
+    SuiConfig.from_path(pathlib.Path("foo/bar"))

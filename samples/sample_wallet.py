@@ -6,8 +6,7 @@ import os
 import json
 
 from typing import Any
-from src.abstracts import KeyPair
-from src.abstracts import Builder
+from src.abstracts import KeyPair, Builder
 from src.sui import (
     SuiClient,
     SuiConfig,
@@ -16,13 +15,10 @@ from src.sui import (
     GetObject,
     GetObjectsOwnedByObject,
     GetPackage,
-    parse_sui_object_descriptors,
-    parse_sui_object_type,
-    parse_keystring_to_address,
 )
 from src.sui.sui_excepts import SuiFileNotFound, SuiKeystoreFileError, SuiKeystoreAddressError, SuiNoKeyPairs
-from src.sui.sui_crypto import keypair_from_b64address
-from sui.sui_types import (
+from src.sui.sui_crypto import keypair_from_b64address, address_from_keystring
+from src.sui.sui_types import (
     SuiNativeCoinDescriptor,
     SuiGasType,
     SuiObjectDescriptor,
@@ -31,11 +27,13 @@ from sui.sui_types import (
     SuiDataDescriptor,
     SuiDataType,
     SuiPackage,
+    parse_sui_object_descriptors,
+    parse_sui_object_type,
 )
 
 
 class SuiWallet:
-    """Wallet."""
+    """Sui Wallet Example."""
 
     def __init__(self, config: SuiConfig) -> None:
         """Initialize from keystore path."""
@@ -48,7 +46,7 @@ class SuiWallet:
                     self._keystrings = json.load(keyfile)
                     if len(self._keystrings) > 0:
                         for keystr in self._keystrings:
-                            addy = parse_keystring_to_address(keystr)
+                            addy = address_from_keystring(keystr)
                             self._addresses[addy.address] = addy
                             self._keypairs[keystr] = keypair_from_b64address(keystr)
                     else:
@@ -111,21 +109,21 @@ class SuiWallet:
                 type_descriptors.append(sui_type)
         return type_descriptors
 
-    def get_data_descriptors(self) -> list[SuiDataDescriptor]:
+    def get_data_descriptors(self, address: str = None) -> list[SuiDataDescriptor]:
         """Get the objects descriptors."""
-        return self.get_type_descriptor(SuiDataDescriptor)
+        return self.get_type_descriptor(SuiDataDescriptor, address)
 
-    def get_gas_descriptors(self) -> list[SuiNativeCoinDescriptor]:
+    def get_gas_descriptors(self, address: str = None) -> list[SuiNativeCoinDescriptor]:
         """Get the gas object descriptors."""
-        return self.get_type_descriptor(SuiNativeCoinDescriptor)
+        return self.get_type_descriptor(SuiNativeCoinDescriptor, address)
 
-    def get_nft_descriptors(self) -> list[SuiNftDescriptor]:
+    def get_nft_descriptors(self, address: str = None) -> list[SuiNftDescriptor]:
         """Get the gas object descriptors."""
-        return self.get_type_descriptor(SuiNftDescriptor)
+        return self.get_type_descriptor(SuiNftDescriptor, address)
 
-    def data_objects(self) -> list[SuiDataType]:
+    def data_objects(self, address: str = None) -> list[SuiDataType]:
         """Get the objects from descriptors."""
-        desc = self.get_data_descriptors()
+        desc = self.get_data_descriptors(address)
         obj_types = []
         for cdesc in desc:
             result = self.execute(GetObject().add_parameter(cdesc.identifer))
@@ -140,18 +138,18 @@ class SuiWallet:
         for chld in result.json()["result"]:
             for_parent.add_child(parse_sui_object_type(chld["details"]["data"]))
 
-    def nft_objects(self) -> list[SuiNftType]:
+    def nft_objects(self, address: str = None) -> list[SuiNftType]:
         """Get the nft objects from descriptors."""
-        desc = self.get_nft_descriptors()
+        desc = self.get_nft_descriptors(address)
         nft_types = []
         for cdesc in desc:
             result = self.execute(GetObject().add_parameter(cdesc.identifer))
             nft_types.append(parse_sui_object_type(result.json()["result"]["details"]["data"]))
         return nft_types
 
-    def gas_objects(self) -> list[SuiGasType]:
+    def gas_objects(self, address: str = None) -> list[SuiGasType]:
         """Get the gas objects."""
-        desc = self.get_gas_descriptors()
+        desc = self.get_gas_descriptors(address)
         gas_types = []
         for cdesc in desc:
             result = self.execute(GetObject().add_parameter(cdesc.identifer))

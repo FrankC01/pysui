@@ -1,4 +1,4 @@
-"""Main driver primarily for testing."""
+"""Main driver primarily for demonstrating."""
 
 import os
 import sys
@@ -16,7 +16,7 @@ from .sample_wallet import SuiWallet
 
 
 def main():
-    """Entry point for test driving."""
+    """Entry point for demonstration."""
     wallet = SuiWallet(SuiConfig.default())
 
     print()
