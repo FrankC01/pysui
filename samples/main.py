@@ -57,7 +57,9 @@ def main():
         print()
         print("References packages for active address")
         print("--------------------------------------")
-        package = wallet.get_package(list(wallet.package_ids)[0])
+        ids = list(wallet.package_ids)
+        print(f"Package {ids} modules")
+        package = wallet.get_package(ids[1])
         print(package.__dict__)
 
 

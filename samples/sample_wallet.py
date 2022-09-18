@@ -17,7 +17,7 @@ from src.sui import (
     GetPackage,
 )
 from src.sui.sui_excepts import SuiFileNotFound, SuiKeystoreFileError, SuiKeystoreAddressError, SuiNoKeyPairs
-from src.sui.sui_crypto import keypair_from_b64address, address_from_keystring
+from src.sui.sui_crypto import keypair_from_keystring, address_from_keystring
 from src.sui.sui_types import (
     SuiNativeCoinDescriptor,
     SuiGasType,
@@ -48,7 +48,7 @@ class SuiWallet:
                         for keystr in self._keystrings:
                             addy = address_from_keystring(keystr)
                             self._addresses[addy.identifer] = addy
-                            self._keypairs[keystr] = keypair_from_b64address(keystr)
+                            self._keypairs[keystr] = keypair_from_keystring(keystr)
                     else:
                         raise SuiNoKeyPairs()
                 self._client = SuiClient(config)

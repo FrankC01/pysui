@@ -6,11 +6,13 @@ from abstracts import ClientObjectDescriptor, ClientType, ClientPackage, ClientA
 
 
 #   Constants
-B64_ADDRESS_LEN = 88
-B64_KEYPAIR_LEN = 87
+SUI_KEYPAIR_LEN = 88
+SUI_ADDRESS_STRING_LEN = 42
+# B64_KEYPAIR_LEN = 87
 ED25519_KEYPAIR_BYTES_LEN = 64
 ED25519_PUBLICKEY_BYTES_LEN = 32
 ED25519_PRIVATEKEY_BYTES_LEN = 32
+
 SECP256K1_KEYPAIR_BYTES_LEN = 65
 SECP256K1_PUBLICKEY_BYTES_LEN = 33
 SECP256K1_PRIVATEKEY_BYTES_LEN = 32
@@ -247,6 +249,5 @@ def parse_sui_object_type(indata: dict) -> SuiObjectType:
                     return SuiNftType(indata)
     else:
         if len(split) == 3:
-            print(f"psot: {indata}")
             return SuiDataType(indata)
     return SuiObjectType(indata)
