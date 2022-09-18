@@ -3,13 +3,21 @@ from abc import ABC, abstractmethod
 from numbers import Number
 
 
-class ClientObjectDescriptor(ABC):
-    """Base type descriptor abstraction."""
+class ClientAbstractType(ABC):
+    """Core type that supports identification."""
+
+    def __init__(self, identifier: str) -> None:
+        """Initialize with identifier."""
+        self._identifier = identifier
 
     @property
-    @abstractmethod
     def identifer(self) -> str:
         """Return the types identifer."""
+        return self._identifier
+
+
+class ClientObjectDescriptor(ClientAbstractType):
+    """Base type descriptor abstraction."""
 
     @property
     @abstractmethod
@@ -27,13 +35,8 @@ class ClientObjectDescriptor(ABC):
         """Return the types type."""
 
 
-class ClientType(ABC):
+class ClientType(ClientAbstractType):
     """Base type abstraction."""
-
-    @property
-    @abstractmethod
-    def identifer(self) -> str:
-        """Return the type identifer."""
 
     @property
     @abstractmethod

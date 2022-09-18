@@ -34,7 +34,7 @@ class SuiFileNotFound(SuiException):
 
     def __init__(self, file_name: str) -> None:
         """Add filename to exception args."""
-        self.args = "Can't find file {}".format(file_name)
+        self.args = file_name
 
 
 class SuiNoKeyPairs(SuiException):
@@ -50,7 +50,7 @@ class SuiInvalidKeyPair(SuiException):
 
     def __init__(self, msg: str) -> None:
         """Indicate type of error."""
-        self.args = f"{msg}"
+        self.args = msg
 
 
 class SuiInvalidKeystringLength(SuiException):

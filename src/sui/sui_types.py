@@ -2,23 +2,30 @@
 
 from numbers import Number
 from typing import TypeVar
-from abstracts import ClientObjectDescriptor, ClientType, ClientPackage
+from abstracts import ClientObjectDescriptor, ClientType, ClientPackage, ClientAbstractType
 
 
 #   Constants
 B64_ADDRESS_LEN = 88
 B64_KEYPAIR_LEN = 87
 ED25519_KEYPAIR_BYTES_LEN = 64
+ED25519_PUBLICKEY_BYTES_LEN = 32
+ED25519_PRIVATEKEY_BYTES_LEN = 32
 SECP256K1_KEYPAIR_BYTES_LEN = 65
-ED25519_KEY_BYTES_LEN = 32
+SECP256K1_PUBLICKEY_BYTES_LEN = 33
+SECP256K1_PRIVATEKEY_BYTES_LEN = 32
 
 
-class SuiObjectDescriptor(ClientObjectDescriptor):
+class SuiType(ClientAbstractType):
+    """Base most SUI type."""
+
+
+class SuiObjectDescriptor(ClientObjectDescriptor, SuiType):
     """Base SUI Type Descriptor."""
 
     def __init__(self, indata: dict) -> None:
         """Initialize the base descriptor."""
-        self._identifier = indata["objectId"]
+        super().__init__(indata["objectId"])
         self._version = indata["version"]
         self._owner = indata["owner"]["AddressOwner"]
         self._digest = indata["digest"]
@@ -62,15 +69,15 @@ class SuiNativeCoinDescriptor(SuiCoinDescriptor):
     """Sui gas is a coin."""
 
 
-class SuiObjectType(ClientType):
+class SuiObjectType(ClientType, SuiType):
     """Base SUI Type."""
 
     def __init__(self, indata: dict) -> None:
         """Initialize the base type data."""
+        super().__init__(indata["fields"]["id"]["id"])
         self._type_signature = indata["type"]
         self._data_type = indata["dataType"]
         self._is_transferable = indata["has_public_transfer"]
-        self._identifier = indata["fields"]["id"]["id"]
 
     @property
     def identifer(self) -> str:
@@ -126,7 +133,7 @@ class SuiDataType(SuiObjectType):
     """Sui Data type."""
 
     def __init__(self, indata: dict) -> None:
-        """Initialize the base Nft type."""
+        """Initialize the base Data type."""
         super().__init__(indata)
         self._children = []
         self._data = {}
@@ -240,5 +247,6 @@ def parse_sui_object_type(indata: dict) -> SuiObjectType:
                     return SuiNftType(indata)
     else:
         if len(split) == 3:
+            print(f"psot: {indata}")
             return SuiDataType(indata)
     return SuiObjectType(indata)

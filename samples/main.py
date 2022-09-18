@@ -40,6 +40,12 @@ def main():
     for nft in nft_objects:
         print(f"{nft.identifer} | {nft.name} | {nft.url} | {nft.description}")
     print()
+    print("Data Descriptors for active address")
+    print("-----------------------------------")
+    objects = wallet.get_data_descriptors()
+    for obj in objects:
+        print(f"Data Definition {obj.__dict__}")
+    print()
     print("Data Objects for active address")
     print("-------------------------------")
     objects = wallet.data_objects()

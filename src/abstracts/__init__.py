@@ -2,6 +2,6 @@
 
 from abstracts.client_config import ClientConfiguration
 from abstracts.client_keypair import KeyPair, PublicKey, PrivateKey, SignatureScheme
-from abstracts.client_types import ClientObjectDescriptor, ClientType, ClientPackage
+from abstracts.client_types import ClientObjectDescriptor, ClientType, ClientPackage, ClientAbstractType
 from abstracts.client_rpc import SyncHttpRPC, AsyncHttpRPC, RpcResult
 from abstracts.client_rpc import Builder

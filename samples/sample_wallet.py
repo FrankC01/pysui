@@ -47,7 +47,7 @@ class SuiWallet:
                     if len(self._keystrings) > 0:
                         for keystr in self._keystrings:
                             addy = address_from_keystring(keystr)
-                            self._addresses[addy.address] = addy
+                            self._addresses[addy.identifer] = addy
                             self._keypairs[keystr] = keypair_from_b64address(keystr)
                     else:
                         raise SuiNoKeyPairs()

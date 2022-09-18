@@ -9,7 +9,13 @@ from nacl.encoding import Base64Encoder
 
 from abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
 from sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength
-from sui import B64_ADDRESS_LEN, ED25519_KEY_BYTES_LEN, ED25519_KEYPAIR_BYTES_LEN
+from sui import (
+    B64_ADDRESS_LEN,
+    ED25519_PUBLICKEY_BYTES_LEN,
+    ED25519_PRIVATEKEY_BYTES_LEN,
+    ED25519_KEYPAIR_BYTES_LEN,
+    SuiType,
+)
 
 
 class SuiPublicKeyED25519(PublicKey):
@@ -17,8 +23,8 @@ class SuiPublicKeyED25519(PublicKey):
 
     def __init__(self, indata: bytes) -> None:
         """Initialize public key."""
-        if len(indata) != ED25519_KEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Expect bytes len of {ED25519_KEY_BYTES_LEN} found {len(indata)}")
+        if len(indata) != ED25519_PUBLICKEY_BYTES_LEN:
+            raise SuiInvalidKeyPair(f"Public Key expects {ED25519_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}")
         super().__init__(SignatureScheme.ED25519, indata)
         self._verify_key = VerifyKey(self.to_b64(), encoder=Base64Encoder)
 
@@ -28,8 +34,8 @@ class SuiPrivateKeyED25519(PrivateKey):
 
     def __init__(self, indata: bytes) -> None:
         """Initialize private key."""
-        if len(indata) != ED25519_KEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Expect bytes len of {ED25519_KEY_BYTES_LEN} found {len(indata)}")
+        if len(indata) != ED25519_PRIVATEKEY_BYTES_LEN:
+            raise SuiInvalidKeyPair(f"Private Key expects {ED25519_PRIVATEKEY_BYTES_LEN} bytes, found {len(indata)}")
         super().__init__(SignatureScheme.ED25519, indata)
         self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
 
@@ -74,23 +80,18 @@ def keypair_from_b64address(address: str) -> KeyPair:
     raise NotImplementedError
 
 
-class SuiAddress:
+class SuiAddress(SuiType):
     """Sui Address Type."""
 
-    def __init__(self, scheme: SignatureScheme, address: str) -> None:
+    def __init__(self, scheme: SignatureScheme, identifier: str) -> None:
         """Initialize address."""
+        super().__init__(f"0x{identifier}")
         self._scheme = scheme
-        self._address = address
 
     @property
     def scheme(self) -> str:
         """Get the address scheme."""
         return self._scheme
-
-    @property
-    def address(self) -> str:
-        """Get the address string."""
-        return f"0x{self._address}"
 
 
 def address_from_keystring(indata: str) -> SuiAddress:
