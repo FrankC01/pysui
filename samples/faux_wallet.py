@@ -92,11 +92,24 @@ class SuiWallet:
         """Execute the builder."""
         return self._client.execute(builder)
 
+    def get_rpc_api_names(self) -> list[str]:
+        """Fetch RCP API method names."""
+        return self._client.rpc_api_names
+
+    def get_rpc_api(self) -> dict:
+        """Fetch RCP API descriptors."""
+        return self._client.rpc_api
+
+    def api_exists(self, api_name: str) -> bool:
+        """Check if API supported in RPC host."""
+        return self._client.api_exists(api_name)
+
     def get_package(self, package_id: str) -> SuiPackage:
         """Get details of Sui package."""
         result = self.execute(GetPackage().add_parameter(package_id)).json()
         if result.get("error"):
             return SuiRpcResult(False, result.get("error")["message"], None)
+        print(result)
         return SuiRpcResult(True, None, SuiPackage(package_id, result))
 
     def get_type_descriptor(self, claz: SuiObjectDescriptor, address: str = None) -> list[SuiObjectDescriptor]:

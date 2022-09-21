@@ -9,7 +9,7 @@ class Builder(ABC):
     """Builder for RPC Calls."""
 
     def __init__(self):
-        """Default Builder Initializer."""
+        """Initialize abstract Builder."""
         self._data = {"jsonrpc": "2.0", "id": 1}
         self._header = {"Content-Type": "application/json"}
 
@@ -23,12 +23,17 @@ class Builder(ABC):
     def header(self) -> dict:
         """Return the current header."""
 
+    @property
+    @abstractmethod
+    def method(self) -> str:
+        """Return method."""
+
 
 class RpcResult(ABC):
     """Rpc Result for call returns."""
 
     def __init__(self) -> None:
-        """Initializer for result."""
+        """Initialize Result."""
         self._success = True
 
     @property

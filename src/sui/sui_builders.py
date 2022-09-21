@@ -75,3 +75,12 @@ class GetPackage(BaseBuilder):
         """Initialize builder."""
         super().__init__()
         self._method = "sui_getNormalizedMoveModulesByPackage"
+
+
+class GetRpcAPI(BaseBuilder):
+    """Fetch the RPC API available for endpoint."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__()
+        self._method = "rpc.discover"
