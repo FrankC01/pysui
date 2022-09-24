@@ -1,10 +1,9 @@
 """Sui RPC API Descriptor."""
 
 from dataclasses import dataclass
-from typing import TypeVar
 from dataclasses_json import dataclass_json
 
-T = TypeVar("T", str, float, int, list)
+# T = TypeVar("T", str, float, int, list)
 
 
 @dataclass_json
