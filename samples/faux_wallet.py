@@ -6,7 +6,7 @@ import os
 import json
 
 from typing import Any
-from src.abstracts import KeyPair, Builder
+from src.abstracts import KeyPair, Builder, SignatureScheme
 from src.sui import (
     SuiClient,
     SuiConfig,
@@ -17,7 +17,7 @@ from src.sui import (
     GetPackage,
 )
 from src.sui.sui_excepts import SuiFileNotFound, SuiKeystoreFileError, SuiKeystoreAddressError, SuiNoKeyPairs
-from src.sui.sui_crypto import keypair_from_keystring, address_from_keystring
+from src.sui.sui_crypto import keypair_from_keystring, address_from_keystring, create_new_address
 from src.sui.sui_types import (
     SuiNativeCoinDescriptor,
     SuiGasType,
@@ -60,6 +60,18 @@ class SuiWallet:
         else:
             raise SuiFileNotFound(str(config.keystore_path))
 
+    def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:
+        """Register the keypair and write out to keystore file."""
+        filepath = file_path if file_path else self._client.config.keystore_file
+        if os.path.exists(filepath):
+            serialized = keypair.to_b64()
+            self._keypairs[serialized] = keypair
+            key_array = json.dumps(self.keystrings, indent=2)
+            with open(filepath, "w", encoding="utf8") as keystore:
+                keystore.write(key_array)
+        else:
+            raise SuiFileNotFound((filepath))
+
     @property
     def package_ids(self) -> set[str]:
         """Get the accumulated set of references packages."""
@@ -78,6 +90,19 @@ class SuiWallet:
     def keypair_for_keystring(self, key_string: str) -> KeyPair:
         """Get KeyPair for keystring."""
         return self._keypairs[key_string]
+
+    def create_new_keypair_and_address(self, scheme: SignatureScheme) -> str:
+        """
+        Create a new keypair and address identifier and return the address string.
+
+        The scheme defines generation of ED25519 or SECP256K1 keypairs.
+        """
+        if scheme == SignatureScheme.ED25519:
+            keypair, address = create_new_address(scheme)
+            self._addresses[address.identifer] = address
+            self._write_keypair(keypair)
+            return address.identifer
+        raise NotImplementedError
 
     @property
     def current_address(self) -> str:

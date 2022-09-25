@@ -40,8 +40,9 @@ class SuiPrivateKeyED25519(PrivateKey):
 
     def __init__(self, indata: bytes) -> None:
         """Initialize private key."""
-        if len(indata) != ED25519_PRIVATEKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Private Key expects {ED25519_PRIVATEKEY_BYTES_LEN} bytes, found {len(indata)}")
+        dlen = len(indata)
+        if dlen != ED25519_PRIVATEKEY_BYTES_LEN:
+            raise SuiInvalidKeyPair(f"Private Key expects {ED25519_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
         super().__init__(SignatureScheme.ED25519, indata)
         self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
 
@@ -53,6 +54,20 @@ class SuiKeyPairED25519(KeyPair):
         """Init keypair with public and private byte array."""
         self._private_key = SuiPrivateKeyED25519(priv_key_bytes)
         self._public_key = SuiPublicKeyED25519(pub_key_bytes)
+
+    def to_bytes(self) -> bytes:
+        """Convert keypair to bytes."""
+        all_bytes = (
+            self._private_key.scheme.to_bytes(1, "little") + self._public_key.key_bytes + self._private_key.key_bytes
+        )
+        return all_bytes
+
+    @classmethod
+    def unique(cls) -> "SuiKeyPairED25519":
+        """Generate a unique ED25519 keypair."""
+        signer = SigningKey.generate()
+        verifier = signer.verify_key
+        return cls(verifier.__bytes__(), signer.__bytes__())
 
     @classmethod
     def from_b64(cls, indata: str) -> KeyPair:
@@ -109,6 +124,25 @@ class SuiKeyPairSECP256K1(KeyPair):
         self._private_key = SuiPrivateKeySECP256K1(priv_key_bytes)
         self._public_key = SuiPublicKeySECP256K1(pub_key_bytes)
 
+    def to_bytes(self) -> bytes:
+        """Convert keypair to bytes."""
+        all_bytes = (
+            self._private_key.scheme.to_bytes(1, "little") + self._public_key.key_bytes + self._private_key.key_bytes
+        )
+        return all_bytes
+
+    @classmethod
+    def unique(cls) -> KeyPair:
+        """Generate a unique secp256k1 keypair."""
+        signer = secp256k1.PrivateKey()
+        prv = signer.serialize()
+        prvh = binascii.unhexlify(prv)
+        print(f"s prv {prv} w len {len(prv)} and type {type(prv)} and hl {prvh}")
+        pub = signer.pubkey.serialize()
+        print(f"s pub {pub} w len {len(pub)}")
+
+        return cls(signer.pubkey.serialize(compressed=True), signer.serialize())
+
     @classmethod
     def from_b64(cls, indata: str) -> KeyPair:
         """Convert base64 string to keypair."""
@@ -155,6 +189,14 @@ class SuiAddress(SuiType):
         super().__init__(f"0x{identifier}")
         self._scheme = scheme
 
+    @classmethod
+    def from_bytes(cls, in_bytes: bytes) -> "SuiAddress":
+        """Create address from bytes."""
+        glg = hashlib.sha3_256()
+        glg.update(in_bytes[0:33])
+        hash_bytes = binascii.hexlify(glg.digest())[0:40]
+        return SuiAddress(in_bytes[0], hash_bytes.decode("utf-8"))
+
     @property
     def scheme(self) -> str:
         """Get the address scheme."""
@@ -166,11 +208,38 @@ def address_from_keystring(indata: str) -> SuiAddress:
     #   Check address is legit keypair
     _kp = keypair_from_keystring(indata)
     #   decode from base64
-    fromb64 = base64.b64decode(indata)
-    #   Check valid encoding (0 or 1)
-    #   hash the scheme and public key
-    glg = hashlib.sha3_256()
-    glg.update(fromb64[0:33])
-    hash_bytes = binascii.hexlify(glg.digest())[0:40]
-    # Stringify
-    return SuiAddress(fromb64[0], hash_bytes.decode("utf-8"))
+    return SuiAddress.from_bytes(base64.b64decode(indata))
+    # fromb64 = base64.b64decode(indata)
+    # #   hash the scheme and public key
+    # glg = hashlib.sha3_256()
+    # glg.update(fromb64[0:33])
+    # hash_bytes = binascii.hexlify(glg.digest())[0:40]
+    # # Stringify
+    # return SuiAddress(fromb64[0], hash_bytes.decode("utf-8"))
+
+
+def create_new_keypair(keytype: SignatureScheme = SignatureScheme.ED25519) -> KeyPair:
+    """Generate a new keypair."""
+    match keytype:
+        case SignatureScheme.ED25519:
+            return SuiKeyPairED25519.unique()
+        case SignatureScheme.SECP256K1:
+            return SuiKeyPairSECP256K1.unique()
+        case _:
+            raise NotImplementedError
+
+
+def create_new_address(keytype: SignatureScheme) -> tuple[KeyPair, SuiAddress]:
+    """Create a new keypair and address for a key type."""
+    new_kp = create_new_keypair(keytype)
+    return (new_kp, SuiAddress.from_bytes(new_kp.to_bytes()))
+
+
+if __name__ == "__main__":
+    # TODO: Move to test for regression after secp256k1 working
+    keyp, new_addy = create_new_address(SignatureScheme.ED25519)
+    print(keyp)
+    print(new_addy.identifer)
+    # keyp, new_addy = create_new_address(SignatureScheme.SECP256K1)
+    # print(keyp)
+    # print(new_addy.identifer)

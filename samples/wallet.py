@@ -16,6 +16,7 @@ sys.path += [
     os.path.join(PROJECT_DIR.parent, "src/abstracts"),
 ]
 
+from src.abstracts import SignatureScheme
 from src.sui import SuiConfig
 from src.sui import GetPackage
 from src.sui.sui_types import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
@@ -71,6 +72,15 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
         _detail_gas(wallet.gas_objects(args.address))
     elif args.id:
         print("Gas for Object ID not implemented yet")
+
+
+def sui_new_address(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Generate a new SUI address."""
+    if args.ed25519:
+        print(wallet.create_new_keypair_and_address(SignatureScheme.ED25519))
+    else:
+        #   TODO: Implement support
+        print("secp256k1 not implemented yet.")
 
 
 def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
@@ -129,13 +139,17 @@ def build_parser() -> argparse.ArgumentParser:
             values: str | Sequence[Any] | None,
             option_string: str | None = ...,
         ) -> None:
-            str_length = len(values)
-            if str_length == SUI_HEX_ADDRESS_STRING_LEN:
-                pass
-            elif str_length == SUI_ADDRESS_STRING_LEN:
-                values = f"0x{values}"
-            else:
-                parser.error(f"'{values}' is not valid sui identifier length.")
+            try:
+                _to_hex = int(values, 16)
+                str_length = len(values)
+                if str_length == SUI_HEX_ADDRESS_STRING_LEN:
+                    pass
+                elif str_length == SUI_ADDRESS_STRING_LEN:
+                    values = f"0x{values}"
+                else:
+                    raise ValueError
+            except ValueError:
+                parser.error(f"'{values}' is not valid identifier.")
                 sys.exit(-1)
             setattr(namespace, self.dest, values)
 
@@ -150,10 +164,15 @@ def build_parser() -> argparse.ArgumentParser:
     # Gas
     subp = subparser.add_parser("gas", help="Shows gas objects")
     gas_arg_group = subp.add_mutually_exclusive_group()
-    # gas_arg_group.add_argument("--all", help="Show all gas objects", action="store_true")
     gas_arg_group.add_argument("--address", help="Gas for address")
     gas_arg_group.add_argument("--id", help="Gas for gas object id", action=ValidateAddress)
     subp.set_defaults(func=sui_gas)
+    # New address
+    subp = subparser.add_parser("new-address", help="Generate new address and keypair")
+    addy_arg_group = subp.add_mutually_exclusive_group(required=True)
+    addy_arg_group.add_argument("-e", "--ed25519", help="Generate using ed25519 scheme", action="store_true")
+    addy_arg_group.add_argument("-s", "--secp256k1", help="Generate using secp256k1 scheme", action="store_true")
+    subp.set_defaults(func=sui_new_address)
     # Object
     subp = subparser.add_parser("object", help="Show object by id")
     subp.add_argument("--id", required=True, action=ValidateAddress)

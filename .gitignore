@@ -1,4 +1,5 @@
 pysuienv
 __pycache__
 sui.log*
+sample.rpc.py
 .pytest_cache

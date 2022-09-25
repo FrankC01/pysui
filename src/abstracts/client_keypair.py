@@ -3,7 +3,6 @@
 from abc import ABC, abstractmethod
 import base64
 from enum import IntEnum
-from typing import Any
 
 
 class SignatureScheme(IntEnum):
@@ -33,7 +32,7 @@ class Key(ABC):
 
     def to_b64(self) -> str:
         """Convert key bytes to base64."""
-        return base64.b64encode(self.key_bytes)
+        return base64.b64encode(self.key_bytes).decode()
 
     def __repr__(self) -> str:
         """To string."""
@@ -53,10 +52,18 @@ class KeyPair(ABC):
 
     @classmethod
     @abstractmethod
-    def from_b64(cls, indata: str) -> Any:
+    def from_b64(cls, indata: str) -> "KeyPair":
         """Convert base64 string to keypair."""
 
     @classmethod
     @abstractmethod
-    def from_bytes(cls, indata: bytes) -> Any:
+    def from_bytes(cls, indata: bytes) -> "KeyPair":
         """Convert bytes to keypair."""
+
+    @abstractmethod
+    def to_bytes(self) -> bytes:
+        """Convert keypair to encoded bytes."""
+
+    def to_b64(self) -> str:
+        """Convert key bytes to base64."""
+        return base64.b64encode(self.to_bytes()).decode()
