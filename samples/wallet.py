@@ -126,6 +126,31 @@ def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
             print(f"{desc.identifer} |      {desc.version}    | {desc.digest} | {desc.type_signature}")
 
 
+def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Display information about Sui RPC API."""
+    rpcapi = wallet.get_rpc_api()
+
+    if args.name:
+        if rpcapi.get(args.name, None):
+            namedef = rpcapi[args.name]
+            print()
+            print(f"{namedef.name} - {namedef.description}")
+            print("Parameters")
+            for parm in namedef.params:
+                print(f"    {parm.name:<20} => required: {parm.required} {parm.description} type: {parm.schema}")
+            print()
+            print("Returns")
+            print(f"    {namedef.result.name:<20} => type: {namedef.result.schema}")
+
+            # print(namedef)
+        else:
+            print(f"Sui RPC API does not contain {args.name}")
+
+    else:
+        for api_name in rpcapi:
+            print(api_name)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser structure."""
 
@@ -153,6 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
                 sys.exit(-1)
             setattr(namespace, self.dest, values)
 
+    # Base menu
     parser = argparse.ArgumentParser(add_help=True)
     subparser = parser.add_subparsers(title="commands")
     # Address
@@ -186,6 +212,10 @@ def build_parser() -> argparse.ArgumentParser:
     obj_arg_group.add_argument("--nft", help="Only show NFT objects", action="store_true")
     obj_arg_group.add_argument("--data", help="Only show data objects", action="store_true")
     subp.set_defaults(func=sui_objects)
+    # RPC information
+    subp = subparser.add_parser("rpcapi", help="Display Sui RPC API information")
+    subp.add_argument("-n", "--name", required=False, help="Display details for named Sui RPC API")
+    subp.set_defaults(func=sui_api)
     return parser
 
 
