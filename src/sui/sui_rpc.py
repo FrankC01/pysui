@@ -3,7 +3,7 @@
 from typing import Any
 import httpx
 from abstracts import Builder, SyncHttpRPC, RpcResult
-from sui import SuiConfig, GetRpcAPI, from_json_api
+from sui import SuiConfig, GetRpcAPI, build_api_descriptors
 from sui.sui_excepts import SuiRpcApiNotAvailable
 
 
@@ -42,10 +42,7 @@ class SuiClient(SyncHttpRPC):
         """Fetch RPC method descrptors."""
         builder = GetRpcAPI()
         result = self._client.post(self.config.url, headers=builder.header, json=builder.data).json()
-        # result = self.execute(GetRpcAPI()).json()
-        if isinstance(result["result"], dict) and "methods" in result["result"]:
-            for rpc_api in result["result"]["methods"]:
-                self._rpc_api[rpc_api["name"]] = from_json_api(rpc_api)
+        self._rpc_api, self._schema_dict = build_api_descriptors(result)
 
     def api_exists(self, api_name: str) -> bool:
         """Check if API supported in RPC host."""

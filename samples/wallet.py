@@ -137,12 +137,10 @@ def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
             print(f"{namedef.name} - {namedef.description}")
             print("Parameters")
             for parm in namedef.params:
-                print(f"    {parm.name:<20} => required: {parm.required} {parm.description} type: {parm.schema}")
+                print(f"    {parm.name:<20} => required: {parm.required} type: {parm.schema}")
             print()
             print("Returns")
             print(f"    {namedef.result.name:<20} => type: {namedef.result.schema}")
-
-            # print(namedef)
         else:
             print(f"Sui RPC API does not contain {args.name}")
 

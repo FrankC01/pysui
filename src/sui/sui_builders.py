@@ -6,11 +6,12 @@ from abstracts import Builder
 class BaseBuilder(Builder):
     """Base Builder Class."""
 
-    def __init__(self) -> None:
+    def __init__(self, txn_required: bool = False) -> None:
         """Initialize Builder."""
         super().__init__()
         self._params = []
         self._method = ""
+        self._txn_required = txn_required
 
     @property
     def params(self) -> list[str]:
@@ -39,6 +40,11 @@ class BaseBuilder(Builder):
     def method(self) -> str:
         """Inspect method."""
         return self._method
+
+    @property
+    def txn_required(self) -> bool:
+        """Get transaction required flag."""
+        return self._txn_required
 
 
 class GetObjectsOwnedByAddress(BaseBuilder):
@@ -84,3 +90,20 @@ class GetRpcAPI(BaseBuilder):
         """Initialize builder."""
         super().__init__()
         self._method = "rpc.discover"
+
+
+class _TransactionBasedBuilder(BaseBuilder):
+    """Builders that must be processed, signed then executed."""
+
+    def __init__(self, method: str) -> None:
+        """Initialize builder."""
+        super().__init__(True)
+        self._method = method
+
+
+class TransferSui(_TransactionBasedBuilder):
+    """Transfers Sui coin from one recipient to the other."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__("sui_transferSui")

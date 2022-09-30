@@ -3,3 +3,5 @@ __pycache__
 sui.log*
 sample.rpc.py
 .pytest_cache
+.vscode/launch.json
+apidefn.json

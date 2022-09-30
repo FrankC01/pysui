@@ -47,6 +47,17 @@ class SuiInvalidKeyPair(SuiException):
     """Invalid KeyPair Exception."""
 
 
+# RPC API Discover Corruptions
+
+
+class SuiApiDefinitionInvalid(SuiException):
+    """Corrupted Schema Exception."""
+
+
+class SuiParamSchemaInvalid(SuiException):
+    """Corrupted Schema Exception."""
+
+
 # RPC API exceptions
 
 

@@ -19,7 +19,10 @@ class SuiConfig(ClientConfiguration):
         """Initialize the default config."""
         sui_config = yaml.safe_load(config_file)
         self._active_address = sui_config["active_address"]
-        self._current_url = sui_config["gateway"]["rpc"][0]
+        # 0.9.0
+        # self._current_url = sui_config["gateway"]["rpc"][0]
+        # 0.10.0
+        self._current_url = sui_config["client_type"]["rpc"][0]
         self._current_keystore_file = sui_config["keystore"]["File"]
 
     @classmethod

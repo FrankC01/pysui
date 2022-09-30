@@ -15,6 +15,11 @@ class Builder(ABC):
 
     @property
     @abstractmethod
+    def txn_required(self) -> bool:
+        """Return the transaction required flag."""
+
+    @property
+    @abstractmethod
     def data(self) -> dict:
         """Return the current data."""
 
