@@ -64,6 +64,16 @@ class KeyPair(ABC):
     def scheme(self) -> SignatureScheme:
         """Get the keys scheme."""
 
+    @property
+    @abstractmethod
+    def public_key(self) -> PublicKey:
+        """Get the keypair public key."""
+
+    @property
+    @abstractmethod
+    def private_key(self) -> PrivateKey:
+        """Get the keypair public key."""
+
     @classmethod
     @abstractmethod
     def from_b64(cls, indata: str) -> "KeyPair":

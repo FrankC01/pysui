@@ -75,15 +75,23 @@ class SuiKeyPairED25519(KeyPair):
         self._public_key = SuiPublicKeyED25519(pub_key_bytes)
 
     @property
+    def private_key(self) -> PrivateKey:
+        """Return the Private Key."""
+        return self._private_key
+
+    @property
+    def public_key(self) -> PublicKey:
+        """Return the Public Key."""
+        return self._public_key
+
+    @property
     def scheme(self) -> SignatureScheme:
         """Get the keys scheme."""
         return self._scheme
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
-        all_bytes = (
-            self._private_key.scheme.to_bytes(1, "little") + self._public_key.key_bytes + self._private_key.key_bytes
-        )
+        all_bytes = self.scheme.to_bytes(1, "little") + self.public_key.key_bytes + self.private_key.key_bytes
         return all_bytes
 
     @classmethod
@@ -146,8 +154,18 @@ class SuiKeyPairSECP256K1(KeyPair):
     def __init__(self, pub_key_bytes: bytes, priv_key_bytes: bytes) -> None:
         """Init keypair with public and private byte array."""
         self._scheme = SignatureScheme.SECP256K1
-        self._private_key = SuiPrivateKeySECP256K1(priv_key_bytes)
         self._public_key = SuiPublicKeySECP256K1(pub_key_bytes)
+        self._private_key = SuiPrivateKeySECP256K1(priv_key_bytes)
+
+    @property
+    def private_key(self) -> PrivateKey:
+        """Return the Private Key."""
+        return self._private_key
+
+    @property
+    def public_key(self) -> PublicKey:
+        """Return the Public Key."""
+        return self._public_key
 
     @property
     def scheme(self) -> SignatureScheme:
@@ -156,22 +174,14 @@ class SuiKeyPairSECP256K1(KeyPair):
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
-        all_bytes = (
-            self._private_key.scheme.to_bytes(1, "little") + self._public_key.key_bytes + self._private_key.key_bytes
-        )
+        all_bytes = self.scheme.to_bytes(1, "little") + self.public_key.key_bytes + self.private_key.key_bytes
         return all_bytes
 
     @classmethod
     def unique(cls) -> KeyPair:
         """Generate a unique secp256k1 keypair."""
         signer = secp256k1.PrivateKey()
-        prv = signer.serialize()
-        prvh = binascii.unhexlify(prv)
-        print(f"s prv {prv} w len {len(prv)} and type {type(prv)} and hl {prvh}")
-        pub = signer.pubkey.serialize()
-        print(f"s pub {pub} w len {len(pub)}")
-
-        return cls(signer.pubkey.serialize(compressed=True), signer.serialize())
+        return cls(signer.pubkey.serialize(compressed=True), signer.private_key)
 
     @classmethod
     def from_b64(cls, indata: str) -> KeyPair:
@@ -232,8 +242,10 @@ class SuiAddress(SuiType):
     @classmethod
     def from_bytes(cls, in_bytes: bytes) -> "SuiAddress":
         """Create address from bytes."""
+        # print(f"In bytes = {in_bytes}")
+        digest = in_bytes[0:33] if in_bytes[0] == 0 else in_bytes[0:34]
         glg = hashlib.sha3_256()
-        glg.update(in_bytes[0:33])
+        glg.update(digest)
         hash_bytes = binascii.hexlify(glg.digest())[0:40]
         return SuiAddress(hash_bytes.decode("utf-8"))
 
@@ -275,10 +287,10 @@ if __name__ == "__main__":
     keyp, new_addy = create_new_address(SignatureScheme.ED25519)
     # print(keyp)
     print(f"{new_addy.identifier}")
-    # keyp, new_addy = create_new_address(SignatureScheme.SECP256K1)
+    keyp, new_addy = create_new_address(SignatureScheme.SECP256K1)
     # print(keyp)
-    # print(new_addy.identifer)
-    myadd = SuiAddress.from_hex_string(new_addy.identifier)
-    print(myadd.identifier)
-    myadd = SuiAddress.from_hex_string("a9ebc6f0fd9645a501144edb1830c37d6cd74a8d")
-    print(myadd.identifier)
+    # print(new_addy.identifier)
+    # myadd = SuiAddress.from_hex_string(new_addy.identifier)
+    # print(myadd.identifier)
+    # myadd = SuiAddress.from_hex_string("a9ebc6f0fd9645a501144edb1830c37d6cd74a8d")
+    # print(myadd.identifier)
