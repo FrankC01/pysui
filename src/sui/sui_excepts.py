@@ -20,6 +20,13 @@ class SuiKeystoreFileError(SuiException):
     """Keystore file errors."""
 
 
+# Address exceptions
+
+
+class SuiInvalidAddress(SuiException):
+    """Invalid Sui address."""
+
+
 # Keystring exceptions
 
 
@@ -62,4 +69,19 @@ class SuiParamSchemaInvalid(SuiException):
 
 
 class SuiRpcApiNotAvailable(SuiException):
-    """Non active or existing RPC API exception."""
+    """Non active or non-existing RPC API method exception."""
+
+
+class SuiRpcApiMalformed(SuiException):
+    """Sui Method malformed."""
+
+
+class SuiRpcApiInvalidParameter(SuiException):
+    """Sui Method invalid parameter."""
+
+
+# RPC API errors
+
+
+class SuiRpcApiError(SuiException):
+    """For RPC error returns."""

@@ -16,14 +16,15 @@
 
 import base64
 import binascii
+from typing import Union
 import hashlib
 import secp256k1
 from nacl.signing import SigningKey, VerifyKey
 from nacl.encoding import Base64Encoder
 
 from abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
-from sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength
-from sui import (
+from sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength, SuiInvalidAddress
+from sui.sui_constants import (
     SUI_KEYPAIR_LEN,
     ED25519_PUBLICKEY_BYTES_LEN,
     ED25519_PRIVATEKEY_BYTES_LEN,
@@ -31,8 +32,11 @@ from sui import (
     SECP256K1_KEYPAIR_BYTES_LEN,
     SECP256K1_PUBLICKEY_BYTES_LEN,
     SECP256K1_PRIVATEKEY_BYTES_LEN,
-    SuiType,
+    SUI_HEX_ADDRESS_STRING_LEN,
+    SUI_ADDRESS_STRING_LEN,
 )
+from sui.sui_types import SuiType, SuiString
+from sui.sui_txn_validator import valid_sui_address
 
 
 # Edwards Curve Keys
@@ -66,8 +70,14 @@ class SuiKeyPairED25519(KeyPair):
 
     def __init__(self, pub_key_bytes: bytes, priv_key_bytes: bytes) -> None:
         """Init keypair with public and private byte array."""
+        self._scheme = SignatureScheme.ED25519
         self._private_key = SuiPrivateKeyED25519(priv_key_bytes)
         self._public_key = SuiPublicKeyED25519(pub_key_bytes)
+
+    @property
+    def scheme(self) -> SignatureScheme:
+        """Get the keys scheme."""
+        return self._scheme
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
@@ -135,8 +145,14 @@ class SuiKeyPairSECP256K1(KeyPair):
 
     def __init__(self, pub_key_bytes: bytes, priv_key_bytes: bytes) -> None:
         """Init keypair with public and private byte array."""
+        self._scheme = SignatureScheme.SECP256K1
         self._private_key = SuiPrivateKeySECP256K1(priv_key_bytes)
         self._public_key = SuiPublicKeySECP256K1(pub_key_bytes)
+
+    @property
+    def scheme(self) -> SignatureScheme:
+        """Get the keys scheme."""
+        return self._scheme
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
@@ -198,10 +214,20 @@ def keypair_from_keystring(address: str) -> KeyPair:
 class SuiAddress(SuiType):
     """Sui Address Type."""
 
-    def __init__(self, scheme: SignatureScheme, identifier: str) -> None:
+    def __init__(self, identifier: str) -> None:
         """Initialize address."""
-        super().__init__(f"0x{identifier}")
-        self._scheme = scheme
+        if len(identifier) == SUI_ADDRESS_STRING_LEN:
+            super().__init__(SuiString(f"0x{identifier}"))
+        else:
+            super().__init__(SuiString(identifier))
+
+    @classmethod
+    def from_hex_string(cls, instr: Union[str, SuiString]) -> "SuiAddress":
+        """Instantiate instance of SuiAddress from hex string."""
+        instr = instr if isinstance(instr, str) else str(instr)
+        if valid_sui_address(instr):
+            return cls(instr)
+        raise SuiInvalidAddress(f"{instr} is not a valid address string.")
 
     @classmethod
     def from_bytes(cls, in_bytes: bytes) -> "SuiAddress":
@@ -209,12 +235,7 @@ class SuiAddress(SuiType):
         glg = hashlib.sha3_256()
         glg.update(in_bytes[0:33])
         hash_bytes = binascii.hexlify(glg.digest())[0:40]
-        return SuiAddress(in_bytes[0], hash_bytes.decode("utf-8"))
-
-    @property
-    def scheme(self) -> str:
-        """Get the address scheme."""
-        return self._scheme
+        return SuiAddress(hash_bytes.decode("utf-8"))
 
 
 def address_from_keystring(indata: str) -> SuiAddress:
@@ -252,8 +273,12 @@ def create_new_address(keytype: SignatureScheme) -> tuple[KeyPair, SuiAddress]:
 if __name__ == "__main__":
     # TODO: Move to test for regression after secp256k1 working
     keyp, new_addy = create_new_address(SignatureScheme.ED25519)
-    print(keyp)
-    print(new_addy.identifer)
+    # print(keyp)
+    print(f"{new_addy.identifier}")
     # keyp, new_addy = create_new_address(SignatureScheme.SECP256K1)
     # print(keyp)
     # print(new_addy.identifer)
+    myadd = SuiAddress.from_hex_string(new_addy.identifier)
+    print(myadd.identifier)
+    myadd = SuiAddress.from_hex_string("a9ebc6f0fd9645a501144edb1830c37d6cd74a8d")
+    print(myadd.identifier)

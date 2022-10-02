@@ -11,6 +11,15 @@ class SignatureScheme(IntEnum):
     ED25519 = 0
     SECP256K1 = 1
 
+    def as_str(self) -> str:
+        """Get scheme as string."""
+        if self is SignatureScheme.ED25519:
+            return self.name
+        if self is SignatureScheme.SECP256K1:
+            return "Secp256k1"
+        else:
+            raise TypeError(f"Unknown scheme {self.name}")
+
 
 class Key(ABC):
     """Base key abstract class."""
@@ -49,6 +58,11 @@ class PublicKey(Key):
 
 class KeyPair(ABC):
     """KeyPair construct."""
+
+    @property
+    @abstractmethod
+    def scheme(self) -> SignatureScheme:
+        """Get the keys scheme."""
 
     @classmethod
     @abstractmethod

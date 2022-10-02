@@ -1,22 +1,39 @@
 """Type Client Abstractions."""
 from abc import ABC, abstractmethod
 from numbers import Number
+from typing import Any
 
 
-class ClientAbstractType(ABC):
+class ClientAbstractScalarType(ABC):
+    """Core scalar type."""
+
+    def __init__(self, value: Any) -> None:
+        """Initialize with identifier."""
+        self._value = value
+
+    def value(self) -> Any:
+        """Return the self value."""
+        return self._value
+
+    def __str__(self) -> str:
+        """Convert value to string using formatting."""
+        return f"{self._value}"
+
+
+class ClientAbstractClassType(ABC):
     """Core type that supports identification."""
 
-    def __init__(self, identifier: str) -> None:
+    def __init__(self, identifier: ClientAbstractScalarType) -> None:
         """Initialize with identifier."""
         self._identifier = identifier
 
     @property
-    def identifer(self) -> str:
+    def identifier(self) -> ClientAbstractScalarType:
         """Return the types identifer."""
         return self._identifier
 
 
-class ClientObjectDescriptor(ClientAbstractType):
+class ClientObjectDescriptor(ClientAbstractClassType):
     """Base type descriptor abstraction."""
 
     @property
@@ -35,7 +52,7 @@ class ClientObjectDescriptor(ClientAbstractType):
         """Return the types type."""
 
 
-class ClientType(ClientAbstractType):
+class ClientType(ClientAbstractClassType):
     """Base type abstraction."""
 
     @property

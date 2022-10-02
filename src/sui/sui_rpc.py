@@ -2,8 +2,9 @@
 
 from typing import Any
 import httpx
-from abstracts import Builder, SyncHttpRPC, RpcResult
-from sui import SuiConfig, GetRpcAPI, build_api_descriptors
+from abstracts import SyncHttpRPC, RpcResult
+from sui import SuiConfig, GetRpcAPI, build_api_descriptors, SuiApi, BaseBuilder
+from sui.sui_txn_validator import validate_api
 from sui.sui_excepts import SuiRpcApiNotAvailable
 
 
@@ -38,28 +39,50 @@ class SuiClient(SyncHttpRPC):
         self._rpc_api = {}
         self._build_api_descriptors()
 
+    def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
+        """Build the json data block for Rpc."""
+        data_block["method"] = method
+        data_block["params"] = params
+        return data_block
+
     def _build_api_descriptors(self):
         """Fetch RPC method descrptors."""
         builder = GetRpcAPI()
-        result = self._client.post(self.config.url, headers=builder.header, json=builder.data).json()
+        result = self._client.post(
+            self.config.url,
+            headers=builder.header,
+            json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
+        ).json()
         self._rpc_api, self._schema_dict = build_api_descriptors(result)
 
     def api_exists(self, api_name: str) -> bool:
         """Check if API supported in RPC host."""
         return api_name in self._rpc_api
 
-    def execute(self, builder: Builder) -> Any:
+    @property
+    def rpc_api(self) -> dict:
+        """Return entire dictionary of RPC API methods."""
+        return self._rpc_api
+
+    def _api_method(self, method_name: str) -> SuiApi:
+        """Get the method definition."""
+
+    def _argument_check(self, _api_method: SuiApi, builder: BaseBuilder) -> BaseBuilder:
+        """Perform argument validations."""
+        return builder
+
+    def execute(self, builder: BaseBuilder) -> Any:
         """Execute the builder construct."""
-        if self.api_exists(builder.method):
-            return self._client.post(self.config.url, headers=builder.header, json=builder.data)
-        raise SuiRpcApiNotAvailable(builder.method)
+        if not builder.method in self._rpc_api:
+            raise SuiRpcApiNotAvailable(builder.method)
+        parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
+        return self._client.post(
+            self.config.url,
+            headers=builder.header,
+            json=self._generate_data_block(builder.data_dict, builder.method, parm_results),
+        )
 
     @property
     def rpc_api_names(self) -> list[str]:
         """Return names of RPC API methods."""
         return list(self._rpc_api.keys())
-
-    @property
-    def rpc_api(self) -> dict:
-        """Return names of RPC API methods."""
-        return self._rpc_api

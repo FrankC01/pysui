@@ -8,25 +8,26 @@ from abstracts import ClientConfiguration
 class Builder(ABC):
     """Builder for RPC Calls."""
 
+    _data = {"jsonrpc": "2.0", "id": 1}
+    _header = {"Content-Type": "application/json"}
+
     def __init__(self):
         """Initialize abstract Builder."""
-        self._data = {"jsonrpc": "2.0", "id": 1}
-        self._header = {"Content-Type": "application/json"}
+
+    @property
+    def data_dict(self) -> dict:
+        """Return the data."""
+        return self._data.copy()
+
+    @property
+    def header(self) -> dict:
+        """Return the header."""
+        return self._header.copy()
 
     @property
     @abstractmethod
     def txn_required(self) -> bool:
         """Return the transaction required flag."""
-
-    @property
-    @abstractmethod
-    def data(self) -> dict:
-        """Return the current data."""
-
-    @property
-    @abstractmethod
-    def header(self) -> dict:
-        """Return the current header."""
 
     @property
     @abstractmethod

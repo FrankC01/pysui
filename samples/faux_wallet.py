@@ -16,8 +16,15 @@ from src.sui import (
     # GetObjectsOwnedByObject,
     GetPackage,
 )
-from src.sui.sui_excepts import SuiFileNotFound, SuiKeystoreFileError, SuiKeystoreAddressError, SuiNoKeyPairs
 from src.sui.sui_crypto import keypair_from_keystring, address_from_keystring, create_new_address
+from src.sui.sui_excepts import (
+    SuiFileNotFound,
+    SuiKeystoreFileError,
+    SuiKeystoreAddressError,
+    SuiNoKeyPairs,
+    SuiRpcApiError,
+)
+
 from src.sui.sui_types import (
     SuiNativeCoinDescriptor,
     SuiGasType,
@@ -48,7 +55,7 @@ class SuiWallet:
                     if len(self._keystrings) > 0:
                         for keystr in self._keystrings:
                             addy = address_from_keystring(keystr)
-                            self._addresses[addy.identifer] = addy
+                            self._addresses[str(addy.identifier)] = addy
                             self._keypairs[keystr] = keypair_from_keystring(keystr)
                     else:
                         raise SuiNoKeyPairs()
@@ -140,9 +147,13 @@ class SuiWallet:
 
     def get_type_descriptor(self, claz: SuiObjectDescriptor, address: str = None) -> list[SuiObjectDescriptor]:
         """Get descriptors of claz type for address."""
-        result = self.execute(GetObjectsOwnedByAddress().add_parameter(address if address else self.current_address))
+        builder = GetObjectsOwnedByAddress().add_parameter(address if address else self.current_address)
+        # print(builder.data)
+        result = self.execute(builder).json()
         type_descriptors = []
-        for sui_objdesc in result.json()["result"]:
+        if "error" in result:
+            raise SuiRpcApiError(result["error"])
+        for sui_objdesc in result["result"]:
             sui_type = from_object_descriptor(sui_objdesc)
             if isinstance(sui_type, claz):
                 type_descriptors.append(sui_type)
@@ -160,13 +171,15 @@ class SuiWallet:
         """Get the gas object descriptors."""
         return self.get_type_descriptor(SuiNftDescriptor, address)
 
-    def get_object(self, identifier: str, address: str = None) -> SuiObjectType:
+    def get_object(self, identifier: Any, address: str = None) -> SuiObjectType:
         """Get specific object by it's id."""
         desc = self.get_type_descriptor(SuiObjectDescriptor, address)
         for cdesc in desc:
-            if cdesc.identifer == identifier:
-                result = self.execute(GetObject().add_parameter(cdesc.identifer))
-                return from_object_type(cdesc, result.json()["result"]["details"]["data"])
+            if str(cdesc.identifier) == str(identifier):
+                result = self.execute(GetObject().add_parameter(cdesc.identifier)).json()
+                if "error" in result:
+                    raise SuiRpcApiError(result["error"])
+                return from_object_type(cdesc, result["result"]["details"]["data"])
         raise ValueError(f"Object with identifier '{identifier}' not found")
 
     def get_objects(self, address: str = None, claz: SuiObjectDescriptor = None) -> list[SuiObjectType]:
@@ -174,8 +187,10 @@ class SuiWallet:
         desc = self.get_type_descriptor(claz if claz else SuiObjectDescriptor, address)
         obj_types = []
         for cdesc in desc:
-            result = self.execute(GetObject().add_parameter(cdesc.identifer))
-            data_object = from_object_type(cdesc, result.json()["result"]["details"]["data"])
+            result = self.execute(GetObject().add_parameter(cdesc.identifier)).json()
+            if "error" in result:
+                raise SuiRpcApiError(result["error"])
+            data_object = from_object_type(cdesc, result["result"]["details"]["data"])
             obj_types.append(data_object)
         return obj_types
 
@@ -184,8 +199,10 @@ class SuiWallet:
         desc = self.get_data_descriptors(address)
         obj_types = []
         for cdesc in desc:
-            result = self.execute(GetObject().add_parameter(cdesc.identifer))
-            data_object = from_object_type(cdesc, result.json()["result"]["details"]["data"])
+            result = self.execute(GetObject().add_parameter(cdesc.identifier)).json()
+            if "error" in result:
+                raise SuiRpcApiError(result["error"])
+            data_object = from_object_type(cdesc, result["result"]["details"]["data"])
             self.package_ids = data_object.package
             obj_types.append(data_object)
         return obj_types
@@ -201,8 +218,10 @@ class SuiWallet:
         desc = self.get_nft_descriptors(address)
         nft_types = []
         for cdesc in desc:
-            result = self.execute(GetObject().add_parameter(cdesc.identifer))
-            nft_types.append(from_object_type(cdesc, result.json()["result"]["details"]["data"]))
+            result = self.execute(GetObject().add_parameter(cdesc.identifier)).json()
+            if "error" in result:
+                raise SuiRpcApiError(result["error"])
+            nft_types.append(from_object_type(cdesc, result["result"]["details"]["data"]))
         return nft_types
 
     def gas_objects(self, address: str = None) -> list[SuiGasType]:
@@ -210,8 +229,10 @@ class SuiWallet:
         desc = self.get_gas_descriptors(address)
         gas_types = []
         for cdesc in desc:
-            result = self.execute(GetObject().add_parameter(cdesc.identifer))
-            gas_types.append(from_object_type(cdesc, result.json()["result"]["details"]["data"]))
+            result = self.execute(GetObject().add_parameter(cdesc.identifier)).json()
+            if "error" in result:
+                raise SuiRpcApiError(result["error"])
+            gas_types.append(from_object_type(cdesc, result["result"]["details"]["data"]))
         return gas_types
 
     def total_gas(self, gas_objects: list[SuiGasType]) -> Number:

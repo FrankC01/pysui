@@ -7,6 +7,7 @@ from io import TextIOWrapper
 from pathlib import Path
 import yaml
 from abstracts import ClientConfiguration
+from sui.sui_crypto import SuiAddress
 from sui.sui_excepts import SuiConfigFileError, SuiFileNotFound
 
 
@@ -18,7 +19,7 @@ class SuiConfig(ClientConfiguration):
     def __init__(self, config_file: TextIOWrapper) -> None:
         """Initialize the default config."""
         sui_config = yaml.safe_load(config_file)
-        self._active_address = sui_config["active_address"]
+        self._active_address = SuiAddress.from_hex_string(sui_config["active_address"])
         # 0.9.0
         # self._current_url = sui_config["gateway"]["rpc"][0]
         # 0.10.0

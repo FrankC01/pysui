@@ -6,6 +6,7 @@ import pathlib
 import sys
 from typing import Any, Sequence
 
+
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 
 sys.path += [
@@ -19,7 +20,10 @@ sys.path += [
 from src.abstracts import SignatureScheme
 from src.sui import SuiConfig
 from src.sui import GetPackage
-from src.sui.sui_types import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
+
+# from src.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
+from src.sui.sui_crypto import SuiAddress
+from src.sui.sui_types import ObjectID
 from .faux_wallet import SuiWallet, SuiObjectType
 
 
@@ -43,7 +47,7 @@ def wallet_package_objects(wallet: SuiWallet, _address: str = None) -> None:
 def sui_active_address(wallet: SuiWallet, _args: argparse.Namespace) -> None:
     """Print active address."""
     print()
-    print(f"Active address = {wallet.current_address}")
+    print(f"Active address = {wallet.current_address.identifier}")
 
 
 def sui_addresses(wallet: SuiWallet, _args: argparse.Namespace) -> None:
@@ -163,16 +167,26 @@ def build_parser() -> argparse.ArgumentParser:
             option_string: str | None = ...,
         ) -> None:
             try:
-                _to_hex = int(values, 16)
-                str_length = len(values)
-                if str_length == SUI_HEX_ADDRESS_STRING_LEN:
-                    pass
-                elif str_length == SUI_ADDRESS_STRING_LEN:
-                    values = f"0x{values}"
-                else:
-                    raise ValueError
+                values = SuiAddress.from_hex_string(values)
             except ValueError:
-                parser.error(f"'{values}' is not valid identifier.")
+                parser.error(f"'{values}' is not valid address.")
+                sys.exit(-1)
+            setattr(namespace, self.dest, values)
+
+    class ValidateObjectID(argparse.Action):
+        """Address validator."""
+
+        def __call__(
+            self,
+            parser: argparse.ArgumentParser,
+            namespace: argparse.Namespace,
+            values: str | Sequence[Any] | None,
+            option_string: str | None = ...,
+        ) -> None:
+            try:
+                values = ObjectID(values)
+            except ValueError:
+                parser.error(f"'{values}' is not valid address.")
                 sys.exit(-1)
             setattr(namespace, self.dest, values)
 
@@ -199,7 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
     subp.set_defaults(func=sui_new_address)
     # Object
     subp = subparser.add_parser("object", help="Show object by id")
-    subp.add_argument("--id", required=True, action=ValidateAddress)
+    subp.add_argument("--id", required=True, action=ValidateObjectID)
     subp.add_argument("--json", required=False, help="Display output as json", action="store_true")
     subp.set_defaults(func=sui_object)
     # Objects

@@ -15,7 +15,7 @@ class SuiJsonType(ABC):
 
 @dataclass(frozen=True)
 class SuiJsonValue(DataClassJsonMixin, SuiJsonType):
-    """Sui Json Value"""
+    """Sui Json Value."""
 
     type: str
     type_path: list[str]
@@ -54,7 +54,7 @@ class SuiJsonEnum(DataClassJsonMixin, SuiJsonType):
 
     type: str
     type_path: list[str]
-    enum: list
+    enum: list[str]
 
 
 @dataclass(frozen=True)
@@ -98,7 +98,6 @@ class SuiApi(DataClassJsonMixin):
 
 def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJsonType:
     """Find the sui type base."""
-    # print(f"    Indata {indata}")
     if "type" in indata:
         ptype = indata.get("type")
         tpath.append(ptype)
@@ -106,6 +105,8 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
         dcp["type_path"] = tpath
         match ptype:
             case "string":
+                if "enum" in dcp:
+                    return SuiJsonEnum.from_dict(dcp)
                 return SuiJsonString.from_dict(dcp)
             case "integer":
                 return SuiJsonInteger.from_dict(dcp)
@@ -139,12 +140,18 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
         dcp["type"] = "SuiJsonValue"
         return SuiJsonValue.from_dict(dcp)
 
-    raise SuiParamSchemaInvalid
+    raise SuiParamSchemaInvalid(indata)
 
 
 def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
-    """Build the schema dictionary then API call dictionary."""
+    """
+    Build the schema dictionary then API call dictionary.
+
+    :param str method-param: The method-param parameter
+    """
     # print(indata)
+    # Validate the inbound data. Keys are present in valid response
+    # from rpc.discover
     if (
         isinstance(indata["result"], dict)
         and "methods" in indata["result"]
@@ -153,39 +160,34 @@ def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
     ):
 
         mdict = {}
-        # import json
-        # json_blob = json.dumps(indata, indent=2)
-        # with open("myfile.json", "w", encoding="utf8") as core_file:
-        #     core_file.write(json_blob)
         schema_dict = indata["result"]["components"]["schemas"]
         for rpc_api in indata["result"]["methods"]:
             mdict[rpc_api["name"]] = SuiApi.from_dict(rpc_api)
-        for api_name, api_def in mdict.items():
+        for _api_name, api_def in mdict.items():
             for inparams in api_def.params:
                 tpath = []
                 inparams.schema = _resolve_param_type(schema_dict, inparams.schema, tpath)
+        # TODO: Build out response object
 
         return (mdict, schema_dict)
-    raise SuiApiDefinitionInvalid
+    raise SuiApiDefinitionInvalid(indata)
 
 
 if __name__ == "__main__":
     # TODO: Move to regressions when ready
     import json
-    import os
 
-    print(os.getcwd())
-    # json_blob = json.dumps(indata, indent=2)
+    # Assume running from vscode with cwd 'src'
     with open("../apidefn.json", "r", encoding="utf8") as core_file:
         jdata = json.load(core_file)
-    # Success
 
+    # Success
     try:
         api_desc, _sui_schema = build_api_descriptors(jdata)
         print(api_desc)
-        # print(sui_schema)
     except SuiApiDefinitionInvalid as exc:
         print(f"Caught exception {type(exc)}")
+
     # Fail
     try:
         bad_sample = {
@@ -195,6 +197,6 @@ if __name__ == "__main__":
         }
         build_api_descriptors(bad_sample)
     except SuiApiDefinitionInvalid as exc:
-        print(f"Caught exception {type(exc)}")
+        print(f"Caught exception {exc}")
 
     # print(SuiApi.from_dict(sample))

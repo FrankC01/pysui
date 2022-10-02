@@ -3,33 +3,39 @@
 import json
 from numbers import Number
 from typing import TypeVar
-from abstracts import ClientObjectDescriptor, ClientType, ClientPackage, ClientAbstractType
+from abstracts import (
+    ClientObjectDescriptor,
+    ClientType,
+    ClientPackage,
+    ClientAbstractClassType,
+    ClientAbstractScalarType,
+)
 
 
-#   Constants
-SUI_KEYPAIR_LEN = 88
-SUI_HEX_ADDRESS_STRING_LEN = 42
-SUI_ADDRESS_STRING_LEN = 40
-
-# ED25519 from keystring bytes
-ED25519_KEYPAIR_BYTES_LEN = 64
-ED25519_PUBLICKEY_BYTES_LEN = 32
-ED25519_PRIVATEKEY_BYTES_LEN = 32
-
-# SECP256K1 from address bytes
-SECP256K1_KEYPAIR_BYTES_LEN = 65
-SECP256K1_PUBLICKEY_BYTES_LEN = 33
-SECP256K1_PRIVATEKEY_BYTES_LEN = 32
+class SuiScalarType(ClientAbstractScalarType):
+    """Base most SUI scalar type."""
 
 
-class SuiType(ClientAbstractType):
-    """Base most SUI type."""
+class SuiString(SuiScalarType):
+    """Sui String type."""
+
+
+class SuiNumber(SuiScalarType):
+    """Sui Number type."""
+
+
+class ObjectID(SuiString):
+    """Sui Object id type."""
+
+
+class SuiType(ClientAbstractClassType):
+    """Base most SUI object type."""
 
 
 class SuiRawDescriptor(ClientObjectDescriptor, SuiType):
     """Base descriptor type."""
 
-    def __init__(self, indata: dict, identifier: str) -> None:
+    def __init__(self, indata: dict, identifier: SuiString) -> None:
         """Initiate base SUI type."""
         super().__init__(identifier)
         self._type_raw = indata
@@ -48,7 +54,7 @@ class SuiObjectDescriptor(SuiRawDescriptor):
 
     def __init__(self, indata: dict) -> None:
         """Initialize the base descriptor."""
-        super().__init__(indata, indata["objectId"])
+        super().__init__(indata, ObjectID(indata["objectId"]))
         self._version = indata["version"]
         self._owner = indata["owner"]["AddressOwner"]
         self._digest = indata["digest"]
@@ -60,10 +66,10 @@ class SuiObjectDescriptor(SuiRawDescriptor):
         """Return the type digest."""
         return self._digest
 
-    @property
-    def identifer(self) -> str:
-        """Return the type identifer."""
-        return self._identifier
+    # @property
+    # def identifer(self) -> str:
+    #     """Return the type identifer."""
+    #     return self._identifier
 
     @property
     def version(self) -> int:
@@ -100,7 +106,7 @@ class SuiNativeCoinDescriptor(SuiCoinDescriptor):
 class SuiRawObject(ClientType, SuiType):
     """Base object type."""
 
-    def __init__(self, indata: dict, identifier: str) -> None:
+    def __init__(self, indata: dict, identifier: ObjectID) -> None:
         """Initiate base SUI type."""
         super().__init__(identifier)
         self._type_raw = indata
@@ -119,7 +125,7 @@ class SuiObjectType(SuiRawObject):
 
     def __init__(self, indata: dict, descriptor: SuiObjectDescriptor) -> None:
         """Initialize the base type data."""
-        super().__init__(indata, indata["fields"]["id"]["id"])
+        super().__init__(indata, ObjectID(indata["fields"]["id"]["id"]))
         self._type_signature = indata["type"]
         self._data_type = indata["dataType"]
         self._is_transferable = indata["has_public_transfer"]
