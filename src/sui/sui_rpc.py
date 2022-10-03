@@ -3,7 +3,7 @@
 from typing import Any
 import httpx
 from abstracts import SyncHttpRPC, RpcResult
-from sui import SuiConfig, GetRpcAPI, build_api_descriptors, SuiApi, BaseBuilder
+from sui import SuiConfig, GetRpcAPI, build_api_descriptors, SuiApi, SuiBaseBuilder
 from sui.sui_txn_validator import validate_api
 from sui.sui_excepts import SuiRpcApiNotAvailable
 
@@ -67,11 +67,11 @@ class SuiClient(SyncHttpRPC):
     def _api_method(self, method_name: str) -> SuiApi:
         """Get the method definition."""
 
-    def _argument_check(self, _api_method: SuiApi, builder: BaseBuilder) -> BaseBuilder:
+    def _argument_check(self, _api_method: SuiApi, builder: SuiBaseBuilder) -> SuiBaseBuilder:
         """Perform argument validations."""
         return builder
 
-    def execute(self, builder: BaseBuilder) -> Any:
+    def execute(self, builder: SuiBaseBuilder) -> Any:
         """Execute the builder construct."""
         if not builder.method in self._rpc_api:
             raise SuiRpcApiNotAvailable(builder.method)

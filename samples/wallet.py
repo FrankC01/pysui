@@ -24,7 +24,7 @@ from src.sui import GetPackage
 # from src.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
 from src.sui.sui_crypto import SuiAddress
 from src.sui.sui_types import ObjectID
-from .faux_wallet import SuiWallet, SuiObjectType
+from .faux_wallet import SuiWallet, ObjectRead
 
 
 def wallet_package_objects(wallet: SuiWallet, _address: str = None) -> None:
@@ -111,7 +111,7 @@ def _objects_header_print() -> None:
 def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Show specific object."""
 
-    def _object_type(args: argparse.Namespace) -> list[SuiObjectType]:
+    def _object_type(args: argparse.Namespace) -> list[ObjectRead]:
         """Get objects of type from Namespace."""
         if args.nft:
             return wallet.nft_objects(args.address)

@@ -27,6 +27,11 @@ class SuiNumber(SuiScalarType):
 class ObjectID(SuiString):
     """Sui Object id type."""
 
+    def __init__(self, value: str) -> None:
+        """Initialize with identifier."""
+        super().__init__(value)
+        self.object_id = value
+
 
 class SuiType(ClientAbstractClassType):
     """Base most SUI object type."""
@@ -49,7 +54,7 @@ class SuiRawDescriptor(ClientObjectDescriptor, SuiType):
         return json.dumps(self._type_raw, indent=indent)
 
 
-class SuiObjectDescriptor(SuiRawDescriptor):
+class ObjectInfo(SuiRawDescriptor):
     """Base SUI Type Descriptor."""
 
     def __init__(self, indata: dict) -> None:
@@ -87,15 +92,15 @@ class SuiObjectDescriptor(SuiRawDescriptor):
         return self._type_signature
 
 
-class SuiDataDescriptor(SuiObjectDescriptor):
+class SuiDataDescriptor(ObjectInfo):
     """Sui Data base type."""
 
 
-class SuiNftDescriptor(SuiObjectDescriptor):
+class SuiNftDescriptor(ObjectInfo):
     """Sui NFT base type."""
 
 
-class SuiCoinDescriptor(SuiObjectDescriptor):
+class SuiCoinDescriptor(ObjectInfo):
     """Sui Coin but not necessarily gas."""
 
 
@@ -120,10 +125,10 @@ class SuiRawObject(ClientType, SuiType):
         return json.dumps(self._type_raw, indent=indent)
 
 
-class SuiObjectType(SuiRawObject):
+class ObjectRead(SuiRawObject):
     """Base SUI Type."""
 
-    def __init__(self, indata: dict, descriptor: SuiObjectDescriptor) -> None:
+    def __init__(self, indata: dict, descriptor: ObjectInfo) -> None:
         """Initialize the base type data."""
         super().__init__(indata, ObjectID(indata["fields"]["id"]["id"]))
         self._type_signature = indata["type"]
@@ -162,15 +167,15 @@ class SuiObjectType(SuiRawObject):
         return self._is_transferable
 
     @property
-    def descriptor(self) -> SuiObjectDescriptor:
+    def descriptor(self) -> ObjectInfo:
         """Return the objects type descriptor."""
         return self._descriptor
 
 
-class SuiNftType(SuiObjectType):
+class SuiNftType(ObjectRead):
     """Sui NFT base type."""
 
-    def __init__(self, indata: dict, descriptor: SuiObjectDescriptor) -> None:
+    def __init__(self, indata: dict, descriptor: ObjectInfo) -> None:
         """Initialize the base Nft type."""
         super().__init__(indata, descriptor)
         self._description = indata["fields"]["description"]
@@ -196,10 +201,10 @@ class SuiNftType(SuiObjectType):
 DT = TypeVar("DT", bound="SuiDataType")
 
 
-class SuiDataType(SuiObjectType):
+class SuiDataType(ObjectRead):
     """Sui Data type."""
 
-    def __init__(self, indata: dict, descriptor: SuiObjectDescriptor) -> None:
+    def __init__(self, indata: dict, descriptor: ObjectInfo) -> None:
         """Initialize the base Data type."""
         super().__init__(indata, descriptor)
         self._children = []
@@ -245,14 +250,14 @@ class SuiDataType(SuiObjectType):
         self.children.append(child)
 
 
-class SuiCoinType(SuiObjectType):
+class SuiCoinType(ObjectRead):
     """Sui Coin type but not necessarily gas type."""
 
 
 class SuiGasType(SuiCoinType):
     """Sui gas is a coin."""
 
-    def __init__(self, indata: dict, descriptor: SuiObjectDescriptor) -> None:
+    def __init__(self, indata: dict, descriptor: ObjectInfo) -> None:
         """Initialize the base type."""
         super().__init__(indata, descriptor)
         self._balance = indata["fields"]["balance"]
@@ -278,7 +283,7 @@ class SuiPackage(ClientPackage):
         return self._package_id
 
 
-def from_object_descriptor(indata: dict) -> SuiObjectDescriptor:
+def from_object_descriptor(indata: dict) -> ObjectInfo:
     """Parse an inbound JSON like dictionary to a Sui type."""
     # print(indata)
     split = indata["type"].split("::", 2)
@@ -296,10 +301,10 @@ def from_object_descriptor(indata: dict) -> SuiObjectDescriptor:
         if len(split) == 3:
             return SuiDataDescriptor(indata)
 
-    return SuiObjectDescriptor(indata)
+    return ObjectInfo(indata)
 
 
-def from_object_type(descriptor: SuiObjectDescriptor, indata: dict) -> SuiObjectType:
+def from_object_type(descriptor: ObjectInfo, indata: dict) -> ObjectRead:
     """Parse an inbound JSON like dictionary to a Sui type."""
     # print(indata)
     split = indata["type"].split("::", 2)
@@ -317,4 +322,4 @@ def from_object_type(descriptor: SuiObjectDescriptor, indata: dict) -> SuiObject
     else:
         if len(split) == 3:
             return SuiDataType(indata, descriptor)
-    return SuiObjectType(indata, descriptor)
+    return ObjectRead(indata, descriptor)

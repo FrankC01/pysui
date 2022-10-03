@@ -205,19 +205,6 @@ class SuiKeyPairSECP256K1(KeyPair):
         return f"PubKey {self._public_key}, PrivKey {self._private_key}"
 
 
-def keypair_from_keystring(address: str) -> KeyPair:
-    """Derive keypair from address string."""
-    if len(address) != SUI_KEYPAIR_LEN:
-        raise SuiInvalidKeystringLength(len(address))
-    addy_bytes = base64.b64decode(address)
-    match addy_bytes[0]:
-        case SignatureScheme.ED25519:
-            return SuiKeyPairED25519.from_bytes(addy_bytes[1:])
-        case SignatureScheme.SECP256K1:
-            return SuiKeyPairSECP256K1.from_bytes(addy_bytes[1:])
-    raise NotImplementedError
-
-
 # Address
 
 
@@ -226,10 +213,9 @@ class SuiAddress(SuiType):
 
     def __init__(self, identifier: str) -> None:
         """Initialize address."""
-        if len(identifier) == SUI_ADDRESS_STRING_LEN:
-            super().__init__(SuiString(f"0x{identifier}"))
-        else:
-            super().__init__(SuiString(identifier))
+        identifier = identifier if len(identifier) != SUI_ADDRESS_STRING_LEN else SuiString(f"0x{identifier}")
+        super().__init__(SuiString(identifier))
+        self.address = identifier
 
     @classmethod
     def from_hex_string(cls, instr: Union[str, SuiString]) -> "SuiAddress":
@@ -240,6 +226,11 @@ class SuiAddress(SuiType):
         raise SuiInvalidAddress(f"{instr} is not a valid address string.")
 
     @classmethod
+    def from_keypair_string(cls, keystring: str) -> "SuiAddress":
+        """Address from base64 encoded keypair string with no validation."""
+        return cls.from_bytes(base64.b64decode(keystring))
+
+    @classmethod
     def from_bytes(cls, in_bytes: bytes) -> "SuiAddress":
         """Create address from bytes."""
         # print(f"In bytes = {in_bytes}")
@@ -247,22 +238,28 @@ class SuiAddress(SuiType):
         glg = hashlib.sha3_256()
         glg.update(digest)
         hash_bytes = binascii.hexlify(glg.digest())[0:40]
-        return SuiAddress(hash_bytes.decode("utf-8"))
+        return cls(hash_bytes.decode("utf-8"))
+
+
+def keypair_from_keystring(keystring: str) -> KeyPair:
+    """Derive keypair from address string."""
+    if len(keystring) != SUI_KEYPAIR_LEN:
+        raise SuiInvalidKeystringLength(len(keystring))
+    addy_bytes = base64.b64decode(keystring)
+    match addy_bytes[0]:
+        case SignatureScheme.ED25519:
+            return SuiKeyPairED25519.from_bytes(addy_bytes[1:])
+        case SignatureScheme.SECP256K1:
+            return SuiKeyPairSECP256K1.from_bytes(addy_bytes[1:])
+    raise NotImplementedError
 
 
 def address_from_keystring(indata: str) -> SuiAddress:
     """From a 88 byte keypair string create a SuiAddress."""
     #   Check address is legit keypair
     _kp = keypair_from_keystring(indata)
-    #   decode from base64
+    #   decode from base64 and generate
     return SuiAddress.from_bytes(base64.b64decode(indata))
-    # fromb64 = base64.b64decode(indata)
-    # #   hash the scheme and public key
-    # glg = hashlib.sha3_256()
-    # glg.update(fromb64[0:33])
-    # hash_bytes = binascii.hexlify(glg.digest())[0:40]
-    # # Stringify
-    # return SuiAddress(fromb64[0], hash_bytes.decode("utf-8"))
 
 
 def create_new_keypair(keytype: SignatureScheme = SignatureScheme.ED25519) -> KeyPair:

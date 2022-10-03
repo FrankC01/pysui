@@ -4,7 +4,7 @@ import sys
 from sui.sui_constants import *
 from sui.sui_apidesc import SuiApi, build_api_descriptors
 from sui.sui_builders import (
-    BaseBuilder,
+    SuiBaseBuilder,
     GetObjectsOwnedByAddress,
     GetObject,
     GetObjectsOwnedByObject,
