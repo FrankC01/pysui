@@ -127,7 +127,7 @@ def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
     else:
         _objects_header_print()
         for desc in result:
-            print(f"{desc.identifer} |      {desc.version}    | {desc.digest} | {desc.type_signature}")
+            print(f"{desc.identifier} |      {desc.version}    | {desc.digest} | {desc.type_signature}")
 
 
 def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:

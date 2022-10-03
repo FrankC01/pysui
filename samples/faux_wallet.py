@@ -179,7 +179,7 @@ class SuiWallet:
                 result = self.execute(GetObject().set_object(cdesc.identifier)).json()
                 if "error" in result:
                     raise SuiRpcApiError(result["error"])
-                return from_object_type(cdesc, result["result"]["details"]["data"])
+                return from_object_type(cdesc, result["result"]["details"])
         raise ValueError(f"Object with identifier '{identifier}' not found")
 
     def get_objects(self, address: str = None, claz: ObjectInfo = None) -> list[ObjectRead]:
@@ -190,7 +190,7 @@ class SuiWallet:
             result = self.execute(GetObject().set_object(cdesc.identifier)).json()
             if "error" in result:
                 raise SuiRpcApiError(result["error"])
-            data_object = from_object_type(cdesc, result["result"]["details"]["data"])
+            data_object = from_object_type(cdesc, result["result"]["details"])
             obj_types.append(data_object)
         return obj_types
 
@@ -202,7 +202,7 @@ class SuiWallet:
             result = self.execute(GetObject().set_object(cdesc.identifier)).json()
             if "error" in result:
                 raise SuiRpcApiError(result["error"])
-            data_object = from_object_type(cdesc, result["result"]["details"]["data"])
+            data_object = from_object_type(cdesc, result["result"]["details"])
             self.package_ids = data_object.package
             obj_types.append(data_object)
         return obj_types
@@ -221,7 +221,7 @@ class SuiWallet:
             result = self.execute(GetObject().set_object(cdesc.identifier)).json()
             if "error" in result:
                 raise SuiRpcApiError(result["error"])
-            nft_types.append(from_object_type(cdesc, result["result"]["details"]["data"]))
+            nft_types.append(from_object_type(cdesc, result["result"]["details"]))
         return nft_types
 
     def gas_objects(self, address: str = None) -> list[SuiGasType]:
@@ -232,7 +232,7 @@ class SuiWallet:
             result = self.execute(GetObject().set_object(cdesc.identifier)).json()
             if "error" in result:
                 raise SuiRpcApiError(result["error"])
-            gas_types.append(from_object_type(cdesc, result["result"]["details"]["data"]))
+            gas_types.append(from_object_type(cdesc, result["result"]["details"]))
         return gas_types
 
     def total_gas(self, gas_objects: list[SuiGasType]) -> Number:

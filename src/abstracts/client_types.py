@@ -63,11 +63,11 @@ class ClientType(ClientAbstractClassType):
     @property
     @abstractmethod
     def type_signature(self) -> str:
-        """Return the type type."""
+        """Return the type signature."""
 
     @property
     @abstractmethod
-    def is_transferable(self) -> bool:
+    def has_public_transfer(self) -> bool:
         """Return the types type."""
 
 

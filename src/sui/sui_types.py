@@ -40,7 +40,7 @@ class SuiType(ClientAbstractClassType):
 class SuiRawDescriptor(ClientObjectDescriptor, SuiType):
     """Base descriptor type."""
 
-    def __init__(self, indata: dict, identifier: SuiString) -> None:
+    def __init__(self, indata: dict, identifier: ObjectID) -> None:
         """Initiate base SUI type."""
         super().__init__(identifier)
         self._type_raw = indata
@@ -61,20 +61,11 @@ class ObjectInfo(SuiRawDescriptor):
         """Initialize the base descriptor."""
         super().__init__(indata, ObjectID(indata["objectId"]))
         self._version = indata["version"]
-        self._owner = indata["owner"]["AddressOwner"]
         self._digest = indata["digest"]
-        self._previous_txn = indata["previousTransaction"]
+        # TODO: Convert to SuiAddress
+        self._owner = indata["owner"]["AddressOwner"]
+        self._previous_transaction = indata["previousTransaction"]
         self._type_signature = indata["type"]
-
-    @property
-    def digest(self) -> str:
-        """Return the type digest."""
-        return self._digest
-
-    # @property
-    # def identifer(self) -> str:
-    #     """Return the type identifer."""
-    #     return self._identifier
 
     @property
     def version(self) -> int:
@@ -82,12 +73,22 @@ class ObjectInfo(SuiRawDescriptor):
         return self._version
 
     @property
-    def owner(self):
+    def digest(self) -> str:
+        """Return the type digest."""
+        return self._digest
+
+    @property
+    def owner(self) -> str:
         """Return the types instance owner."""
         return self._owner
 
     @property
-    def type_signature(self):
+    def previous_transaction(self) -> str:
+        """Return the previous transaction base64 signature string."""
+        return self._previous_transaction
+
+    @property
+    def type_signature(self) -> str:
         """Return the types type."""
         return self._type_signature
 
@@ -133,13 +134,10 @@ class ObjectRead(SuiRawObject):
         super().__init__(indata, ObjectID(indata["fields"]["id"]["id"]))
         self._type_signature = indata["type"]
         self._data_type = indata["dataType"]
-        self._is_transferable = indata["has_public_transfer"]
+        self._has_public_transfer = indata["has_public_transfer"]
         self._descriptor = descriptor
-
-    @property
-    def identifer(self) -> str:
-        """Return the type identifer."""
-        return self._identifier
+        self._previous_transaction = indata["previousTransaction"]
+        self._storage_rebate = indata["storageRebate"]
 
     @property
     def version(self) -> int:
@@ -147,8 +145,8 @@ class ObjectRead(SuiRawObject):
         return self._descriptor.version
 
     @property
-    def digest(self) -> int:
-        """Return the types version."""
+    def digest(self) -> str:
+        """Return the types digest."""
         return self._descriptor.digest
 
     @property
@@ -157,14 +155,24 @@ class ObjectRead(SuiRawObject):
         return self._data_type
 
     @property
-    def type_signature(self):
+    def type_signature(self) -> str:
         """Return the types type."""
         return self._type_signature
 
     @property
-    def is_transferable(self) -> bool:
+    def has_public_transfer(self) -> bool:
         """Return the types transferability."""
-        return self._is_transferable
+        return self._has_public_transfer
+
+    @property
+    def previous_transaction(self) -> str:
+        """Return the previous transaction base64 signature string."""
+        return self._previous_transaction
+
+    @property
+    def storage_rebate(self) -> int:
+        """Return the storage rebate if object deleted."""
+        return self._storage_rebate
 
     @property
     def descriptor(self) -> ObjectInfo:
@@ -304,9 +312,11 @@ def from_object_descriptor(indata: dict) -> ObjectInfo:
     return ObjectInfo(indata)
 
 
-def from_object_type(descriptor: ObjectInfo, indata: dict) -> ObjectRead:
+def from_object_type(descriptor: ObjectInfo, inblock: dict) -> ObjectRead:
     """Parse an inbound JSON like dictionary to a Sui type."""
-    # print(indata)
+    indata = inblock["data"]
+    indata["previousTransaction"] = inblock["previousTransaction"]
+    indata["storageRebate"] = inblock["storageRebate"]
     split = indata["type"].split("::", 2)
 
     if split[0] == "0x2":
