@@ -1,6 +1,5 @@
 """Type Client Abstractions."""
 from abc import ABC, abstractmethod
-from numbers import Number
 from typing import Any
 
 
@@ -33,42 +32,42 @@ class ClientAbstractClassType(ABC):
         return self._identifier
 
 
-class ClientObjectDescriptor(ClientAbstractClassType):
-    """Base type descriptor abstraction."""
+# class ClientObjectDescriptor(ClientAbstractClassType):
+#     """Base type descriptor abstraction."""
 
-    @property
-    @abstractmethod
-    def version(self) -> Number:
-        """Return the types version."""
+#     @property
+#     @abstractmethod
+#     def version(self) -> Number:
+#         """Return the types version."""
 
-    @property
-    @abstractmethod
-    def owner(self) -> str:
-        """Return the types instance owner."""
+#     @property
+#     @abstractmethod
+#     def owner(self) -> str:
+#         """Return the types instance owner."""
 
-    @property
-    @abstractmethod
-    def type_signature(self) -> str:
-        """Return the types type."""
+#     @property
+#     @abstractmethod
+#     def type_signature(self) -> str:
+#         """Return the types type."""
 
 
-class ClientType(ClientAbstractClassType):
-    """Base type abstraction."""
+# class ClientType(ClientAbstractClassType):
+#     """Base type abstraction."""
 
-    @property
-    @abstractmethod
-    def data_type(self) -> str:
-        """Return the data type."""
+#     @property
+#     @abstractmethod
+#     def data_type(self) -> str:
+#         """Return the data type."""
 
-    @property
-    @abstractmethod
-    def type_signature(self) -> str:
-        """Return the type signature."""
+#     @property
+#     @abstractmethod
+#     def type_signature(self) -> str:
+#         """Return the type signature."""
 
-    @property
-    @abstractmethod
-    def has_public_transfer(self) -> bool:
-        """Return the types type."""
+#     @property
+#     @abstractmethod
+#     def has_public_transfer(self) -> bool:
+#         """Return the types type."""
 
 
 class ClientFunction(ABC):
@@ -87,11 +86,11 @@ class ClientModule(ABC):
 class ClientPackage(ABC):
     """Base package abstraction."""
 
-    def __init__(self) -> None:
+    def __init__(self, identifier: ClientAbstractScalarType) -> None:
         """Initialize package."""
-        self._modules = []
+        self._identifier = identifier
 
     @property
-    def modules(self) -> list[ClientModule]:
-        """Return the package's modules."""
-        return self._modules
+    def identifier(self) -> ClientAbstractScalarType:
+        """Return the types identifer."""
+        return self._identifier

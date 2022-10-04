@@ -3,9 +3,8 @@
 from abstracts.client_config import ClientConfiguration
 from abstracts.client_keypair import KeyPair, PublicKey, PrivateKey, SignatureScheme
 from abstracts.client_types import (
-    ClientObjectDescriptor,
-    ClientType,
-    ClientPackage,
+    # ClientObjectDescriptor,
+    # ClientType,
     ClientAbstractScalarType,
     ClientAbstractClassType,
 )

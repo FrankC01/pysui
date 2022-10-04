@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 from abstracts import Builder
-from sui.sui_types import SuiType, ObjectInfo
+from sui.sui_types import SuiType, ObjectInfo, ObjectID
 from sui.sui_crypto import SuiAddress
 
 
@@ -115,6 +115,24 @@ class GetObject(_NativeTransactionBuilder):
         return self
 
     def _collect_parameters(self) -> list[ObjectInfo]:
+        """Collect the call parameters."""
+        return [self.object_id]
+
+
+class GetRawPackage(_NativeTransactionBuilder):
+    """Fetch package onject information."""
+
+    def __init__(self, package_id: ObjectID = None) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getObject")
+        self.object_id = package_id
+
+    def set_object_id(self, package_id: ObjectID) -> "GetRawPackage":
+        """Set the package object id to retrieve."""
+        self.object_id = package_id
+        return self
+
+    def _collect_parameters(self) -> list[SuiType]:
         """Collect the call parameters."""
         return [self.object_id]
 

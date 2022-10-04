@@ -8,6 +8,7 @@ from sui.sui_builders import (
     GetObjectsOwnedByAddress,
     GetObject,
     GetObjectsOwnedByObject,
+    GetRawPackage,
     GetPackage,
     GetRpcAPI,
 )

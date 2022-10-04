@@ -19,29 +19,12 @@ sys.path += [
 
 from src.abstracts import SignatureScheme
 from src.sui import SuiConfig
-from src.sui import GetPackage
+from src.sui.sui_rpc import SuiRpcResult
 
 # from src.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
 from src.sui.sui_crypto import SuiAddress
-from src.sui.sui_types import ObjectID
+from src.sui.sui_types import ObjectID, SuiPackage
 from .faux_wallet import SuiWallet, ObjectRead
-
-
-def wallet_package_objects(wallet: SuiWallet, _address: str = None) -> None:
-    """Print data package information."""
-    # TODO Fix so that packages won't rely on data objects
-    if len(wallet.package_ids) > 0:
-        builder = GetPackage()
-        if wallet.api_exists(builder.method):
-            ids = list(wallet.package_ids)
-            package = wallet.get_package(ids[1])
-            print()
-            print("References packages for active address")
-            print("--------------------------------------")
-            print(f"Package {ids} modules")
-            print(package.__dict__)
-        else:
-            print(f"Method {builder.method} does not exist")
 
 
 def sui_active_address(wallet: SuiWallet, _args: argparse.Namespace) -> None:
@@ -67,7 +50,7 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
     def _detail_gas(gas_objects):
         for gasobj in gas_objects:
-            print(f"{gasobj.identifer} | {gasobj.balance}")
+            print(f"{gasobj.identifier} | {gasobj.balance}")
         print(f"Total Gas = {wallet.total_gas(gas_objects)}")
 
     if args.address is None and args.id is None:
@@ -83,15 +66,30 @@ def sui_new_address(wallet: SuiWallet, args: argparse.Namespace) -> None:
     if args.ed25519:
         print(wallet.create_new_keypair_and_address(SignatureScheme.ED25519))
     else:
-        #   TODO: Implement support
-        print("secp256k1 not implemented yet.")
+        print(wallet.create_new_keypair_and_address(SignatureScheme.SECP256K1))
+
+
+def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Get a package object."""
+    result: SuiRpcResult = wallet.get_package(args.id)
+    if result.succeeded:
+        package: SuiPackage = result.data
+        print("Package")
+        print(f"id: {str(package.identifier)} owner: {package.owner}")
+        print()
+        print("Modules")
+        modules: dict = package.modules
+        for mod in modules.keys():
+            print(f"-> {mod}")
+            if args.src:
+                print(modules[mod])
 
 
 def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Show specific object."""
     sobject = wallet.get_object(args.id)
-    print("Object Descriptor")
-    print(sobject.descriptor.json_pretty())
+    # print("Object Descriptor")
+    # print(sobject.descriptor.json_pretty())
     print("Object")
     print(sobject.json_pretty())
 
@@ -224,6 +222,11 @@ def build_parser() -> argparse.ArgumentParser:
     obj_arg_group.add_argument("--nft", help="Only show NFT objects", action="store_true")
     obj_arg_group.add_argument("--data", help="Only show data objects", action="store_true")
     subp.set_defaults(func=sui_objects)
+    # Object
+    subp = subparser.add_parser("package", help="Get package object")
+    subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
+    subp.add_argument("--src", required=False, help="Display package module(s) src", action="store_true")
+    subp.set_defaults(func=sui_package)
     # RPC information
     subp = subparser.add_parser("rpcapi", help="Display Sui RPC API information")
     subp.add_argument("-n", "--name", required=False, help="Display details for named Sui RPC API")

@@ -1,12 +1,11 @@
 """Sui Types."""
 
+
+from abc import abstractmethod
 import json
 from numbers import Number
 from typing import TypeVar
 from abstracts import (
-    ClientObjectDescriptor,
-    ClientType,
-    ClientPackage,
     ClientAbstractClassType,
     ClientAbstractScalarType,
 )
@@ -37,13 +36,28 @@ class SuiType(ClientAbstractClassType):
     """Base most SUI object type."""
 
 
-class SuiRawDescriptor(ClientObjectDescriptor, SuiType):
+class SuiRawDescriptor(SuiType):
     """Base descriptor type."""
 
     def __init__(self, indata: dict, identifier: ObjectID) -> None:
         """Initiate base SUI type."""
         super().__init__(identifier)
         self._type_raw = indata
+
+    @property
+    @abstractmethod
+    def version(self) -> Number:
+        """Return the types version."""
+
+    @property
+    @abstractmethod
+    def owner(self) -> str:
+        """Return the types instance owner."""
+
+    @property
+    @abstractmethod
+    def type_signature(self) -> str:
+        """Return the types type."""
 
     def json(self) -> str:
         """Return as JSON compressed string."""
@@ -77,6 +91,7 @@ class ObjectInfo(SuiRawDescriptor):
         """Return the type digest."""
         return self._digest
 
+    # TODO: Change to return SuiAddress when constructor fixed
     @property
     def owner(self) -> str:
         """Return the types instance owner."""
@@ -109,13 +124,28 @@ class SuiNativeCoinDescriptor(SuiCoinDescriptor):
     """Sui gas is a coin."""
 
 
-class SuiRawObject(ClientType, SuiType):
+class SuiRawObject(SuiType):
     """Base object type."""
 
     def __init__(self, indata: dict, identifier: ObjectID) -> None:
         """Initiate base SUI type."""
         super().__init__(identifier)
         self._type_raw = indata
+
+    @property
+    @abstractmethod
+    def data_type(self) -> str:
+        """Return the data type."""
+
+    @property
+    @abstractmethod
+    def type_signature(self) -> str:
+        """Return the type signature."""
+
+    @property
+    @abstractmethod
+    def has_public_transfer(self) -> bool:
+        """Return the types type."""
 
     def json(self) -> str:
         """Return as JSON compressed string."""
@@ -129,25 +159,28 @@ class SuiRawObject(ClientType, SuiType):
 class ObjectRead(SuiRawObject):
     """Base SUI Type."""
 
-    def __init__(self, indata: dict, descriptor: ObjectInfo) -> None:
+    def __init__(self, indata: dict) -> None:
         """Initialize the base type data."""
         super().__init__(indata, ObjectID(indata["fields"]["id"]["id"]))
         self._type_signature = indata["type"]
         self._data_type = indata["dataType"]
         self._has_public_transfer = indata["has_public_transfer"]
-        self._descriptor = descriptor
+        # TODO: Convert to SuiAddress
+        self._owner = indata["owner"]["AddressOwner"]
         self._previous_transaction = indata["previousTransaction"]
         self._storage_rebate = indata["storageRebate"]
+        self._digest = indata["digest"]
+        self._version = indata["version"]
 
     @property
     def version(self) -> int:
         """Return the types version."""
-        return self._descriptor.version
+        return self._version
 
     @property
     def digest(self) -> str:
         """Return the types digest."""
-        return self._descriptor.digest
+        return self._digest
 
     @property
     def data_type(self) -> str:
@@ -165,6 +198,11 @@ class ObjectRead(SuiRawObject):
         return self._has_public_transfer
 
     @property
+    def owner(self) -> str:
+        """Return the types instance owner."""
+        return self._owner
+
+    @property
     def previous_transaction(self) -> str:
         """Return the previous transaction base64 signature string."""
         return self._previous_transaction
@@ -174,18 +212,13 @@ class ObjectRead(SuiRawObject):
         """Return the storage rebate if object deleted."""
         return self._storage_rebate
 
-    @property
-    def descriptor(self) -> ObjectInfo:
-        """Return the objects type descriptor."""
-        return self._descriptor
-
 
 class SuiNftType(ObjectRead):
     """Sui NFT base type."""
 
-    def __init__(self, indata: dict, descriptor: ObjectInfo) -> None:
+    def __init__(self, indata: dict) -> None:
         """Initialize the base Nft type."""
-        super().__init__(indata, descriptor)
+        super().__init__(indata)
         self._description = indata["fields"]["description"]
         self._name = indata["fields"]["name"]
         self._url = indata["fields"]["url"]
@@ -212,9 +245,9 @@ DT = TypeVar("DT", bound="SuiDataType")
 class SuiDataType(ObjectRead):
     """Sui Data type."""
 
-    def __init__(self, indata: dict, descriptor: ObjectInfo) -> None:
+    def __init__(self, indata: dict) -> None:
         """Initialize the base Data type."""
-        super().__init__(indata, descriptor)
+        super().__init__(indata)
         self._children = []
         self._data = {}
         split = self.type_signature.split("::", 2)
@@ -265,9 +298,9 @@ class SuiCoinType(ObjectRead):
 class SuiGasType(SuiCoinType):
     """Sui gas is a coin."""
 
-    def __init__(self, indata: dict, descriptor: ObjectInfo) -> None:
+    def __init__(self, indata: dict) -> None:
         """Initialize the base type."""
-        super().__init__(indata, descriptor)
+        super().__init__(indata)
         self._balance = indata["fields"]["balance"]
 
     @property
@@ -276,19 +309,59 @@ class SuiGasType(SuiCoinType):
         return self._balance
 
 
-class SuiPackage(ClientPackage):
+class SuiPackage(SuiType):
     """Sui package."""
 
-    def __init__(self, package_id: str, blob) -> None:
+    def __init__(self, indata: dict) -> None:
         """Initialize a package construct."""
-        super().__init__()
-        self._package_id = package_id
-        self._blob = blob
+        super().__init__(ObjectID(indata["reference"]["objectId"]))
+        self._data_type: str = indata["data"]["dataType"]
+        self._modules: dict = indata["data"]["disassembled"]
+        self._owner: str = indata["owner"]
+        self._previous_transaction = indata["previousTransaction"]
+        self._storage_rebate: int = indata["storageRebate"]
+        self._digest = indata["reference"]["digest"]
+        self._version: int = indata["reference"]["version"]
 
     @property
-    def package_id(self) -> str:
-        """Get the packages id."""
-        return self._package_id
+    def data_type(self) -> str:
+        """Return the type."""
+        return self._data_type
+
+    @property
+    def modules(self) -> dict:
+        """Return the package modules."""
+        return self._modules
+
+    @property
+    def module_names(self) -> list[str]:
+        """Return the package module names."""
+        return list(self.modules.keys())
+
+    @property
+    def owner(self) -> str:
+        """Return the type."""
+        return self._owner
+
+    @property
+    def previous_transaction(self) -> str:
+        """Return the type."""
+        return self._previous_transaction
+
+    @property
+    def storage_rebate(self) -> int:
+        """Return the storage rebate if object deleted."""
+        return self._storage_rebate
+
+    @property
+    def version(self) -> int:
+        """Return the package version."""
+        return self._version
+
+    @property
+    def digest(self) -> str:
+        """Return the package digest."""
+        return self._digest
 
 
 def from_object_descriptor(indata: dict) -> ObjectInfo:
@@ -312,24 +385,40 @@ def from_object_descriptor(indata: dict) -> ObjectInfo:
     return ObjectInfo(indata)
 
 
-def from_object_type(descriptor: ObjectInfo, inblock: dict) -> ObjectRead:
+def from_object_type(inblock: dict) -> ObjectRead:
     """Parse an inbound JSON like dictionary to a Sui type."""
+    # print(inblock)
     indata = inblock["data"]
-    indata["previousTransaction"] = inblock["previousTransaction"]
-    indata["storageRebate"] = inblock["storageRebate"]
-    split = indata["type"].split("::", 2)
+    match indata["dataType"]:
+        case "moveObject":
+            indata["previousTransaction"] = inblock["previousTransaction"]
+            indata["storageRebate"] = inblock["storageRebate"]
+            indata["digest"] = inblock["reference"]["digest"]
+            indata["version"] = inblock["reference"]["version"]
+            indata["owner"] = inblock["owner"]
+            # print(indata)
+            split = indata["type"].split("::", 2)
 
-    if split[0] == "0x2":
-        match split[1]:
-            case "coin":
-                split2 = split[2][5:-1].split("::")
-                if split2[2] == "SUI":
-                    return SuiGasType(indata, descriptor)
-                return SuiCoinType(indata, descriptor)
-            case "devnet_nft":
-                if split[2] == "DevNetNFT":
-                    return SuiNftType(indata, descriptor)
-    else:
-        if len(split) == 3:
-            return SuiDataType(indata, descriptor)
-    return ObjectRead(indata, descriptor)
+            if split[0] == "0x2":
+                match split[1]:
+                    case "coin":
+                        split2 = split[2][5:-1].split("::")
+                        if split2[2] == "SUI":
+                            return SuiGasType(indata)
+                        return SuiCoinType(indata)
+                    case "devnet_nft":
+                        if split[2] == "DevNetNFT":
+                            return SuiNftType(indata)
+            else:
+                if len(split) == 3:
+                    return SuiDataType(indata)
+            return ObjectRead(indata)
+        case "package":
+            return SuiPackage(inblock)
+        case _:
+            raise ValueError(f"Don't recognize {indata['dataType']}")
+
+
+if __name__ == "__main__":
+    pass
+    # known_package = "0xdf43f7fa8f94c8046587b745616bf11c1d732d45"
