@@ -2,7 +2,6 @@
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any
 from dataclasses_json import dataclass_json, DataClassJsonMixin
 from sui.sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
 
@@ -11,6 +10,14 @@ from sui.sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
 
 class SuiJsonType(ABC):
     """Sui Json Type."""
+
+
+@dataclass(frozen=True)
+class SuiJsonNull(DataClassJsonMixin, SuiJsonType):
+    """Sui Json Null Value."""
+
+    type: str
+    type_path: list[str]
 
 
 @dataclass(frozen=True)
@@ -41,13 +48,26 @@ class SuiJsonInteger(DataClassJsonMixin, SuiJsonType):
 
 @dataclass(frozen=True)
 class SuiJsonArray(DataClassJsonMixin, SuiJsonType):
-    """Sui Json String."""
+    """Sui Json Array."""
 
     type: str
     type_path: list[str]
     items: SuiJsonType
 
 
+# pylint: disable=invalid-name
+@dataclass(frozen=True)
+class SuiJsonTuple(DataClassJsonMixin, SuiJsonType):
+    """Sui Json Tuple."""
+
+    type: str
+    type_path: list[str]
+    items: SuiJsonType
+    minItems: int = None
+    maxItems: int = None
+
+
+# pylint: enable=invalid-name
 @dataclass(frozen=True)
 class SuiJsonEnum(DataClassJsonMixin, SuiJsonType):
     """Sui Json Enum."""
@@ -71,19 +91,19 @@ class SuiApiParam:
     """Sui API Parameter Data Class."""
 
     name: str
-    schema: Any | SuiJsonType
+    schema: dict | SuiJsonType
     required: bool = False
     description: str = ""
 
 
 @dataclass_json
-@dataclass(frozen=True)
+@dataclass
 class SuiApiResult:
     """Sui API Result Data Class."""
 
     name: str
     required: bool
-    schema: dict
+    schema: dict | SuiJsonType
 
 
 @dataclass(frozen=True)
@@ -114,10 +134,22 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
                 return SuiJsonEnum.from_dict(dcp)
             case "array":
                 apath = []
-                dcp["items"] = _resolve_param_type(schema_dict, dcp.get("items"), apath)
-                return SuiJsonArray.from_dict(dcp)
+                if isinstance(dcp["items"], dict):
+                    dcp["items"] = _resolve_param_type(schema_dict, dcp.get("items"), apath)
+                    return SuiJsonArray.from_dict(dcp)
+                elif isinstance(dcp["items"], list):
+                    dcp["type"] = "tuple"
+                    vitems = []
+                    for item in dcp["items"]:
+                        ipath = []
+                        vitems.append(_resolve_param_type(schema_dict, item, ipath))
+                    dcp["items"] = vitems
+                    dcp["type_path"] = ["tuple"]
+                    return SuiJsonTuple.from_dict(dcp)
             case "object":
                 return SuiJsonObject.from_dict(dcp)
+            case "null":
+                return SuiJsonNull.from_dict(dcp)
             case _:
                 raise NotImplementedError("Finisky")
         return ptype
@@ -159,15 +191,16 @@ def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
         and "schemas" in indata["result"]["components"]
     ):
 
-        mdict = {}
-        schema_dict = indata["result"]["components"]["schemas"]
+        mdict: dict = {}
+        schema_dict: dict = indata["result"]["components"]["schemas"]
         for rpc_api in indata["result"]["methods"]:
             mdict[rpc_api["name"]] = SuiApi.from_dict(rpc_api)
         for _api_name, api_def in mdict.items():
             for inparams in api_def.params:
-                tpath = []
+                tpath: list = []
                 inparams.schema = _resolve_param_type(schema_dict, inparams.schema, tpath)
-        # TODO: Build out response object
+            tpath: list = []
+            api_def.result.schema = _resolve_param_type(schema_dict, api_def.result.schema, tpath)
 
         return (mdict, schema_dict)
     raise SuiApiDefinitionInvalid(indata)
@@ -184,19 +217,22 @@ if __name__ == "__main__":
     # Success
     try:
         api_desc, _sui_schema = build_api_descriptors(jdata)
-        print(api_desc)
+        for api_name, api_defs in api_desc.items():
+            # if isinstance(api_defs.result.schema, SuiJsonArray):
+            print(f"{api_name} => {api_defs.result}")
+        # print(api_desc)
     except SuiApiDefinitionInvalid as exc:
         print(f"Caught exception {type(exc)}")
 
     # Fail
-    try:
-        bad_sample = {
-            "result": {
-                "methods": [],
-            }
-        }
-        build_api_descriptors(bad_sample)
-    except SuiApiDefinitionInvalid as exc:
-        print(f"Caught exception {exc}")
+    # try:
+    #     bad_sample = {
+    #         "result": {
+    #             "methods": [],
+    #         }
+    #     }
+    #     build_api_descriptors(bad_sample)
+    # except SuiApiDefinitionInvalid as exc:
+    #     print(f"Caught exception {exc}")
 
     # print(SuiApi.from_dict(sample))

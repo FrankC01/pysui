@@ -11,21 +11,29 @@ from sui.sui_excepts import SuiRpcApiNotAvailable
 class SuiRpcResult(RpcResult):
     """Sui RpcResult."""
 
-    def __init__(self, result_status: bool, result_fail_string: str, result_data: Any) -> None:
+    def __init__(self, result_status: bool, result_string: str, result_data: Any) -> None:
         """Initialize a new RpcResult."""
         super().__init__()
-        self._success = result_status
-        self._result_str = result_fail_string
-        self._data = result_data
+        self._status: bool = result_status
+        self._result_str: str = result_string
+        self._data: Any = result_data
+
+    def is_ok(self) -> bool:
+        """Ease of use status."""
+        return self._status is True
+
+    def is_err(self) -> bool:
+        """Ease of use status."""
+        return self._status is True
 
     @property
-    def data(self) -> Any:
+    def result_data(self) -> Any:
         """Get result data."""
         return self._data
 
     @property
-    def result(self) -> Any:
-        """Get result string."""
+    def result_string(self) -> str:
+        """Get result data."""
         return self._result_str
 
 

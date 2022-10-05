@@ -72,8 +72,9 @@ def sui_new_address(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Get a package object."""
     result: SuiRpcResult = wallet.get_package(args.id)
-    if result.succeeded:
-        package: SuiPackage = result.data
+    if result.is_ok():
+        package: SuiPackage = result.result_data
+        print()
         print("Package")
         print(f"id: {str(package.identifier)} owner: {package.owner}")
         print()
@@ -83,6 +84,9 @@ def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
             print(f"-> {mod}")
             if args.src:
                 print(modules[mod])
+        print()
+    else:
+        print(f"Get package failed{result.result_string}")
 
 
 def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:

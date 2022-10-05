@@ -29,7 +29,11 @@ class ObjectID(SuiString):
     def __init__(self, value: str) -> None:
         """Initialize with identifier."""
         super().__init__(value)
-        self.object_id = value
+
+    @property
+    def object_id(self) -> str:
+        """Alias over value."""
+        return self._value
 
 
 class SuiType(ClientAbstractClassType):

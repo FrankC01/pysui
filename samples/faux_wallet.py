@@ -128,14 +128,13 @@ class SuiWallet:
     def get_package(self, package_id: str) -> Union[SuiRpcResult, Exception]:
         """Get details of Sui package."""
         result = self.execute(GetRawPackage(package_id)).json()
-        if result.get("error"):
-            return SuiRpcResult(False, result.get("error")["message"], None)
+        if result["result"]["status"] == "NotExists":
+            return SuiRpcResult(False, f": package id {package_id} {result['result']['status']}", None)
         return SuiRpcResult(True, None, from_object_type(result["result"]["details"]))
 
     def get_type_descriptor(self, claz: ObjectInfo, address: str = None) -> list[ObjectInfo]:
         """Get descriptors of claz type for address."""
         builder = GetObjectsOwnedByAddress().set_address(address if address else self.current_address)
-        # print(builder.data)
         result = self.execute(builder).json()
         type_descriptors = []
         if "error" in result:

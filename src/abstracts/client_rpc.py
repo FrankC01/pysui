@@ -40,17 +40,24 @@ class RpcResult(ABC):
 
     def __init__(self) -> None:
         """Initialize Result."""
-        self._success = True
 
-    @property
-    def succeeded(self) -> bool:
+    @abstractmethod
+    def is_ok(self) -> bool:
         """Return success indicator."""
-        return self._success
+
+    @abstractmethod
+    def is_err(self) -> bool:
+        """Return failure indicator."""
 
     @property
-    def failed(self) -> bool:
-        """Return failure indicator."""
-        return not self.succeeded
+    @abstractmethod
+    def result_data(self) -> Any:
+        """Get result data."""
+
+    @property
+    @abstractmethod
+    def result_string(self) -> str:
+        """Get result data."""
 
 
 class SyncHttpRPC(ABC):
