@@ -32,7 +32,6 @@ from sui.sui_constants import (
     SECP256K1_KEYPAIR_BYTES_LEN,
     SECP256K1_PUBLICKEY_BYTES_LEN,
     SECP256K1_PRIVATEKEY_BYTES_LEN,
-    SUI_HEX_ADDRESS_STRING_LEN,
     SUI_ADDRESS_STRING_LEN,
 )
 from sui.sui_types import SuiType, SuiString

@@ -11,7 +11,7 @@ from sui.sui_excepts import SuiRpcApiNotAvailable
 class SuiRpcResult(RpcResult):
     """Sui RpcResult."""
 
-    def __init__(self, result_status: bool, result_string: str, result_data: Any) -> None:
+    def __init__(self, result_status: bool, result_string: str, result_data: Any = None) -> None:
         """Initialize a new RpcResult."""
         super().__init__()
         self._status: bool = result_status

@@ -24,7 +24,7 @@ from src.sui.sui_rpc import SuiRpcResult
 # from src.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
 from src.sui.sui_crypto import SuiAddress
 from src.sui.sui_types import ObjectID, SuiPackage
-from .faux_wallet import SuiWallet, ObjectRead
+from .faux_wallet import SuiWallet
 
 
 def sui_active_address(wallet: SuiWallet, _args: argparse.Namespace) -> None:
@@ -48,10 +48,13 @@ def sui_addresses(wallet: SuiWallet, _args: argparse.Namespace) -> None:
 def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Print gas information."""
 
-    def _detail_gas(gas_objects):
-        for gasobj in gas_objects:
-            print(f"{gasobj.identifier} | {gasobj.balance}")
-        print(f"Total Gas = {wallet.total_gas(gas_objects)}")
+    def _detail_gas(gas_objects: SuiRpcResult):
+        if gas_objects.is_ok():
+            for gasobj in gas_objects.result_data:
+                print(f"{gasobj.identifier} | {gasobj.balance}")
+            print(f"Total Gas = {wallet.total_gas(gas_objects)}")
+        else:
+            print(f"{gas_objects}")
 
     if args.address is None and args.id is None:
         _detail_gas(wallet.gas_objects())
@@ -86,7 +89,7 @@ def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
                 print(modules[mod])
         print()
     else:
-        print(f"Get package failed{result.result_string}")
+        print(f"{result.result_string}")
 
 
 def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
@@ -94,8 +97,11 @@ def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     sobject = wallet.get_object(args.id)
     # print("Object Descriptor")
     # print(sobject.descriptor.json_pretty())
-    print("Object")
-    print(sobject.json_pretty())
+    if sobject.is_ok():
+        print("Object")
+        print(sobject.result_data.json_pretty())
+    else:
+        print(f"{sobject.result_string}")
 
 
 def _objects_header_print() -> None:
@@ -113,7 +119,7 @@ def _objects_header_print() -> None:
 def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Show specific object."""
 
-    def _object_type(args: argparse.Namespace) -> list[ObjectRead]:
+    def _object_type(args: argparse.Namespace) -> SuiRpcResult:
         """Get objects of type from Namespace."""
         if args.nft:
             return wallet.nft_objects(args.address)
@@ -123,13 +129,16 @@ def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
             return wallet.get_objects(args.address)
 
     result = _object_type(args)
-    if args.json:
-        for desc in result:
-            print(desc.json_pretty())
+    if result.is_ok():
+        if args.json:
+            for desc in result:
+                print(desc.json_pretty())
+        else:
+            _objects_header_print()
+            for desc in result.result_data:
+                print(f"{desc.identifier} |      {desc.version}    | {desc.digest} | {desc.type_signature}")
     else:
-        _objects_header_print()
-        for desc in result:
-            print(f"{desc.identifier} |      {desc.version}    | {desc.digest} | {desc.type_signature}")
+        print(f"{result.result_string}")
 
 
 def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
