@@ -3,8 +3,8 @@
 import base64
 import pytest
 
-from src.abstracts.client_keypair import SignatureScheme
-from src.sui.sui_crypto import (
+from pysui.abstracts.client_keypair import SignatureScheme
+from pysui.sui.sui_crypto import (
     SuiPublicKeyED25519,
     SuiPrivateKeyED25519,
     SuiPublicKeySECP256K1,
@@ -12,7 +12,7 @@ from src.sui.sui_crypto import (
     keypair_from_keystring,
     address_from_keystring,
 )
-from src.sui.sui_types import (
+from pysui.sui.sui_constants import (
     SUI_KEYPAIR_LEN,
     ED25519_PRIVATEKEY_BYTES_LEN,
     ED25519_PUBLICKEY_BYTES_LEN,
@@ -21,9 +21,9 @@ from src.sui.sui_types import (
 )
 
 TEST_ED25519_KEYSTRING = "APLkwzgb263XFdZB2CloxMz4z2h4pP2m7C5y1ef56MTaHnSr41donGv0yAIhYgWc6DJUdoWE4ZTF020YAOQ9tyw="
-TEST_SECP256K1_KEYSTRING = "AQLuvMAM8nYRISbB7lWYa/2Y1sW6GkauufTR8Hhzrb/oDYvUkKHVnOFZRVGB8LFIeVuRhSnST9vAEuEUecimxr+w"
+TEST_SECP256K1_KEYSTRING = "AQLjRaEVn1AOwAy3IKIzhrPXwBKSrD7QHfrI0k7GnDidv3y11eFD+gwe2A86VG6y4S8dpK2FGC68MZ6Y7fB4FFpb"
 TEST_ED25519_ADDRESS = "0x2e8c9bb1260d44fd5ba4c5ddde10bb13b47067f8"
-TEST_SECP256K1_ADDRESS = "0x9108084d56c20db617e77453631d508cf5b499f2"
+TEST_SECP256K1_ADDRESS = "0xb2ca232ea8fec377ded6048c933b73ce97c842a8"
 
 
 def test_ed25519_pass() -> None:
@@ -70,16 +70,14 @@ def test_ed25519_address_pass() -> None:
     """Test conversion from keystring to address."""
     suiaddress = address_from_keystring(TEST_ED25519_KEYSTRING)
     assert suiaddress is not None
-    assert TEST_ED25519_ADDRESS == suiaddress.identifer
-    assert suiaddress.scheme == SignatureScheme.ED25519
+    assert TEST_ED25519_ADDRESS == str(suiaddress.identifier)
 
 
 def test_secp256k1_address_pass() -> None:
     """Test conversion from keystring to address."""
     suiaddress = address_from_keystring(TEST_SECP256K1_KEYSTRING)
     assert suiaddress is not None
-    assert TEST_SECP256K1_ADDRESS == suiaddress.identifer
-    assert suiaddress.scheme == SignatureScheme.SECP256K1
+    assert TEST_SECP256K1_ADDRESS == str(suiaddress.identifier)
 
 
 @pytest.mark.xfail(raises=Exception)
