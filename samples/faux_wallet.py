@@ -6,8 +6,8 @@ import os
 import json
 
 from typing import Any, Union
-from src.abstracts import KeyPair, Builder, SignatureScheme
-from src.sui import (
+from pysui.abstracts import KeyPair, Builder, SignatureScheme
+from pysui.sui import (
     SuiClient,
     SuiConfig,
     SuiRpcResult,
@@ -15,8 +15,8 @@ from src.sui import (
     GetObject,
     GetRawPackage,
 )
-from src.sui.sui_crypto import keypair_from_keystring, create_new_address, SuiAddress
-from src.sui.sui_excepts import (
+from pysui.sui.sui_crypto import keypair_from_keystring, create_new_address, SuiAddress
+from pysui.sui.sui_excepts import (
     SuiFileNotFound,
     SuiKeystoreFileError,
     SuiKeystoreAddressError,
@@ -24,7 +24,7 @@ from src.sui.sui_excepts import (
     SuiRpcApiError,
 )
 
-from src.sui.sui_types import (
+from pysui.sui.sui_types import (
     SuiNativeCoinDescriptor,
     SuiGasType,
     ObjectInfo,
