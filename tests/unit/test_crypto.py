@@ -11,6 +11,7 @@ from pysui.sui.sui_crypto import (
     SuiPrivateKeySECP256K1,
     keypair_from_keystring,
     address_from_keystring,
+    create_new_address,
 )
 from pysui.sui.sui_constants import (
     SUI_KEYPAIR_LEN,
@@ -71,6 +72,18 @@ def test_ed25519_address_pass() -> None:
     suiaddress = address_from_keystring(TEST_ED25519_KEYSTRING)
     assert suiaddress is not None
     assert TEST_ED25519_ADDRESS == str(suiaddress.identifier)
+
+
+def test_new_ed25519_address_pass() -> None:
+    """Test new address generation for ED25519."""
+    suiaddress = create_new_address(SignatureScheme.ED25519)
+    assert suiaddress is not None
+
+
+def test_new_secp256k1_address_pass() -> None:
+    """Test new address generation for secp256k1."""
+    suiaddress = create_new_address(SignatureScheme.SECP256K1)
+    assert suiaddress is not None
 
 
 def test_secp256k1_address_pass() -> None:

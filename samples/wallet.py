@@ -56,12 +56,7 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
         else:
             print(f"{gas_objects}")
 
-    if args.address is None and args.id is None:
-        _detail_gas(wallet.gas_objects())
-    elif args.address:
-        _detail_gas(wallet.gas_objects(args.address))
-    elif args.id:
-        print("Gas for Object ID not implemented yet")
+    _detail_gas(wallet.gas_objects(args.address))
 
 
 def sui_new_address(wallet: SuiWallet, args: argparse.Namespace) -> None:
@@ -212,9 +207,7 @@ def build_parser() -> argparse.ArgumentParser:
     subp.set_defaults(func=sui_addresses)
     # Gas
     subp = subparser.add_parser("gas", help="Shows gas objects")
-    gas_arg_group = subp.add_mutually_exclusive_group()
-    gas_arg_group.add_argument("--address", help="Gas for address")
-    gas_arg_group.add_argument("--id", help="Gas for gas object id", action=ValidateAddress)
+    subp.add_argument("--address", required=False, help="Gas for address", action=ValidateAddress)
     subp.set_defaults(func=sui_gas)
     # New address
     subp = subparser.add_parser("new-address", help="Generate new address and keypair")

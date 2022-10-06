@@ -123,6 +123,11 @@ class SuiNftDescriptor(ObjectInfo):
 class SuiCoinDescriptor(ObjectInfo):
     """Sui Coin but not necessarily gas."""
 
+    def __init__(self, indata: dict, type_sig: str) -> None:
+        """Initialize the base type."""
+        super().__init__(indata)
+        self._type_signature = type_sig
+
 
 class SuiNativeCoinDescriptor(SuiCoinDescriptor):
     """Sui gas is a coin."""
@@ -298,13 +303,18 @@ class SuiDataType(ObjectRead):
 class SuiCoinType(ObjectRead):
     """Sui Coin type but not necessarily gas type."""
 
+    def __init__(self, indata: dict, type_sig: str) -> None:
+        """Initialize the base type."""
+        super().__init__(indata)
+        self._type_signature = type_sig
+
 
 class SuiGasType(SuiCoinType):
     """Sui gas is a coin."""
 
-    def __init__(self, indata: dict) -> None:
+    def __init__(self, indata: dict, type_sig: str) -> None:
         """Initialize the base type."""
-        super().__init__(indata)
+        super().__init__(indata, type_sig)
         self._balance = indata["fields"]["balance"]
 
     @property
@@ -376,9 +386,10 @@ def from_object_descriptor(indata: dict) -> ObjectInfo:
         match split[1]:
             case "coin":
                 split2 = split[2][5:-1].split("::")
+                type_sig = "::".join(split2)
                 if split2[2] == "SUI":
-                    return SuiNativeCoinDescriptor(indata)
-                return SuiCoinDescriptor(indata)
+                    return SuiNativeCoinDescriptor(indata, type_sig)
+                return SuiCoinDescriptor(indata, type_sig)
             case "devnet_nft":
                 if split[2] == "DevNetNFT":
                     return SuiNftDescriptor(indata)
@@ -407,9 +418,10 @@ def from_object_type(inblock: dict) -> ObjectRead:
                 match split[1]:
                     case "coin":
                         split2 = split[2][5:-1].split("::")
+                        type_sig = "::".join(split2)
                         if split2[2] == "SUI":
-                            return SuiGasType(indata)
-                        return SuiCoinType(indata)
+                            return SuiGasType(indata, type_sig)
+                        return SuiCoinType(indata, type_sig)
                     case "devnet_nft":
                         if split[2] == "DevNetNFT":
                             return SuiNftType(indata)

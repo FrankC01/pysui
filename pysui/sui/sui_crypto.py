@@ -98,7 +98,8 @@ class SuiKeyPairED25519(KeyPair):
         """Generate a unique ED25519 keypair."""
         signer = SigningKey.generate()
         verifier = signer.verify_key
-        return cls(verifier.__bytes__(), signer.__bytes__())
+        bytes(verifier)
+        return cls(bytes(verifier), bytes(signer))
 
     @classmethod
     def from_b64(cls, indata: str) -> KeyPair:
@@ -276,17 +277,3 @@ def create_new_address(keytype: SignatureScheme) -> tuple[KeyPair, SuiAddress]:
     """Create a new keypair and address for a key type."""
     new_kp = create_new_keypair(keytype)
     return (new_kp, SuiAddress.from_bytes(new_kp.to_bytes()))
-
-
-if __name__ == "__main__":
-    # TODO: Move to test for regression after secp256k1 working
-    keyp, new_addy = create_new_address(SignatureScheme.ED25519)
-    # print(keyp)
-    print(f"{new_addy.identifier}")
-    keyp, new_addy = create_new_address(SignatureScheme.SECP256K1)
-    # print(keyp)
-    # print(new_addy.identifier)
-    # myadd = SuiAddress.from_hex_string(new_addy.identifier)
-    # print(myadd.identifier)
-    # myadd = SuiAddress.from_hex_string("a9ebc6f0fd9645a501144edb1830c37d6cd74a8d")
-    # print(myadd.identifier)

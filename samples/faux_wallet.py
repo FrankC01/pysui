@@ -91,13 +91,19 @@ class SuiWallet:
         """
         if scheme == SignatureScheme.ED25519:
             keypair, address = create_new_address(scheme)
-            self._addresses[address.identifer] = address
+            self._addresses[address.identifier] = address
             self._write_keypair(keypair)
-            return address.identifer
+            return address.identifier
+        if scheme == SignatureScheme.SECP256K1:
+            keypair, address = create_new_address(scheme)
+            self._addresses[address.identifier] = address
+            self._write_keypair(keypair)
+            return address.identifier
+
         raise NotImplementedError
 
     @property
-    def current_address(self) -> str:
+    def current_address(self) -> SuiAddress:
         """Get the current address."""
         return self._client.config.active_address
 
@@ -133,7 +139,7 @@ class SuiWallet:
             return SuiRpcResult(True, None, from_object_type(result["result"]["details"]))
         return SuiRpcResult(False, f"ID: {package_id} is a move object, not a package")
 
-    def get_type_descriptor(self, claz: ObjectInfo, address: str = None) -> Union[SuiRpcResult, Exception]:
+    def get_type_descriptor(self, claz: ObjectInfo, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get descriptors of claz type for address."""
         builder = GetObjectsOwnedByAddress().set_address(address if address else self.current_address)
         result = self.execute(builder).json()
@@ -146,19 +152,19 @@ class SuiWallet:
                 type_descriptors.append(sui_type)
         return SuiRpcResult(True, None, type_descriptors)
 
-    def get_data_descriptors(self, address: str = None) -> Union[SuiRpcResult, Exception]:
+    def get_data_descriptors(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the objects descriptors."""
         return self.get_type_descriptor(SuiDataDescriptor, address)
 
-    def get_gas_descriptors(self, address: str = None) -> Union[SuiRpcResult, Exception]:
+    def get_gas_descriptors(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the gas object descriptors."""
         return self.get_type_descriptor(SuiNativeCoinDescriptor, address)
 
-    def get_nft_descriptors(self, address: str = None) -> Union[SuiRpcResult, Exception]:
+    def get_nft_descriptors(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the gas object descriptors."""
         return self.get_type_descriptor(SuiNftDescriptor, address)
 
-    def get_object(self, identifier: Any, address: str = None) -> Union[SuiRpcResult, Exception]:
+    def get_object(self, identifier: Any, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get specific object by it's id."""
         desc = self.get_type_descriptor(ObjectInfo, address)
         if desc.is_ok():
@@ -171,7 +177,7 @@ class SuiWallet:
             return SuiRpcResult(False, f"Object with identifier '{identifier}' not found", None)
         return desc
 
-    def get_objects(self, address: str = None, claz: ObjectInfo = None) -> Union[SuiRpcResult, Exception]:
+    def get_objects(self, address: SuiAddress = None, claz: ObjectInfo = None) -> Union[SuiRpcResult, Exception]:
         """Get specific object by address/id."""
         desc = self.get_type_descriptor(claz if claz else ObjectInfo, address)
         if desc.is_ok():
@@ -185,7 +191,7 @@ class SuiWallet:
             return SuiRpcResult(True, None, obj_types)
         return desc
 
-    def data_objects(self, address: str = None) -> Union[SuiRpcResult, Exception]:
+    def data_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the objects from descriptors."""
         desc = self.get_data_descriptors(address)
         if desc.is_ok():
@@ -199,7 +205,7 @@ class SuiWallet:
             return SuiRpcResult(True, None, obj_types)
         return desc
 
-    def nft_objects(self, address: str = None) -> Union[SuiRpcResult, Exception]:
+    def nft_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the nft objects from descriptors."""
         desc = self.get_nft_descriptors(address)
         if desc.is_ok():
@@ -212,7 +218,7 @@ class SuiWallet:
             return SuiRpcResult(True, None, nft_types)
         return desc
 
-    def gas_objects(self, address: str = None) -> Union[SuiRpcResult, Exception]:
+    def gas_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the gas objects."""
         desc = self.get_gas_descriptors(address)
         if desc.is_ok():
