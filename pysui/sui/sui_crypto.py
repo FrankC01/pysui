@@ -34,7 +34,7 @@ from sui.sui_constants import (
     SECP256K1_PRIVATEKEY_BYTES_LEN,
     SUI_ADDRESS_STRING_LEN,
 )
-from sui.sui_types import SuiType, SuiString
+from sui.sui_types import SuiType, SuiString, SuiSignature
 from sui.sui_txn_validator import valid_sui_address
 
 
@@ -51,6 +51,11 @@ class SuiPublicKeyED25519(PublicKey):
         super().__init__(SignatureScheme.ED25519, indata)
         self._verify_key = VerifyKey(self.to_b64(), encoder=Base64Encoder)
 
+    @property
+    def pub_key(self) -> str:
+        """Return self as base64 encoded string."""
+        return self.to_b64()
+
 
 class SuiPrivateKeyED25519(PrivateKey):
     """A ED25519 Private Key."""
@@ -62,6 +67,10 @@ class SuiPrivateKeyED25519(PrivateKey):
             raise SuiInvalidKeyPair(f"Private Key expects {ED25519_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
         super().__init__(SignatureScheme.ED25519, indata)
         self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
+
+    def sign(self, data: bytes) -> str:
+        """ED25519 sign data bytes."""
+        return SuiSignature(self._signing_key.sign(data, encoder=Base64Encoder).signature)
 
 
 class SuiKeyPairED25519(KeyPair):
@@ -136,6 +145,11 @@ class SuiPublicKeySECP256K1(PublicKey):
         super().__init__(SignatureScheme.SECP256K1, indata)
         self._verify_key = secp256k1.PublicKey(indata, raw=True)
 
+    @property
+    def pub_key(self) -> str:
+        """Return self as base64 encoded string."""
+        return self.to_b64()
+
 
 class SuiPrivateKeySECP256K1(PrivateKey):
     """A SECP256K1 Private Key."""
@@ -146,6 +160,11 @@ class SuiPrivateKeySECP256K1(PrivateKey):
             raise SuiInvalidKeyPair(f"Private Key expects {SECP256K1_PRIVATEKEY_BYTES_LEN} bytes, found {len(indata)}")
         super().__init__(SignatureScheme.SECP256K1, indata)
         self._signing_key = secp256k1.PrivateKey(indata, raw=True)
+
+    # TODO: Needs testing
+    def sign(self, data: bytes) -> str:
+        """ED25519 sign data bytes."""
+        return SuiSignature(self._signing_key.ecdsa_sign(data))
 
 
 class SuiKeyPairSECP256K1(KeyPair):
@@ -215,7 +234,18 @@ class SuiAddress(SuiType):
         """Initialize address."""
         identifier = identifier if len(identifier) != SUI_ADDRESS_STRING_LEN else SuiString(f"0x{identifier}")
         super().__init__(SuiString(identifier))
+        # Alias for transaction validation
         self.address = identifier
+
+    @property
+    def signer(self) -> str:
+        """Alias for signer in transaction validation."""
+        return self.address
+
+    @property
+    def recipient(self) -> str:
+        """Alias for recipient in transaction validation."""
+        return self.address
 
     @classmethod
     def from_hex_string(cls, instr: Union[str, SuiString]) -> "SuiAddress":

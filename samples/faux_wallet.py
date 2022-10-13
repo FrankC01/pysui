@@ -43,15 +43,17 @@ class SuiWallet:
         if os.path.exists(config.keystore_file):
             self._keypairs = {}
             self._addresses = {}
+            self._address_keypair = {}
             try:
                 with open(config.keystore_file, encoding="utf8") as keyfile:
                     self._keystrings = json.load(keyfile)
                     if len(self._keystrings) > 0:
                         for keystr in self._keystrings:
-                            self._keypairs[keystr] = keypair_from_keystring(keystr)
+                            kpair = keypair_from_keystring(keystr)
+                            self._keypairs[keystr] = kpair
                             addy = SuiAddress.from_keypair_string(keystr)
-                            self._addresses[str(addy.identifier)] = addy
-
+                            self._addresses[str(addy.address)] = addy
+                            self._address_keypair[str(addy.address)] = kpair
                     else:
                         raise SuiNoKeyPairs()
                 self._client = SuiClient(config)
@@ -68,9 +70,8 @@ class SuiWallet:
         if os.path.exists(filepath):
             serialized = keypair.to_b64()
             self._keypairs[serialized] = keypair
-            key_array = json.dumps(self.keystrings, indent=2)
             with open(filepath, "w", encoding="utf8") as keystore:
-                keystore.write(key_array)
+                keystore.write(json.dumps(self.keystrings, indent=2))
         else:
             raise SuiFileNotFound((filepath))
 
@@ -82,6 +83,12 @@ class SuiWallet:
     def keypair_for_keystring(self, key_string: str) -> KeyPair:
         """Get KeyPair for keystring."""
         return self._keypairs[key_string]
+
+    def keypair_for_address(self, addy: SuiAddress) -> KeyPair:
+        """Get the keypair for a given address."""
+        if addy.address in self._address_keypair:
+            return self._address_keypair[addy.address]
+        raise ValueError(f"{addy.address} is not known")
 
     def create_new_keypair_and_address(self, scheme: SignatureScheme) -> str:
         """

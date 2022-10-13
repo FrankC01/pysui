@@ -1,6 +1,7 @@
 """Main driver primarily for demonstrating."""
 
 import argparse
+import base64
 import os
 import pathlib
 import sys
@@ -23,7 +24,8 @@ from pysui.sui.sui_rpc import SuiRpcResult
 
 # from src.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
 from pysui.sui.sui_crypto import SuiAddress
-from pysui.sui.sui_types import ObjectID, SuiPackage
+from pysui.sui.sui_types import ObjectID, SuiPackage, SuiNumber, SuiString, SuiTxBytes
+from pysui.sui.sui_builders import TransferSui, ExecuteTransaction, SuiRequestType
 from .faux_wallet import SuiWallet
 
 
@@ -159,6 +161,39 @@ def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
             print(api_name)
 
 
+def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Transfer gas object."""
+    args.from_address = args.from_address if args.from_address else wallet.current_address
+    # print(args)
+    builder = TransferSui()
+    builder.set_amount(args.mist_amount).set_gas_budget(args.gas_budget).set_recipient(
+        args.to_address
+    ).set_sui_object_id(args.gas_object).set_signer(args.from_address)
+    # print(vars(builder))
+    result = wallet.execute(builder).json()
+    if "txBytes" in result["result"]:
+        kpair = wallet.keypair_for_address(args.from_address)
+        print(kpair)
+        b64tx_bytes = result["result"]["txBytes"]
+        builder = ExecuteTransaction()
+        builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
+            kpair.private_key.sign(base64.b64decode(b64tx_bytes))
+        ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORTXCERT)
+        print(vars(builder))
+        result = wallet.execute(builder).json()
+        print(result)
+    else:
+        print(f"Error {result}")
+
+
+def check_positive(value: str) -> int:
+    """Check for positive integers."""
+    ivalue = int(value)
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")
+    return SuiNumber(ivalue)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser structure."""
 
@@ -228,7 +263,7 @@ def build_parser() -> argparse.ArgumentParser:
     obj_arg_group.add_argument("--nft", help="Only show NFT objects", action="store_true")
     obj_arg_group.add_argument("--data", help="Only show data objects", action="store_true")
     subp.set_defaults(func=sui_objects)
-    # Object
+    # Package
     subp = subparser.add_parser("package", help="Get package object")
     subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
     subp.add_argument("--src", required=False, help="Display package module(s) src", action="store_true")
@@ -237,6 +272,40 @@ def build_parser() -> argparse.ArgumentParser:
     subp = subparser.add_parser("rpcapi", help="Display Sui RPC API information")
     subp.add_argument("-n", "--name", required=False, help="Display details for named Sui RPC API")
     subp.set_defaults(func=sui_api)
+    # Transfer SUI
+    subp = subparser.add_parser("transfer-sui", help="Transfer SUI gas to recipient")
+    subp.add_argument(
+        "-a",
+        "--mist-amount",
+        required=True,
+        help="Specify amount of MIST to transfer.",
+        type=check_positive,
+    )
+    subp.add_argument(
+        "-o", "--gas-object", required=True, help="Specify gas object to transfer from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-t",
+        "--to-address",
+        required=True,
+        help="Specify address to send gas to",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify transfer transaction budget",
+        type=check_positive,
+    )
+    subp.add_argument(
+        "-f",
+        "--from-address",
+        required=False,
+        help="Specify gas owner address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.set_defaults(func=transfer_sui)
     return parser
 
 

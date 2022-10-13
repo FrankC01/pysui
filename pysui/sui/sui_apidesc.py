@@ -1,6 +1,7 @@
 """Sui RPC API Descriptor."""
 
 from abc import ABC
+import json
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json, DataClassJsonMixin
 from sui.sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
@@ -176,14 +177,13 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
 
 
 def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
-    """
-    Build the schema dictionary then API call dictionary.
-
-    :param str method-param: The method-param parameter
-    """
+    """Build the schema dictionary then API call dictionary."""
     # print(indata)
     # Validate the inbound data. Keys are present in valid response
     # from rpc.discover
+    # with open("./apidefn.json", "w", encoding="utf8") as core_file:
+    #     core_file.write(json.dumps(indata, indent=2))
+
     if (
         isinstance(indata["result"], dict)
         and "methods" in indata["result"]
@@ -208,7 +208,6 @@ def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
 
 if __name__ == "__main__":
     # TODO: Move to regressions when ready
-    import json
 
     # Assume running from vscode with cwd 'src'
     with open("../apidefn.json", "r", encoding="utf8") as core_file:

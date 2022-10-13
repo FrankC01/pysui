@@ -19,8 +19,36 @@ class SuiString(SuiScalarType):
     """Sui String type."""
 
 
+class SuiTxBytes(SuiString):
+    """Sui Base64 tx_bytes string."""
+
+    @property
+    def tx_bytes(self) -> str:
+        """Satisfy transaction verification."""
+        return str(self)
+
+
+class SuiSignature(SuiString):
+    """Sui Base64 signature."""
+
+    @property
+    def signature(self) -> str:
+        """Satisfy transaction verification."""
+        return self.value().decode()
+
+
 class SuiNumber(SuiScalarType):
     """Sui Number type."""
+
+    @property
+    def gas_budget(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def amount(self) -> int:
+        """Alias for transactions."""
+        return self._value
 
 
 class ObjectID(SuiString):
@@ -32,6 +60,11 @@ class ObjectID(SuiString):
 
     @property
     def object_id(self) -> str:
+        """Alias over value."""
+        return self._value
+
+    @property
+    def sui_object_id(self) -> str:
         """Alias over value."""
         return self._value
 

@@ -17,8 +17,12 @@ class SignatureScheme(IntEnum):
             return self.name
         if self is SignatureScheme.SECP256K1:
             return "Secp256k1"
-        else:
-            raise TypeError(f"Unknown scheme {self.name}")
+        raise TypeError(f"Unknown scheme {self.name}")
+
+    @property
+    def sig_scheme(self) -> str:
+        """As signature scheme string."""
+        return self.as_str()
 
 
 class Key(ABC):
@@ -50,6 +54,10 @@ class Key(ABC):
 
 class PrivateKey(Key):
     """PrivateKey construct."""
+
+    @abstractmethod
+    def sign(self, data: bytes) -> str:
+        """Sign data and return signature."""
 
 
 class PublicKey(Key):

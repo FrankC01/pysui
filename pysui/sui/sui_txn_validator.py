@@ -28,6 +28,7 @@ def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[
     """Validate the specific parameter."""
     schema_name = type(build_parm).__name__
     att = getattr(build_parm, api_parm.name)
+    # print(f"att {api_parm.name} = {att}")
     if att is None:
         raise SuiRpcApiInvalidParameter(f"builder {build_parm} does not have attribute {api_parm.name}")
     return (schema_name, att)

@@ -1,21 +1,51 @@
 """SUI Builders for RPC."""
 
 from abc import abstractmethod
-from abstracts import Builder
-from sui.sui_types import SuiType, ObjectInfo, ObjectID
+from enum import IntEnum
+from abstracts import Builder, PublicKey, SignatureScheme
+from sui.sui_types import SuiType, ObjectInfo, ObjectID, SuiNumber, SuiTxBytes, SuiSignature
 from sui.sui_crypto import SuiAddress
 
 
+class SuiRequestType(IntEnum):
+    """Key encoding scheme variations."""
+
+    IMMEDIATERETURN = 0
+    WAITFORTXCERT = 1
+    WAITFOREFFECTSCERT = 2
+    WAITFORLOCALEXECUTION = 3
+
+    def as_str(self) -> str:
+        """Get scheme as string."""
+        if self is SuiRequestType.IMMEDIATERETURN:
+            return "ImmediateReturn"
+        if self is SuiRequestType.WAITFORTXCERT:
+            return "WaitForTxCert"
+        if self is SuiRequestType.WAITFOREFFECTSCERT:
+            return "WaitForEffectsCert"
+        if self is SuiRequestType.WAITFORLOCALEXECUTION:
+            return "WaitForLocalExecution"
+        raise TypeError(f"Unknown request type {self.name}")
+
+    @property
+    def request_type(self) -> str:
+        """Satisfy transaction verification."""
+        return self.as_str()
+
+
 class SuiBaseBuilder(Builder):
-    """Base Builder Class."""
+    """
+    Base Sui API Builder Class.
+
+    Subclasses must identify public vars that are
+    required by Sui RPC API.
+    """
 
     def __init__(self, method: str, txn_required: bool) -> None:
         """Initialize Builder."""
         super().__init__()
         self._method = method
-        self._arguments = []
         self._txn_required = txn_required
-        self._arguments_required = False
 
     @abstractmethod
     def _collect_parameters(self) -> list[SuiType]:
@@ -25,16 +55,6 @@ class SuiBaseBuilder(Builder):
     def params(self) -> list[SuiType]:
         """Return parameters list."""
         return self._collect_parameters()
-
-    @property
-    def arguments(self) -> list[SuiType]:
-        """Return arguments list."""
-        return self._arguments
-
-    def add_argument(self, arg: SuiType) -> Builder:
-        """Append an argument to end."""
-        self._arguments.append(arg)
-        return self
 
     @property
     def header(self) -> dict:
@@ -51,10 +71,9 @@ class SuiBaseBuilder(Builder):
         """Get transaction required flag."""
         return self._txn_required
 
-    @property
-    def args_required(self) -> bool:
-        """Get arguments required flag."""
-        return self._arguments_required
+    def _pull_vars(self) -> list[SuiType]:
+        var_map = vars(self)
+        return [val for key, val in var_map.items() if key[0] != "_"]
 
 
 class _NativeTransactionBuilder(SuiBaseBuilder):
@@ -167,6 +186,48 @@ class GetRpcAPI(_NativeTransactionBuilder):
         return []
 
 
+class ExecuteTransaction(_NativeTransactionBuilder):
+    """Submit a signed transaction to Sui."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__("sui_executeTransaction")
+        self.tx_bytes: SuiTxBytes = None
+        self.sig_scheme: SignatureScheme = None
+        self.signature: SuiSignature = None
+        self.pub_key: PublicKey = None
+        self.request_type: SuiRequestType = None
+
+    def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "ExecuteTransaction":
+        """Set the transaction base64 string."""
+        self.tx_bytes = tbyteb64
+        return self
+
+    def set_sig_scheme(self, sig: SignatureScheme) -> "ExecuteTransaction":
+        """Set the transaction base64 string."""
+        self.sig_scheme = sig
+        return self
+
+    def set_signature(self, sigb64: SuiSignature) -> "ExecuteTransaction":
+        """Set the signed transaction base64 string."""
+        self.signature = sigb64
+        return self
+
+    def set_pub_key(self, pubkey: PublicKey) -> "ExecuteTransaction":
+        """Set the public key base64 string."""
+        self.pub_key = pubkey
+        return self
+
+    def set_request_type(self, rtype: SuiRequestType) -> "ExecuteTransaction":
+        """Set the request type for execution."""
+        self.request_type = rtype
+        return self
+
+    def _collect_parameters(self) -> list[SuiType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
 class _MoveCallTransactionBuilder(SuiBaseBuilder):
     """Builders that must be processed, signed then executed."""
 
@@ -175,13 +236,56 @@ class _MoveCallTransactionBuilder(SuiBaseBuilder):
         super().__init__(method, True)
 
 
+class TransferObject(_MoveCallTransactionBuilder):
+    """Transfers Sui object from one recipient to the other."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__("sui_transferObject")
+        raise NotImplementedError
+
+    def _collect_parameters(self) -> list[SuiType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
 class TransferSui(_MoveCallTransactionBuilder):
     """Transfers Sui coin from one recipient to the other."""
 
     def __init__(self) -> None:
         """Initialize builder."""
         super().__init__("sui_transferSui")
+        self.signer: SuiAddress = None
+        self.sui_object_id: ObjectID = None
+        self.gas_budget: SuiNumber = None
+        self.recipient: SuiAddress = None
+        self.amount: SuiNumber = None
+
+    def set_signer(self, address: SuiAddress) -> "TransferSui":
+        """Set the gas owner signer."""
+        self.signer = address
+        return self
+
+    def set_sui_object_id(self, obj: ObjectID) -> "TransferSui":
+        """Set sui object gas object."""
+        self.sui_object_id = obj
+        return self
+
+    def set_gas_budget(self, obj: SuiNumber) -> "TransferSui":
+        """Set the amount for transaction payment."""
+        self.gas_budget: SuiNumber = obj
+        return self
+
+    def set_recipient(self, obj: SuiAddress) -> "TransferSui":
+        """Set the address for the receiver."""
+        self.recipient: SuiAddress = obj
+        return self
+
+    def set_amount(self, obj: SuiNumber) -> "TransferSui":
+        """Set the amount to transfer to recipient."""
+        self.amount: SuiNumber = obj
+        return self
 
     def _collect_parameters(self) -> list[SuiType]:
         """Collect the call parameters."""
-        raise NotImplementedError
+        return self._pull_vars()
