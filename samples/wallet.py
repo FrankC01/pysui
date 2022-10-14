@@ -24,7 +24,7 @@ from pysui.sui.sui_rpc import SuiRpcResult
 
 # from src.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
 from pysui.sui.sui_crypto import SuiAddress
-from pysui.sui.sui_types import ObjectID, SuiPackage, SuiNumber, SuiString, SuiTxBytes
+from pysui.sui.sui_types import ObjectID, SuiPackageObject, SuiNumber, SuiTxBytes
 from pysui.sui.sui_builders import TransferSui, ExecuteTransaction, SuiRequestType
 from .faux_wallet import SuiWallet
 
@@ -73,7 +73,17 @@ def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Get a package object."""
     result: SuiRpcResult = wallet.get_package(args.id)
     if result.is_ok():
-        package: SuiPackage = result.result_data
+        print(result.result_data)
+        print()
+    else:
+        print(f"{result.result_string}")
+
+
+def sui_package_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Get a package object."""
+    result: SuiRpcResult = wallet.get_package_object(args.id)
+    if result.is_ok():
+        package: SuiPackageObject = result.result_data
         print()
         print("Package")
         print(f"id: {str(package.identifier)} owner: {package.owner}")
@@ -263,10 +273,14 @@ def build_parser() -> argparse.ArgumentParser:
     obj_arg_group.add_argument("--nft", help="Only show NFT objects", action="store_true")
     obj_arg_group.add_argument("--data", help="Only show data objects", action="store_true")
     subp.set_defaults(func=sui_objects)
-    # Package
-    subp = subparser.add_parser("package", help="Get package object")
+    # Package Object
+    subp = subparser.add_parser("package-object", help="Get raw package object with Move assembly source")
     subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
     subp.add_argument("--src", required=False, help="Display package module(s) src", action="store_true")
+    subp.set_defaults(func=sui_package_object)
+    # Normalized Package
+    subp = subparser.add_parser("package", help="Get package definition")
+    subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
     subp.set_defaults(func=sui_package)
     # RPC information
     subp = subparser.add_parser("rpcapi", help="Display Sui RPC API information")

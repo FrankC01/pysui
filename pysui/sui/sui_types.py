@@ -64,6 +64,11 @@ class ObjectID(SuiString):
         return self._value
 
     @property
+    def package(self) -> str:
+        """Alias over value."""
+        return self._value
+
+    @property
     def sui_object_id(self) -> str:
         """Alias over value."""
         return self._value
@@ -356,7 +361,7 @@ class SuiGasType(SuiCoinType):
         return self._balance
 
 
-class SuiPackage(SuiType):
+class SuiPackageObject(SuiType):
     """Sui package."""
 
     def __init__(self, indata: dict) -> None:
@@ -463,7 +468,7 @@ def from_object_type(inblock: dict) -> ObjectRead:
                     return SuiDataType(indata)
             return ObjectRead(indata)
         case "package":
-            return SuiPackage(inblock)
+            return SuiPackageObject(inblock)
         case _:
             raise ValueError(f"Don't recognize {indata['dataType']}")
 

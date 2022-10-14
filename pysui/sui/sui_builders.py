@@ -151,7 +151,7 @@ class GetRawPackage(_NativeTransactionBuilder):
         self.object_id = package_id
         return self
 
-    def _collect_parameters(self) -> list[SuiType]:
+    def _collect_parameters(self) -> list[ObjectID]:
         """Collect the call parameters."""
         return [self.object_id]
 
@@ -159,17 +159,17 @@ class GetRawPackage(_NativeTransactionBuilder):
 class GetPackage(_NativeTransactionBuilder):
     """Fetch package definitions including modules and functions."""
 
-    def __init__(self, package: SuiType = None) -> None:
+    def __init__(self, package: ObjectID = None) -> None:
         """Initialize builder."""
         super().__init__("sui_getNormalizedMoveModulesByPackage")
-        self.package = package
+        self.package: ObjectID = package
 
-    def set_package(self, package: SuiType) -> "GetPackage":
+    def set_package(self, package: ObjectID) -> "GetPackage":
         """Set the package to retrieve."""
-        self.package = package
+        self.package: ObjectID = package
         return self
 
-    def _collect_parameters(self) -> list[SuiType]:
+    def _collect_parameters(self) -> list[ObjectID]:
         """Collect the call parameters."""
         return [self.package]
 

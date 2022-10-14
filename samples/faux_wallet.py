@@ -14,6 +14,7 @@ from pysui.sui import (
     GetObjectsOwnedByAddress,
     GetObject,
     GetRawPackage,
+    GetPackage,
 )
 from pysui.sui.sui_crypto import keypair_from_keystring, create_new_address, SuiAddress
 from pysui.sui.sui_excepts import (
@@ -25,6 +26,7 @@ from pysui.sui.sui_excepts import (
 )
 
 from pysui.sui.sui_types import (
+    ObjectID,
     SuiNativeCoinDescriptor,
     SuiGasType,
     ObjectInfo,
@@ -135,7 +137,14 @@ class SuiWallet:
         """Check if API supported in RPC host."""
         return self._client.api_exists(api_name)
 
-    def get_package(self, package_id: str) -> Union[SuiRpcResult, Exception]:
+    def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
+        """Get details of Sui package."""
+        result = self.execute(GetPackage(package_id)).json()
+        if "error" in result:
+            return SuiRpcResult(False, f"{result['error']}")
+        return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+
+    def get_package_object(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get details of Sui package."""
         result = self.execute(GetRawPackage(package_id)).json()
         if result["result"]["status"] != "Exists":
