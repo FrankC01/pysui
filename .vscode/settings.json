@@ -15,7 +15,9 @@
         "--disable",
         "wrong-import-position",
         "--disable",
-        "global-statement"
+        "global-statement",
+        "--disable",
+        "import-outside-toplevel"
     ],
     "python.linting.pydocstyleEnabled": true,
     "editor.formatOnSave": true,

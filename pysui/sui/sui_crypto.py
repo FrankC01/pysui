@@ -15,15 +15,12 @@
 """Sui Crpto Utilities."""
 
 import base64
-import binascii
-from typing import Union
-import hashlib
 import secp256k1
 from nacl.signing import SigningKey, VerifyKey
 from nacl.encoding import Base64Encoder
 
 from abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
-from sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength, SuiInvalidAddress
+from sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength
 from sui.sui_constants import (
     SUI_KEYPAIR_LEN,
     ED25519_PUBLICKEY_BYTES_LEN,
@@ -32,10 +29,8 @@ from sui.sui_constants import (
     SECP256K1_KEYPAIR_BYTES_LEN,
     SECP256K1_PUBLICKEY_BYTES_LEN,
     SECP256K1_PRIVATEKEY_BYTES_LEN,
-    SUI_ADDRESS_STRING_LEN,
 )
-from sui.sui_types import SuiType, SuiString, SuiSignature
-from sui.sui_txn_validator import valid_sui_address
+from sui.sui_types import SuiSignature, SuiAddress
 
 
 # Edwards Curve Keys
@@ -161,7 +156,7 @@ class SuiPrivateKeySECP256K1(PrivateKey):
         super().__init__(SignatureScheme.SECP256K1, indata)
         self._signing_key = secp256k1.PrivateKey(indata, raw=True)
 
-    # TODO: Needs testing
+    # TODO: Needs completion work and testing
     def sign(self, data: bytes) -> str:
         """ED25519 sign data bytes."""
         return SuiSignature(self._signing_key.ecdsa_sign(data))
@@ -224,51 +219,7 @@ class SuiKeyPairSECP256K1(KeyPair):
         return f"PubKey {self._public_key}, PrivKey {self._private_key}"
 
 
-# Address
-
-
-class SuiAddress(SuiType):
-    """Sui Address Type."""
-
-    def __init__(self, identifier: str) -> None:
-        """Initialize address."""
-        identifier = identifier if len(identifier) != SUI_ADDRESS_STRING_LEN else SuiString(f"0x{identifier}")
-        super().__init__(SuiString(identifier))
-        # Alias for transaction validation
-        self.address = identifier
-
-    @property
-    def signer(self) -> str:
-        """Alias for signer in transaction validation."""
-        return self.address
-
-    @property
-    def recipient(self) -> str:
-        """Alias for recipient in transaction validation."""
-        return self.address
-
-    @classmethod
-    def from_hex_string(cls, instr: Union[str, SuiString]) -> "SuiAddress":
-        """Instantiate instance of SuiAddress from hex string."""
-        instr = instr if isinstance(instr, str) else str(instr)
-        if valid_sui_address(instr):
-            return cls(instr)
-        raise SuiInvalidAddress(f"{instr} is not a valid address string.")
-
-    @classmethod
-    def from_keypair_string(cls, keystring: str) -> "SuiAddress":
-        """Address from base64 encoded keypair string with no validation."""
-        return cls.from_bytes(base64.b64decode(keystring))
-
-    @classmethod
-    def from_bytes(cls, in_bytes: bytes) -> "SuiAddress":
-        """Create address from bytes."""
-        # print(f"In bytes = {in_bytes}")
-        digest = in_bytes[0:33] if in_bytes[0] == 0 else in_bytes[0:34]
-        glg = hashlib.sha3_256()
-        glg.update(digest)
-        hash_bytes = binascii.hexlify(glg.digest())[0:40]
-        return cls(hash_bytes.decode("utf-8"))
+# Utility functions
 
 
 def keypair_from_keystring(keystring: str) -> KeyPair:
@@ -282,14 +233,6 @@ def keypair_from_keystring(keystring: str) -> KeyPair:
         case SignatureScheme.SECP256K1:
             return SuiKeyPairSECP256K1.from_bytes(addy_bytes[1:])
     raise NotImplementedError
-
-
-def address_from_keystring(indata: str) -> SuiAddress:
-    """From a 88 byte keypair string create a SuiAddress."""
-    #   Check address is legit keypair
-    _kp = keypair_from_keystring(indata)
-    #   decode from base64 and generate
-    return SuiAddress.from_bytes(base64.b64decode(indata))
 
 
 def create_new_keypair(keytype: SignatureScheme = SignatureScheme.ED25519) -> KeyPair:

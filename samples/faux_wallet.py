@@ -1,6 +1,7 @@
 """Sui Wallet Facade."""
 
 
+import base64
 from numbers import Number
 import os
 import json
@@ -15,6 +16,9 @@ from pysui.sui import (
     GetObject,
     GetRawPackage,
     GetPackage,
+    TransferSui,
+    ExecuteTransaction,
+    SuiRequestType,
 )
 from pysui.sui.sui_crypto import keypair_from_keystring, create_new_address, SuiAddress
 from pysui.sui.sui_excepts import (
@@ -27,11 +31,13 @@ from pysui.sui.sui_excepts import (
 
 from pysui.sui.sui_types import (
     ObjectID,
+    SuiTxBytes,
     SuiNativeCoinDescriptor,
     SuiGasType,
     ObjectInfo,
     SuiNftDescriptor,
     SuiDataDescriptor,
+    SuiNumber,
     from_object_descriptor,
     from_object_type,
 )
@@ -154,6 +160,31 @@ class SuiWallet:
         if result["result"]["details"]["data"]["dataType"] == "package":
             return SuiRpcResult(True, None, from_object_type(result["result"]["details"]))
         return SuiRpcResult(False, f"ID: {package_id} is a move object, not a package")
+
+    def transfer_sui(
+        self,
+        signer: SuiAddress,
+        mists: SuiNumber,
+        gas_object: ObjectID,
+        recipient: SuiAddress,
+        gas_budget: SuiNumber,
+    ) -> SuiRpcResult:
+        """Transfer SUI Mist from one account to another."""
+        result = self.execute(
+            TransferSui(signer=signer, mists=mists, gas_object=gas_object, recipient=recipient, gas_budget=gas_budget)
+        ).json()
+        if "error" in result:
+            return SuiRpcResult(False, result["error"]["message"], None)
+        kpair = self.keypair_for_address(signer)
+        b64tx_bytes = result["result"]["txBytes"]
+        builder = ExecuteTransaction()
+        builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
+            kpair.private_key.sign(base64.b64decode(b64tx_bytes))
+        ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORTXCERT)
+        result = self.execute(builder).json()
+        if "error" in result:
+            return SuiRpcResult(False, result["error"]["message"], None)
+        return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
 
     def get_type_descriptor(self, claz: ObjectInfo, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get descriptors of claz type for address."""

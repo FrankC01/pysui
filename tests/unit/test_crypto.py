@@ -4,13 +4,13 @@ import base64
 import pytest
 
 from pysui.abstracts.client_keypair import SignatureScheme
+from pysui.sui.sui_types import address_from_keystring
 from pysui.sui.sui_crypto import (
     SuiPublicKeyED25519,
     SuiPrivateKeyED25519,
     SuiPublicKeySECP256K1,
     SuiPrivateKeySECP256K1,
     keypair_from_keystring,
-    address_from_keystring,
     create_new_address,
 )
 from pysui.sui.sui_constants import (

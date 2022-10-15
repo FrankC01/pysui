@@ -252,23 +252,37 @@ class TransferObject(_MoveCallTransactionBuilder):
 class TransferSui(_MoveCallTransactionBuilder):
     """Transfers Sui coin from one recipient to the other."""
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs: dict) -> None:
         """Initialize builder."""
         super().__init__("sui_transferSui")
         self.signer: SuiAddress = None
-        self.sui_object_id: ObjectID = None
+        self.gas_object: ObjectID = None
         self.gas_budget: SuiNumber = None
         self.recipient: SuiAddress = None
-        self.amount: SuiNumber = None
+        self.mists: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "signer":
+                    self.signer = value
+                case "gas_object":
+                    self.gas_object = value
+                case "gas_budget":
+                    self.gas_budget = value
+                case "recipient":
+                    self.recipient = value
+                case "mists":
+                    self.mists = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
 
     def set_signer(self, address: SuiAddress) -> "TransferSui":
         """Set the gas owner signer."""
         self.signer = address
         return self
 
-    def set_sui_object_id(self, obj: ObjectID) -> "TransferSui":
+    def set_gas_object(self, obj: ObjectID) -> "TransferSui":
         """Set sui object gas object."""
-        self.sui_object_id = obj
+        self.gas_object = obj
         return self
 
     def set_gas_budget(self, obj: SuiNumber) -> "TransferSui":
@@ -281,9 +295,9 @@ class TransferSui(_MoveCallTransactionBuilder):
         self.recipient: SuiAddress = obj
         return self
 
-    def set_amount(self, obj: SuiNumber) -> "TransferSui":
+    def set_mists(self, obj: SuiNumber) -> "TransferSui":
         """Set the amount to transfer to recipient."""
-        self.amount: SuiNumber = obj
+        self.mists: SuiNumber = obj
         return self
 
     def _collect_parameters(self) -> list[SuiType]:

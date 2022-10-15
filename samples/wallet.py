@@ -1,7 +1,6 @@
 """Main driver primarily for demonstrating."""
 
 import argparse
-import base64
 import os
 import pathlib
 import sys
@@ -24,8 +23,7 @@ from pysui.sui.sui_rpc import SuiRpcResult
 
 # from src.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
 from pysui.sui.sui_crypto import SuiAddress
-from pysui.sui.sui_types import ObjectID, SuiPackageObject, SuiNumber, SuiTxBytes
-from pysui.sui.sui_builders import TransferSui, ExecuteTransaction, SuiRequestType
+from pysui.sui.sui_types import ObjectID, SuiPackageObject, SuiNumber
 from .faux_wallet import SuiWallet
 
 
@@ -175,25 +173,11 @@ def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Transfer gas object."""
     args.from_address = args.from_address if args.from_address else wallet.current_address
     # print(args)
-    builder = TransferSui()
-    builder.set_amount(args.mist_amount).set_gas_budget(args.gas_budget).set_recipient(
-        args.to_address
-    ).set_sui_object_id(args.gas_object).set_signer(args.from_address)
-    # print(vars(builder))
-    result = wallet.execute(builder).json()
-    if "txBytes" in result["result"]:
-        kpair = wallet.keypair_for_address(args.from_address)
-        print(kpair)
-        b64tx_bytes = result["result"]["txBytes"]
-        builder = ExecuteTransaction()
-        builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-            kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-        ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORTXCERT)
-        print(vars(builder))
-        result = wallet.execute(builder).json()
-        print(result)
+    result = wallet.transfer_sui(args.from_address, args.mist_amount, args.gas_object, args.to_address, args.gas_budget)
+    if result.is_ok():
+        print(result.result_data)
     else:
-        print(f"Error {result}")
+        print(f"Error: {result.result_string}")
 
 
 def check_positive(value: str) -> int:

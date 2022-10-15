@@ -3,12 +3,19 @@
 
 from abc import abstractmethod
 import json
+import base64
+import binascii
+import hashlib
 from numbers import Number
-from typing import TypeVar
+from typing import TypeVar, Union
 from abstracts import (
     ClientAbstractClassType,
     ClientAbstractScalarType,
 )
+
+from sui.sui_constants import SUI_ADDRESS_STRING_LEN
+from sui.sui_txn_validator import valid_sui_address
+from sui import SuiInvalidAddress
 
 
 class SuiScalarType(ClientAbstractScalarType):
@@ -78,6 +85,50 @@ class SuiType(ClientAbstractClassType):
     """Base most SUI object type."""
 
 
+class SuiAddress(SuiType):
+    """Sui Address Type."""
+
+    def __init__(self, identifier: str) -> None:
+        """Initialize address."""
+        identifier = identifier if len(identifier) != SUI_ADDRESS_STRING_LEN else SuiString(f"0x{identifier}")
+        super().__init__(SuiString(identifier))
+        # Alias for transaction validation
+        self.address = identifier
+
+    @property
+    def signer(self) -> str:
+        """Alias for signer in transaction validation."""
+        return self.address
+
+    @property
+    def recipient(self) -> str:
+        """Alias for recipient in transaction validation."""
+        return self.address
+
+    @classmethod
+    def from_hex_string(cls, instr: Union[str, SuiString]) -> "SuiAddress":
+        """Instantiate instance of SuiAddress from hex string."""
+        instr = instr if isinstance(instr, str) else str(instr)
+        if valid_sui_address(instr):
+            return cls(instr)
+        raise SuiInvalidAddress(f"{instr} is not a valid address string.")
+
+    @classmethod
+    def from_keypair_string(cls, keystring: str) -> "SuiAddress":
+        """Address from base64 encoded keypair string with no validation."""
+        return cls.from_bytes(base64.b64decode(keystring))
+
+    @classmethod
+    def from_bytes(cls, in_bytes: bytes) -> "SuiAddress":
+        """Create address from bytes."""
+        # print(f"In bytes = {in_bytes}")
+        digest = in_bytes[0:33] if in_bytes[0] == 0 else in_bytes[0:34]
+        glg = hashlib.sha3_256()
+        glg.update(digest)
+        hash_bytes = binascii.hexlify(glg.digest())[0:40]
+        return cls(hash_bytes.decode("utf-8"))
+
+
 class SuiRawDescriptor(SuiType):
     """Base descriptor type."""
 
@@ -116,12 +167,11 @@ class ObjectInfo(SuiRawDescriptor):
     def __init__(self, indata: dict) -> None:
         """Initialize the base descriptor."""
         super().__init__(indata, ObjectID(indata["objectId"]))
-        self._version = indata["version"]
-        self._digest = indata["digest"]
-        # TODO: Convert to SuiAddress
-        self._owner = indata["owner"]["AddressOwner"]
-        self._previous_transaction = indata["previousTransaction"]
-        self._type_signature = indata["type"]
+        self._version: int = indata["version"]
+        self._digest: str = indata["digest"]
+        self._owner: SuiAddress = SuiAddress.from_hex_string(indata["owner"]["AddressOwner"])
+        self._previous_transaction: str = indata["previousTransaction"]
+        self._type_signature: str = indata["type"]
 
     @property
     def version(self) -> int:
@@ -133,9 +183,8 @@ class ObjectInfo(SuiRawDescriptor):
         """Return the type digest."""
         return self._digest
 
-    # TODO: Change to return SuiAddress when constructor fixed
     @property
-    def owner(self) -> str:
+    def owner(self) -> SuiAddress:
         """Return the types instance owner."""
         return self._owner
 
@@ -212,8 +261,7 @@ class ObjectRead(SuiRawObject):
         self._type_signature = indata["type"]
         self._data_type = indata["dataType"]
         self._has_public_transfer = indata["has_public_transfer"]
-        # TODO: Convert to SuiAddress
-        self._owner = indata["owner"]["AddressOwner"]
+        self._owner: SuiAddress = SuiAddress.from_hex_string(indata["owner"]["AddressOwner"])
         self._previous_transaction = indata["previousTransaction"]
         self._storage_rebate = indata["storageRebate"]
         self._digest = indata["digest"]
@@ -245,7 +293,7 @@ class ObjectRead(SuiRawObject):
         return self._has_public_transfer
 
     @property
-    def owner(self) -> str:
+    def owner(self) -> SuiAddress:
         """Return the types instance owner."""
         return self._owner
 
@@ -362,14 +410,14 @@ class SuiGasType(SuiCoinType):
 
 
 class SuiPackageObject(SuiType):
-    """Sui package."""
+    """Sui package object."""
 
     def __init__(self, indata: dict) -> None:
         """Initialize a package construct."""
         super().__init__(ObjectID(indata["reference"]["objectId"]))
         self._data_type: str = indata["data"]["dataType"]
         self._modules: dict = indata["data"]["disassembled"]
-        self._owner: str = indata["owner"]
+        self._owner: SuiAddress = SuiAddress.from_hex_string(indata["owner"])
         self._previous_transaction = indata["previousTransaction"]
         self._storage_rebate: int = indata["storageRebate"]
         self._digest = indata["reference"]["digest"]
@@ -391,7 +439,7 @@ class SuiPackageObject(SuiType):
         return list(self.modules.keys())
 
     @property
-    def owner(self) -> str:
+    def owner(self) -> SuiAddress:
         """Return the type."""
         return self._owner
 
@@ -414,6 +462,16 @@ class SuiPackageObject(SuiType):
     def digest(self) -> str:
         """Return the package digest."""
         return self._digest
+
+
+def address_from_keystring(indata: str) -> SuiAddress:
+    """From a 88 byte keypair string create a SuiAddress."""
+    #   Check address is legit keypair
+    import sui
+
+    _kp = sui.sui_crypto.keypair_from_keystring(indata)
+    #   decode from base64 and generate
+    return SuiAddress.from_bytes(base64.b64decode(indata))
 
 
 def from_object_descriptor(indata: dict) -> ObjectInfo:
