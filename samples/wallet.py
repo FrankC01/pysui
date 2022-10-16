@@ -180,6 +180,33 @@ def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
+def pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Payments for one or more recipients from one or more coins for one or more amounts."""
+    print()
+    args.signer = args.signer if args.signer else wallet.current_address
+    in_arrays = [args.input_coins, args.amounts, args.recipients]
+    if all(len(in_arrays[0]) == len(l) for l in in_arrays[1:]):
+        print(True)
+    else:
+        print(in_arrays)
+        max_set = max(in_arrays, key=len)
+        max_indx = in_arrays.index(max_set)
+        print(f" index {max_indx} for {max_set}")
+        for dex, ilist in enumerate(in_arrays):
+            if dex != max_indx:
+                for _ in range(len(max_set) - len(ilist)):
+                    ilist.append(ilist[0])
+        print(in_arrays)
+
+    result = wallet.pay_transfer(
+        args.signer, in_arrays[0], in_arrays[2], in_arrays[1], args.gas_object, args.gas_budget
+    )
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
 def check_positive(value: str) -> int:
     """Check for positive integers."""
     ivalue = int(value)
@@ -202,7 +229,10 @@ def build_parser() -> argparse.ArgumentParser:
             option_string: str | None = ...,
         ) -> None:
             try:
-                values = SuiAddress.from_hex_string(values)
+                if isinstance(values, list):
+                    values = [SuiAddress.from_hex_string(v) for v in values]
+                else:
+                    values = SuiAddress.from_hex_string(values)
             except ValueError:
                 parser.error(f"'{values}' is not valid address.")
                 sys.exit(-1)
@@ -219,7 +249,10 @@ def build_parser() -> argparse.ArgumentParser:
             option_string: str | None = ...,
         ) -> None:
             try:
-                values = ObjectID(values)
+                if isinstance(values, list):
+                    values = [ObjectID(v) for v in values]
+                else:
+                    values = ObjectID(values)
             except ValueError:
                 parser.error(f"'{values}' is not valid address.")
                 sys.exit(-1)
@@ -304,6 +337,51 @@ def build_parser() -> argparse.ArgumentParser:
         action=ValidateAddress,
     )
     subp.set_defaults(func=transfer_sui)
+
+    # Pays
+    subp = subparser.add_parser("pay", help="Transfer SUI gas to recipient")
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify pay signer address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-i",
+        "--input-coins",
+        required=True,
+        nargs="+",
+        help="Specify the input coins for each <RECEIPIENT>:<AMOUNTS> to send to",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-a",
+        "--amounts",
+        required=True,
+        nargs="+",
+        help="Specify amounts of MIST for each <INPUT-COINS> provided.",
+        type=check_positive,
+    )
+    subp.add_argument(
+        "-r",
+        "--recipients",
+        required=True,
+        nargs="+",
+        help="Specify recipient address for each <AMOUNTS>:<INPUT-COINS> to send to",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-o", "--gas-object", required=True, help="Specify gas object to transfer from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify transfer transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(func=pay_sui)
     return parser
 
 

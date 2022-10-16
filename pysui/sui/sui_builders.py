@@ -3,8 +3,17 @@
 from abc import abstractmethod
 from enum import IntEnum
 from abstracts import Builder, PublicKey, SignatureScheme
-from sui.sui_types import SuiType, ObjectInfo, ObjectID, SuiNumber, SuiTxBytes, SuiSignature
-from sui.sui_crypto import SuiAddress
+from sui.sui_types import (
+    SuiType,
+    ObjectInfo,
+    ObjectID,
+    SuiNumber,
+    SuiTxBytes,
+    SuiSignature,
+    SuiArray,
+    SuiAddress,
+    SuiBaseType,
+)
 
 
 class SuiRequestType(IntEnum):
@@ -223,7 +232,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         self.request_type = rtype
         return self
 
-    def _collect_parameters(self) -> list[SuiType]:
+    def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return self._pull_vars()
 
@@ -244,7 +253,7 @@ class TransferObject(_MoveCallTransactionBuilder):
         super().__init__("sui_transferObject")
         raise NotImplementedError
 
-    def _collect_parameters(self) -> list[SuiType]:
+    def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return self._pull_vars()
 
@@ -300,6 +309,70 @@ class TransferSui(_MoveCallTransactionBuilder):
         self.mists: SuiNumber = obj
         return self
 
-    def _collect_parameters(self) -> list[SuiType]:
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class Pay(_MoveCallTransactionBuilder):
+    """Transfer, split and merge SUI coins."""
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_pay")
+        self.signer: SuiAddress = None
+        self.input_coins: SuiArray[ObjectID] = None
+        self.recipients: SuiArray[SuiAddress] = None
+        self.amounts: SuiArray[SuiNumber] = None
+        self.gas_object: ObjectID = None
+        self.gas_budget: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "signer":
+                    self.signer = value
+                case "input_coins":
+                    self.input_coins = SuiArray[ObjectID](value)
+                case "recipients":
+                    self.recipients = SuiArray[SuiAddress](value)
+                case "amounts":
+                    self.amounts = SuiArray[SuiNumber](value)
+                case "gas_object":
+                    self.gas_object = value
+                case "gas_budget":
+                    self.gas_budget = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def set_signer(self, address: SuiAddress) -> "Pay":
+        """Set the gas owner signer."""
+        self.signer: SuiAddress = address
+        return self
+
+    def set_input_coins(self, obj: list[ObjectID]) -> "Pay":
+        """Set sui object gas object."""
+        self.input_coins: SuiArray[ObjectID] = SuiArray[ObjectID](obj)
+        return self
+
+    def set_recipients(self, obj: list[SuiAddress]) -> "Pay":
+        """Set the address for the receiver."""
+        self.recipients: SuiArray[SuiAddress] = SuiArray[SuiAddress](obj)
+        return self
+
+    def set_amounts(self, obj: list[SuiNumber]) -> "Pay":
+        """Set the amount to transfer to recipient."""
+        self.amounts: SuiArray[SuiNumber] = SuiArray[SuiNumber](obj)
+        return self
+
+    def set_gas_object(self, obj: ObjectID) -> "Pay":
+        """Set sui object gas object."""
+        self.gas_object: ObjectID = obj
+        return self
+
+    def set_gas_budget(self, obj: SuiNumber) -> "Pay":
+        """Set the amount for transaction payment."""
+        self.gas_budget: SuiNumber = obj
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return self._pull_vars()

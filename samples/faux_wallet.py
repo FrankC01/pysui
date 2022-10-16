@@ -17,6 +17,7 @@ from pysui.sui import (
     GetRawPackage,
     GetPackage,
     TransferSui,
+    Pay,
     ExecuteTransaction,
     SuiRequestType,
 )
@@ -172,6 +173,39 @@ class SuiWallet:
         """Transfer SUI Mist from one account to another."""
         result = self.execute(
             TransferSui(signer=signer, mists=mists, gas_object=gas_object, recipient=recipient, gas_budget=gas_budget)
+        ).json()
+        if "error" in result:
+            return SuiRpcResult(False, result["error"]["message"], None)
+        kpair = self.keypair_for_address(signer)
+        b64tx_bytes = result["result"]["txBytes"]
+        builder = ExecuteTransaction()
+        builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
+            kpair.private_key.sign(base64.b64decode(b64tx_bytes))
+        ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORTXCERT)
+        result = self.execute(builder).json()
+        if "error" in result:
+            return SuiRpcResult(False, result["error"]["message"], None)
+        return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+
+    def pay_transfer(
+        self,
+        signer: SuiAddress,
+        input_coins: list[ObjectID],
+        recipients: list[SuiAddress],
+        amounts: list[SuiNumber],
+        gas_object: ObjectID,
+        gas_budget: SuiNumber,
+    ) -> SuiRpcResult:
+        """Transfer SUI Mist from one account to another."""
+        result = self.execute(
+            Pay(
+                signer=signer,
+                input_coins=input_coins,
+                recipients=recipients,
+                amounts=amounts,
+                gas_object=gas_object,
+                gas_budget=gas_budget,
+            )
         ).json()
         if "error" in result:
             return SuiRpcResult(False, result["error"]["message"], None)

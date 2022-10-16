@@ -3,7 +3,11 @@ from abc import ABC
 from typing import Any
 
 
-class ClientAbstractScalarType(ABC):
+class ClientAbstractType(ABC):
+    """Base most abstraction."""
+
+
+class ClientAbstractScalarType(ClientAbstractType):
     """Core scalar type."""
 
     def __init__(self, value: Any) -> None:
@@ -19,7 +23,7 @@ class ClientAbstractScalarType(ABC):
         return f"{self._value}"
 
 
-class ClientAbstractClassType(ABC):
+class ClientAbstractClassType(ClientAbstractType):
     """Core type that supports identification."""
 
     def __init__(self, identifier: ClientAbstractScalarType) -> None:
@@ -30,3 +34,7 @@ class ClientAbstractClassType(ABC):
     def identifier(self) -> ClientAbstractScalarType:
         """Return the types identifer."""
         return self._identifier
+
+
+class ClientAbstractCollectionType(ClientAbstractType):
+    """Collection type."""

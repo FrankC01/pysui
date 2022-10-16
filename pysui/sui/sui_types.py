@@ -7,10 +7,12 @@ import base64
 import binascii
 import hashlib
 from numbers import Number
-from typing import TypeVar, Union
+from typing import Generic, TypeVar, Union, Any
 from abstracts import (
+    ClientAbstractType,
     ClientAbstractClassType,
     ClientAbstractScalarType,
+    ClientAbstractCollectionType,
 )
 
 from sui.sui_constants import SUI_ADDRESS_STRING_LEN
@@ -18,8 +20,17 @@ from sui.sui_txn_validator import valid_sui_address
 from sui import SuiInvalidAddress
 
 
-class SuiScalarType(ClientAbstractScalarType):
+class SuiBaseType(ClientAbstractType):
+    """Base most SUI object type."""
+
+
+class SuiScalarType(ClientAbstractScalarType, SuiBaseType):
     """Base most SUI scalar type."""
+
+    @property
+    def identifier(self) -> Any:
+        """Alias for value."""
+        return self._value
 
 
 class SuiString(SuiScalarType):
@@ -57,6 +68,11 @@ class SuiNumber(SuiScalarType):
         """Alias for transactions."""
         return self._value
 
+    @property
+    def amounts(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
 
 class ObjectID(SuiString):
     """Sui Object id type."""
@@ -80,8 +96,18 @@ class ObjectID(SuiString):
         """Alias over value."""
         return self._value
 
+    @property
+    def gas(self) -> str:
+        """Alias over value."""
+        return self._value
 
-class SuiType(ClientAbstractClassType):
+    @property
+    def input_coins(self) -> str:
+        """Alias over value."""
+        return self._value
+
+
+class SuiType(ClientAbstractClassType, SuiBaseType):
     """Base most SUI object type."""
 
 
@@ -103,6 +129,11 @@ class SuiAddress(SuiType):
     @property
     def recipient(self) -> str:
         """Alias for recipient in transaction validation."""
+        return self.address
+
+    @property
+    def recipients(self) -> str:
+        """Alias for recipients in transaction validation."""
         return self.address
 
     @classmethod
@@ -407,6 +438,47 @@ class SuiGasType(SuiCoinType):
     def balance(self) -> Number:
         """Get the balance for this coin object."""
         return self._balance
+
+
+class SuiCollection(ClientAbstractCollectionType):
+    """Generic Collection Type."""
+
+
+AT = TypeVar("AT", SuiAddress, ObjectID, SuiNumber, SuiString)
+
+
+class SuiArray(SuiCollection, Generic[AT]):
+    """Array type."""
+
+    def __init__(self, array: list[AT]) -> None:
+        """Initialize collection."""
+        super().__init__()
+        self.array = array if array else list[AT]()
+
+    def append(self, item: AT) -> list[AT]:
+        """Append and item to array."""
+        self.array.append(item)
+        return self.array
+
+    def extend(self, items: list[AT]) -> list[AT]:
+        """Append and item to array."""
+        self.array.extend(items)
+        return self.array
+
+    @property
+    def input_coins(self) -> list[ObjectID]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def recipients(self) -> list[SuiAddress]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def amounts(self) -> list[SuiNumber]:
+        """Alias for transactions."""
+        return self.array
 
 
 class SuiPackageObject(SuiType):

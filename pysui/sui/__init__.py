@@ -13,6 +13,7 @@ from sui.sui_builders import (
     GetPackage,
     GetRpcAPI,
     TransferSui,
+    Pay,
     ExecuteTransaction,
     SuiRequestType,
 )

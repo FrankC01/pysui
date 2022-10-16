@@ -26,8 +26,13 @@ def valid_sui_address(instr: str) -> bool:
 
 def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
     """Validate the specific parameter."""
+    from sui.sui_types import SuiCollection
+
     schema_name = type(build_parm).__name__
     att = getattr(build_parm, api_parm.name)
+    if isinstance(build_parm, SuiCollection):
+        att = [getattr(x, api_parm.name) for x in att]
+
     # print(f"att {api_parm.name} = {att}")
     if att is None:
         raise SuiRpcApiInvalidParameter(f"builder {build_parm} does not have attribute {api_parm.name}")
@@ -41,7 +46,7 @@ def _parameter_check(api_method: SuiApi, builder: Builder) -> Union[tuple[str, s
     build_parms = builder.params
     if not build_parms or (len(build_parms) != parmlen):
         raise SuiRpcApiInvalidParameter(
-            f"Expected {len(api_method.params)} parameters for {builder.method} but found {parmlen}"
+            f"API Expected {parmlen} parameters for {builder.method} but found {len(build_parms)}"
         )
 
     results = []
