@@ -474,3 +474,61 @@ class MergeCoin(_MoveCallTransactionBuilder):
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return self._pull_vars()
+
+
+class SplitCoin(_MoveCallTransactionBuilder):
+    """Split a coin into a one or more new coins."""
+
+    split_kwords: set[str] = {"signer", "gas_object", "gas_budget", "coin_object_id", "split_amounts"}
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_splitCoin")
+        self.signer: SuiAddress = None
+        self.coin_object_id: ObjectID = None
+        self.split_amounts: SuiArray[SuiNumber] = None
+        self.gas_object: ObjectID = None
+        self.gas_budget: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "signer":
+                    self.signer: SuiAddress = value
+                case "gas_object":
+                    self.gas_object: ObjectID = value
+                case "gas_budget":
+                    self.gas_budget: SuiNumber = value
+                case "split_amounts":
+                    self.split_amounts = SuiArray[SuiNumber](value)
+                case "coin_object_id":
+                    self.coin_object_id: ObjectID = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def set_signer(self, address: SuiAddress) -> "SplitCoin":
+        """Set the gas owner signer."""
+        self.signer = address
+        return self
+
+    def set_gas_object(self, obj: ObjectID) -> "SplitCoin":
+        """Set sui object gas object."""
+        self.gas_object = obj
+        return self
+
+    def set_gas_budget(self, obj: SuiNumber) -> "SplitCoin":
+        """Set the amount for transaction payment."""
+        self.gas_budget: SuiNumber = obj
+        return self
+
+    def set_coin_object_id(self, obj: ObjectID) -> "SplitCoin":
+        """Set the object ID for the coin being split."""
+        self.coin_object_id: ObjectID = obj
+        return self
+
+    def set_split_amounts(self, obj: list[SuiNumber]) -> "SplitCoin":
+        """Set the amounts to split the coin into."""
+        self.split_amounts: SuiArray[SuiNumber] = SuiArray[SuiNumber](obj)
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()

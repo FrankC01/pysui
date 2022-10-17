@@ -19,6 +19,7 @@ from pysui.sui import (
     TransferSui,
     Pay,
     MergeCoin,
+    SplitCoin,
     ExecuteTransaction,
     DryRunTransaction,
     SuiRequestType,
@@ -215,6 +216,17 @@ class SuiWallet:
         if kword_set == MergeCoin.merge_kwords:
             return self._submit_txn(self.execute(MergeCoin(**kwargs)).json(), kwargs["signer"])
         missing = MergeCoin.merge_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def split_coin(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        """Split coins into multiple."""
+        kword_set = set(kwargs.keys())
+        if kword_set == SplitCoin.split_kwords:
+            return self._submit_txn(self.execute(SplitCoin(**kwargs)).json(), kwargs["signer"])
+        missing = SplitCoin.split_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
     def get_type_descriptor(self, claz: ObjectInfo, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:

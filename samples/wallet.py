@@ -194,6 +194,19 @@ def merge_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
+def split_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Merge two coins together."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    # print(args)
+    var_args = vars(args)
+    var_args.pop("func")
+    result = wallet.split_coin(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
 def pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
     args.signer = args.signer if args.signer else wallet.current_address
@@ -434,6 +447,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subp.set_defaults(func=merge_coin)
 
+    # Split coin
+    subp = subparser.add_parser("split-coin", help="Split coin into one or more coins")
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify split-coin signer address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-c",
+        "--coin_object_id",
+        required=True,
+        help="Specify the coin ID the split-amounts are being split from.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-a",
+        "--split_amounts",
+        required=True,
+        nargs="+",
+        help="Specify amounts to split the coin into.",
+        type=check_positive,
+    )
+    subp.add_argument(
+        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'split-coin' transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(func=split_coin)
     return parser
 
 

@@ -73,6 +73,11 @@ class SuiNumber(SuiScalarType):
         """Alias for transactions."""
         return self._value
 
+    @property
+    def split_amounts(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
 
 class ObjectID(SuiString):
     """Sui Object id type."""
@@ -93,6 +98,11 @@ class ObjectID(SuiString):
 
     @property
     def sui_object_id(self) -> str:
+        """Alias over value."""
+        return self._value
+
+    @property
+    def coin_object_id(self) -> str:
         """Alias over value."""
         return self._value
 
@@ -487,6 +497,11 @@ class SuiArray(SuiCollection, Generic[AT]):
 
     @property
     def amounts(self) -> list[SuiNumber]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def split_amounts(self) -> list[SuiNumber]:
         """Alias for transactions."""
         return self.array
 

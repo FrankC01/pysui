@@ -17,13 +17,13 @@ Experimental (pre-alpha) python client side toolkit for Sui - WIP and expect sig
 
 #### Output
 ```bash
-usage: wallet.py [-h] {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin} ...
+usage: wallet.py [-h] {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin,split-coin} ...
 
 options:
   -h, --help            show this help message and exit
 
 commands:
-  {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin}
+  {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin,split-coin}
     active-address      Shows active address
     addresses           Shows all addresses
     gas                 Shows gas objects
@@ -36,4 +36,5 @@ commands:
     transfer-sui        Transfer SUI gas to recipient
     pay                 Transfer SUI gas to recipient(s)
     merge-coin          Merge two coins together
+    split-coin          Split coin into one or more coins
 ```
