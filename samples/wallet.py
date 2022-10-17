@@ -307,7 +307,7 @@ def build_parser() -> argparse.ArgumentParser:
     obj_arg_group.add_argument("--data", help="Only show data objects", action="store_true")
     subp.set_defaults(func=sui_objects)
     # Package Object
-    subp = subparser.add_parser("package-object", help="Get raw package object with Move assembly source")
+    subp = subparser.add_parser("package-object", help="Get raw package object with Move disassembly")
     subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
     subp.add_argument("--src", required=False, help="Display package module(s) src", action="store_true")
     subp.set_defaults(func=sui_package_object)
@@ -355,7 +355,7 @@ def build_parser() -> argparse.ArgumentParser:
     subp.set_defaults(func=transfer_sui)
 
     # Pays
-    subp = subparser.add_parser("pay", help="Transfer SUI gas to recipient")
+    subp = subparser.add_parser("pay", help="Transfer SUI gas to recipient(s)")
     subp.add_argument(
         "-s",
         "--signer",
