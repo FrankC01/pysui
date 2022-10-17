@@ -237,6 +237,42 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         return self._pull_vars()
 
 
+class DryRunTransaction(_NativeTransactionBuilder):
+    """Dry run a signed transaction to Sui."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__("sui_dryRunTransaction")
+        self.tx_bytes: SuiTxBytes = None
+        self.sig_scheme: SignatureScheme = None
+        self.signature: SuiSignature = None
+        self.pub_key: PublicKey = None
+
+    def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "DryRunTransaction":
+        """Set the transaction base64 string."""
+        self.tx_bytes = tbyteb64
+        return self
+
+    def set_sig_scheme(self, sig: SignatureScheme) -> "DryRunTransaction":
+        """Set the transaction base64 string."""
+        self.sig_scheme = sig
+        return self
+
+    def set_signature(self, sigb64: SuiSignature) -> "DryRunTransaction":
+        """Set the signed transaction base64 string."""
+        self.signature = sigb64
+        return self
+
+    def set_pub_key(self, pubkey: PublicKey) -> "DryRunTransaction":
+        """Set the public key base64 string."""
+        self.pub_key = pubkey
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
 class _MoveCallTransactionBuilder(SuiBaseBuilder):
     """Builders that must be processed, signed then executed."""
 
@@ -261,6 +297,8 @@ class TransferObject(_MoveCallTransactionBuilder):
 class TransferSui(_MoveCallTransactionBuilder):
     """Transfers Sui coin from one recipient to the other."""
 
+    transfer_kwords: set[str] = {"signer", "gas_object", "gas_budget", "recipient", "amount"}
+
     def __init__(self, **kwargs: dict) -> None:
         """Initialize builder."""
         super().__init__("sui_transferSui")
@@ -279,7 +317,7 @@ class TransferSui(_MoveCallTransactionBuilder):
                     self.gas_budget = value
                 case "recipient":
                     self.recipient = value
-                case "mists":
+                case "amount":
                     self.mists = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
@@ -316,6 +354,8 @@ class TransferSui(_MoveCallTransactionBuilder):
 
 class Pay(_MoveCallTransactionBuilder):
     """Transfer, split and merge SUI coins."""
+
+    pay_kwords: set[str] = {"signer", "input_coins", "recipients", "amounts", "gas_object", "gas_budget"}
 
     def __init__(self, **kwargs: dict) -> None:
         """Initialize builder."""
@@ -371,6 +411,64 @@ class Pay(_MoveCallTransactionBuilder):
     def set_gas_budget(self, obj: SuiNumber) -> "Pay":
         """Set the amount for transaction payment."""
         self.gas_budget: SuiNumber = obj
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class MergeCoin(_MoveCallTransactionBuilder):
+    """Merge two coins together."""
+
+    merge_kwords: set[str] = {"signer", "gas_object", "gas_budget", "primary_coin", "coin_to_merge"}
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_mergeCoins")
+        self.signer: SuiAddress = None
+        self.primary_coin: ObjectID = None
+        self.coin_to_merge: ObjectID = None
+        self.gas_object: ObjectID = None
+        self.gas_budget: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "signer":
+                    self.signer = value
+                case "gas_object":
+                    self.gas_object = value
+                case "gas_budget":
+                    self.gas_budget = value
+                case "primary_coin":
+                    self.primary_coin = value
+                case "coin_to_merge":
+                    self.coin_to_merge = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def set_signer(self, address: SuiAddress) -> "MergeCoin":
+        """Set the gas owner signer."""
+        self.signer = address
+        return self
+
+    def set_gas_object(self, obj: ObjectID) -> "MergeCoin":
+        """Set sui object gas object."""
+        self.gas_object = obj
+        return self
+
+    def set_gas_budget(self, obj: SuiNumber) -> "MergeCoin":
+        """Set the amount for transaction payment."""
+        self.gas_budget: SuiNumber = obj
+        return self
+
+    def set_coin_to_merge(self, obj: ObjectID) -> "MergeCoin":
+        """Set the address for the receiver."""
+        self.coin_to_merge: ObjectID = obj
+        return self
+
+    def set_primary_coin(self, obj: ObjectID) -> "MergeCoin":
+        """Set the primary coin to merge into."""
+        self.primary_coin: ObjectID = obj
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:

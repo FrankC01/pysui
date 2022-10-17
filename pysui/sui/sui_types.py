@@ -106,6 +106,16 @@ class ObjectID(SuiString):
         """Alias over value."""
         return self._value
 
+    @property
+    def primary_coin(self) -> str:
+        """Alias over value."""
+        return self._value
+
+    @property
+    def coin_to_merge(self) -> str:
+        """Alias over value."""
+        return self._value
+
 
 class SuiType(ClientAbstractClassType, SuiBaseType):
     """Base most SUI object type."""

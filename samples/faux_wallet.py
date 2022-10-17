@@ -18,9 +18,12 @@ from pysui.sui import (
     GetPackage,
     TransferSui,
     Pay,
+    MergeCoin,
     ExecuteTransaction,
+    DryRunTransaction,
     SuiRequestType,
 )
+
 from pysui.sui.sui_crypto import keypair_from_keystring, create_new_address, SuiAddress
 from pysui.sui.sui_excepts import (
     SuiFileNotFound,
@@ -38,7 +41,6 @@ from pysui.sui.sui_types import (
     ObjectInfo,
     SuiNftDescriptor,
     SuiDataDescriptor,
-    SuiNumber,
     from_object_descriptor,
     from_object_type,
 )
@@ -162,63 +164,58 @@ class SuiWallet:
             return SuiRpcResult(True, None, from_object_type(result["result"]["details"]))
         return SuiRpcResult(False, f"ID: {package_id} is a move object, not a package")
 
-    def transfer_sui(
-        self,
-        signer: SuiAddress,
-        mists: SuiNumber,
-        gas_object: ObjectID,
-        recipient: SuiAddress,
-        gas_budget: SuiNumber,
-    ) -> SuiRpcResult:
-        """Transfer SUI Mist from one account to another."""
-        result = self.execute(
-            TransferSui(signer=signer, mists=mists, gas_object=gas_object, recipient=recipient, gas_budget=gas_budget)
-        ).json()
+    def _submit_txn(self, result: dict, signer: SuiAddress) -> SuiRpcResult:
+        """Sign and submit transaction bytes."""
         if "error" in result:
             return SuiRpcResult(False, result["error"]["message"], None)
+        # TODO: Can make this single object function across various tx types
         kpair = self.keypair_for_address(signer)
         b64tx_bytes = result["result"]["txBytes"]
         builder = ExecuteTransaction()
         builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
             kpair.private_key.sign(base64.b64decode(b64tx_bytes))
         ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORTXCERT)
+        # builder = DryRunTransaction()
+        # builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
+        #     kpair.private_key.sign(base64.b64decode(b64tx_bytes))
+        # ).set_sig_scheme(kpair.scheme)
         result = self.execute(builder).json()
         if "error" in result:
             return SuiRpcResult(False, result["error"]["message"], None)
         return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
 
-    def pay_transfer(
+    def transfer_sui(
         self,
-        signer: SuiAddress,
-        input_coins: list[ObjectID],
-        recipients: list[SuiAddress],
-        amounts: list[SuiNumber],
-        gas_object: ObjectID,
-        gas_budget: SuiNumber,
+        **kwargs: dict,
     ) -> SuiRpcResult:
         """Transfer SUI Mist from one account to another."""
-        result = self.execute(
-            Pay(
-                signer=signer,
-                input_coins=input_coins,
-                recipients=recipients,
-                amounts=amounts,
-                gas_object=gas_object,
-                gas_budget=gas_budget,
-            )
-        ).json()
-        if "error" in result:
-            return SuiRpcResult(False, result["error"]["message"], None)
-        kpair = self.keypair_for_address(signer)
-        b64tx_bytes = result["result"]["txBytes"]
-        builder = ExecuteTransaction()
-        builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-            kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-        ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORTXCERT)
-        result = self.execute(builder).json()
-        if "error" in result:
-            return SuiRpcResult(False, result["error"]["message"], None)
-        return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+        kword_set = set(kwargs.keys())
+        if kword_set == TransferSui.transfer_kwords:
+            return self._submit_txn(self.execute(TransferSui(**kwargs)).json(), kwargs["signer"])
+        missing = TransferSui.transfer_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def pay_transfer(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        """Transfer SUI Mist from one account to another."""
+        kword_set = set(kwargs.keys())
+        if kword_set == Pay.pay_kwords:
+            return self._submit_txn(self.execute(Pay(**kwargs)).json(), kwargs["signer"])
+        missing = Pay.pay_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def merge_coin(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        """Merge two SUI coins together."""
+        kword_set = set(kwargs.keys())
+        if kword_set == MergeCoin.merge_kwords:
+            return self._submit_txn(self.execute(MergeCoin(**kwargs)).json(), kwargs["signer"])
+        missing = MergeCoin.merge_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
 
     def get_type_descriptor(self, claz: ObjectInfo, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get descriptors of claz type for address."""

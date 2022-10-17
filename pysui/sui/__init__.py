@@ -14,7 +14,9 @@ from sui.sui_builders import (
     GetRpcAPI,
     TransferSui,
     Pay,
+    MergeCoin,
     ExecuteTransaction,
+    DryRunTransaction,
     SuiRequestType,
 )
 from sui.sui_config import SuiConfig

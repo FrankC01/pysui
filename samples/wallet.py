@@ -171,9 +171,23 @@ def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Transfer gas object."""
-    args.from_address = args.from_address if args.from_address else wallet.current_address
+    args.signer = args.signer if args.signer else wallet.current_address
+    var_args = vars(args)
+    var_args.pop("func")
+    result = wallet.transfer_sui(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def merge_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Merge two coins together."""
+    args.signer = args.signer if args.signer else wallet.current_address
     # print(args)
-    result = wallet.transfer_sui(args.from_address, args.mist_amount, args.gas_object, args.to_address, args.gas_budget)
+    var_args = vars(args)
+    var_args.pop("func")
+    result = wallet.merge_coin(**var_args)
     if result.is_ok():
         print(result.result_data)
     else:
@@ -182,21 +196,23 @@ def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 def pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
-    print()
     args.signer = args.signer if args.signer else wallet.current_address
     in_arrays = [args.input_coins, args.amounts, args.recipients]
     if all(len(in_arrays[0]) == len(l) for l in in_arrays[1:]):
-        print(True)
+        pass
     else:
-        print(in_arrays)
         max_set = max(in_arrays, key=len)
         max_indx = in_arrays.index(max_set)
-        print(f" index {max_indx} for {max_set}")
         for dex, ilist in enumerate(in_arrays):
             if dex != max_indx:
                 for _ in range(len(max_set) - len(ilist)):
                     ilist.append(ilist[0])
-        print(in_arrays)
+    args.input_coins = in_arrays[0]
+    args.amounts = in_arrays[1]
+    args.recipients = in_arrays[2]
+    var_args = vars(args)
+    var_args.pop("func")
+    result = wallet.pay_transfer(**var_args)
 
     result = wallet.pay_transfer(
         args.signer, in_arrays[0], in_arrays[2], in_arrays[1], args.gas_object, args.gas_budget
@@ -307,7 +323,7 @@ def build_parser() -> argparse.ArgumentParser:
     subp = subparser.add_parser("transfer-sui", help="Transfer SUI gas to recipient")
     subp.add_argument(
         "-a",
-        "--mist-amount",
+        "--amount",
         required=True,
         help="Specify amount of MIST to transfer.",
         type=check_positive,
@@ -316,24 +332,24 @@ def build_parser() -> argparse.ArgumentParser:
         "-o", "--gas-object", required=True, help="Specify gas object to transfer from", action=ValidateObjectID
     )
     subp.add_argument(
-        "-t",
-        "--to-address",
+        "-r",
+        "--recipient",
         required=True,
-        help="Specify address to send gas to",
+        help="Specify recipient address to send gas to",
         action=ValidateAddress,
     )
     subp.add_argument(
         "-g",
         "--gas-budget",
         required=True,
-        help="Specify transfer transaction budget",
+        help="Specify 'transfer-sui' transaction budget",
         type=check_positive,
     )
     subp.add_argument(
-        "-f",
-        "--from-address",
+        "-s",
+        "--signer",
         required=False,
-        help="Specify gas owner address. Default to active address",
+        help="Specify gas owner address for signing. Default to active address",
         action=ValidateAddress,
     )
     subp.set_defaults(func=transfer_sui)
@@ -378,10 +394,46 @@ def build_parser() -> argparse.ArgumentParser:
         "-g",
         "--gas-budget",
         required=True,
-        help="Specify transfer transaction budget",
+        help="Specify 'pay' transaction budget",
         type=check_positive,
     )
     subp.set_defaults(func=pay_sui)
+
+    # Merge coin
+    subp = subparser.add_parser("merge-coin", help="Merge two coins together")
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify merge-coin signer address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-p",
+        "--primary-coin",
+        required=True,
+        help="Specify the primary coin ID to merge into",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-c",
+        "--coin-to-merge",
+        required=True,
+        help="Specify the coin ID to merge from.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'merge-coin' transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(func=merge_coin)
+
     return parser
 
 
