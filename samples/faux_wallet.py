@@ -175,7 +175,7 @@ class SuiWallet:
         builder = ExecuteTransaction()
         builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
             kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-        ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORTXCERT)
+        ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORLOCALEXECUTION)
         # builder = DryRunTransaction()
         # builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
         #     kpair.private_key.sign(base64.b64decode(b64tx_bytes))
@@ -183,7 +183,11 @@ class SuiWallet:
         result = self.execute(builder).json()
         if "error" in result:
             return SuiRpcResult(False, result["error"]["message"], None)
-        return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+        result = result["result"]
+        effects = result["EffectsCert"]["effects"]["effects"]["status"]
+        if effects["status"] == "failure":
+            return SuiRpcResult(False, effects, None)
+        return SuiRpcResult(True, None, json.dumps(result, indent=2))
 
     def transfer_sui(
         self,
@@ -200,7 +204,7 @@ class SuiWallet:
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
-        """Transfer SUI Mist from one account to another."""
+        """Transfer coin using Pay from one account to another."""
         kword_set = set(kwargs.keys())
         if kword_set == Pay.pay_kwords:
             return self._submit_txn(self.execute(Pay(**kwargs)).json(), kwargs["signer"])
@@ -211,7 +215,7 @@ class SuiWallet:
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
-        """Merge two SUI coins together."""
+        """Merge two coins together."""
         kword_set = set(kwargs.keys())
         if kword_set == MergeCoin.merge_kwords:
             return self._submit_txn(self.execute(MergeCoin(**kwargs)).json(), kwargs["signer"])

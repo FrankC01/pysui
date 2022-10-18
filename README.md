@@ -38,3 +38,6 @@ commands:
     merge-coin          Merge two coins together
     split-coin          Split coin into one or more coins
 ```
+
+### Known issues
+1. `pay` Sui issue - https://github.com/MystenLabs/sui/issues/5351

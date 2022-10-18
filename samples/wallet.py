@@ -210,26 +210,10 @@ def split_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
     args.signer = args.signer if args.signer else wallet.current_address
-    in_arrays = [args.input_coins, args.amounts, args.recipients]
-    if all(len(in_arrays[0]) == len(l) for l in in_arrays[1:]):
-        pass
-    else:
-        max_set = max(in_arrays, key=len)
-        max_indx = in_arrays.index(max_set)
-        for dex, ilist in enumerate(in_arrays):
-            if dex != max_indx:
-                for _ in range(len(max_set) - len(ilist)):
-                    ilist.append(ilist[0])
-    args.input_coins = in_arrays[0]
-    args.amounts = in_arrays[1]
-    args.recipients = in_arrays[2]
     var_args = vars(args)
     var_args.pop("func")
     result = wallet.pay_transfer(**var_args)
 
-    result = wallet.pay_transfer(
-        args.signer, in_arrays[0], in_arrays[2], in_arrays[1], args.gas_object, args.gas_budget
-    )
     if result.is_ok():
         print(result.result_data)
     else:
