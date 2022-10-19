@@ -4,7 +4,6 @@ from abc import abstractmethod
 from enum import IntEnum
 from abstracts import Builder, PublicKey, SignatureScheme
 from sui.sui_types import (
-    SuiType,
     ObjectInfo,
     ObjectID,
     SuiNumber,
@@ -57,11 +56,11 @@ class SuiBaseBuilder(Builder):
         self._txn_required = txn_required
 
     @abstractmethod
-    def _collect_parameters(self) -> list[SuiType]:
+    def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
 
     @property
-    def params(self) -> list[SuiType]:
+    def params(self) -> list[SuiBaseType]:
         """Return parameters list."""
         return self._collect_parameters()
 
@@ -80,7 +79,7 @@ class SuiBaseBuilder(Builder):
         """Get transaction required flag."""
         return self._txn_required
 
-    def _pull_vars(self) -> list[SuiType]:
+    def _pull_vars(self) -> list[SuiBaseType]:
         var_map = vars(self)
         return [val for key, val in var_map.items() if key[0] != "_"]
 
@@ -190,7 +189,7 @@ class GetRpcAPI(_NativeTransactionBuilder):
         """Initialize builder."""
         super().__init__("rpc.discover")
 
-    def _collect_parameters(self) -> list[SuiType]:
+    def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return []
 

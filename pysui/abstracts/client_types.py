@@ -3,38 +3,40 @@ from abc import ABC
 from typing import Any
 
 
-class ClientAbstractType(ABC):
+class AbstractType(ABC):
     """Base most abstraction."""
 
+    def __init__(self, identifier: Any) -> None:
+        """Initialize type."""
+        self._value = identifier
 
-class ClientAbstractScalarType(ClientAbstractType):
-    """Core scalar type."""
-
-    def __init__(self, value: Any) -> None:
-        """Initialize with identifier."""
-        self._value = value
-
-    def value(self) -> Any:
-        """Return the self value."""
+    @property
+    def identifier(self) -> Any:
+        """Return underlying value."""
         return self._value
+
+    @property
+    def value(self) -> Any:
+        """Return underlying value."""
+        return self._value
+
+    def __eq__(self, other: "AbstractType") -> bool:
+        """Equality check."""
+        return str(self) == str(other)
+
+    def __hash__(self) -> int:
+        """Hashability."""
+        return hash(str(self))
 
     def __str__(self) -> str:
         """Convert value to string using formatting."""
-        return f"{self._value}"
-
-
-class ClientAbstractClassType(ClientAbstractType):
-    """Core type that supports identification."""
-
-    def __init__(self, identifier: ClientAbstractScalarType) -> None:
-        """Initialize with identifier."""
-        self._identifier = identifier
-
-    @property
-    def identifier(self) -> ClientAbstractScalarType:
-        """Return the types identifer."""
-        return self._identifier
-
-
-class ClientAbstractCollectionType(ClientAbstractType):
-    """Collection type."""
+        if isinstance(self._value, str):
+            return self._value
+        if isinstance(self._value, bytes):
+            return self._value.decode()
+        if isinstance(self._value, int):
+            return str(self._value)
+        if isinstance(self._value, AbstractType):
+            return str(self._value)
+        raise NotImplementedError
+        # return self._value if isinstance(self._value, str) else self._value.decode()  # f"{self._value}"

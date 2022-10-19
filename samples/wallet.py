@@ -54,7 +54,7 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
                 print(f"{gasobj.identifier} | {gasobj.balance}")
             print(f"Total Gas = {wallet.total_gas(gas_objects.result_data)}")
         else:
-            print(f"{gas_objects}")
+            print(f"Sui RPC Error: {gas_objects.result_string} -> {gas_objects.result_data}")
 
     _detail_gas(wallet.gas_objects(args.address))
 

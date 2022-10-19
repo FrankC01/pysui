@@ -3,4 +3,4 @@
 testpaths = [
     "tests"
 ]
-pythonpath = ["pysui", "sui"]
+pythonpath = ["pysui", "abstracts", "sui"]

@@ -7,30 +7,20 @@ import base64
 import binascii
 import hashlib
 from numbers import Number
-from typing import Generic, TypeVar, Union, Any
-from abstracts import (
-    ClientAbstractType,
-    ClientAbstractClassType,
-    ClientAbstractScalarType,
-    ClientAbstractCollectionType,
-)
+from typing import Generic, TypeVar, Union
+from abstracts import AbstractType
 
 from sui.sui_constants import SUI_ADDRESS_STRING_LEN
 from sui.sui_txn_validator import valid_sui_address
 from sui import SuiInvalidAddress
 
 
-class SuiBaseType(ClientAbstractType):
+class SuiBaseType(AbstractType):
     """Base most SUI object type."""
 
 
-class SuiScalarType(ClientAbstractScalarType, SuiBaseType):
+class SuiScalarType(SuiBaseType):
     """Base most SUI scalar type."""
-
-    @property
-    def identifier(self) -> Any:
-        """Alias for value."""
-        return self._value
 
 
 class SuiString(SuiScalarType):
@@ -52,7 +42,7 @@ class SuiSignature(SuiString):
     @property
     def signature(self) -> str:
         """Satisfy transaction verification."""
-        return self.value().decode()
+        return str(self)
 
 
 class SuiNumber(SuiScalarType):
@@ -127,11 +117,7 @@ class ObjectID(SuiString):
         return self._value
 
 
-class SuiType(ClientAbstractClassType, SuiBaseType):
-    """Base most SUI object type."""
-
-
-class SuiAddress(SuiType):
+class SuiAddress(SuiBaseType):
     """Sui Address Type."""
 
     def __init__(self, identifier: str) -> None:
@@ -180,7 +166,7 @@ class SuiAddress(SuiType):
         return cls(hash_bytes.decode("utf-8"))
 
 
-class SuiRawDescriptor(SuiType):
+class SuiRawDescriptor(SuiBaseType):
     """Base descriptor type."""
 
     def __init__(self, indata: dict, identifier: ObjectID) -> None:
@@ -271,7 +257,7 @@ class SuiNativeCoinDescriptor(SuiCoinDescriptor):
     """Sui gas is a coin."""
 
 
-class SuiRawObject(SuiType):
+class SuiRawObject(SuiBaseType):
     """Base object type."""
 
     def __init__(self, indata: dict, identifier: ObjectID) -> None:
@@ -460,7 +446,7 @@ class SuiGasType(SuiCoinType):
         return self._balance
 
 
-class SuiCollection(ClientAbstractCollectionType):
+class SuiCollection(SuiBaseType):
     """Generic Collection Type."""
 
 
@@ -472,7 +458,7 @@ class SuiArray(SuiCollection, Generic[AT]):
 
     def __init__(self, array: list[AT]) -> None:
         """Initialize collection."""
-        super().__init__()
+        super().__init__(None)
         self.array = array if array else list[AT]()
 
     def append(self, item: AT) -> list[AT]:
@@ -506,7 +492,7 @@ class SuiArray(SuiCollection, Generic[AT]):
         return self.array
 
 
-class SuiPackageObject(SuiType):
+class SuiPackageObject(SuiBaseType):
     """Sui package object."""
 
     def __init__(self, indata: dict) -> None:

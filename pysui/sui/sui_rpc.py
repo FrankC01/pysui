@@ -1,5 +1,6 @@
 """Sui RPC Clients."""
 
+from json import JSONDecodeError
 from typing import Any
 import httpx
 from abstracts import SyncHttpRPC, RpcResult
@@ -56,12 +57,15 @@ class SuiClient(SyncHttpRPC):
     def _build_api_descriptors(self):
         """Fetch RPC method descrptors."""
         builder = GetRpcAPI()
-        result = self._client.post(
-            self.config.url,
-            headers=builder.header,
-            json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
-        ).json()
-        self._rpc_api, self._schema_dict = build_api_descriptors(result)
+        try:
+            result = self._client.post(
+                self.config.url,
+                headers=builder.header,
+                json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
+            ).json()
+            self._rpc_api, self._schema_dict = build_api_descriptors(result)
+        except JSONDecodeError as jexc:
+            raise jexc
 
     def api_exists(self, api_name: str) -> bool:
         """Check if API supported in RPC host."""
@@ -84,11 +88,18 @@ class SuiClient(SyncHttpRPC):
         if not builder.method in self._rpc_api:
             raise SuiRpcApiNotAvailable(builder.method)
         parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
-        return self._client.post(
-            self.config.url,
-            headers=builder.header,
-            json=self._generate_data_block(builder.data_dict, builder.method, parm_results),
-        )
+        try:
+            return SuiRpcResult(
+                True,
+                None,
+                self._client.post(
+                    self.config.url,
+                    headers=builder.header,
+                    json=self._generate_data_block(builder.data_dict, builder.method, parm_results),
+                ).json(),
+            )
+        except JSONDecodeError as jexc:
+            return SuiRpcResult(False, f"JSON Decoder Error {jexc.msg}", vars(jexc))
 
     @property
     def rpc_api_names(self) -> list[str]:

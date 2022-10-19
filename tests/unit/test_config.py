@@ -3,7 +3,7 @@
 import pathlib
 import pytest
 
-from pysui.sui import SuiConfig
+from pysui.sui.sui_config import SuiConfig
 
 
 def test_config_pass() -> None:

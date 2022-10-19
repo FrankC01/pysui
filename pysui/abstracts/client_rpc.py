@@ -73,7 +73,7 @@ class SyncHttpRPC(ABC):
         return self._config
 
     @abstractmethod
-    def execute(self, builder: Builder) -> Any:
+    def execute(self, builder: Builder) -> RpcResult:
         """Execute builder content."""
 
 
