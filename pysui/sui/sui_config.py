@@ -14,7 +14,7 @@ from sui.sui_excepts import SuiConfigFileError, SuiFileNotFound
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
-    _DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
+    DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
 
     def __init__(self, config_file: TextIOWrapper) -> None:
         """Initialize the default config."""
@@ -41,7 +41,7 @@ class SuiConfig(ClientConfiguration):
     @classmethod
     def default(cls) -> ClientConfiguration:
         """Load the default Sui Config from well known path."""
-        expanded_path = os.path.expanduser(cls._DEFAULT_PATH_STRING)
+        expanded_path = os.path.expanduser(cls.DEFAULT_PATH_STRING)
         if os.path.exists(expanded_path):
             try:
                 with open(expanded_path, encoding="utf8") as core_file:
@@ -49,7 +49,7 @@ class SuiConfig(ClientConfiguration):
             except (IOError, yaml.YAMLError) as exc:
                 raise SuiConfigFileError(exc) from exc
         else:
-            raise SuiFileNotFound(cls._DEFAULT_PATH_STRING)
+            raise SuiFileNotFound(cls.DEFAULT_PATH_STRING)
 
     @property
     def url(self) -> str:

@@ -1,0 +1,211 @@
+"""Commands and dispath dict."""
+import argparse
+from pysui.abstracts import SignatureScheme
+from pysui.sui.sui_rpc import SuiRpcResult
+from pysui.sui.sui_types import SuiPackageObject
+from .faux_wallet import SuiWallet
+
+
+def sui_active_address(wallet: SuiWallet, _args: argparse.Namespace) -> None:
+    """Print active address."""
+    print()
+    print(f"Active address = {wallet.current_address.identifier}")
+
+
+def sui_addresses(wallet: SuiWallet, _args: argparse.Namespace) -> None:
+    """Print all address."""
+    print()
+    print("Addresses")
+    print("---------")
+    for addy in wallet.addresses:
+        if addy == wallet.current_address:
+            print(f"{addy} <-- active")
+        else:
+            print(addy)
+
+
+def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Print gas information."""
+
+    def _detail_gas(gas_objects: SuiRpcResult):
+        if gas_objects.is_ok():
+            for gasobj in gas_objects.result_data:
+                print(f"{gasobj.identifier} | {gasobj.balance}")
+            print(f"Total Gas = {wallet.total_gas(gas_objects.result_data)}")
+        else:
+            print(f"Sui RPC Error: {gas_objects.result_string} -> {gas_objects.result_data}")
+
+    _detail_gas(wallet.gas_objects(args.address))
+
+
+def sui_new_address(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Generate a new SUI address."""
+    if args.ed25519:
+        print(wallet.create_new_keypair_and_address(SignatureScheme.ED25519))
+    else:
+        print(wallet.create_new_keypair_and_address(SignatureScheme.SECP256K1))
+
+
+def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Get a package object."""
+    result: SuiRpcResult = wallet.get_package(args.id)
+    if result.is_ok():
+        print(result.result_data)
+        print()
+    else:
+        print(f"{result.result_string}")
+
+
+def sui_package_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Get a package object."""
+    result: SuiRpcResult = wallet.get_package_object(args.id)
+    if result.is_ok():
+        package: SuiPackageObject = result.result_data
+        print()
+        print("Package")
+        print(f"id: {str(package.identifier)} owner: {package.owner}")
+        print()
+        print("Modules")
+        modules: dict = package.modules
+        for mod in modules.keys():
+            print(f"-> {mod}")
+            if args.src:
+                print(modules[mod])
+        print()
+    else:
+        print(f"{result.result_string}")
+
+
+def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Show specific object."""
+    sobject = wallet.get_object(args.id)
+    # print("Object Descriptor")
+    # print(sobject.descriptor.json_pretty())
+    if sobject.is_ok():
+        print("Object")
+        print(sobject.result_data.json_pretty())
+    else:
+        print(f"{sobject.result_string}")
+
+
+def _objects_header_print() -> None:
+    """Print non-json object header."""
+    # TODO: Clean this up with formatted strings
+    print("        Object ID                          ", end=" ")
+    print("  Version  ", end=" ")
+    print("                    Digest                    ", end=" ")
+    print("    Object Type")
+    print("--------------------------------------------", end="")
+    print("------------", end="")
+    print("-------------------------------------------------------------------------")
+
+
+def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Show specific object."""
+
+    def _object_type(args: argparse.Namespace) -> SuiRpcResult:
+        """Get objects of type from Namespace."""
+        if args.nft:
+            return wallet.nft_objects(args.address)
+        if args.data:
+            return wallet.data_objects(args.address)
+        return wallet.get_objects(args.address)
+
+    result = _object_type(args)
+    if result.is_ok():
+        if args.json:
+            for desc in result:
+                print(desc.json_pretty())
+        else:
+            _objects_header_print()
+            for desc in result.result_data:
+                print(f"{desc.identifier} |      {desc.version}    | {desc.digest} | {desc.type_signature}")
+    else:
+        print(f"{result.result_string}")
+
+
+def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Display information about Sui RPC API."""
+    rpcapi = wallet.get_rpc_api()
+
+    if args.name:
+        if rpcapi.get(args.name, None):
+            namedef = rpcapi[args.name]
+            print()
+            print(f"{namedef.name} - {namedef.description}")
+            print("Parameters")
+            for parm in namedef.params:
+                print(f"    {parm.name:<20} => required: {parm.required} type: {parm.schema}")
+            print()
+            print("Returns")
+            print(f"    {namedef.result.name:<20} => type: {namedef.result.schema}")
+        else:
+            print(f"Sui RPC API does not contain {args.name}")
+
+    else:
+        for api_name in rpcapi:
+            print(api_name)
+
+
+def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Transfer gas object."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    var_args = vars(args)
+    result = wallet.transfer_sui(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def merge_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Merge two coins together."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    # print(args)
+    var_args = vars(args)
+    result = wallet.merge_coin(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def split_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Merge two coins together."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    # print(args)
+    var_args = vars(args)
+    result = wallet.split_coin(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Payments for one or more recipients from one or more coins for one or more amounts."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    var_args = vars(args)
+    result = wallet.pay_transfer(**var_args)
+
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+SUI_CMD_DISPATCH = {
+    "active-address": sui_active_address,
+    "addresses": sui_addresses,
+    "gas": sui_gas,
+    "new-address": sui_new_address,
+    "object": sui_object,
+    "objects": sui_objects,
+    "package": sui_package,
+    "package-object": sui_package_object,
+    "rpcapi": sui_api,
+    "transfer-sui": transfer_sui,
+    "pay": pay_sui,
+    "merge-coin": merge_coin,
+    "split-coin": split_coin,
+}
