@@ -58,59 +58,36 @@ class ValidateObjectID(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-class ValidateFile(argparse.Action):
-    """File validator."""
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
-    ) -> None:
-        """Validate."""
-        fpath = pathlib.Path(values)
-
-        if fpath.exists():
-            setattr(namespace, self.dest, fpath)
-        else:
-            parser.error(f"{values} does not exist")
-            sys.exit(-1)
-
-
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(in_args: list) -> argparse.Namespace:
     """Build the argument parser structure."""
     # Base menu
     parser = argparse.ArgumentParser(add_help=True)
-    # parser.add_argument("--client", required=False, help="Set client.yaml configuration path", action=ValidateFile)
     subparser = parser.add_subparsers(title="commands")
 
     # Address
-    subp = subparser.add_parser("active-address", help="Shows active address", parents=[parser], add_help=False)
+    subp = subparser.add_parser("active-address", help="Shows active address")
     subp.set_defaults(subcommand="active-address")
 
     # Addresses
-    subp = subparser.add_parser("addresses", help="Shows all addresses", parents=[parser], add_help=False)
+    subp = subparser.add_parser("addresses", help="Shows all addresses")
     subp.set_defaults(subcommand="addresses")
     # Gas
-    subp = subparser.add_parser("gas", help="Shows gas objects", parents=[parser], add_help=False)
+    subp = subparser.add_parser("gas", help="Shows gas objects")
     subp.add_argument("--address", required=False, help="Gas for address", action=ValidateAddress)
     subp.set_defaults(subcommand="gas")
     # New address
-    subp = subparser.add_parser(
-        "new-address", help="Generate new address and keypair", parents=[parser], add_help=False
-    )
+    subp = subparser.add_parser("new-address", help="Generate new address and keypair")
     addy_arg_group = subp.add_mutually_exclusive_group(required=True)
     addy_arg_group.add_argument("-e", "--ed25519", help="Generate using ed25519 scheme", action="store_true")
     addy_arg_group.add_argument("-s", "--secp256k1", help="Generate using secp256k1 scheme", action="store_true")
     subp.set_defaults(subcommand="new-address")
     # Object
-    subp = subparser.add_parser("object", help="Show object by id", parents=[parser], add_help=False)
+    subp = subparser.add_parser("object", help="Show object by id")
     subp.add_argument("--id", required=True, action=ValidateObjectID)
     subp.add_argument("--json", required=False, help="Display output as json", action="store_true")
     subp.set_defaults(subcommand="object")
     # Objects
-    subp = subparser.add_parser("objects", help="Show all objects", parents=[parser], add_help=False)
+    subp = subparser.add_parser("objects", help="Show all objects")
     subp.add_argument("--address", required=False, help="Objects for address", action=ValidateAddress)
     subp.add_argument("--json", required=False, help="Display output as json", action="store_true")
     obj_arg_group = subp.add_mutually_exclusive_group()
@@ -118,28 +95,26 @@ def build_parser() -> argparse.ArgumentParser:
     obj_arg_group.add_argument("--data", help="Only show data objects", action="store_true")
     subp.set_defaults(subcommand="objects")
     # Package Object
-    subp = subparser.add_parser(
-        "package-object", help="Get raw package object with Move disassembly", parents=[parser], add_help=False
-    )
+    subp = subparser.add_parser("package-object", help="Get raw package object with Move disassembly")
     subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
     subp.add_argument("--src", required=False, help="Display package module(s) src", action="store_true")
     subp.set_defaults(subcommand="package-object")
 
     # Normalized Package
-    subp = subparser.add_parser("package", help="Get package definition", parents=[parser], add_help=False)
+    subp = subparser.add_parser("package", help="Get package definition")
     subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
     subp.set_defaults(subcommand="package")
     # RPC information
-    subp = subparser.add_parser("rpcapi", help="Display Sui RPC API information", parents=[parser], add_help=False)
+    subp = subparser.add_parser("rpcapi", help="Display Sui RPC API information")
     subp.add_argument("-n", "--name", required=False, help="Display details for named Sui RPC API")
     subp.set_defaults(subcommand="rpcapi")
     # Transfer SUI
-    subp = subparser.add_parser("transfer-sui", help="Transfer SUI gas to recipient", parents=[parser], add_help=False)
+    subp = subparser.add_parser("transfer-sui", help="Transfer SUI gas to recipient")
     subp.add_argument(
         "-a",
         "--amount",
         required=True,
-        help="Specify amount of MIST to transfer.",
+        help="Specify amount of MISTs to transfer.",
         type=check_positive,
     )
     subp.add_argument(
@@ -149,14 +124,14 @@ def build_parser() -> argparse.ArgumentParser:
         "-r",
         "--recipient",
         required=True,
-        help="Specify recipient address to send gas to",
+        help="Specify recipient wallet address to send SUI Mists to",
         action=ValidateAddress,
     )
     subp.add_argument(
         "-g",
         "--gas-budget",
         required=True,
-        help="Specify 'transfer-sui' transaction budget",
+        help="Specify 'transfer-sui' transaction budget amount in Mist (e.g. 1000)",
         type=check_positive,
     )
     subp.add_argument(
@@ -168,7 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subp.set_defaults(subcommand="transfer-sui")
     # Pays
-    subp = subparser.add_parser("pay", help="Transfer SUI gas to recipient(s)", parents=[parser], add_help=False)
+    subp = subparser.add_parser("pay", help="Transfer SUI gas to recipient(s)")
     subp.add_argument(
         "-s",
         "--signer",
@@ -212,7 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subp.set_defaults(subcommand="pay")
     # Merge coin
-    subp = subparser.add_parser("merge-coin", help="Merge two coins together", parents=[parser], add_help=False)
+    subp = subparser.add_parser("merge-coin", help="Merge two coins together")
     subp.add_argument(
         "-s",
         "--signer",
@@ -246,9 +221,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subp.set_defaults(subcommand="merge-coin")
     # Split coin
-    subp = subparser.add_parser(
-        "split-coin", help="Split coin into one or more coins", parents=[parser], add_help=False
-    )
+    subp = subparser.add_parser("split-coin", help="Split coin into one or more coins")
     subp.add_argument(
         "-s",
         "--signer",
@@ -283,4 +256,4 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subp.set_defaults(subcommand="split-coin")
 
-    return parser
+    return parser.parse_args(in_args if in_args else ["--help"])

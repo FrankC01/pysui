@@ -66,6 +66,8 @@ class SuiClient(SyncHttpRPC):
             self._rpc_api, self._schema_dict = build_api_descriptors(result)
         except JSONDecodeError as jexc:
             raise jexc
+        except httpx.ReadTimeout as hexc:
+            raise hexc
 
     def api_exists(self, api_name: str) -> bool:
         """Check if API supported in RPC host."""
@@ -100,6 +102,8 @@ class SuiClient(SyncHttpRPC):
             )
         except JSONDecodeError as jexc:
             return SuiRpcResult(False, f"JSON Decoder Error {jexc.msg}", vars(jexc))
+        except httpx.ReadTimeout as hexc:
+            return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
 
     @property
     def rpc_api_names(self) -> list[str]:

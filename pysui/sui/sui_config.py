@@ -15,41 +15,55 @@ class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
     DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
+    DEFAULT_LOCAL_URL = "http://127.0.0.1:5001"
 
-    def __init__(self, config_file: TextIOWrapper) -> None:
+    def __init__(self, active_address: str, keystore_file: str, current_url: str) -> None:
         """Initialize the default config."""
+        self._active_address = SuiAddress.from_hex_string(active_address)
+        self._current_keystore_file = keystore_file
+        self._current_url = current_url
+
+    @classmethod
+    def _parse_config(cls, fpath: Path, config_file: TextIOWrapper) -> tuple[str, str, str]:
+        """Open configuration file and generalize for ingestion."""
+        kfpath = fpath.parent
         sui_config = yaml.safe_load(config_file)
-        self._active_address = SuiAddress.from_hex_string(sui_config["active_address"])
-        # 0.9.0
-        # self._current_url = sui_config["gateway"]["rpc"][0]
-        # 0.10.0
-        self._current_url = sui_config["client_type"]["rpc"][0]
-        self._current_keystore_file = sui_config["keystore"]["File"]
-
-    @classmethod
-    def from_path(cls, unique_path: Path) -> ClientConfiguration:
-        """Load configuration from supplied path."""
-        if unique_path.exists():
-            try:
-                with open(str(unique_path), encoding="utf8") as core_file:
-                    return SuiConfig(core_file)
-            except (IOError, yaml.YAMLError) as exc:
-                raise SuiConfigFileError(exc) from exc
+        active_address = sui_config["active_address"] if "active_address" in sui_config else None
+        keystore_file = Path(sui_config["keystore"]["File"]) if "keystore" in sui_config else None
+        if "client_type" in sui_config and "rpc" in sui_config["client_type"]:
+            current_url = sui_config["client_type"]["rpc"]
         else:
-            raise SuiFileNotFound(str(unique_path))
+            current_url = None
+        if not active_address or not keystore_file:
+            raise SuiConfigFileError(f"{fpath} is not a valid SUI configuration file.")
+        keystore_file = str(kfpath.joinpath(keystore_file.name).absolute())
+        match type(current_url).__name__:
+            case "NoneType":
+                current_url = cls.DEFAULT_LOCAL_URL
+            case "list":
+                current_url = current_url[0]
+
+        return (active_address, keystore_file, current_url)
 
     @classmethod
-    def default(cls) -> ClientConfiguration:
+    def default(cls) -> "SuiConfig":
         """Load the default Sui Config from well known path."""
         expanded_path = os.path.expanduser(cls.DEFAULT_PATH_STRING)
         if os.path.exists(expanded_path):
-            try:
-                with open(expanded_path, encoding="utf8") as core_file:
-                    return SuiConfig(core_file)
-            except (IOError, yaml.YAMLError) as exc:
-                raise SuiConfigFileError(exc) from exc
+            with open(expanded_path, encoding="utf8") as core_file:
+                return cls(*cls._parse_config(Path(expanded_path), core_file))
         else:
-            raise SuiFileNotFound(cls.DEFAULT_PATH_STRING)
+            raise SuiFileNotFound(f"{expanded_path} not found.")
+
+    @classmethod
+    def from_config_file(cls, infile: str) -> "SuiConfig":
+        """Load the local Sui Config from well known path."""
+        expanded_path = os.path.expanduser(infile)
+        if os.path.exists(expanded_path):
+            with open(expanded_path, encoding="utf8") as core_file:
+                return cls(*cls._parse_config(Path(expanded_path), core_file))
+        else:
+            raise SuiFileNotFound(f"{expanded_path} not found.")
 
     @property
     def url(self) -> str:

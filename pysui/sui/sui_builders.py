@@ -531,3 +531,30 @@ class SplitCoin(_MoveCallTransactionBuilder):
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return self._pull_vars()
+
+
+class BatchTransaction(_MoveCallTransactionBuilder):
+    """Builder for submitting batch transactions."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__("sui_batchTransaction")
+        raise NotImplementedError
+
+
+class Publish(_MoveCallTransactionBuilder):
+    """Builder for publishing SUI Move packages."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__("sui_publish")
+        raise NotImplementedError
+
+
+class MoveCall(_MoveCallTransactionBuilder):
+    """Builder for making calls to SUI Move contracts."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__("sui_moveCall")
+        raise NotImplementedError

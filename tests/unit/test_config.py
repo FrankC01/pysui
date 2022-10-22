@@ -1,24 +1,24 @@
 """SUI Client Configuration Tests."""
 
-import pathlib
+
 import pytest
 
 from pysui.sui.sui_config import SuiConfig
 
 
 def test_config_pass() -> None:
-    """Test config loads presume at least 1 address."""
+    """Test config default load."""
     config = SuiConfig.default()
     assert config is not None
 
 
-def test_wallet_pass() -> None:
-    """Test config loads presume at least 1 address."""
-    config = SuiConfig.default()
+def test_from_config_pass() -> None:
+    """Test loading well known config."""
+    config = SuiConfig.from_config_file("~/.sui/sui_config/client.yaml")
     assert config is not None
 
 
 @pytest.mark.xfail(raises=Exception)
-def test_user_config_fail() -> None:
-    """Fail test with path that does not exist."""
-    SuiConfig.from_path(pathlib.Path("foo/bar"))
+def test_from_config_fail() -> None:
+    """Test loading well known config."""
+    _ = SuiConfig.from_config_file("~/does_not_exist/client.yaml")

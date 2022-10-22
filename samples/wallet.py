@@ -29,13 +29,22 @@ from .faux_wallet import SuiWallet
 
 def main():
     """Entry point for demonstration."""
-    parsed = build_parser().parse_args(args=None if sys.argv[1:] else ["--help"])
+    arg_line = sys.argv[1:].copy()
+    cfg_file = None
+    # Handle a different client.yaml than default
+    if arg_line and arg_line[0] == "--cfg":
+        cfg_file = arg_line[1:2]
+        arg_line = arg_line[2:]
+    parsed = build_parser(arg_line)
     cmd_call = SUI_CMD_DISPATCH.get(parsed.subcommand, None)
     if cmd_call:
         var_args = vars(parsed)
         var_args.pop("subcommand")
         parsed = argparse.Namespace(**var_args)
-        cmd_call(SuiWallet(SuiConfig.default()), parsed)
+        if cfg_file:
+            cmd_call(SuiWallet(SuiConfig.from_config_file(cfg_file[0])), parsed)
+        else:
+            cmd_call(SuiWallet(SuiConfig.default()), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")
 

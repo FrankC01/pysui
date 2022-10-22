@@ -2,7 +2,10 @@
 
 Experimental (pre-alpha) python client side toolkit for Sui - WIP and expect significant refactoring
 
-## Run sample
+## Run with devnet
+By default, `pysui` will use the `client.yaml` configuration found in `.sui/sui_config/`. See [below](#run-local) for running
+with different configuration (e.g. Local)
+
 ### Setup environment
 `python3 -m venv pysuienv`
 
@@ -39,5 +42,7 @@ commands:
     split-coin          Split coin into one or more coins
 ```
 
+## Run Local
+This is temporarily blocked due to v0.12.x issues running local SUI. Stay tuned....
 ### Known issues
-1. `pay` Sui issue - https://github.com/MystenLabs/sui/issues/5351
+https://github.com/MystenLabs/sui/issues/5461
