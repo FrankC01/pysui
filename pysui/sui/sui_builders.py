@@ -17,6 +17,7 @@ from abstracts import Builder, PublicKey, SignatureScheme
 from sui.sui_types import (
     ObjectInfo,
     ObjectID,
+    SuiString,
     SuiNumber,
     SuiTxBytes,
     SuiSignature,
@@ -142,14 +143,14 @@ class GetObjectsOwnedByObject(_NativeTransactionBuilder):
 class GetObject(_NativeTransactionBuilder):
     """Fetch Object detail for Object ID."""
 
-    def __init__(self, sui_object: ObjectInfo = None) -> None:
+    def __init__(self, sui_object: ObjectID = None) -> None:
         """Initialize Builder."""
         super().__init__("sui_getObject")
-        self.object_id = sui_object
+        self.object_id: ObjectID = sui_object
 
-    def set_object(self, sui_object: ObjectInfo) -> "GetObjectsOwnedByObject":
+    def set_object(self, sui_object: ObjectID) -> "GetObjectsOwnedByObject":
         """Set the object to fetch objects owned by."""
-        self.object_id = sui_object
+        self.object_id: ObjectID = sui_object
         return self
 
     def _collect_parameters(self) -> list[ObjectInfo]:
@@ -565,7 +566,49 @@ class Publish(_MoveCallTransactionBuilder):
 class MoveCall(_MoveCallTransactionBuilder):
     """Builder for making calls to SUI Move contracts."""
 
-    def __init__(self) -> None:
+    move_kwords: set[str] = {
+        "signer",
+        "package",
+        "module",
+        "function",
+        "types",
+        "arguments",
+        "gas_object",
+        "gas_budget",
+    }
+
+    def __init__(self, **kwargs) -> None:
         """Initialize builder."""
         super().__init__("sui_moveCall")
-        raise NotImplementedError
+        self.signer: SuiAddress = None
+        self.package_object_id: ObjectID = None
+        self.module: SuiString = None
+        self.function: SuiString = None
+        self.type_arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
+        self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
+        self.gas_object: ObjectID = None
+        self.gas_budget: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "signer":
+                    self.signer: SuiAddress = value
+                case "package":
+                    self.package_object_id: ObjectID = value
+                case "module":
+                    self.module: SuiString = value
+                case "function":
+                    self.function: SuiString = value
+                case "types":
+                    self.type_arguments: SuiArray[SuiString] = SuiArray[SuiString](value)
+                case "arguments":
+                    self.arguments: SuiArray[SuiString] = SuiArray[SuiString](value)
+                case "gas_object":
+                    self.gas_object: ObjectID = value
+                case "gas_budget":
+                    self.gas_budget: SuiNumber = value
+                case _:
+                    raise ValueError(f"Unknown MoveCall bulder type {key}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()

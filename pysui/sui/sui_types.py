@@ -37,6 +37,26 @@ class SuiScalarType(SuiBaseType):
 class SuiString(SuiScalarType):
     """Sui String type."""
 
+    @property
+    def function(self) -> str:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def module(self) -> str:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def arguments(self) -> str:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def type_arguments(self) -> str:
+        """Alias for transactions."""
+        return self._value
+
 
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""
@@ -94,6 +114,11 @@ class ObjectID(SuiString):
 
     @property
     def package(self) -> str:
+        """Alias over value."""
+        return self._value
+
+    @property
+    def package_object_id(self) -> str:
         """Alias over value."""
         return self._value
 
@@ -499,6 +524,16 @@ class SuiArray(SuiCollection, Generic[AT]):
 
     @property
     def split_amounts(self) -> list[SuiNumber]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def type_arguments(self) -> list[SuiString]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def arguments(self) -> list[SuiString]:
         """Alias for transactions."""
         return self.array
 

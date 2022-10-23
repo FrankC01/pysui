@@ -94,7 +94,11 @@ def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     # print(sobject.descriptor.json_pretty())
     if sobject.is_ok():
         print("Object")
-        print(sobject.result_data.json_pretty())
+        if isinstance(sobject.result_data, list):
+            for item in sobject.result_data:
+                print(item.json_pretty())
+        else:
+            print(sobject.result_data.json_pretty())
     else:
         print(f"{sobject.result_string}")
 
@@ -205,6 +209,18 @@ def pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
+def move_call(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Invoke a Sui move smart contract function."""
+    print(args)
+    args.signer = args.signer if args.signer else wallet.current_address
+    var_args = vars(args)
+    result = wallet.move_call(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
 SUI_CMD_DISPATCH = {
     "active-address": sui_active_address,
     "addresses": sui_addresses,
@@ -219,4 +235,5 @@ SUI_CMD_DISPATCH = {
     "pay": pay_sui,
     "merge-coin": merge_coin,
     "split-coin": split_coin,
+    "call": move_call,
 }

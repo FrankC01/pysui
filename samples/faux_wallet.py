@@ -17,7 +17,7 @@ from numbers import Number
 import os
 import json
 
-from typing import Any, Union
+from typing import Union
 from pysui.abstracts import KeyPair, Builder, SignatureScheme
 from pysui.sui import (
     SuiClient,
@@ -31,6 +31,7 @@ from pysui.sui import (
     Pay,
     MergeCoin,
     SplitCoin,
+    MoveCall,
     ExecuteTransaction,
     # DryRunTransaction,
     SuiRequestType,
@@ -188,7 +189,6 @@ class SuiWallet:
             result = result.result_data
             if "error" in result:
                 return SuiRpcResult(False, result["error"]["message"], None)
-            # TODO: Can make this single object function across various tx types
             kpair = self.keypair_for_address(signer)
             b64tx_bytes = result["result"]["txBytes"]
             builder = ExecuteTransaction()
@@ -255,6 +255,17 @@ class SuiWallet:
         missing = SplitCoin.split_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
+    def move_call(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        """Call a SUI move contract function."""
+        kword_set = set(kwargs.keys())
+        if kword_set == MoveCall.move_kwords:
+            return self._submit_txn(self.execute(MoveCall(**kwargs)), kwargs["signer"])
+        missing = MoveCall.move_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
     def get_type_descriptor(self, claz: ObjectInfo, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get descriptors of claz type for address."""
         builder = GetObjectsOwnedByAddress().set_address(address if address else self.current_address)
@@ -283,20 +294,15 @@ class SuiWallet:
         """Get the gas object descriptors."""
         return self.get_type_descriptor(SuiNftDescriptor, address)
 
-    def get_object(self, identifier: Any, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
+    def get_object(self, identifier: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get specific object by it's id."""
-        desc = self.get_type_descriptor(ObjectInfo, address)
-        if desc.is_ok():
-            for cdesc in desc.result_data:
-                if str(cdesc.identifier) == str(identifier):
-                    result = self.execute(GetObject().set_object(cdesc.identifier))
-                    if result.is_ok():
-                        result = result.result_data
-                        if result["result"]["status"] != "Exists":
-                            return SuiRpcResult(False, f"Object {cdesc.identifier} {result['result']['status']}", None)
-                        return SuiRpcResult(True, None, from_object_type(result["result"]["details"]))
-                    return SuiRpcResult(False, f"Object with identifier '{identifier}' not found", None)
-        return desc
+        result = self.execute(GetObject().set_object(identifier))
+        if result.is_ok():
+            result = result.result_data
+            if result["result"]["status"] != "Exists":
+                return SuiRpcResult(False, f"Object {identifier} {result['result']['status']}", None)
+            return SuiRpcResult(True, None, from_object_type(result["result"]["details"]))
+        return result
 
     def _get_objects(self, descriptor_result: SuiRpcResult):
         """Get the underlying data objects list."""
@@ -318,62 +324,18 @@ class SuiWallet:
     def get_objects(self, address: SuiAddress = None, claz: ObjectInfo = None) -> Union[SuiRpcResult, Exception]:
         """Get specific object by address/id."""
         return self._get_objects(self.get_type_descriptor(claz if claz else ObjectInfo, address))
-        # desc = self.get_type_descriptor(claz if claz else ObjectInfo, address)
-        # if desc.is_ok():
-        #     obj_types = []
-        #     for cdesc in desc.result_data:
-        #         result = self.execute(GetObject().set_object(cdesc.identifier))
-        #         if result.is_ok():
-        #             result = result.result_data
-        #             if result["result"]["status"] != "Exists":
-        #                 return SuiRpcResult(False, f"Object {cdesc.identifier} {result['result']['status']}", None)
-        #             data_object = from_object_type(result["result"]["details"])
-        #             obj_types.append(data_object)
-        #     return SuiRpcResult(True, None, obj_types)
-        # return desc
 
     def data_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the objects from descriptors."""
         return self._get_objects(self.get_data_descriptors(address))
-        # desc = self.get_data_descriptors(address)
-        # if desc.is_ok():
-        #     obj_types = []
-        #     for cdesc in desc.result_data:
-        #         result = self.execute(GetObject().set_object(cdesc.identifier)).json()
-        #         if result["result"]["status"] != "Exists":
-        #             return SuiRpcResult(False, f"Object {cdesc.identifier} {result['result']['status']}", None)
-        #         data_object = from_object_type(result["result"]["details"])
-        #         obj_types.append(data_object)
-        #     return SuiRpcResult(True, None, obj_types)
-        # return desc
 
     def nft_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the nft objects from descriptors."""
         return self._get_objects(self.get_nft_descriptors(address))
-        # desc = self.get_nft_descriptors(address)
-        # if desc.is_ok():
-        #     nft_types = []
-        #     for cdesc in desc.result_data:
-        #         result = self.execute(GetObject().set_object(cdesc.identifier)).json()
-        #         if result["result"]["status"] != "Exists":
-        #             return SuiRpcResult(False, f"Object {cdesc.identifier} {result['result']['status']}", None)
-        #         nft_types.append(from_object_type(result["result"]["details"]))
-        #     return SuiRpcResult(True, None, nft_types)
-        # return desc
 
     def gas_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the gas objects."""
         return self._get_objects(self.get_gas_descriptors(address))
-        # desc = self.get_gas_descriptors(address)
-        # if desc.is_ok():
-        #     gas_types = []
-        #     for cdesc in desc.result_data:
-        #         result = self.execute(GetObject().set_object(cdesc.identifier)).json()
-        #         if result["result"]["status"] != "Exists":
-        #             return SuiRpcResult(False, f"Object {cdesc.identifier} {result['result']['status']}", None)
-        #         gas_types.append(from_object_type(result["result"]["details"]))
-        #     return SuiRpcResult(True, None, gas_types)
-        # return desc
 
     def total_gas(self, gas_objects: list[SuiGasType]) -> Number:
         """Get the total gas for wallet."""

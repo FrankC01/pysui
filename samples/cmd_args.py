@@ -13,7 +13,7 @@
 import argparse
 import sys
 from typing import Any, Sequence
-from pysui.sui.sui_types import ObjectID, SuiNumber, SuiAddress
+from pysui.sui.sui_types import ObjectID, SuiNumber, SuiAddress, SuiString
 
 
 def check_positive(value: str) -> int:
@@ -265,5 +265,62 @@ def build_parser(in_args: list) -> argparse.Namespace:
         type=check_positive,
     )
     subp.set_defaults(subcommand="split-coin")
+    # Move call
+    subp = subparser.add_parser("call", help="Call a move contract function")
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify split-coin signer address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-p",
+        "--package",
+        required=True,
+        help="Specify the package ID owner of the move module and function.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-m",
+        "--module",
+        required=True,
+        help="Specify the module name in the package.",
+        type=SuiString,
+    )
+    subp.add_argument(
+        "-f",
+        "--function",
+        required=True,
+        help="Specify the function name in the module.",
+        type=SuiString,
+    )
+    subp.add_argument(
+        "-t",
+        "--types",
+        required=False,
+        nargs="+",
+        help="Generic types (if any).",
+        type=SuiString,
+    )
+    subp.add_argument(
+        "-a",
+        "--arguments",
+        required=False,
+        nargs="+",
+        help="Function arguments.",
+        type=SuiString,
+    )
+    subp.add_argument(
+        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'split-coin' transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="call")
 
     return parser.parse_args(in_args if in_args else ["--help"])
