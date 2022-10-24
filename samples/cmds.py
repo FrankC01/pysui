@@ -13,7 +13,8 @@
 import argparse
 from pysui.abstracts import SignatureScheme
 from pysui.sui.sui_rpc import SuiRpcResult
-from pysui.sui.sui_types import SuiPackageObject
+from pysui.sui.sui_types import SuiPackage
+from pysui.sui.sui_utils import package_modules_to_b64
 from .faux_wallet import SuiWallet
 
 
@@ -71,7 +72,7 @@ def sui_package_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Get a package object."""
     result: SuiRpcResult = wallet.get_package_object(args.id)
     if result.is_ok():
-        package: SuiPackageObject = result.result_data
+        package: SuiPackage = result.result_data
         print()
         print("Package")
         print(f"id: {str(package.identifier)} owner: {package.owner}")
@@ -90,8 +91,6 @@ def sui_package_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Show specific object."""
     sobject = wallet.get_object(args.id)
-    # print("Object Descriptor")
-    # print(sobject.descriptor.json_pretty())
     if sobject.is_ok():
         print("Object")
         if isinstance(sobject.result_data, list):
@@ -211,7 +210,6 @@ def pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 def move_call(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Invoke a Sui move smart contract function."""
-    print(args)
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
     result = wallet.move_call(**var_args)
@@ -219,6 +217,14 @@ def move_call(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(result.result_data)
     else:
         print(f"Error: {result.result_string}")
+
+
+def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Publish a sui package."""
+    print(args)
+    args.sender = args.sender if args.sender else wallet.current_address
+    args.compiled_modules = package_modules_to_b64(args.compiled_modules)
+    print(args)
 
 
 SUI_CMD_DISPATCH = {
@@ -236,4 +242,5 @@ SUI_CMD_DISPATCH = {
     "merge-coin": merge_coin,
     "split-coin": split_coin,
     "call": move_call,
+    "publish": publish,
 }

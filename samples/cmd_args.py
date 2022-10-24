@@ -12,6 +12,7 @@
 """Argument parsing."""
 import argparse
 import sys
+from pathlib import Path
 from typing import Any, Sequence
 from pysui.sui.sui_types import ObjectID, SuiNumber, SuiAddress, SuiString
 
@@ -64,8 +65,24 @@ class ValidateObjectID(argparse.Action):
                 values = ObjectID(values)
         except ValueError:
             parser.error(f"'{values}' is not valid address.")
-            sys.exit(-1)
         setattr(namespace, self.dest, values)
+
+
+class ValidatePackageDir(argparse.Action):
+    """Validate package directory."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = ...,
+    ) -> None:
+        """Validate."""
+        ppath = Path(values)
+        if not ppath.exists:
+            parser.error(f"{str(ppath)} does not exist.")
+        setattr(namespace, self.dest, ppath)
 
 
 def build_parser(in_args: list) -> argparse.Namespace:
@@ -322,5 +339,31 @@ def build_parser(in_args: list) -> argparse.Namespace:
         type=check_positive,
     )
     subp.set_defaults(subcommand="call")
-
+    # Publish call
+    subp = subparser.add_parser("publish", help="Publish a SUI package")
+    subp.add_argument(
+        "-s",
+        "--sender",
+        required=False,
+        help="Specify publish sender address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-c",
+        "--compiled_modules",
+        required=True,
+        help="Specify the path to package folder containing compiled modules to publish.",
+        action=ValidatePackageDir,
+    )
+    subp.add_argument(
+        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'split-coin' transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="publish")
     return parser.parse_args(in_args if in_args else ["--help"])

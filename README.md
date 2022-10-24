@@ -2,6 +2,12 @@
 
 Experimental (pre-alpha) python client side toolkit for Sui - WIP and expect significant refactoring
 
+## Ready to run
+Requires:
+ * Linux or macos (x86_64 or M1)
+ * python 3.10 or greater
+ * pkg-config
+
 ## Run with devnet
 By default, `pysui` will use the `client.yaml` configuration found in `.sui/sui_config/`. See [below](#run-local) for running
 with different configuration (e.g. Local)
@@ -13,7 +19,9 @@ with different configuration (e.g. Local)
 `source pysuienv/bin/activate`
 
 ### Load packages
-`pip install -r requirements.txt`
+`pip list` - If you get a warning about upgrading pip... do so
+`pip install -r requirements.txt` - If you get an error with secp256k1 then:
+  `pip install wheel` and try to install requirements again
 
 ### Run sample wallet app for help
 `python -m samples.wallet`

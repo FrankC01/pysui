@@ -37,6 +37,7 @@ from sui.sui_rpc import SuiClient, SuiRpcResult
 from sui.sui_types import *
 from sui.sui_crypto import keypair_from_keystring
 from sui.sui_txn_validator import validate_api, valid_sui_address
+from sui.sui_utils import *
 
 if sys.version_info < (3, 10):
     raise EnvironmentError("Python 3.10 or above is required")

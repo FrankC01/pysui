@@ -57,6 +57,11 @@ class SuiString(SuiScalarType):
         """Alias for transactions."""
         return self._value
 
+    @property
+    def compiled_modules(self) -> str:
+        """Alias for transactions."""
+        return self._value
+
 
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""
@@ -74,30 +79,6 @@ class SuiSignature(SuiString):
     def signature(self) -> str:
         """Satisfy transaction verification."""
         return str(self)
-
-
-class SuiNumber(SuiScalarType):
-    """Sui Number type."""
-
-    @property
-    def gas_budget(self) -> int:
-        """Alias for transactions."""
-        return self._value
-
-    @property
-    def amount(self) -> int:
-        """Alias for transactions."""
-        return self._value
-
-    @property
-    def amounts(self) -> int:
-        """Alias for transactions."""
-        return self._value
-
-    @property
-    def split_amounts(self) -> int:
-        """Alias for transactions."""
-        return self._value
 
 
 class ObjectID(SuiString):
@@ -150,6 +131,30 @@ class ObjectID(SuiString):
     @property
     def coin_to_merge(self) -> str:
         """Alias over value."""
+        return self._value
+
+
+class SuiNumber(SuiScalarType):
+    """Sui Number type."""
+
+    @property
+    def gas_budget(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def amount(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def amounts(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def split_amounts(self) -> int:
+        """Alias for transactions."""
         return self._value
 
 
@@ -538,7 +543,7 @@ class SuiArray(SuiCollection, Generic[AT]):
         return self.array
 
 
-class SuiPackageObject(SuiBaseType):
+class SuiPackage(SuiBaseType):
     """Sui package object."""
 
     def __init__(self, indata: dict) -> None:
@@ -655,7 +660,7 @@ def from_object_type(inblock: dict) -> ObjectRead:
                     return SuiDataType(indata)
             return ObjectRead(indata)
         case "package":
-            return SuiPackageObject(inblock)
+            return SuiPackage(inblock)
         case _:
             raise ValueError(f"Don't recognize {indata['dataType']}")
 

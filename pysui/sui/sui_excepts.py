@@ -91,8 +91,19 @@ class SuiRpcApiInvalidParameter(SuiException):
     """Sui Method invalid parameter."""
 
 
-# RPC API errors
+# RPC API exceptions
 
 
 class SuiRpcApiError(SuiException):
     """For RPC error returns."""
+
+
+# Publish exceptions
+
+
+class SuiMiisingBuildFolder(SuiException):
+    """For publishing."""
+
+
+class SuiMiisingModuleByteCode(SuiException):
+    """For publishing."""
