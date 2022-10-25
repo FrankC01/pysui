@@ -174,6 +174,11 @@ class SuiAddress(SuiBaseType):
         return self.address
 
     @property
+    def sender(self) -> str:
+        """Alias for signer in transaction validation."""
+        return self.address
+
+    @property
     def recipient(self) -> str:
         """Alias for recipient in transaction validation."""
         return self.address
@@ -539,6 +544,11 @@ class SuiArray(SuiCollection, Generic[AT]):
 
     @property
     def arguments(self) -> list[SuiString]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def compiled_modules(self) -> list[SuiString]:
         """Alias for transactions."""
         return self.array
 

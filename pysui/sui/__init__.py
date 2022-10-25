@@ -28,6 +28,7 @@ from sui.sui_builders import (
     MergeCoin,
     SplitCoin,
     MoveCall,
+    Publish,
     ExecuteTransaction,
     DryRunTransaction,
     SuiRequestType,

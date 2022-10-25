@@ -32,6 +32,7 @@ from pysui.sui import (
     MergeCoin,
     SplitCoin,
     MoveCall,
+    Publish,
     ExecuteTransaction,
     # DryRunTransaction,
     SuiRequestType,
@@ -264,6 +265,14 @@ class SuiWallet:
         if kword_set == MoveCall.move_kwords:
             return self._submit_txn(self.execute(MoveCall(**kwargs)), kwargs["signer"])
         missing = MoveCall.move_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def publish_package(self, **kwargs: dict) -> SuiRpcResult:
+        """Publish a sui package."""
+        kword_set = set(kwargs.keys())
+        if kword_set == Publish.publish_kwords:
+            return self._submit_txn(self.execute(Publish(**kwargs)), kwargs["sender"])
+        missing = Publish.publish_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
     def get_type_descriptor(self, claz: ObjectInfo, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:

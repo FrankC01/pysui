@@ -356,7 +356,7 @@ def build_parser(in_args: list) -> argparse.Namespace:
         action=ValidatePackageDir,
     )
     subp.add_argument(
-        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+        "-o", "--gas", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
     )
     subp.add_argument(
         "-g",

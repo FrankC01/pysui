@@ -5,17 +5,18 @@ import os
 from pathlib import Path
 from typing import Union
 
+from sui.sui_types import SuiString
 from sui.sui_excepts import SuiMiisingBuildFolder, SuiMiisingModuleByteCode
 
 
-def _module_to_b64(module: Path) -> str:
+def _module_to_b64(module: Path) -> Union[SuiString, Exception]:
     """Convert modules to base64."""
     with open(module, "rb") as core_file:
         mdata = core_file.read()
-        return base64.b64encode(mdata).decode()
+        return SuiString(base64.b64encode(mdata).decode())
 
 
-def package_modules_to_b64(member: Path) -> Union[list[str], Exception]:
+def package_modules_to_b64(member: Path) -> Union[list[SuiString], Exception]:
     """Convert package modules to base64."""
     expanded_path = Path(os.path.expanduser(member))
     if expanded_path.exists():

@@ -224,7 +224,12 @@ def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
     print(args)
     args.sender = args.sender if args.sender else wallet.current_address
     args.compiled_modules = package_modules_to_b64(args.compiled_modules)
-    print(args)
+    var_args = vars(args)
+    result = wallet.publish_package(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
 
 
 SUI_CMD_DISPATCH = {

@@ -564,7 +564,7 @@ class Publish(_MoveCallTransactionBuilder):
         super().__init__("sui_publish")
         self.sender: SuiAddress = None
         self.compiled_modules: SuiArray[SuiString] = None
-        self.gas_object: ObjectID = None
+        self.gas: ObjectID = None
         self.gas_budget: SuiNumber = None
         for key, value in kwargs.items():
             match key:
@@ -572,8 +572,8 @@ class Publish(_MoveCallTransactionBuilder):
                     self.sender: SuiAddress = value
                 case "compiled_modules":
                     self.compiled_modules: SuiArray[SuiString] = SuiArray[SuiString](value)
-                case "gas_object":
-                    self.gas_object: ObjectID = value
+                case "gas":
+                    self.gas: ObjectID = value
                 case "gas_budget":
                     self.gas_budget: SuiNumber = value
                 case _:
