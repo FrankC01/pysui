@@ -19,22 +19,27 @@ with different configuration (e.g. Local)
 `source pysuienv/bin/activate`
 
 ### Load packages
-`pip list` - If you get a warning about upgrading pip... do so
-`pip install -r requirements.txt` - If you get an error with secp256k1 then:
-  `pip install wheel` and try to install requirements again
+`pip list`
+
+  * If you get a warning about upgrading pip... do so
+
+`pip install -r requirements.txt` .
+
+  * If you get an error with secp256k1 then:
+    `pip install wheel` and try to install requirements again
 
 ### Run sample wallet app for help
 `python -m samples.wallet`
 
 #### Output
 ```bash
-usage: wallet.py [-h] {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin,split-coin} ...
+usage: wallet.py [-h] {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin,split-coin,call,publish} ...
 
 options:
   -h, --help            show this help message and exit
 
 commands:
-  {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin,split-coin}
+  {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin,split-coin,call,publish}
     active-address      Shows active address
     addresses           Shows all addresses
     gas                 Shows gas objects
@@ -48,6 +53,8 @@ commands:
     pay                 Transfer SUI gas to recipient(s)
     merge-coin          Merge two coins together
     split-coin          Split coin into one or more coins
+    call                Call a move contract function
+    publish             Publish a SUI package
 ```
 
 ## Run Local
