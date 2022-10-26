@@ -9,7 +9,11 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+# -*- coding: utf-8 -*-
+
+
 """Provides version checking and export the Configuration."""
+
 import sys
 
 from sui.sui_constants import *

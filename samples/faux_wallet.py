@@ -9,8 +9,10 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-"""Sui Wallet Facade."""
+# -*- coding: utf-8 -*-
 
+
+"""Sui Wallet Facade."""
 
 import base64
 from numbers import Number

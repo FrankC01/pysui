@@ -9,6 +9,9 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+# -*- coding: utf-8 -*-
+
+
 """SUI Builders for RPC."""
 
 from abc import abstractmethod
@@ -67,9 +70,15 @@ class SuiBaseBuilder(Builder):
         self._method = method
         self._txn_required = txn_required
 
+    def _pull_vars(self) -> list[SuiBaseType]:
+        """Filter out private/protected var elements."""
+        var_map = vars(self)
+        return [val for key, val in var_map.items() if key[0] != "_"]
+
     @abstractmethod
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
+        return self._pull_vars()
 
     @property
     def params(self) -> list[SuiBaseType]:
@@ -90,10 +99,6 @@ class SuiBaseBuilder(Builder):
     def txn_required(self) -> bool:
         """Get transaction required flag."""
         return self._txn_required
-
-    def _pull_vars(self) -> list[SuiBaseType]:
-        var_map = vars(self)
-        return [val for key, val in var_map.items() if key[0] != "_"]
 
 
 class _NativeTransactionBuilder(SuiBaseBuilder):
@@ -517,12 +522,12 @@ class SplitCoin(_MoveCallTransactionBuilder):
 
     def set_signer(self, address: SuiAddress) -> "SplitCoin":
         """Set the gas owner signer."""
-        self.signer = address
+        self.signer: SuiAddress = address
         return self
 
     def set_gas_object(self, obj: ObjectID) -> "SplitCoin":
         """Set sui object gas object."""
-        self.gas_object = obj
+        self.gas_object: ObjectID = obj
         return self
 
     def set_gas_budget(self, obj: SuiNumber) -> "SplitCoin":
@@ -579,6 +584,26 @@ class Publish(_MoveCallTransactionBuilder):
                 case _:
                     raise ValueError(f"Unknown MoveCall bulder type {key}")
 
+    def set_sender(self, obj: SuiAddress) -> "Publish":
+        """Set the publisher address."""
+        self.sender: SuiAddress = obj
+        return self
+
+    def set_compiled_modules(self, obj: SuiArray[SuiString]) -> "Publish":
+        """Set the publishing package base64 modules string array."""
+        self.compiled_modules: SuiArray[SuiString] = obj
+        return self
+
+    def set_gas_object(self, obj: ObjectID) -> "Publish":
+        """Set sui object gas object."""
+        self.gas: ObjectID = obj
+        return self
+
+    def set_gas_budget(self, obj: SuiNumber) -> "Publish":
+        """Set the amount for transaction payment."""
+        self.gas_budget: SuiNumber = obj
+        return self
+
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return self._pull_vars()
@@ -629,6 +654,41 @@ class MoveCall(_MoveCallTransactionBuilder):
                     self.gas_budget: SuiNumber = value
                 case _:
                     raise ValueError(f"Unknown MoveCall bulder type {key}")
+
+    def set_signer(self, obj: SuiAddress) -> "MoveCall":
+        """Set signers address."""
+        self.signer: SuiAddress = obj
+        return self
+
+    def set_module(self, obj: SuiString) -> "MoveCall":
+        """Set sui move module name."""
+        self.module: SuiString = obj
+        return self
+
+    def set_function(self, obj: SuiString) -> "MoveCall":
+        """Set sui move function name."""
+        self.function: SuiString = obj
+        return self
+
+    def set_types(self, obj: SuiArray[SuiString]) -> "MoveCall":
+        """Set sui generic types (if any)."""
+        self.type_arguments: SuiArray[SuiString] = obj
+        return self
+
+    def set_arguments(self, obj: SuiArray[SuiString]) -> "MoveCall":
+        """Set sui move call arguments (if any)."""
+        self.arguments: SuiArray[SuiString] = obj
+        return self
+
+    def set_gas_object(self, obj: ObjectID) -> "MoveCall":
+        """Set sui object gas object."""
+        self.gas_object: ObjectID = obj
+        return self
+
+    def set_gas_budget(self, obj: SuiNumber) -> "MoveCall":
+        """Set the amount for transaction payment."""
+        self.gas_budget: SuiNumber = obj
+        return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
