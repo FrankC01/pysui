@@ -30,6 +30,7 @@ from pysui.sui import (
     GetRawPackage,
     GetPackage,
     TransferSui,
+    TransferObject,
     Pay,
     MergeCoin,
     SplitCoin,
@@ -218,11 +219,22 @@ class SuiWallet:
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
-        """Transfer SUI Mist from one account to another."""
+        """Transfer SUI coin from one account to another."""
         kword_set = set(kwargs.keys())
-        if kword_set == TransferSui.transfer_kwords:
+        if kword_set == TransferSui.transfersui_kwords:
             return self._submit_txn(self.execute(TransferSui(**kwargs)), kwargs["signer"])
-        missing = TransferSui.transfer_kwords - kword_set
+        missing = TransferSui.transfersui_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def transfer_object(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        """Transfer SUI Object from one account to another."""
+        kword_set = set(kwargs.keys())
+        if kword_set == TransferObject.transferobject_kwords:
+            return self._submit_txn(self.execute(TransferObject(**kwargs)), kwargs["signer"])
+        missing = TransferObject.transferobject_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
     def pay_transfer(

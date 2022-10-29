@@ -164,10 +164,23 @@ def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
             print(api_name)
 
 
+def transfer_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Transfer object."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    var_args = vars(args)
+    print(f"transfer_object args {var_args}")
+    # result = wallet.transfer_object(**var_args)
+    # if result.is_ok():
+    #     print(result.result_data)
+    # else:
+    #     print(f"Error: {result.result_string}")
+
+
 def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Transfer gas object."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
+    print(f"transfer_sui args {var_args}")
     result = wallet.transfer_sui(**var_args)
     if result.is_ok():
         print(result.result_data)
@@ -224,7 +237,7 @@ def move_call(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Publish a sui package."""
-    print(args)
+    # print(args)
     args.sender = args.sender if args.sender else wallet.current_address
     args.compiled_modules = package_modules_to_b64(args.compiled_modules)
     var_args = vars(args)
@@ -245,6 +258,7 @@ SUI_CMD_DISPATCH = {
     "package": sui_package,
     "package-object": sui_package_object,
     "rpcapi": sui_api,
+    "transfer-object": transfer_object,
     "transfer-sui": transfer_sui,
     "pay": pay_sui,
     "merge-coin": merge_coin,

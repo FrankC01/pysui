@@ -33,13 +33,13 @@ with different configuration (e.g. Local)
 
 #### Output
 ```bash
-usage: wallet.py [-h] {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin,split-coin,call,publish} ...
+usage: wallet.py [-h] {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-object,transfer-sui,pay,merge-coin,split-coin,call,publish} ...
 
 options:
   -h, --help            show this help message and exit
 
 commands:
-  {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-sui,pay,merge-coin,split-coin,call,publish}
+  {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-object,transfer-sui,pay,merge-coin,split-coin,call,publish}
     active-address      Shows active address
     addresses           Shows all addresses
     gas                 Shows gas objects
@@ -49,6 +49,7 @@ commands:
     package-object      Get raw package object with Move disassembly
     package             Get package definition
     rpcapi              Display Sui RPC API information
+    transfer-object     Transfer object ownership to other object
     transfer-sui        Transfer SUI gas to recipient
     pay                 Transfer SUI gas to recipient(s)
     merge-coin          Merge two coins together
@@ -58,6 +59,18 @@ commands:
 ```
 
 ## Run Local
-This is temporarily blocked due to v0.12.x issues running local SUI. Stay tuned....
-### Known issues
-https://github.com/MystenLabs/sui/issues/5461
+To run locally, especially useful when devnet is down, below are the steps to follow:
+
+### Setup local (example from home directory)
+1. `mkdir sui_local` from your home directory
+2. `sui genesis --working-dir sui_local/`
+3. `sui start --network.config sui_local/network.yaml`
+4. Open another terminal
+5. `sui-node --config-path sui_local/fullnode.yaml`
+6. If you haven't already, setup your `pysui` environment as shown above
+7. Prefix `pysui` commands with `--cfg ~/sui_local/client.yaml`
+
+Example:
+```bash
+python -m samples.wallet --cfg ~/sui_local/client.yaml gas`
+```

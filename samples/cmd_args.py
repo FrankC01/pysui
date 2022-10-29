@@ -139,6 +139,44 @@ def build_parser(in_args: list) -> argparse.Namespace:
     subp.add_argument("-n", "--name", required=False, help="Display details for named Sui RPC API")
     subp.set_defaults(subcommand="rpcapi")
     # Transfer SUI
+    subp = subparser.add_parser("transfer-object", help="Transfer object ownership to other object")
+    subp.add_argument(
+        "-t",
+        "--object-id",
+        required=True,
+        help="Specify sui object being transfered",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-o",
+        "--gas",
+        required=True,
+        help="Specify sui gas object paying for the transaction",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-r",
+        "--recipient",
+        required=True,
+        help="Specify recipient address to send object to",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'transfer-object' transaction budget amount in mists (e.g. 1000)",
+        type=check_positive,
+    )
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify gas owner address for signing. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.set_defaults(subcommand="transfer-object")
+    # Transfer SUI
     subp = subparser.add_parser("transfer-sui", help="Transfer SUI gas to recipient")
     subp.add_argument(
         "-a",
@@ -148,7 +186,11 @@ def build_parser(in_args: list) -> argparse.Namespace:
         type=check_positive,
     )
     subp.add_argument(
-        "-o", "--gas-object", required=True, help="Specify gas object to transfer from", action=ValidateObjectID
+        "-o",
+        "--sui-object-id",
+        required=True,
+        help="Specify sui gas object to transfer from",
+        action=ValidateObjectID,
     )
     subp.add_argument(
         "-r",

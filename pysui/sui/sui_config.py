@@ -29,7 +29,7 @@ class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
     DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
-    DEFAULT_LOCAL_URL = "http://127.0.0.1:5001"
+    DEFAULT_LOCAL_URL = "http://127.0.0.1:9000"
 
     def __init__(self, active_address: str, keystore_file: str, current_url: str) -> None:
         """Initialize the default config."""

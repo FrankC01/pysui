@@ -99,11 +99,14 @@ class SuiClient(SyncHttpRPC):
         """Perform argument validations."""
         return builder
 
-    def execute(self, builder: SuiBaseBuilder) -> Any:
+    def execute(self, builder: SuiBaseBuilder, print_json: bool = False) -> Any:
         """Execute the builder construct."""
         if not builder.method in self._rpc_api:
             raise SuiRpcApiNotAvailable(builder.method)
         parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
+        jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
+        if print_json:
+            print(f"jblock {jblock}")
         try:
             return SuiRpcResult(
                 True,
@@ -111,7 +114,7 @@ class SuiClient(SyncHttpRPC):
                 self._client.post(
                     self.config.url,
                     headers=builder.header,
-                    json=self._generate_data_block(builder.data_dict, builder.method, parm_results),
+                    json=jblock,
                 ).json(),
             )
         except JSONDecodeError as jexc:
