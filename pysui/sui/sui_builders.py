@@ -304,7 +304,7 @@ class TransferObject(_MoveCallTransactionBuilder):
 
     def __init__(self, **kwargs: dict) -> None:
         """Initialize builder."""
-        super().__init__("sui_transferSui")
+        super().__init__("sui_transferObject")
         self.signer: SuiAddress = None
         self.object_id: ObjectID = None
         self.gas: ObjectID = None
@@ -556,7 +556,7 @@ class PayAllSui(_MoveCallTransactionBuilder):
                 case "input_coins":
                     self.input_coins: SuiArray[ObjectID] = SuiArray[ObjectID](value)
                 case "recipient":
-                    self.recipients: SuiAddress = value
+                    self.recipient: SuiAddress = value
                 case "gas_budget":
                     self.gas_budget: SuiNumber = value
                 case _:

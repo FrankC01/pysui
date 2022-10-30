@@ -32,6 +32,8 @@ from pysui.sui import (
     TransferSui,
     TransferObject,
     Pay,
+    PaySui,
+    PayAllSui,
     MergeCoin,
     SplitCoin,
     MoveCall,
@@ -142,6 +144,13 @@ class SuiWallet:
         """Get the current address."""
         return self._client.config.active_address
 
+    def set_current_address(self, address: SuiAddress) -> SuiAddress:
+        """Change up the active address."""
+        if address.address in self._addresses:
+            old = self._client.config.set_active_address(address)
+            return old
+        raise ValueError(f"Address {address.address} not recognized.")
+
     @property
     def addresses(self) -> list[str]:
         """Get all the addresses."""
@@ -246,6 +255,28 @@ class SuiWallet:
         if kword_set == Pay.pay_kwords:
             return self._submit_txn(self.execute(Pay(**kwargs)), kwargs["signer"])
         missing = Pay.pay_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def pay_sui_transfer(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        """Transfer coin using Pay from one account to another."""
+        kword_set = set(kwargs.keys())
+        if kword_set == PaySui.pay_kwords:
+            return self._submit_txn(self.execute(PaySui(**kwargs)), kwargs["signer"])
+        missing = PaySui.pay_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def pay_all_sui_transfer(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        """Transfer coin using Pay from one account to another."""
+        kword_set = set(kwargs.keys())
+        if kword_set == PayAllSui.payall_kwords:
+            return self._submit_txn(self.execute(PayAllSui(**kwargs)), kwargs["signer"])
+        missing = PayAllSui.payall_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
     def merge_coin(

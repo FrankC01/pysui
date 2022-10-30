@@ -13,6 +13,7 @@
 
 """Client Configuration Abstraction."""
 from abc import ABC, abstractmethod
+from abstracts.client_types import AbstractType
 
 
 class ClientConfiguration(ABC):
@@ -25,5 +26,5 @@ class ClientConfiguration(ABC):
 
     @property
     @abstractmethod
-    def active_address(self) -> str:
+    def active_address(self) -> AbstractType:
         """Return the active address from the client configuration."""

@@ -33,29 +33,31 @@ with different configuration (e.g. Local)
 
 #### Output
 ```bash
-usage: wallet.py [-h] {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-object,transfer-sui,pay,merge-coin,split-coin,call,publish} ...
+usage: wallet.py [options] command [--command_options]
 
 options:
   -h, --help            show this help message and exit
 
 commands:
-  {active-address,addresses,gas,new-address,object,objects,package-object,package,rpcapi,transfer-object,transfer-sui,pay,merge-coin,split-coin,call,publish}
+  {active-address,addresses,new-address,gas,object,objects,rpcapi,transfer-object,transfer-sui,pay,paysui,payallsui,package-object,package,publish,call,merge-coin,split-coin}
     active-address      Shows active address
     addresses           Shows all addresses
-    gas                 Shows gas objects
     new-address         Generate new address and keypair
+    gas                 Shows gas objects and total mist
     object              Show object by id
     objects             Show all objects
-    package-object      Get raw package object with Move disassembly
-    package             Get package definition
-    rpcapi              Display Sui RPC API information
-    transfer-object     Transfer object ownership to other object
-    transfer-sui        Transfer SUI gas to recipient
-    pay                 Transfer SUI gas to recipient(s)
+    rpcapi              Show Sui RPC API information
+    transfer-object     Transfer an object from one address to another
+    transfer-sui        Transfer SUI 'mist' to a Sui address
+    pay                 Send coin of any type to recipient(s)
+    paysui              Send SUI coins to a list of addresses.
+    payallsui           Send all SUI coin(s) to recipient(s)
+    package-object      Show raw package object with Move disassembly
+    package             Show normalized package information
+    publish             Publish a SUI package
+    call                Call a move contract function
     merge-coin          Merge two coins together
     split-coin          Split coin into one or more coins
-    call                Call a move contract function
-    publish             Publish a SUI package
 ```
 
 ## Run Local
@@ -67,10 +69,10 @@ To run locally, especially useful when devnet is down, below are the steps to fo
 3. `sui start --network.config sui_local/network.yaml`
 4. Open another terminal
 5. `sui-node --config-path sui_local/fullnode.yaml`
-6. If you haven't already, setup your `pysui` environment as shown above
+6. If you haven't already, setup your `pysui` environment as shown [above](#setup-environment)
 7. Prefix `pysui` commands with `--cfg ~/sui_local/client.yaml`
 
 Example:
 ```bash
-python -m samples.wallet --cfg ~/sui_local/client.yaml gas`
+python -m samples.wallet --cfg ~/sui_local/client.yaml gas
 ```

@@ -85,7 +85,7 @@ class SuiConfig(ClientConfiguration):
         return self._current_url
 
     @property
-    def active_address(self) -> str:
+    def active_address(self) -> SuiAddress:
         """Return the current address."""
         return self._active_address
 
@@ -93,3 +93,9 @@ class SuiConfig(ClientConfiguration):
     def keystore_file(self) -> str:
         """Return the fully qualified keystore path."""
         return self._current_keystore_file
+
+    def set_active_address(self, address: SuiAddress) -> SuiAddress:
+        """Change the active address to address."""
+        stale_addy = self._active_address
+        self._active_address = address
+        return stale_addy

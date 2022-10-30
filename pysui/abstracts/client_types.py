@@ -20,7 +20,7 @@ from typing import Any
 class AbstractType(ABC):
     """Base most abstraction."""
 
-    def __init__(self, identifier: Any) -> None:
+    def __init__(self, identifier: "AbstractType") -> None:
         """Initialize type."""
         self._value = identifier
 

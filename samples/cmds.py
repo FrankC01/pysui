@@ -168,12 +168,12 @@ def transfer_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Transfer object."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
-    print(f"transfer_object args {var_args}")
-    # result = wallet.transfer_object(**var_args)
-    # if result.is_ok():
-    #     print(result.result_data)
-    # else:
-    #     print(f"Error: {result.result_string}")
+    # print(f"transfer_object args {var_args}")
+    result = wallet.transfer_object(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
 
 
 def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
@@ -212,12 +212,35 @@ def split_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_pay(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
     result = wallet.pay_transfer(**var_args)
 
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def sui_pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Payments for one or more recipients from one or more coins for one or more amounts."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    var_args = vars(args)
+    result = wallet.pay_sui_transfer(**var_args)
+
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def sui_payall_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Payment of all of a one whole SUI coin to a recipient."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    var_args = vars(args)
+    result = wallet.pay_all_sui_transfer(**var_args)
     if result.is_ok():
         print(result.result_data)
     else:
@@ -248,6 +271,14 @@ def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
+def switch(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Switch address to active address."""
+    old = wallet.set_current_address(args.address)
+    print(f"Switched from {old} to {args.address}")
+    args.address = None
+    sui_gas(wallet, args)
+
+
 SUI_CMD_DISPATCH = {
     "active-address": sui_active_address,
     "addresses": sui_addresses,
@@ -260,9 +291,12 @@ SUI_CMD_DISPATCH = {
     "rpcapi": sui_api,
     "transfer-object": transfer_object,
     "transfer-sui": transfer_sui,
-    "pay": pay_sui,
+    "pay": sui_pay,
+    "paysui": sui_pay_sui,
+    "payallsui": sui_payall_sui,
     "merge-coin": merge_coin,
     "split-coin": split_coin,
     "call": move_call,
     "publish": publish,
+    "switch": switch,
 }

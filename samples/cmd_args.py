@@ -51,7 +51,7 @@ class ValidateAddress(argparse.Action):
 
 
 class ValidateObjectID(argparse.Action):
-    """Address validator."""
+    """ObjectID validator."""
 
     def __call__(
         self,
@@ -88,29 +88,28 @@ class ValidatePackageDir(argparse.Action):
         setattr(namespace, self.dest, ppath)
 
 
-def build_parser(in_args: list) -> argparse.Namespace:
-    """Build the argument parser structure."""
-    # Base menu
-    parser = argparse.ArgumentParser(add_help=True)
-    subparser = parser.add_subparsers(title="commands")
-
+def _build_read_cmds(subparser) -> None:
+    """Read commands."""
     # Address
     subp = subparser.add_parser("active-address", help="Shows active address")
     subp.set_defaults(subcommand="active-address")
-
     # Addresses
     subp = subparser.add_parser("addresses", help="Shows all addresses")
     subp.set_defaults(subcommand="addresses")
-    # Gas
-    subp = subparser.add_parser("gas", help="Shows gas objects")
-    subp.add_argument("--address", required=False, help="Gas for address", action=ValidateAddress)
-    subp.set_defaults(subcommand="gas")
     # New address
     subp = subparser.add_parser("new-address", help="Generate new address and keypair")
     addy_arg_group = subp.add_mutually_exclusive_group(required=True)
     addy_arg_group.add_argument("-e", "--ed25519", help="Generate using ed25519 scheme", action="store_true")
     addy_arg_group.add_argument("-s", "--secp256k1", help="Generate using secp256k1 scheme", action="store_true")
     subp.set_defaults(subcommand="new-address")
+    # Switch address
+    # subp = subparser.add_parser("switch", help="Change the active address")
+    # subp.add_argument("-a", "--address", required=True, help="Address to change to", action=ValidateAddress)
+    # subp.set_defaults(subcommand="switch")
+    # Gas
+    subp = subparser.add_parser("gas", help="Shows gas objects and total mist")
+    subp.add_argument("-a", "--address", required=False, help="Gas for address", action=ValidateAddress)
+    subp.set_defaults(subcommand="gas")
     # Object
     subp = subparser.add_parser("object", help="Show object by id")
     subp.add_argument("--id", required=True, action=ValidateObjectID)
@@ -124,24 +123,18 @@ def build_parser(in_args: list) -> argparse.Namespace:
     obj_arg_group.add_argument("--nft", help="Only show NFT objects", action="store_true")
     obj_arg_group.add_argument("--data", help="Only show data objects", action="store_true")
     subp.set_defaults(subcommand="objects")
-    # Package Object
-    subp = subparser.add_parser("package-object", help="Get raw package object with Move disassembly")
-    subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
-    subp.add_argument("--src", required=False, help="Display package module(s) src", action="store_true")
-    subp.set_defaults(subcommand="package-object")
-
-    # Normalized Package
-    subp = subparser.add_parser("package", help="Get package definition")
-    subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
-    subp.set_defaults(subcommand="package")
     # RPC information
-    subp = subparser.add_parser("rpcapi", help="Display Sui RPC API information")
+    subp = subparser.add_parser("rpcapi", help="Show Sui RPC API information")
     subp.add_argument("-n", "--name", required=False, help="Display details for named Sui RPC API")
     subp.set_defaults(subcommand="rpcapi")
+
+
+def _build_transfer_cmds(subparser) -> None:
+    """Transfer commands."""
     # Transfer SUI
-    subp = subparser.add_parser("transfer-object", help="Transfer object ownership to other object")
+    subp = subparser.add_parser("transfer-object", help="Transfer an object from one address to another")
     subp.add_argument(
-        "-t",
+        "-d",
         "--object-id",
         required=True,
         help="Specify sui object being transfered",
@@ -177,7 +170,7 @@ def build_parser(in_args: list) -> argparse.Namespace:
     )
     subp.set_defaults(subcommand="transfer-object")
     # Transfer SUI
-    subp = subparser.add_parser("transfer-sui", help="Transfer SUI gas to recipient")
+    subp = subparser.add_parser("transfer-sui", help="Transfer SUI 'mist(s)' to a Sui address")
     subp.add_argument(
         "-a",
         "--amount",
@@ -214,8 +207,12 @@ def build_parser(in_args: list) -> argparse.Namespace:
         action=ValidateAddress,
     )
     subp.set_defaults(subcommand="transfer-sui")
-    # Pays
-    subp = subparser.add_parser("pay", help="Transfer SUI gas to recipient(s)")
+
+
+def _build_pay_cmds(subparser) -> None:
+    """Pay commands."""
+    # Pay
+    subp = subparser.add_parser("pay", help="Send coin of any type to recipient(s)")
     subp.add_argument(
         "-s",
         "--signer",
@@ -258,6 +255,188 @@ def build_parser(in_args: list) -> argparse.Namespace:
         type=check_positive,
     )
     subp.set_defaults(subcommand="pay")
+    # PaySui
+    subp = subparser.add_parser("paysui", help="Send SUI coins to a list of addresses.")
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify pay signer address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-i",
+        "--input-coins",
+        required=True,
+        nargs="+",
+        help="Specify the input sui coins for each <RECEIPIENT>:<AMOUNTS> to send to",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-a",
+        "--amounts",
+        required=True,
+        nargs="+",
+        help="Specify amounts of MIST for each <INPUT-COINS> provided.",
+        type=check_positive,
+    )
+    subp.add_argument(
+        "-r",
+        "--recipients",
+        required=True,
+        nargs="+",
+        help="Specify recipient address for each <AMOUNTS>:<INPUT-COINS> to send to",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'pay' transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="paysui")
+    # PayAllSui
+    subp = subparser.add_parser("payallsui", help="Send all SUI coin(s) to recipient(s)")
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify pay signer address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-i",
+        "--input-coins",
+        required=True,
+        nargs="+",
+        help="Specify the sui coins to use, including transaction payment",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-r",
+        "--recipient",
+        required=True,
+        help="Specify recipient address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'pay' transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="payallsui")
+
+
+def _build_package_cmds(subparser) -> None:
+    """Package commands."""
+    # Package Object
+    subp = subparser.add_parser("package-object", help="Show raw package object with Move disassembly")
+    subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
+    subp.add_argument("--src", required=False, help="Display package module(s) src", action="store_true")
+    subp.set_defaults(subcommand="package-object")
+    # Normalized Package
+    subp = subparser.add_parser("package", help="Show normalized package information")
+    subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
+    subp.set_defaults(subcommand="package")
+    # Publish package
+    subp = subparser.add_parser("publish", help="Publish a SUI package")
+    subp.add_argument(
+        "-s",
+        "--sender",
+        required=False,
+        help="Specify publish sender address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-c",
+        "--compiled_modules",
+        required=True,
+        help="Specify the path to package folder containing compiled modules to publish.",
+        action=ValidatePackageDir,
+    )
+    subp.add_argument(
+        "-o", "--gas", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'split-coin' transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="publish")
+    # Move call
+    subp = subparser.add_parser("call", help="Call a move contract function")
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify split-coin signer address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-p",
+        "--package",
+        required=True,
+        help="Specify the package ID owner of the move module and function.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-m",
+        "--module",
+        required=True,
+        help="Specify the module name in the package.",
+        type=SuiString,
+    )
+    subp.add_argument(
+        "-f",
+        "--function",
+        required=True,
+        help="Specify the function name in the module.",
+        type=SuiString,
+    )
+    subp.add_argument(
+        "-t",
+        "--types",
+        required=False,
+        nargs="+",
+        help="Generic types (if any).",
+        type=SuiString,
+    )
+    subp.add_argument(
+        "-a",
+        "--arguments",
+        required=False,
+        nargs="+",
+        help="Function arguments.",
+        type=SuiString,
+    )
+    subp.add_argument(
+        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify 'split-coin' transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="call")
+
+
+def build_parser(in_args: list) -> argparse.Namespace:
+    """Build the argument parser structure."""
+    # Base menu
+    parser = argparse.ArgumentParser(add_help=True, usage="%(prog)s [options] command [--command_options]")
+    subparser = parser.add_subparsers(title="commands")
+    _build_read_cmds(subparser)
+    _build_transfer_cmds(subparser)
+    _build_pay_cmds(subparser)
+    _build_package_cmds(subparser)
+
     # Merge coin
     subp = subparser.add_parser("merge-coin", help="Merge two coins together")
     subp.add_argument(
@@ -327,88 +506,5 @@ def build_parser(in_args: list) -> argparse.Namespace:
         type=check_positive,
     )
     subp.set_defaults(subcommand="split-coin")
-    # Move call
-    subp = subparser.add_parser("call", help="Call a move contract function")
-    subp.add_argument(
-        "-s",
-        "--signer",
-        required=False,
-        help="Specify split-coin signer address. Default to active address",
-        action=ValidateAddress,
-    )
-    subp.add_argument(
-        "-p",
-        "--package",
-        required=True,
-        help="Specify the package ID owner of the move module and function.",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-m",
-        "--module",
-        required=True,
-        help="Specify the module name in the package.",
-        type=SuiString,
-    )
-    subp.add_argument(
-        "-f",
-        "--function",
-        required=True,
-        help="Specify the function name in the module.",
-        type=SuiString,
-    )
-    subp.add_argument(
-        "-t",
-        "--types",
-        required=False,
-        nargs="+",
-        help="Generic types (if any).",
-        type=SuiString,
-    )
-    subp.add_argument(
-        "-a",
-        "--arguments",
-        required=False,
-        nargs="+",
-        help="Function arguments.",
-        type=SuiString,
-    )
-    subp.add_argument(
-        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
-    )
-    subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify 'split-coin' transaction budget",
-        type=check_positive,
-    )
-    subp.set_defaults(subcommand="call")
-    # Publish call
-    subp = subparser.add_parser("publish", help="Publish a SUI package")
-    subp.add_argument(
-        "-s",
-        "--sender",
-        required=False,
-        help="Specify publish sender address. Default to active address",
-        action=ValidateAddress,
-    )
-    subp.add_argument(
-        "-c",
-        "--compiled_modules",
-        required=True,
-        help="Specify the path to package folder containing compiled modules to publish.",
-        action=ValidatePackageDir,
-    )
-    subp.add_argument(
-        "-o", "--gas", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
-    )
-    subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify 'split-coin' transaction budget",
-        type=check_positive,
-    )
-    subp.set_defaults(subcommand="publish")
+
     return parser.parse_args(in_args if in_args else ["--help"])
