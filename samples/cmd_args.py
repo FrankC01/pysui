@@ -23,7 +23,7 @@ from pysui.sui.sui_types import ObjectID, SuiNumber, SuiAddress, SuiString
 def check_positive(value: str) -> int:
     """Check for positive integers."""
     ivalue = int(value)
-    if ivalue <= 0:
+    if ivalue < 0:
         raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")
     return SuiNumber(ivalue)
 
@@ -427,16 +427,8 @@ def _build_package_cmds(subparser) -> None:
     subp.set_defaults(subcommand="call")
 
 
-def build_parser(in_args: list) -> argparse.Namespace:
-    """Build the argument parser structure."""
-    # Base menu
-    parser = argparse.ArgumentParser(add_help=True, usage="%(prog)s [options] command [--command_options]")
-    subparser = parser.add_subparsers(title="commands")
-    _build_read_cmds(subparser)
-    _build_transfer_cmds(subparser)
-    _build_pay_cmds(subparser)
-    _build_package_cmds(subparser)
-
+def _build_coin_cmds(subparser) -> None:
+    """Coin commands."""
     # Merge coin
     subp = subparser.add_parser("merge-coin", help="Merge two coins together")
     subp.add_argument(
@@ -506,5 +498,81 @@ def build_parser(in_args: list) -> argparse.Namespace:
         type=check_positive,
     )
     subp.set_defaults(subcommand="split-coin")
+
+
+def _build_extended_read_commands(subparser) -> None:
+    """More Object read commands."""
+
+    def __common_event_opts(eparser) -> None:
+        eparser.add_argument("-c", "--count", required=True, help="maximum number of the results", type=check_positive)
+        eparser.add_argument(
+            "-s", "--start_time", required=True, help="left endpoint of time interval, inclusive", type=check_positive
+        )
+        eparser.add_argument(
+            "-e", "--end_time", required=True, help="right endpoint of time interval, exclusive", type=check_positive
+        )
+
+    # Events
+    subp = subparser.add_parser(
+        "events", help="Show events for types", usage="events subcommand [--subcommand_options]"
+    )
+    ecmds = subp.add_subparsers(title="subcommand", required=True)
+    # Module events
+    esubp = ecmds.add_parser("module", help="Return events emitted in a specified Move module")
+    esubp.add_argument("-p", "--package", required=True, help="the SUI package ID", action=ValidateObjectID)
+    esubp.add_argument("-m", "--module", required=True, help="the module name", type=str)
+    __common_event_opts(esubp)
+    esubp.set_defaults(subcommand="event-module")
+    # Structure events
+    esubp = ecmds.add_parser("struct", help="Return events with the given move event struct name")
+    esubp.add_argument("-n", "--name", required=True, dest="move_event_struct_name", type=str)
+    __common_event_opts(esubp)
+    esubp.set_defaults(subcommand="event-struct")
+    # Object events
+    esubp = ecmds.add_parser("object", help="Return events associated with the given object")
+    esubp.add_argument("-o", "--object", required=True, help="the SUI object ID", action=ValidateObjectID)
+    __common_event_opts(esubp)
+    esubp.set_defaults(subcommand="event-object")
+    # Recipient events
+    esubp = ecmds.add_parser("recipient", help="Return events associated with the given recipient")
+    esubp.add_argument("-r", "--recipient", required=True, help="the SUI address of recipient")
+    __common_event_opts(esubp)
+    esubp.set_defaults(subcommand="event-recipient")
+    # Sender events
+    esubp = ecmds.add_parser("sender", help="Return events associated with the given sender")
+    esubp.add_argument("-a", "--address", required=True, dest="sender", help="the SUI address of sender")
+    __common_event_opts(esubp)
+    esubp.set_defaults(subcommand="event-sender")
+    # Time events
+    esubp = ecmds.add_parser("time", help="Return events emitted in [start_time, end_time) interval")
+    __common_event_opts(esubp)
+    esubp.set_defaults(subcommand="event-time")
+    esubp = ecmds.add_parser("transaction", help="Return events emitted by the given transaction")
+    esubp.add_argument("-d", "--digest", required=True, help="the transaction's digest")
+    esubp.add_argument("-c", "--count", required=True, help="maximum number of the results", type=check_positive)
+    esubp.set_defaults(subcommand="event-tx")
+    # Committee info
+    subp = subparser.add_parser("committee", help="Show committee info for epoch")
+    subp.add_argument(
+        "-e",
+        "--epoch",
+        required=False,
+        help="The epoch of interest. If None, default to the latest epoch",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="committee")
+
+
+def build_parser(in_args: list) -> argparse.Namespace:
+    """Build the argument parser structure."""
+    # Base menu
+    parser = argparse.ArgumentParser(add_help=True, usage="%(prog)s [options] command [--command_options]")
+    subparser = parser.add_subparsers(title="commands")
+    _build_read_cmds(subparser)
+    _build_coin_cmds(subparser)
+    _build_transfer_cmds(subparser)
+    _build_pay_cmds(subparser)
+    _build_package_cmds(subparser)
+    _build_extended_read_commands(subparser)
 
     return parser.parse_args(in_args if in_args else ["--help"])

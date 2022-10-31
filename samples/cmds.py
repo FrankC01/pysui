@@ -131,7 +131,7 @@ def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
     result = _object_type(args)
     if result.is_ok():
         if args.json:
-            for desc in result:
+            for desc in result.result_data:
                 print(desc.json_pretty())
         else:
             _objects_header_print()
@@ -279,7 +279,93 @@ def switch(wallet: SuiWallet, args: argparse.Namespace) -> None:
     sui_gas(wallet, args)
 
 
+def committee(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Committee info request handler."""
+    result = wallet.get_committee_info(args.epoch)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def events_module(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Event info request handler."""
+    var_args = vars(args)
+    result = wallet.get_module_events(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def events_struct(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Event info request handler."""
+    var_args = vars(args)
+    result = wallet.get_struct_events(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def events_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Event info request handler."""
+    var_args = vars(args)
+    result = wallet.get_object_events(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def events_recipient(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Event info request handler."""
+    var_args = vars(args)
+    result = wallet.get_recipient_events(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def events_sender(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Event info request handler."""
+    var_args = vars(args)
+    result = wallet.get_sender_events(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def events_time(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Event info request handler."""
+    var_args = vars(args)
+    result = wallet.get_time_events(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def events_tx(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Event info request handler."""
+    var_args = vars(args)
+    result = wallet.get_tx_events(**var_args)
+    if result.is_ok():
+        print(result.result_data)
+    else:
+        print(f"Error: {result.result_string}")
+
+
 SUI_CMD_DISPATCH = {
+    "event-module": events_module,
+    "event-struct": events_struct,
+    "event-object": events_object,
+    "event-recipient": events_recipient,
+    "event-sender": events_sender,
+    "event-time": events_time,
+    "event-tx": events_tx,
     "active-address": sui_active_address,
     "addresses": sui_addresses,
     "gas": sui_gas,
@@ -299,4 +385,5 @@ SUI_CMD_DISPATCH = {
     "call": move_call,
     "publish": publish,
     "switch": switch,
+    "committee": committee,
 }

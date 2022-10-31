@@ -25,10 +25,19 @@ from pysui.sui import (
     SuiClient,
     SuiConfig,
     SuiRpcResult,
+    SuiBaseBuilder,
     GetObjectsOwnedByAddress,
     GetObject,
     GetRawPackage,
     GetPackage,
+    GetCommittee,
+    GetModuleEvents,
+    GetStructEvents,
+    GetObjectEvents,
+    GetRecipientEvents,
+    GetSenderEvents,
+    GetTimeEvents,
+    GetTxEvents,
     TransferSui,
     TransferObject,
     Pay,
@@ -56,6 +65,7 @@ from pysui.sui.sui_types import (
     ObjectID,
     SuiTxBytes,
     SuiNativeCoinDescriptor,
+    SuiNumber,
     SuiGasType,
     ObjectInfo,
     SuiNftDescriptor,
@@ -181,6 +191,54 @@ class SuiWallet:
                 return SuiRpcResult(False, f"{result['error']}")
             return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
         return result
+
+    def get_committee_info(self, epoch: SuiNumber) -> Union[SuiRpcResult, Exception]:
+        """Get info of Sui committtee."""
+        result = self.execute(GetCommittee(epoch))
+        if result.is_ok():
+            result = result.result_data
+            if "error" in result:
+                return SuiRpcResult(False, f"{result['error']}")
+            return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+        return result
+
+    def _get_events(self, cls: SuiBaseBuilder, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+        """Get events."""
+        result = self.execute(cls(**kwargs))
+        if result.is_ok():
+            result = result.result_data
+            if "error" in result:
+                return SuiRpcResult(False, f"{result['error']}")
+            return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+        return result
+
+    def get_module_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+        """Get module events."""
+        return self._get_events(GetModuleEvents, **kwargs)
+
+    def get_struct_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+        """Get struct events."""
+        return self._get_events(GetStructEvents, **kwargs)
+
+    def get_object_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+        """Get object events."""
+        return self._get_events(GetObjectEvents, **kwargs)
+
+    def get_recipient_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+        """Get recipient events."""
+        return self._get_events(GetRecipientEvents, **kwargs)
+
+    def get_sender_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+        """Get sender events."""
+        return self._get_events(GetSenderEvents, **kwargs)
+
+    def get_time_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+        """Get time events."""
+        return self._get_events(GetTimeEvents, **kwargs)
+
+    def get_tx_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+        """Get transaction events."""
+        return self._get_events(GetTxEvents, **kwargs)
 
     def get_package_object(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get details of Sui package."""

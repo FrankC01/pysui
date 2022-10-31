@@ -39,7 +39,7 @@ options:
   -h, --help            show this help message and exit
 
 commands:
-  {active-address,addresses,new-address,gas,object,objects,rpcapi,transfer-object,transfer-sui,pay,paysui,payallsui,package-object,package,publish,call,merge-coin,split-coin}
+  {active-address,addresses,new-address,gas,object,objects,rpcapi,merge-coin,split-coin,transfer-object,transfer-sui,pay,paysui,payallsui,package-object,package,publish,call,events,committee}
     active-address      Shows active address
     addresses           Shows all addresses
     new-address         Generate new address and keypair
@@ -47,8 +47,10 @@ commands:
     object              Show object by id
     objects             Show all objects
     rpcapi              Show Sui RPC API information
+    merge-coin          Merge two coins together
+    split-coin          Split coin into one or more coins
     transfer-object     Transfer an object from one address to another
-    transfer-sui        Transfer SUI 'mist' to a Sui address
+    transfer-sui        Transfer SUI 'mist(s)' to a Sui address
     pay                 Send coin of any type to recipient(s)
     paysui              Send SUI coins to a list of addresses.
     payallsui           Send all SUI coin(s) to recipient(s)
@@ -56,8 +58,28 @@ commands:
     package             Show normalized package information
     publish             Publish a SUI package
     call                Call a move contract function
-    merge-coin          Merge two coins together
-    split-coin          Split coin into one or more coins
+    events              Show events for types
+    committee           Show committee info for epoch
+```
+### Run sample wallet app for more help
+`python -m samples.wallet events -h`
+
+### Output
+```bash
+usage: events subcommand [--subcommand_options]
+
+options:
+  -h, --help            show this help message and exit
+
+subcommand:
+  {module,struct,object,recipient,sender,time,transaction}
+    module              Return events emitted in a specified Move module
+    struct              Return events with the given move event struct name
+    object              Return events associated with the given object
+    recipient           Return events associated with the given recipient
+    sender              Return events associated with the given sender
+    time                Return events emitted in [start_time, end_time) interval
+    transaction         Return events emitted by the given transaction
 ```
 
 ## Run Local

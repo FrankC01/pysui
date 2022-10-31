@@ -65,6 +65,16 @@ class SuiString(SuiScalarType):
         """Alias for transactions."""
         return self._value
 
+    @property
+    def move_event_struct_name(self) -> str:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def digest(self) -> str:
+        """Alias for transactions."""
+        return self._value
+
 
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""
@@ -93,6 +103,11 @@ class ObjectID(SuiString):
 
     @property
     def object_id(self) -> str:
+        """Alias over value."""
+        return self._value
+
+    @property
+    def object(self) -> str:
         """Alias over value."""
         return self._value
 
@@ -158,6 +173,28 @@ class SuiNumber(SuiScalarType):
     @property
     def split_amounts(self) -> int:
         """Alias for transactions."""
+        return self._value
+
+    @property
+    def count(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def start_time(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def end_time(self) -> int:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def epoch(self) -> int:
+        """Alias for transactions."""
+        if self._value is None:
+            return 0
         return self._value
 
 

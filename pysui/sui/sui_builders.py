@@ -211,6 +211,216 @@ class GetRpcAPI(_NativeTransactionBuilder):
         return []
 
 
+class GetCommittee(_NativeTransactionBuilder):
+    """Fetch Committee Info."""
+
+    def __init__(self, epoch: SuiNumber = None) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getCommitteeInfo")
+        self.epoch: SuiNumber = epoch if epoch else SuiNumber(None)
+
+    def set_epoch(self, epoch: SuiNumber) -> "GetCommittee":
+        """Set epoch."""
+        self.epoch = epoch
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return [self.epoch]
+
+
+class GetModuleEvents(_NativeTransactionBuilder):
+    """Fetch Module Events Info."""
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getEventsByModule")
+        self.package: ObjectID = None
+        self.module: SuiString = None
+        self.count: SuiNumber = None
+        self.start_time: SuiNumber = None
+        self.end_time: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "package":
+                    self.package: ObjectID = value
+                case "module":
+                    self.module: SuiString = value if isinstance(value, SuiString) else SuiString(value)
+                case "count":
+                    self.count: SuiNumber = value
+                case "start_time":
+                    self.start_time: SuiNumber = value
+                case "end_time":
+                    self.end_time: SuiNumber = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class GetStructEvents(_NativeTransactionBuilder):
+    """Fetch Named Struct Events Info."""
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getEventsByMoveEventStructName")
+        self.move_event_struct_name: SuiString = None
+        self.count: SuiNumber = None
+        self.start_time: SuiNumber = None
+        self.end_time: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "move_event_struct_name":
+                    self.move_event_struct_name: SuiString = value if isinstance(value, SuiString) else SuiString(value)
+                case "count":
+                    self.count: SuiNumber = value
+                case "start_time":
+                    self.start_time: SuiNumber = value
+                case "end_time":
+                    self.end_time: SuiNumber = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class GetObjectEvents(_NativeTransactionBuilder):
+    """Fetch Object Events Info."""
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getEventsByObject")
+        self.object: ObjectID = None
+        self.count: SuiNumber = None
+        self.start_time: SuiNumber = None
+        self.end_time: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "object":
+                    self.object: ObjectID = value
+                case "count":
+                    self.count: SuiNumber = value
+                case "start_time":
+                    self.start_time: SuiNumber = value
+                case "end_time":
+                    self.end_time: SuiNumber = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class GetRecipientEvents(_NativeTransactionBuilder):
+    """Fetch Recipient Events Info."""
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getEventsByRecipient")
+        self.recipient: SuiAddress = None
+        self.count: SuiNumber = None
+        self.start_time: SuiNumber = None
+        self.end_time: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "recipient":
+                    self.recipient: SuiAddress = value
+                case "count":
+                    self.count: SuiNumber = value
+                case "start_time":
+                    self.start_time: SuiNumber = value
+                case "end_time":
+                    self.end_time: SuiNumber = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class GetSenderEvents(_NativeTransactionBuilder):
+    """Fetch Sender Events Info."""
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getEventsBySender")
+        self.sender: SuiAddress = None
+        self.count: SuiNumber = None
+        self.start_time: SuiNumber = None
+        self.end_time: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "sender":
+                    self.sender: SuiAddress = (
+                        value if isinstance(value, SuiAddress) else SuiAddress.from_hex_string(value)
+                    )
+                case "count":
+                    self.count: SuiNumber = value
+                case "start_time":
+                    self.start_time: SuiNumber = value
+                case "end_time":
+                    self.end_time: SuiNumber = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class GetTimeEvents(_NativeTransactionBuilder):
+    """Fetch Time events Info."""
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getEventsByTimeRange")
+        self.count: SuiNumber = None
+        self.start_time: SuiNumber = None
+        self.end_time: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "count":
+                    self.count: SuiNumber = value
+                case "start_time":
+                    self.start_time: SuiNumber = value
+                case "end_time":
+                    self.end_time: SuiNumber = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class GetTxEvents(_NativeTransactionBuilder):
+    """Fetch Transaction events Info."""
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getEventsByTransaction")
+        self.digest: SuiString = None
+        self.count: SuiNumber = None
+        for key, value in kwargs.items():
+            match key:
+                case "digest":
+                    self.digest: SuiString = value if isinstance(value, SuiString) else SuiString(value)
+                case "count":
+                    self.count: SuiNumber = value
+                case _:
+                    raise ValueError(f"Unknown TransferSui bulder type {key}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
 class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 

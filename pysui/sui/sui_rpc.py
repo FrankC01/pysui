@@ -13,7 +13,7 @@
 
 
 """Sui RPC Clients."""
-
+import json
 from json import JSONDecodeError
 from typing import Any
 import httpx
@@ -106,7 +106,8 @@ class SuiClient(SyncHttpRPC):
         parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
         jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
         if print_json:
-            print(f"jblock {jblock}")
+            jout = json.dumps(jblock, indent=2)
+            print(f"{jout}")
         try:
             return SuiRpcResult(
                 True,
