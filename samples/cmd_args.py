@@ -535,12 +535,14 @@ def _build_extended_read_commands(subparser) -> None:
     esubp.set_defaults(subcommand="event-object")
     # Recipient events
     esubp = ecmds.add_parser("recipient", help="Return events associated with the given recipient")
-    esubp.add_argument("-r", "--recipient", required=True, help="the SUI address of recipient")
+    esubp.add_argument("-r", "--recipient", required=True, help="the SUI address of recipient", type=str)
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-recipient")
     # Sender events
     esubp = ecmds.add_parser("sender", help="Return events associated with the given sender")
-    esubp.add_argument("-a", "--address", required=True, dest="sender", help="the SUI address of sender")
+    esubp.add_argument(
+        "-a", "--address", required=True, dest="sender", help="the SUI address of sender", action=ValidateAddress
+    )
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-sender")
     # Time events

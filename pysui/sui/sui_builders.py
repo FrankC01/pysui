@@ -25,6 +25,7 @@ from sui.sui_types import (
     SuiTxBytes,
     SuiSignature,
     SuiArray,
+    SuiMap,
     SuiAddress,
     SuiBaseType,
 )
@@ -322,14 +323,14 @@ class GetRecipientEvents(_NativeTransactionBuilder):
     def __init__(self, **kwargs: dict) -> None:
         """Initialize builder."""
         super().__init__("sui_getEventsByRecipient")
-        self.recipient: SuiAddress = None
+        self.recipient: SuiMap = None
         self.count: SuiNumber = None
         self.start_time: SuiNumber = None
         self.end_time: SuiNumber = None
         for key, value in kwargs.items():
             match key:
                 case "recipient":
-                    self.recipient: SuiAddress = value
+                    self.recipient: SuiMap = SuiMap("AddressOwner", value)
                 case "count":
                     self.count: SuiNumber = value
                 case "start_time":
@@ -357,9 +358,7 @@ class GetSenderEvents(_NativeTransactionBuilder):
         for key, value in kwargs.items():
             match key:
                 case "sender":
-                    self.sender: SuiAddress = (
-                        value if isinstance(value, SuiAddress) else SuiAddress.from_hex_string(value)
-                    )
+                    self.sender: SuiAddress = value
                 case "count":
                     self.count: SuiNumber = value
                 case "start_time":

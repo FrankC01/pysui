@@ -105,9 +105,9 @@ class SuiClient(SyncHttpRPC):
             raise SuiRpcApiNotAvailable(builder.method)
         parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
         jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
-        if print_json:
-            jout = json.dumps(jblock, indent=2)
-            print(f"{jout}")
+        # if print_json:
+        jout = json.dumps(jblock, indent=2)
+        print(f"{jout}")
         try:
             return SuiRpcResult(
                 True,

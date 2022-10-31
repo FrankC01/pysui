@@ -21,7 +21,7 @@ import base64
 import binascii
 import hashlib
 from numbers import Number
-from typing import Generic, TypeVar, Union
+from typing import Any, Generic, TypeVar, Union
 from abstracts import AbstractType
 
 from sui.sui_constants import SUI_ADDRESS_STRING_LEN
@@ -72,6 +72,11 @@ class SuiString(SuiScalarType):
 
     @property
     def digest(self) -> str:
+        """Alias for transactions."""
+        return self._value
+
+    @property
+    def recipient(self) -> str:
         """Alias for transactions."""
         return self._value
 
@@ -591,6 +596,20 @@ class SuiArray(SuiCollection, Generic[AT]):
     def compiled_modules(self) -> list[SuiString]:
         """Alias for transactions."""
         return self.array
+
+
+class SuiMap(SuiCollection):
+    """Dictionary Type."""
+
+    def __init__(self, key: str, value: Any) -> None:
+        """Initialize collection."""
+        super().__init__(None)
+        self.map = {key: value}
+
+    @property
+    def recipient(self) -> dict[str, Any]:
+        """Alias for transactions."""
+        return self.map
 
 
 class SuiPackage(SuiBaseType):

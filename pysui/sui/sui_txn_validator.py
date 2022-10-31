@@ -40,11 +40,11 @@ def valid_sui_address(instr: str) -> bool:
 
 def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
     """Validate the specific parameter."""
-    from sui.sui_types import SuiCollection
+    from sui.sui_types import SuiArray
 
     schema_name = type(build_parm).__name__
     att = getattr(build_parm, api_parm.name)
-    if isinstance(build_parm, SuiCollection):
+    if isinstance(build_parm, SuiArray):
         att = [getattr(x, api_parm.name) for x in att]
 
     # print(f"att {api_parm.name} = {att}")
