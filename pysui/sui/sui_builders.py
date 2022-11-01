@@ -420,6 +420,36 @@ class GetTxEvents(_NativeTransactionBuilder):
         return self._pull_vars()
 
 
+class GetTotalTxCount(_NativeTransactionBuilder):
+    """Return the total number of transactions known to the server."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getTotalTransactionNumber")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class GetTx(_NativeTransactionBuilder):
+    """Return information about a specific transaction."""
+
+    def __init__(self, digest: SuiString = None) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getTransaction")
+        self.digest: SuiString = digest if isinstance(digest, SuiString) else SuiString(digest)
+
+    def set_digest(self, digest: SuiString) -> "GetTx":
+        """Set digest var."""
+        self.digest = digest if isinstance(digest, SuiString) else SuiString(digest)
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return [self.digest]
+
+
 class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 

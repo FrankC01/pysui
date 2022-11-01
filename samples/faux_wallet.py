@@ -38,6 +38,8 @@ from pysui.sui import (
     GetSenderEvents,
     GetTimeEvents,
     GetTxEvents,
+    GetTotalTxCount,
+    GetTx,
     TransferSui,
     TransferObject,
     Pay,
@@ -65,6 +67,7 @@ from pysui.sui.sui_types import (
     ObjectID,
     SuiTxBytes,
     SuiNativeCoinDescriptor,
+    SuiString,
     SuiNumber,
     SuiGasType,
     ObjectInfo,
@@ -240,6 +243,14 @@ class SuiWallet:
         """Get transaction events."""
         return self._get_events(GetTxEvents, **kwargs)
 
+    def get_total_tx_count(self) -> Union[SuiRpcResult, Exception]:
+        """Get total tx count."""
+        return self.execute(GetTotalTxCount())
+
+    def get_transaction(self, digest: SuiString) -> Union[SuiRpcResult, Exception]:
+        """Get total tx count."""
+        return self.execute(GetTx(digest))
+
     def get_package_object(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get details of Sui package."""
         result = self.execute(GetRawPackage(package_id))
@@ -265,6 +276,7 @@ class SuiWallet:
             builder = ExecuteTransaction()
             builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
                 kpair.private_key.sign(base64.b64decode(b64tx_bytes))
+                # kpair.private_key.sign(b64tx_bytes)
             ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORLOCALEXECUTION)
             # builder = DryRunTransaction()
             # builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(

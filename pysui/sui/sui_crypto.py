@@ -159,7 +159,8 @@ class SuiPrivateKeySECP256K1(PrivateKey):
     # TODO: Needs completion work and testing
     def sign(self, data: bytes) -> str:
         """ED25519 sign data bytes."""
-        return SuiSignature(self._signing_key.ecdsa_sign(data))
+        # return SuiSignature(self._signing_key.ecdsa_sign(data))
+        raise NotImplementedError("signing with secp256k1 keys")
 
 
 class SuiKeyPairSECP256K1(KeyPair):

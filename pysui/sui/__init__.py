@@ -36,6 +36,8 @@ from sui.sui_builders import (
     GetSenderEvents,
     GetTimeEvents,
     GetTxEvents,
+    GetTotalTxCount,
+    GetTx,
     TransferSui,
     TransferObject,
     Pay,

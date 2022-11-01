@@ -14,6 +14,7 @@
 
 """Commands and dispath dict."""
 import argparse
+import json
 from pysui.abstracts import SignatureScheme
 from pysui.sui.sui_rpc import SuiRpcResult
 from pysui.sui.sui_types import SuiPackage
@@ -358,6 +359,24 @@ def events_tx(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
+def txn_count(wallet: SuiWallet, _args: argparse.Namespace) -> None:
+    """Transaction information request handler."""
+    result = wallet.get_total_tx_count()
+    if result.is_ok():
+        print(result.result_data["result"])
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def txn_txn(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Transaction information request handler."""
+    result = wallet.get_transaction(args.digest)
+    if result.is_ok():
+        print(json.dumps(result.result_data["result"], indent=2))
+    else:
+        print(f"Error: {result.result_string}")
+
+
 SUI_CMD_DISPATCH = {
     "event-module": events_module,
     "event-struct": events_struct,
@@ -366,6 +385,8 @@ SUI_CMD_DISPATCH = {
     "event-sender": events_sender,
     "event-time": events_time,
     "event-tx": events_tx,
+    "txn-count": txn_count,
+    "txn-txn": txn_txn,
     "active-address": sui_active_address,
     "addresses": sui_addresses,
     "gas": sui_gas,

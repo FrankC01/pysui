@@ -13,7 +13,7 @@
 
 
 """Sui RPC Clients."""
-import json
+
 from json import JSONDecodeError
 from typing import Any
 import httpx
@@ -99,15 +99,15 @@ class SuiClient(SyncHttpRPC):
         """Perform argument validations."""
         return builder
 
-    def execute(self, builder: SuiBaseBuilder, print_json: bool = False) -> Any:
+    def execute(self, builder: SuiBaseBuilder) -> Any:
         """Execute the builder construct."""
         if not builder.method in self._rpc_api:
             raise SuiRpcApiNotAvailable(builder.method)
         parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
         jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
-        # if print_json:
-        jout = json.dumps(jblock, indent=2)
-        print(f"{jout}")
+        # import json
+        # jout = json.dumps(jblock, indent=2)
+        # print(f"{jout}")
         try:
             return SuiRpcResult(
                 True,

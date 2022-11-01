@@ -1,6 +1,13 @@
 # pysui
 
-Experimental (pre-alpha) python client side toolkit for Sui - WIP and expect significant refactoring
+Experimental (alpha) python client side toolkit for Sui - WIP and expect significant refactoring
+
+## Known issues or missing capability
+* No batch transaction coverage yet
+* Doesn't use mnemonics yet (see Issue #9)
+* Doesn't have implementation for secp256k1 signing yet
+* Partial coverage for `sui_getTransaction...` RPC API
+* Many results are raw json data and not encapsulated in pysui SUI types yet (e.g. `SuiExecuteTransactionResponse`) (see Issue #1)
 
 ## Ready to run
 Requires:
@@ -39,7 +46,7 @@ options:
   -h, --help            show this help message and exit
 
 commands:
-  {active-address,addresses,new-address,gas,object,objects,rpcapi,merge-coin,split-coin,transfer-object,transfer-sui,pay,paysui,payallsui,package-object,package,publish,call,events,committee}
+  {active-address,addresses,new-address,gas,object,objects,rpcapi,merge-coin,split-coin,transfer-object,transfer-sui,pay,paysui,payallsui,package-object,package,publish,call,events,committee,txns}
     active-address      Shows active address
     addresses           Shows all addresses
     new-address         Generate new address and keypair
@@ -60,8 +67,9 @@ commands:
     call                Call a move contract function
     events              Show events for types
     committee           Show committee info for epoch
+    txns                Show transaction information
 ```
-### Run sample wallet app for more help
+### Run sample wallet app for event query help
 `python -m samples.wallet events -h`
 
 ### Output
@@ -80,6 +88,21 @@ subcommand:
     sender              Return events associated with the given sender
     time                Return events emitted in [start_time, end_time) interval
     transaction         Return events emitted by the given transaction
+```
+### Run sample wallet app for transaction query help
+`python -m samples.wallet txns -h`
+
+### Output
+```bash
+usage: txns subcommand [--subcommand_options]
+
+options:
+  -h, --help   show this help message and exit
+
+subcommand:
+  {count,txn}
+    count      Return total transaction count from server
+    txn        Return transaction information
 ```
 
 ## Run Local

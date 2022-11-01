@@ -58,7 +58,7 @@ def _parameter_check(api_method: SuiApi, builder: Builder) -> Union[tuple[str, s
     # All calls take at least 1 parameter
     parmlen = len(api_method.params)
     build_parms = builder.params
-    if not build_parms or (len(build_parms) != parmlen):
+    if len(build_parms) != parmlen:
         raise SuiRpcApiInvalidParameter(
             f"API Expected {parmlen} parameters for {builder.method} but found {len(build_parms)}"
         )

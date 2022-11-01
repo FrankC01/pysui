@@ -565,6 +565,22 @@ def _build_extended_read_commands(subparser) -> None:
     subp.set_defaults(subcommand="committee")
 
 
+def _build_tx_query_commands(subparser) -> None:
+    """Transaction information read commands."""
+    # Transactions
+    subp = subparser.add_parser(
+        "txns", help="Show transaction information", usage="txns subcommand [--subcommand_options]"
+    )
+    tcmds = subp.add_subparsers(title="subcommand", required=True)
+    # Total count
+    esubp = tcmds.add_parser("count", help="Return total transaction count from server")
+    esubp.set_defaults(subcommand="txn-count")
+    # Transaction
+    esubp = tcmds.add_parser("txn", help="Return transaction information")
+    esubp.add_argument("-d", "--digest", required=True, help="the transaction's digest")
+    esubp.set_defaults(subcommand="txn-txn")
+
+
 def build_parser(in_args: list) -> argparse.Namespace:
     """Build the argument parser structure."""
     # Base menu
@@ -576,5 +592,6 @@ def build_parser(in_args: list) -> argparse.Namespace:
     _build_pay_cmds(subparser)
     _build_package_cmds(subparser)
     _build_extended_read_commands(subparser)
+    _build_tx_query_commands(subparser)
 
     return parser.parse_args(in_args if in_args else ["--help"])
