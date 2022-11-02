@@ -158,11 +158,12 @@ class SuiPrivateKeySECP256K1(PrivateKey):
         super().__init__(SignatureScheme.SECP256K1, indata)
         self._signing_key = secp256k1.PrivateKey(indata, raw=True)
 
-    # TODO: Needs completion work and testing
     def sign(self, data: bytes) -> str:
-        """ED25519 sign data bytes."""
-        # return SuiSignature(self._signing_key.ecdsa_sign(data))
-        raise NotImplementedError("signing with secp256k1 keys")
+        """secp256k1 sign data bytes."""
+        sdata = bytearray(self._signing_key.ecdsa_serialize_compact(self._signing_key.ecdsa_sign(data)))
+        # Pad the bytes, not sure why but....
+        sdata.append(1)
+        return SuiSignature(base64.b64encode(bytes(sdata)))
 
 
 class SuiKeyPairSECP256K1(KeyPair):

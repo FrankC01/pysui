@@ -35,10 +35,13 @@ from pysui.sui.sui_constants import (
     SECP256K1_PUBLICKEY_BYTES_LEN,
 )
 
-TEST_ED25519_KEYSTRING = "APLkwzgb263XFdZB2CloxMz4z2h4pP2m7C5y1ef56MTaHnSr41donGv0yAIhYgWc6DJUdoWE4ZTF020YAOQ9tyw="
-TEST_SECP256K1_KEYSTRING = "AQLjRaEVn1AOwAy3IKIzhrPXwBKSrD7QHfrI0k7GnDidv3y11eFD+gwe2A86VG6y4S8dpK2FGC68MZ6Y7fB4FFpb"
-TEST_ED25519_ADDRESS = "0x2e8c9bb1260d44fd5ba4c5ddde10bb13b47067f8"
-TEST_SECP256K1_ADDRESS = "0xb2ca232ea8fec377ded6048c933b73ce97c842a8"
+TEST_ED25519_KEYSTRING = "AIIKwlBXko96i36aKTeHMYiWPDzNzQA6btkfK8f7uInJ3kX5ZqeoLqJZB2ZLhpj1xXHDlelzmej7yCca+ZGdAhY="
+TEST_SECP256K1_KEYSTRING = "AQMm9+3O2Yn5KBWbwsRt33Gz6e6ankSeukxDFd9G30qSFQnSiMUHzIFGAASqu1PlQInM280Zae9JZMqYl+WzSnTS"
+TEST_ED25519_ADDRESS = "0x83a299c2d0be351bdec7f509d16d5224075d0ab9"
+TEST_SECP256K1_ADDRESS = "0xf5493a8ef4fbf1cbf0edcfdc37687fd6c2874f6c"
+SIGN_INPUT_DATA = "APfrWX20DMtUWAvHxuv31tqBHogKNKnxuKA1QeB+wXGUx+Rp9/CGD9TzeazNhELCD2Y4o2VW5dL1juwzOUuEiAI9cjQi2P11jfUgBHa+Ah55U457R8w6ydbqSuIixhMm6w=="
+# SECP_SIG = "3ka2oyct+ukiW65kEQBEFiVbhKRRwACxC6wbGBYjOlpltwqP5gdWildwJJoEAd8fwZqf+kufUWRsOkZFHr0LggA="
+ED25_SIG = "FRS1Amac5cBHHD+HHtHRsmOnc7ytS59pGYiHrWb41XSxRLrtGxX7kvkaSB5IyxzXJNxKzdMMnBS28Jf/Oid1BQ=="
 
 
 def test_ed25519_pass() -> None:
@@ -105,6 +108,20 @@ def test_secp256k1_address_pass() -> None:
     suiaddress = address_from_keystring(TEST_SECP256K1_KEYSTRING)
     assert suiaddress is not None
     assert TEST_SECP256K1_ADDRESS == str(suiaddress.identifier)
+
+
+def test_edwards_signing() -> None:
+    """Test signing."""
+    edkp = keypair_from_keystring(TEST_ED25519_KEYSTRING)
+    sig = edkp.private_key.sign(base64.b64decode(SIGN_INPUT_DATA))
+    assert sig.signature == ED25_SIG
+
+
+# def test_secp_signing() -> None:
+#     """Test signing."""
+#     edkp = keypair_from_keystring(TEST_SECP256K1_KEYSTRING)
+#     sig = edkp.private_key.sign(base64.b64decode(SIGN_INPUT_DATA))
+#     assert sig.signature == SECP_SIG
 
 
 @pytest.mark.xfail(raises=Exception)

@@ -5,7 +5,6 @@ Experimental (alpha) python client side toolkit for Sui - WIP and expect signifi
 ## Known issues or missing capability
 * No batch transaction coverage yet
 * Doesn't use mnemonics yet (see Issue #9)
-* Doesn't have implementation for secp256k1 signing yet
 * Partial coverage for `sui_getTransaction...` RPC API
 * Many results are raw json data and not encapsulated in pysui SUI types yet (e.g. `SuiExecuteTransactionResponse`) (see Issue #1)
 
