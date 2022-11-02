@@ -32,6 +32,8 @@ from sui.sui_constants import (
 )
 from sui.sui_types import SuiSignature, SuiAddress
 
+# m / purpose' / coin_type' / account' / change / address_index
+_DEFAULT_PATH = "m/44'/784'/0'/0'/0'"
 
 # Edwards Curve Keys
 

@@ -104,6 +104,10 @@ class SuiRpcApiError(SuiException):
 # Publish exceptions
 
 
+class SuiPackageBuildFail(SuiException):
+    """For publishing."""
+
+
 class SuiMiisingBuildFolder(SuiException):
     """For publishing."""
 

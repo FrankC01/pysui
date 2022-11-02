@@ -17,7 +17,9 @@
         "--disable",
         "global-statement",
         "--disable",
-        "import-outside-toplevel"
+        "import-outside-toplevel",
+        "--disable",
+        "subprocess-run-check",
     ],
     "python.linting.pydocstyleEnabled": true,
     "editor.formatOnSave": true,
