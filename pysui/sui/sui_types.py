@@ -22,11 +22,11 @@ import binascii
 import hashlib
 from numbers import Number
 from typing import Any, Generic, TypeVar, Union
-from abstracts import AbstractType
+from ..abstracts import AbstractType
 
-from sui.sui_constants import SUI_ADDRESS_STRING_LEN
-from sui.sui_txn_validator import valid_sui_address
-from sui import SuiInvalidAddress
+from .sui_constants import SUI_ADDRESS_STRING_LEN
+from .sui_txn_validator import valid_sui_address
+from .sui_excepts import SuiInvalidAddress
 
 
 class SuiBaseType(AbstractType):
@@ -670,16 +670,16 @@ class SuiPackage(SuiBaseType):
 def address_from_keystring(indata: str) -> SuiAddress:
     """From a 88 byte keypair string create a SuiAddress."""
     #   Check address is legit keypair
-    import sui
+    from .sui_crypto import keypair_from_keystring
 
-    _kp = sui.sui_crypto.keypair_from_keystring(indata)
+    _kp = keypair_from_keystring(indata)
     #   decode from base64 and generate
     return SuiAddress.from_bytes(base64.b64decode(indata))
 
 
 def from_object_descriptor(indata: dict) -> ObjectInfo:
     """Parse an inbound JSON like dictionary to a Sui type."""
-    # print(indata)
+    # print(f"ObjectInfo {json.dumps(indata, indent=2)}")
     split = indata["type"].split("::", 2)
     if split[0] == "0x2":
         match split[1]:
@@ -701,7 +701,7 @@ def from_object_descriptor(indata: dict) -> ObjectInfo:
 
 def from_object_type(inblock: dict) -> ObjectRead:
     """Parse an inbound JSON like dictionary to a Sui type."""
-    # print(inblock)
+    # print(f"ObjectRead {json.dumps(indata, indent=2)}")
     indata = inblock["data"]
     match indata["dataType"]:
         case "moveObject":
@@ -710,7 +710,6 @@ def from_object_type(inblock: dict) -> ObjectRead:
             indata["digest"] = inblock["reference"]["digest"]
             indata["version"] = inblock["reference"]["version"]
             indata["owner"] = inblock["owner"]
-            # print(indata)
             split = indata["type"].split("::", 2)
 
             if split[0] == "0x2":

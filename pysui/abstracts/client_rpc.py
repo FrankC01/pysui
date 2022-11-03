@@ -16,7 +16,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Any
-from abstracts import ClientConfiguration
+from .client_config import ClientConfiguration
 
 
 class Builder(ABC):

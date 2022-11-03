@@ -25,15 +25,10 @@ sys.path += [
     str(PROJECT_DIR),
     os.path.join(PROJECT_DIR.parent, "samples"),
     os.path.join(PROJECT_DIR.parent, "pysui"),
-    os.path.join(PROJECT_DIR.parent, "pysui/sui"),
-    os.path.join(PROJECT_DIR.parent, "pysui/abstracts"),
 ]
 
 
-# from src.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
-# from pysui.sui.sui_crypto import SuiAddress
-
-from pysui.sui.sui_config import SuiConfig
+from pysui.sui import SuiConfig
 
 from .cmd_args import build_parser
 from .cmds import SUI_CMD_DISPATCH

@@ -16,10 +16,10 @@
 
 import re
 from typing import Any, Union
-from abstracts import Builder
-from sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
-from sui.sui_excepts import SuiRpcApiInvalidParameter
-from sui.sui_apidesc import SuiApi, SuiApiParam
+from ..abstracts import Builder
+from .sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
+from .sui_excepts import SuiRpcApiInvalidParameter
+from .sui_apidesc import SuiApi, SuiApiParam
 
 __partstring_pattern = re.compile(r"[0-9a-fA-F]{38}")
 __fullstring_pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
@@ -40,7 +40,7 @@ def valid_sui_address(instr: str) -> bool:
 
 def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
     """Validate the specific parameter."""
-    from sui.sui_types import SuiArray
+    from .sui_types import SuiArray
 
     schema_name = type(build_parm).__name__
     att = getattr(build_parm, api_parm.name)

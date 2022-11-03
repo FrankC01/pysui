@@ -17,10 +17,12 @@
 from json import JSONDecodeError
 from typing import Any
 import httpx
-from abstracts import SyncHttpRPC, RpcResult
-from sui import SuiConfig, GetRpcAPI, build_api_descriptors, SuiApi, SuiBaseBuilder
-from sui.sui_txn_validator import validate_api
-from sui.sui_excepts import SuiRpcApiNotAvailable
+from ..abstracts import SyncHttpRPC, RpcResult
+from .sui_config import SuiConfig
+from .sui_builders import GetRpcAPI, SuiBaseBuilder
+from .sui_apidesc import build_api_descriptors, SuiApi
+from .sui_txn_validator import validate_api
+from .sui_excepts import SuiRpcApiNotAvailable
 
 
 class SuiRpcResult(RpcResult):

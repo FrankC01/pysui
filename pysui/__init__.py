@@ -10,10 +10,8 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
+"""pysui package."""
+import sys
 
-"""Abstraction package."""
-from .client_types import AbstractType
-from .client_config import ClientConfiguration
-from .client_keypair import KeyPair, PublicKey, PrivateKey, SignatureScheme
-from .client_rpc import SyncHttpRPC, AsyncHttpRPC, RpcResult
-from .client_rpc import Builder
+if sys.version_info < (3, 10):
+    raise EnvironmentError("Python 3.10 or above is required")

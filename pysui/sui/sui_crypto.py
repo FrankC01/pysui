@@ -19,9 +19,10 @@ import secp256k1
 from nacl.signing import SigningKey, VerifyKey
 from nacl.encoding import Base64Encoder
 
-from abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
-from sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength
-from sui.sui_constants import (
+
+from ..abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
+from .sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength
+from .sui_constants import (
     SUI_KEYPAIR_LEN,
     ED25519_PUBLICKEY_BYTES_LEN,
     ED25519_PRIVATEKEY_BYTES_LEN,
@@ -30,10 +31,10 @@ from sui.sui_constants import (
     SECP256K1_PUBLICKEY_BYTES_LEN,
     SECP256K1_PRIVATEKEY_BYTES_LEN,
 )
-from sui.sui_types import SuiSignature, SuiAddress
+from .sui_types import SuiSignature, SuiAddress
 
 # m / purpose' / coin_type' / account' / change / address_index
-_DEFAULT_PATH = "m/44'/784'/0'/0'/0'"
+_DEFAULT_ED25519_PATH = "m/44'/784'/0'/0'/0'"
 
 # Edwards Curve Keys
 
@@ -161,8 +162,8 @@ class SuiPrivateKeySECP256K1(PrivateKey):
     def sign(self, data: bytes) -> str:
         """secp256k1 sign data bytes."""
         sdata = bytearray(self._signing_key.ecdsa_serialize_compact(self._signing_key.ecdsa_sign(data)))
-        # Pad the bytes, not sure why but....
-        sdata.append(1)
+        # Pad the bytes, not sure why but sometimes padding 0 works and sometimes padding 1?
+        sdata.append(0)
         return SuiSignature(base64.b64encode(bytes(sdata)))
 
 

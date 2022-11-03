@@ -117,11 +117,11 @@ def _build_read_cmds(subparser) -> None:
     subp.set_defaults(subcommand="object")
     # Objects
     subp = subparser.add_parser("objects", help="Show all objects")
-    subp.add_argument("--address", required=False, help="Objects for address", action=ValidateAddress)
-    subp.add_argument("--json", required=False, help="Display output as json", action="store_true")
+    subp.add_argument("-a", "--address", required=False, help="Objects for address", action=ValidateAddress)
+    subp.add_argument("-j", "--json", required=False, help="Display output as json", action="store_true")
     obj_arg_group = subp.add_mutually_exclusive_group()
-    obj_arg_group.add_argument("--nft", help="Only show NFT objects", action="store_true")
-    obj_arg_group.add_argument("--data", help="Only show data objects", action="store_true")
+    obj_arg_group.add_argument("-n", "--nft", help="Only show NFT objects", action="store_true")
+    obj_arg_group.add_argument("-d", "--data", help="Only show data objects", action="store_true")
     subp.set_defaults(subcommand="objects")
     # RPC information
     subp = subparser.add_parser("rpcapi", help="Show Sui RPC API information")
@@ -334,12 +334,12 @@ def _build_package_cmds(subparser) -> None:
     """Package commands."""
     # Package Object
     subp = subparser.add_parser("package-object", help="Show raw package object with Move disassembly")
-    subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
-    subp.add_argument("--src", required=False, help="Display package module(s) src", action="store_true")
+    subp.add_argument("-i", "--id", required=True, help="package ID", action=ValidateObjectID)
+    subp.add_argument("-s", "--src", required=False, help="Display package module(s) src", action="store_true")
     subp.set_defaults(subcommand="package-object")
     # Normalized Package
     subp = subparser.add_parser("package", help="Show normalized package information")
-    subp.add_argument("--id", required=True, help="package ID", action=ValidateObjectID)
+    subp.add_argument("-i", "--id", required=True, help="package ID", action=ValidateObjectID)
     subp.set_defaults(subcommand="package")
     # Publish package
     subp = subparser.add_parser("publish", help="Publish a SUI package")

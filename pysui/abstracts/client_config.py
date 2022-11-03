@@ -13,7 +13,7 @@
 
 """Client Configuration Abstraction."""
 from abc import ABC, abstractmethod
-from abstracts.client_types import AbstractType
+from .client_types import AbstractType
 
 
 class ClientConfiguration(ABC):

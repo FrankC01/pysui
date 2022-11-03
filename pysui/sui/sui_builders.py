@@ -16,8 +16,8 @@
 
 from abc import abstractmethod
 from enum import IntEnum
-from abstracts import Builder, PublicKey, SignatureScheme
-from sui.sui_types import (
+from ..abstracts import Builder, PublicKey, SignatureScheme
+from .sui_types import (
     ObjectInfo,
     ObjectID,
     SuiString,

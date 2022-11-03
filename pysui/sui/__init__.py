@@ -17,10 +17,10 @@
 import sys
 
 
-from sui.sui_constants import *
-from sui.sui_excepts import SuiInvalidAddress
-from sui.sui_apidesc import SuiApi, build_api_descriptors
-from sui.sui_builders import (
+from .sui_constants import *
+from .sui_excepts import SuiInvalidAddress
+from .sui_apidesc import SuiApi, build_api_descriptors
+from .sui_builders import (
     SuiBaseBuilder,
     GetObjectsOwnedByAddress,
     GetObject,
@@ -51,12 +51,9 @@ from sui.sui_builders import (
     DryRunTransaction,
     SuiRequestType,
 )
-from sui.sui_config import SuiConfig
-from sui.sui_rpc import SuiClient, SuiRpcResult
-from sui.sui_types import *
-from sui.sui_crypto import keypair_from_keystring
-from sui.sui_txn_validator import validate_api, valid_sui_address
-from sui.sui_utils import *
-
-if sys.version_info < (3, 10):
-    raise EnvironmentError("Python 3.10 or above is required")
+from .sui_config import SuiConfig
+from .sui_rpc import SuiClient, SuiRpcResult
+from .sui_types import *
+from .sui_crypto import keypair_from_keystring
+from .sui_txn_validator import validate_api, valid_sui_address
+from .sui_utils import *

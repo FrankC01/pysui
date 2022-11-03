@@ -17,7 +17,7 @@ from abc import ABC
 import json
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json, DataClassJsonMixin
-from sui.sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
+from .sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
 
 # T = TypeVar("T", str, float, int, list)
 

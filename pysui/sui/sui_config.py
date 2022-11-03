@@ -20,9 +20,9 @@ from io import TextIOWrapper
 
 from pathlib import Path
 import yaml
-from abstracts import ClientConfiguration
-from sui.sui_crypto import SuiAddress
-from sui.sui_excepts import SuiConfigFileError, SuiFileNotFound
+from ..abstracts import ClientConfiguration
+from .sui_crypto import SuiAddress
+from .sui_excepts import SuiConfigFileError, SuiFileNotFound
 
 
 class SuiConfig(ClientConfiguration):
