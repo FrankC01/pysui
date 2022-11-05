@@ -161,10 +161,12 @@ class SuiPrivateKeySECP256K1(PrivateKey):
 
     def sign(self, data: bytes) -> str:
         """secp256k1 sign data bytes."""
-        sdata = bytearray(self._signing_key.ecdsa_serialize_compact(self._signing_key.ecdsa_sign(data)))
-        # Pad the bytes, not sure why but sometimes padding 0 works and sometimes padding 1?
-        sdata.append(0)
-        return SuiSignature(base64.b64encode(bytes(sdata)))
+        sig = self._signing_key.ecdsa_sign_recoverable(data)
+        sig_sb, sig_si = self._signing_key.ecdsa_recoverable_serialize(sig)
+        sig_ba = bytearray(sig_sb)
+        sig_ba.append(sig_si)
+        fsig = base64.b64encode(sig_ba).decode()
+        return SuiSignature(fsig)
 
 
 class SuiKeyPairSECP256K1(KeyPair):

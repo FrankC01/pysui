@@ -52,8 +52,9 @@ from .sui_builders import (
     SuiRequestType,
 )
 from .sui_config import SuiConfig
-from .sui_rpc import SuiClient, SuiRpcResult
 from .sui_types import *
 from .sui_crypto import keypair_from_keystring
+from .sui_rpc import SuiClient, SuiRpcResult
+from .sui_tx_return_types import TxEffectResult
 from .sui_txn_validator import validate_api, valid_sui_address
 from .sui_utils import *

@@ -6,3 +6,7 @@ sample.rpc.py
 .vscode/launch.json
 apidefn.json
 temp.py
+build
+pysui.egg-info
+dist
+setup.py

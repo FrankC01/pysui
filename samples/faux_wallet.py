@@ -14,13 +14,13 @@
 
 """Sui Wallet Facade."""
 
-import base64
+
 from numbers import Number
 import os
 import json
 
 from typing import Union
-from pysui.abstracts import KeyPair, Builder, SignatureScheme
+from pysui.abstracts import Builder
 from pysui.sui import (
     SuiClient,
     SuiConfig,
@@ -49,23 +49,16 @@ from pysui.sui import (
     SplitCoin,
     MoveCall,
     Publish,
-    ExecuteTransaction,
     # DryRunTransaction,
-    SuiRequestType,
 )
 
-from pysui.sui.sui_crypto import keypair_from_keystring, create_new_address, SuiAddress
+from pysui.sui.sui_crypto import SuiAddress
 from pysui.sui.sui_excepts import (
-    SuiFileNotFound,
-    SuiKeystoreFileError,
-    SuiKeystoreAddressError,
-    SuiNoKeyPairs,
     SuiRpcApiError,
 )
 
 from pysui.sui.sui_types import (
     ObjectID,
-    SuiTxBytes,
     SuiNativeCoinDescriptor,
     SuiString,
     SuiNumber,
@@ -87,70 +80,7 @@ class SuiWallet:
             self._keypairs = {}
             self._addresses = {}
             self._address_keypair = {}
-            try:
-                with open(config.keystore_file, encoding="utf8") as keyfile:
-                    self._keystrings = json.load(keyfile)
-                    if len(self._keystrings) > 0:
-                        for keystr in self._keystrings:
-                            kpair = keypair_from_keystring(keystr)
-                            self._keypairs[keystr] = kpair
-                            addy = SuiAddress.from_keypair_string(keystr)
-                            self._addresses[str(addy.address)] = addy
-                            self._address_keypair[str(addy.address)] = kpair
-                    else:
-                        raise SuiNoKeyPairs()
-                self._client = SuiClient(config)
-            except IOError as exc:
-                raise SuiKeystoreFileError(exc) from exc
-            except json.JSONDecodeError as exc:
-                raise SuiKeystoreAddressError(exc) from exc
-        else:
-            raise SuiFileNotFound(str(config.keystore_path))
-
-    def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:
-        """Register the keypair and write out to keystore file."""
-        filepath = file_path if file_path else self._client.config.keystore_file
-        if os.path.exists(filepath):
-            serialized = keypair.to_b64()
-            self._keypairs[serialized] = keypair
-            with open(filepath, "w", encoding="utf8") as keystore:
-                keystore.write(json.dumps(self.keystrings, indent=2))
-        else:
-            raise SuiFileNotFound((filepath))
-
-    @property
-    def keystrings(self) -> list[str]:
-        """Get keypair strings managed by wallet."""
-        return list(self._keypairs)
-
-    def keypair_for_keystring(self, key_string: str) -> KeyPair:
-        """Get KeyPair for keystring."""
-        return self._keypairs[key_string]
-
-    def keypair_for_address(self, addy: SuiAddress) -> KeyPair:
-        """Get the keypair for a given address."""
-        if addy.address in self._address_keypair:
-            return self._address_keypair[addy.address]
-        raise ValueError(f"{addy.address} is not known")
-
-    def create_new_keypair_and_address(self, scheme: SignatureScheme) -> str:
-        """
-        Create a new keypair and address identifier and return the address string.
-
-        The scheme defines generation of ED25519 or SECP256K1 keypairs.
-        """
-        if scheme == SignatureScheme.ED25519:
-            keypair, address = create_new_address(scheme)
-            self._addresses[address.identifier] = address
-            self._write_keypair(keypair)
-            return address.identifier
-        if scheme == SignatureScheme.SECP256K1:
-            keypair, address = create_new_address(scheme)
-            self._addresses[address.identifier] = address
-            self._write_keypair(keypair)
-            return address.identifier
-
-        raise NotImplementedError
+            self._client = SuiClient(config)
 
     @property
     def current_address(self) -> SuiAddress:
@@ -167,7 +97,7 @@ class SuiWallet:
     @property
     def addresses(self) -> list[str]:
         """Get all the addresses."""
-        return list(self._addresses.keys())
+        return self._client.config.addresses
 
     def execute(self, builder: Builder) -> SuiRpcResult:
         """Execute the builder."""
@@ -265,35 +195,6 @@ class SuiWallet:
             return SuiRpcResult(False, f"ID: {package_id} is a move object, not a package")
         return result
 
-    def _submit_txn(self, result: SuiRpcResult, signer: SuiAddress) -> Union[SuiRpcResult, Exception]:
-        """Sign and submit transaction bytes."""
-        if result.is_ok():
-            result = result.result_data
-            if "error" in result:
-                return SuiRpcResult(False, result["error"]["message"], None)
-            kpair = self.keypair_for_address(signer)
-            b64tx_bytes = result["result"]["txBytes"]
-            builder = ExecuteTransaction()
-            builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-                kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-                # kpair.private_key.sign(b64tx_bytes)
-            ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORLOCALEXECUTION)
-            # builder = DryRunTransaction()
-            # builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-            #     kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-            # ).set_sig_scheme(kpair.scheme)
-            result = self.execute(builder)
-            if result.is_ok():
-                result = result.result_data
-                if "error" in result:
-                    return SuiRpcResult(False, result["error"]["message"], None)
-                result = result["result"]
-                effects = result["EffectsCert"]["effects"]["effects"]["status"]
-                if effects["status"] == "failure":
-                    return SuiRpcResult(False, effects, None)
-                return SuiRpcResult(True, None, json.dumps(result, indent=2))
-        return result
-
     def transfer_sui(
         self,
         **kwargs: dict,
@@ -301,7 +202,7 @@ class SuiWallet:
         """Transfer SUI coin from one account to another."""
         kword_set = set(kwargs.keys())
         if kword_set == TransferSui.transfersui_kwords:
-            return self._submit_txn(self.execute(TransferSui(**kwargs)), kwargs["signer"])
+            return self.execute(TransferSui(**kwargs))
         missing = TransferSui.transfersui_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
@@ -312,7 +213,7 @@ class SuiWallet:
         """Transfer SUI Object from one account to another."""
         kword_set = set(kwargs.keys())
         if kword_set == TransferObject.transferobject_kwords:
-            return self._submit_txn(self.execute(TransferObject(**kwargs)), kwargs["signer"])
+            return self.execute(TransferObject(**kwargs))
         missing = TransferObject.transferobject_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
@@ -323,7 +224,7 @@ class SuiWallet:
         """Transfer coin using Pay from one account to another."""
         kword_set = set(kwargs.keys())
         if kword_set == Pay.pay_kwords:
-            return self._submit_txn(self.execute(Pay(**kwargs)), kwargs["signer"])
+            return self.execute(Pay(**kwargs))
         missing = Pay.pay_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
@@ -334,7 +235,7 @@ class SuiWallet:
         """Transfer coin using Pay from one account to another."""
         kword_set = set(kwargs.keys())
         if kword_set == PaySui.pay_kwords:
-            return self._submit_txn(self.execute(PaySui(**kwargs)), kwargs["signer"])
+            return self.execute(PaySui(**kwargs))
         missing = PaySui.pay_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
@@ -345,7 +246,7 @@ class SuiWallet:
         """Transfer coin using Pay from one account to another."""
         kword_set = set(kwargs.keys())
         if kword_set == PayAllSui.payall_kwords:
-            return self._submit_txn(self.execute(PayAllSui(**kwargs)), kwargs["signer"])
+            return self.execute(PayAllSui(**kwargs))
         missing = PayAllSui.payall_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
@@ -356,7 +257,7 @@ class SuiWallet:
         """Merge two coins together."""
         kword_set = set(kwargs.keys())
         if kword_set == MergeCoin.merge_kwords:
-            return self._submit_txn(self.execute(MergeCoin(**kwargs)), kwargs["signer"])
+            return self.execute(MergeCoin(**kwargs))
         missing = MergeCoin.merge_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
@@ -367,7 +268,7 @@ class SuiWallet:
         """Split coins into multiple."""
         kword_set = set(kwargs.keys())
         if kword_set == SplitCoin.split_kwords:
-            return self._submit_txn(self.execute(SplitCoin(**kwargs)), kwargs["signer"])
+            return self.execute(SplitCoin(**kwargs))
         missing = SplitCoin.split_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
@@ -378,7 +279,7 @@ class SuiWallet:
         """Call a SUI move contract function."""
         kword_set = set(kwargs.keys())
         if kword_set == MoveCall.move_kwords:
-            return self._submit_txn(self.execute(MoveCall(**kwargs)), kwargs["signer"])
+            return self.execute(MoveCall(**kwargs))
         missing = MoveCall.move_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
@@ -386,7 +287,7 @@ class SuiWallet:
         """Publish a sui package."""
         kword_set = set(kwargs.keys())
         if kword_set == Publish.publish_kwords:
-            return self._submit_txn(self.execute(Publish(**kwargs)), kwargs["sender"])
+            return self.execute(Publish(**kwargs))
         missing = Publish.publish_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 

@@ -217,34 +217,3 @@ def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
 
         return (mdict, schema_dict)
     raise SuiApiDefinitionInvalid(indata)
-
-
-if __name__ == "__main__":
-    # TODO: Move to regressions when ready
-
-    # Assume running from vscode with cwd 'src'
-    with open("../apidefn.json", "r", encoding="utf8") as core_file:
-        jdata = json.load(core_file)
-
-    # Success
-    try:
-        api_desc, _sui_schema = build_api_descriptors(jdata)
-        for api_name, api_defs in api_desc.items():
-            # if isinstance(api_defs.result.schema, SuiJsonArray):
-            print(f"{api_name} => {api_defs.result}")
-        # print(api_desc)
-    except SuiApiDefinitionInvalid as exc:
-        print(f"Caught exception {type(exc)}")
-
-    # Fail
-    # try:
-    #     bad_sample = {
-    #         "result": {
-    #             "methods": [],
-    #         }
-    #     }
-    #     build_api_descriptors(bad_sample)
-    # except SuiApiDefinitionInvalid as exc:
-    #     print(f"Caught exception {exc}")
-
-    # print(SuiApi.from_dict(sample))

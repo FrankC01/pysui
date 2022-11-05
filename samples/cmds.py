@@ -174,7 +174,7 @@ def transfer_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     # print(f"transfer_object args {var_args}")
     result = wallet.transfer_object(**var_args)
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -186,7 +186,7 @@ def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     print(f"transfer_sui args {var_args}")
     result = wallet.transfer_sui(**var_args)
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -198,7 +198,7 @@ def merge_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
     var_args = vars(args)
     result = wallet.merge_coin(**var_args)
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -210,7 +210,7 @@ def split_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
     var_args = vars(args)
     result = wallet.split_coin(**var_args)
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -222,7 +222,7 @@ def sui_pay(wallet: SuiWallet, args: argparse.Namespace) -> None:
     result = wallet.pay_transfer(**var_args)
 
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -234,7 +234,7 @@ def sui_pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     result = wallet.pay_sui_transfer(**var_args)
 
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -245,7 +245,7 @@ def sui_payall_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     var_args = vars(args)
     result = wallet.pay_all_sui_transfer(**var_args)
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -256,7 +256,7 @@ def move_call(wallet: SuiWallet, args: argparse.Namespace) -> None:
     var_args = vars(args)
     result = wallet.move_call(**var_args)
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -270,7 +270,7 @@ def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
         var_args = vars(args)
         result = wallet.publish_package(**var_args)
         if result.is_ok():
-            print(result.result_data)
+            print(result.result_data.to_json(indent=2))
         else:
             print(f"Error: {result.result_string}")
     except (SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode) as exc:

@@ -535,6 +535,15 @@ class _MoveCallTransactionBuilder(SuiBaseBuilder):
         """Initialize builder."""
         super().__init__(method, True)
 
+    @property
+    def authority(self) -> SuiAddress:
+        """Fetch the authority."""
+        if hasattr(self, "signer"):
+            return getattr(self, "signer")
+        if hasattr(self, "sender"):
+            return getattr(self, "sender")
+        raise ValueError(f"Object {self.__class__.__name__} has no authority property set")
+
 
 class TransferObject(_MoveCallTransactionBuilder):
     """Transfers an object to another object owner."""

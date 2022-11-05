@@ -19,10 +19,17 @@ import os
 from io import TextIOWrapper
 
 from pathlib import Path
+import json
 import yaml
-from ..abstracts import ClientConfiguration
-from .sui_crypto import SuiAddress
-from .sui_excepts import SuiConfigFileError, SuiFileNotFound
+from ..abstracts import ClientConfiguration, SignatureScheme, KeyPair
+from .sui_crypto import SuiAddress, keypair_from_keystring, create_new_address
+from .sui_excepts import (
+    SuiConfigFileError,
+    SuiFileNotFound,
+    SuiNoKeyPairs,
+    SuiKeystoreFileError,
+    SuiKeystoreAddressError,
+)
 
 
 class SuiConfig(ClientConfiguration):
@@ -33,9 +40,61 @@ class SuiConfig(ClientConfiguration):
 
     def __init__(self, active_address: str, keystore_file: str, current_url: str) -> None:
         """Initialize the default config."""
+        super().__init__(keystore_file)
         self._active_address = SuiAddress.from_hex_string(active_address)
-        self._current_keystore_file = keystore_file
         self._current_url = current_url
+        if os.path.exists(keystore_file):
+            self._keypairs = {}
+            self._addresses = {}
+            self._address_keypair = {}
+            try:
+                with open(keystore_file, encoding="utf8") as keyfile:
+                    self._keystrings = json.load(keyfile)
+                    if len(self._keystrings) > 0:
+                        for keystr in self._keystrings:
+                            kpair = keypair_from_keystring(keystr)
+                            self._keypairs[keystr] = kpair
+                            addy = SuiAddress.from_keypair_string(keystr)
+                            self._addresses[str(addy.address)] = addy
+                            self._address_keypair[str(addy.address)] = kpair
+                    else:
+                        raise SuiNoKeyPairs()
+            except IOError as exc:
+                raise SuiKeystoreFileError(exc) from exc
+            except json.JSONDecodeError as exc:
+                raise SuiKeystoreAddressError(exc) from exc
+        else:
+            raise SuiFileNotFound(str(keystore_file))
+
+    def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:
+        """Register the keypair and write out to keystore file."""
+        filepath = file_path if file_path else self.keystore_file
+        if os.path.exists(filepath):
+            serialized = keypair.to_b64()
+            self._keypairs[serialized] = keypair
+            with open(filepath, "w", encoding="utf8") as keystore:
+                keystore.write(json.dumps(self.keystrings, indent=2))
+        else:
+            raise SuiFileNotFound((filepath))
+
+    def create_new_keypair_and_address(self, scheme: SignatureScheme) -> str:
+        """
+        Create a new keypair and address identifier and return the address string.
+
+        The scheme defines generation of ED25519 or SECP256K1 keypairs.
+        """
+        if scheme == SignatureScheme.ED25519:
+            keypair, address = create_new_address(scheme)
+            self._addresses[address.identifier] = address
+            self._write_keypair(keypair)
+            return address.identifier
+        if scheme == SignatureScheme.SECP256K1:
+            keypair, address = create_new_address(scheme)
+            self._addresses[address.identifier] = address
+            self._write_keypair(keypair)
+            return address.identifier
+
+        raise NotImplementedError
 
     @classmethod
     def _parse_config(cls, fpath: Path, config_file: TextIOWrapper) -> tuple[str, str, str]:
