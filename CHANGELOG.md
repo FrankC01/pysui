@@ -4,13 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - Cummulative
 ### Added
 - CHANGELOG.md
 - Hydrate object results from Sui `sui_executeTransaction` API (see sui/sui_tx_return_types.py)
+- Transaction result tests (results are static via conftest.py fixtures in tests/unit)
 
 ### Changed
 - Absolute to relative imports
-- Fix for secp256k1 signing [issue](https://github.com/FrankC01/pysui/issues/12)
+- Fixed [issue](https://github.com/FrankC01/pysui/issues/12)
 - Moved signed transaction handling to sui/sui_rpc.py from faux_wallet
 - Moved configuration management to ClientConfig and SuiConfig from faux_wallet
+- Moved content of sui/sui_tx_return_types to sui/sui_types
+- Fixed type in transaction return type class `Status`
+
+### Removed
+- sui/sui_tx_return_types.py

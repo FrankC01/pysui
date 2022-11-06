@@ -244,9 +244,7 @@ def _build_pay_cmds(subparser) -> None:
         help="Specify recipient address for each <AMOUNTS>:<INPUT-COINS> to send to",
         action=ValidateAddress,
     )
-    subp.add_argument(
-        "-o", "--gas-object", required=True, help="Specify gas object to transfer from", action=ValidateObjectID
-    )
+    subp.add_argument("-o", "--gas", required=True, help="Specify gas object to transfer from", action=ValidateObjectID)
     subp.add_argument(
         "-g",
         "--gas-budget",

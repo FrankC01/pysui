@@ -183,7 +183,7 @@ def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Transfer gas object."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
-    print(f"transfer_sui args {var_args}")
+    # print(f"transfer_sui args {var_args}")
     result = wallet.transfer_sui(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))

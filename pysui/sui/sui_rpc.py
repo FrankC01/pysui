@@ -20,13 +20,12 @@ from json import JSONDecodeError
 from typing import Any, Union
 import httpx
 from ..abstracts import SyncHttpRPC, RpcResult
-from .sui_types import SuiTxBytes
+from .sui_types import SuiTxBytes, TxEffectResult
 from .sui_config import SuiConfig
 from .sui_builders import GetRpcAPI, SuiBaseBuilder, ExecuteTransaction, SuiRequestType
 from .sui_apidesc import build_api_descriptors, SuiApi
 from .sui_txn_validator import validate_api
 from .sui_excepts import SuiRpcApiNotAvailable
-from .sui_tx_return_types import TxEffectResult
 
 
 class SuiRpcResult(RpcResult):

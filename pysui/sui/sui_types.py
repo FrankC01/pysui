@@ -15,13 +15,16 @@
 """Sui Types."""
 
 
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import json
 import base64
 import binascii
 import hashlib
 from numbers import Number
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Generic, TypeVar, Union, Optional
+from dataclasses import dataclass, field
+from dataclasses_json import DataClassJsonMixin, LetterCase, config
+
 from ..abstracts import AbstractType
 
 from .sui_constants import SUI_ADDRESS_STRING_LEN
@@ -733,6 +736,357 @@ def from_object_type(inblock: dict) -> ObjectRead:
             raise ValueError(f"Don't recognize {indata['dataType']}")
 
 
-if __name__ == "__main__":
-    pass
-    # known_package = "0xdf43f7fa8f94c8046587b745616bf11c1d732d45"
+class SuiTxReturnType(ABC):
+    """Abstraction for all return objects."""
+
+
+@dataclass
+class GenericRef(SuiTxReturnType, DataClassJsonMixin):
+    """Generic object reference."""
+
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    version: int
+    digest: str
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Convert object_id string to ObjectID type
+        """
+
+
+@dataclass
+class CoinRef(GenericRef):
+    """Coin representation."""
+
+
+@dataclass
+class GenericOwnerRef(SuiTxReturnType, DataClassJsonMixin):
+    """Owned coin referenece."""
+
+    owner: Union[dict, str]
+    reference: GenericRef
+
+
+@dataclass
+class PackageRef(SuiTxReturnType, DataClassJsonMixin):
+    """Package representation."""
+
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    version: int
+    digest: str
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Convert object_id string to ObjectID type
+        """
+
+
+@dataclass
+class MoveCallTx(SuiTxReturnType, DataClassJsonMixin):
+    """sui_moveCall transaction."""
+
+    function: str
+    module: str
+    package: dict
+    arguments: list[str]
+    type_arguments: Optional[list[str]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
+
+
+@dataclass
+class PayTx(SuiTxReturnType, DataClassJsonMixin):
+    """sui_pay transaction."""
+
+    coins: list[CoinRef]
+    amounts: list[int]
+    recipients: list[str]
+
+
+@dataclass
+class PayAllSuiTx(SuiTxReturnType, DataClassJsonMixin):
+    """sui_payAllSui transaction."""
+
+    coins: list[CoinRef]
+    recipient: str
+
+
+@dataclass
+class PaySuiTx(SuiTxReturnType, DataClassJsonMixin):
+    """sui_paySui transaction."""
+
+    coins: list[CoinRef]
+    amounts: list[int]
+    recipients: list[str]
+
+
+@dataclass
+class PublishTx(SuiTxReturnType, DataClassJsonMixin):
+    """sui_publish transaction."""
+
+    disassembled: dict
+
+
+@dataclass
+class TransferObjectTx(SuiTxReturnType, DataClassJsonMixin):
+    """sui_transferObject transaction."""
+
+    object_ref: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    recipient: str  # Replace with SuiAddress when validated
+
+
+@dataclass
+class TransferSuiTx(SuiTxReturnType, DataClassJsonMixin):
+    """sui_transferSui transaction."""
+
+    recipient: str  # Replace with SuiAddress when validated
+    amount: str
+
+
+@dataclass
+class AuthSignerInfo(SuiTxReturnType, DataClassJsonMixin):
+    """Authorized signer info."""
+
+    epoch: int
+    signature: str  # Replace with SuiSignature when validated
+    signers_map: list[int]
+
+
+_TRANSACTION_LOOKUP = {
+    "Call": MoveCallTx,
+    "Pay": PayTx,
+    "PaySui": PaySuiTx,
+    "PayAllSui": PayAllSuiTx,
+    "Publish": PublishTx,
+    "TransferObject": TransferObjectTx,
+    "TransferSui": TransferSuiTx,
+}
+
+
+@dataclass
+class TransactionData(SuiTxReturnType, DataClassJsonMixin):
+    """Transaction Data."""
+
+    sender: str
+    gas_payment: CoinRef = field(metadata=config(letter_case=LetterCase.CAMEL))
+    gas_budget: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transactions: list[Any] = None
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Loops through the transactions list to resolve hydrating different transaction type classes
+        """
+        hydrated = []
+        for tx_dict in self.transactions:
+            key = list(tx_dict.keys())[0]
+            hydrated.append(_TRANSACTION_LOOKUP[key].from_dict(tx_dict[key]))
+        self.transactions = hydrated
+
+
+# Events
+
+
+@dataclass
+class CoinBalanceChangeEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sender: str
+    owner: dict
+    change_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    coin_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    coin_object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    version: int
+    amount: int
+
+
+@dataclass
+class NewObjectEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sender: str
+    recipient: Union[dict, str]
+    version: int
+    object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class TransferObjectEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sender: str
+    recipient: dict
+    version: int
+    object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class MutateObjectEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sender: str
+    object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    version: int
+
+
+@dataclass
+class DeleteObjectEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sender: str
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    version: int
+
+
+@dataclass
+class EpochChangeEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    epoch_change: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class NewCheckpointEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    checkpoint: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class PublishEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sender: str
+
+
+_EVENT_LOOKUP = {
+    "coinBalanceChange": CoinBalanceChangeEvent,
+    "newObject": NewObjectEvent,
+    "transferObject": TransferObjectEvent,
+    "mutateObject": MutateObjectEvent,
+    "deleteObject": DeleteObjectEvent,
+    "epochChange": EpochChangeEvent,
+    "newCheckPoint": NewCheckpointEvent,
+    "publish": PublishEvent,
+}
+
+
+@dataclass
+class GasCostSummary(SuiTxReturnType, DataClassJsonMixin):
+    """Gas used."""
+
+    computation_cost: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    storage_cost: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    storage_rebate: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class Status(SuiTxReturnType, DataClassJsonMixin):
+    """Status of transaction."""
+
+    status: str
+    error: Optional[str] = None
+    succeeded: bool = field(init=False)
+
+    def __post_init__(self):
+        """Post init processing."""
+        self.succeeded = self.status == "success"
+
+
+@dataclass
+class Effects(SuiTxReturnType, DataClassJsonMixin):
+    """Effects Certification."""
+
+    status: Status
+    gas_used: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    gas_object: GenericOwnerRef = field(metadata=config(letter_case=LetterCase.CAMEL))
+    events: list[dict]
+    dependencies: list[str] = field(default_factory=list)
+    mutated: Optional[list[GenericOwnerRef]] = field(default_factory=list)
+    created: Optional[list[GenericOwnerRef]] = field(default_factory=list)
+    deleted: Optional[list[GenericOwnerRef]] = field(default_factory=list)
+    wrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
+    unwrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
+    shared_objects: Optional[list[GenericOwnerRef]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
+    )
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Hydrate relevant Events
+        """
+        hydrated = []
+        for ev_dict in self.events:
+            key = list(ev_dict.keys())[0]
+            hydrated.append(_EVENT_LOOKUP[key].from_dict(ev_dict[key]))
+        self.events = hydrated
+
+
+@dataclass
+class EffectsBlock(SuiTxReturnType, DataClassJsonMixin):
+    """Effects Block."""
+
+    transaction_effects_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    effects: Effects
+    # dependencies: list[str]
+    auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class Certificate(SuiTxReturnType, DataClassJsonMixin):
+    """Effects Certification."""
+
+    transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    data: TransactionData
+    tx_signature: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+    def __post_init__(self):
+        """Post init processing."""
+
+
+@dataclass
+class EffectsCertTx(SuiTxReturnType, DataClassJsonMixin):
+    """Effects Certification."""
+
+    certificate: Certificate
+    effects: EffectsBlock
+    confirmed_local_execution: bool
+
+    def __post_init__(self):
+        """Post init processing."""
+
+
+@dataclass
+class TxEffectResult(SuiTxReturnType, DataClassJsonMixin):
+    """Transaction Result."""
+
+    effects_cert: EffectsCertTx = field(metadata=config(field_name="EffectsCert"))
+
+    @property
+    def succeeded(self) -> bool:
+        """Check if transaction result is successful."""
+        return self.effects_cert.effects.effects.status.succeeded
+
+    @property
+    def status(self) -> str:
+        """Get underlying status string."""
+        if self.succeeded:
+            return "success"
+        return f"{self.effects_cert.effects.effects.status.status} - {self.effects_cert.effects.effects.status.error}"
