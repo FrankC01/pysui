@@ -46,42 +46,42 @@ class SuiString(SuiScalarType):
     @property
     def function(self) -> str:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def module(self) -> str:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def arguments(self) -> str:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def type_arguments(self) -> str:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def compiled_modules(self) -> str:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def move_event_struct_name(self) -> str:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def digest(self) -> str:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def recipient(self) -> str:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
 
 class SuiTxBytes(SuiString):
@@ -112,52 +112,52 @@ class ObjectID(SuiString):
     @property
     def object_id(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def object(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def package(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def package_object_id(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def sui_object_id(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def coin_object_id(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def gas(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def input_coins(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def primary_coin(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
     @property
     def coin_to_merge(self) -> str:
         """Alias over value."""
-        return self._value
+        return self.value
 
 
 class SuiNumber(SuiScalarType):
@@ -166,44 +166,44 @@ class SuiNumber(SuiScalarType):
     @property
     def gas_budget(self) -> int:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def amount(self) -> int:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def amounts(self) -> int:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def split_amounts(self) -> int:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def count(self) -> int:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def start_time(self) -> int:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def end_time(self) -> int:
         """Alias for transactions."""
-        return self._value
+        return self.value
 
     @property
     def epoch(self) -> int:
         """Alias for transactions."""
-        if self._value is None:
+        if self.value is None:
             return 0
-        return self._value
+        return self.value
 
 
 class SuiAddress(SuiBaseType):
@@ -383,6 +383,9 @@ class SuiRawObject(SuiBaseType):
         return json.dumps(self._type_raw, indent=indent)
 
 
+# Object Details
+
+
 class ObjectRead(SuiRawObject):
     """Base SUI Type."""
 
@@ -540,6 +543,9 @@ class SuiGasType(SuiCoinType):
         return self._balance
 
 
+# Collection types
+
+
 class SuiCollection(SuiBaseType):
     """Generic Collection Type."""
 
@@ -613,6 +619,9 @@ class SuiMap(SuiCollection):
     def recipient(self) -> dict[str, Any]:
         """Alias for transactions."""
         return self.map
+
+
+# Package Type
 
 
 class SuiPackage(SuiBaseType):
@@ -736,6 +745,9 @@ def from_object_type(inblock: dict) -> ObjectRead:
             raise ValueError(f"Don't recognize {indata['dataType']}")
 
 
+# Transaction Results
+
+
 class SuiTxReturnType(ABC):
     """Abstraction for all return objects."""
 
@@ -744,20 +756,19 @@ class SuiTxReturnType(ABC):
 class GenericRef(SuiTxReturnType, DataClassJsonMixin):
     """Generic object reference."""
 
-    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    object_id: ObjectID = field(metadata=config(letter_case=LetterCase.CAMEL))
     version: int
     digest: str
-
-    def __post_init__(self):
-        """Post init processing.
-
-        Convert object_id string to ObjectID type
-        """
 
 
 @dataclass
 class CoinRef(GenericRef):
     """Coin representation."""
+
+
+@dataclass
+class PackageRef(GenericRef):
+    """Package representation."""
 
 
 @dataclass
@@ -767,20 +778,15 @@ class GenericOwnerRef(SuiTxReturnType, DataClassJsonMixin):
     owner: Union[dict, str]
     reference: GenericRef
 
-
-@dataclass
-class PackageRef(SuiTxReturnType, DataClassJsonMixin):
-    """Package representation."""
-
-    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    version: int
-    digest: str
-
     def __post_init__(self):
         """Post init processing.
 
-        Convert object_id string to ObjectID type
+        Convert owner to Address (based on result)
         """
+        if isinstance(self.owner, str):
+            self.owner = self.owner
+        else:
+            self.owner = self.owner["AddressOwner"]
 
 
 @dataclass
@@ -789,7 +795,7 @@ class MoveCallTx(SuiTxReturnType, DataClassJsonMixin):
 
     function: str
     module: str
-    package: dict
+    package: PackageRef
     arguments: list[str]
     type_arguments: Optional[list[str]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
 
@@ -824,23 +830,23 @@ class PaySuiTx(SuiTxReturnType, DataClassJsonMixin):
 class PublishTx(SuiTxReturnType, DataClassJsonMixin):
     """sui_publish transaction."""
 
-    disassembled: dict
+    disassembled: dict[str, str]
 
 
 @dataclass
 class TransferObjectTx(SuiTxReturnType, DataClassJsonMixin):
     """sui_transferObject transaction."""
 
-    object_ref: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    recipient: str  # Replace with SuiAddress when validated
+    object_ref: GenericRef = field(metadata=config(letter_case=LetterCase.CAMEL))
+    recipient: str
 
 
 @dataclass
 class TransferSuiTx(SuiTxReturnType, DataClassJsonMixin):
     """sui_transferSui transaction."""
 
-    recipient: str  # Replace with SuiAddress when validated
-    amount: str
+    recipient: str
+    amount: int
 
 
 @dataclass
@@ -848,7 +854,7 @@ class AuthSignerInfo(SuiTxReturnType, DataClassJsonMixin):
     """Authorized signer info."""
 
     epoch: int
-    signature: str  # Replace with SuiSignature when validated
+    signature: str
     signers_map: list[int]
 
 
@@ -901,6 +907,13 @@ class CoinBalanceChangeEvent(SuiTxReturnType, DataClassJsonMixin):
     version: int
     amount: int
 
+    def __post_init__(self):
+        """Post init processing.
+
+        Convert various to SuiTypes
+        """
+        self.owner = self.owner["AddressOwner"]
+
 
 @dataclass
 class NewObjectEvent(SuiTxReturnType, DataClassJsonMixin):
@@ -914,6 +927,17 @@ class NewObjectEvent(SuiTxReturnType, DataClassJsonMixin):
     object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
+    def __post_init__(self):
+        """Post init processing.
+
+        Convert various to SuiTypes
+        """
+        if isinstance(self.recipient, str):
+            if self.recipient == "Immutable":
+                self.recipient = self.recipient
+        else:
+            self.recipient = self.recipient["AddressOwner"]
+
 
 @dataclass
 class TransferObjectEvent(SuiTxReturnType, DataClassJsonMixin):
@@ -926,6 +950,13 @@ class TransferObjectEvent(SuiTxReturnType, DataClassJsonMixin):
     version: int
     object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Convert various to SuiTypes
+        """
+        self.recipient = self.recipient["AddressOwner"]
 
 
 @dataclass
@@ -1029,7 +1060,7 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     def __post_init__(self):
         """Post init processing.
 
-        Hydrate relevant Events
+        Hydrate relevant Events and other types
         """
         hydrated = []
         for ev_dict in self.events:
@@ -1044,7 +1075,6 @@ class EffectsBlock(SuiTxReturnType, DataClassJsonMixin):
 
     transaction_effects_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     effects: Effects
-    # dependencies: list[str]
     auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
@@ -1057,9 +1087,6 @@ class Certificate(SuiTxReturnType, DataClassJsonMixin):
     tx_signature: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
 
-    def __post_init__(self):
-        """Post init processing."""
-
 
 @dataclass
 class EffectsCertTx(SuiTxReturnType, DataClassJsonMixin):
@@ -1068,9 +1095,6 @@ class EffectsCertTx(SuiTxReturnType, DataClassJsonMixin):
     certificate: Certificate
     effects: EffectsBlock
     confirmed_local_execution: bool
-
-    def __post_init__(self):
-        """Post init processing."""
 
 
 @dataclass

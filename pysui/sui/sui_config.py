@@ -37,12 +37,19 @@ class SuiConfig(ClientConfiguration):
 
     DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
     DEFAULT_LOCAL_URL = "http://127.0.0.1:9000"
+    FAUCET_LOCAL_URL = "http://127.0.0.1:9123"
+    FAUCET_DEVNET_URL = "https://faucet.devnet.sui.io:9123"
 
     def __init__(self, active_address: str, keystore_file: str, current_url: str) -> None:
         """Initialize the default config."""
         super().__init__(keystore_file)
         self._active_address = SuiAddress.from_hex_string(active_address)
         self._current_url = current_url
+        if current_url == self.DEFAULT_LOCAL_URL:
+            self._faucet_url = self.FAUCET_LOCAL_URL
+        else:
+            self._faucet_url = self.FAUCET_DEVNET_URL
+
         if os.path.exists(keystore_file):
             self._keypairs = {}
             self._addresses = {}

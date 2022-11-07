@@ -132,6 +132,125 @@ def payallsui_result():
 
 
 @pytest.fixture
+def transfer_object_result():
+    """Return valid transfer object result."""
+    return {
+        "EffectsCert": {
+            "certificate": {
+                "transactionDigest": "018OHOYNm1LHU82KdNo2FWKK8JiDly2lmEu9TrmE+5Y=",
+                "data": {
+                    "transactions": [
+                        {
+                            "TransferObject": {
+                                "recipient": "0x06122b58281f9b45374f9b43982b38a5884bc8df",
+                                "objectRef": {
+                                    "objectId": "0x0426e61d8346510b3d66362bf4267ac104699a2f",
+                                    "version": 2,
+                                    "digest": "EIaevX7wDnE1kQtZvWbMgPKxgMe5MVr8WRrWtTTzXBI=",
+                                },
+                            }
+                        }
+                    ],
+                    "sender": "0xed3ae72c37075b29a347d3bd21cbcbb741ccc55b",
+                    "gasPayment": {
+                        "objectId": "0x72561c8546469d0a1d65c427a811da25ea2364ec",
+                        "version": 1,
+                        "digest": "IwmWrmbLhe0rr/8mIH1eneKlfPbtYRm6m570vttjkAg=",
+                    },
+                    "gasBudget": 1000,
+                },
+                "txSignature": "AO8+TLazN5N8glTPOGhypkBwio/OAA7BbR45O04wIutYUVruVfMb0fQ6Q8C+bsLwshiCvwceKDOEGuowKc6mPAZRYPoaXORZAYXC8S+oxcUOB9CYGc6AswWi9V+S2X2Uaw==",
+                "authSignInfo": {
+                    "epoch": 0,
+                    "signature": "qjxlXcpbsp4YszCglEMZdZLVkvkz/zbU2QZ6uFdviMc3fqdQG9CPgmYfnohNROFF",
+                    "signers_map": [58, 48, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 16, 0, 0, 0, 0, 0, 1, 0, 2, 0],
+                },
+            },
+            "effects": {
+                "transactionEffectsDigest": "0gqRfJDmcruE2HSGlHH0Cjgu56D7Nu3ZalfTwT5EA10=",
+                "effects": {
+                    "status": {"status": "success"},
+                    "gasUsed": {"computationCost": 40, "storageCost": 30, "storageRebate": 30},
+                    "transactionDigest": "018OHOYNm1LHU82KdNo2FWKK8JiDly2lmEu9TrmE+5Y=",
+                    "mutated": [
+                        {
+                            "owner": {"AddressOwner": "0x06122b58281f9b45374f9b43982b38a5884bc8df"},
+                            "reference": {
+                                "objectId": "0x0426e61d8346510b3d66362bf4267ac104699a2f",
+                                "version": 3,
+                                "digest": "Rh3xdG8wb6vV5WVrf4uzfjyZRP4BsLsL0486jW/8zWg=",
+                            },
+                        },
+                        {
+                            "owner": {"AddressOwner": "0xed3ae72c37075b29a347d3bd21cbcbb741ccc55b"},
+                            "reference": {
+                                "objectId": "0x72561c8546469d0a1d65c427a811da25ea2364ec",
+                                "version": 2,
+                                "digest": "rppB7tPukT8lgCGMfOZpALoJlfBjIAM2YOoUBYBAyxk=",
+                            },
+                        },
+                    ],
+                    "gasObject": {
+                        "owner": {"AddressOwner": "0xed3ae72c37075b29a347d3bd21cbcbb741ccc55b"},
+                        "reference": {
+                            "objectId": "0x72561c8546469d0a1d65c427a811da25ea2364ec",
+                            "version": 2,
+                            "digest": "rppB7tPukT8lgCGMfOZpALoJlfBjIAM2YOoUBYBAyxk=",
+                        },
+                    },
+                    "events": [
+                        {
+                            "coinBalanceChange": {
+                                "packageId": "0x0000000000000000000000000000000000000002",
+                                "transactionModule": "gas",
+                                "sender": "0xed3ae72c37075b29a347d3bd21cbcbb741ccc55b",
+                                "changeType": "Gas",
+                                "owner": {"AddressOwner": "0xed3ae72c37075b29a347d3bd21cbcbb741ccc55b"},
+                                "coinType": "0x2::sui::SUI",
+                                "coinObjectId": "0x72561c8546469d0a1d65c427a811da25ea2364ec",
+                                "version": 1,
+                                "amount": -40,
+                            }
+                        },
+                        {
+                            "transferObject": {
+                                "packageId": "0x0000000000000000000000000000000000000002",
+                                "transactionModule": "transfer_object",
+                                "sender": "0xed3ae72c37075b29a347d3bd21cbcbb741ccc55b",
+                                "recipient": {"AddressOwner": "0x06122b58281f9b45374f9b43982b38a5884bc8df"},
+                                "objectType": "0xc743a1d880d0545945b1a80d29e9f2650b884e85::base::Tracker",
+                                "objectId": "0x0426e61d8346510b3d66362bf4267ac104699a2f",
+                                "version": 3,
+                            }
+                        },
+                        {
+                            "mutateObject": {
+                                "packageId": "0x0000000000000000000000000000000000000002",
+                                "transactionModule": "transfer_object",
+                                "sender": "0xed3ae72c37075b29a347d3bd21cbcbb741ccc55b",
+                                "objectType": "0xc743a1d880d0545945b1a80d29e9f2650b884e85::base::Tracker",
+                                "objectId": "0x0426e61d8346510b3d66362bf4267ac104699a2f",
+                                "version": 3,
+                            }
+                        },
+                    ],
+                    "dependencies": [
+                        "MDk5BPe+GLx+CrGtNXRWXdVL8Y1W6odgpMytmd/4Dv4=",
+                        "ouKMXBBfRJTrfqaKNiz6GpCzjG7O2RMBQKPSymNv+MU=",
+                    ],
+                },
+                "authSignInfo": {
+                    "epoch": 0,
+                    "signature": "pPNFeXnfmZOGK4Ma6Crpzy1e/LvZkYEBrkla6MUM+3EUeeIVlOIls9sw5o+mvTOX",
+                    "signers_map": [58, 48, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 16, 0, 0, 0, 0, 0, 1, 0, 2, 0],
+                },
+            },
+            "confirmed_local_execution": True,
+        }
+    }
+
+
+@pytest.fixture
 def publish_nest_result():
     """Return valid publish result."""
     return {

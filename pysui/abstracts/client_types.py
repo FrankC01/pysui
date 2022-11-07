@@ -14,6 +14,7 @@
 
 """Type Client Abstractions."""
 from abc import ABC
+
 from types import NoneType
 from typing import Any
 
@@ -23,17 +24,17 @@ class AbstractType(ABC):
 
     def __init__(self, identifier: "AbstractType") -> None:
         """Initialize type."""
-        self._value = identifier
+        self.value = identifier
 
     @property
     def identifier(self) -> Any:
         """Return underlying value."""
-        return self._value
+        return self.value
 
-    @property
-    def value(self) -> Any:
-        """Return underlying value."""
-        return self._value
+    # @property
+    # def value(self) -> Any:
+    #     """Return underlying value."""
+    #     return self.value
 
     def __eq__(self, other: "AbstractType") -> bool:
         """Equality check."""
@@ -45,15 +46,15 @@ class AbstractType(ABC):
 
     def __str__(self) -> str:
         """Convert value to string using formatting."""
-        if isinstance(self._value, str):
-            return self._value
-        if isinstance(self._value, bytes):
-            return self._value.decode()
-        if isinstance(self._value, int):
-            return str(self._value)
-        if isinstance(self._value, AbstractType):
-            return str(self._value)
-        if isinstance(self._value, NoneType):
+        if isinstance(self.value, str):
+            return self.value
+        if isinstance(self.value, bytes):
+            return self.value.decode()
+        if isinstance(self.value, int):
+            return self.value
+        if isinstance(self.value, AbstractType):
+            return str(self.value.value)
+        if isinstance(self.value, NoneType):
             return ""
         raise NotImplementedError
         # return self._value if isinstance(self._value, str) else self._value.decode()  # f"{self._value}"

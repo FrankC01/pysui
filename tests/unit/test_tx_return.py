@@ -10,7 +10,8 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
-import pytest
+
+"""Transaction result tests."""
 
 from pysui.sui.sui_types import TxEffectResult
 
@@ -18,6 +19,13 @@ from pysui.sui.sui_types import TxEffectResult
 def test_payallsui_result_pass(payallsui_result):
     """Valid result."""
     result = TxEffectResult.from_dict(payallsui_result)
+    assert result.succeeded is True
+    assert result.status == "success"
+
+
+def test_transferobject_result_pass(transfer_object_result):
+    """Valid result."""
+    result = TxEffectResult.from_dict(transfer_object_result)
     assert result.succeeded is True
     assert result.status == "success"
 
