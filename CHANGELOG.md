@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved content of sui/sui_tx_return_types to sui/sui_types
 - Fixed typo in transaction return type class `Status`
 - Added builder callback for handling RPC response to types (sui/sui_builder.py)
+- Changes to support Sui configuration files (both devnet and local) changes for RPC endpoints
+- Added new RCP API type introduced 'boolean' in RPC API calls and results
 
 ### Removed
 - sui/sui_tx_return_types.py
+- All "events" from sample as they've been removed in RPC API in favor of general `sui_getEvents`. Will support in future.

@@ -51,6 +51,14 @@ class SuiJsonString(DataClassJsonMixin, SuiJsonType):
 
 
 @dataclass(frozen=True)
+class SuiJsonBoolen(DataClassJsonMixin, SuiJsonType):
+    """Sui Json Boolean."""
+
+    type: bool
+    type_path: list[str]
+
+
+@dataclass(frozen=True)
 class SuiJsonInteger(DataClassJsonMixin, SuiJsonType):
     """Sui Json Integer."""
 
@@ -164,8 +172,10 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
                 return SuiJsonObject.from_dict(dcp)
             case "null":
                 return SuiJsonNull.from_dict(dcp)
+            case "boolean":
+                return SuiJsonBoolen.from_dict(dcp)
             case _:
-                raise NotImplementedError("Finisky")
+                raise NotImplementedError("ptype")
         return ptype
     if "$ref" in indata:
         last = indata.get("$ref").split("/")[-1]
@@ -195,7 +205,7 @@ def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
     # Validate the inbound data. Keys are present in valid response
     # from rpc.discover
     # with open("./apidefn.json", "w", encoding="utf8") as inner_file:
-    #    inner_file.write(json.dumps(indata, indent=2))
+    #     inner_file.write(json.dumps(indata, indent=2))
 
     if (
         isinstance(indata["result"], dict)

@@ -127,6 +127,16 @@ def _build_read_cmds(subparser) -> None:
     subp = subparser.add_parser("rpcapi", help="Show Sui RPC API information")
     subp.add_argument("-n", "--name", required=False, help="Display details for named Sui RPC API")
     subp.set_defaults(subcommand="rpcapi")
+    # Committee info
+    subp = subparser.add_parser("committee", help="Show committee info for epoch")
+    subp.add_argument(
+        "-e",
+        "--epoch",
+        required=False,
+        help="The epoch of interest. If None, default to the latest epoch",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="committee")
 
 
 def _build_transfer_cmds(subparser) -> None:
@@ -551,16 +561,6 @@ def _build_extended_read_commands(subparser) -> None:
     esubp.add_argument("-d", "--digest", required=True, help="the transaction's digest")
     esubp.add_argument("-c", "--count", required=True, help="maximum number of the results", type=check_positive)
     esubp.set_defaults(subcommand="event-tx")
-    # Committee info
-    subp = subparser.add_parser("committee", help="Show committee info for epoch")
-    subp.add_argument(
-        "-e",
-        "--epoch",
-        required=False,
-        help="The epoch of interest. If None, default to the latest epoch",
-        type=check_positive,
-    )
-    subp.set_defaults(subcommand="committee")
 
 
 def _build_tx_query_commands(subparser) -> None:
@@ -589,7 +589,7 @@ def build_parser(in_args: list) -> argparse.Namespace:
     _build_transfer_cmds(subparser)
     _build_pay_cmds(subparser)
     _build_package_cmds(subparser)
-    _build_extended_read_commands(subparser)
+    # _build_extended_read_commands(subparser)
     _build_tx_query_commands(subparser)
 
     return parser.parse_args(in_args if in_args else ["--help"])

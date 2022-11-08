@@ -368,7 +368,7 @@ def txn_count(wallet: SuiWallet, _args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = wallet.get_total_tx_count()
     if result.is_ok():
-        print(result.result_data["result"])
+        print(result.result_data)
     else:
         print(f"Error: {result.result_string}")
 
@@ -377,7 +377,7 @@ def txn_txn(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = wallet.get_transaction(args.digest)
     if result.is_ok():
-        print(json.dumps(result.result_data["result"], indent=2))
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 

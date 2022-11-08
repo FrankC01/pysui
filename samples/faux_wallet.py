@@ -20,7 +20,7 @@ import os
 import json
 
 from typing import Union
-from pysui.abstracts import Builder
+from pysui.abstracts import Builder, SignatureScheme
 from pysui.sui import (
     SuiClient,
     SuiConfig,
@@ -53,9 +53,6 @@ from pysui.sui import (
 )
 
 from pysui.sui.sui_crypto import SuiAddress
-from pysui.sui.sui_excepts import (
-    SuiRpcApiError,
-)
 
 from pysui.sui.sui_types import (
     ObjectID,
@@ -115,6 +112,10 @@ class SuiWallet:
         """Check if API supported in RPC host."""
         return self._client.api_exists(api_name)
 
+    def create_new_keypair_and_address(self, sigscheme: SignatureScheme) -> str:
+        """Create new keypair and address."""
+        return self._client.config.create_new_keypair_and_address(sigscheme)
+
     def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get details of Sui package."""
         result = self.execute(GetPackage(package_id))
@@ -132,7 +133,7 @@ class SuiWallet:
             result = result.result_data
             if "error" in result:
                 return SuiRpcResult(False, f"{result['error']}")
-            return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+            return SuiRpcResult(True, None, json.dumps(result, indent=2))
         return result
 
     def _get_events(self, cls: SuiBaseBuilder, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
@@ -142,7 +143,7 @@ class SuiWallet:
             result = result.result_data
             if "error" in result:
                 return SuiRpcResult(False, f"{result['error']}")
-            return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+            return SuiRpcResult(True, None, json.dumps(result, indent=2))
         return result
 
     def get_module_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
