@@ -30,6 +30,8 @@ def valid_sui_address(instr: str) -> bool:
     inlen = len(instr)
     if instr == "0x2":
         return True
+    if instr == "Immutable":
+        return True
     if inlen > SUI_HEX_ADDRESS_STRING_LEN or inlen < SUI_ADDRESS_STRING_LEN:
         return False
     # _kp = keypair_from_keystring(instr)

@@ -13,7 +13,7 @@
 
 """Transaction result tests."""
 
-from pysui.sui.sui_types import TxEffectResult
+from pysui.sui.sui_types import TxEffectResult, MovePackage
 
 
 def test_payallsui_result_pass(payallsui_result):
@@ -51,8 +51,20 @@ def test_move_call_result_pass(move_call_result):
     assert result.status == "success"
 
 
-def test_bad_pay_result_pass(bad_pay_result):
+def test_package_track_result_pass(package_track_result):
     """Valid result."""
+    result = MovePackage(package_track_result)
+    assert result is not None
+
+
+def test_package_nest_result_pass(package_nest_result):
+    """Valid result."""
+    result = MovePackage(package_nest_result)
+    assert result is not None
+
+
+def test_bad_pay_result_pass(bad_pay_result):
+    """Invalid result."""
     result = TxEffectResult.from_dict(bad_pay_result)
     assert result.succeeded is False
     assert result.status == "failure - InsufficientGas"

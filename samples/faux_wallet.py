@@ -99,9 +99,9 @@ class SuiWallet:
         """Get all the addresses."""
         return self._client.config.addresses
 
-    def execute(self, builder: Builder) -> SuiRpcResult:
+    def execute(self, builder: Builder, dry_run: bool = False) -> SuiRpcResult:
         """Execute the builder."""
-        return self._client.execute(builder)
+        return self._client.execute(builder, dry_run)
 
     def get_rpc_api_names(self) -> list[str]:
         """Fetch RCP API method names."""
@@ -118,11 +118,11 @@ class SuiWallet:
     def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get details of Sui package."""
         result = self.execute(GetPackage(package_id))
-        if result.is_ok():
-            result = result.result_data
-            if "error" in result:
-                return SuiRpcResult(False, f"{result['error']}")
-            return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
+        # if result.is_ok():
+        #     result = result.result_data
+        #     if "error" in result:
+        #         return SuiRpcResult(False, f"{result['error']}")
+        #     return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
         return result
 
     def get_committee_info(self, epoch: SuiNumber) -> Union[SuiRpcResult, Exception]:
@@ -298,9 +298,10 @@ class SuiWallet:
         if result.is_ok():
             result = result.result_data
             type_descriptors = []
-            if "error" in result:
-                raise SuiRpcApiError(result["error"])
-            for sui_objdesc in result["result"]:
+            # if "error" in result:
+            #     raise SuiRpcApiError(result["error"])
+            # for sui_objdesc in result["result"]:
+            for sui_objdesc in result:
                 sui_type = from_object_descriptor(sui_objdesc)
                 if isinstance(sui_type, claz):
                     type_descriptors.append(sui_type)
@@ -324,9 +325,9 @@ class SuiWallet:
         result = self.execute(GetObject().set_object(identifier))
         if result.is_ok():
             result = result.result_data
-            if result["result"]["status"] != "Exists":
-                return SuiRpcResult(False, f"Object {identifier} {result['result']['status']}", None)
-            return SuiRpcResult(True, None, from_object_type(result["result"]["details"]))
+            if result["status"] != "Exists":
+                return SuiRpcResult(False, f"Object {identifier} {result['status']}", None)
+            return SuiRpcResult(True, None, from_object_type(result["details"]))
         return result
 
     def _get_objects(self, descriptor_result: SuiRpcResult):
@@ -337,9 +338,9 @@ class SuiWallet:
                 result = self.execute(GetObject().set_object(cdesc.identifier))
                 if result.is_ok():
                     result = result.result_data
-                    if result["result"]["status"] != "Exists":
-                        return SuiRpcResult(False, f"Object {cdesc.identifier} {result['result']['status']}", None)
-                    data_object = from_object_type(result["result"]["details"])
+                    if result["status"] != "Exists":
+                        return SuiRpcResult(False, f"Object {cdesc.identifier} {result['status']}", None)
+                    data_object = from_object_type(result["details"])
                     obj_types.append(data_object)
                 else:
                     return result

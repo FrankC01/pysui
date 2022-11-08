@@ -18,7 +18,7 @@ import json
 import sys
 from pysui.abstracts import SignatureScheme
 from pysui.sui.sui_rpc import SuiRpcResult
-from pysui.sui.sui_types import SuiPackage
+from pysui.sui.sui_types import SuiRawPackage
 from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode
 from .faux_wallet import SuiWallet
@@ -68,7 +68,7 @@ def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Get a package object."""
     result: SuiRpcResult = wallet.get_package(args.id)
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
         print()
     else:
         print(f"{result.result_string}")
@@ -78,7 +78,7 @@ def sui_package_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Get a package object."""
     result: SuiRpcResult = wallet.get_package_object(args.id)
     if result.is_ok():
-        package: SuiPackage = result.result_data
+        package: SuiRawPackage = result.result_data
         print()
         print("Package")
         print(f"id: {str(package.identifier)} owner: {package.owner}")

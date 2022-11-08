@@ -624,7 +624,7 @@ class SuiMap(SuiCollection):
 # Package Type
 
 
-class SuiPackage(SuiBaseType):
+class SuiRawPackage(SuiBaseType):
     """Sui package object."""
 
     def __init__(self, indata: dict) -> None:
@@ -740,7 +740,7 @@ def from_object_type(inblock: dict) -> ObjectRead:
                     return SuiDataType(indata)
             return ObjectRead(indata)
         case "package":
-            return SuiPackage(inblock)
+            return SuiRawPackage(inblock)
         case _:
             raise ValueError(f"Don't recognize {indata['dataType']}")
 
@@ -1114,3 +1114,98 @@ class TxEffectResult(SuiTxReturnType, DataClassJsonMixin):
         if self.succeeded:
             return "success"
         return f"{self.effects_cert.effects.effects.status.status} - {self.effects_cert.effects.effects.status.error}"
+
+
+# Packages
+
+
+@dataclass
+class MoveModuleId(DataClassJsonMixin):
+    """From getNormalized."""
+
+    address: str
+    name: str
+
+
+@dataclass
+class MoveStructReference(DataClassJsonMixin):
+    """From getNormalized."""
+
+    address: str
+    module: str
+    name: str
+    type_arguments: list["MoveStructReference"] = field(default_factory=list)
+
+
+@dataclass
+class MoveStructField(DataClassJsonMixin):
+    """From getNormalized."""
+
+    name: str
+    type_: Union[str, dict[str, MoveStructReference]]  # = field(default_factory=list)
+
+    def __post_init__(self):
+        """Post init processing for field_type."""
+
+
+@dataclass
+class MoveStructAbilities(DataClassJsonMixin):
+    """From getNormalized."""
+
+    abilities: list[str]
+
+    def __post_init__(self):
+        """Post init processing for field_type."""
+
+
+@dataclass
+class MoveStruct(DataClassJsonMixin):
+    """From getNormalized."""
+
+    abilities: MoveStructAbilities
+    fields: list[MoveStructField]
+    type_parameters: list[Union[str, dict]]
+
+    def __post_init__(self):
+        """Post init processing for type parameters."""
+
+
+@dataclass
+class MoveFunction(DataClassJsonMixin):
+    """From getNormalized."""
+
+    visibility: str
+    is_entry: bool
+    type_parameters: list[str]
+    parameters: list[Union[str, dict]]
+    return_: list[str]
+
+    def __post_init__(self):
+        """Post init processing for parameters."""
+
+
+@dataclass
+class MoveModule(DataClassJsonMixin):
+    """From getNormalized."""
+
+    name: str
+    address: str
+    file_format_version: int
+    friends: list[MoveModuleId]
+    structs: dict[str, MoveStruct]
+    exposed_functions: dict[str, MoveFunction]
+
+    def __post_init__(self):
+        """Post init processing for parameters."""
+
+
+@dataclass
+class MovePackage(DataClassJsonMixin):
+    """From getNormalized."""
+
+    modules: dict[str, MoveModule]
+
+    @classmethod
+    def ingest_data(cls, indata: dict) -> "MovePackage":
+        """Ingest from external call."""
+        return cls.from_dict({"modules": indata})

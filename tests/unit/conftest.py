@@ -720,3 +720,441 @@ def bad_pay_result():
             "confirmed_local_execution": True,
         }
     }
+
+
+@pytest.fixture
+def package_track_result():
+    """Return a normalized package content."""
+    return {
+        "base": {
+            "file_format_version": 6,
+            "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+            "name": "base",
+            "friends": [],
+            "structs": {
+                "Service": {
+                    "abilities": {"abilities": ["Key"]},
+                    "type_parameters": [],
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}
+                            },
+                        },
+                        {"name": "admin", "type_": "Address"},
+                    ],
+                },
+                "ServiceTracker": {
+                    "abilities": {"abilities": ["Key"]},
+                    "type_parameters": [],
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}
+                            },
+                        },
+                        {"name": "initialized", "type_": "Bool"},
+                        {"name": "count_accounts", "type_": "U64"},
+                    ],
+                },
+                "Tracker": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "type_parameters": [],
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}
+                            },
+                        },
+                        {"name": "initialized", "type_": "Bool"},
+                        {"name": "owner", "type_": "Address"},
+                        {"name": "accumulator", "type_": {"Vector": "U8"}},
+                    ],
+                },
+            },
+            "exposed_functions": {
+                "accounts_created": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "ServiceTracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "add_from": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Tracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"Vector": "U8"},
+                    ],
+                    "return_": [],
+                },
+                "add_to_store": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Tracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U8",
+                    ],
+                    "return_": ["U64"],
+                },
+                "add_value": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Tracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U8",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "add_values": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Tracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"Vector": "U8"},
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "create_account": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Service",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "ServiceTracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "drop_from_store": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Tracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U8",
+                    ],
+                    "return_": ["U8"],
+                },
+                "has_value": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Tracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U8",
+                    ],
+                    "return_": ["Bool"],
+                },
+                "remove_value": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Tracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U8",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "stored_count": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                    "module": "base",
+                                    "name": "Tracker",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "transfer": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0xc743a1d880d0545945b1a80d29e9f2650b884e85",
+                                "module": "base",
+                                "name": "Tracker",
+                                "type_arguments": [],
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": [],
+                },
+            },
+        }
+    }
+
+
+@pytest.fixture
+def package_nest_result():
+    """Return a normalized package content."""
+    return {
+        "lest": {
+            "file_format_version": 6,
+            "address": "0x25c82dbf8cf2fbe47a6d4a80ad4a861760e2dd13",
+            "name": "lest",
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {},
+        },
+        "nest": {
+            "file_format_version": 6,
+            "address": "0x25c82dbf8cf2fbe47a6d4a80ad4a861760e2dd13",
+            "name": "nest",
+            "friends": [],
+            "structs": {
+                "Child0": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "type_parameters": [],
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}
+                            },
+                        },
+                        {"name": "val", "type_": "U64"},
+                    ],
+                },
+                "Child1": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "type_parameters": [],
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}
+                            },
+                        },
+                        {"name": "val", "type_": "U64"},
+                    ],
+                },
+                "Parent0": {
+                    "abilities": {"abilities": ["Key"]},
+                    "type_parameters": [],
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}
+                            },
+                        },
+                        {
+                            "name": "child",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x25c82dbf8cf2fbe47a6d4a80ad4a861760e2dd13",
+                                    "module": "nest",
+                                    "name": "Child0",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                    ],
+                },
+                "Parent1": {
+                    "abilities": {"abilities": ["Key"]},
+                    "type_parameters": [],
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}
+                            },
+                        },
+                        {
+                            "name": "child",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "option",
+                                    "name": "Option",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x25c82dbf8cf2fbe47a6d4a80ad4a861760e2dd13",
+                                                "module": "nest",
+                                                "name": "Child1",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                    ],
+                },
+            },
+            "exposed_functions": {
+                "create_data": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [],
+                }
+            },
+        },
+    }

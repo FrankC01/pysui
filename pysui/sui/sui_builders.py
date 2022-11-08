@@ -16,8 +16,10 @@
 
 from abc import abstractmethod
 from enum import IntEnum
+from typing import Type, Union
 from ..abstracts import Builder, PublicKey, SignatureScheme
 from .sui_types import (
+    MovePackage,
     ObjectInfo,
     ObjectID,
     SuiString,
@@ -28,6 +30,7 @@ from .sui_types import (
     SuiMap,
     SuiAddress,
     SuiBaseType,
+    TxEffectResult,
 )
 
 
@@ -65,11 +68,16 @@ class SuiBaseBuilder(Builder):
     required by Sui RPC API.
     """
 
-    def __init__(self, method: str, txn_required: bool) -> None:
+    def __init__(
+        self, method: str, txn_required: bool, handler_cls: Type[SuiBaseType] = None, handler_func: str = None
+    ) -> None:
         """Initialize Builder."""
         super().__init__()
         self._method = method
         self._txn_required = txn_required
+        # Experimental
+        self._handler_cls: Type[SuiBaseType] = handler_cls
+        self._handler_func: str = handler_func
 
     def _pull_vars(self) -> list[SuiBaseType]:
         """Filter out private/protected var elements."""
@@ -101,13 +109,33 @@ class SuiBaseBuilder(Builder):
         """Get transaction required flag."""
         return self._txn_required
 
+    # Experimental
+    def _has_return_handler_cls(self) -> bool:
+        """Query presence of return handler."""
+        return self._handler_cls is not None
+
+    def _has_return_handler_func(self) -> bool:
+        """Query presence of return handler."""
+        return self._handler_func is not None
+
+    # Experimental
+    def handle_return(self, indata: dict) -> Union[dict, SuiBaseType]:
+        """Handle the expected return."""
+        if self._handler_cls and self._handler_func:
+            return getattr(self._handler_cls, self._handler_func)(indata)
+        if self._handler_cls and self._handler_func is None:
+            return self._handler_cls(indata)
+        if self._handler_cls is None and self._handler_func:
+            return self._handler_func(indata)
+        return indata
+
 
 class _NativeTransactionBuilder(SuiBaseBuilder):
     """Builders for simple single parameter transactions."""
 
-    def __init__(self, method: str) -> None:
+    def __init__(self, method: str, handler_cls: Type[SuiBaseType] = None, handler_func: str = None) -> None:
         """Initialize builder."""
-        super().__init__(method, False)
+        super().__init__(method, False, handler_cls, handler_func)
 
 
 class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
@@ -187,7 +215,7 @@ class GetPackage(_NativeTransactionBuilder):
 
     def __init__(self, package: ObjectID = None) -> None:
         """Initialize builder."""
-        super().__init__("sui_getNormalizedMoveModulesByPackage")
+        super().__init__("sui_getNormalizedMoveModulesByPackage", handler_cls=MovePackage, handler_func="ingest_data")
         self.package: ObjectID = package
 
     def set_package(self, package: ObjectID) -> "GetPackage":
@@ -455,7 +483,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
 
     def __init__(self) -> None:
         """Initialize builder."""
-        super().__init__("sui_executeTransaction")
+        super().__init__("sui_executeTransaction", handler_cls=TxEffectResult, handler_func="from_dict")
         self.tx_bytes: SuiTxBytes = None
         self.sig_scheme: SignatureScheme = None
         self.signature: SuiSignature = None

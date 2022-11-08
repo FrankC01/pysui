@@ -41,12 +41,12 @@ class Builder(ABC):
     @property
     @abstractmethod
     def txn_required(self) -> bool:
-        """Return the transaction required flag."""
+        """Return transaction required flag."""
 
     @property
     @abstractmethod
     def method(self) -> str:
-        """Return method."""
+        """Return RPC API method name."""
 
 
 class RpcResult(ABC):

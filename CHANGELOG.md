@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md
 - Hydrate object results from Sui `sui_executeTransaction` API (see sui/sui_tx_return_types.py)
 - Transaction result tests (results are static via conftest.py fixtures in tests/unit)
+- MovePackage dataclasses from API result
 
 ### Changed
 - Absolute to relative imports
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved configuration management to ClientConfig and SuiConfig from faux_wallet
 - Moved content of sui/sui_tx_return_types to sui/sui_types
 - Fixed typo in transaction return type class `Status`
+- Added builder callback for handling RPC response to types (sui/sui_builder.py)
 
 ### Removed
 - sui/sui_tx_return_types.py

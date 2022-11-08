@@ -20,9 +20,9 @@ from json import JSONDecodeError
 from typing import Any, Union
 import httpx
 from ..abstracts import SyncHttpRPC, RpcResult
-from .sui_types import SuiTxBytes, TxEffectResult
+from .sui_types import SuiTxBytes
 from .sui_config import SuiConfig
-from .sui_builders import GetRpcAPI, SuiBaseBuilder, ExecuteTransaction, SuiRequestType
+from .sui_builders import DryRunTransaction, GetRpcAPI, SuiBaseBuilder, ExecuteTransaction, SuiRequestType
 from .sui_apidesc import build_api_descriptors, SuiApi
 from .sui_txn_validator import validate_api
 from .sui_excepts import SuiRpcApiNotAvailable
@@ -126,15 +126,20 @@ class SuiClient(SyncHttpRPC):
         except httpx.ReadTimeout as hexc:
             return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
 
-    def execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+    def execute(self, builder: SuiBaseBuilder, dry_run: bool = False) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
         if not builder.method in self._rpc_api:
             raise SuiRpcApiNotAvailable(builder.method)
         if not builder.txn_required:
-            return self._execute(builder)
-        return self._signed_execution(builder)
+            result = self._execute(builder)
+            if result.is_ok():
+                if "error" in result.result_data:
+                    return result
+                return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+            return result
+        return self._signed_execution(builder, dry_run)
 
-    def _signed_execution(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+    def _signed_execution(self, builder: SuiBaseBuilder, dry_run: bool = False) -> Union[SuiRpcResult, Exception]:
         """Subit base transaction, sign valid result and execute."""
         result = self._execute(builder)
         if result.is_ok():
@@ -143,21 +148,24 @@ class SuiClient(SyncHttpRPC):
                 return SuiRpcResult(False, result["error"]["message"], None)
             kpair = self.config.keypair_for_address(builder.authority)
             b64tx_bytes = result["result"]["txBytes"]
-            builder = ExecuteTransaction()
-            builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-                kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-            ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORLOCALEXECUTION)
-            # builder = DryRunTransaction()
-            # builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-            #     kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-            # ).set_sig_scheme(kpair.scheme)
-            result = self.execute(builder)
+            # Dry run the transaction
+            if dry_run:
+                builder = DryRunTransaction()
+                builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
+                    kpair.private_key.sign(base64.b64decode(b64tx_bytes))
+                ).set_sig_scheme(kpair.scheme)
+                raise NotImplementedError("Data handling for dry-run result not ready.")
+            else:
+                builder = ExecuteTransaction()
+                builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
+                    kpair.private_key.sign(base64.b64decode(b64tx_bytes))
+                ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORLOCALEXECUTION)
+            result = self._execute(builder)
             if result.is_ok():
                 if "error" in result.result_data:
                     return SuiRpcResult(False, result.result_data["error"]["message"], None)
                 # print(json.dumps(result.result_data["result"], indent=2))
-                tx_result = TxEffectResult.from_dict(result.result_data["result"])
-                return SuiRpcResult(tx_result.succeeded, tx_result.status, tx_result)
+                return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
         return result
 
     @property
