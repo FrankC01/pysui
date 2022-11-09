@@ -1,40 +1,50 @@
-# pysui
+# develop pysui
 
 Python SUI client SDK for Sui - WIP and expect significant refactoring
 
+This document is for contributors or the curious developer
+
 ## Known issues or missing capability
-* No batch transaction coverage yet
-* Doesn't use mnemonics yet (see [Issue](https://github.com/FrankC01/pysui/issues/9))
-* Partial coverage for `sui_getTransaction...` RPC API
-* Doesn't support `sui_getEvents` added in SUI 0.15.0
+* See README.md
 
 ## Ready to run
 Requires:
  * Linux or macos (x86_64 or M1)
  * python 3.10 or greater
  * pkg-config
+ * git
 
-## Run with devnet
-By default, `pysui` will use the `client.yaml` configuration found in `.sui/sui_config/`. See [below](#run-local) for running
-with different configuration (e.g. Local)
+### Clone this repo
 
-### Setup environment
-`python3 -m venv pysuienv`
+`git clone git@github.com:FrankC01/pysui.git
 
-If, instead, you want to work with repo source code then read DEVELOP.md from repo
+### Setup virtual environment
+
+`python3 -m venv env`
 
 ### Activate
-`source pysuienv/bin/activate`
+`source env/bin/activate`
 
-### Install `pysui`
-`pip install pysui`
+### Load core packages
+`pip list`
+
+  * If you get a warning about upgrading pip... do so
+
+`pip install -r requirements.txt`
+
+  * If you get an error with secp256k1 then:
+    `pip install wheel` and try to install requirements again
+
+### Load anciallary packages
+
+`pip install -r requirements-dev.txt` .
 
 ### Run sample wallet app for help
-`wallet`
+`python -m samples.wallet`
 
 #### Output
 ```bash
-usage: wallet [options] command [--command_options]
+usage: wallet.py [options] command [--command_options]
 
 options:
   -h, --help            show this help message and exit
@@ -64,7 +74,7 @@ commands:
 ```
 
 ### Run sample wallet app for transaction query help
-`wallet txns -h`
+`python -m samples.wallet txns -h`
 
 ### Output
 ```bash
@@ -92,5 +102,5 @@ To run locally, especially useful when devnet is down, below are the steps to fo
 
 Example:
 ```bash
-wallet --cfg ~/sui_local/client.yaml gas
+python -m samples.wallet --cfg ~/sui_local/client.yaml gas
 ```

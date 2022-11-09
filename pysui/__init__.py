@@ -12,6 +12,7 @@
 # -*- coding: utf-8 -*-
 """pysui package."""
 import sys
+from .version import __version__
 
 if sys.version_info < (3, 10):
     raise EnvironmentError("Python 3.10 or above is required")

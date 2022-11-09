@@ -1,0 +1,4 @@
+pylint==2.15.5
+pydocstyle==6.1.1
+pytest==7.2.0
+black==22.10.0

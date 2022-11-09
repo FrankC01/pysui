@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hydrate object results from Sui `sui_executeTransaction` API (see sui/sui_tx_return_types.py)
 - Transaction result tests (results are static via conftest.py fixtures in tests/unit)
 - MovePackage dataclasses from API result
+- Added requirements-dev.txt for local development
+- DEVELOP.md for local development
 
 ### Changed
 - Absolute to relative imports
@@ -21,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added builder callback for handling RPC response to types (sui/sui_builder.py)
 - Changes to support Sui configuration files (both devnet and local) changes for RPC endpoints
 - Added new RCP API type introduced 'boolean' in RPC API calls and results
+- Simplified requirements.txt
+- Added `pysui` to PyPi for ease of installing and using
 
 ### Removed
 - sui/sui_tx_return_types.py

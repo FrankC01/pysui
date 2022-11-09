@@ -8,28 +8,3 @@ pythonpath = ["pysui", "abstracts", "sui"]
 [build-system]
 requires = ["setuptools>=61.0","wheel"]
 build-backend = "setuptools.build_meta"
-
-# [project]
-# name = "pysui"
-# version = "0.0.1"
-# authors = [
-#   { name="fastfrank"},
-# ]
-# description = "SUI client Python SDK"
-# readme = "README.md"
-# classifiers=[  # Optional
-#     "Development Status :: 3 - Alpha",
-#     "Intended Audience :: Developers",
-#     "Topic :: Software Development",
-#     "Topic :: Software Development :: Libraries",
-#     "Programming Language :: Python",
-#     "Operating System :: OS Independent",
-#     "License :: OSI Approved :: Apache Software License",
-#     "Programming Language :: Python :: 3.10",
-#     "Programming Language :: Python :: 3 :: Only",
-# ]
-# requires-python = ">=3.10"
-
-# [project.urls]
-# "Homepage" = "https://github.com/FrankC01/pysui"
-# "Bug Tracker" = "https://github.com/FrankC01/pysui/issues"
