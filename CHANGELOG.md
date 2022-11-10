@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added requirements-dev.txt for local development
 - DEVELOP.md for local development
 
+
 ### Changed
 - Absolute to relative imports
 - Fixed [issue](https://github.com/FrankC01/pysui/issues/12)
@@ -25,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added new RCP API type introduced 'boolean' in RPC API calls and results
 - Simplified requirements.txt
 - Added `pysui` to PyPi for ease of installing and using
+- Changed sample command line to use `--local` instead of `--cfg`
+- When parsing sui configurations, the 'active_env' now drives RPC selection
+
 
 ### Removed
 - sui/sui_tx_return_types.py

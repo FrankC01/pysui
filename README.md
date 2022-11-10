@@ -3,10 +3,10 @@
 Python SUI client SDK for Sui - WIP and expect significant refactoring
 
 ## Known issues or missing capability
-* No batch transaction coverage yet
+* Doesn't support `sui_batchTransaction` RPC API yet
 * Doesn't use mnemonics yet (see [Issue](https://github.com/FrankC01/pysui/issues/9))
 * Partial coverage for `sui_getTransaction...` RPC API
-* Doesn't support `sui_getEvents` added in SUI 0.15.0
+* Doesn't support `sui_getEvents` RPC API (added in SUI 0.15.0) yet
 
 ## Ready to run
 Requires:
@@ -19,18 +19,106 @@ By default, `pysui` will use the `client.yaml` configuration found in `.sui/sui_
 with different configuration (e.g. Local)
 
 ### Setup environment
-`python3 -m venv pysuienv`
+`python3 -m venv env`
 
 If, instead, you want to work with repo source code then read DEVELOP.md from repo
 
 ### Activate
-`source pysuienv/bin/activate`
+`source env/bin/activate`
 
 ### Install `pysui`
 `pip install pysui`
 
+## Using the SDK
+Here is a sample script demonstrating the fundementals for effective pysui usage:
+```python
+"""Simple SDK example - Get gas for active address."""
+
+from pysui.sui.sui_rpc import SuiClient, RpcResult
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_builders import GetObjectsOwnedByAddress, GetObject
+from pysui.sui.sui_types import ObjectID, from_object_type, SuiGasType
+
+# Well knowns
+GAS_TYPE_SIG: str = "0x2::coin::Coin<0x2::sui::SUI>"
+
+# Helper funcs
+
+
+# Main body
+
+
+def main():
+    """Get gas objects."""
+    # Load configuration from SUI configuration.
+    cfg: SuiConfig = SuiConfig.default()
+    # Load the synchronous RPC provider with this configuration
+    client: SuiClient = SuiClient(cfg)
+    print(
+        f"Getting gas for address: {cfg.active_address} from endpoint {cfg.rpc_url}")
+
+    # Setup a builder that maps to `sui_getObjectsOwnedByAddress`. There are
+    # builders for most RCP API and more to follow
+    builder = GetObjectsOwnedByAddress(cfg.active_address)
+
+    # Execute the command
+    result: RpcResult = client.execute(builder)
+
+    # Check the results:
+    if result.is_ok():
+        # The call returns 1 or more object descriptors. We want those of specific type
+
+        for item in result.result_data:
+            # For each check if a gas type object and, if so, get the details
+            # on the object
+            if item['type'] == GAS_TYPE_SIG:
+                builder = GetObject(ObjectID(item['objectId']))
+                obj_res: RpcResult = client.execute(builder)
+                if obj_res.is_ok():
+                    # Use the helper function to convert the json results
+                    # to a sui_type SuiGasType object
+                    gas_obect: SuiGasType = from_object_type(
+                        obj_res.result_data["details"])
+                    print(
+                        f"Gas object: {gas_obect.identifier} has {gas_obect.balance} mists")
+
+    else:
+        print(f"Failed execution with {result.result_string}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Then run the script:
+`python -m example1` or `python example1.py`
+
+With the resulting (your gas mileage may vary) output:
+```bash
+Getting gas for address: 0x78696a213bb7ce38e5dc5017ac07c44e85e24703 from endpoint https://fullnode.devnet.sui.io:443
+Gas object: 0x0c6b9bd8b91324c00707e3e901c0bb6a57fcd4cf has 9998893 mists
+Gas object: 0x38c52e5f2b736478f1818dbcc16f25d195c0225b has 9999961 mists
+Gas object: 0x3a89ed7f63ce9827bdb690a8d64cffc55bf93617 has 10000000 mists
+Gas object: 0x58c6dfeb6f275b3ce14c5ab84ba72fff01b1e5ed has 10000000 mists
+Gas object: 0x5994c55b1d37bda820d7b723a41e4b2e6ab3f221 has 10000000 mists
+Gas object: 0x9a2cd933061591768c3d24ef07ab4bd360e360e3 has 10000000 mists
+Gas object: 0xa8328e1cad9e1f62cedf7561d397790748ce930c has 10000000 mists
+Gas object: 0xa949c55f881de11c7b4fae8b52f1e9598da63c33 has 10000000 mists
+Gas object: 0xab53291370ab42a4e19c4cfffc2c7795fcd72470 has 10000000 mists
+Gas object: 0xae8294ee7b328c30cfd40692a121707f5c69cd7a has 10000000 mists
+Gas object: 0xb4ece7d23bbb0d2ad2524e319036ff03f4cff331 has 10000000 mists
+Gas object: 0xc837ffd69a2c8fdc8c735ac2019c6e4f97c7003e has 10000000 mists
+Gas object: 0xdbb9e15527519601540ab00fc3108e579bb06cd0 has 10000000 mists
+Gas object: 0xf167805d6098e4c5e1393e5a578aeb13b53e1c6a has 10000000 mists
+Gas object: 0xfe1bf20b9c1e806b9ace359c37c72f1a2bd31984 has 10000000 mists
+```
+
+## Sample Wallet
+Implementation demonstrating most SUI RPC API calls like the SUI CLI (i.e. `sui client ...`).
+
 ### Run sample wallet app for help
-`wallet`
+- pysui 0.0.6 or 0.0.7: `python -m samples.wallet`
+- pysui 0.0.7: `wallet`
 
 #### Output
 ```bash
@@ -88,9 +176,9 @@ To run locally, especially useful when devnet is down, below are the steps to fo
 3. `sui start --network.config sui_local/network.yaml`
 4. Open another terminal
 5. If you haven't already, setup your `pysui` environment as shown [above](#setup-environment)
-6. Prefix `pysui` commands with `--cfg ~/sui_local/client.yaml`
+6. Prefix `pysui` commands with `--local ~/sui_local/client.yaml`
 
 Example:
 ```bash
-wallet --cfg ~/sui_local/client.yaml gas
+wallet --local ~/sui_local/client.yaml gas
 ```

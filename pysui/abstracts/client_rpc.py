@@ -74,8 +74,8 @@ class RpcResult(ABC):
         """Get result data."""
 
 
-class SyncHttpRPC(ABC):
-    """Synchronous HTTP RPC Client."""
+class Provider(ABC):
+    """Generic provider state."""
 
     def __init__(self, config: ClientConfiguration) -> None:
         """Initialize Base Client."""
@@ -85,20 +85,19 @@ class SyncHttpRPC(ABC):
     def config(self) -> ClientConfiguration:
         """Return the client configuration."""
         return self._config
+
+
+class SyncHttpRPC(Provider):
+    """Synchronous HTTP RPC Client."""
 
     @abstractmethod
     def execute(self, builder: Builder) -> RpcResult:
         """Execute builder content."""
 
 
-class AsyncHttpRPC(ABC):
+class AsyncHttpRPC(Provider):
     """Asynchronous HTTP RPC Client."""
 
-    def __init__(self, config: ClientConfiguration) -> None:
-        """Initialize Base Client."""
-        self._config = config
-
-    @property
-    def config(self) -> ClientConfiguration:
-        """Return the client configuration."""
-        return self._config
+    @abstractmethod
+    async def execute(self, builder: Builder) -> RpcResult:
+        """Execute builder content."""

@@ -78,7 +78,7 @@ class SuiClient(SyncHttpRPC):
         builder = GetRpcAPI()
         try:
             result = self._client.post(
-                self.config.url,
+                self.config.rpc_url,
                 headers=builder.header,
                 json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
             ).json()
@@ -116,7 +116,7 @@ class SuiClient(SyncHttpRPC):
                 True,
                 None,
                 self._client.post(
-                    self.config.url,
+                    self.config.rpc_url,
                     headers=builder.header,
                     json=jblock,
                 ).json(),

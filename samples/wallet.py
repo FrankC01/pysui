@@ -40,7 +40,7 @@ def main():
     arg_line = sys.argv[1:].copy()
     cfg_file = None
     # Handle a different client.yaml than default
-    if arg_line and arg_line[0] == "--cfg":
+    if arg_line and arg_line[0] == "--local":
         cfg_file = arg_line[1:2]
         arg_line = arg_line[2:]
     parsed = build_parser(arg_line)

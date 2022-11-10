@@ -30,7 +30,7 @@ class ClientConfiguration(ABC):
 
     @property
     @abstractmethod
-    def url(self) -> str:
+    def rpc_url(self) -> str:
         """Return the URL the client configuration has."""
 
     @property

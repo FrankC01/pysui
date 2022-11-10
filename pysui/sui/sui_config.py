@@ -38,8 +38,6 @@ class SuiConfig(ClientConfiguration):
     DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
     FAUCET_LOCAL_URL = "http://127.0.0.1:9123"
     FAUCET_DEVNET_URL = "https://faucet.devnet.sui.io:9123"
-    DEV_NET_ENV = "devnet"
-    LOC_NET_ENV = "localnet"
 
     def __init__(self, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
         """Initialize the default config."""
@@ -106,26 +104,28 @@ class SuiConfig(ClientConfiguration):
         raise NotImplementedError
 
     @classmethod
-    def _parse_config(cls, fpath: Path, config_file: TextIOWrapper, env: str) -> tuple[str, str, str]:
+    def _parse_config(cls, fpath: Path, config_file: TextIOWrapper) -> tuple[str, str, str, str]:
         """Open configuration file and generalize for ingestion."""
         kfpath = fpath.parent
         sui_config = yaml.safe_load(config_file)
         active_address = sui_config["active_address"] if "active_address" in sui_config else None
         keystore_file = Path(sui_config["keystore"]["File"]) if "keystore" in sui_config else None
+        # active_env is new (0.15.0) and identifies the alias in use in the 'envs' map list
+        active_env = sui_config["active_env"] if "active_env" in sui_config else None
+        if not active_address or not keystore_file or not active_env:
+            raise SuiConfigFileError(f"{fpath} is not a valid SUI configuration file.")
         current_url = None
-        # Envs is new, it is a list of maps, where the environment
-        # is identified by alisases "localnet" and "devnet"
+        # Envs is new (0.15.0), it is a list of maps, where the environment
+        # contains RPC url identifed by 'aliases' (i.e. devnet, localnet)
         if "envs" in sui_config:
             for envmap in sui_config["envs"]:
-                if env == envmap["alias"]:
+                if active_env == envmap["alias"]:
                     current_url = envmap["rpc"]
                     break
         else:
-            raise SuiConfigFileError(f"{env} environment not found in configuration file.")
-        if not active_address or not keystore_file or not current_url:
-            raise SuiConfigFileError(f"{fpath} is not a valid SUI configuration file.")
+            raise SuiConfigFileError("'envs' not found in configuration file.")
         keystore_file = str(kfpath.joinpath(keystore_file.name).absolute())
-        return (active_address, keystore_file, current_url)
+        return (active_env, active_address, keystore_file, current_url)
 
     @classmethod
     def default(cls) -> "SuiConfig":
@@ -133,7 +133,7 @@ class SuiConfig(ClientConfiguration):
         expanded_path = os.path.expanduser(cls.DEFAULT_PATH_STRING)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:
-                return cls(cls.DEV_NET_ENV, *cls._parse_config(Path(expanded_path), core_file, cls.DEV_NET_ENV))
+                return cls(*cls._parse_config(Path(expanded_path), core_file))
         else:
             raise SuiFileNotFound(f"{expanded_path} not found.")
 
@@ -143,12 +143,12 @@ class SuiConfig(ClientConfiguration):
         expanded_path = os.path.expanduser(infile)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:
-                return cls(cls.LOC_NET_ENV, *cls._parse_config(Path(expanded_path), core_file, cls.LOC_NET_ENV))
+                return cls(*cls._parse_config(Path(expanded_path), core_file))
         else:
             raise SuiFileNotFound(f"{expanded_path} not found.")
 
     @property
-    def url(self) -> str:
+    def rpc_url(self) -> str:
         """Return the current URL."""
         return self._current_url
 
