@@ -16,12 +16,18 @@
 import argparse
 import json
 import sys
+from pysui import __version__
 from pysui.abstracts import SignatureScheme
 from pysui.sui.sui_rpc import SuiRpcResult
 from pysui.sui.sui_types import SuiRawPackage
 from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode
 from .faux_wallet import SuiWallet
+
+
+def sdk_version(_wallet: SuiWallet, _args: argparse.Namespace) -> None:
+    """Dispay version."""
+    print(f"pysui SDK version: {__version__}")
 
 
 def sui_active_address(wallet: SuiWallet, _args: argparse.Namespace) -> None:
@@ -412,4 +418,5 @@ SUI_CMD_DISPATCH = {
     "publish": publish,
     "switch": switch,
     "committee": committee,
+    "version": sdk_version,
 }

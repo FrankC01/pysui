@@ -583,6 +583,8 @@ def build_parser(in_args: list) -> argparse.Namespace:
     """Build the argument parser structure."""
     # Base menu
     parser = argparse.ArgumentParser(add_help=True, usage="%(prog)s [options] command [--command_options]")
+    parser.add_argument("-v", "--version", help="Show pysui SDK version", action="store_true")
+    parser.set_defaults(subcommand="version")
     subparser = parser.add_subparsers(title="commands")
     _build_read_cmds(subparser)
     _build_coin_cmds(subparser)

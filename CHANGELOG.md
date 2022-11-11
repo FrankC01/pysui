@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Cummulative
+## [Unreleased] - Cummulative: Current dev version - 0.0.9
 ### Added
 - CHANGELOG.md
 - Hydrate object results from Sui `sui_executeTransaction` API (see sui/sui_tx_return_types.py)
@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MovePackage dataclasses from API result
 - Added requirements-dev.txt for local development
 - DEVELOP.md for local development
+- SDK version command in samples wallet
+- `bin/` folder for utility functions
+- `bin/publish.sh` for publishing `pysui` package to PyPi
 
 
 ### Changed
@@ -28,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `pysui` to PyPi for ease of installing and using
 - Changed sample command line to use `--local` instead of `--cfg`
 - When parsing sui configurations, the 'active_env' now drives RPC selection
+- Added `build` and `twine` to `requirements-dev.txt`
+- Published 0.0.8 to PyPi
 
 
 ### Removed
