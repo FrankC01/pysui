@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SDK version command in samples wallet
 - `bin/` folder for utility functions
 - `bin/publish.sh` for publishing `pysui` package to PyPi
+- `-v,--version` command to `samples.wallet`
 
 
 ### Changed

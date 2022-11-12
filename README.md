@@ -118,7 +118,7 @@ Implementation demonstrating most SUI RPC API calls like the SUI CLI (i.e. `sui 
 
 ### Run sample wallet app for help
 - pysui 0.0.6 or 0.0.7: `python -m samples.wallet`
-- pysui 0.0.7: `wallet`
+- pysui >= 0.0.7: `wallet`
 
 #### Output
 ```bash

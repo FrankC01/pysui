@@ -62,8 +62,8 @@ class SuiConfig(ClientConfiguration):
                             kpair = keypair_from_keystring(keystr)
                             self._keypairs[keystr] = kpair
                             addy = SuiAddress.from_keypair_string(keystr)
-                            self._addresses[str(addy.address)] = addy
-                            self._address_keypair[str(addy.address)] = kpair
+                            self._addresses[addy.address] = addy
+                            self._address_keypair[addy.address] = kpair
                     else:
                         raise SuiNoKeyPairs()
             except IOError as exc:
@@ -92,12 +92,14 @@ class SuiConfig(ClientConfiguration):
         """
         if scheme == SignatureScheme.ED25519:
             keypair, address = create_new_address(scheme)
-            self._addresses[address.identifier] = address
+            self._addresses[address.address] = address
+            self._address_keypair[address.address] = keypair
             self._write_keypair(keypair)
             return address.identifier
         if scheme == SignatureScheme.SECP256K1:
             keypair, address = create_new_address(scheme)
-            self._addresses[address.identifier] = address
+            self._addresses[address.address] = address
+            self._address_keypair[address.address] = keypair
             self._write_keypair(keypair)
             return address.identifier
 
