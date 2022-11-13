@@ -46,5 +46,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - sui/sui_tx_return_types.py
 - All `events` commands from sample as they've been removed in RPC API in favor of general `sui_getEvents`. Will support in future.
-- `get_package_object` [issue](https://github.com/FrankC01/pysui/issues/20)
+- `get_package_object`
 - NFT qualifiers [issue](https://github.com/FrankC01/pysui/issues/21)
