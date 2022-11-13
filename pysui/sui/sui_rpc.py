@@ -19,13 +19,22 @@ import base64
 from json import JSONDecodeError
 from typing import Any, Union
 import httpx
-from ..abstracts import SyncHttpRPC, RpcResult
-from .sui_types import SuiTxBytes
-from .sui_config import SuiConfig
-from .sui_builders import DryRunTransaction, GetRpcAPI, SuiBaseBuilder, ExecuteTransaction, SuiRequestType
-from .sui_apidesc import build_api_descriptors, SuiApi
-from .sui_txn_validator import validate_api
-from .sui_excepts import SuiRpcApiNotAvailable
+from pysui.abstracts import SyncHttpRPC, RpcResult
+from pysui.sui.sui_types import ObjectID, SuiTxBytes, ObjectInfo, SuiAddress, from_object_descriptor, from_object_type
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_builders import (
+    DryRunTransaction,
+    GetRpcAPI,
+    SuiBaseBuilder,
+    ExecuteTransaction,
+    SuiRequestType,
+    GetObjectsOwnedByAddress,
+    GetObject,
+    GetPackage,
+)
+from pysui.sui.sui_apidesc import build_api_descriptors, SuiApi
+from pysui.sui.sui_txn_validator import validate_api
+from pysui.sui.sui_excepts import SuiRpcApiNotAvailable
 
 
 class SuiRpcResult(RpcResult):
@@ -172,3 +181,82 @@ class SuiClient(SyncHttpRPC):
     def rpc_api_names(self) -> list[str]:
         """Return names of RPC API methods."""
         return list(self._rpc_api.keys())
+
+    # Build and execute convenience methods
+
+    def get_address_object_descriptors(
+        self, claz: ObjectInfo = None, address: SuiAddress = None
+    ) -> Union[SuiRpcResult, Exception]:
+        """Get object descriptors for address.
+
+        :param claz: Class type to filter result on. If None then ObjectInfo types will be returned
+        :type claz: ObjectInfo
+        :param address: The address of which is being queried. If None then currrent `active_address` is used
+        :type address: SuiAddress
+        :raises: :class:`SuiException`: if returned from `self.execute`
+
+        :returns: A list of ObjectInfo objects
+        :rtype: SuiRpcResult
+        """
+        claz = claz if claz else ObjectInfo
+        builder = GetObjectsOwnedByAddress(address if address else self.config.active_address)
+        result = self.execute(builder)
+        if result.is_ok():
+            result = result.result_data
+            type_descriptors = []
+            for sui_objdesc in result:
+                sui_type = from_object_descriptor(sui_objdesc)
+                if isinstance(sui_type, claz):
+                    type_descriptors.append(sui_type)
+            return SuiRpcResult(True, None, type_descriptors)
+        return result
+
+    def get_object(self, identifier: ObjectID) -> Union[SuiRpcResult, Exception]:
+        """Get specific object by it's identifier.
+
+        :param identifier: The ObjectID of object being queried.
+        :type identifier: ObjectID
+        :raises: :class:`SuiException`: if returned from `self.execute`
+
+        :returns: The objeect's data
+        :rtype: SuiRpcResult
+        """
+        result = self.execute(GetObject(identifier))
+        if result.is_ok():
+            result = result.result_data
+            if result["status"] != "Exists":
+                return SuiRpcResult(False, f"Object {identifier} {result['status']}", None)
+            return SuiRpcResult(True, None, from_object_type(result["details"]))
+        return result
+
+    def get_objects_for(self, identifiers: list[ObjectID]) -> Union[SuiRpcResult, Exception]:
+        """Get objects for the list of identifiers.
+
+        :param identifiers: The list of ObjectID's being queried.
+        :type identifiers: list
+        :raises: :class:`SuiException`: if returned from `self.execute`
+
+        :returns: A list of object data
+        :rtype: SuiRpcResult
+        """
+        obj_types = []
+        for identity in identifiers:
+            result = self.get_object(identity)
+            if result.is_ok():
+                obj_types.append(result.result_data)
+            else:
+                return result
+        return SuiRpcResult(True, None, obj_types)
+
+    def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
+        """Get details of Sui package.
+
+        :param package_id: The ObjectID of object being queried.
+        :type package_id: ObjectID
+        :raises: :class:`SuiException`: if returned from `self.execute`
+
+        :returns: The package detail data
+        :rtype: SuiRpcResult
+        """
+        result = self.execute(GetPackage(package_id))
+        return result

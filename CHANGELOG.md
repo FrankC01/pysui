@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Cummulative: Current dev version - 0.0.9
+## [Unreleased] - Cummulative: Current dev version - 0.0.10
 ### Added
 - CHANGELOG.md
 - Hydrate object results from Sui `sui_executeTransaction` API (see sui/sui_tx_return_types.py)
@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `bin/` folder for utility functions
 - `bin/publish.sh` for publishing `pysui` package to PyPi
 - `-v,--version` command to `samples.wallet`
+- `sphinx` in `requirements-dev.txt`
+- `get_address_object_descriptors` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `get_objects_for` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `get_object` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `get_package` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
 
 
 ### Changed
@@ -32,11 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `pysui` to PyPi for ease of installing and using
 - Changed sample command line to use `--local` instead of `--cfg`
 - When parsing sui configurations, the 'active_env' now drives RPC selection
-- Added `build` and `twine` to `requirements-dev.txt`
+- Added `build`, and `twine` to `requirements-dev.txt`
 - Published 0.0.8 to PyPi
+- Published 0.0.9 to PyPi
+- Moved `get_type_descriptor` in `faux_wallet.py` heavy lifting to `get_address_object_descriptors` on SuiClient
 
 
 ### Removed
 - sui/sui_tx_return_types.py
 - All `events` commands from sample as they've been removed in RPC API in favor of general `sui_getEvents`. Will support in future.
-- `get_package_object`
+- `get_package_object` [issue](https://github.com/FrankC01/pysui/issues/20)
+- NFT qualifiers [issue](https://github.com/FrankC01/pysui/issues/21)

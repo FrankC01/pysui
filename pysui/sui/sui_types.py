@@ -329,13 +329,13 @@ class ObjectInfo(SuiRawDescriptor):
         """Return the types type."""
         return self._type_signature
 
+    @classmethod
+    def descriptor_factory(cls, indata: Union[dict, list[dict]]) -> Union["ObjectInfo", list["ObjectInfo"]]:
+        """Generate ObjectInfo from inbound RPC API Json result."""
+
 
 class SuiDataDescriptor(ObjectInfo):
     """Sui Data base type."""
-
-
-class SuiNftDescriptor(ObjectInfo):
-    """Sui NFT base type."""
 
 
 class SuiCoinDescriptor(ObjectInfo):
@@ -442,35 +442,6 @@ class ObjectRead(SuiRawObject):
         return self._storage_rebate
 
 
-class SuiNftType(ObjectRead):
-    """Sui NFT base type."""
-
-    def __init__(self, indata: dict) -> None:
-        """Initialize the base Nft type."""
-        super().__init__(indata)
-        self._description = indata["fields"]["description"]
-        self._name = indata["fields"]["name"]
-        self._url = indata["fields"]["url"]
-
-    @property
-    def name(self) -> str:
-        """Get name for Nft."""
-        return self._name
-
-    @property
-    def description(self) -> str:
-        """Get description for Nft."""
-        return self._description
-
-    @property
-    def url(self) -> str:
-        """Get Url for Nft."""
-        return self._url
-
-
-DT = TypeVar("DT", bound="SuiDataType")
-
-
 class SuiDataType(ObjectRead):
     """Sui Data type."""
 
@@ -511,11 +482,11 @@ class SuiDataType(ObjectRead):
         return self._data
 
     @property
-    def children(self) -> list[DT]:
+    def children(self) -> list["SuiDataType"]:
         """Get the children of this data."""
         return self._children
 
-    def add_child(self, child: DT) -> None:
+    def add_child(self, child: "SuiDataType") -> None:
         """Store data child owned by self."""
         self.children.append(child)
 
@@ -621,64 +592,6 @@ class SuiMap(SuiCollection):
         return self.map
 
 
-# Package Type
-
-
-class SuiRawPackage(SuiBaseType):
-    """Sui package object."""
-
-    def __init__(self, indata: dict) -> None:
-        """Initialize a package construct."""
-        super().__init__(ObjectID(indata["reference"]["objectId"]))
-        self._data_type: str = indata["data"]["dataType"]
-        self._modules: dict = indata["data"]["disassembled"]
-        self._owner: SuiAddress = SuiAddress.from_hex_string(indata["owner"])
-        self._previous_transaction = indata["previousTransaction"]
-        self._storage_rebate: int = indata["storageRebate"]
-        self._digest = indata["reference"]["digest"]
-        self._version: int = indata["reference"]["version"]
-
-    @property
-    def data_type(self) -> str:
-        """Return the type."""
-        return self._data_type
-
-    @property
-    def modules(self) -> dict:
-        """Return the package modules."""
-        return self._modules
-
-    @property
-    def module_names(self) -> list[str]:
-        """Return the package module names."""
-        return list(self.modules.keys())
-
-    @property
-    def owner(self) -> SuiAddress:
-        """Return the type."""
-        return self._owner
-
-    @property
-    def previous_transaction(self) -> str:
-        """Return the type."""
-        return self._previous_transaction
-
-    @property
-    def storage_rebate(self) -> int:
-        """Return the storage rebate if object deleted."""
-        return self._storage_rebate
-
-    @property
-    def version(self) -> int:
-        """Return the package version."""
-        return self._version
-
-    @property
-    def digest(self) -> str:
-        """Return the package digest."""
-        return self._digest
-
-
 def address_from_keystring(indata: str) -> SuiAddress:
     """From a 88 byte keypair string create a SuiAddress."""
     #   Check address is legit keypair
@@ -701,9 +614,9 @@ def from_object_descriptor(indata: dict) -> ObjectInfo:
                 if split2[2] == "SUI":
                     return SuiNativeCoinDescriptor(indata, type_sig)
                 return SuiCoinDescriptor(indata, type_sig)
-            case "devnet_nft":
+            case _:
                 if split[2] == "DevNetNFT":
-                    return SuiNftDescriptor(indata)
+                    return SuiDataDescriptor(indata)
     else:
         if len(split) == 3:
             return SuiDataDescriptor(indata)
@@ -732,15 +645,13 @@ def from_object_type(inblock: dict) -> ObjectRead:
                         if split2[2] == "SUI":
                             return SuiGasType(indata, type_sig)
                         return SuiCoinType(indata, type_sig)
-                    case "devnet_nft":
+                    case _:
                         if split[2] == "DevNetNFT":
-                            return SuiNftType(indata)
+                            return SuiDataType(indata)
             else:
                 if len(split) == 3:
                     return SuiDataType(indata)
             return ObjectRead(indata)
-        case "package":
-            return SuiRawPackage(inblock)
         case _:
             raise ValueError(f"Don't recognize {indata['dataType']}")
 

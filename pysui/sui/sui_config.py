@@ -149,6 +149,11 @@ class SuiConfig(ClientConfiguration):
         else:
             raise SuiFileNotFound(f"{expanded_path} not found.")
 
+    @classmethod
+    def generate_configuration(cls) -> "ClientConfiguration":
+        """Generate a default configuration."""
+        raise NotImplementedError("SuiConfig.generate_configuration not implemented yet.")
+
     @property
     def rpc_url(self) -> str:
         """Return the current URL."""

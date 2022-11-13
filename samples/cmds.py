@@ -19,7 +19,6 @@ import sys
 from pysui import __version__
 from pysui.abstracts import SignatureScheme
 from pysui.sui.sui_rpc import SuiRpcResult
-from pysui.sui.sui_types import SuiRawPackage
 from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode
 from .faux_wallet import SuiWallet
@@ -111,8 +110,6 @@ def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
     def _object_type(args: argparse.Namespace) -> SuiRpcResult:
         """Get objects of type from Namespace."""
-        if args.nft:
-            return wallet.nft_objects(args.address)
         if args.data:
             return wallet.data_objects(args.address)
         return wallet.get_objects(args.address)

@@ -26,9 +26,6 @@ from pysui.sui import (
     SuiConfig,
     SuiRpcResult,
     SuiBaseBuilder,
-    GetObjectsOwnedByAddress,
-    GetObject,
-    GetPackage,
     GetCommittee,
     GetModuleEvents,
     GetStructEvents,
@@ -60,10 +57,7 @@ from pysui.sui.sui_types import (
     SuiNumber,
     SuiGasType,
     ObjectInfo,
-    SuiNftDescriptor,
     SuiDataDescriptor,
-    from_object_descriptor,
-    from_object_type,
 )
 
 
@@ -117,13 +111,7 @@ class SuiWallet:
 
     def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get details of Sui package."""
-        result = self.execute(GetPackage(package_id))
-        # if result.is_ok():
-        #     result = result.result_data
-        #     if "error" in result:
-        #         return SuiRpcResult(False, f"{result['error']}")
-        #     return SuiRpcResult(True, None, json.dumps(result["result"], indent=2))
-        return result
+        return self._client.get_package(package_id)
 
     def get_committee_info(self, epoch: SuiNumber) -> Union[SuiRpcResult, Exception]:
         """Get info of Sui committtee."""
@@ -279,20 +267,7 @@ class SuiWallet:
 
     def get_type_descriptor(self, claz: ObjectInfo, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get descriptors of claz type for address."""
-        builder = GetObjectsOwnedByAddress().set_address(address if address else self.current_address)
-        result = self.execute(builder)
-        if result.is_ok():
-            result = result.result_data
-            type_descriptors = []
-            # if "error" in result:
-            #     raise SuiRpcApiError(result["error"])
-            # for sui_objdesc in result["result"]:
-            for sui_objdesc in result:
-                sui_type = from_object_descriptor(sui_objdesc)
-                if isinstance(sui_type, claz):
-                    type_descriptors.append(sui_type)
-            return SuiRpcResult(True, None, type_descriptors)
-        return result
+        return self._client.get_address_object_descriptors(claz, address)
 
     def get_data_descriptors(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the objects descriptors."""
@@ -302,36 +277,15 @@ class SuiWallet:
         """Get the gas object descriptors."""
         return self.get_type_descriptor(SuiNativeCoinDescriptor, address)
 
-    def get_nft_descriptors(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
-        """Get the gas object descriptors."""
-        return self.get_type_descriptor(SuiNftDescriptor, address)
-
     def get_object(self, identifier: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get specific object by it's id."""
-        result = self.execute(GetObject().set_object(identifier))
-        if result.is_ok():
-            result = result.result_data
-            if result["status"] != "Exists":
-                return SuiRpcResult(False, f"Object {identifier} {result['status']}", None)
-            return SuiRpcResult(True, None, from_object_type(result["details"]))
-        return result
+        return self._client.get_object(identifier)
 
-    def _get_objects(self, descriptor_result: SuiRpcResult):
+    def _get_objects(self, descriptor_result: SuiRpcResult) -> Union[SuiRpcResult, Exception]:
         """Get the underlying data objects list."""
         if descriptor_result.is_ok():
-            obj_types = []
-            for cdesc in descriptor_result.result_data:
-                result = self.execute(GetObject().set_object(cdesc.identifier))
-                if result.is_ok():
-                    result = result.result_data
-                    if result["status"] != "Exists":
-                        return SuiRpcResult(False, f"Object {cdesc.identifier} {result['status']}", None)
-                    data_object = from_object_type(result["details"])
-                    obj_types.append(data_object)
-                else:
-                    return result
-            return SuiRpcResult(True, None, obj_types)
-        return descriptor_result
+            identities = [ids.identifier for ids in descriptor_result.result_data]
+            return self._client.get_objects_for(identities)
 
     def get_objects(self, address: SuiAddress = None, claz: ObjectInfo = None) -> Union[SuiRpcResult, Exception]:
         """Get specific object by address/id."""
@@ -340,10 +294,6 @@ class SuiWallet:
     def data_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the objects from descriptors."""
         return self._get_objects(self.get_data_descriptors(address))
-
-    def nft_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
-        """Get the nft objects from descriptors."""
-        return self._get_objects(self.get_nft_descriptors(address))
 
     def gas_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the gas objects."""
