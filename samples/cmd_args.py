@@ -340,11 +340,6 @@ def _build_pay_cmds(subparser) -> None:
 
 def _build_package_cmds(subparser) -> None:
     """Package commands."""
-    # Package Object
-    subp = subparser.add_parser("package-object", help="Show raw package object with Move disassembly")
-    subp.add_argument("-i", "--id", required=True, help="package ID", action=ValidateObjectID)
-    subp.add_argument("-s", "--src", required=False, help="Display package module(s) src", action="store_true")
-    subp.set_defaults(subcommand="package-object")
     # Normalized Package
     subp = subparser.add_parser("package", help="Show normalized package information")
     subp.add_argument("-i", "--id", required=True, help="package ID", action=ValidateObjectID)

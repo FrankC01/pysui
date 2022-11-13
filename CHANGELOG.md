@@ -38,4 +38,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - sui/sui_tx_return_types.py
-- All "events" from sample as they've been removed in RPC API in favor of general `sui_getEvents`. Will support in future.
+- All `events` commands from sample as they've been removed in RPC API in favor of general `sui_getEvents`. Will support in future.
+- `get_package_object`

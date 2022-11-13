@@ -28,7 +28,6 @@ from pysui.sui import (
     SuiBaseBuilder,
     GetObjectsOwnedByAddress,
     GetObject,
-    GetRawPackage,
     GetPackage,
     GetCommittee,
     GetModuleEvents,
@@ -181,20 +180,6 @@ class SuiWallet:
     def get_transaction(self, digest: SuiString) -> Union[SuiRpcResult, Exception]:
         """Get total tx count."""
         return self.execute(GetTx(digest))
-
-    def get_package_object(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
-        """Get details of Sui package."""
-        result = self.execute(GetRawPackage(package_id))
-        if result.is_ok():
-            result = result.result_data
-            if result["result"]["status"] != "Exists":
-                if result["result"]["status"] == "Exists":
-                    return SuiRpcResult(False, f"Package id {package_id} {result['result']['status']}")
-                return SuiRpcResult(False, f"Package id {package_id} is Deleted")
-            if result["result"]["details"]["data"]["dataType"] == "package":
-                return SuiRpcResult(True, None, from_object_type(result["result"]["details"]))
-            return SuiRpcResult(False, f"ID: {package_id} is a move object, not a package")
-        return result
 
     def transfer_sui(
         self,

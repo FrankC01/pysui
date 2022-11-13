@@ -80,26 +80,6 @@ def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"{result.result_string}")
 
 
-def sui_package_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
-    """Get a package object."""
-    result: SuiRpcResult = wallet.get_package_object(args.id)
-    if result.is_ok():
-        package: SuiRawPackage = result.result_data
-        print()
-        print("Package")
-        print(f"id: {str(package.identifier)} owner: {package.owner}")
-        print()
-        print("Modules")
-        modules: dict = package.modules
-        for mod in modules.keys():
-            print(f"-> {mod}")
-            if args.src:
-                print(modules[mod])
-        print()
-    else:
-        print(f"{result.result_string}")
-
-
 def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Show specific object."""
     sobject = wallet.get_object(args.id)
@@ -405,7 +385,6 @@ SUI_CMD_DISPATCH = {
     "object": sui_object,
     "objects": sui_objects,
     "package": sui_package,
-    "package-object": sui_package_object,
     "rpcapi": sui_api,
     "transfer-object": transfer_object,
     "transfer-sui": transfer_sui,
