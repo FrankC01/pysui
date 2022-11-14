@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Cummulative: Current dev version - 0.0.10
+## [Unreleased] - Current dev version - 0.0.11
+### Added
+### Fixed
+### Changed
+### Removed
+
+## [0.0.10] - 2022-11-14
 ### Added
 - CHANGELOG.md
 - Hydrate object results from Sui `sui_executeTransaction` API (see sui/sui_tx_return_types.py)
@@ -31,7 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `move_call_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
 - `publish_package_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
 
-
 ### Changed
 - Absolute to relative imports
 - Fixed [issue](https://github.com/FrankC01/pysui/issues/12)
@@ -51,7 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Published 0.0.9 to PyPi
 - Moved `get_type_descriptor` in `faux_wallet.py` heavy lifting to `get_address_object_descriptors` on SuiClient
 - Fixed transaction result `deleted` effect for merge-coin transaction to use `GenericRef` result versus `GenericOwnerRef`
-
 
 ### Removed
 - sui/sui_tx_return_types.py
