@@ -31,6 +31,15 @@ from pysui.sui.sui_builders import (
     GetObjectsOwnedByAddress,
     GetObject,
     GetPackage,
+    Pay,
+    PaySui,
+    PayAllSui,
+    MergeCoin,
+    SplitCoin,
+    TransferObject,
+    TransferSui,
+    MoveCall,
+    Publish,
 )
 from pysui.sui.sui_apidesc import build_api_descriptors, SuiApi
 from pysui.sui.sui_txn_validator import validate_api
@@ -260,3 +269,218 @@ class SuiClient(SyncHttpRPC):
         """
         result = self.execute(GetPackage(package_id))
         return result
+
+    def pay_txn(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        r"""pay_txn invokes `sui_Pay` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *signer* (``SuiAddress``)
+            *   *input_coins* (``SuiArray[ObjectID]``)
+            *   *recipients* (``SuiArray[SuiAddress]``)
+            *   *amounts*   (``SuiArray[SuiNumber]``)
+            *   *gas*       (``ObjectID``)
+            *   *gas_budget* (``SuiNumber``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == Pay.pay_kwords:
+            return self.execute(Pay(**kwargs))
+        missing = Pay.pay_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def pay_sui_txn(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        r"""pay_sui_txn invokes `sui_PaySui` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *signer* (``SuiAddress``)
+            *   *input_coins* (``SuiArray[ObjectID]``)
+            *   *recipients* (``SuiArray[SuiAddress]``)
+            *   *amounts*   (``SuiArray[SuiNumber]``)
+            *   *gas_budget* (``SuiNumber``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == PaySui.pay_kwords:
+            return self.execute(PaySui(**kwargs))
+        missing = PaySui.pay_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def pay_allsui_txn(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        r"""pay_allsui_txn invokes `sui_payAllSui` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *signer* (``SuiAddress``)
+            *   *input_coins* (``SuiArray[ObjectID]``)
+            *   *recipient* (``SuiAddress``)
+            *   *gas_budget* (``SuiNumber``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == PayAllSui.payall_kwords:
+            return self.execute(PayAllSui(**kwargs))
+        missing = PayAllSui.payall_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def transfer_sui_txn(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        r"""transfer_sui_txn invokes `sui_transferSui` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *signer* (``SuiAddress``)
+            *   *sui_object_id* (``ObjectID``)
+            *   *gas_budget* (``SuiNumber``)
+            *   *recipient* (``SuiAddress``)
+            *   *amount* (``SuiNumber``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == TransferSui.transfersui_kwords:
+            return self.execute(TransferSui(**kwargs))
+        missing = TransferSui.transfersui_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def transfer_object_txn(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        r"""transfer_object_txn invokes `sui_transferObject` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *signer* (``SuiAddress``)
+            *   *object_id* (``ObjectID``)
+            *   *gas* (``ObjectID``)
+            *   *gas_budget* (``SuiNumber``)
+            *   *recipient* (``SuiAddress``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == TransferObject.transferobject_kwords:
+            return self.execute(TransferObject(**kwargs))
+        missing = TransferObject.transferobject_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def merge_coin_txn(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        r"""merge_coin_txn invokes `sui_mergeCoin` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *signer* (``SuiAddress``)
+            *   *primary_coin* (``ObjectID``)
+            *   *coin_to_merge* (``ObjectID``)
+            *   *gas* (``ObjectID``)
+            *   *gas_budget* (``SuiNumber``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == MergeCoin.merge_kwords:
+            return self.execute(MergeCoin(**kwargs))
+        missing = MergeCoin.merge_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def split_coin_txn(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        r"""split_coin_txn invokes `sui_splitCoin` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *signer* (``SuiAddress``)
+            *   *coin_object_id* (``ObjectID``)
+            *   *split_amounts* (``SuiArray[SuiNumber]``)
+            *   *gas_object* (``ObjectID``)
+            *   *gas_budget* (``SuiNumber``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == SplitCoin.split_kwords:
+            return self.execute(SplitCoin(**kwargs))
+        missing = SplitCoin.split_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def move_call_txn(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        r"""move_call_txn invokes `sui_moveCall` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *signer* (``SuiAddress``)
+            *   *package_object_id* (``ObjectID``)
+            *   *module* (``SuiString``)
+            *   *function* (``SuiString``)
+            *   *type_arguments (``SuiArray[SuiString]``)
+            *   *arguments (``SuiArray[SuiString]``)
+            *   *gas_object* (``ObjectID``)
+            *   *gas_budget* (``SuiNumber``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == MoveCall.move_kwords:
+            return self.execute(MoveCall(**kwargs))
+        missing = MoveCall.move_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def publish_package_txn(self, **kwargs: dict) -> SuiRpcResult:
+        r"""publish_package_txn invokes `sui_publish` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionBytes for use in Execute builder
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *sender* (``SuiAddress``)
+            *   *compiled_modules (``SuiArray[SuiString]``)
+            *   *gas* (``ObjectID``)
+            *   *gas_budget* (``SuiNumber``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == Publish.publish_kwords:
+            return self.execute(Publish(**kwargs))
+        missing = Publish.publish_kwords - kword_set
+        raise ValueError(f"Missing {missing}")

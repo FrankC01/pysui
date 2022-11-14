@@ -13,12 +13,21 @@
 
 """Transaction result tests."""
 
-from pysui.sui.sui_types import TxEffectResult, MovePackage
+from pysui.sui.sui_types import TxEffectResult, MovePackage, EffectsBlock
 
 
 def test_payallsui_result_pass(payallsui_result):
     """Valid result."""
     result = TxEffectResult.from_dict(payallsui_result)
+    assert result.succeeded is True
+    assert result.status == "success"
+
+
+def test_mergecoint_result(merge_coin_result):
+    """Valid result."""
+    # cer = merge_coin_result["EffectsCert"]["effects"]
+    # result = EffectsBlock.from_dict(cer)
+    result = TxEffectResult.from_dict(merge_coin_result)
     assert result.succeeded is True
     assert result.status == "success"
 

@@ -36,15 +36,6 @@ from pysui.sui import (
     GetTxEvents,
     GetTotalTxCount,
     GetTx,
-    TransferSui,
-    TransferObject,
-    Pay,
-    PaySui,
-    PayAllSui,
-    MergeCoin,
-    SplitCoin,
-    MoveCall,
-    Publish,
     # DryRunTransaction,
 )
 
@@ -174,96 +165,60 @@ class SuiWallet:
         **kwargs: dict,
     ) -> SuiRpcResult:
         """Transfer SUI coin from one account to another."""
-        kword_set = set(kwargs.keys())
-        if kword_set == TransferSui.transfersui_kwords:
-            return self.execute(TransferSui(**kwargs))
-        missing = TransferSui.transfersui_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        return self._client.transfer_sui_txn(**kwargs)
 
     def transfer_object(
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
         """Transfer SUI Object from one account to another."""
-        kword_set = set(kwargs.keys())
-        if kword_set == TransferObject.transferobject_kwords:
-            return self.execute(TransferObject(**kwargs))
-        missing = TransferObject.transferobject_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        return self._client.transfer_object_txn(**kwargs)
 
     def pay_transfer(
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
-        """Transfer coin using Pay from one account to another."""
-        kword_set = set(kwargs.keys())
-        if kword_set == Pay.pay_kwords:
-            return self.execute(Pay(**kwargs))
-        missing = Pay.pay_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        """Transfer any coin type using Pay from one account to another."""
+        return self._client.pay_txn(**kwargs)
 
     def pay_sui_transfer(
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
-        """Transfer coin using Pay from one account to another."""
-        kword_set = set(kwargs.keys())
-        if kword_set == PaySui.pay_kwords:
-            return self.execute(PaySui(**kwargs))
-        missing = PaySui.pay_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        """Transfer SUI coin using Pay from one account to another."""
+        return self._client.pay_sui_txn(**kwargs)
 
     def pay_all_sui_transfer(
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
-        """Transfer coin using Pay from one account to another."""
-        kword_set = set(kwargs.keys())
-        if kword_set == PayAllSui.payall_kwords:
-            return self.execute(PayAllSui(**kwargs))
-        missing = PayAllSui.payall_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        """Transfer SUI coin using Pay from one account to another."""
+        return self._client.pay_allsui_txn(**kwargs)
 
     def merge_coin(
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
         """Merge two coins together."""
-        kword_set = set(kwargs.keys())
-        if kword_set == MergeCoin.merge_kwords:
-            return self.execute(MergeCoin(**kwargs))
-        missing = MergeCoin.merge_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        return self._client.merge_coin_txn(**kwargs)
 
     def split_coin(
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
         """Split coins into multiple."""
-        kword_set = set(kwargs.keys())
-        if kword_set == SplitCoin.split_kwords:
-            return self.execute(SplitCoin(**kwargs))
-        missing = SplitCoin.split_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        return self._client.split_coin_txn(**kwargs)
 
     def move_call(
         self,
         **kwargs: dict,
     ) -> SuiRpcResult:
         """Call a SUI move contract function."""
-        kword_set = set(kwargs.keys())
-        if kword_set == MoveCall.move_kwords:
-            return self.execute(MoveCall(**kwargs))
-        missing = MoveCall.move_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        return self._client.move_call_txn(**kwargs)
 
     def publish_package(self, **kwargs: dict) -> SuiRpcResult:
         """Publish a sui package."""
-        kword_set = set(kwargs.keys())
-        if kword_set == Publish.publish_kwords:
-            return self.execute(Publish(**kwargs))
-        missing = Publish.publish_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        return self._client.publish_package_txn(**kwargs)
 
     def get_type_descriptor(self, claz: ObjectInfo, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get descriptors of claz type for address."""

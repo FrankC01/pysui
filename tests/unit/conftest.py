@@ -1158,3 +1158,140 @@ def package_nest_result():
             },
         },
     }
+
+
+@pytest.fixture
+def merge_coin_result():
+    """Return valid merge_coin result."""
+    return {
+        "EffectsCert": {
+            "certificate": {
+                "transactionDigest": "DI0s1JJcXBwywLEoBpGFxj5sv4MMd1gDlS5hqD7yKa8=",
+                "data": {
+                    "transactions": [
+                        {
+                            "Call": {
+                                "package": {
+                                    "objectId": "0x0000000000000000000000000000000000000002",
+                                    "version": 1,
+                                    "digest": "SNq/9rdmjAwtuFVeNQFNMIdY7qrurGhrBjYln8df6GA=",
+                                },
+                                "module": "pay",
+                                "function": "join",
+                                "typeArguments": ["0x2::sui::SUI"],
+                                "arguments": [
+                                    "0xf9f9430b2d757e009b63d39e8fdf64d1fd1b95f",
+                                    "0xb8a7542ec91a5f97203ea0169b6fa1261f3d7c08",
+                                ],
+                            }
+                        }
+                    ],
+                    "sender": "0xf5f27ea854d8d5efae00b68c313057566872e7fe",
+                    "gasPayment": {
+                        "objectId": "0x0e5a550c39b571fb8b1fb40da90798e4b5cfe04e",
+                        "version": 5,
+                        "digest": "nNMMDnlRSPjZdfNB5Xa/KTjHxVcwcEX1AYD/OQDyQgw=",
+                    },
+                    "gasBudget": 1000,
+                },
+                "txSignature": "AOcRJg66nN0NfDjGrvfM/5teGAA+v7qQ7we/sIF/Sopa6mYQukdX8ZR9hnqbg0z+e88ymoVXMj6FjDT/C0KwbgLOSey9L17ZAlzHhQTW/wTUf+deW+Q1aiy1x91Lf1QYBw==",
+                "authSignInfo": {
+                    "epoch": 0,
+                    "signature": "j/YGtwKLC1F42I+uZjKs/Y7M/Towp9A9iGoG6Yray2QVcEhetYAzKpUxVDpksS78",
+                    "signers_map": [58, 48, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 16, 0, 0, 0, 1, 0, 2, 0, 3, 0],
+                },
+            },
+            "effects": {
+                "transactionEffectsDigest": "Vh3T4HXQi4g3YID7LmfC4zFny3tuiTxVX2kIs7QmZFk=",
+                "effects": {
+                    "status": {"status": "success"},
+                    "gasUsed": {"computationCost": 667, "storageCost": 32, "storageRebate": 48},
+                    "transactionDigest": "DI0s1JJcXBwywLEoBpGFxj5sv4MMd1gDlS5hqD7yKa8=",
+                    "mutated": [
+                        {
+                            "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+                            "reference": {
+                                "objectId": "0x0e5a550c39b571fb8b1fb40da90798e4b5cfe04e",
+                                "version": 6,
+                                "digest": "b0N5wsY9qxr4DC6k+obLRwTqDnm46b1qWhmd9v0k4v8=",
+                            },
+                        },
+                        {
+                            "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+                            "reference": {
+                                "objectId": "0x0f9f9430b2d757e009b63d39e8fdf64d1fd1b95f",
+                                "version": 3,
+                                "digest": "wmQNbWONEsVjFrPbQLrk45WF9C9ivnTT/SthynWSJj0=",
+                            },
+                        },
+                    ],
+                    "deleted": [
+                        {
+                            "objectId": "0xb8a7542ec91a5f97203ea0169b6fa1261f3d7c08",
+                            "version": 2,
+                            "digest": "Y2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2M=",
+                        }
+                    ],
+                    "gasObject": {
+                        "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+                        "reference": {
+                            "objectId": "0x0e5a550c39b571fb8b1fb40da90798e4b5cfe04e",
+                            "version": 6,
+                            "digest": "b0N5wsY9qxr4DC6k+obLRwTqDnm46b1qWhmd9v0k4v8=",
+                        },
+                    },
+                    "events": [
+                        {
+                            "coinBalanceChange": {
+                                "packageId": "0x0000000000000000000000000000000000000002",
+                                "transactionModule": "gas",
+                                "sender": "0xf5f27ea854d8d5efae00b68c313057566872e7fe",
+                                "changeType": "Gas",
+                                "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+                                "coinType": "0x2::sui::SUI",
+                                "coinObjectId": "0x0e5a550c39b571fb8b1fb40da90798e4b5cfe04e",
+                                "version": 5,
+                                "amount": -651,
+                            }
+                        },
+                        {
+                            "coinBalanceChange": {
+                                "packageId": "0x0000000000000000000000000000000000000002",
+                                "transactionModule": "pay",
+                                "sender": "0xf5f27ea854d8d5efae00b68c313057566872e7fe",
+                                "changeType": "Receive",
+                                "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+                                "coinType": "0x2::sui::SUI",
+                                "coinObjectId": "0x0f9f9430b2d757e009b63d39e8fdf64d1fd1b95f",
+                                "version": 3,
+                                "amount": 5000000,
+                            }
+                        },
+                        {
+                            "coinBalanceChange": {
+                                "packageId": "0x0000000000000000000000000000000000000002",
+                                "transactionModule": "pay",
+                                "sender": "0xf5f27ea854d8d5efae00b68c313057566872e7fe",
+                                "changeType": "Pay",
+                                "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+                                "coinType": "0x2::sui::SUI",
+                                "coinObjectId": "0xb8a7542ec91a5f97203ea0169b6fa1261f3d7c08",
+                                "version": 1,
+                                "amount": -5000000,
+                            }
+                        },
+                    ],
+                    "dependencies": [
+                        "FyTOlaf+sH6jccA6Rbjru9ERZICJtc08ILKOBEKx35M=",
+                        "Pt4RfVvOICpQ9ludyKxn74EU241CkG3V/b+SAuxW/OA=",
+                    ],
+                },
+                "authSignInfo": {
+                    "epoch": 0,
+                    "signature": "uDhZhVQ7P154mFodWIgRZJeWhf5VylUCjSj+bWfkFwzYmfm2hjk+Le1GVjgUhuBf",
+                    "signers_map": [58, 48, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 16, 0, 0, 0, 0, 0, 1, 0, 2, 0],
+                },
+            },
+            "confirmed_local_execution": True,
+        }
+    }

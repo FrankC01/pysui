@@ -23,6 +23,10 @@
     ],
     "python.linting.pydocstyleEnabled": true,
     "editor.formatOnSave": true,
-    "python.pythonPath": "pysuienv/bin/python",
-    "restructuredtext.confPath": "${workspaceFolder}/docs"
+    "autoDocstring.docstringFormat": "sphinx",
+    "autoDocstring.generateDocstringOnEnter": true,
+    "autoDocstring.guessTypes": true,
+    "autoDocstring.includeName": true,
+    // "python.pythonPath": "pysuienv/bin/python",
+    // "restructuredtext.confPath": "${workspaceFolder}/docs"
 }

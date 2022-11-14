@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `get_objects_for` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
 - `get_object` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
 - `get_package` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `pay_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `pay_sui_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `pay_allsui_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `transfer_sui_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `transfer_object_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `merge_coin_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `split_coin_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `move_call_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
+- `publish_package_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
 
 
 ### Changed
@@ -41,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Published 0.0.8 to PyPi
 - Published 0.0.9 to PyPi
 - Moved `get_type_descriptor` in `faux_wallet.py` heavy lifting to `get_address_object_descriptors` on SuiClient
+- Fixed transaction result `deleted` effect for merge-coin transaction to use `GenericRef` result versus `GenericOwnerRef`
 
 
 ### Removed

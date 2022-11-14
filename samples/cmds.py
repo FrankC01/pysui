@@ -151,9 +151,16 @@ def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 
 def transfer_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
-    """Transfer object."""
+    """transfer_object.
+
+    :param wallet: _description_
+    :type wallet: SuiWallet
+    :param args: _description_
+    :type args: argparse.Namespace
+    """
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
+    var_args.pop("version")
     # print(f"transfer_object args {var_args}")
     result = wallet.transfer_object(**var_args)
     if result.is_ok():
@@ -166,6 +173,7 @@ def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Transfer gas object."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
+    var_args.pop("version")
     # print(f"transfer_sui args {var_args}")
     result = wallet.transfer_sui(**var_args)
     if result.is_ok():
@@ -179,6 +187,7 @@ def merge_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
     args.signer = args.signer if args.signer else wallet.current_address
     # print(args)
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.merge_coin(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
@@ -191,6 +200,7 @@ def split_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
     args.signer = args.signer if args.signer else wallet.current_address
     # print(args)
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.split_coin(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
@@ -202,6 +212,7 @@ def sui_pay(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.pay_transfer(**var_args)
 
     if result.is_ok():
@@ -214,6 +225,7 @@ def sui_pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.pay_sui_transfer(**var_args)
 
     if result.is_ok():
@@ -226,6 +238,7 @@ def sui_payall_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Payment of all of a one whole SUI coin to a recipient."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.pay_all_sui_transfer(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
@@ -237,6 +250,7 @@ def move_call(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Invoke a Sui move smart contract function."""
     args.signer = args.signer if args.signer else wallet.current_address
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.move_call(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
@@ -251,6 +265,7 @@ def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
     try:
         args.compiled_modules = build_b64_modules(args.compiled_modules)
         var_args = vars(args)
+        var_args.pop("version")
         result = wallet.publish_package(**var_args)
         if result.is_ok():
             print(result.result_data.to_json(indent=2))
@@ -280,6 +295,7 @@ def committee(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_module(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.get_module_events(**var_args)
     if result.is_ok():
         print(result.result_data)
@@ -290,6 +306,7 @@ def events_module(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_struct(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.get_struct_events(**var_args)
     if result.is_ok():
         print(result.result_data)
@@ -300,6 +317,7 @@ def events_struct(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.get_object_events(**var_args)
     if result.is_ok():
         print(result.result_data)
@@ -310,6 +328,7 @@ def events_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_recipient(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.get_recipient_events(**var_args)
     if result.is_ok():
         print(result.result_data)
@@ -320,6 +339,7 @@ def events_recipient(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_sender(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.get_sender_events(**var_args)
     if result.is_ok():
         print(result.result_data)
@@ -330,6 +350,7 @@ def events_sender(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_time(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.get_time_events(**var_args)
     if result.is_ok():
         print(result.result_data)
@@ -340,6 +361,7 @@ def events_time(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_tx(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
+    var_args.pop("version")
     result = wallet.get_tx_events(**var_args)
     if result.is_ok():
         print(result.result_data)

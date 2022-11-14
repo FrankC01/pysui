@@ -686,8 +686,8 @@ class PackageRef(GenericRef):
 class GenericOwnerRef(SuiTxReturnType, DataClassJsonMixin):
     """Owned coin referenece."""
 
-    owner: Union[dict, str]
     reference: GenericRef
+    owner: Union[dict, str] = field(default_factory=str)
 
     def __post_init__(self):
         """Post init processing.
@@ -707,7 +707,7 @@ class MoveCallTx(SuiTxReturnType, DataClassJsonMixin):
     function: str
     module: str
     package: PackageRef
-    arguments: list[str]
+    arguments: Optional[list[str]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
     type_arguments: Optional[list[str]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
 
 
@@ -961,7 +961,7 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     dependencies: list[str] = field(default_factory=list)
     mutated: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     created: Optional[list[GenericOwnerRef]] = field(default_factory=list)
-    deleted: Optional[list[GenericOwnerRef]] = field(default_factory=list)
+    deleted: Optional[list[GenericRef]] = field(default_factory=list)
     wrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     unwrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     shared_objects: Optional[list[GenericOwnerRef]] = field(
