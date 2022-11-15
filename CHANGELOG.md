@@ -5,9 +5,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - Current dev version - 0.0.11
+
+Breaking Release
+
 ### Added
+- Pushed `pysui` 0.0.10 to [PyPi](https://pypi.org/project/pysui/)
+
 ### Fixed
+- Closed [issue](https://github.com/FrankC01/pysui/issues/1)
+- Closed [issue](https://github.com/FrankC01/pysui/issues/20)
+- Closed [issue](https://github.com/FrankC01/pysui/issues/22)
+
 ### Changed
+- ObjectInfo, and subclasses, moved to dataclass types as per [issue](https://github.com/FrankC01/pysui/issues/1)
+- SuiNumber renamed to SuiInteger as per [issue](https://github.com/FrankC01/pysui/issues/22)
+- Update README.md example to reflect RPC Client method additions
+
 ### Removed
 
 ## [0.0.10] - 2022-11-14

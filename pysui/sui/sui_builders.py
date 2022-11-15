@@ -21,9 +21,10 @@ from ..abstracts import Builder, PublicKey, SignatureScheme
 from .sui_types import (
     MovePackage,
     ObjectInfo,
+    ObjectRead,
     ObjectID,
     SuiString,
-    SuiNumber,
+    SuiInteger,
     SuiTxBytes,
     SuiSignature,
     SuiArray,
@@ -143,7 +144,7 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
 
     def __init__(self, address: SuiAddress = None) -> None:
         """Initialize Builder."""
-        super().__init__("sui_getObjectsOwnedByAddress")
+        super().__init__("sui_getObjectsOwnedByAddress", handler_cls=ObjectInfo, handler_func="factory")
         self.address: SuiAddress = address
 
     def set_address(self, address: SuiAddress) -> "GetObjectsOwnedByAddress":
@@ -179,7 +180,7 @@ class GetObject(_NativeTransactionBuilder):
 
     def __init__(self, sui_object: ObjectID = None) -> None:
         """Initialize Builder."""
-        super().__init__("sui_getObject")
+        super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
         self.object_id: ObjectID = sui_object
 
     def set_object(self, sui_object: ObjectID) -> "GetObjectsOwnedByObject":
@@ -225,12 +226,12 @@ class GetRpcAPI(_NativeTransactionBuilder):
 class GetCommittee(_NativeTransactionBuilder):
     """Fetch Committee Info."""
 
-    def __init__(self, epoch: SuiNumber = None) -> None:
+    def __init__(self, epoch: SuiInteger = None) -> None:
         """Initialize builder."""
         super().__init__("sui_getCommitteeInfo")
-        self.epoch: SuiNumber = epoch if epoch else SuiNumber(None)
+        self.epoch: SuiInteger = epoch if epoch else SuiInteger(None)
 
-    def set_epoch(self, epoch: SuiNumber) -> "GetCommittee":
+    def set_epoch(self, epoch: SuiInteger) -> "GetCommittee":
         """Set epoch."""
         self.epoch = epoch
         return self
@@ -248,9 +249,9 @@ class GetModuleEvents(_NativeTransactionBuilder):
         super().__init__("sui_getEventsByModule")
         self.package: ObjectID = None
         self.module: SuiString = None
-        self.count: SuiNumber = None
-        self.start_time: SuiNumber = None
-        self.end_time: SuiNumber = None
+        self.count: SuiInteger = None
+        self.start_time: SuiInteger = None
+        self.end_time: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "package":
@@ -258,11 +259,11 @@ class GetModuleEvents(_NativeTransactionBuilder):
                 case "module":
                     self.module: SuiString = value if isinstance(value, SuiString) else SuiString(value)
                 case "count":
-                    self.count: SuiNumber = value
+                    self.count: SuiInteger = value
                 case "start_time":
-                    self.start_time: SuiNumber = value
+                    self.start_time: SuiInteger = value
                 case "end_time":
-                    self.end_time: SuiNumber = value
+                    self.end_time: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
 
@@ -278,19 +279,19 @@ class GetStructEvents(_NativeTransactionBuilder):
         """Initialize builder."""
         super().__init__("sui_getEventsByMoveEventStructName")
         self.move_event_struct_name: SuiString = None
-        self.count: SuiNumber = None
-        self.start_time: SuiNumber = None
-        self.end_time: SuiNumber = None
+        self.count: SuiInteger = None
+        self.start_time: SuiInteger = None
+        self.end_time: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "move_event_struct_name":
                     self.move_event_struct_name: SuiString = value if isinstance(value, SuiString) else SuiString(value)
                 case "count":
-                    self.count: SuiNumber = value
+                    self.count: SuiInteger = value
                 case "start_time":
-                    self.start_time: SuiNumber = value
+                    self.start_time: SuiInteger = value
                 case "end_time":
-                    self.end_time: SuiNumber = value
+                    self.end_time: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
 
@@ -306,19 +307,19 @@ class GetObjectEvents(_NativeTransactionBuilder):
         """Initialize builder."""
         super().__init__("sui_getEventsByObject")
         self.object: ObjectID = None
-        self.count: SuiNumber = None
-        self.start_time: SuiNumber = None
-        self.end_time: SuiNumber = None
+        self.count: SuiInteger = None
+        self.start_time: SuiInteger = None
+        self.end_time: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "object":
                     self.object: ObjectID = value
                 case "count":
-                    self.count: SuiNumber = value
+                    self.count: SuiInteger = value
                 case "start_time":
-                    self.start_time: SuiNumber = value
+                    self.start_time: SuiInteger = value
                 case "end_time":
-                    self.end_time: SuiNumber = value
+                    self.end_time: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
 
@@ -334,19 +335,19 @@ class GetRecipientEvents(_NativeTransactionBuilder):
         """Initialize builder."""
         super().__init__("sui_getEventsByRecipient")
         self.recipient: SuiMap = None
-        self.count: SuiNumber = None
-        self.start_time: SuiNumber = None
-        self.end_time: SuiNumber = None
+        self.count: SuiInteger = None
+        self.start_time: SuiInteger = None
+        self.end_time: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "recipient":
                     self.recipient: SuiMap = SuiMap("AddressOwner", value)
                 case "count":
-                    self.count: SuiNumber = value
+                    self.count: SuiInteger = value
                 case "start_time":
-                    self.start_time: SuiNumber = value
+                    self.start_time: SuiInteger = value
                 case "end_time":
-                    self.end_time: SuiNumber = value
+                    self.end_time: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
 
@@ -362,19 +363,19 @@ class GetSenderEvents(_NativeTransactionBuilder):
         """Initialize builder."""
         super().__init__("sui_getEventsBySender")
         self.sender: SuiAddress = None
-        self.count: SuiNumber = None
-        self.start_time: SuiNumber = None
-        self.end_time: SuiNumber = None
+        self.count: SuiInteger = None
+        self.start_time: SuiInteger = None
+        self.end_time: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "sender":
                     self.sender: SuiAddress = value
                 case "count":
-                    self.count: SuiNumber = value
+                    self.count: SuiInteger = value
                 case "start_time":
-                    self.start_time: SuiNumber = value
+                    self.start_time: SuiInteger = value
                 case "end_time":
-                    self.end_time: SuiNumber = value
+                    self.end_time: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
 
@@ -389,17 +390,17 @@ class GetTimeEvents(_NativeTransactionBuilder):
     def __init__(self, **kwargs: dict) -> None:
         """Initialize builder."""
         super().__init__("sui_getEventsByTimeRange")
-        self.count: SuiNumber = None
-        self.start_time: SuiNumber = None
-        self.end_time: SuiNumber = None
+        self.count: SuiInteger = None
+        self.start_time: SuiInteger = None
+        self.end_time: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "count":
-                    self.count: SuiNumber = value
+                    self.count: SuiInteger = value
                 case "start_time":
-                    self.start_time: SuiNumber = value
+                    self.start_time: SuiInteger = value
                 case "end_time":
-                    self.end_time: SuiNumber = value
+                    self.end_time: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
 
@@ -415,13 +416,13 @@ class GetTxEvents(_NativeTransactionBuilder):
         """Initialize builder."""
         super().__init__("sui_getEventsByTransaction")
         self.digest: SuiString = None
-        self.count: SuiNumber = None
+        self.count: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "digest":
                     self.digest: SuiString = value if isinstance(value, SuiString) else SuiString(value)
                 case "count":
-                    self.count: SuiNumber = value
+                    self.count: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
 
@@ -566,7 +567,7 @@ class TransferObject(_MoveCallTransactionBuilder):
         self.signer: SuiAddress = None
         self.object_id: ObjectID = None
         self.gas: ObjectID = None
-        self.gas_budget: SuiNumber = None
+        self.gas_budget: SuiInteger = None
         self.recipient: SuiAddress = None
         for key, value in kwargs.items():
             match key:
@@ -598,9 +599,9 @@ class TransferObject(_MoveCallTransactionBuilder):
         self.gas: ObjectID = obj
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "TransferObject":
+    def set_gas_budget(self, obj: SuiInteger) -> "TransferObject":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def set_recipient(self, obj: SuiAddress) -> "TransferObject":
@@ -623,9 +624,9 @@ class TransferSui(_MoveCallTransactionBuilder):
         super().__init__("sui_transferSui")
         self.signer: SuiAddress = None
         self.sui_object_id: ObjectID = None
-        self.gas_budget: SuiNumber = None
+        self.gas_budget: SuiInteger = None
         self.recipient: SuiAddress = None
-        self.amount: SuiNumber = None
+        self.amount: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "signer":
@@ -651,9 +652,9 @@ class TransferSui(_MoveCallTransactionBuilder):
         self.sui_object_id: ObjectID = obj
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "TransferSui":
+    def set_gas_budget(self, obj: SuiInteger) -> "TransferSui":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def set_recipient(self, obj: SuiAddress) -> "TransferSui":
@@ -661,9 +662,9 @@ class TransferSui(_MoveCallTransactionBuilder):
         self.recipient: SuiAddress = obj
         return self
 
-    def set_amount(self, obj: SuiNumber) -> "TransferSui":
+    def set_amount(self, obj: SuiInteger) -> "TransferSui":
         """Set the amount to transfer to recipient."""
-        self.amount: SuiNumber = obj
+        self.amount: SuiInteger = obj
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
@@ -682,9 +683,9 @@ class Pay(_MoveCallTransactionBuilder):
         self.signer: SuiAddress = None
         self.input_coins: SuiArray[ObjectID] = None
         self.recipients: SuiArray[SuiAddress] = None
-        self.amounts: SuiArray[SuiNumber] = None
+        self.amounts: SuiArray[SuiInteger] = None
         self.gas: ObjectID = None
-        self.gas_budget: SuiNumber = None
+        self.gas_budget: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "signer":
@@ -694,11 +695,11 @@ class Pay(_MoveCallTransactionBuilder):
                 case "recipients":
                     self.recipients: SuiArray[SuiAddress] = SuiArray[SuiAddress](value)
                 case "amounts":
-                    self.amounts: SuiArray[SuiNumber] = SuiArray[SuiNumber](value)
+                    self.amounts: SuiArray[SuiInteger] = SuiArray[SuiInteger](value)
                 case "gas":
                     self.gas: ObjectID = value
                 case "gas_budget":
-                    self.gas_budget: SuiNumber = value
+                    self.gas_budget: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown Pay bulder type {key}")
 
@@ -717,9 +718,9 @@ class Pay(_MoveCallTransactionBuilder):
         self.recipients: SuiArray[SuiAddress] = SuiArray[SuiAddress](obj)
         return self
 
-    def set_amounts(self, obj: list[SuiNumber]) -> "Pay":
+    def set_amounts(self, obj: list[SuiInteger]) -> "Pay":
         """Set the amount(s) to transfer to recipient."""
-        self.amounts: SuiArray[SuiNumber] = SuiArray[SuiNumber](obj)
+        self.amounts: SuiArray[SuiInteger] = SuiArray[SuiInteger](obj)
         return self
 
     def set_gas(self, obj: ObjectID) -> "Pay":
@@ -727,9 +728,9 @@ class Pay(_MoveCallTransactionBuilder):
         self.gas: ObjectID = obj
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "Pay":
+    def set_gas_budget(self, obj: SuiInteger) -> "Pay":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
@@ -748,8 +749,8 @@ class PaySui(_MoveCallTransactionBuilder):
         self.signer: SuiAddress = None
         self.input_coins: SuiArray[ObjectID] = None
         self.recipients: SuiArray[SuiAddress] = None
-        self.amounts: SuiArray[SuiNumber] = None
-        self.gas_budget: SuiNumber = None
+        self.amounts: SuiArray[SuiInteger] = None
+        self.gas_budget: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "signer":
@@ -759,9 +760,9 @@ class PaySui(_MoveCallTransactionBuilder):
                 case "recipients":
                     self.recipients: SuiArray[SuiAddress] = SuiArray[SuiAddress](value)
                 case "amounts":
-                    self.amounts: SuiArray[SuiNumber] = SuiArray[SuiNumber](value)
+                    self.amounts: SuiArray[SuiInteger] = SuiArray[SuiInteger](value)
                 case "gas_budget":
-                    self.gas_budget: SuiNumber = value
+                    self.gas_budget: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown TransferSui bulder type {key}")
 
@@ -780,14 +781,14 @@ class PaySui(_MoveCallTransactionBuilder):
         self.recipients: SuiArray[SuiAddress] = SuiArray[SuiAddress](obj)
         return self
 
-    def set_amounts(self, obj: list[SuiNumber]) -> "PaySui":
+    def set_amounts(self, obj: list[SuiInteger]) -> "PaySui":
         """Set the amount(s) to transfer to recipient."""
-        self.amounts: SuiArray[SuiNumber] = SuiArray[SuiNumber](obj)
+        self.amounts: SuiArray[SuiInteger] = SuiArray[SuiInteger](obj)
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "PaySui":
+    def set_gas_budget(self, obj: SuiInteger) -> "PaySui":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
@@ -806,7 +807,7 @@ class PayAllSui(_MoveCallTransactionBuilder):
         self.signer: SuiAddress = None
         self.input_coins: SuiArray[ObjectID] = None
         self.recipient: SuiAddress = None
-        self.gas_budget: SuiNumber = None
+        self.gas_budget: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "signer":
@@ -816,7 +817,7 @@ class PayAllSui(_MoveCallTransactionBuilder):
                 case "recipient":
                     self.recipient: SuiAddress = value
                 case "gas_budget":
-                    self.gas_budget: SuiNumber = value
+                    self.gas_budget: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown PayAllSui bulder type {key}")
 
@@ -835,9 +836,9 @@ class PayAllSui(_MoveCallTransactionBuilder):
         self.recipient: SuiAddress = obj
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "PayAllSui":
+    def set_gas_budget(self, obj: SuiInteger) -> "PayAllSui":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
@@ -857,7 +858,7 @@ class MergeCoin(_MoveCallTransactionBuilder):
         self.primary_coin: ObjectID = None
         self.coin_to_merge: ObjectID = None
         self.gas_object: ObjectID = None
-        self.gas_budget: SuiNumber = None
+        self.gas_budget: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "signer":
@@ -865,7 +866,7 @@ class MergeCoin(_MoveCallTransactionBuilder):
                 case "gas_object":
                     self.gas_object: ObjectID = value
                 case "gas_budget":
-                    self.gas_budget: SuiNumber = value
+                    self.gas_budget: SuiInteger = value
                 case "primary_coin":
                     self.primary_coin: ObjectID = value
                 case "coin_to_merge":
@@ -883,9 +884,9 @@ class MergeCoin(_MoveCallTransactionBuilder):
         self.gas_object: ObjectID = obj
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "MergeCoin":
+    def set_gas_budget(self, obj: SuiInteger) -> "MergeCoin":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def set_coin_to_merge(self, obj: ObjectID) -> "MergeCoin":
@@ -913,9 +914,9 @@ class SplitCoin(_MoveCallTransactionBuilder):
         super().__init__("sui_splitCoin")
         self.signer: SuiAddress = None
         self.coin_object_id: ObjectID = None
-        self.split_amounts: SuiArray[SuiNumber] = None
+        self.split_amounts: SuiArray[SuiInteger] = None
         self.gas_object: ObjectID = None
-        self.gas_budget: SuiNumber = None
+        self.gas_budget: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "signer":
@@ -923,9 +924,9 @@ class SplitCoin(_MoveCallTransactionBuilder):
                 case "gas_object":
                     self.gas_object: ObjectID = value
                 case "gas_budget":
-                    self.gas_budget: SuiNumber = value
+                    self.gas_budget: SuiInteger = value
                 case "split_amounts":
-                    self.split_amounts = SuiArray[SuiNumber](value)
+                    self.split_amounts = SuiArray[SuiInteger](value)
                 case "coin_object_id":
                     self.coin_object_id: ObjectID = value
                 case _:
@@ -941,9 +942,9 @@ class SplitCoin(_MoveCallTransactionBuilder):
         self.gas_object: ObjectID = obj
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "SplitCoin":
+    def set_gas_budget(self, obj: SuiInteger) -> "SplitCoin":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def set_coin_object_id(self, obj: ObjectID) -> "SplitCoin":
@@ -951,9 +952,9 @@ class SplitCoin(_MoveCallTransactionBuilder):
         self.coin_object_id: ObjectID = obj
         return self
 
-    def set_split_amounts(self, obj: list[SuiNumber]) -> "SplitCoin":
+    def set_split_amounts(self, obj: list[SuiInteger]) -> "SplitCoin":
         """Set the amounts to split the coin into."""
-        self.split_amounts: SuiArray[SuiNumber] = SuiArray[SuiNumber](obj)
+        self.split_amounts: SuiArray[SuiInteger] = SuiArray[SuiInteger](obj)
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
@@ -981,7 +982,7 @@ class Publish(_MoveCallTransactionBuilder):
         self.sender: SuiAddress = None
         self.compiled_modules: SuiArray[SuiString] = None
         self.gas: ObjectID = None
-        self.gas_budget: SuiNumber = None
+        self.gas_budget: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "sender":
@@ -991,7 +992,7 @@ class Publish(_MoveCallTransactionBuilder):
                 case "gas":
                     self.gas: ObjectID = value
                 case "gas_budget":
-                    self.gas_budget: SuiNumber = value
+                    self.gas_budget: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown MoveCall bulder type {key}")
 
@@ -1010,9 +1011,9 @@ class Publish(_MoveCallTransactionBuilder):
         self.gas: ObjectID = obj
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "Publish":
+    def set_gas_budget(self, obj: SuiInteger) -> "Publish":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
@@ -1044,7 +1045,7 @@ class MoveCall(_MoveCallTransactionBuilder):
         self.type_arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
         self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
         self.gas_object: ObjectID = None
-        self.gas_budget: SuiNumber = None
+        self.gas_budget: SuiInteger = None
         for key, value in kwargs.items():
             match key:
                 case "signer":
@@ -1062,7 +1063,7 @@ class MoveCall(_MoveCallTransactionBuilder):
                 case "gas_object":
                     self.gas_object: ObjectID = value
                 case "gas_budget":
-                    self.gas_budget: SuiNumber = value
+                    self.gas_budget: SuiInteger = value
                 case _:
                     raise ValueError(f"Unknown MoveCall bulder type {key}")
 
@@ -1096,9 +1097,9 @@ class MoveCall(_MoveCallTransactionBuilder):
         self.gas_object: ObjectID = obj
         return self
 
-    def set_gas_budget(self, obj: SuiNumber) -> "MoveCall":
+    def set_gas_budget(self, obj: SuiInteger) -> "MoveCall":
         """Set the amount for transaction payment."""
-        self.gas_budget: SuiNumber = obj
+        self.gas_budget: SuiInteger = obj
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:

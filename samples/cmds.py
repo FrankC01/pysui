@@ -86,9 +86,9 @@ def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print("Object")
         if isinstance(sobject.result_data, list):
             for item in sobject.result_data:
-                print(item.json_pretty())
+                print(item.to_json(indent=2))
         else:
-            print(sobject.result_data.json_pretty())
+            print(sobject.result_data.to_json(indent=2))
     else:
         print(f"{sobject.result_string}")
 
@@ -118,7 +118,7 @@ def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
     if result.is_ok():
         if args.json:
             for desc in result.result_data:
-                print(desc.json_pretty())
+                print(desc.to_json(indent=2))
         else:
             _objects_header_print()
             for desc in result.result_data:

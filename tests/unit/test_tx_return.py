@@ -13,7 +13,39 @@
 
 """Transaction result tests."""
 
-from pysui.sui.sui_types import TxEffectResult, MovePackage, EffectsBlock
+from pysui.sui.sui_types import TxEffectResult, MovePackage, ObjectInfo, ObjectRead
+
+
+def test_sui_coin_descriptor(sui_coin_descriptor):
+    """Valid result."""
+    result = ObjectInfo.factory(sui_coin_descriptor)
+    assert result is not None
+
+
+def test_data_descriptor(data_descriptor):
+    """Valid result."""
+    result = ObjectInfo.factory(data_descriptor)
+    assert result is not None
+
+
+def test_descriptor_list(sui_coin_descriptor, data_descriptor):
+    """Valid result."""
+    result = ObjectInfo.factory([sui_coin_descriptor, sui_coin_descriptor, data_descriptor])
+    assert result is not None
+
+
+def test_data_objectread_pass(data_objectread_type):
+    """Valid result."""
+    result = ObjectRead.factory(data_objectread_type)
+    assert result is not None
+
+
+def test_suigas_objectread_pass(suicoin_objectread_type):
+    """Valid result."""
+    result = ObjectRead.factory(suicoin_objectread_type)
+    balance = result.balance
+    print(balance)
+    assert result is not None
 
 
 def test_payallsui_result_pass(payallsui_result):

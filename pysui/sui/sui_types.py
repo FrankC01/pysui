@@ -15,12 +15,12 @@
 """Sui Types."""
 
 
-from abc import abstractmethod, ABC
-import json
+from abc import ABC
+
+# import json
 import base64
 import binascii
 import hashlib
-from numbers import Number
 from typing import Any, Generic, TypeVar, Union, Optional
 from dataclasses import dataclass, field
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
@@ -160,7 +160,7 @@ class ObjectID(SuiString):
         return self.value
 
 
-class SuiNumber(SuiScalarType):
+class SuiInteger(SuiScalarType):
     """Sui Number type."""
 
     @property
@@ -260,258 +260,242 @@ class SuiAddress(SuiBaseType):
         return cls(hash_bytes.decode("utf-8"))
 
 
-class SuiRawDescriptor(SuiBaseType):
-    """Base descriptor type."""
+@dataclass
+class GenericRef(DataClassJsonMixin):
+    """Generic object reference."""
 
-    def __init__(self, indata: dict, identifier: ObjectID) -> None:
-        """Initiate base SUI type."""
-        super().__init__(identifier)
-        self._type_raw = indata
-
-    @property
-    @abstractmethod
-    def version(self) -> Number:
-        """Return the types version."""
-
-    @property
-    @abstractmethod
-    def owner(self) -> str:
-        """Return the types instance owner."""
-
-    @property
-    @abstractmethod
-    def type_signature(self) -> str:
-        """Return the types type."""
-
-    def json(self) -> str:
-        """Return as JSON compressed string."""
-        return json.dumps(self._type_raw)
-
-    def json_pretty(self, indent: int = 4) -> str:
-        """Return as JSON pretty print string."""
-        return json.dumps(self._type_raw, indent=indent)
+    object_id: ObjectID = field(metadata=config(letter_case=LetterCase.CAMEL))
+    version: int
+    digest: str
 
 
-class ObjectInfo(SuiRawDescriptor):
-    """Base SUI Type Descriptor."""
+@dataclass
+class ObjectInfo(DataClassJsonMixin):
+    """Base ObjectInfo type."""
 
-    def __init__(self, indata: dict) -> None:
-        """Initialize the base descriptor."""
-        super().__init__(indata, ObjectID(indata["objectId"]))
-        self._version: int = indata["version"]
-        self._digest: str = indata["digest"]
-        self._owner: SuiAddress = SuiAddress.from_hex_string(indata["owner"]["AddressOwner"])
-        self._previous_transaction: str = indata["previousTransaction"]
-        self._type_signature: str = indata["type"]
+    object_id: str = field(metadata=config(field_name="objectId"))
+    version: int
+    digest: str
+    type_: str = field(metadata=config(field_name="type"))
+    owner: dict
+    previous_transaction: str = field(metadata=config(field_name="previousTransaction"))
+
+    def __post_init__(self):
+        """Post init processing for parameters."""
+        self.owner = self.owner["AddressOwner"]
 
     @property
-    def version(self) -> int:
-        """Return the types version."""
-        return self._version
+    def identifier(self) -> ObjectID:
+        """Alias object_id."""
+        return ObjectID(self.object_id)
 
     @property
-    def digest(self) -> str:
-        """Return the type digest."""
-        return self._digest
+    def owner_address(self) -> SuiAddress:
+        """owner_address Return owner as SuiAddress.
 
-    @property
-    def owner(self) -> SuiAddress:
-        """Return the types instance owner."""
-        return self._owner
-
-    @property
-    def previous_transaction(self) -> str:
-        """Return the previous transaction base64 signature string."""
-        return self._previous_transaction
-
-    @property
-    def type_signature(self) -> str:
-        """Return the types type."""
-        return self._type_signature
+        :return: owner
+        :rtype: SuiAddress
+        """
+        return SuiAddress.from_hex_string(self.owner)
 
     @classmethod
-    def descriptor_factory(cls, indata: Union[dict, list[dict]]) -> Union["ObjectInfo", list["ObjectInfo"]]:
-        """Generate ObjectInfo from inbound RPC API Json result."""
+    def _differentiate(cls, indata: dict) -> Any:
+        """Derive which description type."""
+        split = indata["type"].split("::", 2)
+        if split[0] == "0x2":
+            match split[1]:
+                case "coin":
+                    split2 = split[2][5:-1].split("::")
+                    if split2[2] == "SUI":
+                        return SuiGasDescriptor.from_dict(indata)
+                    return CoinDescriptor.from_dict(indata)
+                case _:
+                    return MoveDataDescriptor.from_dict(indata)
+        else:
+            return MoveDataDescriptor.from_dict(indata)
+
+    @classmethod
+    def factory(cls, indata: Union[dict, list[dict]]) -> Union[Any, list]:
+        """Instantiate descriptor types."""
+        if isinstance(indata, list):
+            return [cls._differentiate(x) for x in indata]
+        return cls._differentiate(indata)
 
 
-class SuiDataDescriptor(ObjectInfo):
-    """Sui Data base type."""
+@dataclass
+class CoinDescriptor(ObjectInfo):
+    """Base Coin descriptor."""
 
 
-class SuiCoinDescriptor(ObjectInfo):
-    """Sui Coin but not necessarily gas."""
-
-    def __init__(self, indata: dict, type_sig: str) -> None:
-        """Initialize the base type."""
-        super().__init__(indata)
-        self._type_signature = type_sig
+class SuiGasDescriptor(CoinDescriptor):
+    """SUI Coin descriptor."""
 
 
-class SuiNativeCoinDescriptor(SuiCoinDescriptor):
-    """Sui gas is a coin."""
+@dataclass
+class MoveDataDescriptor(ObjectInfo):
+    """Data descriptor."""
 
 
-class SuiRawObject(SuiBaseType):
-    """Base object type."""
+@dataclass
+class ObjectReadData(DataClassJsonMixin):
+    """ObjectReadData describes the data structure of type."""
 
-    def __init__(self, indata: dict, identifier: ObjectID) -> None:
-        """Initiate base SUI type."""
-        super().__init__(identifier)
-        self._type_raw = indata
+    has_public_transfer: bool
+    fields: dict
+    data_type: str = field(metadata=config(field_name="dataType"))
+    type_: str = field(metadata=config(field_name="type"))
+
+
+@dataclass
+class ObjectNotExist(DataClassJsonMixin):
+    """ObjectNotExist."""
+
+    object_id: str
 
     @property
-    @abstractmethod
-    def data_type(self) -> str:
-        """Return the data type."""
+    def identifier(self) -> ObjectID:
+        """Alias object_id."""
+        return ObjectID(self.object_id)
+
+
+@dataclass
+class ObjectDeleted(DataClassJsonMixin):
+    """ObjectDeleted."""
+
+    reference: GenericRef
 
     @property
-    @abstractmethod
-    def type_signature(self) -> str:
-        """Return the type signature."""
+    def identifier(self) -> ObjectID:
+        """Alias object_id."""
+        return self.reference.object_id
+
+
+@dataclass
+class ObjectRead(DataClassJsonMixin):
+    """DObjectRead is base ObjectRead result."""
+
+    data: ObjectReadData
+    owner: dict
+    reference: GenericRef
+    storage_rebate: int = field(metadata=config(field_name="storageRebate"))
+    previous_transaction: str = field(metadata=config(field_name="previousTransaction"))
+
+    def __post_init__(self):
+        """Post init processing for parameters."""
+        self.owner = self.owner["AddressOwner"]
 
     @property
-    @abstractmethod
-    def has_public_transfer(self) -> bool:
-        """Return the types type."""
-
-    def json(self) -> str:
-        """Return as JSON compressed string."""
-        return json.dumps(self._type_raw)
-
-    def json_pretty(self, indent: int = 4) -> str:
-        """Return as JSON pretty print string."""
-        return json.dumps(self._type_raw, indent=indent)
-
-
-# Object Details
-
-
-class ObjectRead(SuiRawObject):
-    """Base SUI Type."""
-
-    def __init__(self, indata: dict) -> None:
-        """Initialize the base type data."""
-        super().__init__(indata, ObjectID(indata["fields"]["id"]["id"]))
-        self._type_signature = indata["type"]
-        self._data_type = indata["dataType"]
-        self._has_public_transfer = indata["has_public_transfer"]
-        self._owner: SuiAddress = SuiAddress.from_hex_string(indata["owner"]["AddressOwner"])
-        self._previous_transaction = indata["previousTransaction"]
-        self._storage_rebate = indata["storageRebate"]
-        self._digest = indata["digest"]
-        self._version = indata["version"]
+    def identifier(self) -> ObjectID:
+        """Alias object_id."""
+        return ObjectID(self.data.fields["id"]["id"])
 
     @property
     def version(self) -> int:
-        """Return the types version."""
-        return self._version
+        """Alias object_id."""
+        return self.reference.version
 
     @property
     def digest(self) -> str:
-        """Return the types digest."""
-        return self._digest
-
-    @property
-    def data_type(self) -> str:
-        """Return the data type."""
-        return self._data_type
+        """Alias object_id."""
+        return self.reference.digest
 
     @property
     def type_signature(self) -> str:
-        """Return the types type."""
-        return self._type_signature
+        """Alias object_id."""
+        return self.data.type_
 
     @property
-    def has_public_transfer(self) -> bool:
-        """Return the types transferability."""
-        return self._has_public_transfer
+    def owner_address(self) -> SuiAddress:
+        """owner_address Return owner as SuiAddress.
+
+        :return: owner
+        :rtype: SuiAddress
+        """
+        return SuiAddress.from_hex_string(self.owner)
+
+    @classmethod
+    def _differentiate(cls, indata: dict) -> Union["ObjectRead", ObjectNotExist, ObjectDeleted]:
+        """_differentiate determines concrete type and instantiates it.
+
+        :param indata: Dictionary mapped from JSON result of `sui_getObject`
+        :type indata: dict
+        :return: If it exists, ObjectRead subclass, if not ObjectNotExist or ObjectDeleted if it has been
+        :rtype: Union[ObjectRead, ObjectNotExist, ObjectDeleted]
+        """
+        read_object = indata["details"]
+        match indata["status"]:
+            case "Exists":
+                split = read_object["data"]["type"].split("::", 2)
+                if split[0] == "0x2":
+                    match split[1]:
+                        case "coin":
+                            split2 = split[2][5:-1].split("::")
+                            if split2[2] == "SUI":
+                                return SuiGas.from_dict(read_object)
+                            return SuiCoin.from_dict(read_object)
+                        case _:
+                            return SuiData.from_dict(read_object)
+                else:
+                    return SuiData.from_dict(read_object)
+            case "NotExists":
+                return ObjectNotExist.from_dict({"object_id": read_object})
+            case "Deleted":
+                return ObjectDeleted.from_dict({"reference": read_object})
+
+    @classmethod
+    def factory(cls, indata: Union[dict, list[dict]]) -> Union[Any, list]:
+        """factory that consumes inbound data result.
+
+        :param indata: Data received from `sui_getObject`
+        :type indata: Union[dict, list[dict]]
+        :return: results of `indata` parse
+        :rtype: Union[Any, list]
+        """
+        if isinstance(indata, list):
+            return [cls._differentiate(x) for x in indata]
+        return cls._differentiate(indata)
+
+
+@dataclass
+class SuiData(ObjectRead):
+    """DSuiData is object that is not coins.
+
+    :param DObjectRead: superclass
+    :type DObjectRead: DObjectRead
+    :return: Instance of DSuiData
+    :rtype: DSuiData
+    """
+
+
+@dataclass
+class SuiCoin(ObjectRead):
+    """DSuiCoinType is the generic coin.
+
+    :param DObjectRead: superclass
+    :type DObjectRead: DObjectRead
+    :return: Instance of DSuiCoin
+    :rtype: DSuiCoin
+    """
 
     @property
-    def owner(self) -> SuiAddress:
-        """Return the types instance owner."""
-        return self._owner
+    def balance(self) -> int:
+        """balance returns the balance of coin<type> for this object.
 
-    @property
-    def previous_transaction(self) -> str:
-        """Return the previous transaction base64 signature string."""
-        return self._previous_transaction
-
-    @property
-    def storage_rebate(self) -> int:
-        """Return the storage rebate if object deleted."""
-        return self._storage_rebate
+        :return: balance value
+        :rtype: int
+        """
+        return self.data.fields["balance"]
 
 
-class SuiDataType(ObjectRead):
-    """Sui Data type."""
+@dataclass
+class SuiGas(SuiCoin):
+    """DSuiGasType is SUI Gas coin.
 
-    def __init__(self, indata: dict) -> None:
-        """Initialize the base Data type."""
-        super().__init__(indata)
-        self._children = []
-        self._data = {}
-        split = self.type_signature.split("::", 2)
-        self._data_definition = dict(zip(["package", "module", "structure"], split))
-        for key, value in indata["fields"].items():
-            if not key == "id":
-                self._data[key] = value
-
-    @property
-    def data_definition(self) -> dict:
-        """Get the data definition meta data."""
-        return self._data_definition
-
-    @property
-    def package(self) -> str:
-        """Get the data objects owning package id."""
-        return self.data_definition["package"]
-
-    @property
-    def module(self) -> str:
-        """Get the data objects owning module id."""
-        return self.data_definition["module"]
-
-    @property
-    def structure(self) -> str:
-        """Get the data objects structure id."""
-        return self.data_definition["structure"]
-
-    @property
-    def data(self) -> dict:
-        """Get the actual objects data."""
-        return self._data
-
-    @property
-    def children(self) -> list["SuiDataType"]:
-        """Get the children of this data."""
-        return self._children
-
-    def add_child(self, child: "SuiDataType") -> None:
-        """Store data child owned by self."""
-        self.children.append(child)
-
-
-class SuiCoinType(ObjectRead):
-    """Sui Coin type but not necessarily gas type."""
-
-    def __init__(self, indata: dict, type_sig: str) -> None:
-        """Initialize the base type."""
-        super().__init__(indata)
-        self._type_signature = type_sig
-
-
-class SuiGasType(SuiCoinType):
-    """Sui gas is a coin."""
-
-    def __init__(self, indata: dict, type_sig: str) -> None:
-        """Initialize the base type."""
-        super().__init__(indata, type_sig)
-        self._balance = indata["fields"]["balance"]
-
-    @property
-    def balance(self) -> Number:
-        """Get the balance for this coin object."""
-        return self._balance
+    :param DSuiCoin: superclass
+    :type DSuiCoin: DSuiCoin
+    :return: Instance of DSuiGas
+    :rtype: DSuiGas
+    """
 
 
 # Collection types
@@ -521,7 +505,7 @@ class SuiCollection(SuiBaseType):
     """Generic Collection Type."""
 
 
-AT = TypeVar("AT", SuiAddress, ObjectID, SuiNumber, SuiString)
+AT = TypeVar("AT", SuiAddress, ObjectID, SuiInteger, SuiString)
 
 
 class SuiArray(SuiCollection, Generic[AT]):
@@ -553,12 +537,12 @@ class SuiArray(SuiCollection, Generic[AT]):
         return self.array
 
     @property
-    def amounts(self) -> list[SuiNumber]:
+    def amounts(self) -> list[SuiInteger]:
         """Alias for transactions."""
         return self.array
 
     @property
-    def split_amounts(self) -> list[SuiNumber]:
+    def split_amounts(self) -> list[SuiInteger]:
         """Alias for transactions."""
         return self.array
 
@@ -602,74 +586,11 @@ def address_from_keystring(indata: str) -> SuiAddress:
     return SuiAddress.from_bytes(base64.b64decode(indata))
 
 
-def from_object_descriptor(indata: dict) -> ObjectInfo:
-    """Parse an inbound JSON like dictionary to a Sui type."""
-    # print(f"ObjectInfo {json.dumps(indata, indent=2)}")
-    split = indata["type"].split("::", 2)
-    if split[0] == "0x2":
-        match split[1]:
-            case "coin":
-                split2 = split[2][5:-1].split("::")
-                type_sig = "::".join(split2)
-                if split2[2] == "SUI":
-                    return SuiNativeCoinDescriptor(indata, type_sig)
-                return SuiCoinDescriptor(indata, type_sig)
-            case _:
-                if split[2] == "DevNetNFT":
-                    return SuiDataDescriptor(indata)
-    else:
-        if len(split) == 3:
-            return SuiDataDescriptor(indata)
-
-    return ObjectInfo(indata)
-
-
-def from_object_type(inblock: dict) -> ObjectRead:
-    """Parse an inbound JSON like dictionary to a Sui type."""
-    # print(f"ObjectRead {json.dumps(indata, indent=2)}")
-    indata = inblock["data"]
-    match indata["dataType"]:
-        case "moveObject":
-            indata["previousTransaction"] = inblock["previousTransaction"]
-            indata["storageRebate"] = inblock["storageRebate"]
-            indata["digest"] = inblock["reference"]["digest"]
-            indata["version"] = inblock["reference"]["version"]
-            indata["owner"] = inblock["owner"]
-            split = indata["type"].split("::", 2)
-
-            if split[0] == "0x2":
-                match split[1]:
-                    case "coin":
-                        split2 = split[2][5:-1].split("::")
-                        type_sig = "::".join(split2)
-                        if split2[2] == "SUI":
-                            return SuiGasType(indata, type_sig)
-                        return SuiCoinType(indata, type_sig)
-                    case _:
-                        if split[2] == "DevNetNFT":
-                            return SuiDataType(indata)
-            else:
-                if len(split) == 3:
-                    return SuiDataType(indata)
-            return ObjectRead(indata)
-        case _:
-            raise ValueError(f"Don't recognize {indata['dataType']}")
-
-
 # Transaction Results
 
 
 class SuiTxReturnType(ABC):
     """Abstraction for all return objects."""
-
-
-@dataclass
-class GenericRef(SuiTxReturnType, DataClassJsonMixin):
-    """Generic object reference."""
-
-    object_id: ObjectID = field(metadata=config(letter_case=LetterCase.CAMEL))
-    version: int
-    digest: str
 
 
 @dataclass

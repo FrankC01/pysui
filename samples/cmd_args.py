@@ -17,7 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 from typing import Any, Sequence
-from pysui.sui.sui_types import ObjectID, SuiNumber, SuiAddress, SuiString
+from pysui.sui.sui_types import ObjectID, SuiInteger, SuiAddress, SuiString
 
 
 def check_positive(value: str) -> int:
@@ -25,7 +25,7 @@ def check_positive(value: str) -> int:
     ivalue = int(value)
     if ivalue < 0:
         raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")
-    return SuiNumber(ivalue)
+    return SuiInteger(ivalue)
 
 
 class ValidateAddress(argparse.Action):

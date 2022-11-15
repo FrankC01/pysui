@@ -22,6 +22,9 @@
         "subprocess-run-check",
     ],
     "python.linting.pydocstyleEnabled": true,
+    "python.linting.pydocstyleArgs": [
+        "--ignore=D203,D213,D403",
+    ],
     "editor.formatOnSave": true,
     "autoDocstring.docstringFormat": "sphinx",
     "autoDocstring.generateDocstringOnEnter": true,

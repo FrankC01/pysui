@@ -1295,3 +1295,86 @@ def merge_coin_result():
             "confirmed_local_execution": True,
         }
     }
+
+
+@pytest.fixture
+def sui_coin_descriptor():
+    """Descriptor result."""
+    return {
+        "objectId": "0x0e5a550c39b571fb8b1fb40da90798e4b5cfe04e",
+        "version": 7,
+        "digest": "jkziyuckfYtekHX02f0oQcgOKVc0VAx87crwBOzXQUw=",
+        "type": "0x2::coin::Coin<0x2::sui::SUI>",
+        "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+        "previousTransaction": "aSkUwcvElhhqIHiTUjuNnNamn67X0yYVOcBUnUA1Hr4=",
+    }
+
+
+@pytest.fixture
+def coin_descriptor():
+    """Descriptor result."""
+
+
+@pytest.fixture
+def data_descriptor():
+    """Descriptor result."""
+    return {
+        "objectId": "0xf48abd518562eb9bf4b0d41917e09127d308c6b5",
+        "version": 1,
+        "digest": "fRjliDFAFy35Fsqmud4vKgyqROZt4T+mREPl3/AqJoY=",
+        "type": "0xf9b785171ece90a0cb22b487ef31b8efeb8cc254::base::ServiceTracker",
+        "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+        "previousTransaction": "YvaJdMh9neQactpKcSU3e/iAdpetqIFtn+6/dealqws=",
+    }
+
+
+@pytest.fixture
+def data_objectread_type():
+    """Return valid data type."""
+    return {
+        "status": "Exists",
+        "details": {
+            "data": {
+                "dataType": "moveObject",
+                "type": "0xec27e8a2343091f114d488c0d6c72a45d617fece::base::ServiceTracker",
+                "has_public_transfer": False,
+                "fields": {
+                    "count_accounts": 0,
+                    "id": {"id": "0x1e22fc1893fe2a921ac6eb1b308c1d8754a89ed5"},
+                    "initialized": True,
+                },
+            },
+            "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+            "previousTransaction": "Bnnu7VTJWmj8umr3zHas2BhGXO6v6DcE0GsXOqo0S1A=",
+            "storageRebate": 14,
+            "reference": {
+                "objectId": "0x1e22fc1893fe2a921ac6eb1b308c1d8754a89ed5",
+                "version": 1,
+                "digest": "Szvm4zIOvoGPc2w27lifhnPHWmmRhMW4Hkx7KTw6ibQ=",
+            },
+        },
+    }
+
+
+@pytest.fixture
+def suicoin_objectread_type():
+    """Return valid sui gas type."""
+    return {
+        "status": "Exists",
+        "details": {
+            "data": {
+                "dataType": "moveObject",
+                "type": "0x2::coin::Coin<0x2::sui::SUI>",
+                "has_public_transfer": True,
+                "fields": {"balance": 9998893, "id": {"id": "0x980ed36ad60d3a2f73e84945d274120f056b3d73"}},
+            },
+            "owner": {"AddressOwner": "0xf5f27ea854d8d5efae00b68c313057566872e7fe"},
+            "previousTransaction": "Bnnu7VTJWmj8umr3zHas2BhGXO6v6DcE0GsXOqo0S1A=",
+            "storageRebate": 16,
+            "reference": {
+                "objectId": "0x980ed36ad60d3a2f73e84945d274120f056b3d73",
+                "version": 2,
+                "digest": "wt2hg7HpYyyKh2AXLsevODMapSLKv7NtyRFgfklU3ps=",
+            },
+        },
+    }

@@ -2,6 +2,8 @@
 
 Python SUI client SDK for Sui - WIP and expect significant refactoring
 
+Refer to the [Change](CHANGELOG.md) log for recent additions, changes, fixes and removals...
+
 ## Known issues or missing capability
 * Doesn't support `sui_batchTransaction` RPC API yet
 * Doesn't use mnemonics yet (see [Issue](https://github.com/FrankC01/pysui/issues/9))
@@ -36,8 +38,7 @@ Here is a sample script demonstrating the fundementals for effective pysui usage
 
 from pysui.sui.sui_rpc import SuiClient, RpcResult
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_builders import GetObjectsOwnedByAddress, GetObject
-from pysui.sui.sui_types import ObjectID, from_object_type, SuiGasType
+from pysui.sui.sui_types import SuiGasType, SuiGasDescriptor
 
 # Well knowns
 GAS_TYPE_SIG: str = "0x2::coin::Coin<0x2::sui::SUI>"
@@ -54,33 +55,31 @@ def main():
     cfg: SuiConfig = SuiConfig.default()
     # Load the synchronous RPC provider with this configuration
     client: SuiClient = SuiClient(cfg)
-    print(
-        f"Getting gas for address: {cfg.active_address} from endpoint {cfg.rpc_url}")
+    print(f"Getting gas for address: {cfg.active_address} from endpoint {cfg.rpc_url}")
 
-    # Setup a builder that maps to `sui_getObjectsOwnedByAddress`. There are
-    # builders for most RCP API and more to follow
-    builder = GetObjectsOwnedByAddress(cfg.active_address)
-
-    # Execute the command
-    result: RpcResult = client.execute(builder)
+    # Execute the command to get all object descriptors of type Gas
+    result: RpcResult = client.get_address_object_descriptors(SuiGasDescriptor)
+    # Alternate: Get all descriptors (gas and data). Comment line above and uncomment line below
+    # result: RpcResult = client.get_address_object_descriptors()
 
     # Check the results:
     if result.is_ok():
         # The call returns 1 or more object descriptors. We want those of specific type
-
         for item in result.result_data:
             # For each check if a gas type object and, if so, get the details
             # on the object
-            if item['type'] == GAS_TYPE_SIG:
-                builder = GetObject(ObjectID(item['objectId']))
-                obj_res: RpcResult = client.execute(builder)
-                if obj_res.is_ok():
+            if item.type_ == GAS_TYPE_SIG:
+                print(item)
+                obj_result: RpcResult = client.get_object(item.identifier)
+                # builder = GetObject(ObjectID(item["objectId"]))
+                # obj_res: RpcResult = client.execute(builder)
+                if obj_result.is_ok():
                     # Use the helper function to convert the json results
                     # to a sui_type SuiGasType object
-                    gas_obect: SuiGasType = from_object_type(
-                        obj_res.result_data["details"])
-                    print(
-                        f"Gas object: {gas_obect.identifier} has {gas_obect.balance} mists")
+                    gas_object: SuiGasType = obj_result.result_data
+                    print(f"Gas object: {gas_object.identifier} has {gas_object.balance} mists")
+            else:
+                print(item)
 
     else:
         print(f"Failed execution with {result.result_string}")

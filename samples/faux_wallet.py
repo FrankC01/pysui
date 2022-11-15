@@ -43,12 +43,12 @@ from pysui.sui.sui_crypto import SuiAddress
 
 from pysui.sui.sui_types import (
     ObjectID,
-    SuiNativeCoinDescriptor,
+    SuiGasDescriptor,
     SuiString,
-    SuiNumber,
-    SuiGasType,
+    SuiInteger,
+    SuiCoin,
     ObjectInfo,
-    SuiDataDescriptor,
+    MoveDataDescriptor,
 )
 
 
@@ -104,7 +104,7 @@ class SuiWallet:
         """Get details of Sui package."""
         return self._client.get_package(package_id)
 
-    def get_committee_info(self, epoch: SuiNumber) -> Union[SuiRpcResult, Exception]:
+    def get_committee_info(self, epoch: SuiInteger) -> Union[SuiRpcResult, Exception]:
         """Get info of Sui committtee."""
         result = self.execute(GetCommittee(epoch))
         if result.is_ok():
@@ -226,11 +226,11 @@ class SuiWallet:
 
     def get_data_descriptors(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the objects descriptors."""
-        return self.get_type_descriptor(SuiDataDescriptor, address)
+        return self.get_type_descriptor(MoveDataDescriptor, address)
 
     def get_gas_descriptors(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
         """Get the gas object descriptors."""
-        return self.get_type_descriptor(SuiNativeCoinDescriptor, address)
+        return self.get_type_descriptor(SuiGasDescriptor, address)
 
     def get_object(self, identifier: ObjectID) -> Union[SuiRpcResult, Exception]:
         """Get specific object by it's id."""
@@ -254,7 +254,7 @@ class SuiWallet:
         """Get the gas objects."""
         return self._get_objects(self.get_gas_descriptors(address))
 
-    def total_gas(self, gas_objects: list[SuiGasType]) -> Number:
+    def total_gas(self, gas_objects: list[SuiCoin]) -> Number:
         """Get the total gas for wallet."""
         results = 0
         for cdesc in gas_objects:

@@ -20,7 +20,7 @@ from json import JSONDecodeError
 from typing import Any, Union
 import httpx
 from pysui.abstracts import SyncHttpRPC, RpcResult
-from pysui.sui.sui_types import ObjectID, SuiTxBytes, ObjectInfo, SuiAddress, from_object_descriptor, from_object_type
+from pysui.sui.sui_types import ObjectID, SuiTxBytes, ObjectInfo, SuiAddress
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_builders import (
     DryRunTransaction,
@@ -214,9 +214,8 @@ class SuiClient(SyncHttpRPC):
             result = result.result_data
             type_descriptors = []
             for sui_objdesc in result:
-                sui_type = from_object_descriptor(sui_objdesc)
-                if isinstance(sui_type, claz):
-                    type_descriptors.append(sui_type)
+                if isinstance(sui_objdesc, claz):
+                    type_descriptors.append(sui_objdesc)
             return SuiRpcResult(True, None, type_descriptors)
         return result
 
@@ -227,16 +226,10 @@ class SuiClient(SyncHttpRPC):
         :type identifier: ObjectID
         :raises: :class:`SuiException`: if returned from `self.execute`
 
-        :returns: The objeect's data
+        :returns: The objeect's ObjectRead data
         :rtype: SuiRpcResult
         """
-        result = self.execute(GetObject(identifier))
-        if result.is_ok():
-            result = result.result_data
-            if result["status"] != "Exists":
-                return SuiRpcResult(False, f"Object {identifier} {result['status']}", None)
-            return SuiRpcResult(True, None, from_object_type(result["details"]))
-        return result
+        return self.execute(GetObject(identifier))
 
     def get_objects_for(self, identifiers: list[ObjectID]) -> Union[SuiRpcResult, Exception]:
         """Get objects for the list of identifiers.
@@ -285,9 +278,9 @@ class SuiClient(SyncHttpRPC):
             *   *signer* (``SuiAddress``)
             *   *input_coins* (``SuiArray[ObjectID]``)
             *   *recipients* (``SuiArray[SuiAddress]``)
-            *   *amounts*   (``SuiArray[SuiNumber]``)
+            *   *amounts*   (``SuiArray[SuiInteger]``)
             *   *gas*       (``ObjectID``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
         if kword_set == Pay.pay_kwords:
@@ -310,8 +303,8 @@ class SuiClient(SyncHttpRPC):
             *   *signer* (``SuiAddress``)
             *   *input_coins* (``SuiArray[ObjectID]``)
             *   *recipients* (``SuiArray[SuiAddress]``)
-            *   *amounts*   (``SuiArray[SuiNumber]``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *amounts*   (``SuiArray[SuiInteger]``)
+            *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
         if kword_set == PaySui.pay_kwords:
@@ -334,7 +327,7 @@ class SuiClient(SyncHttpRPC):
             *   *signer* (``SuiAddress``)
             *   *input_coins* (``SuiArray[ObjectID]``)
             *   *recipient* (``SuiAddress``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
         if kword_set == PayAllSui.payall_kwords:
@@ -356,9 +349,9 @@ class SuiClient(SyncHttpRPC):
         :Keyword Arguments:
             *   *signer* (``SuiAddress``)
             *   *sui_object_id* (``ObjectID``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *gas_budget* (``SuiInteger``)
             *   *recipient* (``SuiAddress``)
-            *   *amount* (``SuiNumber``)
+            *   *amount* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
         if kword_set == TransferSui.transfersui_kwords:
@@ -381,7 +374,7 @@ class SuiClient(SyncHttpRPC):
             *   *signer* (``SuiAddress``)
             *   *object_id* (``ObjectID``)
             *   *gas* (``ObjectID``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *gas_budget* (``SuiInteger``)
             *   *recipient* (``SuiAddress``)
         """
         kword_set = set(kwargs.keys())
@@ -406,7 +399,7 @@ class SuiClient(SyncHttpRPC):
             *   *primary_coin* (``ObjectID``)
             *   *coin_to_merge* (``ObjectID``)
             *   *gas* (``ObjectID``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
         if kword_set == MergeCoin.merge_kwords:
@@ -428,9 +421,9 @@ class SuiClient(SyncHttpRPC):
         :Keyword Arguments:
             *   *signer* (``SuiAddress``)
             *   *coin_object_id* (``ObjectID``)
-            *   *split_amounts* (``SuiArray[SuiNumber]``)
+            *   *split_amounts* (``SuiArray[SuiInteger]``)
             *   *gas_object* (``ObjectID``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
         if kword_set == SplitCoin.split_kwords:
@@ -457,7 +450,7 @@ class SuiClient(SyncHttpRPC):
             *   *type_arguments (``SuiArray[SuiString]``)
             *   *arguments (``SuiArray[SuiString]``)
             *   *gas_object* (``ObjectID``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
         if kword_set == MoveCall.move_kwords:
@@ -477,7 +470,7 @@ class SuiClient(SyncHttpRPC):
             *   *sender* (``SuiAddress``)
             *   *compiled_modules (``SuiArray[SuiString]``)
             *   *gas* (``ObjectID``)
-            *   *gas_budget* (``SuiNumber``)
+            *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
         if kword_set == Publish.publish_kwords:
