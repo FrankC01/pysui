@@ -18,6 +18,7 @@ Breaking Release
 
 ### Changed
 - ObjectInfo, and subclasses, moved to dataclass types as per [issue](https://github.com/FrankC01/pysui/issues/1)
+- ObjectRead, and subclasses, moved to dataclass types as per [issue](https://github.com/FrankC01/pysui/issues/1)
 - SuiNumber renamed to SuiInteger as per [issue](https://github.com/FrankC01/pysui/issues/22)
 - Update README.md example to reflect RPC Client method additions
 
