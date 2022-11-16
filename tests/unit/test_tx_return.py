@@ -13,7 +13,7 @@
 
 """Transaction result tests."""
 
-from pysui.sui.sui_types import TxEffectResult, MovePackage, ObjectInfo, ObjectRead
+from pysui.sui.sui_types import TxEffectResult, MovePackage, ObjectInfo, ObjectRead, EventQueryEnvelope
 
 
 def test_sui_coin_descriptor(sui_coin_descriptor):
@@ -109,3 +109,9 @@ def test_bad_pay_result_pass(bad_pay_result):
     result = TxEffectResult.from_dict(bad_pay_result)
     assert result.succeeded is False
     assert result.status == "failure - InsufficientGas"
+
+
+def test_getevent_result_pass(get_event_result):
+    """Valid result."""
+    result = EventQueryEnvelope.from_dict(get_event_result)
+    assert result is not None

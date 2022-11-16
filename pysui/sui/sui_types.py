@@ -1037,7 +1037,7 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
         hydrated = []
         for ev_dict in self.events:
             key = list(ev_dict.keys())[0]
-            hydrated.append(_EVENT_LOOKUP[key].from_dict(ev_dict[key]))
+            hydrated.append({key: _EVENT_LOOKUP[key].from_dict(ev_dict[key])})
         self.events = hydrated
 
 
@@ -1086,6 +1086,53 @@ class TxEffectResult(SuiTxReturnType, DataClassJsonMixin):
         if self.succeeded:
             return "success"
         return f"{self.effects_cert.effects.effects.status.status} - {self.effects_cert.effects.effects.status.error}"
+
+
+# Event query results
+
+
+@dataclass
+class EventEnvelopID(DataClassJsonMixin):
+    """From getEvents."""
+
+    transaction_sequence: int = field(metadata=config(field_name="txSeq"))
+    event_sequence: int = field(metadata=config(field_name="eventSeq"))
+
+
+@dataclass
+class EventEnvelope(DataClassJsonMixin):
+    """From getEvents."""
+
+    timestamp: int
+    transaction_digest: str = field(metadata=config(field_name="txDigest"))
+    event_id: EventEnvelopID = field(metadata=config(field_name="id"))
+    event: dict
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Hydrate relevant Events and other types
+        """
+        ev_map = list(self.event.items())
+        event_key = ev_map[0][0]
+        event_value = ev_map[0][1]
+        self.event[event_key] = _EVENT_LOOKUP[event_key].from_dict(event_value)
+
+
+@dataclass
+class EventQueryEnvelope(DataClassJsonMixin):
+    """From getEvents."""
+
+    data: list[EventEnvelope]
+    next_cursor: Union[None, EventID] = field(metadata=config(field_name="nextCursor"))
+
+
+@dataclass
+class TransactionQueryEnvelope(DataClassJsonMixin):
+    """From getTransactions."""
+
+    data: list[str]
+    next_cursor: Union[None, dict] = field(metadata=config(field_name="nextCursor"))
 
 
 # Packages

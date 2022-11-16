@@ -51,7 +51,7 @@ class SuiJsonString(DataClassJsonMixin, SuiJsonType):
 
 
 @dataclass(frozen=True)
-class SuiJsonBoolen(DataClassJsonMixin, SuiJsonType):
+class SuiJsonBoolean(DataClassJsonMixin, SuiJsonType):
     """Sui Json Boolean."""
 
     type: bool
@@ -173,7 +173,7 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
             case "null":
                 return SuiJsonNull.from_dict(dcp)
             case "boolean":
-                return SuiJsonBoolen.from_dict(dcp)
+                return SuiJsonBoolean.from_dict(dcp)
             case _:
                 raise NotImplementedError("ptype")
         return ptype

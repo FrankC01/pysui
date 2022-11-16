@@ -1378,3 +1378,67 @@ def suicoin_objectread_type():
             },
         },
     }
+
+
+@pytest.fixture
+def get_event_result():
+    """Return valid sui_getEvents result."""
+    return {
+        "data": [
+            {
+                "timestamp": 1668472627811,
+                "txDigest": "mccOyWThvnzPpJHy88NNzAfzNUCoLgmrEODSxs7Ey1Q=",
+                "id": {"txSeq": 3537, "eventSeq": 10},
+                "event": {
+                    "coinBalanceChange": {
+                        "packageId": "0x0000000000000000000000000000000000000002",
+                        "transactionModule": "pay",
+                        "sender": "0x7ac1cc73234f09b7c14b4757d3c959523ee4fcf4",
+                        "changeType": "Pay",
+                        "owner": {"AddressOwner": "0x7ac1cc73234f09b7c14b4757d3c959523ee4fcf4"},
+                        "coinType": "0x2::sui::SUI",
+                        "coinObjectId": "0xbe5b2bcfe8a0bf92df909e900d3e11eb25012e2c",
+                        "version": 1,
+                        "amount": -10000000,
+                    }
+                },
+            },
+            {
+                "timestamp": 1668472627811,
+                "txDigest": "mccOyWThvnzPpJHy88NNzAfzNUCoLgmrEODSxs7Ey1Q=",
+                "id": {"txSeq": 3537, "eventSeq": 11},
+                "event": {
+                    "coinBalanceChange": {
+                        "packageId": "0x0000000000000000000000000000000000000002",
+                        "transactionModule": "pay",
+                        "sender": "0x7ac1cc73234f09b7c14b4757d3c959523ee4fcf4",
+                        "changeType": "Pay",
+                        "owner": {"AddressOwner": "0x7ac1cc73234f09b7c14b4757d3c959523ee4fcf4"},
+                        "coinType": "0x2::sui::SUI",
+                        "coinObjectId": "0xc8b0652e0e62e76ee51536e7f017da19264db1d6",
+                        "version": 1,
+                        "amount": -10000000,
+                    }
+                },
+            },
+            {
+                "timestamp": 1668472627811,
+                "txDigest": "mccOyWThvnzPpJHy88NNzAfzNUCoLgmrEODSxs7Ey1Q=",
+                "id": {"txSeq": 3537, "eventSeq": 12},
+                "event": {
+                    "coinBalanceChange": {
+                        "packageId": "0x0000000000000000000000000000000000000002",
+                        "transactionModule": "pay",
+                        "sender": "0x7ac1cc73234f09b7c14b4757d3c959523ee4fcf4",
+                        "changeType": "Pay",
+                        "owner": {"AddressOwner": "0x7ac1cc73234f09b7c14b4757d3c959523ee4fcf4"},
+                        "coinType": "0x2::sui::SUI",
+                        "coinObjectId": "0xd27efc607aac2ebd0089515d17bf9e4de0524f4a",
+                        "version": 1,
+                        "amount": -10000000,
+                    }
+                },
+            },
+        ],
+        "nextCursor": None,
+    }

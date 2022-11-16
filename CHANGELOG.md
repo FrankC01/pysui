@@ -13,6 +13,8 @@ Breaking Release
 - SUI_COIN_DENOMINATOR: int = 1000000000 to `sui_constants.py`
 - CommitteeInfo type , in `sui_types.py`, for `sui_getCommitteeInfo` RPC API response
 - `bin/build.sh` for building only and not publishing to PyPi
+- EventQueryEnvelope type, in `sui_types.py`, for `sui_getEvents` RPC API response
+- `GetTxs` builder in `sui_builders.py` and TransactionQueryEnvelope, in `sui_types.py` for `sui_getTransactions` RPC API response.
 
 ### Fixed
 - Re-enabled event queries (`sui_getEvents`) on SuiClient (`sui_rpc.py`)

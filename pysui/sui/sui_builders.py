@@ -21,6 +21,7 @@ from pysui.abstracts import Builder, PublicKey, SignatureScheme
 from pysui.sui.sui_types import (
     CommitteeInfo,
     EventID,
+    EventQueryEnvelope,
     MovePackage,
     ObjectInfo,
     ObjectRead,
@@ -34,6 +35,7 @@ from pysui.sui.sui_types import (
     SuiMap,
     SuiAddress,
     SuiBaseType,
+    TransactionQueryEnvelope,
     TxEffectResult,
 )
 
@@ -336,7 +338,7 @@ class GetEvents(_NativeTransactionBuilder):
 
     def __init__(self, **kwargs: dict) -> None:
         """Initialize builder."""
-        super().__init__("sui_getEvents")
+        super().__init__("sui_getEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
         self.query: Union[SuiString, SuiMap] = None
         self.cursor: EventID = None
         self.limit: SuiInteger = None
@@ -380,6 +382,69 @@ class GetTx(_NativeTransactionBuilder):
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return [self.digest]
+
+
+class GetTxsMoveFunction(SuiMap):
+    """For GetTxns."""
+
+    def __init__(self, package: str, function: str, module: str):
+        """Initialize query params."""
+        super().__init__("MoveFunction", {"package": package, "function": function, "module": module})
+
+
+class GetTxsInputObject(SuiMap):
+    """For GetTxns."""
+
+    def __init__(self, object_id: str):
+        """Initialize query params."""
+        super().__init__("InputObject", object_id)
+
+
+class GetTxsMutateObject(SuiMap):
+    """For GetTxns."""
+
+    def __init__(self, object_id: str):
+        """Initialize query params."""
+        super().__init__("MutatedObject", object_id)
+
+
+class GetTxsFromAddress(SuiMap):
+    """For GetTxns."""
+
+    def __init__(self, address_id: str):
+        """Initialize query params."""
+        super().__init__("FromAddress", address_id)
+
+
+class GetTxsToAddress(SuiMap):
+    """For GetTxns."""
+
+    def __init__(self, address_id: str):
+        """Initialize query params."""
+        super().__init__("ToAddress", address_id)
+
+
+class GetTxs(_NativeTransactionBuilder):
+    """Return information about a specific transaction."""
+
+    txs_kwords = {"query", "cursor", "limit", "descending_order"}
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getTransactions", handler_cls=TransactionQueryEnvelope, handler_func="from_dict")
+        self.query: Union[str, SuiMap] = None
+        self.cursor: str = None
+        self.limit: SuiInteger = None
+        self.descending_order: SuiBoolean = False
+        if set(kwargs.keys()) == self.txs_kwords:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+        else:
+            raise ValueError(f"Expeced keywords {self.txs_kwords} but found {kwargs.keys()}")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
 
 
 class ExecuteTransaction(_NativeTransactionBuilder):

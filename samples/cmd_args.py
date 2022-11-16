@@ -583,7 +583,21 @@ def _build_extended_read_commands(subparser) -> None:
 
 def _build_tx_query_commands(subparser) -> None:
     """Transaction information read commands."""
-    # Transactions
+
+    def __common_txns_opts(eparser) -> None:
+        eparser.add_argument(
+            "-t", "--transaction-id", dest="digest", required=True, help="transaction digest b64 string", type=str
+        )
+        eparser.add_argument("-l", "--limit", required=True, help="limit results by page", type=check_positive)
+        eparser.add_argument(
+            "-d",
+            "--descending-order",
+            action="store_true",
+            default=False,
+            help="list results in descending order",
+        )
+
+    # Transaction
     subp = subparser.add_parser(
         "txns", help="Show transaction information", usage="txns subcommand [--subcommand_options]"
     )
@@ -595,6 +609,44 @@ def _build_tx_query_commands(subparser) -> None:
     esubp = tcmds.add_parser("txn", help="Return transaction information")
     esubp.add_argument("-d", "--digest", required=True, help="the transaction's digest")
     esubp.set_defaults(subcommand="txn-txn")
+    # Transactions
+    subp = tcmds.add_parser("txnsq", help="Show events for types", usage="txns subcommand [--subcommand_options]")
+    ecmds = subp.add_subparsers(title="subcommand", required=True)
+    # All transactions
+    esubp = ecmds.add_parser("all", help="Return all events")
+    __common_txns_opts(esubp)
+    esubp.set_defaults(subcommand="txnsq-all")
+    # Move function
+    esubp = ecmds.add_parser("movefunc", help="Return transaction events for move function.")
+    esubp.add_argument("-p", "--package", required=True, help="the SUI package ID", action=ValidateObjectID)
+    esubp.add_argument("-m", "--module", required=True, help="the module name", type=str)
+    esubp.add_argument("-f", "--function", required=True, help="the function name", type=str)
+    __common_txns_opts(esubp)
+    esubp.set_defaults(subcommand="txnsq-movefunc")
+    # Input object
+    esubp = ecmds.add_parser("input", help="Return transaction events for the input object.")
+    esubp.add_argument("-i", "--input", required=True, help="the input object ID", action=ValidateObjectID)
+    __common_txns_opts(esubp)
+    esubp.set_defaults(subcommand="txnsq-input")
+    # Mutate object
+    esubp = ecmds.add_parser("mutated", help="Return transaction events for the mutate object.")
+    esubp.add_argument("-m", "--mutated", required=True, help="the input mutate object ID", action=ValidateObjectID)
+    __common_txns_opts(esubp)
+    esubp.set_defaults(subcommand="txnsq-mutate")
+    # From address
+    esubp = ecmds.add_parser("from", help="Return transaction events from sender address.")
+    esubp.add_argument(
+        "-s", "--sender", dest="froms", required=True, help="the 'from' sender address ID", action=ValidateAddress
+    )
+    __common_txns_opts(esubp)
+    esubp.set_defaults(subcommand="txnsq-from")
+    # To address
+    esubp = ecmds.add_parser("to", help="Return transaction events from recipient address.")
+    esubp.add_argument(
+        "-r", "--recipient", dest="to", required=True, help="the 'to' recipient address ID", action=ValidateAddress
+    )
+    __common_txns_opts(esubp)
+    esubp.set_defaults(subcommand="txnsq-to")
 
 
 def build_parser(in_args: list) -> argparse.Namespace:

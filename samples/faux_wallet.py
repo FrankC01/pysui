@@ -100,6 +100,10 @@ class SuiWallet:
         """Get total tx count."""
         return self.execute(GetTx(digest))
 
+    def get_txns(self, **kwargs) -> SuiRpcResult:
+        """Get transaction information from query."""
+        return self._client.get_txns(**kwargs)
+
     def transfer_sui(
         self,
         **kwargs: dict,

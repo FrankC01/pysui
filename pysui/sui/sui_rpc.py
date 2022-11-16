@@ -32,6 +32,7 @@ from pysui.sui.sui_builders import (
     GetObject,
     GetPackage,
     GetEvents,
+    GetTxs,
     Pay,
     PaySui,
     PayAllSui,
@@ -153,7 +154,7 @@ class SuiClient(SyncHttpRPC):
             result = self._execute(builder)
             if result.is_ok():
                 if "error" in result.result_data:
-                    return result
+                    return SuiRpcResult(False, result.result_data["error"], None)
                 return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
             return result
         return self._signed_execution(builder, dry_run)
@@ -270,7 +271,7 @@ class SuiClient(SyncHttpRPC):
         :param \**kwargs:
             See below
         :raises ValueError: If missing required keyword
-        :return: EventEnvelopePage
+        :return: EventQueryEnvelope
         :rtype: SuiRpcResult
         :Keyword Arguments:
             *   *query* (``SuiMap``)
@@ -282,6 +283,26 @@ class SuiClient(SyncHttpRPC):
         if kword_set == GetEvents.events_kwords:
             return self.execute(GetEvents(**kwargs))
         missing = GetEvents.events_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
+
+    def get_txns(self, **kwargs) -> SuiRpcResult:
+        r"""get_txns `sui_getTransactions` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: TransactionQueryEnvelope
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *query* (``SuiMap``)
+            *   *cursor* (``str``)
+            *   *limit*   (``int``)
+            *   *descending_order* (``bool``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == GetTxs.txs_kwords:
+            return self.execute(GetTxs(**kwargs))
+        missing = GetTxs.txs_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
     def pay_txn(
