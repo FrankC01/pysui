@@ -16,7 +16,6 @@
 
 
 from numbers import Number
-import os
 import json
 
 from typing import Union
@@ -25,15 +24,7 @@ from pysui.sui import (
     SuiClient,
     SuiConfig,
     SuiRpcResult,
-    SuiBaseBuilder,
     GetCommittee,
-    GetModuleEvents,
-    GetStructEvents,
-    GetObjectEvents,
-    GetRecipientEvents,
-    GetSenderEvents,
-    GetTimeEvents,
-    GetTxEvents,
     GetTotalTxCount,
     GetTx,
     # DryRunTransaction,
@@ -57,23 +48,12 @@ class SuiWallet:
 
     def __init__(self, config: SuiConfig) -> None:
         """Initialize from keystore path."""
-        if os.path.exists(config.keystore_file):
-            self._keypairs = {}
-            self._addresses = {}
-            self._address_keypair = {}
-            self._client = SuiClient(config)
+        self._client = SuiClient(config)
 
     @property
     def current_address(self) -> SuiAddress:
         """Get the current address."""
         return self._client.config.active_address
-
-    def set_current_address(self, address: SuiAddress) -> SuiAddress:
-        """Change up the active address."""
-        if address.address in self._addresses:
-            old = self._client.config.set_active_address(address)
-            return old
-        raise ValueError(f"Address {address.address} not recognized.")
 
     @property
     def addresses(self) -> list[str]:
@@ -106,51 +86,11 @@ class SuiWallet:
 
     def get_committee_info(self, epoch: SuiInteger) -> Union[SuiRpcResult, Exception]:
         """Get info of Sui committtee."""
-        result = self.execute(GetCommittee(epoch))
-        if result.is_ok():
-            result = result.result_data
-            if "error" in result:
-                return SuiRpcResult(False, f"{result['error']}")
-            return SuiRpcResult(True, None, json.dumps(result, indent=2))
-        return result
+        return self.execute(GetCommittee(epoch))
 
-    def _get_events(self, cls: SuiBaseBuilder, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
-        """Get events."""
-        result = self.execute(cls(**kwargs))
-        if result.is_ok():
-            result = result.result_data
-            if "error" in result:
-                return SuiRpcResult(False, f"{result['error']}")
-            return SuiRpcResult(True, None, json.dumps(result, indent=2))
-        return result
-
-    def get_module_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
+    def get_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
         """Get module events."""
-        return self._get_events(GetModuleEvents, **kwargs)
-
-    def get_struct_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
-        """Get struct events."""
-        return self._get_events(GetStructEvents, **kwargs)
-
-    def get_object_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
-        """Get object events."""
-        return self._get_events(GetObjectEvents, **kwargs)
-
-    def get_recipient_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
-        """Get recipient events."""
-        return self._get_events(GetRecipientEvents, **kwargs)
-
-    def get_sender_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
-        """Get sender events."""
-        return self._get_events(GetSenderEvents, **kwargs)
-
-    def get_time_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
-        """Get time events."""
-        return self._get_events(GetTimeEvents, **kwargs)
-
-    def get_tx_events(self, **kwargs: dict) -> Union[SuiRpcResult, Exception]:
-        """Get transaction events."""
-        return self._get_events(GetTxEvents, **kwargs)
+        return self._client.get_events(**kwargs)
 
     def get_total_tx_count(self) -> Union[SuiRpcResult, Exception]:
         """Get total tx count."""
@@ -254,9 +194,9 @@ class SuiWallet:
         """Get the gas objects."""
         return self._get_objects(self.get_gas_descriptors(address))
 
-    def total_gas(self, gas_objects: list[SuiCoin]) -> Number:
-        """Get the total gas for wallet."""
+    def total_gas(self, coin_objects: list[SuiCoin]) -> Number:
+        """Get the total of balances for SuiCoin type."""
         results = 0
-        for cdesc in gas_objects:
+        for cdesc in coin_objects:
             results = results + cdesc.balance
         return results

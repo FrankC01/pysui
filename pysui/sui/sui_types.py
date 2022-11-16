@@ -69,12 +69,22 @@ class SuiString(SuiScalarType):
         return self.value
 
     @property
+    def cursor(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def move_event_struct_name(self) -> str:
         """Alias for transactions."""
         return self.value
 
     @property
     def digest(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def query(self) -> str:
         """Alias for transactions."""
         return self.value
 
@@ -160,6 +170,15 @@ class ObjectID(SuiString):
         return self.value
 
 
+class SuiBoolean(SuiScalarType):
+    """Sui Bool type."""
+
+    @property
+    def descending_order(self) -> bool:
+        """Alias for transactions."""
+        return self.value
+
+
 class SuiInteger(SuiScalarType):
     """Sui Number type."""
 
@@ -185,6 +204,11 @@ class SuiInteger(SuiScalarType):
 
     @property
     def count(self) -> int:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def limit(self) -> int:
         """Alias for transactions."""
         return self.value
 
@@ -269,6 +293,9 @@ class GenericRef(DataClassJsonMixin):
     digest: str
 
 
+# ObjectInfo
+
+
 @dataclass
 class ObjectInfo(DataClassJsonMixin):
     """Base ObjectInfo type."""
@@ -336,6 +363,9 @@ class MoveDataDescriptor(ObjectInfo):
     """Data descriptor."""
 
 
+# ObjectRead
+
+
 @dataclass
 class ObjectReadData(DataClassJsonMixin):
     """ObjectReadData describes the data structure of type."""
@@ -371,6 +401,35 @@ class ObjectDeleted(DataClassJsonMixin):
 
 
 @dataclass
+class AddressOwner(DataClassJsonMixin):
+    """AddressOwner owner type."""
+
+    owner_type: str
+    address_owner: str = field(metadata=config(field_name="owner"))
+
+
+@dataclass
+class ObjectOwner(DataClassJsonMixin):
+    """ObjectOwner owner type."""
+
+    owner_type: str
+    object_owner: str = field(metadata=config(field_name="owner"))
+
+
+@dataclass
+class SharedOwner(DataClassJsonMixin):
+    """SharedOwner owner type."""
+
+    owner_type: str
+    initial_shared_version: int
+
+
+@dataclass
+class ImmutableOwner(DataClassJsonMixin):
+    """ImmutableOwner owner type."""
+
+
+@dataclass
 class ObjectRead(DataClassJsonMixin):
     """DObjectRead is base ObjectRead result."""
 
@@ -382,7 +441,24 @@ class ObjectRead(DataClassJsonMixin):
 
     def __post_init__(self):
         """Post init processing for parameters."""
-        self.owner = self.owner["AddressOwner"]
+        vlist = list(self.owner.items())
+        match vlist[0][0]:
+            case "AddressOwner":
+                sdict = {}
+                sdict["owner"] = vlist[0][1]
+                sdict["owner_type"] = "AddressOwner"
+                self.owner = AddressOwner.from_dict(sdict)
+            case "ObjectOwner":
+                sdict = {}
+                sdict["owner"] = vlist[0][1]
+                sdict["owner_type"] = "ObjectOwner"
+                self.owner = ObjectOwner.from_dict(sdict)
+            case "Shared":
+                sdict = vlist[0][1]
+                sdict["owner_type"] = "Shared"
+                self.owner = SharedOwner.from_dict(sdict)
+            case "Immutable":
+                self.owner = ImmutableOwner.from_dict({})
 
     @property
     def identifier(self) -> ObjectID:
@@ -422,6 +498,7 @@ class ObjectRead(DataClassJsonMixin):
         :return: If it exists, ObjectRead subclass, if not ObjectNotExist or ObjectDeleted if it has been
         :rtype: Union[ObjectRead, ObjectNotExist, ObjectDeleted]
         """
+        # print(indata)
         read_object = indata["details"]
         match indata["status"]:
             case "Exists":
@@ -498,6 +575,45 @@ class SuiGas(SuiCoin):
     """
 
 
+# Committee
+
+
+@dataclass
+class Committee(DataClassJsonMixin):
+    """Committee detail."""
+
+    authority_key: str
+    staked_units: int
+
+
+@dataclass
+class CommitteeInfo(DataClassJsonMixin):
+    """Committee Info."""
+
+    epoch: int
+    committee_info: list[Committee]
+
+    def __post__init__(self):
+        """Post initializaation."""
+
+    @classmethod
+    def factory(cls, indata: dict) -> "CommitteeInfo":
+        """factory generates a CommitteeInfo type.
+
+        :param indata: return from RPC API
+        :type indata: dict
+        :return: An instance of a CommitteeInfo object
+        :rtype: CommitteeInfo
+        """
+        temp_list = []
+        if indata["committee_info"]:
+            for intcomm in indata["committee_info"]:
+                sdict = {"authority_key": intcomm[0], "staked_units": intcomm[1]}
+                temp_list.append(sdict)
+        indata["committee_info"] = temp_list
+        return CommitteeInfo.from_dict(indata)
+
+
 # Collection types
 
 
@@ -570,10 +686,34 @@ class SuiMap(SuiCollection):
         super().__init__(None)
         self.map = {key: value}
 
+    def add_kv_pair(self, key: str, value: Any) -> "SuiMap":
+        """Add key value pair to map."""
+        self.map[key] = value
+        return self
+
+    @property
+    def cursor(self) -> dict:
+        """Alias for query."""
+        return self.map
+
     @property
     def recipient(self) -> dict[str, Any]:
         """Alias for transactions."""
         return self.map
+
+    @property
+    def query(self) -> dict[str, Any]:
+        """Alias for transactions."""
+        return self.map
+
+
+class EventID(SuiMap):
+    """Event ID specifier."""
+
+    def __init__(self, event_seq: int, tx_seq: int):
+        """Initialize EventID."""
+        super().__init__("eventSeq", event_seq)
+        self.map["txSeq"] = tx_seq
 
 
 def address_from_keystring(indata: str) -> SuiAddress:

@@ -16,7 +16,19 @@
 import argparse
 import json
 import sys
+from typing import Union
 from pysui import __version__
+from pysui.sui.sui_builders import (
+    MoveEventQuery,
+    MoveModuleEventQuery,
+    ObjectEventQuery,
+    RecipientEventQuery,
+    SenderEventQuery,
+    TransactionEventQuery,
+    TimeRangeEventQuery,
+)
+from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
+from pysui.sui.sui_types import SuiBoolean, SuiMap, SuiString, EventID
 from pysui.abstracts import SignatureScheme
 from pysui.sui.sui_rpc import SuiRpcResult
 from pysui.sui.sui_utils import build_b64_modules
@@ -53,8 +65,10 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
     def _detail_gas(gas_objects: SuiRpcResult):
         if gas_objects.is_ok():
             for gasobj in gas_objects.result_data:
-                print(f"{gasobj.identifier} | {gasobj.balance}")
-            print(f"Total Gas = {wallet.total_gas(gas_objects.result_data)}")
+                print(f"{gasobj.identifier} | MISTS {gasobj.balance} SUI {gasobj.balance / SUI_COIN_DENOMINATOR}")
+            mists = wallet.total_gas(gas_objects.result_data)
+            sui = mists / SUI_COIN_DENOMINATOR
+            print(f"Total Gas = MISTS {mists} SUI {sui}")
         else:
             print(f"Sui RPC Error: {gas_objects.result_string} -> {gas_objects.result_data}")
 
@@ -275,30 +289,44 @@ def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(exc.args, file=sys.stderr)
 
 
-def switch(wallet: SuiWallet, args: argparse.Namespace) -> None:
-    """Switch address to active address."""
-    old = wallet.set_current_address(args.address)
-    print(f"Switched from {old} to {args.address}")
-    args.address = None
-    sui_gas(wallet, args)
-
-
 def committee(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Committee info request handler."""
     result = wallet.get_committee_info(args.epoch)
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def _convert_event_query(var_args: argparse.Namespace, query: Union[SuiString, SuiMap]) -> dict:
+    """Convert arguments to SuiTypes."""
+    var_args.pop("version")
+    var_args["query"] = query
+    curser_event_id = var_args["cursor"].split(":")
+    var_args["cursor"] = EventID(int(curser_event_id[0]), int(curser_event_id[1]))
+    var_args["descending_order"] = SuiBoolean(var_args["descending_order"])
+    return var_args
+
+
+def events_all(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Event info request handler for all events."""
+    var_args = vars(args)
+    result = wallet.get_events(**_convert_event_query(var_args, SuiString("All")))
+    if result.is_ok():
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
 def events_module(wallet: SuiWallet, args: argparse.Namespace) -> None:
-    """Event info request handler."""
+    """Event info request handler for module events."""
     var_args = vars(args)
-    var_args.pop("version")
-    result = wallet.get_module_events(**var_args)
+    query = MoveModuleEventQuery(args.module, args.package.value)
+    var_args.pop("package")
+    var_args.pop("module")
+    result = wallet.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
-        print(result.result_data)
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -306,10 +334,11 @@ def events_module(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_struct(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
-    var_args.pop("version")
-    result = wallet.get_struct_events(**var_args)
+    query = MoveEventQuery(args.struct_name)
+    var_args.pop("struct_name")
+    result = wallet.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
-        print(result.result_data)
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -317,10 +346,11 @@ def events_struct(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
-    var_args.pop("version")
-    result = wallet.get_object_events(**var_args)
+    query = ObjectEventQuery(args.object)
+    var_args.pop("object")
+    result = wallet.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
-        print(result.result_data)
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -328,10 +358,11 @@ def events_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_recipient(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
-    var_args.pop("version")
-    result = wallet.get_recipient_events(**var_args)
+    query = RecipientEventQuery(args.recipient)
+    var_args.pop("recipient")
+    result = wallet.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
-        print(result.result_data)
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -339,10 +370,11 @@ def events_recipient(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_sender(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
-    var_args.pop("version")
-    result = wallet.get_sender_events(**var_args)
+    query = SenderEventQuery(args.sender)
+    var_args.pop("sender")
+    result = wallet.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
-        print(result.result_data)
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -350,10 +382,12 @@ def events_sender(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_time(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
-    var_args.pop("version")
-    result = wallet.get_time_events(**var_args)
+    query = TimeRangeEventQuery(args.start_time, args.end_time)
+    var_args.pop("start_time")
+    var_args.pop("end_time")
+    result = wallet.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
-        print(result.result_data)
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -361,10 +395,11 @@ def events_time(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def events_tx(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
-    var_args.pop("version")
-    result = wallet.get_tx_events(**var_args)
+    query = TransactionEventQuery(args.digest)
+    var_args.pop("digest")
+    result = wallet.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
-        print(result.result_data)
+        print(json.dumps(result.result_data, indent=2))
     else:
         print(f"Error: {result.result_string}")
 
@@ -388,6 +423,7 @@ def txn_txn(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 
 SUI_CMD_DISPATCH = {
+    "event-all": events_all,
     "event-module": events_module,
     "event-struct": events_struct,
     "event-object": events_object,
@@ -414,7 +450,6 @@ SUI_CMD_DISPATCH = {
     "split-coin": split_coin,
     "call": move_call,
     "publish": publish,
-    "switch": switch,
     "committee": committee,
     "version": sdk_version,
 }

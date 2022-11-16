@@ -17,10 +17,10 @@
 import sys
 
 
-from .sui_constants import *
-from .sui_excepts import SuiInvalidAddress
-from .sui_apidesc import SuiApi, build_api_descriptors
-from .sui_builders import (
+from pysui.sui.sui_constants import *
+from pysui.sui.sui_excepts import SuiInvalidAddress
+from pysui.sui.sui_apidesc import SuiApi, build_api_descriptors
+from pysui.sui.sui_builders import (
     SuiBaseBuilder,
     GetObjectsOwnedByAddress,
     GetObject,
@@ -28,13 +28,7 @@ from .sui_builders import (
     GetPackage,
     GetRpcAPI,
     GetCommittee,
-    GetModuleEvents,
-    GetStructEvents,
-    GetObjectEvents,
-    GetRecipientEvents,
-    GetSenderEvents,
-    GetTimeEvents,
-    GetTxEvents,
+    GetEvents,
     GetTotalTxCount,
     GetTx,
     TransferSui,
@@ -50,9 +44,9 @@ from .sui_builders import (
     DryRunTransaction,
     SuiRequestType,
 )
-from .sui_config import SuiConfig
-from .sui_types import *
-from .sui_crypto import keypair_from_keystring
-from .sui_rpc import SuiClient, SuiRpcResult
-from .sui_txn_validator import validate_api, valid_sui_address
-from .sui_utils import *
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_types import *
+from pysui.sui.sui_crypto import keypair_from_keystring
+from pysui.sui.sui_rpc import SuiClient, SuiRpcResult
+from pysui.sui.sui_txn_validator import validate_api, valid_sui_address
+from pysui.sui.sui_utils import *

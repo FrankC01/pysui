@@ -31,6 +31,7 @@ from pysui.sui.sui_builders import (
     GetObjectsOwnedByAddress,
     GetObject,
     GetPackage,
+    GetEvents,
     Pay,
     PaySui,
     PayAllSui,
@@ -262,6 +263,26 @@ class SuiClient(SyncHttpRPC):
         """
         result = self.execute(GetPackage(package_id))
         return result
+
+    def get_events(self, **kwargs) -> SuiRpcResult:
+        r"""get_events `sui_getEvents` API.
+
+        :param \**kwargs:
+            See below
+        :raises ValueError: If missing required keyword
+        :return: EventEnvelopePage
+        :rtype: SuiRpcResult
+        :Keyword Arguments:
+            *   *query* (``SuiMap``)
+            *   *cursor* (``str``)
+            *   *limit*   (``int``)
+            *   *descending_order* (``bool``)
+        """
+        kword_set = set(kwargs.keys())
+        if kword_set == GetEvents.events_kwords:
+            return self.execute(GetEvents(**kwargs))
+        missing = GetEvents.events_kwords - kword_set
+        raise ValueError(f"Missing {missing}")
 
     def pay_txn(
         self,

@@ -102,10 +102,6 @@ def _build_read_cmds(subparser) -> None:
     addy_arg_group.add_argument("-e", "--ed25519", help="Generate using ed25519 scheme", action="store_true")
     addy_arg_group.add_argument("-s", "--secp256k1", help="Generate using secp256k1 scheme", action="store_true")
     subp.set_defaults(subcommand="new-address")
-    # Switch address
-    # subp = subparser.add_parser("switch", help="Change the active address")
-    # subp.add_argument("-a", "--address", required=True, help="Address to change to", action=ValidateAddress)
-    # subp.set_defaults(subcommand="switch")
     # Gas
     subp = subparser.add_parser("gas", help="Shows gas objects and total mist")
     subp.add_argument("-a", "--address", required=False, help="Gas for address", action=ValidateAddress)
@@ -506,12 +502,21 @@ def _build_extended_read_commands(subparser) -> None:
     """More Object read commands."""
 
     def __common_event_opts(eparser) -> None:
-        eparser.add_argument("-c", "--count", required=True, help="maximum number of the results", type=check_positive)
+        eparser.add_argument("-l", "--limit", required=True, help="limit results by page", type=check_positive)
         eparser.add_argument(
-            "-s", "--start_time", required=True, help="left endpoint of time interval, inclusive", type=check_positive
+            "-c",
+            "--cursor",
+            required=False,
+            help="optional paging cursor, entered as n:n (e.g. 10:0)",
+            type=str,
+            default="10:0",
         )
         eparser.add_argument(
-            "-e", "--end_time", required=True, help="right endpoint of time interval, exclusive", type=check_positive
+            "-d",
+            "--descending-order",
+            action="store_true",
+            default=False,
+            help="list results in descending order",
         )
 
     # Events
@@ -519,6 +524,10 @@ def _build_extended_read_commands(subparser) -> None:
         "events", help="Show events for types", usage="events subcommand [--subcommand_options]"
     )
     ecmds = subp.add_subparsers(title="subcommand", required=True)
+    # All events
+    esubp = ecmds.add_parser("all", help="Return all events")
+    __common_event_opts(esubp)
+    esubp.set_defaults(subcommand="event-all")
     # Module events
     esubp = ecmds.add_parser("module", help="Return events emitted in a specified Move module")
     esubp.add_argument("-p", "--package", required=True, help="the SUI package ID", action=ValidateObjectID)
@@ -526,8 +535,8 @@ def _build_extended_read_commands(subparser) -> None:
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-module")
     # Structure events
-    esubp = ecmds.add_parser("struct", help="Return events with the given move event struct name")
-    esubp.add_argument("-n", "--name", required=True, dest="move_event_struct_name", type=str)
+    esubp = ecmds.add_parser("struct", help="Return events with the given move structure name")
+    esubp.add_argument("-s", "--struct", required=True, dest="struct_name", type=str)
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-struct")
     # Object events
@@ -537,23 +546,38 @@ def _build_extended_read_commands(subparser) -> None:
     esubp.set_defaults(subcommand="event-object")
     # Recipient events
     esubp = ecmds.add_parser("recipient", help="Return events associated with the given recipient")
-    esubp.add_argument("-r", "--recipient", required=True, help="the SUI address of recipient", type=str)
+    esubp.add_argument("-r", "--recipient", required=True, help="the SUI address of recipient", action=ValidateAddress)
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-recipient")
     # Sender events
     esubp = ecmds.add_parser("sender", help="Return events associated with the given sender")
-    esubp.add_argument(
-        "-a", "--address", required=True, dest="sender", help="the SUI address of sender", action=ValidateAddress
-    )
+    esubp.add_argument("-s", "--sender", required=True, help="the SUI address of sender", action=ValidateAddress)
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-sender")
     # Time events
     esubp = ecmds.add_parser("time", help="Return events emitted in [start_time, end_time) interval")
     __common_event_opts(esubp)
+    esubp.add_argument(
+        "-s",
+        "--start-time",
+        required=True,
+        help="left endpoint of time interval, inclusive. This is number of milliseconds since Jan 1 1970",
+        type=check_positive,
+    )
+    esubp.add_argument(
+        "-e",
+        "--end-time",
+        required=True,
+        help="right endpoint of time interval, exclusive. This is number of milliseconds since Jan 1 1970",
+        type=check_positive,
+    )
     esubp.set_defaults(subcommand="event-time")
+    # Transaction events
     esubp = ecmds.add_parser("transaction", help="Return events emitted by the given transaction")
-    esubp.add_argument("-d", "--digest", required=True, help="the transaction's digest")
-    esubp.add_argument("-c", "--count", required=True, help="maximum number of the results", type=check_positive)
+    esubp.add_argument(
+        "-t", "--txn-digest", dest="digest", required=True, help="the transaction's base64 digest", type=str
+    )
+    __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-tx")
 
 
@@ -585,7 +609,7 @@ def build_parser(in_args: list) -> argparse.Namespace:
     _build_transfer_cmds(subparser)
     _build_pay_cmds(subparser)
     _build_package_cmds(subparser)
-    # _build_extended_read_commands(subparser)
+    _build_extended_read_commands(subparser)
     _build_tx_query_commands(subparser)
 
     return parser.parse_args(in_args if in_args else ["--help"])

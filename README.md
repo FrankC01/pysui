@@ -8,7 +8,6 @@ Refer to the [Change](CHANGELOG.md) log for recent additions, changes, fixes and
 * Doesn't support `sui_batchTransaction` RPC API yet
 * Doesn't use mnemonics yet (see [Issue](https://github.com/FrankC01/pysui/issues/9))
 * Partial coverage for `sui_getTransaction...` RPC API
-* Doesn't support `sui_getEvents` RPC API (added in SUI 0.15.0) yet
 
 ## Ready to run
 Requires:

@@ -10,8 +10,12 @@ Breaking Release
 
 ### Added
 - Pushed `pysui` 0.0.10 to [PyPi](https://pypi.org/project/pysui/)
+- SUI_COIN_DENOMINATOR: int = 1000000000 to `sui_constants.py`
+- CommitteeInfo type , in `sui_types.py`, for `sui_getCommitteeInfo` RPC API response
+- `bin/build.sh` for building only and not publishing to PyPi
 
 ### Fixed
+- Re-enabled event queries (`sui_getEvents`) on SuiClient (`sui_rpc.py`)
 - Closed [issue](https://github.com/FrankC01/pysui/issues/1)
 - Closed [issue](https://github.com/FrankC01/pysui/issues/20)
 - Closed [issue](https://github.com/FrankC01/pysui/issues/22)
@@ -21,6 +25,8 @@ Breaking Release
 - ObjectRead, and subclasses, moved to dataclass types as per [issue](https://github.com/FrankC01/pysui/issues/1)
 - SuiNumber renamed to SuiInteger as per [issue](https://github.com/FrankC01/pysui/issues/22)
 - Update README.md example to reflect RPC Client method additions
+- Handle different 'owner' types in ObjectRead type
+
 
 ### Removed
 
