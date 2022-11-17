@@ -17,6 +17,7 @@ Breaking Release
 - `GetTxs` builder in `sui_builders.py` and TransactionQueryEnvelope, in `sui_types.py` for `sui_getTransactions` RPC API response.
 
 ### Fixed
+- Builder and RPC API parameter name fixes.
 - Re-enabled event queries (`sui_getEvents`) on SuiClient (`sui_rpc.py`)
 - Closed [issue](https://github.com/FrankC01/pysui/issues/1)
 - Closed [issue](https://github.com/FrankC01/pysui/issues/20)

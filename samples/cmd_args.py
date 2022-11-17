@@ -377,7 +377,7 @@ def _build_package_cmds(subparser) -> None:
     )
     subp.add_argument(
         "-p",
-        "--package",
+        "--package-object-id",
         required=True,
         help="Specify the package ID owner of the move module and function.",
         action=ValidateObjectID,
@@ -398,7 +398,7 @@ def _build_package_cmds(subparser) -> None:
     )
     subp.add_argument(
         "-t",
-        "--types",
+        "--type-arguments",
         required=False,
         nargs="+",
         help="Generic types (if any).",

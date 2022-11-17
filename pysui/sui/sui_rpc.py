@@ -128,7 +128,6 @@ class SuiClient(SyncHttpRPC):
         """Execute the builder construct."""
         parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
         jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
-        # import json
         # jout = json.dumps(jblock, indent=2)
         # print(f"{jout}")
         try:
@@ -349,9 +348,9 @@ class SuiClient(SyncHttpRPC):
             *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
-        if kword_set == PaySui.pay_kwords:
+        if kword_set == PaySui.paysui_kwords:
             return self.execute(PaySui(**kwargs))
-        missing = PaySui.pay_kwords - kword_set
+        missing = PaySui.paysui_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
     def pay_allsui_txn(
@@ -372,9 +371,9 @@ class SuiClient(SyncHttpRPC):
             *   *gas_budget* (``SuiInteger``)
         """
         kword_set = set(kwargs.keys())
-        if kword_set == PayAllSui.payall_kwords:
+        if kword_set == PayAllSui.payallsui_kwords:
             return self.execute(PayAllSui(**kwargs))
-        missing = PayAllSui.payall_kwords - kword_set
+        missing = PayAllSui.payallsui_kwords - kword_set
         raise ValueError(f"Missing {missing}")
 
     def transfer_sui_txn(
