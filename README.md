@@ -30,13 +30,15 @@ If, instead, you want to work with repo source code then read DEVELOP.md from re
 `pip install pysui`
 
 ## Using the SDK
+### Example 1 - Query Gas
 Here is a sample script demonstrating the fundementals for effective pysui usage:
 ```python
 """Simple SDK example - Get gas for active address."""
 
+
 from pysui.sui.sui_rpc import SuiClient, RpcResult
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_types import SuiGasType, SuiGasDescriptor
+from pysui.sui.sui_types import SuiGas, SuiGasDescriptor
 
 # Well knowns
 GAS_TYPE_SIG: str = "0x2::coin::Coin<0x2::sui::SUI>"
@@ -67,18 +69,14 @@ def main():
             # For each check if a gas type object and, if so, get the details
             # on the object
             if item.type_ == GAS_TYPE_SIG:
-                print(item)
+                # print(item)
                 obj_result: RpcResult = client.get_object(item.identifier)
-                # builder = GetObject(ObjectID(item["objectId"]))
-                # obj_res: RpcResult = client.execute(builder)
                 if obj_result.is_ok():
-                    # Use the helper function to convert the json results
-                    # to a sui_type SuiGasType object
-                    gas_object: SuiGasType = obj_result.result_data
-                    print(f"Gas object: {gas_object.identifier} has {gas_object.balance} mists")
+                    # Result data is SuiGas type object
+                    gas_object: SuiGas = obj_result.result_data
+                    print(f"Gas object: {gas_object.identifier} has {gas_object.balance:12} mists")
             else:
                 print(item)
-
     else:
         print(f"Failed execution with {result.result_string}")
 
