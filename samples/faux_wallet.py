@@ -104,6 +104,16 @@ class SuiWallet:
         """Get transaction information from query."""
         return self._client.get_txns(**kwargs)
 
+    def faucet(self, address: SuiAddress = None) -> SuiRpcResult:
+        """faucet Attempt to get gas from SUI faucet.
+
+        :param address: SUI address to transfer gas to, defaults to None
+        :type address: SuiAddress, optional
+        :return: Result of call to get more gas
+        :rtype: SuiRpcResult
+        """
+        return self._client.get_gas_from_faucet(address)
+
     def transfer_sui(
         self,
         **kwargs: dict,

@@ -285,6 +285,23 @@ class SuiAddress(SuiBaseType):
 
 
 @dataclass
+class FaucetGas(DataClassJsonMixin):
+    """Faucet Gas Object."""
+
+    amount: int
+    object_id: str = field(metadata=config(field_name="id"))
+    transfer_tx_digest: str
+
+
+@dataclass
+class FaucetGasRequest(DataClassJsonMixin):
+    """Result of faucet get gas."""
+
+    transferred_gas_objects: list[FaucetGas]
+    error: dict = None
+
+
+@dataclass
 class GenericRef(DataClassJsonMixin):
     """Generic object reference."""
 

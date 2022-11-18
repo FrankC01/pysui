@@ -13,7 +13,14 @@
 
 """Transaction result tests."""
 
-from pysui.sui.sui_types import TxEffectResult, MovePackage, ObjectInfo, ObjectRead, EventQueryEnvelope
+from pysui.sui.sui_types import (
+    FaucetGasRequest,
+    TxEffectResult,
+    MovePackage,
+    ObjectInfo,
+    ObjectRead,
+    EventQueryEnvelope,
+)
 
 
 def test_sui_coin_descriptor(sui_coin_descriptor):
@@ -115,3 +122,9 @@ def test_getevent_result_pass(get_event_result):
     """Valid result."""
     result = EventQueryEnvelope.from_dict(get_event_result)
     assert result is not None
+
+
+def test_getfaucetgas_pass(get_gas_result):
+    """Valid result."""
+    result = FaucetGasRequest.from_dict(get_gas_result)
+    assert result.error is None

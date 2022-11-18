@@ -132,6 +132,16 @@ def _build_read_cmds(subparser) -> None:
         type=check_positive,
     )
     subp.set_defaults(subcommand="committee")
+    # Faucet usage
+    subp = subparser.add_parser("faucet", help="Get additional gas from SUI faucet")
+    subp.add_argument(
+        "-a",
+        "--address",
+        required=False,
+        help="The address to transfer gas to. If None, defaults to the active-address",
+        action=ValidateAddress,
+    )
+    subp.set_defaults(subcommand="faucet")
 
 
 def _build_transfer_cmds(subparser) -> None:

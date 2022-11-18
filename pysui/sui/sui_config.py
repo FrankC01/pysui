@@ -35,9 +35,9 @@ from .sui_excepts import (
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
-    DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
-    FAUCET_LOCAL_URL = "http://127.0.0.1:9123"
-    FAUCET_DEVNET_URL = "https://faucet.devnet.sui.io:9123"
+    _DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
+    _FAUCET_LOCAL_URL = "http://127.0.0.1:9123"
+    _FAUCET_DEVNET_URL = "http://faucet.devnet.sui.io/gas"
 
     def __init__(self, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
         """Initialize the default config."""
@@ -46,9 +46,9 @@ class SuiConfig(ClientConfiguration):
         self._current_url = current_url
         self._current_env = env
         if env == "localnet":
-            self._faucet_url = self.FAUCET_LOCAL_URL
+            self._faucet_url = self._FAUCET_LOCAL_URL
         else:
-            self._faucet_url = self.FAUCET_DEVNET_URL
+            self._faucet_url = self._FAUCET_DEVNET_URL
 
         if os.path.exists(keystore_file):
             self._keypairs = {}
@@ -85,8 +85,7 @@ class SuiConfig(ClientConfiguration):
             raise SuiFileNotFound((filepath))
 
     def create_new_keypair_and_address(self, scheme: SignatureScheme) -> str:
-        """
-        Create a new keypair and address identifier and return the address string.
+        """Create a new keypair and address identifier and return the address string.
 
         The scheme defines generation of ED25519 or SECP256K1 keypairs.
         """
@@ -132,7 +131,7 @@ class SuiConfig(ClientConfiguration):
     @classmethod
     def default(cls) -> "SuiConfig":
         """Load the default Sui Config from well known path."""
-        expanded_path = os.path.expanduser(cls.DEFAULT_PATH_STRING)
+        expanded_path = os.path.expanduser(cls._DEFAULT_PATH_STRING)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:
                 return cls(*cls._parse_config(Path(expanded_path), core_file))
@@ -158,6 +157,11 @@ class SuiConfig(ClientConfiguration):
     def rpc_url(self) -> str:
         """Return the current URL."""
         return self._current_url
+
+    @property
+    def faucet_url(self) -> str:
+        """Return faucet url."""
+        return self._faucet_url
 
     @property
     def active_address(self) -> SuiAddress:

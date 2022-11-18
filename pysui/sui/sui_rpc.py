@@ -20,7 +20,7 @@ from json import JSONDecodeError
 from typing import Any, Union
 import httpx
 from pysui.abstracts import SyncHttpRPC, RpcResult
-from pysui.sui.sui_types import ObjectID, SuiTxBytes, ObjectInfo, SuiAddress
+from pysui.sui.sui_types import FaucetGasRequest, ObjectID, SuiTxBytes, ObjectInfo, SuiAddress
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_builders import (
     DryRunTransaction,
@@ -193,6 +193,32 @@ class SuiClient(SyncHttpRPC):
         return list(self._rpc_api.keys())
 
     # Build and execute convenience methods
+
+    def get_gas_from_faucet(self, for_address: SuiAddress = None) -> Any:
+        """get_gas_from_faucet Gets gas from SUI faucet.
+
+        **Note**: This is only for devnet, testnet and local usage.
+        :param for_address: Address to transfer faucet gas to, defaults to None
+        :type for_address: SuiAddress, optional
+        :return: _description_
+        :rtype: Any
+        """
+        for_address = for_address or self.config.active_address
+        try:
+            result = self._client.post(
+                self.config.faucet_url,
+                headers=GetObjectsOwnedByAddress(for_address).header,
+                json={"FixedAmountRequest": {"recipient": f"{for_address}"}},
+            ).json()
+            if result["error"] is None:
+                return SuiRpcResult(True, None, FaucetGasRequest.from_dict(result))
+            return SuiRpcResult(False, result["error"])
+        except JSONDecodeError as jexc:
+            return SuiRpcResult(False, f"JSON Decoder Error {jexc.msg}", vars(jexc))
+        except httpx.ReadTimeout as hexc:
+            return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
+        except TypeError as texc:
+            return SuiRpcResult(False, "Type error", vars(texc))
 
     def get_address_object_descriptors(
         self, claz: ObjectInfo = None, address: SuiAddress = None

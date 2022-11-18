@@ -512,6 +512,15 @@ def txns_to(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
+def sui_faucet(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Get more gas from SUI faucet."""
+    result = wallet.faucet(args.address)
+    if result.is_ok():
+        print(f"Faucet Result: {result.result_data.to_json(indent=2)}.")
+    else:
+        print(f"Faucet Error: {result.result_string}")
+
+
 SUI_CMD_DISPATCH = {
     "event-all": events_all,
     "event-module": events_module,
@@ -548,4 +557,5 @@ SUI_CMD_DISPATCH = {
     "publish": publish,
     "committee": committee,
     "version": sdk_version,
+    "faucet": sui_faucet,
 }

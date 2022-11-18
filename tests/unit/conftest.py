@@ -1442,3 +1442,38 @@ def get_event_result():
         ],
         "nextCursor": None,
     }
+
+
+@pytest.fixture
+def get_gas_result():
+    """Return result of getting SUI gas from faucet."""
+    return {
+        "transferred_gas_objects": [
+            {
+                "amount": 10000000,
+                "id": "0x3457a29e3ac20c74d93996c5c525091c88de7dfa",
+                "transfer_tx_digest": "ZzEpx6Eio5F1pvEC8CVDQO9R0F2CGJYAKq1kWOtqBpQ=",
+            },
+            {
+                "amount": 10000000,
+                "id": "0x81b70d63c7df76c1e814cbd29be59056193d9bea",
+                "transfer_tx_digest": "ZzEpx6Eio5F1pvEC8CVDQO9R0F2CGJYAKq1kWOtqBpQ=",
+            },
+            {
+                "amount": 10000000,
+                "id": "0xcd1c919fd290c37a31c6848eaf62dcc397b65f35",
+                "transfer_tx_digest": "ZzEpx6Eio5F1pvEC8CVDQO9R0F2CGJYAKq1kWOtqBpQ=",
+            },
+            {
+                "amount": 10000000,
+                "id": "0xe1f1a852ab9136f844d4b586679003578a414e2f",
+                "transfer_tx_digest": "ZzEpx6Eio5F1pvEC8CVDQO9R0F2CGJYAKq1kWOtqBpQ=",
+            },
+            {
+                "amount": 10000000,
+                "id": "0xfe0dd544dbf88d81e38fbd43c8a5db0bc42dedd5",
+                "transfer_tx_digest": "ZzEpx6Eio5F1pvEC8CVDQO9R0F2CGJYAKq1kWOtqBpQ=",
+            },
+        ],
+        "error": None,
+    }
