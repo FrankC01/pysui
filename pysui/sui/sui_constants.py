@@ -16,6 +16,20 @@
 
 SUI_COIN_DENOMINATOR: int = 1000000000
 
+# Config file constants
+DEFAULT_DEVNET_PATH_STRING: str = "~/.sui/sui_config/client.yaml"
+"""Devnet client configuration default."""
+DEVNET_ENVIRONMENT_KEY: str = "devnet"
+"""Devnet client configuration environment alias."""
+DEVNET_FAUCET_URL: str = "http://faucet.devnet.sui.io/gas"
+"""Devnet client faucet url."""
+
+LOCALNET_ENVIRONMENT_KEY: str = "localnet"
+"""Localnet client configuration environment alias."""
+LOCALNET_FAUCET_URL: str = "http://127.0.0.1:9123/gas"
+"""Localnet client faucet url."""
+
+# Address lengths
 SUI_HEX_ADDRESS_STRING_LEN: int = 42
 """Length of valid address string with '0x' prefix."""
 SUI_ADDRESS_STRING_LEN: int = 40

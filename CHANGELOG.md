@@ -5,8 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - Current dev version - 0.1.0
+
+Breaking Changes (noted in bold)
+
 ### Added
 - Pushed `pysui` 0.0.11 to [PyPi](https://pypi.org/project/pysui/)
+- `get_gas_from_faucet` devnet only [enhancement](https://github.com/FrankC01/pysui/issues/23)
+- Integration testing (devnet synchronous) [enhancement](https://github.com/FrankC01/pysui/issues/24)
+- Started SuiAsynchClient [enhancement](https://github.com/FrankC01/pysui/issues/17)
+
 ### Fixed
 ### Changed
 ### Removed

@@ -16,36 +16,36 @@
 from pysui.sui import SuiConfig, SuiAddress
 
 
-def test_multi_address_pass(configuration):
+def test_multi_address_pass(sui_configuration):
     """test_multi_address Validates multiple addresses.
 
     :param configuration: A devnet configuration
     :type configuration: SuiConfig
     """
-    assert isinstance(configuration, SuiConfig)
-    assert configuration.rpc_url == "https://fullnode.devnet.sui.io:443"
-    assert configuration.faucet_url == "http://faucet.devnet.sui.io/gas"
-    assert len(configuration.addresses) >= 2
+    assert isinstance(sui_configuration, SuiConfig)
+    assert sui_configuration.rpc_url == "https://fullnode.devnet.sui.io:443"
+    assert sui_configuration.faucet_url == "http://faucet.devnet.sui.io/gas"
+    assert len(sui_configuration.addresses) >= 3
 
 
-def test_address_keypair_parity_pass(configuration):
+def test_address_keypair_parity_pass(sui_configuration):
     """test_address_keypair_parity_pass Validates address and keypair parity.
 
     :param configuration: A devnet configuration
     :type configuration: SuiConfig
     """
-    assert len(configuration.addresses) == len(configuration.keystrings)
+    assert len(sui_configuration.addresses) == len(sui_configuration.keystrings)
 
 
-def test_address_keypairs_match_pass(configuration):
+def test_address_keypairs_match_pass(sui_configuration):
     """test_address_keypairs_match_pass Verify addresses are one of keystrings.
 
     :param configuration: A devnet configuration
     :type configuration: SuiConfig
     """
-    active_address = configuration.active_address
-    addresses = set(configuration.addresses)
+    active_address = sui_configuration.active_address
+    addresses = set(sui_configuration.addresses)
     assert active_address.identifier in addresses
-    for keystring in configuration.keystrings:
+    for keystring in sui_configuration.keystrings:
         address = SuiAddress.from_keypair_string(keystring)
         assert address.identifier in addresses

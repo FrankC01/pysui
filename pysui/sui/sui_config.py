@@ -21,9 +21,10 @@ from io import TextIOWrapper
 from pathlib import Path
 import json
 import yaml
-from ..abstracts import ClientConfiguration, SignatureScheme, KeyPair
-from .sui_crypto import SuiAddress, keypair_from_keystring, create_new_address
-from .sui_excepts import (
+from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
+from pysui.sui import DEFAULT_DEVNET_PATH_STRING, DEVNET_FAUCET_URL, LOCALNET_ENVIRONMENT_KEY, LOCALNET_FAUCET_URL
+from pysui.sui.sui_crypto import SuiAddress, keypair_from_keystring, create_new_address
+from pysui.sui.sui_excepts import (
     SuiConfigFileError,
     SuiFileNotFound,
     SuiNoKeyPairs,
@@ -35,20 +36,17 @@ from .sui_excepts import (
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
-    _DEFAULT_PATH_STRING = "~/.sui/sui_config/client.yaml"
-    _FAUCET_LOCAL_URL = "http://127.0.0.1:9123"
-    _FAUCET_DEVNET_URL = "http://faucet.devnet.sui.io/gas"
-
     def __init__(self, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
         """Initialize the default config."""
         super().__init__(keystore_file)
         self._active_address = SuiAddress.from_hex_string(active_address)
         self._current_url = current_url
         self._current_env = env
-        if env == "localnet":
-            self._faucet_url = self._FAUCET_LOCAL_URL
+        if env == LOCALNET_ENVIRONMENT_KEY:
+            self._faucet_url = LOCALNET_FAUCET_URL
+
         else:
-            self._faucet_url = self._FAUCET_DEVNET_URL
+            self._faucet_url = DEVNET_FAUCET_URL
 
         if os.path.exists(keystore_file):
             self._keypairs = {}
@@ -131,7 +129,7 @@ class SuiConfig(ClientConfiguration):
     @classmethod
     def default(cls) -> "SuiConfig":
         """Load the default Sui Config from well known path."""
-        expanded_path = os.path.expanduser(cls._DEFAULT_PATH_STRING)
+        expanded_path = os.path.expanduser(DEFAULT_DEVNET_PATH_STRING)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:
                 return cls(*cls._parse_config(Path(expanded_path), core_file))

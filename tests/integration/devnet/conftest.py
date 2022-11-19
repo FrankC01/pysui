@@ -15,17 +15,18 @@
 
 import pytest
 from pysui.abstracts.client_keypair import SignatureScheme
-from pysui.sui import SuiConfig, SuiClient
+from pysui.sui import SuiConfig, SuiClient, SuiRpcResult
+from pysui.sui.sui_types import SuiGasDescriptor
 
 
 @pytest.fixture(scope="package")
-def configuration():
+def sui_configuration():
     """configuration Get a SuiConfig for devnet.
 
     :return: Configuration loaded from ~/.sui/sui_config/client.yaml
     :rtype: SuiConfig
     """
-    config = SuiConfig.default()
+    config: SuiConfig = SuiConfig.default()
     if len(config.addresses) == 1:
         config.create_new_keypair_and_address(SignatureScheme.ED25519)
 
@@ -33,10 +34,18 @@ def configuration():
 
 
 @pytest.fixture(scope="package")
-def client(configuration: SuiConfig):
+def sui_client(sui_configuration):
     """client Get a SuiClient (synch) for devnet.
 
     :param configuration: The input configuration
     :type configuration: SuiConfig
     """
-    return SuiClient(configuration)
+    config = sui_configuration
+    client: SuiClient = SuiClient(config)
+    result: SuiRpcResult = client.get_address_object_descriptors(SuiGasDescriptor)
+    if result.is_ok():
+        if len(result.result_data) == 0:
+            client.get_gas_from_faucet(config.active_address)
+    else:
+        raise ValueError(f"Error making get_address_object_descriptors call: {result.result_string}")
+    return client
