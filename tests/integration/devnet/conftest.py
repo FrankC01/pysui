@@ -13,10 +13,21 @@
 
 """Fixtures for testing."""
 
+import os
+from pathlib import Path
 import pytest
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui import SuiConfig, SuiClient, SuiRpcResult
 from pysui.sui.sui_types import SuiGasDescriptor
+
+TRACKER_DIR: str = "/sui-test"
+
+
+@pytest.fixture(scope="package")
+def sui_test_move_path():
+    """sui_test_move Sets up test move module."""
+    my_path = os.getenv("PYTEST_CURRENT_TEST").split("/")[0] + TRACKER_DIR
+    return Path(os.path.abspath(my_path))
 
 
 @pytest.fixture(scope="package")

@@ -20,13 +20,11 @@ import sys
 
 
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
+PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
+PARENT = PROJECT_DIR.parent
 
-sys.path += [
-    str(PROJECT_DIR),
-    os.path.join(PROJECT_DIR.parent, "samples"),
-    os.path.join(PROJECT_DIR.parent, "pysui"),
-]
-
+sys.path.insert(0, PROJECT_DIR)
+sys.path.insert(0, os.path.join(PARENT, "pysui"))
 
 from pysui.sui import SuiConfig
 

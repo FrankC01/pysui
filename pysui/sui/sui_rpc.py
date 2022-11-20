@@ -83,7 +83,7 @@ class SuiClient(SyncHttpRPC):
     def __init__(self, config: SuiConfig) -> None:
         """Client initializer."""
         super().__init__(config)
-        self._client = httpx.Client()
+        self._client = httpx.Client(http2=True)
         self._rpc_api = {}
         self._build_api_descriptors()
 
@@ -154,6 +154,7 @@ class SuiClient(SyncHttpRPC):
             if result.is_ok():
                 if "error" in result.result_data:
                     return SuiRpcResult(False, result.result_data["error"], None)
+                print(result.result_data)
                 return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
             return result
         return self._signed_execution(builder, dry_run)

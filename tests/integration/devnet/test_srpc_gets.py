@@ -13,7 +13,7 @@
 
 """Synchronous RPC testing."""
 
-from typing import Union
+
 from pysui.sui import SuiClient, SuiRpcResult
 from pysui.sui.sui_builders import GetCommittee
 from pysui.sui.sui_types import SuiGasDescriptor, SuiAddress, SuiGas
@@ -49,12 +49,12 @@ def test_get_gas_activeaddress_pass(sui_client: SuiClient):
     assert total_balance > 0
 
 
-def test_get_gas_anyaddress_pass(sui_client: SuiClient) -> Union[SuiAddress, None]:
+def test_get_gas_anyaddress_pass(sui_client: SuiClient):
     """test_get_gas_anyaddress_pass Check any other address has gas.
 
-    :param sui_client: _description_
-    :type sui_client: Synchronous http client
-    :return: The unique non-active-address SuiAddress or None if one does not exist
+    :param sui_client: Synchronous http client
+    :type sui_client: SuiClient
+    :return: The unique non-active-address SuiAddress and it's gas objects or None if one does not exist
     :rtype: Union[SuiAddress, None]
     """
     active_address = sui_client.config.active_address
@@ -67,8 +67,6 @@ def test_get_gas_anyaddress_pass(sui_client: SuiClient) -> Union[SuiAddress, Non
         gas_balances = [gas.balance for gas in gas_objects]
         total_balance = sum(gas_balances)
         assert total_balance > 0
-        return inaddr
-    return None
 
 
 def test_committee(sui_client: SuiClient) -> None:

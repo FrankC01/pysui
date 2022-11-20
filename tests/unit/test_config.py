@@ -26,10 +26,10 @@ def test_config_pass() -> None:
     assert config is not None
 
 
-def test_from_config_pass() -> None:
-    """Test loading well known config."""
-    config = SuiConfig.from_config_file("~/sui_local/client.yaml")
-    assert config is not None
+# def test_from_config_pass() -> None:
+#     """Test loading well known config."""
+#     config = SuiConfig.from_config_file("~/sui_local/client.yaml")
+#     assert config is not None
 
 
 @pytest.mark.xfail(raises=Exception)

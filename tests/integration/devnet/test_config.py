@@ -25,7 +25,7 @@ def test_multi_address_pass(sui_configuration):
     assert isinstance(sui_configuration, SuiConfig)
     assert sui_configuration.rpc_url == "https://fullnode.devnet.sui.io:443"
     assert sui_configuration.faucet_url == "http://faucet.devnet.sui.io/gas"
-    assert len(sui_configuration.addresses) >= 3
+    assert len(sui_configuration.addresses) >= 2
 
 
 def test_address_keypair_parity_pass(sui_configuration):
