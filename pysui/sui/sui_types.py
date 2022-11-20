@@ -229,6 +229,13 @@ class SuiInteger(SuiScalarType):
             return 0
         return self.value
 
+    @property
+    def version(self) -> int:
+        """Alias for transactions."""
+        if self.value is None:
+            return 0
+        return self.value
+
 
 class SuiAddress(SuiBaseType):
     """Sui Address Type."""
@@ -298,7 +305,7 @@ class FaucetGasRequest(DataClassJsonMixin):
     """Result of faucet get gas."""
 
     transferred_gas_objects: list[FaucetGas]
-    error: dict = None
+    error: Optional[dict] = None
 
 
 @dataclass
@@ -517,6 +524,8 @@ class ObjectRead(DataClassJsonMixin):
         """
         # print(indata)
         read_object = indata["details"]
+        if indata["status"] == "VersionFound":
+            indata["status"] = "Exists"
         match indata["status"]:
             case "Exists":
                 split = read_object["data"]["type"].split("::", 2)

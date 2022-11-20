@@ -20,6 +20,7 @@ from typing import Union
 from pysui import __version__
 from pysui.sui.sui_builders import (
     MoveEventQuery,
+    GetPastObject,
     MoveModuleEventQuery,
     ObjectEventQuery,
     RecipientEventQuery,
@@ -33,7 +34,7 @@ from pysui.sui.sui_builders import (
     GetTxsMoveFunction,
 )
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
-from pysui.sui.sui_types import SuiBoolean, SuiMap, SuiString, EventID
+from pysui.sui.sui_types import SuiBoolean, SuiInteger, SuiMap, SuiString, EventID
 from pysui.abstracts import SignatureScheme
 from pysui.sui.sui_rpc import SuiRpcResult
 from pysui.sui.sui_utils import build_b64_modules
@@ -102,7 +103,10 @@ def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Show specific object."""
-    sobject = wallet.get_object(args.id)
+    if args.generation:
+        sobject = wallet.execute(GetPastObject(args.id, SuiInteger(args.generation)))
+    else:
+        sobject = wallet.get_object(args.id)
     if sobject.is_ok():
         print("Object")
         if isinstance(sobject.result_data, list):

@@ -109,6 +109,7 @@ def _build_read_cmds(subparser) -> None:
     # Object
     subp = subparser.add_parser("object", help="Show object by id")
     subp.add_argument("-i", "--id", required=True, action=ValidateObjectID)
+    subp.add_argument("-g", "--generation", required=False, type=int)
     subp.add_argument("-j", "--json", required=False, help="Display output as json", action="store_true")
     subp.set_defaults(subcommand="object")
     # Objects

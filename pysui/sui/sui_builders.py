@@ -208,6 +208,30 @@ class GetObject(_NativeTransactionBuilder):
         return [self.object_id]
 
 
+class GetPastObject(_NativeTransactionBuilder):
+    """Fetch past object."""
+
+    def __init__(self, sui_object: ObjectID = None, version: SuiInteger = None) -> None:
+        """Initialize Builder."""
+        super().__init__("sui_tryGetPastObject", handler_cls=ObjectRead, handler_func="factory")
+        self.object_id: ObjectID = sui_object
+        self.version: SuiInteger = version
+
+    def set_object(self, sui_object: ObjectID) -> "GetPastObject":
+        """Set the object to fetch objects owned by."""
+        self.object_id: ObjectID = sui_object
+        return self
+
+    def set_version(self, version: SuiInteger) -> "GetPastObject":
+        """Set the object version."""
+        self.version: SuiInteger = version
+        return self
+
+    def _collect_parameters(self) -> list[ObjectInfo]:
+        """Collect the call parameters."""
+        return [self.object_id, self.version]
+
+
 class GetPackage(_NativeTransactionBuilder):
     """Fetch package definitions including modules and functions."""
 
