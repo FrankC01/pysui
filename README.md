@@ -113,14 +113,14 @@ Implementation demonstrating most SUI RPC API calls like the SUI CLI (i.e. `sui 
 
 #### Output
 ```bash
-usage: wallet [options] command [--command_options]
+usage: wallet.py [options] command [--command_options]
 
 options:
   -h, --help            show this help message and exit
   -v, --version         Show pysui SDK version
 
 commands:
-  {active-address,addresses,new-address,gas,object,objects,rpcapi,committee,merge-coin,split-coin,transfer-object,transfer-sui,pay,paysui,payallsui,package,publish,call,events,txns}
+  {active-address,addresses,new-address,gas,object,objects,rpcapi,committee,faucet,merge-coin,split-coin,transfer-object,transfer-sui,pay,paysui,payallsui,package,publish,call,events,txns}
     active-address      Shows active address
     addresses           Shows all addresses
     new-address         Generate new address and keypair
@@ -129,6 +129,7 @@ commands:
     objects             Show all objects
     rpcapi              Show Sui RPC API information
     committee           Show committee info for epoch
+    faucet              Get additional gas from SUI faucet
     merge-coin          Merge two coins together
     split-coin          Split coin into one or more coins
     transfer-object     Transfer an object from one address to another
