@@ -524,10 +524,8 @@ class ObjectRead(DataClassJsonMixin):
         """
         # print(indata)
         read_object = indata["details"]
-        if indata["status"] == "VersionFound":
-            indata["status"] = "Exists"
         match indata["status"]:
-            case "Exists":
+            case "Exists" | "VersionFound":
                 split = read_object["data"]["type"].split("::", 2)
                 if split[0] == "0x2":
                     match split[1]:

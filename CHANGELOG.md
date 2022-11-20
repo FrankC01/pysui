@@ -10,9 +10,10 @@ Breaking Changes (noted in bold)
 
 ### Added
 - Pushed `pysui` 0.0.11 to [PyPi](https://pypi.org/project/pysui/)
-- `get_gas_from_faucet` devnet only [enhancement](https://github.com/FrankC01/pysui/issues/23)
-- Integration testing (devnet synchronous) [enhancement](https://github.com/FrankC01/pysui/issues/24)
+- `get_gas_from_faucet` **devnet** only [enhancement](https://github.com/FrankC01/pysui/issues/23)
+- Integration testing (**devnet synchronous**) [enhancement](https://github.com/FrankC01/pysui/issues/24)
 - Started SuiAsynchClient [enhancement](https://github.com/FrankC01/pysui/issues/17)
+- GetPastObject builder implementing `sui_tryGetPastObject` [closes](https://github.com/FrankC01/pysui/issues/25)
 
 ### Fixed
 ### Changed
