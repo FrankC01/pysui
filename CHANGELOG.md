@@ -16,9 +16,13 @@ Breaking Changes (noted in bold)
 - GetPastObject builder implementing `sui_tryGetPastObject` [closes](https://github.com/FrankC01/pysui/issues/25)
 
 ### Fixed
-### Changed
-### Removed
+- Secp256k1 buh fixed [issue](https://github.com/FrankC01/pysui/issues/26)
 
+### Changed
+- SuiClient and SuiAsynchClient deriving from abstracts `Provider`
+
+### Removed
+- `SyncHttpRPC` and `AsyncHttpRPC` from `abstracts/client_rpc.py` as part of [issue](https://github.com/FrankC01/pysui/issues/17)
 ## [0.0.11] - 2022-11-18
 
 Breaking Release

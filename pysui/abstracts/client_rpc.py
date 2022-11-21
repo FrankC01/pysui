@@ -85,19 +85,3 @@ class Provider(ABC):
     def config(self) -> ClientConfiguration:
         """Return the client configuration."""
         return self._config
-
-
-class SyncHttpRPC(Provider):
-    """Synchronous HTTP RPC Client."""
-
-    @abstractmethod
-    def execute(self, builder: Builder) -> RpcResult:
-        """Execute builder content."""
-
-
-class AsyncHttpRPC(Provider):
-    """Asynchronous HTTP RPC Client."""
-
-    @abstractmethod
-    async def execute(self, builder: Builder) -> RpcResult:
-        """Execute builder content."""

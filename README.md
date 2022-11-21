@@ -107,6 +107,9 @@ Gas object: 0xfc7729a83a1e13973cb0bbbd1a92f70ed772e14f has     10000000 mists
 ## Sample Wallet
 Implementation demonstrating most SUI RPC API calls like the SUI CLI (i.e. `sui client ...`).
 
+**NOTE**: Sample wallet uses synchronous SuiClient. I leave it up to the ambitious to
+write similar for asynchronous SuiAsynchClient
+
 ### Run sample wallet app for help
 - pysui 0.0.6 or 0.0.7: `python -m samples.wallet`
 - pysui >= 0.0.7: `wallet`

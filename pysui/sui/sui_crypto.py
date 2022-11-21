@@ -33,8 +33,6 @@ from .sui_constants import (
 )
 from .sui_types import SuiSignature, SuiAddress
 
-# m / purpose' / coin_type' / account' / change / address_index
-_DEFAULT_ED25519_PATH = "m/44'/784'/0'/0'/0'"
 
 # Edwards Curve Keys
 
@@ -211,7 +209,7 @@ class SuiKeyPairSECP256K1(KeyPair):
             raise SuiInvalidKeyPair(f"Expect str len of {SUI_KEYPAIR_LEN}")
         base_decode = base64.b64decode(indata)
         if base_decode[0] == SignatureScheme.SECP256K1:
-            return SuiKeyPairED25519.from_bytes(base_decode[1:])
+            return SuiKeyPairSECP256K1.from_bytes(base_decode[1:])
         raise SuiInvalidKeyPair("Scheme not SECP256K1")
 
     @classmethod
