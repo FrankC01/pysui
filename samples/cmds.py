@@ -86,9 +86,11 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
 def sui_new_address(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Generate a new SUI address."""
     if args.ed25519:
-        print(wallet.create_new_keypair_and_address(SignatureScheme.ED25519))
+        mnen, address = wallet.create_new_keypair_and_address(SignatureScheme.ED25519)
     else:
-        print(wallet.create_new_keypair_and_address(SignatureScheme.SECP256K1))
+        mnen, address = wallet.create_new_keypair_and_address(SignatureScheme.SECP256K1)
+    print(f"Keep this passphrase '{mnen}'")
+    print(f"For new address {address}")
 
 
 def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:

@@ -243,7 +243,10 @@ class SuiAddress(SuiBaseType):
     def __init__(self, identifier: str) -> None:
         """Initialize address."""
         identifier = identifier if len(identifier) != SUI_ADDRESS_STRING_LEN else SuiString(f"0x{identifier}")
-        super().__init__(SuiString(identifier))
+        if isinstance(identifier, SuiString):
+            super().__init__(identifier)
+        else:
+            super().__init__(SuiString(identifier))
         # Alias for transaction validation
         self.address = identifier
 

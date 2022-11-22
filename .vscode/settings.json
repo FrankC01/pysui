@@ -1,5 +1,6 @@
 {
-    "python.envFile": "${workspaceFolder}/pysuienv",
+    // "python.envFile": "${workspaceFolder}/pysuienv",
+    "python.envFile": "${workspaceFolder}/pysui-dev.env",
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.formatting.provider": "black",
@@ -20,6 +21,9 @@
         "import-outside-toplevel",
         "--disable",
         "subprocess-run-check",
+        // This is because of false positive in create_new_address of sui_crypto.py
+        "--disable",
+        "unpacking-non-sequence"
     ],
     "python.linting.pydocstyleEnabled": true,
     "python.linting.pydocstyleArgs": [

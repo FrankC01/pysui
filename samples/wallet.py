@@ -20,17 +20,17 @@ import sys
 
 
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
-PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 PARENT = PROJECT_DIR.parent
 
-sys.path.insert(0, PROJECT_DIR)
-sys.path.insert(0, os.path.join(PARENT, "pysui"))
+sys.path.insert(0, str(PROJECT_DIR))
+sys.path.insert(0, str(PARENT))
+sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 from pysui.sui import SuiConfig
 
-from .cmd_args import build_parser
-from .cmds import SUI_CMD_DISPATCH
-from .faux_wallet import SuiWallet
+from samples.cmd_args import build_parser
+from samples.cmds import SUI_CMD_DISPATCH
+from samples.faux_wallet import SuiWallet
 
 
 def main():

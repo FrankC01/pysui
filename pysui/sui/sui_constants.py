@@ -39,7 +39,7 @@ SUI_KEYPAIR_LEN: int = 88
 """Length of keypair string."""
 
 # ED25519 Keypair derivation path
-# m / purpose' / coin_type' / account' / change / address_index
+# m / purpose' / coin_type' / account' / change' / address_index'
 ED25519_DEFAULT_KEYPATH: str = "m/44'/784'/0'/0'/0'"
 # ED25519 from keystring bytes
 ED25519_KEYPAIR_BYTES_LEN: int = 64

@@ -76,7 +76,7 @@ class SuiWallet:
         """Check if API supported in RPC host."""
         return self._client.api_exists(api_name)
 
-    def create_new_keypair_and_address(self, sigscheme: SignatureScheme) -> str:
+    def create_new_keypair_and_address(self, sigscheme: SignatureScheme) -> tuple[str, str]:
         """Create new keypair and address."""
         return self._client.config.create_new_keypair_and_address(sigscheme)
 

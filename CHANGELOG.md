@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - Current dev version - 0.1.0
 
-Breaking Changes (noted in bold)
+**Breaking** Changes (noted in bold)
 
 ### Added
 - Pushed `pysui` 0.0.11 to [PyPi](https://pypi.org/project/pysui/)
@@ -14,15 +14,16 @@ Breaking Changes (noted in bold)
 - Integration testing (**devnet synchronous**) [enhancement](https://github.com/FrankC01/pysui/issues/24)
 - Started SuiAsynchClient [enhancement](https://github.com/FrankC01/pysui/issues/17)
 - GetPastObject builder implementing `sui_tryGetPastObject` [closes](https://github.com/FrankC01/pysui/issues/25)
+- Support for mnemonics and derivation path[closes](https://github.com/FrankC01/pysui/issues/9)
 
 ### Fixed
-- Secp256k1 buh fixed [issue](https://github.com/FrankC01/pysui/issues/26)
+- **Secp256k1** bug fixed [issue](https://github.com/FrankC01/pysui/issues/26)
 
 ### Changed
-- SuiClient and SuiAsynchClient deriving from abstracts `Provider`
+- **SuiClient** and **SuiAsynchClient** deriving from abstracts `Provider`
 
 ### Removed
-- `SyncHttpRPC` and `AsyncHttpRPC` from `abstracts/client_rpc.py` as part of [issue](https://github.com/FrankC01/pysui/issues/17)
+- **SyncHttpRPC** and **AsyncHttpRPC** from `abstracts/client_rpc.py` as part of [issue](https://github.com/FrankC01/pysui/issues/17)
 ## [0.0.11] - 2022-11-18
 
 Breaking Release

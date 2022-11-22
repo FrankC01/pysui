@@ -82,23 +82,23 @@ class SuiConfig(ClientConfiguration):
         else:
             raise SuiFileNotFound((filepath))
 
-    def create_new_keypair_and_address(self, scheme: SignatureScheme) -> str:
+    def create_new_keypair_and_address(self, scheme: SignatureScheme) -> tuple[str, str]:
         """Create a new keypair and address identifier and return the address string.
 
         The scheme defines generation of ED25519 or SECP256K1 keypairs.
         """
         if scheme == SignatureScheme.ED25519:
-            keypair, address = create_new_address(scheme)
+            mnen, keypair, address = create_new_address(scheme)
             self._addresses[address.address] = address
             self._address_keypair[address.address] = keypair
             self._write_keypair(keypair)
-            return address.identifier
+            return mnen, address.identifier
         if scheme == SignatureScheme.SECP256K1:
-            keypair, address = create_new_address(scheme)
+            mnen, keypair, address = create_new_address(scheme)
             self._addresses[address.address] = address
             self._address_keypair[address.address] = keypair
             self._write_keypair(keypair)
-            return address.identifier
+            return mnen, address.identifier
 
         raise NotImplementedError
 
