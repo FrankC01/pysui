@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Current dev version - 0.1.0
+## [Unreleased] - Current dev version - 0.1.2
+
+**Breaking** Changes (noted in bold)
+
+### Added
+- Pushed `pysui` 0.1.1 to [PyPi](https://pypi.org/project/pysui/)
+
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.1.0] - 2022-11-23
 
 **Breaking** Changes (noted in bold)
 
@@ -18,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `recover_key_and_address` in `sui/sui_crypto.py` for lost/destroyed keypair
 - `pysui-dev.env` for vscode python module debugging
 - `sui-test` (sui move package) added to `tests` for integration testing publish and move-calls
+- `samples/asynch.py` small asynchronous sample code
 
 ### Fixed
 - **Secp256k1** bug fixed [issue](https://github.com/FrankC01/pysui/issues/26)
