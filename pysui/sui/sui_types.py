@@ -17,6 +17,8 @@
 
 from abc import ABC
 
+import re
+
 # import json
 import base64
 import binascii
@@ -25,11 +27,27 @@ from typing import Any, Generic, TypeVar, Union, Optional
 from dataclasses import dataclass, field
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
 
-from ..abstracts import AbstractType
+from pysui.abstracts import AbstractType
+from pysui.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
+from pysui.sui.sui_excepts import SuiInvalidAddress
 
-from .sui_constants import SUI_ADDRESS_STRING_LEN
-from .sui_txn_validator import valid_sui_address
-from .sui_excepts import SuiInvalidAddress
+__partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{38}")
+__fullstring_pattern: re.Pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
+
+
+def valid_sui_address(instr: str) -> bool:
+    """Verify Sui address string."""
+    inlen = len(instr)
+    if instr == "0x2":
+        return True
+    if instr == "Immutable":
+        return True
+    if inlen > SUI_HEX_ADDRESS_STRING_LEN or inlen < SUI_ADDRESS_STRING_LEN:
+        return False
+    # _kp = keypair_from_keystring(instr)
+    if inlen == SUI_HEX_ADDRESS_STRING_LEN and __fullstring_pattern.findall(instr):
+        return True
+    return __partstring_pattern.findall(instr)
 
 
 class SuiBaseType(AbstractType):
@@ -240,15 +258,16 @@ class SuiInteger(SuiScalarType):
 class SuiAddress(SuiBaseType):
     """Sui Address Type."""
 
-    def __init__(self, identifier: str) -> None:
+    def __init__(self, identifier: Union[SuiString, str]) -> None:
         """Initialize address."""
-        identifier = identifier if len(identifier) != SUI_ADDRESS_STRING_LEN else SuiString(f"0x{identifier}")
-        if isinstance(identifier, SuiString):
-            super().__init__(identifier)
+        testvalid: str = identifier if isinstance(identifier, str) else identifier.value
+        if valid_sui_address(testvalid):
+            testvalid = testvalid if testvalid.startswith("0x") else format(f"0x{testvalid}")
+            super().__init__(SuiString(testvalid))
         else:
-            super().__init__(SuiString(identifier))
+            raise ValueError(f"{testvalid} is not valid address string")
         # Alias for transaction validation
-        self.address = identifier
+        self.address = testvalid
 
     @property
     def signer(self) -> str:

@@ -70,9 +70,19 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
     def _detail_gas(gas_objects: SuiRpcResult):
         if gas_objects.is_ok():
+            print()
+            header_object_id = "Gas Object ID"
+            header_mist = "Mist"
+            header_sui = "SUI"
+            header_str = format(f"{header_object_id:^45s}{header_mist:^12s}{header_sui:^15s}")
+            print(header_str)
+            for _ in range(0, len(header_str)):
+                print("-", end="")
+            print()
+
             for gasobj in gas_objects.result_data:
                 print(
-                    f"{gasobj.identifier} | MISTS: {gasobj.balance:12} SUI: {gasobj.balance / SUI_COIN_DENOMINATOR:.9f}"
+                    f"{gasobj.identifier} | {str(gasobj.balance):>12s} | {(gasobj.balance / SUI_COIN_DENOMINATOR):.9f}"
                 )
             mists = wallet.total_gas(gas_objects.result_data)
             sui = mists / SUI_COIN_DENOMINATOR
@@ -122,14 +132,16 @@ def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 def _objects_header_print() -> None:
     """Print non-json object header."""
-    # TODO: Clean this up with formatted strings
-    print("        Object ID                          ", end=" ")
-    print("  Version  ", end=" ")
-    print("                    Digest                    ", end=" ")
-    print("    Object Type")
-    print("--------------------------------------------", end="")
-    print("------------", end="")
-    print("-------------------------------------------------------------------------")
+    print()
+    header_object_id = "Object ID"
+    header_version = "Version"
+    header_digest = "Digest"
+    header_obj_type = "Object Type"
+    header_str = format(f"{header_object_id:^45s}{header_version:^11s}{header_digest:^50s}{header_obj_type:^40}")
+    print(header_str)
+    for _ in range(0, len(header_str)):
+        print("-", end="")
+    print()
 
 
 def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
@@ -149,7 +161,7 @@ def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
         else:
             _objects_header_print()
             for desc in result.result_data:
-                print(f"{desc.identifier} |      {desc.version}    | {desc.digest} | {desc.type_signature}")
+                print(f"{desc.identifier} |  {desc.version:^11} | {desc.digest} | {desc.type_signature}")
     else:
         print(f"{result.result_string}")
 

@@ -22,7 +22,6 @@ import bip_utils
 from bip_utils.addr.addr_key_validator import AddrKeyValidator
 from bip_utils.bip.bip39.bip39_mnemonic_decoder import Bip39MnemonicDecoder
 from bip_utils.utils.mnemonic.mnemonic_validator import MnemonicValidator
-import mnemonic
 from nacl.signing import SigningKey, VerifyKey
 from nacl.encoding import Base64Encoder
 
@@ -235,22 +234,22 @@ class SuiKeyPairSECP256K1(KeyPair):
 
 # Utility functions
 def _valid_mnemonic(mnemonics: Union[str, list[str]] = "") -> str:
-    """_valid_mnemonic Validate, or generate, valid mnemonic phrase.
+    """_valid_mnemonic Validate, or create, mnemonic word string.
 
-    :param mnemonics: mnemonic phrase, defaults to ""
+    :param mnemonics: space separated word string (12) or list of words(12), defaults to ""
     :type mnemonics: Union[str, list[str]], optional
-    :raises ValueError: If the mnemonic is invalid
-    :return: mnemonic keyphrase
+    :raises ValueError: If the validation of supplied mnemonics fails
+    :return: mnemonic word (12) string separated by spaces
     :rtype: str
     """
-    mnemonics = mnemonics or mnemonic.Mnemonic("english").generate()
-    if isinstance(mnemonics, list):
-        mnemonics = " ".join(mnemonics)
+    if mnemonics:
+        if isinstance(mnemonics, list):
+            mnemonics = " ".join(mnemonics)
 
-    if MnemonicValidator(Bip39MnemonicDecoder()).IsValid(mnemonics):
-        return mnemonics
-    else:
+        if MnemonicValidator(Bip39MnemonicDecoder()).IsValid(mnemonics):
+            return mnemonics
         raise ValueError(f"{mnemonics} is not a valid mnemonic phrase.")
+    return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_12).ToStr()
 
 
 def _valid_pubkey(key_valmethod: str, pub_key: bytes) -> Union[None, TypeError, ValueError]:
@@ -332,7 +331,15 @@ def _generate_ed25519(mnemonics: Union[str, list[str]] = "", derv_path: str = No
 
 
 def keypair_from_keystring(keystring: str) -> KeyPair:
-    """Derive keypair from address string."""
+    """keypair_from_keystring Parse keystring to keypair.
+
+    :param keystring: base64 keystring
+    :type keystring: str
+    :raises SuiInvalidKeystringLength: If invalid keypair string length
+    :raises NotImplementedError: If invalid keytype signature in string
+    :return: keypair derived from keystring
+    :rtype: KeyPair
+    """
     if len(keystring) != SUI_KEYPAIR_LEN:
         raise SuiInvalidKeystringLength(len(keystring))
     addy_bytes = base64.b64decode(keystring)
@@ -347,14 +354,23 @@ def keypair_from_keystring(keystring: str) -> KeyPair:
 def create_new_keypair(
     keytype: SignatureScheme = SignatureScheme.ED25519, mnemonics: Union[str, list[str]] = None, derv_path: str = None
 ) -> tuple[str, KeyPair]:
-    """Generate a new keypair."""
+    """create_new_keypair Generate a new keypair.
+
+    :param keytype: One of ED25519 or SECP256K1 key type, defaults to SignatureScheme.ED25519
+    :type keytype: SignatureScheme, optional
+    :param mnemonics: mnemonic words, defaults to None
+    :type mnemonics: Union[str, list[str]], optional
+    :param derv_path: derivation path coinciding with key type, defaults to None
+    :type derv_path: str, optional
+    :raises NotImplementedError: If invalid keytype is provided
+    :return: mnemonic words and new keypair
+    :rtype: tuple[str, KeyPair]
+    """
     match keytype:
         case SignatureScheme.ED25519:
             return _generate_ed25519(mnemonics, derv_path)
-            # return SuiKeyPairED25519.unique()
         case SignatureScheme.SECP256K1:
             return _generate_secp256k1(mnemonics, derv_path)
-            # return SuiKeyPairSECP256K1.unique()
         case _:
             raise NotImplementedError
 
@@ -362,17 +378,41 @@ def create_new_keypair(
 def create_new_address(
     keytype: SignatureScheme, mnemonics: Union[str, list[str]] = None, derv_path: str = None
 ) -> tuple[str, KeyPair, SuiAddress]:
-    """Create a new keypair and address for a key type."""
+    """create_new_address Create a new keypair and address for a key type.
+
+    :param keytype: One of ED25519 or SECP256K1 key type
+    :type keytype: SignatureScheme
+    :param mnemonics: mnemonic words, defaults to None
+    :type mnemonics: Union[str, list[str]], optional
+    :param derv_path: derivation path coinciding with key type, defaults to None
+    :type derv_path: str, optional
+    :return: mnemonic words, new keypair and derived sui address
+    :rtype: tuple[str, KeyPair, SuiAddress]
+    """
+    mnem, new_kp = create_new_keypair(keytype, mnemonics, derv_path)
+    return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
+
+
+def recover_key_and_address(
+    keytype: SignatureScheme, mnemonics: Union[str, list[str]], derv_path: str
+) -> tuple[str, KeyPair, SuiAddress]:
+    """recover_key_and_address Recover a keypair and address.
+
+    :param keytype: One of ED25519 or SECP256K1 key type for the original key
+    :type keytype: SignatureScheme
+    :param mnemonics: mnemonic words used when creating original keypair
+    :type mnemonics: Union[str, list[str]]
+    :param derv_path: derivation path used when creating original keypair
+    :type derv_path: str
+    :return: mnemonic words, recovered keypair and derived sui address
+    :rtype: tuple[str, KeyPair, SuiAddress]
+    """
     mnem, new_kp = create_new_keypair(keytype, mnemonics, derv_path)
     return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
 
 
 if __name__ == "__main__":
-    mnen, secp_kp, secp_addy = create_new_address(SignatureScheme.SECP256K1)
-    mnen, ed_kp, ed_addy = create_new_address(SignatureScheme.ED25519)
-    # secp = _generate_secp256k1()
-    # print(secp)
-    print(base64.b64encode(b"Hello"))
-
-    print(f"secp signed = {secp_kp.private_key.sign(b'Hello')}")
-    print(f"ed signed = {ed_kp.private_key.sign(b'Hello')}")
+    mnems, ed_kp, ed_addy = create_new_address(SignatureScheme.ED25519)
+    _, ed_kp1, ed_addy1 = recover_key_and_address(SignatureScheme.ED25519, mnems, ED25519_DEFAULT_KEYPATH)
+    if ed_addy.address == ed_addy1.address:
+        print("Same!")

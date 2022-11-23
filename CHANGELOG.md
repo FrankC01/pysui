@@ -15,15 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Started SuiAsynchClient [enhancement](https://github.com/FrankC01/pysui/issues/17)
 - GetPastObject builder implementing `sui_tryGetPastObject` [closes](https://github.com/FrankC01/pysui/issues/25)
 - Support for mnemonics and derivation path[closes](https://github.com/FrankC01/pysui/issues/9)
+- `recover_key_and_address` in `sui/sui_crypto.py` for lost/destroyed keypair
+- `pysui-dev.env` for vscode python module debugging
+- `sui-test` (sui move package) added to `tests` for integration testing publish and move-calls
 
 ### Fixed
 - **Secp256k1** bug fixed [issue](https://github.com/FrankC01/pysui/issues/26)
 
 ### Changed
 - **SuiClient** and **SuiAsynchClient** deriving from abstracts `Provider`
+- `samples.wallet` gas and objects formatting
 
 ### Removed
 - **SyncHttpRPC** and **AsyncHttpRPC** from `abstracts/client_rpc.py` as part of [issue](https://github.com/FrankC01/pysui/issues/17)
+- `mnemonic` and `pynacl` from requirements... redundant with use of `bip-utils`
+
 ## [0.0.11] - 2022-11-18
 
 Breaking Release

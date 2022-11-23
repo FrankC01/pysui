@@ -1,8 +1,6 @@
 dataclasses_json==0.5.7
 pyyaml==6.0
 secp256k1==0.14.0
-pynacl==1.5.0
 httpx==0.23.0
 h2==4.1.0
-mnemonic==0.20
 bip-utils==2.7.0

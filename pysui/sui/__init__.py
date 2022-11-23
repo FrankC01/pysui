@@ -48,5 +48,5 @@ from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_types import *
 from pysui.sui.sui_crypto import keypair_from_keystring
 from pysui.sui.sui_rpc import SuiClient, SuiRpcResult
-from pysui.sui.sui_txn_validator import validate_api, valid_sui_address
+from pysui.sui.sui_txn_validator import validate_api
 from pysui.sui.sui_utils import *

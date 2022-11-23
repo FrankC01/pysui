@@ -17,27 +17,12 @@
 import re
 from typing import Any, Union
 from ..abstracts import Builder
-from .sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
+
 from .sui_excepts import SuiRpcApiInvalidParameter
 from .sui_apidesc import SuiApi, SuiApiParam
 
 __partstring_pattern = re.compile(r"[0-9a-fA-F]{38}")
 __fullstring_pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
-
-
-def valid_sui_address(instr: str) -> bool:
-    """Verify Sui address string."""
-    inlen = len(instr)
-    if instr == "0x2":
-        return True
-    if instr == "Immutable":
-        return True
-    if inlen > SUI_HEX_ADDRESS_STRING_LEN or inlen < SUI_ADDRESS_STRING_LEN:
-        return False
-    # _kp = keypair_from_keystring(instr)
-    if inlen == SUI_HEX_ADDRESS_STRING_LEN and __fullstring_pattern.findall(instr):
-        return True
-    return __partstring_pattern.findall(instr)
 
 
 def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:

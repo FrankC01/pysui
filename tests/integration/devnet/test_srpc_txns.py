@@ -45,7 +45,7 @@ def get_data(client: SuiClient, for_address: SuiAddress = None) -> list[SuiData]
     return result.result_data
 
 
-def get_tracker(client: SuiClient) -> Union[SuiData, None]:
+def get_tracker(client: SuiClient, for_address: SuiAddress = None) -> Union[SuiData, None]:
     """get_service_tracker Get data object specific to SuiTracker for active-address.
 
     :param client: Synchronous http client
@@ -55,7 +55,7 @@ def get_tracker(client: SuiClient) -> Union[SuiData, None]:
     :return: The SuiTracker data object or None if does not exist.
     :rtype: Union[SuiData],None]
     """
-    data_objects: list[SuiData] = get_data(client)
+    data_objects: list[SuiData] = get_data(client, for_address)
     if data_objects:
         for data_obj in data_objects:
             type_sig = data_obj.type_signature.split(":")[1:]
@@ -152,3 +152,52 @@ def test_move_call_single_arg_pass(sui_client: SuiClient):
     assert tracker
     myres = [int(x) for x in list(base64.b64decode(tracker.data.fields["accumulator"]))]
     assert 5 not in myres
+
+
+def test_transfer_tracker_pass(sui_client: SuiClient):
+    """Test."""
+    # Ensure active-address has a tracker
+    tracker = get_tracker(sui_client)
+    assert tracker
+    # Ensure active-address has gas
+    gases = get_gas(sui_client)[0]
+    assert gases
+    active_address = sui_client.config.active_address.address
+    addresses = set(sui_client.config.addresses)
+    # addresses.remove(active_address)
+    assert addresses
+    child_gases = child_address = None
+    # Get address other than the active one
+    for address in addresses:
+        if address != active_address:
+            child_address = SuiAddress(address)
+            child_gases = get_gas(sui_client, child_address)
+            if child_gases:
+                child_gases = child_gases[0]
+                break
+    assert child_address
+    assert child_gases
+    # Transfer the tracker from active-address to some other address
+    result = sui_client.transfer_object_txn(
+        signer=sui_client.config.active_address,
+        object_id=tracker.identifier,
+        gas=gases.identifier,
+        gas_budget=SuiInteger(1000),
+        recipient=child_address,
+    )
+    assert result.is_ok()
+    # Ensure child-address has the tracker back
+    tracker = get_tracker(sui_client, child_address)
+    assert tracker
+    # Transfer the tracker back to active-address from some other address
+    result = sui_client.transfer_object_txn(
+        signer=child_address,
+        object_id=tracker.identifier,
+        gas=child_gases.identifier,
+        gas_budget=SuiInteger(1000),
+        recipient=sui_client.config.active_address,
+    )
+    assert result.is_ok()
+    # Ensure active-address has the tracker back
+    tracker = get_tracker(sui_client)
+    assert tracker

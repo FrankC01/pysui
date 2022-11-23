@@ -18,8 +18,10 @@ import subprocess
 from pathlib import Path
 from typing import Union
 
-from .sui_types import SuiString
-from .sui_excepts import SuiMiisingBuildFolder, SuiMiisingModuleByteCode, SuiPackageBuildFail
+
+from pysui.sui.sui_types import SuiString
+from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiMiisingModuleByteCode, SuiPackageBuildFail
+
 
 _SUI_BUILD = ["sui", "move", "build", "--path"]
 
