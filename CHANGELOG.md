@@ -13,9 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for `sui_splitCoinEqual`
 
 ### Fixed
+- Object version result [issue](https://github.com/FrankC01/pysui/issues/29)
 
 ### Changed
 - **SuiClient** and **SuiAsynchClinet** [issue](https://github.com/FrankC01/pysui/issues/27)
+- Relaxed build initializer validations [closed](https://github.com/FrankC01/pysui/issues/28)
 
 ### Removed
 

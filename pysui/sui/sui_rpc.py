@@ -27,6 +27,7 @@ from pysui.sui.sui_types import (
     SuiArray,
     SuiMap,
     SuiInteger,
+    SuiString,
     SuiTxBytes,
     ObjectInfo,
     SuiAddress,
@@ -305,25 +306,23 @@ class SuiClient(_ClientMixin):
         result = self.execute(GetPackage(package_id))
         return result
 
-    def get_events(self, **kwargs) -> SuiRpcResult:
-        r"""get_events `sui_getEvents` API.
+    def get_events(self, *, query: SuiMap, cursor: str, limit: int, descending_order: bool) -> SuiRpcResult:
+        """get_events `sui_getEvents` API.
 
-        :param \**kwargs:
-            See below
-        :raises ValueError: If missing required keyword
-        :return: EventQueryEnvelope
+        :param query: The event query type map.
+        :type query: SuiMap
+        :param cursor: _description_
+        :type cursor: str
+        :param limit: _description_
+        :type limit: int
+        :param descending_order: _description_
+        :type descending_order: bool
+        :return: API call result
         :rtype: SuiRpcResult
-        :Keyword Arguments:
-            *   *query* (``SuiMap``)
-            *   *cursor* (``str``)
-            *   *limit*   (``int``)
-            *   *descending_order* (``bool``)
         """
-        kword_set = set(kwargs.keys())
-        if kword_set == GetEvents.events_kwords:
-            return self.execute(GetEvents(**kwargs))
-        missing = GetEvents.events_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        inargs: dict = locals().copy()
+        inargs.pop("self")
+        return self.execute(GetEvents(**inargs))
 
     def get_txns(self, *, query: SuiMap, cursor: str, limit: int, descending_order: bool) -> SuiRpcResult:
         """get_txns `sui_getTransactions` API.
@@ -424,170 +423,204 @@ class SuiClient(_ClientMixin):
 
     def transfer_sui_txn(
         self,
-        **kwargs: dict,
+        *,
+        signer: SuiAddress,
+        sui_object_id: ObjectID,
+        gas_budget: SuiInteger,
+        recipient: SuiAddress,
+        amount: SuiInteger,
     ) -> SuiRpcResult:
-        r"""transfer_sui_txn invokes `sui_transferSui` API.
+        """transfer_sui_txn invokes `sui_transferSui` API.
 
-        :param \**kwargs:
-            See below
-        :raises ValueError: If missing required keyword
-        :return: TransactionBytes for use in Execute builder
+        :param signer: _description_
+        :type signer: SuiAddress
+        :param sui_object_id: _description_
+        :type sui_object_id: ObjectID
+        :param gas_budget: _description_
+        :type gas_budget: SuiInteger
+        :param recipient: _description_
+        :type recipient: SuiAddress
+        :param amount: _description_
+        :type amount: SuiInteger
+        :return: Result of the transaction
         :rtype: SuiRpcResult
-        :Keyword Arguments:
-            *   *signer* (``SuiAddress``)
-            *   *sui_object_id* (``ObjectID``)
-            *   *gas_budget* (``SuiInteger``)
-            *   *recipient* (``SuiAddress``)
-            *   *amount* (``SuiInteger``)
         """
-        kword_set = set(kwargs.keys())
-        if kword_set == TransferSui.transfersui_kwords:
-            return self.execute(TransferSui(**kwargs))
-        missing = TransferSui.transfersui_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        inargs: dict = locals().copy()
+        inargs.pop("self")
+        return self.execute(TransferSui(**inargs))
 
     def transfer_object_txn(
         self,
-        **kwargs: dict,
+        *,
+        signer: SuiAddress,
+        object_id: ObjectID,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
+        recipient: SuiAddress,
     ) -> SuiRpcResult:
-        r"""transfer_object_txn invokes `sui_transferObject` API.
+        """transfer_object_txn invokes `sui_transferObject` API.
 
-        :param \**kwargs:
-            See below
-        :raises ValueError: If missing required keyword
-        :return: TransactionBytes for use in Execute builder
+        :param signer: Transaction signer and owner of object_id
+        :type signer: SuiAddress
+        :param object_id: The object being transferred
+        :type object_id: ObjectID
+        :param gas: The gas ObjectID that transaction fees will come from
+        :type gas: ObjectID
+        :param gas_budget: The gas budget to use in validating transaction payment
+        :type gas_budget: SuiInteger
+        :param recipient: The receiving party SuiAddress
+        :type recipient: SuiAddress
+        :return: Result of the transaction
         :rtype: SuiRpcResult
-        :Keyword Arguments:
-            *   *signer* (``SuiAddress``)
-            *   *object_id* (``ObjectID``)
-            *   *gas* (``ObjectID``)
-            *   *gas_budget* (``SuiInteger``)
-            *   *recipient* (``SuiAddress``)
         """
-        kword_set = set(kwargs.keys())
-        if kword_set == TransferObject.transferobject_kwords:
-            return self.execute(TransferObject(**kwargs))
-        missing = TransferObject.transferobject_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        inargs: dict = locals().copy()
+        inargs.pop("self")
+        return self.execute(TransferObject(**inargs))
 
     def merge_coin_txn(
         self,
-        **kwargs: dict,
+        *,
+        signer: SuiAddress,
+        primary_coin: ObjectID,
+        coin_to_merge: ObjectID,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
     ) -> SuiRpcResult:
-        r"""merge_coin_txn invokes `sui_mergeCoin` API.
+        """merge_coin_txn invokes `sui_mergeCoin` API.
 
-        :param \**kwargs:
-            See below
-        :raises ValueError: If missing required keyword
-        :return: TransactionBytes for use in Execute builder
+        :param signer: Transaction signer and owner of primary and coin being merged
+        :type signer: SuiAddress
+        :param primary_coin: the coin object to merge into, this coin will remain after the transaction
+        :type primary_coin: ObjectID
+        :param coin_to_merge: the coin object to be merged, this coin will be destroyed, the balance will be added to `primary_coin`
+        :type coin_to_merge: ObjectID
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        :return: Result of the transaction
         :rtype: SuiRpcResult
-        :Keyword Arguments:
-            *   *signer* (``SuiAddress``)
-            *   *primary_coin* (``ObjectID``)
-            *   *coin_to_merge* (``ObjectID``)
-            *   *gas* (``ObjectID``)
-            *   *gas_budget* (``SuiInteger``)
         """
-        kword_set = set(kwargs.keys())
-        if kword_set == MergeCoin.merge_kwords:
-            return self.execute(MergeCoin(**kwargs))
-        missing = MergeCoin.merge_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        inargs: dict = locals().copy()
+        inargs.pop("self")
+        return self.execute(MergeCoin(**inargs))
 
     def split_coin_txn(
         self,
-        **kwargs: dict,
+        *,
+        signer: SuiAddress,
+        coin_object_id: ObjectID,
+        split_amounts: SuiArray[SuiInteger],
+        gas: ObjectID,
+        gas_budget: SuiInteger,
     ) -> SuiRpcResult:
-        r"""split_coin_txn invokes `sui_splitCoin` API.
+        """split_coin_txn invokes `sui_splitCoin` API.
 
-        :param \**kwargs:
-            See below
-        :raises ValueError: If missing required keyword
-        :return: TransactionBytes for use in Execute builder
+        :param signer: Transaction signer and owner of coin being split
+        :type signer: SuiAddress
+        :param coin_object_id: the coin object to be spilt
+        :type coin_object_id: ObjectID
+        :param split_amounts: the amounts to split out from the coin
+        :type split_amounts: SuiArray[SuiInteger]
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        :return: Result of the transaction
         :rtype: SuiRpcResult
-        :Keyword Arguments:
-            *   *signer* (``SuiAddress``)
-            *   *coin_object_id* (``ObjectID``)
-            *   *split_amounts* (``SuiArray[SuiInteger]``)
-            *   *gas_object* (``ObjectID``)
-            *   *gas_budget* (``SuiInteger``)
         """
-        kword_set = set(kwargs.keys())
-        if kword_set == SplitCoin.split_kwords:
-            return self.execute(SplitCoin(**kwargs))
-        missing = SplitCoin.split_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        inargs: dict = locals().copy()
+        inargs.pop("self")
+        return self.execute(SplitCoin(**inargs))
 
     def split_coin_equally_txn(
         self,
-        **kwargs: dict,
+        *,
+        signer: SuiAddress,
+        coin_object_id: ObjectID,
+        split_count: SuiInteger,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
     ) -> SuiRpcResult:
-        r"""split_coin_equally txn invokes `sui_splitCoinEqual` API.
+        """split_coin_equally_txn invokes `sui_splitCoinEqual` API.
 
-        :param \**kwargs:
-            See below
-        :raises ValueError: If missing required keyword
-        :return: TransactionBytes for use in Execute builder
+        :param signer: Transaction signer and owner of coin being split
+        :type signer: SuiAddress
+        :param coin_object_id: the coin object to be spilt
+        :type coin_object_id: ObjectID
+        :param split_count: The count of coins to distribute evenly from coin_object_id
+        :type split_count: SuiInteger
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        :return: Result of the transaction
         :rtype: SuiRpcResult
-        :Keyword Arguments:
-            *   *signer* (``SuiAddress``)
-            *   *coin_object_id* (``ObjectID``)
-            *   *split_count* (``SuiInteger``)
-            *   *gas* (``ObjectID``)
-            *   *gas_budget* (``SuiInteger``)
         """
-        kword_set = set(kwargs.keys())
-        if kword_set == SplitCoinEqually.splite_kwords:
-            return self.execute(SplitCoinEqually(**kwargs))
-        missing = SplitCoinEqually.splite_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        inargs: dict = locals().copy()
+        inargs.pop("self")
+        return self.execute(SplitCoinEqually(**inargs))
 
     def move_call_txn(
         self,
-        **kwargs: dict,
+        *,
+        signer: SuiAddress,
+        package_object_id: ObjectID,
+        module: SuiString,
+        function: SuiString,
+        type_arguments: SuiArray[SuiString],
+        arguments: SuiArray[SuiString],
+        gas: ObjectID,
+        gas_budget: SuiInteger,
     ) -> SuiRpcResult:
-        r"""move_call_txn invokes `sui_moveCall` API.
+        """move_call_txn invokes `sui_moveCall` API.
 
-        :param \**kwargs:
-            See below
-        :raises ValueError: If missing required keyword
-        :return: TransactionBytes for use in Execute builder
+        :param signer: Transaction signer
+        :type signer: SuiAddress
+        :param package_object_id: the Move package ID
+        :type package_object_id: ObjectID
+        :param module: The Sui Move module name.
+        :type module: SuiString
+        :param function: The Sui Move function name
+        :type function: SuiString
+        :param type_arguments: The type arguments, if any, of the Sui Move function
+        :type type_arguments: SuiArray[SuiString]
+        :param arguments: The arguments to be passed into the Sui Move function
+        :type arguments: SuiArray[SuiString]
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        :return: Result of the transaction
         :rtype: SuiRpcResult
-        :Keyword Arguments:
-            *   *signer* (``SuiAddress``)
-            *   *package_object_id* (``ObjectID``)
-            *   *module* (``SuiString``)
-            *   *function* (``SuiString``)
-            *   *type_arguments (``SuiArray[SuiString]``)
-            *   *arguments (``SuiArray[SuiString]``)
-            *   *gas_object* (``ObjectID``)
-            *   *gas_budget* (``SuiInteger``)
         """
-        kword_set = set(kwargs.keys())
-        if kword_set == MoveCall.move_kwords:
-            return self.execute(MoveCall(**kwargs))
-        missing = MoveCall.move_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        inargs: dict = locals().copy()
+        inargs.pop("self")
+        return self.execute(MoveCall(**inargs))
 
-    def publish_package_txn(self, **kwargs: dict) -> SuiRpcResult:
-        r"""publish_package_txn invokes `sui_publish` API.
+    def publish_package_txn(
+        self,
+        sender: SuiAddress,
+        compiled_modules: SuiArray[SuiString],
+        gas: ObjectID,
+        gas_budget: SuiInteger,
+    ) -> SuiRpcResult:
+        """publish_package_txn invokes `sui_publish` API
 
-        :param \**kwargs:
-            See below
-        :raises ValueError: If missing required keyword
-        :return: TransactionBytes for use in Execute builder
+        :param sender: the transaction signer's Sui address
+        :type sender: SuiAddress
+        :param compiled_modules: the compiled bytes of a sui move package
+        :type compiled_modules: SuiArray[SuiString]
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        :return: Result of the transaction
         :rtype: SuiRpcResult
-        :Keyword Arguments:
-            *   *sender* (``SuiAddress``)
-            *   *compiled_modules (``SuiArray[SuiString]``)
-            *   *gas* (``ObjectID``)
-            *   *gas_budget* (``SuiInteger``)
         """
-        kword_set = set(kwargs.keys())
-        if kword_set == Publish.publish_kwords:
-            return self.execute(Publish(**kwargs))
-        missing = Publish.publish_kwords - kword_set
-        raise ValueError(f"Missing {missing}")
+        inargs: dict = locals().copy()
+        inargs.pop("self")
+        return self.execute(Publish(**inargs))
 
 
 class SuiAsynchClient(_ClientMixin):

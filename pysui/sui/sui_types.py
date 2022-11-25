@@ -434,6 +434,22 @@ class ObjectNotExist(DataClassJsonMixin):
     """ObjectNotExist."""
 
     object_id: str
+    object_state: str = "Object does not exist."
+
+    @property
+    def identifier(self) -> ObjectID:
+        """Alias object_id."""
+        return ObjectID(self.object_id)
+
+
+@dataclass
+class ObjectVersionTooHigh(DataClassJsonMixin):
+    """ObjectVersionTooHigh."""
+
+    asked_version: int
+    latest_version: int
+    object_id: str
+    object_state: str = "Object version requested too high."
 
     @property
     def identifier(self) -> ObjectID:
@@ -446,6 +462,7 @@ class ObjectDeleted(DataClassJsonMixin):
     """ObjectDeleted."""
 
     reference: GenericRef
+    object_state: str = "Object has been deleted."
 
     @property
     def identifier(self) -> ObjectID:
@@ -567,10 +584,12 @@ class ObjectRead(DataClassJsonMixin):
                             return SuiData.from_dict(read_object)
                 else:
                     return SuiData.from_dict(read_object)
-            case "NotExists":
+            case "ObjectNotExists" | "NotExists":
                 return ObjectNotExist.from_dict({"object_id": read_object})
             case "Deleted":
                 return ObjectDeleted.from_dict({"reference": read_object})
+            case "VersionTooHigh":
+                return ObjectVersionTooHigh.from_dict(read_object)
 
     @classmethod
     def factory(cls, indata: Union[dict, list[dict]]) -> Union[Any, list]:

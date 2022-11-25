@@ -143,18 +143,16 @@ def test_move_call_single_arg_pass(sui_client: SuiClient):
     assert tracker
     gases = get_gas(sui_client)[0]
     assert gases
-    builder = MoveCall(
+    result = sui_client.move_call_txn(
         signer=sui_client.config.active_address,
         package_object_id=ObjectID(tracker.type_signature.split(":")[0]),
         module=SuiString(TRACKER_MODULE),
         function=SuiString("add_value"),
         type_arguments=[],
         arguments=[tracker.identifier, SuiString("5")],
-        gas_object=gases.identifier,
+        gas=gases.identifier,
         gas_budget=SuiInteger(1000),
     )
-    assert builder
-    result = sui_client.execute(builder)
     assert result.is_ok()
     txresult: TxEffectResult = result.result_data
     assert txresult.succeeded
@@ -163,18 +161,16 @@ def test_move_call_single_arg_pass(sui_client: SuiClient):
     assert len(tracker.data.fields["accumulator"]) > 0
     myres = [int(x) for x in list(base64.b64decode(tracker.data.fields["accumulator"]))]
     assert 5 in myres
-    builder = MoveCall(
+    result = sui_client.move_call_txn(
         signer=sui_client.config.active_address,
         package_object_id=ObjectID(tracker.type_signature.split(":")[0]),
         module=SuiString(TRACKER_MODULE),
         function=SuiString("remove_value"),
         type_arguments=[],
         arguments=[tracker.identifier, SuiString("5")],
-        gas_object=gases.identifier,
+        gas=gases.identifier,
         gas_budget=SuiInteger(1000),
     )
-    assert builder
-    result = sui_client.execute(builder)
     assert result.is_ok()
     txresult: TxEffectResult = result.result_data
     assert txresult.succeeded

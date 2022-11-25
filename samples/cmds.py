@@ -115,8 +115,8 @@ def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
     """Show specific object."""
-    if args.generation:
-        sobject = wallet.execute(GetPastObject(args.id, SuiInteger(args.generation)))
+    if args.version:
+        sobject = wallet.execute(GetPastObject(args.id, SuiInteger(args.version)))
     else:
         sobject = wallet.get_object(args.id)
     if sobject.is_ok():

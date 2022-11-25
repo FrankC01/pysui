@@ -971,7 +971,6 @@ class Publish(_MoveCallTransactionBuilder):
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
         for hit in self.publish_kwords & set(kwargs.keys()):
-            # setattr(self, hit, kwargs[hit])
             if hit == "compiled_modules" and isinstance(kwargs[hit], list):
                 setattr(self, hit, SuiArray(kwargs[hit]))
             else:
@@ -1012,7 +1011,7 @@ class MoveCall(_MoveCallTransactionBuilder):
         "function",
         "type_arguments",
         "arguments",
-        "gas_object",
+        "gas",
         "gas_budget",
     }
     _movecall_array_keys: set[str] = {
@@ -1029,7 +1028,7 @@ class MoveCall(_MoveCallTransactionBuilder):
         self.function: SuiString = None
         self.type_arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
         self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
-        self.gas_object: ObjectID = None
+        self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
         for hit in self.move_kwords & set(kwargs.keys()):
             if hit in self._movecall_array_keys:
@@ -1039,18 +1038,6 @@ class MoveCall(_MoveCallTransactionBuilder):
                     setattr(self, hit, SuiArray([]))
             else:
                 setattr(self, hit, kwargs[hit])
-
-        if set(kwargs.keys()) == self.move_kwords:
-            for key, value in kwargs.items():
-                if key in self._movecall_array_keys:
-                    if value:
-                        setattr(self, key, SuiArray(value))
-                    else:
-                        setattr(self, key, SuiArray([]))
-                else:
-                    setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.move_kwords} found: {kwargs.keys()}")
 
     def set_signer(self, obj: SuiAddress) -> "MoveCall":
         """Set signers address."""
@@ -1079,7 +1066,7 @@ class MoveCall(_MoveCallTransactionBuilder):
 
     def set_gas_object(self, obj: ObjectID) -> "MoveCall":
         """Set sui object gas object."""
-        self.gas_object: ObjectID = obj
+        self.gas: ObjectID = obj
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "MoveCall":
