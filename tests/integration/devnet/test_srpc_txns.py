@@ -19,7 +19,16 @@ from typing import Union
 from pysui.sui import SuiClient, SuiRpcResult
 from pysui.sui.sui_builders import MoveCall, Publish
 from pysui.sui.sui_utils import build_b64_modules
-from pysui.sui.sui_types import ObjectID, SuiAddress, SuiData, MoveDataDescriptor, SuiInteger, SuiString, TxEffectResult
+from pysui.sui.sui_types import (
+    ObjectID,
+    SuiAddress,
+    SuiArray,
+    SuiData,
+    MoveDataDescriptor,
+    SuiInteger,
+    SuiString,
+    TxEffectResult,
+)
 
 from .test_srpc_gets import get_gas
 
@@ -61,6 +70,27 @@ def get_tracker(client: SuiClient, for_address: SuiAddress = None) -> Union[SuiD
             type_sig = data_obj.type_signature.split(":")[1:]
             if type_sig == TRACKER_SIG:
                 return data_obj
+    return None
+
+
+def get_address_not_active(client: SuiClient, all_unique: bool = False) -> Union[SuiAddress, list[SuiAddress], None]:
+    """get_address_not_active Get one or more addresses that are not the active address.
+
+    :param client: Synchronous http client
+    :type client: SuiClient
+    :param all_unique: If True, returns all non-active addresses otherwise just the first, defaults to False
+    :type all_unique: bool, optional
+    :return: Either a single unique address or the list of addresses that are not-active or None if none exist
+    :rtype: Union[SuiAddress, list[SuiAddress],None]
+    """
+    # Get a non-active set of addresses
+    active_address = client.config.active_address.address
+    addresses = set(client.config.addresses)
+    addresses.remove(active_address)
+    if addresses:
+        if all_unique:
+            return [SuiAddress(x) for x in addresses]
+        return SuiAddress(list(addresses)[0])
     return None
 
 
@@ -162,20 +192,9 @@ def test_transfer_tracker_pass(sui_client: SuiClient):
     # Ensure active-address has gas
     gases = get_gas(sui_client)[0]
     assert gases
-    active_address = sui_client.config.active_address.address
-    addresses = set(sui_client.config.addresses)
-    # addresses.remove(active_address)
-    assert addresses
-    child_gases = child_address = None
-    # Get address other than the active one
-    for address in addresses:
-        if address != active_address:
-            child_address = SuiAddress(address)
-            child_gases = get_gas(sui_client, child_address)
-            if child_gases:
-                child_gases = child_gases[0]
-                break
+    child_address = get_address_not_active(sui_client)
     assert child_address
+    child_gases = get_gas(sui_client, child_address)[0]
     assert child_gases
     # Transfer the tracker from active-address to some other address
     result = sui_client.transfer_object_txn(
@@ -201,3 +220,43 @@ def test_transfer_tracker_pass(sui_client: SuiClient):
     # Ensure active-address has the tracker back
     tracker = get_tracker(sui_client)
     assert tracker
+
+
+def test_transfer_gas_pass(sui_client: SuiClient):
+    """Test."""
+    # Ensure active-address has gas
+    active_gases = get_gas(sui_client)
+    assert active_gases
+    assert len(active_gases) > 1
+    active_gas = active_gases[0]
+    unique_gas_id = active_gas.identifier
+    other_address = get_address_not_active(sui_client)
+    assert other_address
+    assert isinstance(other_address, SuiAddress)
+    # Send it to another address
+    result = sui_client.pay_allsui_txn(
+        signer=sui_client.config.active_address,
+        input_coins=SuiArray([unique_gas_id]),
+        recipient=other_address,
+        gas_budget=SuiInteger(1000),
+    )
+    assert result.is_ok()
+    # Find it in our recipient's list of gas
+    other_gasses = get_gas(sui_client, other_address)
+    filtered = list(filter(lambda x: x.identifier == unique_gas_id, other_gasses))
+    assert filtered
+    assert len(filtered) == 1
+    assert filtered[0].identifier == unique_gas_id
+    # Send it back
+    result = sui_client.pay_allsui_txn(
+        signer=other_address,
+        input_coins=SuiArray([unique_gas_id]),
+        recipient=sui_client.config.active_address,
+        gas_budget=SuiInteger(1000),
+    )
+    assert result.is_ok()
+    active_gases = get_gas(sui_client)
+    filtered = list(filter(lambda x: x.identifier == unique_gas_id, active_gases))
+    assert filtered
+    assert len(filtered) == 1
+    assert filtered[0].identifier == unique_gas_id

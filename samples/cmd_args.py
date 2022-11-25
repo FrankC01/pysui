@@ -373,7 +373,7 @@ def _build_package_cmds(subparser) -> None:
         "-g",
         "--gas-budget",
         required=True,
-        help="Specify 'split-coin' transaction budget",
+        help="Specify transaction budget",
         type=check_positive,
     )
     subp.set_defaults(subcommand="publish")
@@ -383,7 +383,7 @@ def _build_package_cmds(subparser) -> None:
         "-s",
         "--signer",
         required=False,
-        help="Specify split-coin signer address. Default to active address",
+        help="Specify SUI call signer address. Default to active address",
         action=ValidateAddress,
     )
     subp.add_argument(
@@ -430,7 +430,7 @@ def _build_package_cmds(subparser) -> None:
         "-g",
         "--gas-budget",
         required=True,
-        help="Specify 'split-coin' transaction budget",
+        help="Specify transaction budget",
         type=check_positive,
     )
     subp.set_defaults(subcommand="call")
@@ -473,7 +473,7 @@ def _build_coin_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="merge-coin")
     # Split coin
-    subp = subparser.add_parser("split-coin", help="Split coin into one or more coins")
+    subp = subparser.add_parser("split-coin", help="Split coin into one or more coins by amount")
     subp.add_argument(
         "-s",
         "--signer",
@@ -507,6 +507,40 @@ def _build_coin_cmds(subparser) -> None:
         type=check_positive,
     )
     subp.set_defaults(subcommand="split-coin")
+    # Split coin
+    subp = subparser.add_parser("split-coin-equally", help="Split coin into one or more coins equally")
+    subp.add_argument(
+        "-s",
+        "--signer",
+        required=False,
+        help="Specify split-coin-equally signer address. Default to active address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-c",
+        "--coin_object_id",
+        required=True,
+        help="Specify the coin ID of the coin being split from.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-a",
+        "--split_count",
+        required=True,
+        help="Specify count of coins to split the coin_object_id into.",
+        type=check_positive,
+    )
+    subp.add_argument(
+        "-o", "--gas", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+    )
+    subp.add_argument(
+        "-g",
+        "--gas-budget",
+        required=True,
+        help="Specify transaction budget",
+        type=check_positive,
+    )
+    subp.set_defaults(subcommand="split-coin-equally")
 
 
 def _build_extended_read_commands(subparser) -> None:

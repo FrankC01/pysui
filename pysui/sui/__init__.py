@@ -38,6 +38,7 @@ from pysui.sui.sui_builders import (
     PayAllSui,
     MergeCoin,
     SplitCoin,
+    SplitCoinEqually,
     MoveCall,
     Publish,
     ExecuteTransaction,

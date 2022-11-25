@@ -31,6 +31,27 @@ module pysuidance::dancer {
 
     }
 
+    /// Create a new tracker
+    public entry fun new_tracker(ctx: &mut TxContext) {
+        // New tracker for recpient
+        let recipient = tx_context::sender(ctx);
+        transfer::transfer(
+            Tracker {
+                id: object::new(ctx),
+                initialized: true,
+                accumulator: vector[],
+            },
+            recipient
+        );
+
+    }
+
+    /// Delete a tracker
+    public entry fun delete(object: Tracker,_ctx: &mut TxContext) {
+        let Tracker { id, initialized: _, accumulator: _} = object;
+        object::delete(id);
+    }
+
     /// Override for transfer of tracker
     public fun transfer(tracker: Tracker, recipient: address) {
         transfer::transfer<Tracker>(tracker, recipient)

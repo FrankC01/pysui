@@ -254,6 +254,13 @@ class SuiInteger(SuiScalarType):
             return 0
         return self.value
 
+    @property
+    def split_count(self) -> int:
+        """Alias for transactions."""
+        if self.value is None:
+            return 0
+        return self.value
+
 
 class SuiAddress(SuiBaseType):
     """Sui Address Type."""
@@ -477,7 +484,7 @@ class ImmutableOwner(DataClassJsonMixin):
 
 @dataclass
 class ObjectRead(DataClassJsonMixin):
-    """DObjectRead is base ObjectRead result."""
+    """ObjectRead is base ObjectRead result."""
 
     data: ObjectReadData
     owner: dict
@@ -581,7 +588,7 @@ class ObjectRead(DataClassJsonMixin):
 
 @dataclass
 class SuiData(ObjectRead):
-    """DSuiData is object that is not coins.
+    """SuiData is object that is not coins.
 
     :param DObjectRead: superclass
     :type DObjectRead: DObjectRead
@@ -592,7 +599,7 @@ class SuiData(ObjectRead):
 
 @dataclass
 class SuiCoin(ObjectRead):
-    """DSuiCoinType is the generic coin.
+    """SuiCoinType is the generic coin.
 
     :param DObjectRead: superclass
     :type DObjectRead: DObjectRead
@@ -612,7 +619,7 @@ class SuiCoin(ObjectRead):
 
 @dataclass
 class SuiGas(SuiCoin):
-    """DSuiGasType is SUI Gas coin.
+    """SuiGasType is SUI Gas coin.
 
     :param DSuiCoin: superclass
     :type DSuiCoin: DSuiCoin

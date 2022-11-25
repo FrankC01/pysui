@@ -933,6 +933,55 @@ class SplitCoin(_MoveCallTransactionBuilder):
         return self._pull_vars()
 
 
+class SplitCoinEqually(_MoveCallTransactionBuilder):
+    """Split a coin into a one or more new coins."""
+
+    splite_kwords: set[str] = {"signer", "gas", "gas_budget", "coin_object_id", "split_count"}
+
+    def __init__(self, **kwargs: dict) -> None:
+        """Initialize builder."""
+        super().__init__("sui_splitCoinEqual")
+        self.signer: SuiAddress = None
+        self.coin_object_id: ObjectID = None
+        self.split_count: SuiInteger = None
+        self.gas: ObjectID = None
+        self.gas_budget: SuiInteger = None
+        if set(kwargs.keys()) == self.splite_kwords:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+        else:
+            raise ValueError(f"Expected keywords {self.splite_kwords} found: {kwargs.keys()}")
+
+    def set_signer(self, address: SuiAddress) -> "SplitCoin":
+        """Set the gas owner signer."""
+        self.signer: SuiAddress = address
+        return self
+
+    def set_gas_object(self, obj: ObjectID) -> "SplitCoin":
+        """Set sui object gas object."""
+        self.gas: ObjectID = obj
+        return self
+
+    def set_gas_budget(self, obj: SuiInteger) -> "SplitCoin":
+        """Set the amount for transaction payment."""
+        self.gas_budget: SuiInteger = obj
+        return self
+
+    def set_coin_object_id(self, obj: ObjectID) -> "SplitCoin":
+        """Set the object ID for the coin being split."""
+        self.coin_object_id: ObjectID = obj
+        return self
+
+    def set_split_count(self, obj: SuiInteger) -> "SplitCoin":
+        """Set the amounts to split the coin into."""
+        self.split_count: SuiInteger = obj
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
 class BatchTransaction(_MoveCallTransactionBuilder):
     """Builder for submitting batch transactions."""
 

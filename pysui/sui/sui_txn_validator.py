@@ -16,10 +16,10 @@
 
 import re
 from typing import Any, Union
-from ..abstracts import Builder
+from pysui.abstracts import Builder
 
-from .sui_excepts import SuiRpcApiInvalidParameter
-from .sui_apidesc import SuiApi, SuiApiParam
+from pysui.sui.sui_excepts import SuiRpcApiInvalidParameter
+from pysui.sui.sui_apidesc import SuiApi, SuiApiParam
 
 __partstring_pattern = re.compile(r"[0-9a-fA-F]{38}")
 __fullstring_pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
@@ -27,11 +27,11 @@ __fullstring_pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
 
 def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
     """Validate the specific parameter."""
-    from .sui_types import SuiArray
+    # from .sui_types import SuiArray
 
     schema_name = type(build_parm).__name__
     att = getattr(build_parm, api_parm.name)
-    if isinstance(build_parm, SuiArray):
+    if isinstance(att, list):
         att = [getattr(x, api_parm.name) for x in att]
 
     # print(f"att {api_parm.name} = {att}")

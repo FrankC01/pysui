@@ -163,6 +163,13 @@ class SuiWallet:
         """Split coins into multiple."""
         return self._client.split_coin_txn(**kwargs)
 
+    def split_coin_equally(
+        self,
+        **kwargs: dict,
+    ) -> SuiRpcResult:
+        """Split coin equally into multiple."""
+        return self._client.split_coin_equally_txn(**kwargs)
+
     def move_call(
         self,
         **kwargs: dict,

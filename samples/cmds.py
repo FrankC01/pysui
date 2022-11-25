@@ -235,12 +235,25 @@ def merge_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
 
 def split_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
-    """Merge two coins together."""
+    """Split coin into amounts."""
     args.signer = args.signer if args.signer else wallet.current_address
     # print(args)
     var_args = vars(args)
     var_args.pop("version")
     result = wallet.split_coin(**var_args)
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+    else:
+        print(f"Error: {result.result_string}")
+
+
+def split_coin_equally(wallet: SuiWallet, args: argparse.Namespace) -> None:
+    """Split coin equally across counts."""
+    args.signer = args.signer if args.signer else wallet.current_address
+    # print(args)
+    var_args = vars(args)
+    var_args.pop("version")
+    result = wallet.split_coin_equally(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
@@ -571,6 +584,7 @@ SUI_CMD_DISPATCH = {
     "payallsui": sui_payall_sui,
     "merge-coin": merge_coin,
     "split-coin": split_coin,
+    "split-coin-equally": split_coin_equally,
     "call": move_call,
     "publish": publish,
     "committee": committee,
