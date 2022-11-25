@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Object version result [issue](https://github.com/FrankC01/pysui/issues/29)
+- Sample wallet construction of object version type and `GetPastObject` in `sui/sui_builders.py`
 
 ### Changed
 - **SuiClient** and **SuiAsynchClinet** [issue](https://github.com/FrankC01/pysui/issues/27)

@@ -193,9 +193,9 @@ class SuiWallet:
         """Get the gas object descriptors."""
         return self.get_type_descriptor(SuiGasDescriptor, address)
 
-    def get_object(self, identifier: ObjectID) -> Union[SuiRpcResult, Exception]:
+    def get_object(self, identifier: ObjectID, version: SuiInteger = None) -> Union[SuiRpcResult, Exception]:
         """Get specific object by it's id."""
-        return self._client.get_object(identifier)
+        return self._client.get_object(identifier, version)
 
     def _get_objects(self, descriptor_result: SuiRpcResult) -> Union[SuiRpcResult, Exception]:
         """Get the underlying data objects list."""

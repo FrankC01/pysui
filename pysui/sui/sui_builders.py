@@ -215,7 +215,10 @@ class GetPastObject(_NativeTransactionBuilder):
         """Initialize Builder."""
         super().__init__("sui_tryGetPastObject", handler_cls=ObjectRead, handler_func="factory")
         self.object_id: ObjectID = sui_object
-        self.version: SuiInteger = version
+        if version:
+            self.version: SuiInteger = version if isinstance(version, SuiInteger) else SuiInteger(version)
+        else:
+            self.version: SuiInteger = SuiInteger(1)
 
     def set_object(self, sui_object: ObjectID) -> "GetPastObject":
         """Set the object to fetch objects owned by."""

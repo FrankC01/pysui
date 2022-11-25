@@ -200,6 +200,10 @@ class SuiBoolean(SuiScalarType):
 class SuiInteger(SuiScalarType):
     """Sui Number type."""
 
+    def __init__(self, value: int) -> None:
+        """Initialize type."""
+        super().__init__(value)
+
     @property
     def gas_budget(self) -> int:
         """Alias for transactions."""
