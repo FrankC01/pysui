@@ -377,11 +377,8 @@ class GetEvents(_NativeTransactionBuilder):
         self.cursor: EventID = None
         self.limit: SuiInteger = None
         self.descending_order: SuiBoolean = False
-        if set(kwargs.keys()) == self.events_kwords:
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.events_kwords}  found: {kwargs.keys()}")
+        for hit in self.events_kwords & set(kwargs.keys()):
+            setattr(self, hit, kwargs[hit])
 
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
@@ -470,11 +467,8 @@ class GetTxs(_NativeTransactionBuilder):
         self.cursor: str = None
         self.limit: SuiInteger = None
         self.descending_order: SuiBoolean = False
-        if set(kwargs.keys()) == self.txs_kwords:
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.txs_kwords} found: {kwargs.keys()}")
+        for hit in self.txs_kwords & set(kwargs.keys()):
+            setattr(self, hit, kwargs[hit])
 
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
@@ -589,11 +583,8 @@ class TransferObject(_MoveCallTransactionBuilder):
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
         self.recipient: SuiAddress = None
-        if set(kwargs.keys()) == self.transferobject_kwords:
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.transferobject_kwords} found: {kwargs.keys()}")
+        for hit in self.transferobject_kwords & set(kwargs.keys()):
+            setattr(self, hit, kwargs[hit])
 
     def set_object_id(self, obj: ObjectID) -> "TransferObject":
         """Set the object to transfer."""
@@ -638,11 +629,8 @@ class TransferSui(_MoveCallTransactionBuilder):
         self.gas_budget: SuiInteger = None
         self.recipient: SuiAddress = None
         self.amount: SuiInteger = None
-        if set(kwargs.keys()) == self.transfersui_kwords:
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.transfersui_kwords} found: {kwargs.keys()}")
+        for hit in self.transfersui_kwords & set(kwargs.keys()):
+            setattr(self, hit, kwargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "TransferSui":
         """Set the gas owner signer."""
@@ -689,14 +677,11 @@ class Pay(_MoveCallTransactionBuilder):
         self.amounts: SuiArray[SuiInteger] = None
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
-        if set(kwargs.keys()) == self.pay_kwords:
-            for key, value in kwargs.items():
-                if key in self._pay_array_keys and isinstance(value, list):
-                    setattr(self, key, SuiArray(value))
-                else:
-                    setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.pay_kwords} found: {kwargs.keys()}")
+        for hit in self.pay_kwords & set(kwargs.keys()):
+            if hit in self._pay_array_keys and isinstance(kwargs[hit], list):
+                setattr(self, hit, SuiArray(kwargs[hit]))
+            else:
+                setattr(self, hit, kwargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "Pay":
         """Set the gas owner signer."""
@@ -747,14 +732,11 @@ class PaySui(_MoveCallTransactionBuilder):
         self.recipients: SuiArray[SuiAddress] = None
         self.amounts: SuiArray[SuiInteger] = None
         self.gas_budget: SuiInteger = None
-        if set(kwargs.keys()) == self.paysui_kwords:
-            for key, value in kwargs.items():
-                if key in self._paysui_array_keys and isinstance(value, list):
-                    setattr(self, key, SuiArray(value))
-                else:
-                    setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.paysui_kwords} found: {kwargs.keys()}")
+        for hit in self.paysui_kwords & set(kwargs.keys()):
+            if hit in self._paysui_array_keys and isinstance(kwargs[hit], list):
+                setattr(self, hit, SuiArray(kwargs[hit]))
+            else:
+                setattr(self, hit, kwargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "PaySui":
         """Set the gas owner signer."""
@@ -798,14 +780,11 @@ class PayAllSui(_MoveCallTransactionBuilder):
         self.input_coins: SuiArray[ObjectID] = None
         self.recipient: SuiAddress = None
         self.gas_budget: SuiInteger = None
-        if set(kwargs.keys()) == self.payallsui_kwords:
-            for key, value in kwargs.items():
-                if key == "input_coins" and isinstance(value, list):
-                    setattr(self, key, SuiArray(value))
-                else:
-                    setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.payallsui_kwords} found: {kwargs.keys()}")
+        for hit in self.payallsui_kwords & set(kwargs.keys()):
+            if hit == "input_coins" and isinstance(kwargs[hit], list):
+                setattr(self, hit, SuiArray(kwargs[hit]))
+            else:
+                setattr(self, hit, kwargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "PayAllSui":
         """Set the gas owner signer."""
@@ -845,11 +824,8 @@ class MergeCoin(_MoveCallTransactionBuilder):
         self.coin_to_merge: ObjectID = None
         self.gas_object: ObjectID = None
         self.gas_budget: SuiInteger = None
-        if set(kwargs.keys()) == self.merge_kwords:
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.merge_kwords} found: {kwargs.keys()}")
+        for hit in self.merge_kwords & set(kwargs.keys()):
+            setattr(self, hit, kwargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "MergeCoin":
         """Set the gas owner signer."""
@@ -894,14 +870,8 @@ class SplitCoin(_MoveCallTransactionBuilder):
         self.split_amounts: SuiArray[SuiInteger] = None
         self.gas_object: ObjectID = None
         self.gas_budget: SuiInteger = None
-        if set(kwargs.keys()) == self.split_kwords:
-            for key, value in kwargs.items():
-                if key == "split_amounts" and isinstance(value, list):
-                    setattr(self, key, SuiArray(value))
-                else:
-                    setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.split_kwords} found: {kwargs.keys()}")
+        for hit in self.split_kwords & set(kwargs.keys()):
+            setattr(self, hit, kwargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "SplitCoin":
         """Set the gas owner signer."""
@@ -946,11 +916,8 @@ class SplitCoinEqually(_MoveCallTransactionBuilder):
         self.split_count: SuiInteger = None
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
-        if set(kwargs.keys()) == self.splite_kwords:
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.splite_kwords} found: {kwargs.keys()}")
+        for hit in self.splite_kwords & set(kwargs.keys()):
+            setattr(self, hit, kwargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "SplitCoin":
         """Set the gas owner signer."""
@@ -1003,14 +970,12 @@ class Publish(_MoveCallTransactionBuilder):
         self.compiled_modules: SuiArray[SuiString] = None
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
-        if set(kwargs.keys()) == self.publish_kwords:
-            for key, value in kwargs.items():
-                if key == "compiled_modules" and isinstance(value, list):
-                    setattr(self, key, SuiArray(value))
-                else:
-                    setattr(self, key, value)
-        else:
-            raise ValueError(f"Expected keywords {self.publish_kwords} found: {kwargs.keys()}")
+        for hit in self.publish_kwords & set(kwargs.keys()):
+            # setattr(self, hit, kwargs[hit])
+            if hit == "compiled_modules" and isinstance(kwargs[hit], list):
+                setattr(self, hit, SuiArray(kwargs[hit]))
+            else:
+                setattr(self, hit, kwargs[hit])
 
     def set_sender(self, obj: SuiAddress) -> "Publish":
         """Set the publisher address."""
@@ -1066,6 +1031,15 @@ class MoveCall(_MoveCallTransactionBuilder):
         self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
         self.gas_object: ObjectID = None
         self.gas_budget: SuiInteger = None
+        for hit in self.move_kwords & set(kwargs.keys()):
+            if hit in self._movecall_array_keys:
+                if kwargs[hit]:
+                    setattr(self, hit, SuiArray(kwargs[hit]))
+                else:
+                    setattr(self, hit, SuiArray([]))
+            else:
+                setattr(self, hit, kwargs[hit])
+
         if set(kwargs.keys()) == self.move_kwords:
             for key, value in kwargs.items():
                 if key in self._movecall_array_keys:
