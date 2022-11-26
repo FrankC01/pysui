@@ -12,7 +12,7 @@
 # -*- coding: utf-8 -*-
 
 
-"""Sui RPC Clients."""
+"""Sui RPC Result and Synch and Asynch Clients Module."""
 
 import asyncio
 import json
@@ -62,10 +62,21 @@ from pysui.sui.sui_excepts import SuiRpcApiNotAvailable
 
 
 class SuiRpcResult(RpcResult):
-    """Sui RpcResult."""
+    """Sui RpcResult.
+
+    Captures information returned from simple and complex RPC API calls
+    """
 
     def __init__(self, result_status: bool, result_string: str, result_data: Any = None) -> None:
-        """Initialize a new RpcResult."""
+        """__init__ SuiRpcResult constructor.
+
+        :param result_status: bool indicating success (True) or not (False)
+        :type result_status: bool
+        :param result_string: Any string, typically to capture a failure of a call
+        :type result_string: str
+        :param result_data: If success, contains data realized by RPC result, defaults to None
+        :type result_data: Any, optional
+        """
         super().__init__()
         self._status: bool = result_status
         self._result_str: str = result_string
@@ -86,12 +97,16 @@ class SuiRpcResult(RpcResult):
 
     @property
     def result_string(self) -> str:
-        """Get result data."""
+        """Get result string."""
         return self._result_str
 
 
 class _ClientMixin(Provider):
-    """Abstract."""
+    """Abstract Mix-in.
+
+    Inherited by both Synch and Async clients to ensure
+    constructor consistency as well as utility functions
+    """
 
     def __init__(self, config: SuiConfig) -> None:
         """Client initializer."""

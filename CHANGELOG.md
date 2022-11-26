@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Pushed `pysui` 0.1.1 to [PyPi](https://pypi.org/project/pysui/)
 - Support for `sui_splitCoinEqual`
+- Support for `sui_batchTransaction`
 
 ### Fixed
 - Object version result [issue](https://github.com/FrankC01/pysui/issues/29)

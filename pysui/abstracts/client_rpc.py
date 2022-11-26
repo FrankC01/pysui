@@ -30,23 +30,41 @@ class Builder(ABC):
 
     @property
     def data_dict(self) -> dict:
-        """Return the data."""
+        """data_dict Returns a copy of the _data portion of RPC call.
+
+        :return: The class default _data specification
+        :rtype: dict
+        """
         return self._data.copy()
 
     @property
     def header(self) -> dict:
-        """Return the header."""
+        """header Returns a copy of the _header portion of RPC call.
+
+        :return: The class default _header specification
+        :rtype: dict
+        """
         return self._header.copy()
 
     @property
     @abstractmethod
     def txn_required(self) -> bool:
-        """Return transaction required flag."""
+        """txn_required Abstraction method to return flag indicating if Builder is a complex transaction.
+
+        This is used by the RPC execute evaluation.
+
+        :return: True if result Tx bytes of immediate call of `method` are auto submitted with `sui_executeTransaction`
+        :rtype: bool
+        """
 
     @property
     @abstractmethod
     def method(self) -> str:
-        """Return RPC API method name."""
+        """method Abstract method to return the method name (e.g. `sui_getObject`).
+
+        :return: The SUI RPC API method name.
+        :rtype: str
+        """
 
 
 class RpcResult(ABC):
@@ -78,10 +96,18 @@ class Provider(ABC):
     """Generic provider state."""
 
     def __init__(self, config: ClientConfiguration) -> None:
-        """Initialize Base Client."""
+        """__init__ Initialize provider with a configuration object.
+
+        :param config: The configuration instance used for Provider implemenetation
+        :type config: ClientConfiguration
+        """
         self._config = config
 
     @property
     def config(self) -> ClientConfiguration:
-        """Return the client configuration."""
+        """config Get the client configuration.
+
+        :return: The configuration object that was provided in Provider initialization
+        :rtype: ClientConfiguration
+        """
         return self._config

@@ -16,42 +16,23 @@
 import base64
 from pathlib import Path
 from typing import Union
-from pysui.sui import SuiClient, SuiRpcResult
-from pysui.sui.sui_builders import MoveCall, Publish
+from pysui.sui import SuiClient
+from pysui.sui.sui_builders import BatchTransaction, MoveCallRequestParams, Publish, TransferObjectParams
 from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_types import (
     ObjectID,
     SuiAddress,
     SuiArray,
     SuiData,
-    MoveDataDescriptor,
     SuiInteger,
     SuiString,
     TxEffectResult,
 )
 
-from .test_srpc_gets import get_gas
+from .test_srpc_gets import get_gas, get_data
 
 TRACKER_MODULE: str = "dancer"
 TRACKER_SIG: list[str] = ["", TRACKER_MODULE, "", "Tracker"]
-
-
-def get_data(client: SuiClient, for_address: SuiAddress = None) -> list[SuiData]:
-    """get_data Fetch all data objects for address.
-
-    :param client: Synchronous http client
-    :type client: SuiClient
-    :param for_address: Address to get objects for, defaults to None and uses active-address
-    :type for_address: SuiAddress, optional
-    :return: List of data objects owned by address, maybe empty
-    :rtype: list[SuiData]
-    """
-    result: SuiRpcResult = client.get_address_object_descriptors(MoveDataDescriptor, for_address)
-    assert result.is_ok()
-    ident_list = [desc.identifier for desc in result.result_data]
-    result: SuiRpcResult = client.get_objects_for(ident_list)
-    assert result.is_ok()
-    return result.result_data
 
 
 def get_tracker(client: SuiClient, for_address: SuiAddress = None) -> Union[SuiData, None]:
@@ -256,3 +237,66 @@ def test_transfer_gas_pass(sui_client: SuiClient):
     assert filtered
     assert len(filtered) == 1
     assert filtered[0].identifier == unique_gas_id
+
+
+def test_batch_transaction_transfer_pass(sui_client: SuiClient):
+    """Test."""
+    active_gases = get_gas(sui_client)
+    assert len(active_gases) > 1
+    transfer_gas_object = active_gases[0]
+    batch_gas_object = active_gases[1]
+    other_address = get_address_not_active(sui_client)
+    assert other_address
+    assert isinstance(other_address, SuiAddress)
+    transfer_params = SuiArray([TransferObjectParams(receiver=other_address, transfer_object=transfer_gas_object)])
+    builder = BatchTransaction(
+        sui_client.config.active_address, transfer_params, batch_gas_object.identifier, SuiInteger(3000)
+    )
+    result = sui_client.execute(builder)
+    assert result.is_ok()
+
+
+def test_batch_transaction_movecall_pass(sui_client: SuiClient):
+    """Test."""
+    active_gases = get_gas(sui_client)
+    assert len(active_gases) > 1
+    tracker = get_tracker(sui_client)
+    assert tracker
+    package_id = tracker.type_signature.split(":")[0]
+    batch_gas_object = active_gases[0]
+    move_params = SuiArray(
+        [
+            MoveCallRequestParams(
+                package_object=ObjectID(package_id),
+                module_str=SuiString(TRACKER_MODULE),
+                function_str=SuiString("add_value"),
+                type_arguments=SuiArray([]),
+                arguments=SuiArray([tracker.identifier, SuiString("6")]),
+            ),
+        ]
+    )
+    builder = BatchTransaction(
+        sui_client.config.active_address, move_params, batch_gas_object.identifier, SuiInteger(3000)
+    )
+    result = sui_client.execute(builder)
+    assert result.is_ok()
+    tracker_out = get_tracker(sui_client)
+    assert tracker_out
+    move_params = SuiArray(
+        [
+            MoveCallRequestParams(
+                package_object=ObjectID(package_id),
+                module_str=SuiString(TRACKER_MODULE),
+                function_str=SuiString("remove_value"),
+                type_arguments=SuiArray([]),
+                arguments=SuiArray([tracker.identifier, SuiString("6")]),
+            ),
+        ]
+    )
+    builder = BatchTransaction(
+        sui_client.config.active_address, move_params, batch_gas_object.identifier, SuiInteger(3000)
+    )
+    result = sui_client.execute(builder)
+    assert result.is_ok()
+    tracker_out = get_tracker(sui_client)
+    assert tracker_out

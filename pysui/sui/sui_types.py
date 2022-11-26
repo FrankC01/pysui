@@ -753,6 +753,11 @@ class SuiArray(SuiCollection, Generic[AT]):
         """Alias for transactions."""
         return self.array
 
+    @property
+    def single_transaction_params(self) -> list[dict]:
+        """Alias for transactions."""
+        return self.array
+
 
 class SuiMap(SuiCollection):
     """Dictionary Type."""

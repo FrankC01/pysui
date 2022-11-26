@@ -7,9 +7,6 @@ Python SUI client SDK for Sui - WIP and expect significant refactoring
 
 Refer to the [Change](CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
-## Known issues or missing capability
-* Doesn't support `sui_batchTransaction` RPC API yet
-
 ## Ready to run
 Requires:
  * Linux or macos (x86_64 or M1)

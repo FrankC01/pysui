@@ -12,7 +12,10 @@
 # -*- coding: utf-8 -*-
 
 
-"""SUI Builders for RPC."""
+"""SUI Builders modules.
+
+Defines RPC encapsulation of types and arguments for SUI RPC calls.
+"""
 
 from abc import abstractmethod
 from enum import IntEnum
@@ -32,6 +35,7 @@ from pysui.sui.sui_types import (
     SuiTxBytes,
     SuiSignature,
     SuiArray,
+    SuiGas,
     SuiMap,
     SuiAddress,
     SuiBaseType,
@@ -41,7 +45,12 @@ from pysui.sui.sui_types import (
 
 
 class SuiRequestType(IntEnum):
-    """Key encoding scheme variations."""
+    """SuiRequestType Defines the type of request being made when invoking `sui_executeTransaction`.
+
+    :param IntEnum: Base enumeration type
+    :type IntEnum: _type_
+    :raises TypeError: _description_
+    """
 
     IMMEDIATERETURN = 0
     WAITFORTXCERT = 1
@@ -67,8 +76,7 @@ class SuiRequestType(IntEnum):
 
 
 class SuiBaseBuilder(Builder):
-    """
-    Base Sui API Builder Class.
+    """Base Sui API Builder Class.
 
     Subclasses must identify public vars that are
     required by Sui RPC API.
@@ -155,28 +163,46 @@ class _NativeTransactionBuilder(SuiBaseBuilder):
 
 
 class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
-    """Fetch Objects for Address."""
+    """GetObjectsOwnedByAddress When executed, returns the list of objects owned by an address."""
 
     def __init__(self, address: SuiAddress = None) -> None:
-        """Initialize Builder."""
+        """__init__ Initializes builder with optional address to fetch objects for.
+
+        :param address: A SuiAddress object whose identifier is used as parameter to RPC calls, defaults to None
+        :type address: SuiAddress, optional
+        """
         super().__init__("sui_getObjectsOwnedByAddress", handler_cls=ObjectInfo, handler_func="factory")
         self.address: SuiAddress = address
 
     def set_address(self, address: SuiAddress) -> "GetObjectsOwnedByAddress":
-        """Set the address to fetch objects owned by."""
+        """set_address Set the address whose objects you want to return.
+
+        :param address: A SuiAddress object whose identifier is used as parameter to RPC calls
+        :type address: SuiAddress
+        :return: self
+        :rtype: GetObjectsOwnedByAddress
+        """
         self.address = address
         return self
 
     def _collect_parameters(self) -> list[SuiAddress]:
-        """Collect the call parameters."""
+        """_collect_parameters Returns expected RPC parameters.
+
+        :return: RPC expects a string representing a SUI address (e.g. 0x....)
+        :rtype: list[SuiAddress]
+        """
         return [self.address]
 
 
 class GetObjectsOwnedByObject(_NativeTransactionBuilder):
-    """Fetch Objects for Address."""
+    """GetObjectsOwnedByObject When executed, returns the list of objects owned by an object."""
 
     def __init__(self, sui_object: ObjectInfo = None) -> None:
-        """Initialize Builder."""
+        """__init__ Initializes builder with ObjectID to fetch objects for.
+
+        :param sui_object: The ObjectID of the owner object, defaults to None
+        :type sui_object: ObjectID, optional
+        """
         super().__init__("sui_getObjectsOwnedByObject")
         self.object_id = sui_object
 
@@ -191,10 +217,14 @@ class GetObjectsOwnedByObject(_NativeTransactionBuilder):
 
 
 class GetObject(_NativeTransactionBuilder):
-    """Fetch Object detail for Object ID."""
+    """GetObject When executed, return the object detailed information for a specified object."""
 
     def __init__(self, sui_object: ObjectID = None) -> None:
-        """Initialize Builder."""
+        """__init__ Initializes builder.
+
+        :param sui_object: Object identifier to fetch from chain, defaults to None
+        :type sui_object: ObjectID, optional
+        """
         super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
         self.object_id: ObjectID = sui_object
 
@@ -212,7 +242,13 @@ class GetPastObject(_NativeTransactionBuilder):
     """Fetch past object."""
 
     def __init__(self, sui_object: ObjectID = None, version: SuiInteger = None) -> None:
-        """Initialize Builder."""
+        """__init__ Initialize builder.
+
+        :param sui_object: Object identifier to fetch from chain, defaults to None
+        :type sui_object: ObjectID, optional
+        :param version: Specific version sequence number being requested, defaults to None
+        :type version: SuiInteger, optional
+        """
         super().__init__("sui_tryGetPastObject", handler_cls=ObjectRead, handler_func="factory")
         self.object_id: ObjectID = sui_object
         if version:
@@ -952,13 +988,87 @@ class SplitCoinEqually(_MoveCallTransactionBuilder):
         return self._pull_vars()
 
 
+class BatchParameter(SuiMap):
+    """Type for verifications."""
+
+    @abstractmethod
+    def realize_parameters(self) -> dict:
+        """Satisfied by subclasses."""
+
+
+class TransferObjectParams(BatchParameter):
+    """For submitting transfer in a batch transaction."""
+
+    def __init__(self, *, receiver: SuiAddress, transfer_object: SuiGas) -> None:
+        """Initialize transfer properties."""
+        self.receiver: SuiAddress = receiver
+        self.transfer_object: SuiGas = transfer_object
+        super().__init__("transferObjectRequestParams", {})
+
+    def realize_parameters(self) -> dict:
+        """Satisfied by subclasses."""
+        out_dict = self.map["transferObjectRequestParams"]
+        out_dict["recipient"] = self.receiver.address
+        out_dict["objectId"] = self.transfer_object.identifier.value
+        return self.map
+
+
+class MoveCallRequestParams(BatchParameter):
+    """For submitting transfer in a batch transaction."""
+
+    def __init__(
+        self,
+        *,
+        package_object: ObjectID,
+        module_str: SuiString,
+        function_str: SuiString,
+        type_arguments: SuiArray[SuiString],
+        arguments: SuiArray[SuiString],
+    ):
+        """__init__ Initialize parameters."""
+        self.package_object_id: ObjectID = package_object
+        self.module: SuiString = module_str
+        self.function: SuiString = function_str
+        self.type_arguments: SuiArray[str] = SuiArray([x.value for x in type_arguments.array])
+        self.arguments: SuiArray[str] = SuiArray([x.value for x in arguments.array])
+        super().__init__("moveCallRequestParams", {})
+
+    def realize_parameters(self) -> dict:
+        """Satisfied by subclasses."""
+        out_dict = self.map["moveCallRequestParams"]
+        out_dict["arguments"] = self.arguments.array
+        out_dict["function"] = self.function.value
+        out_dict["module"] = self.module.value
+        out_dict["packageObjectId"] = self.package_object_id.value
+        out_dict["typeArguments"] = self.type_arguments.array
+        return self.map
+
+
 class BatchTransaction(_MoveCallTransactionBuilder):
     """Builder for submitting batch transactions."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self, signer: SuiAddress, transaction_params: SuiArray[BatchParameter], gas: ObjectID, gas_budget: SuiInteger
+    ) -> None:
         """Initialize builder."""
         super().__init__("sui_batchTransaction")
-        raise NotImplementedError
+        self.signer: SuiAddress = signer
+        self.single_transaction_params = None
+        self.gas: ObjectID = gas
+        self.gas_budget = gas_budget
+
+        for item in transaction_params.array:
+            if not isinstance(item, BatchParameter):
+                raise ValueError(f"{item} is not of type BatchParameter")
+        self.single_transaction_params = transaction_params
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        collection = []
+        for item in self.single_transaction_params.array:
+            collection.append(item.realize_parameters())
+        self.single_transaction_params = SuiArray(collection)
+        return self._pull_vars()
 
 
 class Publish(_MoveCallTransactionBuilder):

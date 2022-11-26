@@ -31,7 +31,7 @@ def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[
 
     schema_name = type(build_parm).__name__
     att = getattr(build_parm, api_parm.name)
-    if isinstance(att, list):
+    if isinstance(att, list) and api_parm.name != "single_transaction_params":
         att = [getattr(x, api_parm.name) for x in att]
 
     # print(f"att {api_parm.name} = {att}")
