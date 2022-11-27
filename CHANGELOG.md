@@ -13,9 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for `sui_splitCoinEqual`
 - Support for `sui_batchTransaction`
 
+
 ### Fixed
-- Object version result [issue](https://github.com/FrankC01/pysui/issues/29)
+- Object version result [closed](https://github.com/FrankC01/pysui/issues/29)
 - Sample wallet construction of object version type and `GetPastObject` in `sui/sui_builders.py`
+- Builder keyword expansion and docs [closed](https://github.com/FrankC01/pysui/issues/30)
+- SuiType keyword expansion and docs [progressing](https://github.com/FrankC01/pysui/issues/31)
 
 ### Changed
 - **SuiClient** and **SuiAsynchClinet** [issue](https://github.com/FrankC01/pysui/issues/27)

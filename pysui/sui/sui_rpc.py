@@ -372,9 +372,11 @@ class SuiClient(_ClientMixin):
 
         :param signer: **Required**: Signer address for transaction and owner of the input_coins
         :type signer: SuiAddress
-        :param input_coins: **Required**: Array of 1 or more input coin Coin<T> ObjectIDs, including the coin for gas payment
+        :param input_coins: **Required**: Array of 1 or more input coin Coin<T> ObjectIDs,
+            including the coin for gas payment
         :type input_coins: SuiArray[ObjectID]
-        :param recipients: **Required**: Array of recipient addresses of coins being paid to. The length of this array must be the same as amounts
+        :param recipients: **Required**: Array of recipient addresses of coins being paid to.
+            The length of this array must be the same as amounts
         :type recipients: SuiArray[SuiAddress]
         :param amounts: **Required**: The amounts to be transferred to recipients, following the same order
         :type amounts: SuiArray[SuiInteger]
@@ -402,9 +404,11 @@ class SuiClient(_ClientMixin):
 
         :param signer: **Required**: Signer address for transaction and owner of the input_coins
         :type signer: SuiAddress
-        :param input_coins: **Required**: Array of 1 or more input coin Sui Gas ObjectIDs, including the coin for gas payment
+        :param input_coins: **Required**: Array of 1 or more input coin Sui Gas ObjectIDs,
+            including the coin for gas payment
         :type input_coins: SuiArray[ObjectID]
-        :param recipients: **Required**: Array of recipient addresses of coins being paid to. The length of this array must be the same as amounts
+        :param recipients: **Required**: Array of recipient addresses of coins being paid to.
+            The length of this array must be the same as amounts
         :type recipients: SuiArray[SuiAddress]
         :param amounts: **Required**: The amounts to be transferred to recipients, following the same order
         :type amounts: SuiArray[SuiInteger]
@@ -508,7 +512,8 @@ class SuiClient(_ClientMixin):
         :type signer: SuiAddress
         :param primary_coin: the coin object to merge into, this coin will remain after the transaction
         :type primary_coin: ObjectID
-        :param coin_to_merge: the coin object to be merged, this coin will be destroyed, the balance will be added to `primary_coin`
+        :param coin_to_merge: the coin object to be merged, this coin will be destroyed,
+            the balance will be added to `primary_coin`
         :type coin_to_merge: ObjectID
         :param gas: gas object to be used in this transaction
         :type gas: ObjectID
@@ -879,9 +884,11 @@ class SuiAsynchClient(_ClientMixin):
 
         :param signer: **Required**: Signer address for transaction and owner of the input_coins
         :type signer: SuiAddress
-        :param input_coins: **Required**: Array of 1 or more input coin Coin<T> ObjectIDs, including the coin for gas payment
+        :param input_coins: **Required**: Array of 1 or more input coin Coin<T> ObjectIDs,
+            including the coin for gas payment
         :type input_coins: SuiArray[ObjectID]
-        :param recipients: **Required**: Array of recipient addresses of coins being paid to. The length of this array must be the same as amounts
+        :param recipients: **Required**: Array of recipient addresses of coins being paid to.
+            The length of this array must be the same as amounts
         :type recipients: SuiArray[SuiAddress]
         :param amounts: **Required**: The amounts to be transferred to recipients, following the same order
         :type amounts: SuiArray[SuiInteger]
@@ -909,9 +916,11 @@ class SuiAsynchClient(_ClientMixin):
 
         :param signer: **Required**: Signer address for transaction and owner of the input_coins
         :type signer: SuiAddress
-        :param input_coins: **Required**: Array of 1 or more input coin Sui Gas ObjectIDs, including the coin for gas payment
+        :param input_coins: **Required**: Array of 1 or more input coin Sui Gas ObjectIDs,
+            including the coin for gas payment
         :type input_coins: SuiArray[ObjectID]
-        :param recipients: **Required**: Array of recipient addresses of coins being paid to. The length of this array must be the same as amounts
+        :param recipients: **Required**: Array of recipient addresses of coins being paid to.
+            The length of this array must be the same as amounts
         :type recipients: SuiArray[SuiAddress]
         :param amounts: **Required**: The amounts to be transferred to recipients, following the same order
         :type amounts: SuiArray[SuiInteger]
@@ -1015,7 +1024,8 @@ class SuiAsynchClient(_ClientMixin):
         :type signer: SuiAddress
         :param primary_coin: the coin object to merge into, this coin will remain after the transaction
         :type primary_coin: ObjectID
-        :param coin_to_merge: the coin object to be merged, this coin will be destroyed, the balance will be added to `primary_coin`
+        :param coin_to_merge: the coin object to be merged, this coin will be destroyed,
+            the balance will be added to `primary_coin`
         :type coin_to_merge: ObjectID
         :param gas: gas object to be used in this transaction
         :type gas: ObjectID
