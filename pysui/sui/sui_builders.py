@@ -19,7 +19,7 @@ Defines RPC encapsulation of types and arguments for SUI RPC calls.
 
 from abc import abstractmethod
 from enum import IntEnum
-from typing import Type, Union
+from typing import Any, Type, Union
 from pysui.abstracts import Builder, PublicKey, SignatureScheme
 from pysui.sui.sui_types import (
     CommitteeInfo,
@@ -42,6 +42,7 @@ from pysui.sui.sui_types import (
     TransactionQueryEnvelope,
     TxEffectResult,
 )
+import pysui.sui.sui_utils as sui_utils
 
 
 class SuiRequestType(IntEnum):
@@ -197,21 +198,27 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
 class GetObjectsOwnedByObject(_NativeTransactionBuilder):
     """GetObjectsOwnedByObject When executed, returns the list of objects owned by an object."""
 
-    def __init__(self, sui_object: ObjectInfo = None) -> None:
+    def __init__(self, sui_object: Any = None) -> None:
         """__init__ Initializes builder with ObjectID to fetch objects for.
 
-        :param sui_object: The ObjectID of the owner object, defaults to None
-        :type sui_object: ObjectID, optional
+        :param sui_object: An ObjectID or type that can be coerced to ObjectID, defaults to None
+        :type sui_object: Any, optional
         """
         super().__init__("sui_getObjectsOwnedByObject")
-        self.object_id = sui_object
+        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
 
-    def set_object(self, sui_object: ObjectInfo) -> "GetObjectsOwnedByObject":
-        """Set the object to fetch objects owned by."""
-        self.object_id: ObjectInfo = sui_object
+    def set_object_id(self, sui_object: Any) -> "GetObjectsOwnedByObject":
+        """set_object_id Set the object to fetch objects owned by.
+
+        :param sui_object: An ObjectID or type that can be coerced to ObjectID, defaults to None
+        :type sui_object: Any
+        :return: self
+        :rtype: GetObjectsOwnedByObject
+        """
+        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
         return self
 
-    def _collect_parameters(self) -> list[ObjectInfo]:
+    def _collect_parameters(self) -> list[ObjectID]:
         """Collect the call parameters."""
         return [self.object_id]
 
@@ -219,18 +226,18 @@ class GetObjectsOwnedByObject(_NativeTransactionBuilder):
 class GetObject(_NativeTransactionBuilder):
     """GetObject When executed, return the object detailed information for a specified object."""
 
-    def __init__(self, sui_object: ObjectID = None) -> None:
+    def __init__(self, sui_object: Any = None) -> None:
         """__init__ Initializes builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
         :type sui_object: ObjectID, optional
         """
         super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
-        self.object_id: ObjectID = sui_object
+        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
 
     def set_object(self, sui_object: ObjectID) -> "GetObjectsOwnedByObject":
         """Set the object to fetch objects owned by."""
-        self.object_id: ObjectID = sui_object
+        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
         return self
 
     def _collect_parameters(self) -> list[ObjectInfo]:
@@ -239,9 +246,14 @@ class GetObject(_NativeTransactionBuilder):
 
 
 class GetPastObject(_NativeTransactionBuilder):
-    """Fetch past object."""
+    """GetPastObject When executed, return the object information for a specified version.
 
-    def __init__(self, sui_object: ObjectID = None, version: SuiInteger = None) -> None:
+    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
+    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
+    policies.
+    """
+
+    def __init__(self, sui_object: Any, version: SuiInteger = None) -> None:
         """__init__ Initialize builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
@@ -250,7 +262,7 @@ class GetPastObject(_NativeTransactionBuilder):
         :type version: SuiInteger, optional
         """
         super().__init__("sui_tryGetPastObject", handler_cls=ObjectRead, handler_func="factory")
-        self.object_id: ObjectID = sui_object
+        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
         if version:
             self.version: SuiInteger = version if isinstance(version, SuiInteger) else SuiInteger(version)
         else:
@@ -258,7 +270,7 @@ class GetPastObject(_NativeTransactionBuilder):
 
     def set_object(self, sui_object: ObjectID) -> "GetPastObject":
         """Set the object to fetch objects owned by."""
-        self.object_id: ObjectID = sui_object
+        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
         return self
 
     def set_version(self, version: SuiInteger) -> "GetPastObject":
@@ -272,16 +284,20 @@ class GetPastObject(_NativeTransactionBuilder):
 
 
 class GetPackage(_NativeTransactionBuilder):
-    """Fetch package definitions including modules and functions."""
+    """GetPackage When executed, return structured representations of all modules in the given package.
+
+    :param _NativeTransactionBuilder: _description_
+    :type _NativeTransactionBuilder: _type_
+    """
 
     def __init__(self, package: ObjectID = None) -> None:
         """Initialize builder."""
         super().__init__("sui_getNormalizedMoveModulesByPackage", handler_cls=MovePackage, handler_func="ingest_data")
-        self.package: ObjectID = package
+        self.package: ObjectID = sui_utils.as_object_id(package)
 
     def set_package(self, package: ObjectID) -> "GetPackage":
-        """Set the package to retrieve."""
-        self.package: ObjectID = package
+        """Set the package ObjectID to be retrieved."""
+        self.package: ObjectID = sui_utils.as_object_id(package)
         return self
 
     def _collect_parameters(self) -> list[ObjectID]:
@@ -439,12 +455,12 @@ class GetTotalTxCount(_NativeTransactionBuilder):
 class GetTx(_NativeTransactionBuilder):
     """Return information about a specific transaction."""
 
-    def __init__(self, digest: SuiString = None) -> None:
+    def __init__(self, digest: Union[SuiString, str] = None) -> None:
         """Initialize builder."""
         super().__init__("sui_getTransaction")
         self.digest: SuiString = digest if isinstance(digest, SuiString) else SuiString(digest)
 
-    def set_digest(self, digest: SuiString) -> "GetTx":
+    def set_digest(self, digest: Union[SuiString, str]) -> "GetTx":
         """Set digest var."""
         self.digest = digest if isinstance(digest, SuiString) else SuiString(digest)
         return self
@@ -517,14 +533,22 @@ class GetTxs(_NativeTransactionBuilder):
 class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        tx_bytes: SuiTxBytes = None,
+        sig_scheme: SignatureScheme = None,
+        signature: SuiSignature = None,
+        pub_key: PublicKey = None,
+        request_type: SuiRequestType = None,
+    ) -> None:
         """Initialize builder."""
         super().__init__("sui_executeTransaction", handler_cls=TxEffectResult, handler_func="from_dict")
-        self.tx_bytes: SuiTxBytes = None
-        self.sig_scheme: SignatureScheme = None
-        self.signature: SuiSignature = None
-        self.pub_key: PublicKey = None
-        self.request_type: SuiRequestType = None
+        self.tx_bytes: SuiTxBytes = tx_bytes
+        self.sig_scheme: SignatureScheme = sig_scheme
+        self.signature: SuiSignature = signature
+        self.pub_key: PublicKey = pub_key
+        self.request_type: SuiRequestType = request_type
 
     def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "ExecuteTransaction":
         """Set the transaction base64 string."""
@@ -559,13 +583,20 @@ class ExecuteTransaction(_NativeTransactionBuilder):
 class DryRunTransaction(_NativeTransactionBuilder):
     """Dry run a signed transaction to Sui."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        tx_bytes: SuiTxBytes = None,
+        sig_scheme: SignatureScheme = None,
+        signature: SuiSignature = None,
+        pub_key: PublicKey = None,
+    ) -> None:
         """Initialize builder."""
         super().__init__("sui_dryRunTransaction")
-        self.tx_bytes: SuiTxBytes = None
-        self.sig_scheme: SignatureScheme = None
-        self.signature: SuiSignature = None
-        self.pub_key: PublicKey = None
+        self.tx_bytes: SuiTxBytes = tx_bytes
+        self.sig_scheme: SignatureScheme = sig_scheme
+        self.signature: SuiSignature = signature
+        self.pub_key: PublicKey = pub_key
 
     def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "DryRunTransaction":
         """Set the transaction base64 string."""
@@ -614,20 +645,29 @@ class TransferObject(_MoveCallTransactionBuilder):
 
     transferobject_kwords: set[str] = {"signer", "object_id", "gas", "gas_budget", "recipient"}
 
-    def __init__(self, **kwargs: dict) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        object_id: ObjectID = None,
+        gas: ObjectID = None,
+        gas_budget: SuiInteger = None,
+        recipient: SuiAddress = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_transferObject")
         self.signer: SuiAddress = None
         self.object_id: ObjectID = None
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
         self.recipient: SuiAddress = None
-        for hit in self.transferobject_kwords & set(kwargs.keys()):
-            setattr(self, hit, kwargs[hit])
+        for hit in self.transferobject_kwords & set(inargs.keys()):
+            setattr(self, hit, inargs[hit])
 
     def set_object_id(self, obj: ObjectID) -> "TransferObject":
         """Set the object to transfer."""
-        self.object_id: ObjectID = obj
+        self.object_id: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_signer(self, address: SuiAddress) -> "TransferObject":
@@ -637,7 +677,7 @@ class TransferObject(_MoveCallTransactionBuilder):
 
     def set_gas(self, obj: ObjectID) -> "TransferObject":
         """Set sui object gas object."""
-        self.gas: ObjectID = obj
+        self.gas: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "TransferObject":
@@ -660,16 +700,25 @@ class TransferSui(_MoveCallTransactionBuilder):
 
     transfersui_kwords: set[str] = {"signer", "sui_object_id", "gas_budget", "recipient", "amount"}
 
-    def __init__(self, **kwargs: dict) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        sui_object_id: ObjectID = None,
+        gas_budget: SuiInteger = None,
+        recipient: SuiAddress = None,
+        amount: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_transferSui")
         self.signer: SuiAddress = None
         self.sui_object_id: ObjectID = None
         self.gas_budget: SuiInteger = None
         self.recipient: SuiAddress = None
         self.amount: SuiInteger = None
-        for hit in self.transfersui_kwords & set(kwargs.keys()):
-            setattr(self, hit, kwargs[hit])
+        for hit in self.transfersui_kwords & set(inargs.keys()):
+            setattr(self, hit, inargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "TransferSui":
         """Set the gas owner signer."""
@@ -678,7 +727,7 @@ class TransferSui(_MoveCallTransactionBuilder):
 
     def set_sui_object_id(self, obj: ObjectID) -> "TransferSui":
         """Set sui object gas object."""
-        self.sui_object_id: ObjectID = obj
+        self.sui_object_id: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "TransferSui":
@@ -707,8 +756,18 @@ class Pay(_MoveCallTransactionBuilder):
     pay_kwords: set[str] = {"signer", "input_coins", "recipients", "amounts", "gas", "gas_budget"}
     _pay_array_keys: set[str] = {"input_coins", "recipients", "amounts"}
 
-    def __init__(self, **kwargs: dict) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        input_coins: SuiArray[ObjectID] = None,
+        recipients: SuiArray[SuiAddress] = None,
+        amounts: SuiArray[SuiInteger] = None,
+        gas: ObjectID = None,
+        gas_budget: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_pay")
         self.signer: SuiAddress = None
         self.input_coins: SuiArray[ObjectID] = None
@@ -716,11 +775,11 @@ class Pay(_MoveCallTransactionBuilder):
         self.amounts: SuiArray[SuiInteger] = None
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
-        for hit in self.pay_kwords & set(kwargs.keys()):
-            if hit in self._pay_array_keys and isinstance(kwargs[hit], list):
-                setattr(self, hit, SuiArray(kwargs[hit]))
+        for hit in self.pay_kwords & set(inargs.keys()):
+            if hit in self._pay_array_keys and isinstance(inargs[hit], list):
+                setattr(self, hit, SuiArray(inargs[hit]))
             else:
-                setattr(self, hit, kwargs[hit])
+                setattr(self, hit, inargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "Pay":
         """Set the gas owner signer."""
@@ -744,7 +803,7 @@ class Pay(_MoveCallTransactionBuilder):
 
     def set_gas(self, obj: ObjectID) -> "Pay":
         """Set sui object gas object for paying transaction."""
-        self.gas: ObjectID = obj
+        self.gas: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "Pay":
@@ -763,19 +822,28 @@ class PaySui(_MoveCallTransactionBuilder):
     paysui_kwords: set[str] = {"signer", "input_coins", "recipients", "amounts", "gas_budget"}
     _paysui_array_keys: set[str] = {"input_coins", "recipients", "amounts"}
 
-    def __init__(self, **kwargs: dict) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        input_coins: SuiArray[ObjectID] = None,
+        recipients: SuiArray[SuiAddress] = None,
+        amounts: SuiArray[SuiInteger] = None,
+        gas_budget: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_paySui")
         self.signer: SuiAddress = None
         self.input_coins: SuiArray[ObjectID] = None
         self.recipients: SuiArray[SuiAddress] = None
         self.amounts: SuiArray[SuiInteger] = None
         self.gas_budget: SuiInteger = None
-        for hit in self.paysui_kwords & set(kwargs.keys()):
-            if hit in self._paysui_array_keys and isinstance(kwargs[hit], list):
-                setattr(self, hit, SuiArray(kwargs[hit]))
+        for hit in self.paysui_kwords & set(inargs.keys()):
+            if hit in self._paysui_array_keys and isinstance(inargs[hit], list):
+                setattr(self, hit, SuiArray(inargs[hit]))
             else:
-                setattr(self, hit, kwargs[hit])
+                setattr(self, hit, inargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "PaySui":
         """Set the gas owner signer."""
@@ -812,18 +880,27 @@ class PayAllSui(_MoveCallTransactionBuilder):
 
     payallsui_kwords: set[str] = {"signer", "input_coins", "recipient", "gas_budget"}
 
-    def __init__(self, **kwargs: dict) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        input_coins: SuiArray[ObjectID] = None,
+        recipient: SuiAddress = None,
+        amounts: SuiArray[SuiInteger] = None,
+        gas_budget: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_payAllSui")
         self.signer: SuiAddress = None
         self.input_coins: SuiArray[ObjectID] = None
         self.recipient: SuiAddress = None
         self.gas_budget: SuiInteger = None
-        for hit in self.payallsui_kwords & set(kwargs.keys()):
-            if hit == "input_coins" and isinstance(kwargs[hit], list):
-                setattr(self, hit, SuiArray(kwargs[hit]))
+        for hit in self.payallsui_kwords & set(inargs.keys()):
+            if hit == "input_coins" and isinstance(inargs[hit], list):
+                setattr(self, hit, SuiArray(inargs[hit]))
             else:
-                setattr(self, hit, kwargs[hit])
+                setattr(self, hit, inargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "PayAllSui":
         """Set the gas owner signer."""
@@ -855,16 +932,25 @@ class MergeCoin(_MoveCallTransactionBuilder):
 
     merge_kwords: set[str] = {"signer", "gas_object", "gas_budget", "primary_coin", "coin_to_merge"}
 
-    def __init__(self, **kwargs: dict) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        primary_coin: ObjectID = None,
+        coin_to_merge: ObjectID = None,
+        gas_object: ObjectID = None,
+        gas_budget: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_mergeCoins")
         self.signer: SuiAddress = None
         self.primary_coin: ObjectID = None
         self.coin_to_merge: ObjectID = None
         self.gas_object: ObjectID = None
         self.gas_budget: SuiInteger = None
-        for hit in self.merge_kwords & set(kwargs.keys()):
-            setattr(self, hit, kwargs[hit])
+        for hit in self.merge_kwords & set(inargs.keys()):
+            setattr(self, hit, inargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "MergeCoin":
         """Set the gas owner signer."""
@@ -873,7 +959,7 @@ class MergeCoin(_MoveCallTransactionBuilder):
 
     def set_gas_object(self, obj: ObjectID) -> "MergeCoin":
         """Set sui object gas object."""
-        self.gas_object: ObjectID = obj
+        self.gas_object: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "MergeCoin":
@@ -883,12 +969,12 @@ class MergeCoin(_MoveCallTransactionBuilder):
 
     def set_coin_to_merge(self, obj: ObjectID) -> "MergeCoin":
         """Set the address for the receiver."""
-        self.coin_to_merge: ObjectID = obj
+        self.coin_to_merge: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_primary_coin(self, obj: ObjectID) -> "MergeCoin":
         """Set the primary coin to merge into."""
-        self.primary_coin: ObjectID = obj
+        self.primary_coin: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
@@ -901,16 +987,25 @@ class SplitCoin(_MoveCallTransactionBuilder):
 
     split_kwords: set[str] = {"signer", "gas_object", "gas_budget", "coin_object_id", "split_amounts"}
 
-    def __init__(self, **kwargs: dict) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        coin_object_id: ObjectID = None,
+        split_amounts: SuiArray[SuiInteger] = None,
+        gas_object: ObjectID = None,
+        gas_budget: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_splitCoin")
         self.signer: SuiAddress = None
         self.coin_object_id: ObjectID = None
         self.split_amounts: SuiArray[SuiInteger] = None
         self.gas_object: ObjectID = None
         self.gas_budget: SuiInteger = None
-        for hit in self.split_kwords & set(kwargs.keys()):
-            setattr(self, hit, kwargs[hit])
+        for hit in self.split_kwords & set(inargs.keys()):
+            setattr(self, hit, inargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "SplitCoin":
         """Set the gas owner signer."""
@@ -919,7 +1014,7 @@ class SplitCoin(_MoveCallTransactionBuilder):
 
     def set_gas_object(self, obj: ObjectID) -> "SplitCoin":
         """Set sui object gas object."""
-        self.gas_object: ObjectID = obj
+        self.gas_object: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "SplitCoin":
@@ -929,7 +1024,7 @@ class SplitCoin(_MoveCallTransactionBuilder):
 
     def set_coin_object_id(self, obj: ObjectID) -> "SplitCoin":
         """Set the object ID for the coin being split."""
-        self.coin_object_id: ObjectID = obj
+        self.coin_object_id: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_split_amounts(self, obj: list[SuiInteger]) -> "SplitCoin":
@@ -947,16 +1042,25 @@ class SplitCoinEqually(_MoveCallTransactionBuilder):
 
     splite_kwords: set[str] = {"signer", "gas", "gas_budget", "coin_object_id", "split_count"}
 
-    def __init__(self, **kwargs: dict) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        coin_object_id: ObjectID = None,
+        split_count: SuiInteger = None,
+        gas: ObjectID = None,
+        gas_budget: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_splitCoinEqual")
         self.signer: SuiAddress = None
         self.coin_object_id: ObjectID = None
         self.split_count: SuiInteger = None
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
-        for hit in self.splite_kwords & set(kwargs.keys()):
-            setattr(self, hit, kwargs[hit])
+        for hit in self.splite_kwords & set(inargs.keys()):
+            setattr(self, hit, inargs[hit])
 
     def set_signer(self, address: SuiAddress) -> "SplitCoin":
         """Set the gas owner signer."""
@@ -965,7 +1069,7 @@ class SplitCoinEqually(_MoveCallTransactionBuilder):
 
     def set_gas_object(self, obj: ObjectID) -> "SplitCoin":
         """Set sui object gas object."""
-        self.gas: ObjectID = obj
+        self.gas: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "SplitCoin":
@@ -975,7 +1079,7 @@ class SplitCoinEqually(_MoveCallTransactionBuilder):
 
     def set_coin_object_id(self, obj: ObjectID) -> "SplitCoin":
         """Set the object ID for the coin being split."""
-        self.coin_object_id: ObjectID = obj
+        self.coin_object_id: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_split_count(self, obj: SuiInteger) -> "SplitCoin":
@@ -1026,7 +1130,7 @@ class MoveCallRequestParams(BatchParameter):
         arguments: SuiArray[SuiString],
     ):
         """__init__ Initialize parameters."""
-        self.package_object_id: ObjectID = package_object
+        self.package_object_id: ObjectID = sui_utils.as_object_id(package_object)
         self.module: SuiString = module_str
         self.function: SuiString = function_str
         self.type_arguments: SuiArray[str] = SuiArray([x.value for x in type_arguments.array])
@@ -1054,7 +1158,7 @@ class BatchTransaction(_MoveCallTransactionBuilder):
         super().__init__("sui_batchTransaction")
         self.signer: SuiAddress = signer
         self.single_transaction_params = None
-        self.gas: ObjectID = gas
+        self.gas: ObjectID = sui_utils.as_object_id(gas)
         self.gas_budget = gas_budget
 
         for item in transaction_params.array:
@@ -1076,18 +1180,26 @@ class Publish(_MoveCallTransactionBuilder):
 
     publish_kwords = {"sender", "compiled_modules", "gas", "gas_budget"}
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(
+        self,
+        *,
+        sender: SuiAddress = None,
+        compiled_modules: SuiArray[SuiString] = None,
+        gas: ObjectID = None,
+        gas_budget: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_publish")
         self.sender: SuiAddress = None
         self.compiled_modules: SuiArray[SuiString] = None
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
-        for hit in self.publish_kwords & set(kwargs.keys()):
-            if hit == "compiled_modules" and isinstance(kwargs[hit], list):
-                setattr(self, hit, SuiArray(kwargs[hit]))
+        for hit in self.publish_kwords & set(inargs.keys()):
+            if hit == "compiled_modules" and isinstance(inargs[hit], list):
+                setattr(self, hit, SuiArray(inargs[hit]))
             else:
-                setattr(self, hit, kwargs[hit])
+                setattr(self, hit, inargs[hit])
 
     def set_sender(self, obj: SuiAddress) -> "Publish":
         """Set the publisher address."""
@@ -1101,7 +1213,7 @@ class Publish(_MoveCallTransactionBuilder):
 
     def set_gas_object(self, obj: ObjectID) -> "Publish":
         """Set sui object gas object."""
-        self.gas: ObjectID = obj
+        self.gas: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "Publish":
@@ -1132,8 +1244,20 @@ class MoveCall(_MoveCallTransactionBuilder):
         "arguments",
     }
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress = None,
+        package_object_id: ObjectID = None,
+        module: SuiString = None,
+        function: SuiString = None,
+        type_arguments: SuiArray[SuiString] = None,
+        arguments: SuiArray[SuiString] = None,
+        gas: ObjectID = None,
+        gas_budget: SuiInteger = None,
+    ) -> None:
         """Initialize builder."""
+        inargs = locals().copy()
         super().__init__("sui_moveCall")
         self.signer: SuiAddress = None
         self.package_object_id: ObjectID = None
@@ -1143,14 +1267,14 @@ class MoveCall(_MoveCallTransactionBuilder):
         self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
-        for hit in self.move_kwords & set(kwargs.keys()):
+        for hit in self.move_kwords & set(inargs.keys()):
             if hit in self._movecall_array_keys:
-                if kwargs[hit]:
-                    setattr(self, hit, SuiArray(kwargs[hit]))
+                if inargs[hit]:
+                    setattr(self, hit, SuiArray(inargs[hit]))
                 else:
                     setattr(self, hit, SuiArray([]))
             else:
-                setattr(self, hit, kwargs[hit])
+                setattr(self, hit, inargs[hit])
 
     def set_signer(self, obj: SuiAddress) -> "MoveCall":
         """Set signers address."""
@@ -1179,7 +1303,7 @@ class MoveCall(_MoveCallTransactionBuilder):
 
     def set_gas_object(self, obj: ObjectID) -> "MoveCall":
         """Set sui object gas object."""
-        self.gas: ObjectID = obj
+        self.gas: ObjectID = sui_utils.as_object_id(obj)
         return self
 
     def set_gas_budget(self, obj: SuiInteger) -> "MoveCall":

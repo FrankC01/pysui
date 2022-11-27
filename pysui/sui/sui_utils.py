@@ -16,10 +16,10 @@
 import base64
 import subprocess
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
+from dataclasses_json import DataClassJsonMixin
 
-
-from pysui.sui.sui_types import SuiString
+from pysui.sui.sui_types import SuiAddress, SuiString, ObjectID, SuiScalarType, SuiBaseType
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiMiisingModuleByteCode, SuiPackageBuildFail
 
 
@@ -62,3 +62,36 @@ def build_b64_modules(path_to_package: Path) -> Union[list[SuiString], Exception
     if path_to_package.exists():
         return _package_modules_to_b64(_compile_project(path_to_package))
     raise SuiMiisingBuildFolder(f"Move project path not found: {path_to_package}")
+
+
+def as_object_id(in_data: Any) -> Union[ObjectID, None]:
+    """as_object_id Coerces ObjectID from input object.
+
+    :param in_data: Any type that may be, have or can be converted to ObjectID
+    :type in_data: Any
+    :raises ValueError: If in_data is of subclass SuiScalarType but not one that can be converted to ObjectID
+    :raises att_exc: If data does not have property `identifier`
+    :raises ValueError: _description_
+    :return: _description_
+    :rtype: Union[ObjectID, None]
+    """
+    object_id: ObjectID = None
+    if isinstance(in_data, ObjectID):
+        object_id = in_data
+    elif isinstance(in_data, str):
+        object_id = ObjectID(in_data)
+    elif issubclass(in_data, SuiScalarType):
+        if isinstance(in_data, SuiString):
+            object_id = ObjectID(in_data.value)
+        else:
+            raise ValueError(f"{str(in_data)} can not be coerced to ObjectID.")
+    elif issubclass(in_data, SuiAddress):
+        object_id = in_data.identifier
+    elif issubclass(in_data, DataClassJsonMixin):
+        try:
+            object_id = getattr(in_data, "identifier")
+        except AttributeError as att_exc:
+            raise att_exc
+    else:
+        raise ValueError(f"Can not get object ID from {in_data}")
+    return object_id
