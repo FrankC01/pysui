@@ -19,10 +19,16 @@ from .client_keypair import KeyPair
 class ClientConfiguration(ABC):
     """Base abstraction for managing a clients configuration."""
 
-    def __init__(self, keystore_file: str):
-        """Initialize base configuration properties."""
+    def __init__(self, config_path: str, keystore_file: str):
+        """__init__ ClientConfiguration initializer.
+
+        :param config_path: Fully qualified path to SUI `client.yaml`
+        :type config_path: str
+        :param keystore_file: Full qualified path to `sui.keystore`
+        :type keystore_file: str
+        """
         self._current_keystore_file = keystore_file
-        self._keypair_file: str = None
+        self._configuration_path = config_path
         self._keypairs = {}
         self._addresses = {}
         self._address_keypair = {}
@@ -41,6 +47,15 @@ class ClientConfiguration(ABC):
     @abstractmethod
     def generate_configuration(cls) -> "ClientConfiguration":
         """Generate a default configuration."""
+
+    @property
+    def configuration_path(self) -> str:
+        """configuration_path Returns the configuration path that defined configuraiton instance.
+
+        :return: The fully qualified configuration path
+        :rtype: str
+        """
+        return self._configuration_path
 
     @property
     def keystore_file(self) -> str:

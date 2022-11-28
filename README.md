@@ -2,7 +2,7 @@
 
 Python SUI client SDK for Sui - WIP and expect significant refactoring
 
-- Repo Version: Unpublished **0.1.2**
+- Repo Version: Unpublished **0.2.0**
 - PyPi Version: **0.1.1**
 
 Refer to the [Change](CHANGELOG.md) log for recent additions, changes, fixes and removals...
@@ -50,7 +50,7 @@ options:
   -v, --version         Show pysui SDK version
 
 commands:
-  {active-address,addresses,new-address,gas,object,objects,rpcapi,committee,faucet,merge-coin,split-coin,transfer-object,transfer-sui,pay,paysui,payallsui,package,publish,call,events,txns}
+  {active-address,addresses,new-address,gas,object,objects,rpcapi,committee,faucet,merge-coin,split-coin,split-coin-equally,transfer-object,transfer-sui,pay,paysui,payallsui,package,publish,call,events,txns}
     active-address      Shows active address
     addresses           Shows all addresses
     new-address         Generate new address and keypair
@@ -61,7 +61,8 @@ commands:
     committee           Show committee info for epoch
     faucet              Get additional gas from SUI faucet
     merge-coin          Merge two coins together
-    split-coin          Split coin into one or more coins
+    split-coin          Split coin into one or more coins by amount
+    split-coin-equally  Split coin into one or more coins equally
     transfer-object     Transfer an object from one address to another
     transfer-sui        Transfer SUI 'mist(s)' to a Sui address
     pay                 Send coin of any type to recipient(s)

@@ -36,9 +36,9 @@ from pysui.sui.sui_excepts import (
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
-    def __init__(self, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
+    def __init__(self, config_path: str, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
         """Initialize the default config."""
-        super().__init__(keystore_file)
+        super().__init__(config_path, keystore_file)
         self._active_address = SuiAddress.from_hex_string(active_address)
         self._current_url = current_url
         self._current_env = env
@@ -103,7 +103,7 @@ class SuiConfig(ClientConfiguration):
         raise NotImplementedError
 
     @classmethod
-    def _parse_config(cls, fpath: Path, config_file: TextIOWrapper) -> tuple[str, str, str, str]:
+    def _parse_config(cls, fpath: Path, config_file: TextIOWrapper) -> tuple[str, str, str, str, str]:
         """Open configuration file and generalize for ingestion."""
         kfpath = fpath.parent
         sui_config = yaml.safe_load(config_file)
@@ -124,7 +124,7 @@ class SuiConfig(ClientConfiguration):
         else:
             raise SuiConfigFileError("'envs' not found in configuration file.")
         keystore_file = str(kfpath.joinpath(keystore_file.name).absolute())
-        return (active_env, active_address, keystore_file, current_url)
+        return (str(fpath), active_env, active_address, keystore_file, current_url)
 
     @classmethod
     def default(cls) -> "SuiConfig":
@@ -165,6 +165,15 @@ class SuiConfig(ClientConfiguration):
     def active_address(self) -> SuiAddress:
         """Return the current address."""
         return self._active_address
+
+    @property
+    def environment(self) -> str:
+        """environment Return the current environment of config in use.
+
+        :return: The environment name
+        :rtype: str
+        """
+        return self._current_env
 
     @property
     def keystore_file(self) -> str:

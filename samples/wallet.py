@@ -48,9 +48,11 @@ def main():
         var_args.pop("subcommand")
         parsed = argparse.Namespace(**var_args)
         if cfg_file:
-            cmd_call(SuiWallet(SuiConfig.from_config_file(cfg_file[0])), parsed)
+            cfg = SuiConfig.from_config_file(cfg_file[0])
         else:
-            cmd_call(SuiWallet(SuiConfig.default()), parsed)
+            cfg = SuiConfig.default()
+        print(f"Using configuration from {cfg.configuration_path}")
+        cmd_call(SuiWallet(cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")
 

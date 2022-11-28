@@ -20,16 +20,10 @@ import pytest
 from pysui.sui.sui_config import SuiConfig
 
 
-def test_config_pass() -> None:
+def test_config_default_pass() -> None:
     """Test config default load."""
     config = SuiConfig.default()
     assert config is not None
-
-
-# def test_from_config_pass() -> None:
-#     """Test loading well known config."""
-#     config = SuiConfig.from_config_file("~/sui_local/client.yaml")
-#     assert config is not None
 
 
 @pytest.mark.xfail(raises=Exception)

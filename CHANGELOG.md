@@ -4,15 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Current dev version - 0.1.2
+## [Unreleased] - Current dev version - 0.2.0
+
+Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, well, semantics!
 
 **Breaking** Changes (noted in bold)
 
 ### Added
 - Pushed `pysui` 0.1.1 to [PyPi](https://pypi.org/project/pysui/)
-- Support for `sui_splitCoinEqual`
-- Support for `sui_batchTransaction`
-
+- Support for `sui_splitCoinEqual` in `sui/sui_builders.py`
+- Support for `sui_batchTransaction` in `sui/sui_builders.py`
+- **SuiConfig** retains the fully qualified path to `client.yaml` used to initialize it
+- SuiConfig adds property (read only) `configuration_path` to `client.yaml`
+- SuiConfig adds property (read only) `environment` to the environment in use from client.yaml
 
 ### Fixed
 - Object version result [closed](https://github.com/FrankC01/pysui/issues/29)
@@ -23,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **SuiClient** and **SuiAsynchClinet** [issue](https://github.com/FrankC01/pysui/issues/27)
 - Relaxed build initializer validations [closed](https://github.com/FrankC01/pysui/issues/28)
+
 
 ### Removed
 
