@@ -80,14 +80,14 @@ def as_object_id(in_data: Any) -> Union[ObjectID, None]:
         object_id = in_data
     elif isinstance(in_data, str):
         object_id = ObjectID(in_data)
-    elif issubclass(in_data, SuiScalarType):
+    elif issubclass(type(in_data), SuiScalarType):
         if isinstance(in_data, SuiString):
             object_id = ObjectID(in_data.value)
         else:
             raise ValueError(f"{str(in_data)} can not be coerced to ObjectID.")
-    elif issubclass(in_data, SuiAddress):
-        object_id = in_data.identifier
-    elif issubclass(in_data, DataClassJsonMixin):
+    elif issubclass(type(in_data), SuiAddress):
+        object_id = ObjectID(in_data.identifier.value)
+    elif issubclass(type(in_data), DataClassJsonMixin):
         try:
             object_id = getattr(in_data, "identifier")
         except AttributeError as att_exc:

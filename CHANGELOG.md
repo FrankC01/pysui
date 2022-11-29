@@ -27,6 +27,8 @@ Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, 
 ### Changed
 - **SuiClient** and **SuiAsynchClinet** [issue](https://github.com/FrankC01/pysui/issues/27)
 - Relaxed build initializer validations [closed](https://github.com/FrankC01/pysui/issues/28)
+- **Refactored data model for results of GetPackage. Now produces SuiMovePackage vs MovePackage**
+- Renamed `samples/asynch.py` to `samples/asynch_gas.py`
 
 
 ### Removed

@@ -16,7 +16,7 @@
 from pysui.sui.sui_types import (
     FaucetGasRequest,
     TxEffectResult,
-    MovePackage,
+    SuiMovePackage,
     ObjectInfo,
     ObjectRead,
     EventQueryEnvelope,
@@ -101,13 +101,19 @@ def test_move_call_result_pass(move_call_result):
 
 def test_package_track_result_pass(package_track_result):
     """Valid result."""
-    result = MovePackage(package_track_result)
+    result = SuiMovePackage.ingest_data(package_track_result)
     assert result is not None
 
 
 def test_package_nest_result_pass(package_nest_result):
     """Valid result."""
-    result = MovePackage(package_nest_result)
+    result = SuiMovePackage.ingest_data(package_nest_result)
+    assert result is not None
+
+
+def test_package_sui_result_pass(package_sui_result):
+    """Valid result."""
+    result = SuiMovePackage.ingest_data(package_sui_result)
     assert result is not None
 
 

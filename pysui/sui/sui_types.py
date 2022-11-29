@@ -1219,37 +1219,56 @@ class TransactionQueryEnvelope(DataClassJsonMixin):
 # Packages
 
 
+class SuiMoveType:
+    """SuiMoveType is a factory of generalized Normalized types."""
+
+    @classmethod
+    def resolve(cls, parm: dict) -> DataClassJsonMixin:
+        """resolve Dispatches data loaders based on parm dictionary.
+
+        :param parm: A dictionary containing a SuiMoveNormalizedType
+        :type parm: dict
+        :raises ValueError: Type signature is an unknown type
+        :return: A pysui Sui data object
+        :rtype: DataClassJsonMixin
+        """
+        match_key = list(parm.keys())[0]
+        match match_key:
+            case "Reference" | "MutableReference":
+                parm["reference_type"] = match_key
+                parm["reference_to"] = parm[match_key]
+                parm.pop(match_key)
+                result = SuiParameterReference.from_dict(parm)
+            case "Struct":
+                result = SuiParameterStruct.from_dict(parm[match_key])
+            case "TypeParameter":
+                result = SuiMoveParameterType.from_dict(parm)
+            case "Vector":
+                vmapper = {"vector_of": parm[match_key]}
+                result = SuiMoveVector.from_dict(vmapper)
+            case _:
+                raise ValueError(f"Unknown handler for {match_key}")
+        return result
+
+
+# Sui Normalized Data Types
+
+
 @dataclass
-class MoveModuleId(DataClassJsonMixin):
+class SuiMoveField(DataClassJsonMixin):
     """From getNormalized."""
 
-    address: str
     name: str
-
-
-@dataclass
-class MoveStructReference(DataClassJsonMixin):
-    """From getNormalized."""
-
-    address: str
-    module: str
-    name: str
-    type_arguments: list["MoveStructReference"] = field(default_factory=list)
-
-
-@dataclass
-class MoveStructField(DataClassJsonMixin):
-    """From getNormalized."""
-
-    name: str
-    type_: Union[str, dict[str, MoveStructReference]]  # = field(default_factory=list)
+    type_: Union[str, dict]  # = field(default_factory=list)
 
     def __post_init__(self):
         """Post init processing for field_type."""
+        if isinstance(self.type_, dict):
+            self.type_ = SuiMoveType.resolve(self.type_)
 
 
 @dataclass
-class MoveStructAbilities(DataClassJsonMixin):
+class SuiMoveAbilitySet(DataClassJsonMixin):
     """From getNormalized."""
 
     abilities: list[str]
@@ -1259,53 +1278,141 @@ class MoveStructAbilities(DataClassJsonMixin):
 
 
 @dataclass
-class MoveStruct(DataClassJsonMixin):
+class SuiMoveStructTypeParameter(DataClassJsonMixin):
     """From getNormalized."""
 
-    abilities: MoveStructAbilities
-    fields: list[MoveStructField]
-    type_parameters: list[Union[str, dict]]
+    constraints: SuiMoveAbilitySet
+    is_phantom: bool = False
+
+
+@dataclass
+class SuiMoveStruct(DataClassJsonMixin):
+    """From getNormalized."""
+
+    abilities: SuiMoveAbilitySet
+    fields: list[SuiMoveField]
+    type_parameters: list[SuiMoveStructTypeParameter]
 
     def __post_init__(self):
         """Post init processing for type parameters."""
 
 
 @dataclass
-class MoveFunction(DataClassJsonMixin):
+class SuiMoveVector(DataClassJsonMixin):
+    """From getNormalized."""
+
+    vector_of: Union[str, dict]  # list[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        """Post init."""
+        if isinstance(self.vector_of, dict):
+            self.vector_of = SuiMoveType.resolve(self.vector_of)
+
+
+@dataclass
+class SuiMoveParameterType(DataClassJsonMixin):
+    """From getNormalized."""
+
+    type_parameters_index: int = field(metadata=config(field_name="TypeParameter"), default_factory=None)
+
+
+@dataclass
+class SuiParameterStruct(DataClassJsonMixin):
+    """From getNormalize."""
+
+    address: str
+    module: str
+    name: str
+    type_arguments: list[SuiMoveParameterType]
+
+
+@dataclass
+class SuiParameterReference(DataClassJsonMixin):
+    """From getNormalize."""
+
+    reference_type: str
+    reference_to: dict
+    is_mutable: bool = False
+
+    def __post_init__(self):
+        """Post init."""
+        self.is_mutable = self.reference_type == "MutableReference"
+        if self.reference_to:
+            self.reference_to = SuiMoveType.resolve(self.reference_to)
+
+
+@dataclass
+class SuiMoveFunction(DataClassJsonMixin):
     """From getNormalized."""
 
     visibility: str
     is_entry: bool
-    type_parameters: list[str]
+    type_parameters: list[SuiMoveAbilitySet]
     parameters: list[Union[str, dict]]
-    return_: list[str]
+    returns: list[Union[str, dict]] = field(metadata=config(field_name="return_"), default_factory=list)
 
     def __post_init__(self):
-        """Post init processing for parameters."""
+        """Post init processing for parameters and returns."""
+        # Transition parameters
+        new_parms = []
+        for parm in self.parameters:
+            if isinstance(parm, dict):
+                new_parms.append(SuiMoveType.resolve(parm))
+            else:
+                new_parms.append(parm)
+        self.parameters = new_parms
+        # Transition returns
+        new_rets = []
+        for parm in self.returns:
+            if isinstance(parm, dict):
+                new_rets.append(SuiMoveType.resolve(parm))
+            else:
+                new_rets.append(parm)
+        self.returns = new_rets
+
+
+# Module module information type
+@dataclass
+class SuiMoveModuleId(DataClassJsonMixin):
+    """MoveModuleId Is a reference to a module's address and name.
+
+    Found in a modules 'friends' list
+    """
+
+    address: str
+    name: str
 
 
 @dataclass
-class MoveModule(DataClassJsonMixin):
+class SuiMoveModule(DataClassJsonMixin):
     """From getNormalized."""
 
     name: str
     address: str
     file_format_version: int
-    friends: list[MoveModuleId]
-    structs: dict[str, MoveStruct]
-    exposed_functions: dict[str, MoveFunction]
+    friends: list[SuiMoveModuleId]
+    structs: dict[str, SuiMoveStruct]
+    exposed_functions: dict[str, SuiMoveFunction]
 
     def __post_init__(self):
         """Post init processing for parameters."""
 
 
 @dataclass
-class MovePackage(DataClassJsonMixin):
+class SuiMovePackage(DataClassJsonMixin):
     """From getNormalized."""
 
-    modules: dict[str, MoveModule]
+    modules: dict
+
+    def __post_init__(self):
+        """Post init processing for parameters."""
+        self.modules = {x: SuiMoveModule.from_dict(y) for x, y in self.modules.items()}
 
     @classmethod
-    def ingest_data(cls, indata: dict) -> "MovePackage":
+    def ingest_data(cls, indata: dict) -> "SuiMovePackage":
         """Ingest from external call."""
-        return cls.from_dict({"modules": indata})
+        new_mods = {}
+        for mod_key, mod_value in indata.items():
+            new_mods[mod_key] = mod_value
+        indata["modules"] = new_mods
+        return SuiMovePackage.from_dict(indata)

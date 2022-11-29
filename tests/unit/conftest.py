@@ -1161,6 +1161,8809 @@ def package_nest_result():
 
 
 @pytest.fixture
+def package_sui_result():
+    """Return a normalized package content."""
+    return {
+        "bag": {
+            "name": "bag",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Bag": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "size", "type_": "U64"},
+                    ],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "add": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}
+                            }
+                        },
+                        {"TypeParameter": 0},
+                        {"TypeParameter": 1},
+                    ],
+                    "return_": [],
+                },
+                "borrow": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 1}}],
+                },
+                "borrow_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"MutableReference": {"TypeParameter": 1}}],
+                },
+                "contains_with_type": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "destroy_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}}
+                    ],
+                    "return_": [],
+                },
+                "is_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["Bool"],
+                },
+                "length": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}}],
+                },
+                "remove": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bag", "name": "Bag", "type_arguments": []}
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"TypeParameter": 1}],
+                },
+            },
+        },
+        "balance": {
+            "name": "balance",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Balance": {
+                    "abilities": {"abilities": ["Store"]},
+                    "fields": [{"name": "value", "type_": "U64"}],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                },
+                "Supply": {
+                    "abilities": {"abilities": ["Store"]},
+                    "fields": [{"name": "value", "type_": "U64"}],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                },
+            },
+            "exposed_functions": {
+                "create_supply": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Drop"]}],
+                    "parameters": [{"TypeParameter": 0}],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Supply",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "decrease_supply": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Supply",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": ["U64"],
+                },
+                "destroy_zero": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "increase_supply": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Supply",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "join": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": ["U64"],
+                },
+                "split": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "supply_value": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Supply",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "value": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "zero": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "bcs": {
+            "name": "bcs",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "BCS": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [{"name": "bytes", "type_": {"Vector": "U8"}}],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "into_remainder_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}}
+                    ],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Vector": "U8"}],
+                    "return_": [{"Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}}],
+                },
+                "peel_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["Address"],
+                },
+                "peel_bool": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["Bool"],
+                },
+                "peel_option_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": ["Address"],
+                            }
+                        }
+                    ],
+                },
+                "peel_option_bool": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": ["Bool"],
+                            }
+                        }
+                    ],
+                },
+                "peel_option_u128": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": ["U128"],
+                            }
+                        }
+                    ],
+                },
+                "peel_option_u64": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": ["U64"],
+                            }
+                        }
+                    ],
+                },
+                "peel_option_u8": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": ["U8"],
+                            }
+                        }
+                    ],
+                },
+                "peel_u128": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["U128"],
+                },
+                "peel_u64": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "peel_u8": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["U8"],
+                },
+                "peel_vec_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "Address"}],
+                },
+                "peel_vec_bool": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "Bool"}],
+                },
+                "peel_vec_length": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "peel_vec_u128": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "U128"}],
+                },
+                "peel_vec_u64": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "U64"}],
+                },
+                "peel_vec_u8": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "peel_vec_vec_u8": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "bcs", "name": "BCS", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": {"Vector": "U8"}}],
+                },
+                "to_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [{"Reference": {"TypeParameter": 0}}],
+                    "return_": [{"Vector": "U8"}],
+                },
+            },
+        },
+        "bls12381": {
+            "name": "bls12381",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "validator"}],
+            "structs": {},
+            "exposed_functions": {
+                "bls12381_min_pk_verify": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "bls12381_min_sig_verify": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "bls12381_min_sig_verify_with_domain": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                    ],
+                    "return_": ["Bool"],
+                },
+            },
+        },
+        "bulletproofs": {
+            "name": "bulletproofs",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {
+                "verify_full_range_proof": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Reference": {"Vector": "U8"}},
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "elliptic_curve",
+                                    "name": "RistrettoPoint",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [],
+                }
+            },
+        },
+        "coin": {
+            "name": "coin",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Coin": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "balance",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                },
+                "CurrencyCreated": {
+                    "abilities": {"abilities": ["Copy", "Drop"]},
+                    "fields": [{"name": "decimals", "type_": "U8"}],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                },
+                "TreasuryCap": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "total_supply",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Supply",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                },
+            },
+            "exposed_functions": {
+                "balance": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "balance_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "burn": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "TreasuryCap",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": ["U64"],
+                },
+                "burn_": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "TreasuryCap",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "create_currency": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Drop"]}],
+                    "parameters": [
+                        {"TypeParameter": 0},
+                        "U8",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "TreasuryCap",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "destroy_zero": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "divide_into_n": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Vector": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "from_balance": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "into_balance": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "join": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "mint": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "TreasuryCap",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "mint_and_transfer": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "TreasuryCap",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "mint_balance": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "TreasuryCap",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "put": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "split": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "supply": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "TreasuryCap",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Supply",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "supply_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "TreasuryCap",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Supply",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "take": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "total_supply": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "TreasuryCap",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "treasury_into_supply": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "TreasuryCap",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Supply",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "value": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "zero": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "devnet_nft": {
+            "name": "devnet_nft",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "DevNetNFT": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "name",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "string",
+                                    "name": "String",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "description",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "string",
+                                    "name": "String",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "url",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                },
+                "MintNFTEvent": {
+                    "abilities": {"abilities": ["Copy", "Drop"]},
+                    "fields": [
+                        {
+                            "name": "object_id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            },
+                        },
+                        {"name": "creator", "type_": "Address"},
+                        {
+                            "name": "name",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "string",
+                                    "name": "String",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                },
+            },
+            "exposed_functions": {
+                "burn": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "devnet_nft",
+                                "name": "DevNetNFT",
+                                "type_arguments": [],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "description": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "devnet_nft",
+                                    "name": "DevNetNFT",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "string",
+                                    "name": "String",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "mint": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "name": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "devnet_nft",
+                                    "name": "DevNetNFT",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "string",
+                                    "name": "String",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "update_description": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "devnet_nft",
+                                    "name": "DevNetNFT",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"Vector": "U8"},
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "url": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "devnet_nft",
+                                    "name": "DevNetNFT",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "digest": {
+            "name": "digest",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Sha3256Digest": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [{"name": "digest", "type_": {"Vector": "U8"}}],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "sha3_256_digest_from_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Vector": "U8"}],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "digest",
+                                "name": "Sha3256Digest",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "sha3_256_digest_to_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "digest",
+                                    "name": "Sha3256Digest",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "U8"}],
+                },
+            },
+        },
+        "dynamic_field": {
+            "name": "dynamic_field",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "dynamic_object_field"}],
+            "structs": {
+                "Field": {
+                    "abilities": {"abilities": ["Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "name", "type_": {"TypeParameter": 0}},
+                        {
+                            "name": "value",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "option",
+                                    "name": "Option",
+                                    "type_arguments": [{"TypeParameter": 1}],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [
+                        {"constraints": {"abilities": ["Copy", "Drop", "Store"]}, "is_phantom": False},
+                        {"constraints": {"abilities": ["Store"]}, "is_phantom": False},
+                    ],
+                }
+            },
+            "exposed_functions": {
+                "add": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                        {"TypeParameter": 1},
+                    ],
+                    "return_": [],
+                },
+                "add_child_object": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": ["Address", {"TypeParameter": 0}],
+                    "return_": [],
+                },
+                "borrow": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 1}}],
+                },
+                "borrow_child_object": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": ["Address", "Address"],
+                    "return_": [{"MutableReference": {"TypeParameter": 0}}],
+                },
+                "borrow_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"MutableReference": {"TypeParameter": 1}}],
+                },
+                "exists_with_type": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "field_ids": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Address", "Address"],
+                },
+                "has_child_object": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["Address", "Address"],
+                    "return_": ["Bool"],
+                },
+                "has_child_object_with_ty": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": ["Address", "Address"],
+                    "return_": ["Bool"],
+                },
+                "hash_type_and_key": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}],
+                    "parameters": ["Address", {"TypeParameter": 0}],
+                    "return_": ["Address"],
+                },
+                "remove": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"TypeParameter": 1}],
+                },
+                "remove_child_object": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": ["Address", "Address"],
+                    "return_": [{"TypeParameter": 0}],
+                },
+            },
+        },
+        "dynamic_object_field": {
+            "name": "dynamic_object_field",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Wrapper": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [{"name": "name", "type_": {"TypeParameter": 0}}],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": False}],
+                }
+            },
+            "exposed_functions": {
+                "add": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                        {"TypeParameter": 1},
+                    ],
+                    "return_": [],
+                },
+                "borrow": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 1}}],
+                },
+                "borrow_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"MutableReference": {"TypeParameter": 1}}],
+                },
+                "exists_": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "exists_with_type": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "object",
+                                            "name": "ID",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        }
+                    ],
+                },
+                "remove": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"TypeParameter": 1}],
+                },
+            },
+        },
+        "ecdsa": {
+            "name": "ecdsa",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {
+                "decompress_pubkey": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Reference": {"Vector": "U8"}}],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "ecrecover": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Reference": {"Vector": "U8"}}, {"Reference": {"Vector": "U8"}}],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "keccak256": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Reference": {"Vector": "U8"}}],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "secp256k1_verify": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                    ],
+                    "return_": ["Bool"],
+                },
+            },
+        },
+        "ed25519": {
+            "name": "ed25519",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "validator"}],
+            "structs": {},
+            "exposed_functions": {
+                "ed25519_verify": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "ed25519_verify_with_domain": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Reference": {"Vector": "U8"}},
+                        {"Reference": {"Vector": "U8"}},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                    ],
+                    "return_": ["Bool"],
+                },
+            },
+        },
+        "elliptic_curve": {
+            "name": "elliptic_curve",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "RistrettoPoint": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [{"name": "value", "type_": {"Vector": "U8"}}],
+                    "type_parameters": [],
+                },
+                "Scalar": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [{"name": "value", "type_": {"Vector": "U8"}}],
+                    "type_parameters": [],
+                },
+            },
+            "exposed_functions": {
+                "add": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "elliptic_curve",
+                                    "name": "RistrettoPoint",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "elliptic_curve",
+                                    "name": "RistrettoPoint",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "elliptic_curve",
+                                "name": "RistrettoPoint",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "elliptic_curve",
+                                    "name": "RistrettoPoint",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "create_pedersen_commitment": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "elliptic_curve",
+                                "name": "Scalar",
+                                "type_arguments": [],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "elliptic_curve",
+                                "name": "Scalar",
+                                "type_arguments": [],
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "elliptic_curve",
+                                "name": "RistrettoPoint",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "new_from_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Vector": "U8"}],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "elliptic_curve",
+                                "name": "RistrettoPoint",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "new_scalar_from_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Vector": "U8"}],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "elliptic_curve",
+                                "name": "Scalar",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "new_scalar_from_u64": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["U64"],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "elliptic_curve",
+                                "name": "Scalar",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "scalar_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "elliptic_curve",
+                                    "name": "Scalar",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "subtract": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "elliptic_curve",
+                                    "name": "RistrettoPoint",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "elliptic_curve",
+                                    "name": "RistrettoPoint",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "elliptic_curve",
+                                "name": "RistrettoPoint",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "epoch_time_lock": {
+            "name": "epoch_time_lock",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "EpochTimeLock": {
+                    "abilities": {"abilities": ["Copy", "Store"]},
+                    "fields": [{"name": "epoch", "type_": "U64"}],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "destroy": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "epoch_time_lock",
+                                "name": "EpochTimeLock",
+                                "type_arguments": [],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "epoch": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "epoch_time_lock",
+                                    "name": "EpochTimeLock",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "epoch_time_lock",
+                                "name": "EpochTimeLock",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "erc721_metadata": {
+            "name": "erc721_metadata",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "ERC721Metadata": {
+                    "abilities": {"abilities": ["Store"]},
+                    "fields": [
+                        {
+                            "name": "token_id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "erc721_metadata",
+                                    "name": "TokenID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "name",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "string",
+                                    "name": "String",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "token_uri",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                },
+                "TokenID": {
+                    "abilities": {"abilities": ["Copy", "Store"]},
+                    "fields": [{"name": "id", "type_": "U64"}],
+                    "type_parameters": [],
+                },
+            },
+            "exposed_functions": {
+                "name": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "erc721_metadata",
+                                    "name": "ERC721Metadata",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "string",
+                                    "name": "String",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "erc721_metadata",
+                                "name": "TokenID",
+                                "type_arguments": [],
+                            }
+                        },
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "erc721_metadata",
+                                "name": "ERC721Metadata",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "new_token_id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["U64"],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "erc721_metadata",
+                                "name": "TokenID",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "token_id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "erc721_metadata",
+                                    "name": "ERC721Metadata",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "erc721_metadata",
+                                    "name": "TokenID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "token_uri": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "erc721_metadata",
+                                    "name": "ERC721Metadata",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "event": {
+            "name": "event",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {
+                "emit": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [{"TypeParameter": 0}],
+                    "return_": [],
+                }
+            },
+        },
+        "genesis": {
+            "name": "genesis",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {},
+        },
+        "hmac": {
+            "name": "hmac",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {
+                "hmac_sha3_256": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Reference": {"Vector": "U8"}}, {"Reference": {"Vector": "U8"}}],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "digest",
+                                "name": "Sha3256Digest",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                }
+            },
+        },
+        "immutable_external_resource": {
+            "name": "immutable_external_resource",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "ImmutableExternalResource": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [
+                        {
+                            "name": "url",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}
+                            },
+                        },
+                        {
+                            "name": "digest",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "digest",
+                                    "name": "Sha3256Digest",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "digest": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "immutable_external_resource",
+                                    "name": "ImmutableExternalResource",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "digest",
+                                "name": "Sha3256Digest",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}},
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "digest",
+                                "name": "Sha3256Digest",
+                                "type_arguments": [],
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "immutable_external_resource",
+                                "name": "ImmutableExternalResource",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "update": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "immutable_external_resource",
+                                    "name": "ImmutableExternalResource",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}},
+                    ],
+                    "return_": [],
+                },
+                "url": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "immutable_external_resource",
+                                    "name": "ImmutableExternalResource",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}}],
+                },
+            },
+        },
+        "locked_coin": {
+            "name": "locked_coin",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "sui_system"}],
+            "structs": {
+                "LockedCoin": {
+                    "abilities": {"abilities": ["Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "balance",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            },
+                        },
+                        {
+                            "name": "locked_until_epoch",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "epoch_time_lock",
+                                    "name": "EpochTimeLock",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                }
+            },
+            "exposed_functions": {
+                "into_balance": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "locked_coin",
+                                "name": "LockedCoin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "epoch_time_lock",
+                                "name": "EpochTimeLock",
+                                "type_arguments": [],
+                            }
+                        },
+                    ],
+                },
+                "lock_coin": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                        "Address",
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "new_from_balance": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "epoch_time_lock",
+                                "name": "EpochTimeLock",
+                                "type_arguments": [],
+                            }
+                        },
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "unlock_coin": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "locked_coin",
+                                "name": "LockedCoin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "value": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "locked_coin",
+                                    "name": "LockedCoin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+            },
+        },
+        "math": {
+            "name": "math",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {
+                "max": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["U64", "U64"],
+                    "return_": ["U64"],
+                },
+                "min": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["U64", "U64"],
+                    "return_": ["U64"],
+                },
+                "pow": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["U64", "U8"],
+                    "return_": ["U64"],
+                },
+                "sqrt": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["U64"],
+                    "return_": ["U64"],
+                },
+                "sqrt_u128": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["U128"],
+                    "return_": ["U128"],
+                },
+            },
+        },
+        "object": {
+            "name": "object",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [
+                {"address": "0x2", "name": "dynamic_field"},
+                {"address": "0x2", "name": "dynamic_object_field"},
+                {"address": "0x2", "name": "sui_system"},
+                {"address": "0x2", "name": "transfer"},
+            ],
+            "structs": {
+                "ID": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [{"name": "bytes", "type_": "Address"}],
+                    "type_parameters": [],
+                },
+                "UID": {
+                    "abilities": {"abilities": ["Store"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            },
+                        }
+                    ],
+                    "type_parameters": [],
+                },
+            },
+            "exposed_functions": {
+                "address_from_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Vector": "U8"}],
+                    "return_": ["Address"],
+                },
+                "borrow_id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [{"Reference": {"TypeParameter": 0}}],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            }
+                        }
+                    ],
+                },
+                "delete": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}}
+                    ],
+                    "return_": [],
+                },
+                "id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [{"Reference": {"TypeParameter": 0}}],
+                    "return_": [{"Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}}],
+                },
+                "id_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [{"Reference": {"TypeParameter": 0}}],
+                    "return_": ["Address"],
+                },
+                "id_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [{"Reference": {"TypeParameter": 0}}],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "id_from_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["Address"],
+                    "return_": [{"Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}}],
+                },
+                "id_from_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Vector": "U8"}],
+                    "return_": [{"Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}}],
+                },
+                "id_to_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": ["Address"],
+                },
+                "id_to_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {"Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}}
+                    ],
+                },
+                "new_uid_from_hash": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["Address"],
+                    "return_": [
+                        {"Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}}
+                    ],
+                },
+                "sui_system_state": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [],
+                    "return_": [
+                        {"Struct": {"address": "0x2", "module": "object", "name": "UID", "type_arguments": []}}
+                    ],
+                },
+                "uid_as_inner": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            }
+                        }
+                    ],
+                },
+                "uid_to_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Address"],
+                },
+                "uid_to_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": "U8"}],
+                },
+                "uid_to_inner": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}}],
+                },
+            },
+        },
+        "object_bag": {
+            "name": "object_bag",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "ObjectBag": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "size", "type_": "U64"},
+                    ],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "add": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                        {"TypeParameter": 1},
+                    ],
+                    "return_": [],
+                },
+                "borrow": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 1}}],
+                },
+                "borrow_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"MutableReference": {"TypeParameter": 1}}],
+                },
+                "contains": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "contains_with_type": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "destroy_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "object_bag",
+                                "name": "ObjectBag",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "is_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Bool"],
+                },
+                "length": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "object_bag",
+                                "name": "ObjectBag",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "remove": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"TypeParameter": 1}],
+                },
+                "value_id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_bag",
+                                    "name": "ObjectBag",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "object",
+                                            "name": "ID",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "object_table": {
+            "name": "object_table",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "ObjectTable": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "size", "type_": "U64"},
+                    ],
+                    "type_parameters": [
+                        {"constraints": {"abilities": ["Copy", "Drop", "Store"]}, "is_phantom": True},
+                        {"constraints": {"abilities": ["Store", "Key"]}, "is_phantom": True},
+                    ],
+                }
+            },
+            "exposed_functions": {
+                "add": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_table",
+                                    "name": "ObjectTable",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                        {"TypeParameter": 1},
+                    ],
+                    "return_": [],
+                },
+                "borrow": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_table",
+                                    "name": "ObjectTable",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 1}}],
+                },
+                "borrow_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_table",
+                                    "name": "ObjectTable",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"MutableReference": {"TypeParameter": 1}}],
+                },
+                "contains": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_table",
+                                    "name": "ObjectTable",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "destroy_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "object_table",
+                                "name": "ObjectTable",
+                                "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "is_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_table",
+                                    "name": "ObjectTable",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Bool"],
+                },
+                "length": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_table",
+                                    "name": "ObjectTable",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "object_table",
+                                "name": "ObjectTable",
+                                "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                            }
+                        }
+                    ],
+                },
+                "remove": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_table",
+                                    "name": "ObjectTable",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"TypeParameter": 1}],
+                },
+                "value_id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store", "Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object_table",
+                                    "name": "ObjectTable",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "object",
+                                            "name": "ID",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "pay": {
+            "name": "pay",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {
+                "divide_and_keep": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "join": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "join_vec": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Vector": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "join_vec_and_transfer": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Vector": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": [],
+                },
+                "keep": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "split": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "split_and_transfer": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "split_vec": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "coin",
+                                    "name": "Coin",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {"Vector": "U64"},
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+            },
+        },
+        "priority_queue": {
+            "name": "priority_queue",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Entry": {
+                    "abilities": {"abilities": ["Drop", "Store"]},
+                    "fields": [
+                        {"name": "priority", "type_": "U64"},
+                        {"name": "value", "type_": {"TypeParameter": 0}},
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": ["Drop"]}, "is_phantom": False}],
+                },
+                "PriorityQueue": {
+                    "abilities": {"abilities": ["Drop", "Store"]},
+                    "fields": [
+                        {
+                            "name": "entries",
+                            "type_": {
+                                "Vector": {
+                                    "Struct": {
+                                        "address": "0x2",
+                                        "module": "priority_queue",
+                                        "name": "Entry",
+                                        "type_arguments": [{"TypeParameter": 0}],
+                                    }
+                                }
+                            },
+                        }
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": ["Drop"]}, "is_phantom": False}],
+                },
+            },
+            "exposed_functions": {
+                "create_entries": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Drop"]}],
+                    "parameters": [{"Vector": "U64"}, {"Vector": {"TypeParameter": 0}}],
+                    "return_": [
+                        {
+                            "Vector": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "priority_queue",
+                                    "name": "Entry",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "insert": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Drop"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "priority_queue",
+                                    "name": "PriorityQueue",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Drop"]}],
+                    "parameters": [
+                        {
+                            "Vector": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "priority_queue",
+                                    "name": "Entry",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "priority_queue",
+                                "name": "PriorityQueue",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "new_entry": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Drop"]}],
+                    "parameters": ["U64", {"TypeParameter": 0}],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "priority_queue",
+                                "name": "Entry",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "pop_max": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Drop"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "priority_queue",
+                                    "name": "PriorityQueue",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64", {"TypeParameter": 0}],
+                },
+            },
+        },
+        "safe": {
+            "name": "safe",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "OwnerCapability": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "safe_id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            },
+                        },
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                },
+                "Safe": {
+                    "abilities": {"abilities": ["Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "balance",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            },
+                        },
+                        {
+                            "name": "allowed_safes",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_set",
+                                    "name": "VecSet",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "object",
+                                                "name": "ID",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                },
+                "TransferCapability": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "safe_id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            },
+                        },
+                        {"name": "amount", "type_": "U64"},
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": []}, "is_phantom": True}],
+                },
+            },
+            "exposed_functions": {
+                "balance": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "create": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "create_": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "safe",
+                                "name": "OwnerCapability",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "create_empty": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "create_transfer_capability": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "OwnerCapability",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "safe",
+                                "name": "TransferCapability",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "debit": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "TransferCapability",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "deposit": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "deposit_": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "revoke_transfer_capability": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "OwnerCapability",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {"Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}},
+                    ],
+                    "return_": [],
+                },
+                "self_revoke_transfer_capability": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "TransferCapability",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "withdraw": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "OwnerCapability",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "withdraw_": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "Safe",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "safe",
+                                    "name": "OwnerCapability",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+            },
+        },
+        "stake": {
+            "name": "stake",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "sui_system"}, {"address": "0x2", "name": "validator"}],
+            "structs": {
+                "Stake": {
+                    "abilities": {"abilities": ["Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "balance",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "sui",
+                                                "name": "SUI",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                        {
+                            "name": "locked_until_epoch",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "option",
+                                    "name": "Option",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "epoch_time_lock",
+                                                "name": "EpochTimeLock",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "burn": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Struct": {"address": "0x2", "module": "stake", "name": "Stake", "type_arguments": []}},
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "create": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        "Address",
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "epoch_time_lock",
+                                            "name": "EpochTimeLock",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "value": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "stake",
+                                    "name": "Stake",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "withdraw_stake": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "stake",
+                                    "name": "Stake",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+            },
+        },
+        "staking_pool": {
+            "name": "staking_pool",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "validator"}, {"address": "0x2", "name": "validator_set"}],
+            "structs": {
+                "Delegation": {
+                    "abilities": {"abilities": ["Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "validator_address", "type_": "Address"},
+                        {"name": "pool_starting_epoch", "type_": "U64"},
+                        {
+                            "name": "pool_tokens",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "staking_pool",
+                                                "name": "DelegationToken",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                        {"name": "principal_sui_amount", "type_": "U64"},
+                    ],
+                    "type_parameters": [],
+                },
+                "DelegationToken": {
+                    "abilities": {"abilities": ["Drop"]},
+                    "fields": [{"name": "dummy_field", "type_": "Bool"}],
+                    "type_parameters": [],
+                },
+                "InactiveStakingPool": {
+                    "abilities": {"abilities": ["Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "pool",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                },
+                "PendingDelegationEntry": {
+                    "abilities": {"abilities": ["Drop", "Store"]},
+                    "fields": [{"name": "delegator", "type_": "Address"}, {"name": "sui_amount", "type_": "U64"}],
+                    "type_parameters": [],
+                },
+                "StakedSui": {
+                    "abilities": {"abilities": ["Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "principal",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "sui",
+                                                "name": "SUI",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                        {
+                            "name": "sui_token_lock",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "option",
+                                    "name": "Option",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "epoch_time_lock",
+                                                "name": "EpochTimeLock",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                },
+                "StakingPool": {
+                    "abilities": {"abilities": ["Store"]},
+                    "fields": [
+                        {"name": "validator_address", "type_": "Address"},
+                        {"name": "starting_epoch", "type_": "U64"},
+                        {"name": "epoch_starting_sui_balance", "type_": "U64"},
+                        {"name": "epoch_starting_delegation_token_supply", "type_": "U64"},
+                        {"name": "sui_balance", "type_": "U64"},
+                        {
+                            "name": "rewards_pool",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "sui",
+                                                "name": "SUI",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                        {
+                            "name": "delegation_token_supply",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Supply",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "staking_pool",
+                                                "name": "DelegationToken",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                        {
+                            "name": "pending_delegations",
+                            "type_": {
+                                "Vector": {
+                                    "Struct": {
+                                        "address": "0x2",
+                                        "module": "staking_pool",
+                                        "name": "PendingDelegationEntry",
+                                        "type_arguments": [],
+                                    }
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                },
+            },
+            "exposed_functions": {
+                "advance_epoch": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "deactivate_staking_pool": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "staking_pool",
+                                "name": "StakingPool",
+                                "type_arguments": [],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "delegation_token_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "Delegation",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "destroy_empty_delegation": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "staking_pool",
+                                "name": "Delegation",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "destroy_empty_staked_sui": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "staking_pool",
+                                "name": "StakedSui",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "mint_delegation_tokens_to_delegator": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "new": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": ["Address", "U64"],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "staking_pool",
+                                "name": "StakingPool",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "request_add_delegation": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "epoch_time_lock",
+                                            "name": "EpochTimeLock",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "staked_sui_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "sui_balance": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "validator_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "Delegation",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Address"],
+                },
+                "withdraw_all_to_sui_tokens": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "staking_pool",
+                                "name": "Delegation",
+                                "type_arguments": [],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "epoch_time_lock",
+                                            "name": "EpochTimeLock",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                    ],
+                },
+                "withdraw_from_inactive_pool": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "InactiveStakingPool",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "Delegation",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "withdraw_stake": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "Delegation",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": ["U64"],
+                },
+            },
+        },
+        "sui": {
+            "name": "sui",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "genesis"}],
+            "structs": {
+                "SUI": {
+                    "abilities": {"abilities": ["Drop"]},
+                    "fields": [{"name": "dummy_field", "type_": "Bool"}],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "new": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Supply",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        }
+                    ],
+                },
+                "transfer": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": [],
+                },
+            },
+        },
+        "sui_system": {
+            "name": "sui_system",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "genesis"}],
+            "structs": {
+                "SuiSystemState": {
+                    "abilities": {"abilities": ["Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "epoch", "type_": "U64"},
+                        {
+                            "name": "validators",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {
+                            "name": "sui_supply",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Supply",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "sui",
+                                                "name": "SUI",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                        {
+                            "name": "storage_fund",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "sui",
+                                                "name": "SUI",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            },
+                        },
+                        {
+                            "name": "parameters",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SystemParameters",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "reference_gas_price", "type_": "U64"},
+                        {
+                            "name": "validator_report_records",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [
+                                        "Address",
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "vec_set",
+                                                "name": "VecSet",
+                                                "type_arguments": ["Address"],
+                                            }
+                                        },
+                                    ],
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                },
+                "SystemParameters": {
+                    "abilities": {"abilities": ["Store"]},
+                    "fields": [
+                        {"name": "min_validator_stake", "type_": "U64"},
+                        {"name": "max_validator_candidate_count", "type_": "U64"},
+                        {"name": "storage_gas_price", "type_": "U64"},
+                    ],
+                    "type_parameters": [],
+                },
+            },
+            "exposed_functions": {
+                "advance_epoch": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        "U64",
+                        "U64",
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "create": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Vector": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Supply",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        "U64",
+                        "U64",
+                        "U64",
+                    ],
+                    "return_": [],
+                },
+                "epoch": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "get_reporters_of": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "vec_set",
+                                "name": "VecSet",
+                                "type_arguments": ["Address"],
+                            }
+                        }
+                    ],
+                },
+                "report_validator": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_add_delegation": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_add_delegation_with_locked_coin": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "locked_coin",
+                                "name": "LockedCoin",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_add_stake": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_add_stake_with_locked_coin": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "locked_coin",
+                                "name": "LockedCoin",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_add_validator": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "coin",
+                                "name": "Coin",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        "U64",
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_remove_validator": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_set_commission_rate": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_set_gas_price": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_switch_delegation": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "staking_pool",
+                                "name": "Delegation",
+                                "type_arguments": [],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_withdraw_delegation": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "Delegation",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_withdraw_stake": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "stake",
+                                    "name": "Stake",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "undo_report_validator": {
+                    "visibility": "Public",
+                    "is_entry": True,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "validator_delegate_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": ["U64"],
+                },
+                "validator_stake_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "sui_system",
+                                    "name": "SuiSystemState",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": ["U64"],
+                },
+            },
+        },
+        "table": {
+            "name": "table",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Table": {
+                    "abilities": {"abilities": ["Store", "Key"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "object",
+                                    "name": "UID",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "size", "type_": "U64"},
+                    ],
+                    "type_parameters": [
+                        {"constraints": {"abilities": ["Copy", "Drop", "Store"]}, "is_phantom": True},
+                        {"constraints": {"abilities": ["Store"]}, "is_phantom": True},
+                    ],
+                }
+            },
+            "exposed_functions": {
+                "add": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "table",
+                                    "name": "Table",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                        {"TypeParameter": 1},
+                    ],
+                    "return_": [],
+                },
+                "borrow": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "table",
+                                    "name": "Table",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 1}}],
+                },
+                "borrow_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "table",
+                                    "name": "Table",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"MutableReference": {"TypeParameter": 1}}],
+                },
+                "contains": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "table",
+                                    "name": "Table",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "destroy_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "table",
+                                "name": "Table",
+                                "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "drop": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Drop", "Store"]}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "table",
+                                "name": "Table",
+                                "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "is_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "table",
+                                    "name": "Table",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Bool"],
+                },
+                "length": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "table",
+                                    "name": "Table",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "table",
+                                "name": "Table",
+                                "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                            }
+                        }
+                    ],
+                },
+                "remove": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop", "Store"]}, {"abilities": ["Store"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "table",
+                                    "name": "Table",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [{"TypeParameter": 1}],
+                },
+            },
+        },
+        "transfer": {
+            "name": "transfer",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {
+                "freeze_object": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [{"TypeParameter": 0}],
+                    "return_": [],
+                },
+                "share_object": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [{"TypeParameter": 0}],
+                    "return_": [],
+                },
+                "transfer": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [{"TypeParameter": 0}, "Address"],
+                    "return_": [],
+                },
+            },
+        },
+        "tx_context": {
+            "name": "tx_context",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "object"}],
+            "structs": {
+                "TxContext": {
+                    "abilities": {"abilities": ["Drop"]},
+                    "fields": [
+                        {"name": "signer", "type_": "Signer"},
+                        {"name": "tx_hash", "type_": {"Vector": "U8"}},
+                        {"name": "epoch", "type_": "U64"},
+                        {"name": "ids_created", "type_": "U64"},
+                    ],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "epoch": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "new_object": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Address"],
+                },
+                "sender": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Address"],
+                },
+                "signer_": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"Reference": "Signer"}],
+                },
+            },
+        },
+        "typed_id": {
+            "name": "typed_id",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "TypedID": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type_": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            },
+                        }
+                    ],
+                    "type_parameters": [{"constraints": {"abilities": ["Key"]}, "is_phantom": True}],
+                }
+            },
+            "exposed_functions": {
+                "as_id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "typed_id",
+                                    "name": "TypedID",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}
+                            }
+                        }
+                    ],
+                },
+                "equals_object": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "typed_id",
+                                    "name": "TypedID",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "new": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [{"Reference": {"TypeParameter": 0}}],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "typed_id",
+                                "name": "TypedID",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "to_id": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Key"]}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "typed_id",
+                                "name": "TypedID",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                    "return_": [{"Struct": {"address": "0x2", "module": "object", "name": "ID", "type_arguments": []}}],
+                },
+            },
+        },
+        "types": {
+            "name": "types",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {},
+            "exposed_functions": {
+                "is_one_time_witness": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Drop"]}],
+                    "parameters": [{"Reference": {"TypeParameter": 0}}],
+                    "return_": ["Bool"],
+                }
+            },
+        },
+        "url": {
+            "name": "url",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Url": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [
+                        {
+                            "name": "url",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x1",
+                                    "module": "ascii",
+                                    "name": "String",
+                                    "type_arguments": [],
+                                }
+                            },
+                        }
+                    ],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "inner_url": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {"Struct": {"address": "0x1", "module": "ascii", "name": "String", "type_arguments": []}}
+                    ],
+                },
+                "new_unsafe": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {"Struct": {"address": "0x1", "module": "ascii", "name": "String", "type_arguments": []}}
+                    ],
+                    "return_": [{"Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}}],
+                },
+                "new_unsafe_from_bytes": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [{"Vector": "U8"}],
+                    "return_": [{"Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}}],
+                },
+                "update": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {"address": "0x2", "module": "url", "name": "Url", "type_arguments": []}
+                            }
+                        },
+                        {"Struct": {"address": "0x1", "module": "ascii", "name": "String", "type_arguments": []}},
+                    ],
+                    "return_": [],
+                },
+            },
+        },
+        "validator": {
+            "name": "validator",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [
+                {"address": "0x2", "name": "genesis"},
+                {"address": "0x2", "name": "sui_system"},
+                {"address": "0x2", "name": "validator_set"},
+            ],
+            "structs": {
+                "Validator": {
+                    "abilities": {"abilities": ["Store"]},
+                    "fields": [
+                        {
+                            "name": "metadata",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "ValidatorMetadata",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "stake_amount", "type_": "U64"},
+                        {"name": "pending_stake", "type_": "U64"},
+                        {"name": "pending_withdraw", "type_": "U64"},
+                        {"name": "gas_price", "type_": "U64"},
+                        {
+                            "name": "delegation_staking_pool",
+                            "type_": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            },
+                        },
+                        {"name": "commission_rate", "type_": "U64"},
+                    ],
+                    "type_parameters": [],
+                },
+                "ValidatorMetadata": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [
+                        {"name": "sui_address", "type_": "Address"},
+                        {"name": "pubkey_bytes", "type_": {"Vector": "U8"}},
+                        {"name": "network_pubkey_bytes", "type_": {"Vector": "U8"}},
+                        {"name": "proof_of_possession", "type_": {"Vector": "U8"}},
+                        {"name": "name", "type_": {"Vector": "U8"}},
+                        {"name": "net_address", "type_": {"Vector": "U8"}},
+                        {"name": "next_epoch_stake", "type_": "U64"},
+                        {"name": "next_epoch_delegation", "type_": "U64"},
+                        {"name": "next_epoch_gas_price", "type_": "U64"},
+                        {"name": "next_epoch_commission_rate", "type_": "U64"},
+                    ],
+                    "type_parameters": [],
+                },
+            },
+            "exposed_functions": {
+                "adjust_stake_and_gas_price": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "commission_rate": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "decrease_next_epoch_delegation": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [],
+                },
+                "delegate_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "destroy": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "validator",
+                                "name": "Validator",
+                                "type_arguments": [],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "distribute_rewards_and_new_delegations": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "gas_price": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "get_staking_pool_mut_ref": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakingPool",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "increase_next_epoch_delegation": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [],
+                },
+                "is_duplicate": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": ["Bool"],
+                },
+                "metadata": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "ValidatorMetadata",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                },
+                "new": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        "Address",
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {"Vector": "U8"},
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "epoch_time_lock",
+                                            "name": "EpochTimeLock",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        "U64",
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "validator",
+                                "name": "Validator",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "pending_stake_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "pending_withdraw": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "request_add_delegation": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "epoch_time_lock",
+                                            "name": "EpochTimeLock",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_add_stake": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "epoch_time_lock",
+                                            "name": "EpochTimeLock",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_set_commission_rate": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [],
+                },
+                "request_set_gas_price": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [],
+                },
+                "request_withdraw_delegation": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "Delegation",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_withdraw_stake": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "stake",
+                                    "name": "Stake",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "stake_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "sui_address": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Address"],
+                },
+            },
+        },
+        "validator_set": {
+            "name": "validator_set",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [{"address": "0x2", "name": "sui_system"}],
+            "structs": {
+                "ValidatorSet": {
+                    "abilities": {"abilities": ["Store"]},
+                    "fields": [
+                        {"name": "total_validator_stake", "type_": "U64"},
+                        {"name": "total_delegation_stake", "type_": "U64"},
+                        {"name": "quorum_stake_threshold", "type_": "U64"},
+                        {
+                            "name": "active_validators",
+                            "type_": {
+                                "Vector": {
+                                    "Struct": {
+                                        "address": "0x2",
+                                        "module": "validator",
+                                        "name": "Validator",
+                                        "type_arguments": [],
+                                    }
+                                }
+                            },
+                        },
+                        {
+                            "name": "pending_validators",
+                            "type_": {
+                                "Vector": {
+                                    "Struct": {
+                                        "address": "0x2",
+                                        "module": "validator",
+                                        "name": "Validator",
+                                        "type_arguments": [],
+                                    }
+                                }
+                            },
+                        },
+                        {"name": "pending_removals", "type_": {"Vector": "U64"}},
+                        {
+                            "name": "next_epoch_validators",
+                            "type_": {
+                                "Vector": {
+                                    "Struct": {
+                                        "address": "0x2",
+                                        "module": "validator",
+                                        "name": "ValidatorMetadata",
+                                        "type_arguments": [],
+                                    }
+                                }
+                            },
+                        },
+                    ],
+                    "type_parameters": [],
+                }
+            },
+            "exposed_functions": {
+                "advance_epoch": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "sui",
+                                                "name": "SUI",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "balance",
+                                    "name": "Balance",
+                                    "type_arguments": [
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "sui",
+                                                "name": "SUI",
+                                                "type_arguments": [],
+                                            }
+                                        }
+                                    ],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [
+                                        "Address",
+                                        {
+                                            "Struct": {
+                                                "address": "0x2",
+                                                "module": "vec_set",
+                                                "name": "VecSet",
+                                                "type_arguments": ["Address"],
+                                            }
+                                        },
+                                    ],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "derive_reference_gas_price": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "is_active_validator": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": ["Bool"],
+                },
+                "new": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Vector": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator",
+                                    "name": "Validator",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "validator_set",
+                                "name": "ValidatorSet",
+                                "type_arguments": [],
+                            }
+                        }
+                    ],
+                },
+                "next_epoch_validator_count": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "request_add_delegation": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "epoch_time_lock",
+                                            "name": "EpochTimeLock",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_add_stake": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "balance",
+                                "name": "Balance",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "sui",
+                                            "name": "SUI",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": [
+                                    {
+                                        "Struct": {
+                                            "address": "0x2",
+                                            "module": "epoch_time_lock",
+                                            "name": "EpochTimeLock",
+                                            "type_arguments": [],
+                                        }
+                                    }
+                                ],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_add_validator": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "validator",
+                                "name": "Validator",
+                                "type_arguments": [],
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_remove_validator": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_set_commission_rate": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_set_gas_price": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_switch_delegation": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "staking_pool",
+                                "name": "Delegation",
+                                "type_arguments": [],
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_withdraw_delegation": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "Delegation",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "staking_pool",
+                                    "name": "StakedSui",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "request_withdraw_stake": {
+                    "visibility": "Friend",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "stake",
+                                    "name": "Stake",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "U64",
+                        "U64",
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "tx_context",
+                                    "name": "TxContext",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                    ],
+                    "return_": [],
+                },
+                "total_delegation_stake": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "total_validator_stake": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+                "validator_delegate_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": ["U64"],
+                },
+                "validator_stake_amount": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "validator_set",
+                                    "name": "ValidatorSet",
+                                    "type_arguments": [],
+                                }
+                            }
+                        },
+                        "Address",
+                    ],
+                    "return_": ["U64"],
+                },
+            },
+        },
+        "vec_map": {
+            "name": "vec_map",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "Entry": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [
+                        {"name": "key", "type_": {"TypeParameter": 0}},
+                        {"name": "value", "type_": {"TypeParameter": 1}},
+                    ],
+                    "type_parameters": [
+                        {"constraints": {"abilities": ["Copy"]}, "is_phantom": False},
+                        {"constraints": {"abilities": []}, "is_phantom": False},
+                    ],
+                },
+                "VecMap": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [
+                        {
+                            "name": "contents",
+                            "type_": {
+                                "Vector": {
+                                    "Struct": {
+                                        "address": "0x2",
+                                        "module": "vec_map",
+                                        "name": "Entry",
+                                        "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                    }
+                                }
+                            },
+                        }
+                    ],
+                    "type_parameters": [
+                        {"constraints": {"abilities": ["Copy"]}, "is_phantom": False},
+                        {"constraints": {"abilities": []}, "is_phantom": False},
+                    ],
+                },
+            },
+            "exposed_functions": {
+                "contains": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "destroy_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "vec_map",
+                                "name": "VecMap",
+                                "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                            }
+                        }
+                    ],
+                    "return_": [],
+                },
+                "empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "vec_map",
+                                "name": "VecMap",
+                                "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                            }
+                        }
+                    ],
+                },
+                "get": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 1}}],
+                },
+                "get_entry_by_idx": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 0}}, {"Reference": {"TypeParameter": 1}}],
+                },
+                "get_entry_by_idx_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [{"Reference": {"TypeParameter": 0}}, {"MutableReference": {"TypeParameter": 1}}],
+                },
+                "get_idx": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": ["U64"],
+                },
+                "get_idx_opt": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x1",
+                                "module": "option",
+                                "name": "Option",
+                                "type_arguments": ["U64"],
+                            }
+                        }
+                    ],
+                },
+                "get_mut": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": [{"MutableReference": {"TypeParameter": 1}}],
+                },
+                "insert": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                        {"TypeParameter": 1},
+                    ],
+                    "return_": [],
+                },
+                "into_keys_values": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "vec_map",
+                                "name": "VecMap",
+                                "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": {"TypeParameter": 0}}, {"Vector": {"TypeParameter": 1}}],
+                },
+                "is_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Bool"],
+                },
+                "pop": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                },
+                "remove": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                },
+                "remove_entry_by_idx": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        },
+                        "U64",
+                    ],
+                    "return_": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                },
+                "size": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy"]}, {"abilities": []}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_map",
+                                    "name": "VecMap",
+                                    "type_arguments": [{"TypeParameter": 0}, {"TypeParameter": 1}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+            },
+        },
+        "vec_set": {
+            "name": "vec_set",
+            "address": "0x2",
+            "file_format_version": 6,
+            "friends": [],
+            "structs": {
+                "VecSet": {
+                    "abilities": {"abilities": ["Copy", "Drop", "Store"]},
+                    "fields": [{"name": "contents", "type_": {"Vector": {"TypeParameter": 0}}}],
+                    "type_parameters": [{"constraints": {"abilities": ["Copy", "Drop"]}, "is_phantom": False}],
+                }
+            },
+            "exposed_functions": {
+                "contains": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_set",
+                                    "name": "VecSet",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": ["Bool"],
+                },
+                "empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "vec_set",
+                                "name": "VecSet",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "insert": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_set",
+                                    "name": "VecSet",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {"TypeParameter": 0},
+                    ],
+                    "return_": [],
+                },
+                "into_keys": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "vec_set",
+                                "name": "VecSet",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                    "return_": [{"Vector": {"TypeParameter": 0}}],
+                },
+                "is_empty": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_set",
+                                    "name": "VecSet",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["Bool"],
+                },
+                "remove": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [
+                        {
+                            "MutableReference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_set",
+                                    "name": "VecSet",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        },
+                        {"Reference": {"TypeParameter": 0}},
+                    ],
+                    "return_": [],
+                },
+                "singleton": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [{"TypeParameter": 0}],
+                    "return_": [
+                        {
+                            "Struct": {
+                                "address": "0x2",
+                                "module": "vec_set",
+                                "name": "VecSet",
+                                "type_arguments": [{"TypeParameter": 0}],
+                            }
+                        }
+                    ],
+                },
+                "size": {
+                    "visibility": "Public",
+                    "is_entry": False,
+                    "type_parameters": [{"abilities": ["Copy", "Drop"]}],
+                    "parameters": [
+                        {
+                            "Reference": {
+                                "Struct": {
+                                    "address": "0x2",
+                                    "module": "vec_set",
+                                    "name": "VecSet",
+                                    "type_arguments": [{"TypeParameter": 0}],
+                                }
+                            }
+                        }
+                    ],
+                    "return_": ["U64"],
+                },
+            },
+        },
+    }
+
+
+@pytest.fixture
 def merge_coin_result():
     """Return valid merge_coin result."""
     return {

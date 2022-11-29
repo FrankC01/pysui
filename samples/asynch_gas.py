@@ -12,7 +12,13 @@
 # -*- coding: utf-8 -*-
 
 
-"""pysui Asynchronous client."""
+"""pysui Asynchronous client example.
+
+Shows:
+* Loading an asynchronous client (see `main`)
+* Fetching all address owned object descriptors from Sui blockchain
+* Fetching all address owned gas objects for each address from Sui blockchain
+"""
 
 import asyncio
 import os
@@ -27,7 +33,6 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-print(sys.path)
 
 from pysui.sui import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_config import SuiConfig
@@ -49,18 +54,31 @@ def object_stats(objs: list[ObjectInfo]) -> None:
     print(f"owned types and counts:\n{json.dumps(obj_types,indent=2)}")
 
 
-def print_gas(gasses: list[SuiGas]) -> None:
-    """Print gas objects."""
+def print_gas(gasses: list[SuiGas]) -> int:
+    """print_gas Prints gas balances for each gas object `gasses`.
+
+    :param gasses: A list of SuiGas type objects
+    :type gasses: list[SuiGas]
+    :return: Total gas summed from all SuiGas in gasses
+    :rtype: int
+    """
     total = 0
     for gas_result in gasses:
         total += gas_result.balance
         print(f"{gas_result.identifier} has {gas_result.balance:12} -> {gas_result.balance/SUI_COIN_DENOMINATOR:12}")
     print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:12}")
     print()
+    return total
 
 
 async def get_all_gas(client: SuiAsynchClient) -> dict[SuiAddress, list[SuiGas]]:
-    """Spin 'em all."""
+    """get_all_gas Gets all SuiGas for each address in configuration.
+
+    :param client: Asynchronous Sui Client
+    :type client: SuiAsynchClient
+    :return: Dictionary of all gas objects for each address
+    :rtype: dict[SuiAddress, list[SuiGas]]
+    """
     config: SuiConfig = client.config
     # Build up gas descriptor fetch for each address
     addys = [SuiAddress(x) for x in config.addresses]
@@ -77,7 +95,7 @@ async def get_all_gas(client: SuiAsynchClient) -> dict[SuiAddress, list[SuiGas]]
     return return_map
 
 
-async def main(client: SuiAsynchClient):
+async def main_run(client: SuiAsynchClient):
     """main Asynchronous entry point."""
     config: SuiConfig = client.config
     owned_objects = asyncio.create_task(client.get_address_object_descriptors())
@@ -86,24 +104,22 @@ async def main(client: SuiAsynchClient):
     result = await owned_objects
     object_stats(result.result_data)
     result = await gasses
-
+    grand_total: int = 0
     for key, value in result.items():
         print(f"\nGas objects for :{key.identifier}")
-        print_gas(value)
+        grand_total += print_gas(value)
+        print()
+    print(f"Grand Total gas {grand_total:12} -> {grand_total/SUI_COIN_DENOMINATOR:12}\n")
 
     # print(result.keys())
     print("Exiting async pysui")
 
 
+def main():
+    """Setup asynch loop and run."""
+    arpc = SuiAsynchClient(SuiConfig.default())
+    asyncio.get_event_loop().run_until_complete(main_run(arpc))
+
+
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-
-    # Comment out for local running
-    configuration = SuiConfig.default()
-
-    # Uncomment for local running. Assumes `sui genesis --working-dir sui_local/` in user home
-    # Also must `sui start --network.config ~/sui_local/network.yaml`
-    # configuration = SuiConfig.from_config_file("~/sui_local/client.yaml")
-
-    arpc = SuiAsynchClient(configuration)
-    loop.run_until_complete(main(arpc))
+    main()

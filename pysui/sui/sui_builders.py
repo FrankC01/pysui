@@ -25,7 +25,7 @@ from pysui.sui.sui_types import (
     CommitteeInfo,
     EventID,
     EventQueryEnvelope,
-    MovePackage,
+    SuiMovePackage,
     ObjectInfo,
     ObjectRead,
     ObjectID,
@@ -42,7 +42,7 @@ from pysui.sui.sui_types import (
     TransactionQueryEnvelope,
     TxEffectResult,
 )
-import pysui.sui.sui_utils as sui_utils
+from pysui.sui import sui_utils
 
 
 class SuiRequestType(IntEnum):
@@ -292,7 +292,9 @@ class GetPackage(_NativeTransactionBuilder):
         :param package: ObjectID of package to query, defaults to None
         :type package: ObjectID, optional
         """
-        super().__init__("sui_getNormalizedMoveModulesByPackage", handler_cls=MovePackage, handler_func="ingest_data")
+        super().__init__(
+            "sui_getNormalizedMoveModulesByPackage", handler_cls=SuiMovePackage, handler_func="ingest_data"
+        )
         self.package: ObjectID = sui_utils.as_object_id(package)
 
     def set_package(self, package: ObjectID) -> "GetPackage":
