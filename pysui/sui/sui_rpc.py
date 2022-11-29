@@ -319,7 +319,7 @@ class SuiClient(_ClientMixin):
         :returns: The package detail data
         :rtype: SuiRpcResult
         """
-        result = self.execute(GetPackage(package_id))
+        result = self.execute(GetPackage(package=package_id))
         return result
 
     def get_events(self, *, query: SuiMap, cursor: str, limit: int, descending_order: bool) -> SuiRpcResult:
@@ -831,7 +831,7 @@ class SuiAsynchClient(_ClientMixin):
         :returns: The package detail data
         :rtype: SuiRpcResult
         """
-        result = await self.execute(GetPackage(package_id))
+        result = await self.execute(GetPackage(package=package_id))
         return result
 
     async def get_events(self, *, query: SuiMap, cursor: str, limit: int, descending_order: bool) -> SuiRpcResult:

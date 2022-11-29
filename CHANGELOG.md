@@ -17,6 +17,10 @@ Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, 
 - **SuiConfig** retains the fully qualified path to `client.yaml` used to initialize it
 - SuiConfig adds property (read only) `configuration_path` to `client.yaml`
 - SuiConfig adds property (read only) `environment` to the environment in use from client.yaml
+- Support for `sui_getNormalizedMoveModule` in sui/sui_builders.py [change](https://github.com/FrankC01/pysui/issues/33)
+- Support for `sui_getNormalizedMoveFunction` in sui/sui_builders.py [change](https://github.com/FrankC01/pysui/issues/33)
+- Support for `sui_getNormalizedMoveStruct` in sui/sui_builders.py [change](https://github.com/FrankC01/pysui/issues/33)
+- Support for `sui_getMoveFunctionArgTypes` in sui/sui_builders.py [change](https://github.com/FrankC01/pysui/issues/33)
 
 ### Fixed
 - Object version result [closed](https://github.com/FrankC01/pysui/issues/29)

@@ -1,6 +1,6 @@
 # pysui
 
-Python SUI client SDK for Sui - WIP and expect significant refactoring
+SUI Python Client SDK for Sui
 
 - Repo Version: Unpublished **0.2.0**
 - PyPi Version: **0.1.1**

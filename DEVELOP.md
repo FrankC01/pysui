@@ -1,6 +1,6 @@
 # develop pysui
 
-Python SUI client SDK for Sui - WIP and expect significant refactoring
+SUI Python Client SDK for Sui
 
 This document is for contributors or the curious developer
 

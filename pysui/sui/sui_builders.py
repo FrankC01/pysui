@@ -25,11 +25,15 @@ from pysui.sui.sui_types import (
     CommitteeInfo,
     EventID,
     EventQueryEnvelope,
+    SuiMoveFunction,
+    SuiMoveFunctionArgumentTypes,
+    SuiMoveModule,
     SuiMovePackage,
     ObjectInfo,
     ObjectRead,
     ObjectID,
     SuiBoolean,
+    SuiMoveStruct,
     SuiString,
     SuiInteger,
     SuiTxBytes,
@@ -286,7 +290,7 @@ class GetPastObject(_NativeTransactionBuilder):
 class GetPackage(_NativeTransactionBuilder):
     """GetPackage When executed, return structured representations of all modules in the given package."""
 
-    def __init__(self, package: ObjectID = None) -> None:
+    def __init__(self, *, package: ObjectID) -> None:
         """__init__ Initialize GetPackage object.
 
         :param package: ObjectID of package to query, defaults to None
@@ -305,6 +309,103 @@ class GetPackage(_NativeTransactionBuilder):
     def _collect_parameters(self) -> list[ObjectID]:
         """Collect the call parameters."""
         return [self.package]
+
+
+class GetModule(_NativeTransactionBuilder):
+    """GetModule When executed, returns the structural representation of a module.
+
+    Includes general Module informationn as well as structure and function definitions.
+    """
+
+    def __init__(self, *, package: ObjectID, module_name: SuiString) -> None:
+        """__init__ Initialize GetModule object.
+
+        :param package: ObjectID of package to query
+        :type package: ObjectID
+        :param module_name: Name of module from package to fetch
+        :type module_name: SuiString
+        """
+        super().__init__("sui_getNormalizedMoveModule", handler_cls=SuiMoveModule, handler_func="ingest_data")
+        self.package: ObjectID = sui_utils.as_object_id(package)
+        self.module_name: SuiString = module_name
+
+    def _collect_parameters(self) -> list[ObjectID]:
+        """Collect the call parameters."""
+        return [self.package, self.module_name]
+
+
+class GetFunction(_NativeTransactionBuilder):
+    """GetFunction When executed, returns the structural representation of a module's function.
+
+    Includes general function arguments and return type definitions.
+    """
+
+    def __init__(self, *, package: ObjectID, module_name: SuiString, function_name: SuiString) -> None:
+        """__init__ Initialize GetModule object.
+
+        :param package: ObjectID of package to query
+        :type package: ObjectID
+        :param module_name: Name of module from package containing function_name to fetch
+        :type module_name: SuiString
+        :param function_name: Name of module from package to fetch
+        :type function_name: SuiString
+        """
+        super().__init__("sui_getNormalizedMoveFunction", handler_cls=SuiMoveFunction, handler_func="ingest_data")
+        self.package: ObjectID = sui_utils.as_object_id(package)
+        self.module_name: SuiString = module_name
+        self.function_name: SuiString = function_name
+
+    def _collect_parameters(self) -> list[ObjectID]:
+        """Collect the call parameters."""
+        return [self.package, self.module_name, self.function_name]
+
+
+class GetFunctionArgs(_NativeTransactionBuilder):
+    """GetFunction When executed, returns the argument types of a Move function."""
+
+    def __init__(self, *, package: ObjectID, module: SuiString, function: SuiString) -> None:
+        """__init__ Initialize GetModule object.
+
+        :param package: ObjectID of package to query
+        :type package: ObjectID
+        :param module: Name of module from package containing function_name to fetch
+        :type module: SuiString
+        :param function: Name of module's function to fetch arguments for
+        :type function: SuiString
+        """
+        super().__init__(
+            "sui_getMoveFunctionArgTypes", handler_cls=SuiMoveFunctionArgumentTypes, handler_func="ingest_data"
+        )
+        self.package: ObjectID = sui_utils.as_object_id(package)
+        self.module: SuiString = module
+        self.function: SuiString = function
+
+    def _collect_parameters(self) -> list[ObjectID]:
+        """Collect the call parameters."""
+        return [self.package, self.module, self.function]
+
+
+class GetStructure(_NativeTransactionBuilder):
+    """GetStructure When executed, returns a module's structure representation."""
+
+    def __init__(self, *, package: ObjectID, module_name: SuiString, structure_name: SuiString) -> None:
+        """__init__ Initialize GetModule object.
+
+        :param package: ObjectID of package to query
+        :type package: ObjectID
+        :param module_name: Name of module from package containing function_name to fetch
+        :type module_name: SuiString
+        :param structure_name: Name of structure from structure to fetch
+        :type structure_name: SuiString
+        """
+        super().__init__("sui_getNormalizedMoveStruct", handler_cls=SuiMoveStruct, handler_func="ingest_data")
+        self.package: ObjectID = sui_utils.as_object_id(package)
+        self.module_name: SuiString = module_name
+        self.structure_name: SuiString = structure_name
+
+    def _collect_parameters(self) -> list[ObjectID]:
+        """Collect the call parameters."""
+        return [self.package, self.module_name, self.structure_name]
 
 
 class GetRpcAPI(_NativeTransactionBuilder):

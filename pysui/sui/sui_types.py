@@ -11,12 +11,9 @@
 
 # -*- coding: utf-8 -*-
 
-
 """Sui Types."""
 
-
 from abc import ABC
-
 import re
 
 # import json
@@ -38,28 +35,52 @@ __fullstring_pattern: re.Pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
 def valid_sui_address(instr: str) -> bool:
     """Verify Sui address string."""
     inlen = len(instr)
-    if instr == "0x2":
-        return True
-    if instr == "Immutable":
-        return True
-    if inlen > SUI_HEX_ADDRESS_STRING_LEN or inlen < SUI_ADDRESS_STRING_LEN:
-        return False
-    # _kp = keypair_from_keystring(instr)
-    if inlen == SUI_HEX_ADDRESS_STRING_LEN and __fullstring_pattern.findall(instr):
-        return True
-    return __partstring_pattern.findall(instr)
+    match instr:
+        case "0x2" | "Immutable":
+            return True
+        case _:
+            if inlen > SUI_HEX_ADDRESS_STRING_LEN or inlen < SUI_ADDRESS_STRING_LEN:
+                return False
+            # _kp = keypair_from_keystring(instr)
+            if inlen == SUI_HEX_ADDRESS_STRING_LEN and __fullstring_pattern.findall(instr):
+                return True
+            return __partstring_pattern.findall(instr)
 
 
 class SuiBaseType(AbstractType):
     """Base most SUI object type."""
 
+    def __init__(self, identifier: Any) -> None:
+        """__init__ Native string initializing SuiString.
+
+        :param identifier: A native python type
+        :type identifier: Any
+        """
+        super().__init__(identifier)
+
 
 class SuiScalarType(SuiBaseType):
     """Base most SUI scalar type."""
 
+    def __init__(self, identifier: Any) -> None:
+        """__init__ Native string initializing SuiString.
+
+        :param identifier: A native python type
+        :type identifier: Any
+        """
+        super().__init__(identifier)
+
 
 class SuiString(SuiScalarType):
     """Sui String type."""
+
+    def __init__(self, identifier: str) -> None:
+        """__init__ Native string initializing SuiString.
+
+        :param identifier: A python str
+        :type identifier: str
+        """
+        super().__init__(identifier)
 
     @property
     def function(self) -> str:
@@ -67,7 +88,22 @@ class SuiString(SuiScalarType):
         return self.value
 
     @property
+    def function_name(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def module(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def module_name(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def struct_name(self) -> str:
         """Alias for transactions."""
         return self.value
 
@@ -1296,6 +1332,17 @@ class SuiMoveStruct(DataClassJsonMixin):
     def __post_init__(self):
         """Post init processing for type parameters."""
 
+    @classmethod
+    def ingest_data(cls, indata: dict) -> "SuiMoveStruct":
+        """ingest_data Ingest results of direct call to `sui_getNormalizedMoveStruct`.
+
+        :param indata: Dictionary containing structure defintion
+        :type indata: dict
+        :return: Instance of SuiMoveStruct
+        :rtype: SuiMoveFunction
+        """
+        return SuiMoveStruct.from_dict(indata)
+
 
 @dataclass
 class SuiMoveVector(DataClassJsonMixin):
@@ -1342,6 +1389,24 @@ class SuiParameterReference(DataClassJsonMixin):
 
 
 @dataclass
+class SuiMoveFunctionArgumentTypes(DataClassJsonMixin):
+    """From getNormalized."""
+
+    arg_list: list[Union[str, dict[str, str]]]
+
+    @classmethod
+    def ingest_data(cls, indata: list) -> "SuiMoveFunctionArgumentTypes":
+        """ingest_data Ingest results of calling `sui_getMoveFunctionArgTypes`.
+
+        :param indata: list containing function argument types
+        :type indata: list
+        :return: Instance of SuiMoveFunctionArgumentTypes
+        :rtype: SuiMoveFunctionArgumentTypes
+        """
+        return SuiMoveFunctionArgumentTypes.from_dict({"arg_list": indata})
+
+
+@dataclass
 class SuiMoveFunction(DataClassJsonMixin):
     """From getNormalized."""
 
@@ -1370,6 +1435,17 @@ class SuiMoveFunction(DataClassJsonMixin):
                 new_rets.append(parm)
         self.returns = new_rets
 
+    @classmethod
+    def ingest_data(cls, indata: dict) -> "SuiMoveFunction":
+        """ingest_data Ingest results of calling `sui_getNormalizedMoveFunction`.
+
+        :param indata: Dictionary containing function defintion
+        :type indata: dict
+        :return: Instance of SuiMoveFunction
+        :rtype: SuiMoveFunction
+        """
+        return SuiMoveFunction.from_dict(indata)
+
 
 # Module module information type
 @dataclass
@@ -1396,6 +1472,17 @@ class SuiMoveModule(DataClassJsonMixin):
 
     def __post_init__(self):
         """Post init processing for parameters."""
+
+    @classmethod
+    def ingest_data(cls, indata: dict) -> "SuiMoveModule":
+        """ingest_data Ingest results of calling `sui_getNormalizedMoveModule`.
+
+        :param indata: Dictionary containing module defintion
+        :type indata: dict
+        :return: Instance of SuiMoveModule
+        :rtype: SuiMoveModule
+        """
+        return SuiMoveModule.from_dict(indata)
 
 
 @dataclass
