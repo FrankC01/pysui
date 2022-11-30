@@ -911,8 +911,7 @@ class Pay(_MoveCallTransactionBuilder):
     Where `T` can be any coin type following a list of amounts.
 
     The object specified in the `gas` field will be used to pay the gas fee for the transaction.
-    The gas object can not appear in `input_coins`. If the gas object is not specified,
-    the RPC server will auto-select one.
+    The gas object can not appear in `input_coins`.
     """
 
     pay_kwords: set[str] = {"signer", "input_coins", "recipients", "amounts", "gas", "gas_budget"}
@@ -998,12 +997,13 @@ class PaySui(_MoveCallTransactionBuilder):
 
     This is for SUI coin only and does not require a separate gas coin object.
     Specifically, what pay_sui does is:
-        1. debit each input_coin to create new coin following the order of amounts and assign it to
-            the corresponding recipient.
-        2. accumulate all residual SUI from input coins left and deposit all SUI to the first input coin,
-            then use the first input coin as the gas coin object.
-        3. the balance of the first input coin after tx is sum(input_coins) - sum(amounts) - actual_gas_cost
-        4. all other input coints other than the first one are deleted.
+
+    1. debit each input_coin to create new coin following the order of amounts and assign it to
+        the corresponding recipient.
+    2. accumulate all residual SUI from input coins left and deposit all SUI to the first input coin,
+        then use the first input coin as the gas coin object.
+    3. the balance of the first input coin after tx is sum(input_coins) - sum(amounts) - actual_gas_cost
+    4. all other input coints other than the first one are deleted.
     """
 
     paysui_kwords: set[str] = {"signer", "input_coins", "recipients", "amounts", "gas_budget"}
@@ -1082,10 +1082,11 @@ class PayAllSui(_MoveCallTransactionBuilder):
 
     This is for SUI coin only and does not require a separate gas coin object.
     Specifically, what pay_all_sui does is:
-        1. accumulate all SUI from input coins and deposit all SUI to the first input coin
-        2. transfer the updated first coin to the recipient and also use this first coin as gas coin object.
-        3. the balance of the first input coin after tx is sum(input_coins) - actual_gas_cost.
-        4. all other input coins other than the first are deleted.
+
+    1. accumulate all SUI from input coins and deposit all SUI to the first input coin
+    2. transfer the updated first coin to the recipient and also use this first coin as gas coin object.
+    3. the balance of the first input coin after tx is sum(input_coins) - actual_gas_cost.
+    4. all other input coins other than the first are deleted.
     """
 
     payallsui_kwords: set[str] = {"signer", "input_coins", "recipient", "gas_budget"}
@@ -1351,7 +1352,7 @@ class SplitCoinEqually(_MoveCallTransactionBuilder):
 
 
 class BatchParameter(SuiMap):
-    """Type for verifications."""
+    """BatchParameter is abstraction for TransferObjectParams and MoveCallRequestParams."""
 
     @abstractmethod
     def realize_parameters(self) -> dict:

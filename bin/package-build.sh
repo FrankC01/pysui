@@ -15,8 +15,10 @@ then
     tout=$(twine check "dist/*")
     if echo $tout | grep -q "PASSED"; then
             echo "Build successful!"
+            exit 0
         else
-            echo "Bad Build"
+            echo "Bad Build. Fix errors and rerun"
+            exit -1
     fi
 else
     echo "Command must run from pysui folder."

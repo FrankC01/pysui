@@ -21,12 +21,13 @@ Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, 
 - Support for `sui_getNormalizedMoveFunction` in sui/sui_builders.py [change](https://github.com/FrankC01/pysui/issues/33)
 - Support for `sui_getNormalizedMoveStruct` in sui/sui_builders.py [change](https://github.com/FrankC01/pysui/issues/33)
 - Support for `sui_getMoveFunctionArgTypes` in sui/sui_builders.py [change](https://github.com/FrankC01/pysui/issues/33)
+- Sphinx generated HTML docs [documentation](https://github.com/FrankC01/pysui/issues/32)
 
 ### Fixed
 - Object version result [closed](https://github.com/FrankC01/pysui/issues/29)
 - Sample wallet construction of object version type and `GetPastObject` in `sui/sui_builders.py`
-- Builder keyword expansion and docs [closed](https://github.com/FrankC01/pysui/issues/30)
-- SuiType keyword expansion and docs [progressing](https://github.com/FrankC01/pysui/issues/31)
+- **Builder** keyword expansion and initial docs [closed](https://github.com/FrankC01/pysui/issues/30)
+- **SuiType** keyword expansion and initial docs [closed](https://github.com/FrankC01/pysui/issues/31)
 
 ### Changed
 - **SuiClient** and **SuiAsynchClinet** [issue](https://github.com/FrankC01/pysui/issues/27)

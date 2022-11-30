@@ -1,12 +1,35 @@
+# macos cruft
+.DS_Store
+
+# Virtual environment
 pysuienv
+
+# Compiled code
 __pycache__
+
+# sui logs
 sui.log*
-sample.rpc.py
-.pytest_cache
-.vscode/launch.json
-apidefn.json
+
+# Sandboxing
 temp.py
+
+# pytest cruft
+.pytest_cache
+
+# vscode cruft
+.vscode/launch.json
+
+# Local copy of SUI RPC API from `rpc.discover`
+apidefn.json
+
+# Publish runs cruft
 build
 pysui.egg-info
 dist
 setup.py
+
+# Documentation runs cruft
+modules.rst
+pysui.abstracts.rst
+pysui.rst
+pysui.sui.rst

@@ -19,7 +19,7 @@ Samples are included in both the `pysui` repo as well as when installing through
 - `asynch-gas`
 
 ### Async Gas
-Example demonstrating using the `pysui` SuiAsynchClient. See [DEVELOP](DEVELOP.md)
+Example demonstrating using the `pysui` SuiAsynchClient. See [DEVELOP](../DEVELOP.md)
 
 ### Wallet
 Implementation demonstrating most SUI RPC API calls like the SUI CLI (i.e. `sui client ...`).
