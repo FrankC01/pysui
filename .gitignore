@@ -29,7 +29,7 @@ dist
 setup.py
 
 # Documentation runs cruft
-modules.rst
-pysui.abstracts.rst
-pysui.rst
-pysui.sui.rst
+# modules.rst
+# pysui.abstracts.rst
+# pysui.rst
+# pysui.sui.rst
