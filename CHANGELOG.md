@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - Current dev version - 0.2.x
+
+### Added
+- Pushed `pysui` 0.2.0-beta to [PyPi](https://pypi.org/project/pysui/)
+- Pushed `pysui` 0.2.0-beta to [readthedocs](https://pysui.readthedocs.io/en/v0.2.0-beta/)
+
+### Fixed
+
+### Changed
+
+### Removed
 
 ## [0.2.0] - 2022-12-01
 
