@@ -5,7 +5,9 @@ SUI Python Client SDK for Sui
 - Repo Version: Unpublished **0.2.0**
 - PyPi Version: **0.1.1**
 
-Refer to the [Changes](CHANGELOG.md) log for recent additions, changes, fixes and removals...
+Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
+
+`pysui` is documented [Here](https://pysui.readthedocs.io/en/latest/)
 
 ## Ready to run
 Requires:
@@ -17,7 +19,7 @@ Requires:
 ### Setup environment
 `python3 -m venv env`
 
-If, instead, you want to work with repo latest source code then read [DEVELOP](DEVELOP.md) from repo
+If, instead, you want to work with repo latest source code then read [DEVELOP](https://github.com/FrankC01/pysui/blob/main/DEVELOP.md) from repo
 
 ### Activate
 `source env/bin/activate`
@@ -25,5 +27,5 @@ If, instead, you want to work with repo latest source code then read [DEVELOP](D
 ### Install `pysui`
 `pip install pysui`
 
-## Sample
-See [samples](samples/README.md)
+## Samples
+See [samples](https://github.com/FrankC01/pysui/blob/main/samples/README.md)

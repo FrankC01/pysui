@@ -38,7 +38,7 @@ Requires:
 `pip install -r requirements-dev.txt` .
 
 ### Run sample wallet app for help
-See [README](README.md)
+See [README](https://github.com/FrankC01/pysui/blob/main/README.md)
 
 ## SDK Examples
 

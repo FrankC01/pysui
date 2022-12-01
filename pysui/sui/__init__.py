@@ -12,7 +12,7 @@
 # -*- coding: utf-8 -*-
 
 
-"""Provides version checking and export the Configuration."""
+"""Main pysui package. Contains imports of various module types."""
 
 import sys
 
