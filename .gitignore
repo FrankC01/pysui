@@ -22,6 +22,9 @@ temp.py
 # Local copy of SUI RPC API from `rpc.discover`
 apidefn.json
 
+# Local copy of SUI 0x2 modules and functions
+siggen.list
+
 # Publish runs cruft
 build
 pysui.egg-info

@@ -1259,7 +1259,7 @@ class SuiMoveType:
     """SuiMoveType is a factory of generalized Normalized types."""
 
     @classmethod
-    def resolve(cls, parm: dict) -> DataClassJsonMixin:
+    def resolve(cls, parm: Union[str, dict]) -> DataClassJsonMixin:
         """resolve Dispatches data loaders based on parm dictionary.
 
         :param parm: A dictionary containing a SuiMoveNormalizedType
@@ -1268,6 +1268,8 @@ class SuiMoveType:
         :return: A pysui Sui data object
         :rtype: DataClassJsonMixin
         """
+        if isinstance(parm, str):
+            return SuiMoveScalarArgument.from_dict({"scalar_type": parm})
         match_key = list(parm.keys())[0]
         match match_key:
             case "Reference" | "MutableReference":
@@ -1370,7 +1372,15 @@ class SuiParameterStruct(DataClassJsonMixin):
     address: str
     module: str
     name: str
-    type_arguments: list[SuiMoveParameterType]
+    type_arguments: list[Any]
+
+    def __post_init__(self):
+        """Post init."""
+        if self.type_arguments:
+            new_type_ars = []
+            for type_arg in self.type_arguments:
+                new_type_ars.append(SuiMoveType.resolve(type_arg))
+            self.type_arguments = new_type_ars
 
 
 @dataclass
@@ -1386,6 +1396,13 @@ class SuiParameterReference(DataClassJsonMixin):
         self.is_mutable = self.reference_type == "MutableReference"
         if self.reference_to:
             self.reference_to = SuiMoveType.resolve(self.reference_to)
+
+
+@dataclass
+class SuiMoveScalarArgument(DataClassJsonMixin):
+    """From getNormalized."""
+
+    scalar_type: str
 
 
 @dataclass
@@ -1421,18 +1438,20 @@ class SuiMoveFunction(DataClassJsonMixin):
         # Transition parameters
         new_parms = []
         for parm in self.parameters:
-            if isinstance(parm, dict):
-                new_parms.append(SuiMoveType.resolve(parm))
-            else:
-                new_parms.append(parm)
+            new_parms.append(SuiMoveType.resolve(parm))
+            # if isinstance(parm, dict):
+            #     new_parms.append(SuiMoveType.resolve(parm))
+            # else:
+            #     new_parms.append(parm)
         self.parameters = new_parms
         # Transition returns
         new_rets = []
         for parm in self.returns:
-            if isinstance(parm, dict):
-                new_rets.append(SuiMoveType.resolve(parm))
-            else:
-                new_rets.append(parm)
+            new_rets.append(SuiMoveType.resolve(parm))
+            # if isinstance(parm, dict):
+            #     new_rets.append(SuiMoveType.resolve(parm))
+            # else:
+            #     new_rets.append(parm)
         self.returns = new_rets
 
     @classmethod

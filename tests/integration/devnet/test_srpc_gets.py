@@ -111,7 +111,7 @@ def test_get_object_pass(sui_client: SuiClient):
     # Builder approach
     builder = GetObject(gas_objects[0].identifier)
     gas_object2 = sui_client.execute(builder)
-    assert gas_object2
+    assert gas_object2.is_ok()
     assert gas_object.result_data == gas_object2.result_data
 
 

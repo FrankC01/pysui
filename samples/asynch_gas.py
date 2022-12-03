@@ -65,8 +65,8 @@ def print_gas(gasses: list[SuiGas]) -> int:
     total = 0
     for gas_result in gasses:
         total += gas_result.balance
-        print(f"{gas_result.identifier} has {gas_result.balance:12} -> {gas_result.balance/SUI_COIN_DENOMINATOR:12}")
-    print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:12}")
+        print(f"{gas_result.identifier} has {gas_result.balance:12} -> {gas_result.balance/SUI_COIN_DENOMINATOR:.8f}")
+    print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
     print()
     return total
 
@@ -109,7 +109,7 @@ async def main_run(client: SuiAsynchClient):
         print(f"\nGas objects for :{key.identifier}")
         grand_total += print_gas(value)
         print()
-    print(f"Grand Total gas {grand_total:12} -> {grand_total/SUI_COIN_DENOMINATOR:12}\n")
+    print(f"Grand Total gas {grand_total:12} -> {grand_total/SUI_COIN_DENOMINATOR:.8f}\n")
 
     # print(result.keys())
     print("Exiting async pysui")

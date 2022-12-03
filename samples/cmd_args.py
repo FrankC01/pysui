@@ -14,78 +14,8 @@
 
 """Argument parsing."""
 import argparse
-import sys
-from pathlib import Path
-from typing import Any, Sequence
-from pysui.sui.sui_types import ObjectID, SuiInteger, SuiAddress, SuiString
-
-
-def check_positive(value: str) -> int:
-    """Check for positive integers."""
-    ivalue = int(value)
-    if ivalue < 0:
-        raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")
-    return SuiInteger(ivalue)
-
-
-class ValidateAddress(argparse.Action):
-    """Address validator."""
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
-    ) -> None:
-        """Validate."""
-        try:
-            if isinstance(values, list):
-                values = [SuiAddress.from_hex_string(v) for v in values]
-            else:
-                values = SuiAddress.from_hex_string(values)
-        except ValueError:
-            parser.error(f"'{values}' is not valid address.")
-            sys.exit(-1)
-        setattr(namespace, self.dest, values)
-
-
-class ValidateObjectID(argparse.Action):
-    """ObjectID validator."""
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
-    ) -> None:
-        """Validate."""
-        try:
-            if isinstance(values, list):
-                values = [ObjectID(v) for v in values]
-            else:
-                values = ObjectID(values)
-        except ValueError:
-            parser.error(f"'{values}' is not valid address.")
-        setattr(namespace, self.dest, values)
-
-
-class ValidatePackageDir(argparse.Action):
-    """Validate package directory."""
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
-    ) -> None:
-        """Validate."""
-        ppath = Path(values)
-        if not ppath.exists:
-            parser.error(f"{str(ppath)} does not exist.")
-        setattr(namespace, self.dest, ppath)
+from cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
+from pysui.sui.sui_types import SuiString
 
 
 def _build_read_cmds(subparser) -> None:

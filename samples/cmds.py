@@ -81,11 +81,11 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
 
             for gasobj in gas_objects.result_data:
                 print(
-                    f"{gasobj.identifier} | {str(gasobj.balance):>12s} | {(gasobj.balance / SUI_COIN_DENOMINATOR):.9f}"
+                    f"{gasobj.identifier} | {str(gasobj.balance):>12s} | {(gasobj.balance / SUI_COIN_DENOMINATOR):.8f}"
                 )
             mists = wallet.total_gas(gas_objects.result_data)
             sui = mists / SUI_COIN_DENOMINATOR
-            print(f"Total Gas = MISTS: {mists:12} SUI: {sui:.9f}")
+            print(f"Total Gas = MISTS: {mists:12} SUI: {sui:.8f}")
         else:
             print(f"Sui RPC Error: {gas_objects.result_string} -> {gas_objects.result_data}")
 
