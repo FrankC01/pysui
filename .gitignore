@@ -27,6 +27,7 @@ siggen.list
 
 # Publish runs cruft
 build
+doc/build
 pysui.egg-info
 dist
 setup.py
