@@ -2,7 +2,7 @@
 
 SUI Python Client SDK for Sui
 
-- Repo Version: Unpublished **0.2.x**
+- Repo Version: Unpublished **0.3.0**
 
 - PyPi Version: **0.2.0-beta**
 
