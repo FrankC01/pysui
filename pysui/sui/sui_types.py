@@ -147,6 +147,11 @@ class SuiString(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def coin_type(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
 
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""
@@ -470,6 +475,23 @@ class ObjectReadData(DataClassJsonMixin):
 
 
 @dataclass
+class ObjectPackageReadData(DataClassJsonMixin):
+    """ObjectPackageReadData describes the data structure of package."""
+
+    disassembled: dict
+    data_type: str = field(metadata=config(field_name="dataType"))
+
+    @property
+    def type_(self) -> str:
+        """type_ Returns same as data_type for package.
+
+        :return: Always returns `package`
+        :rtype: str
+        """
+        return self.data_type
+
+
+@dataclass
 class ObjectNotExist(DataClassJsonMixin):
     """ObjectNotExist."""
 
@@ -543,51 +565,83 @@ class ImmutableOwner(DataClassJsonMixin):
 class ObjectRead(DataClassJsonMixin):
     """ObjectRead is base ObjectRead result."""
 
-    data: ObjectReadData
-    owner: dict
+    data: Union[dict, ObjectReadData, ObjectPackageReadData]
+    owner: Any
     reference: GenericRef
     storage_rebate: int = field(metadata=config(field_name="storageRebate"))
     previous_transaction: str = field(metadata=config(field_name="previousTransaction"))
 
     def __post_init__(self):
         """Post init processing for parameters."""
-        vlist = list(self.owner.items())
-        match vlist[0][0]:
-            case "AddressOwner":
-                sdict = {}
-                sdict["owner"] = vlist[0][1]
-                sdict["owner_type"] = "AddressOwner"
-                self.owner = AddressOwner.from_dict(sdict)
-            case "ObjectOwner":
-                sdict = {}
-                sdict["owner"] = vlist[0][1]
-                sdict["owner_type"] = "ObjectOwner"
-                self.owner = ObjectOwner.from_dict(sdict)
-            case "Shared":
-                sdict = vlist[0][1]
-                sdict["owner_type"] = "Shared"
-                self.owner = SharedOwner.from_dict(sdict)
-            case "Immutable":
-                self.owner = ImmutableOwner.from_dict({})
+        if self.data["dataType"] == "package":
+            self.data = SuiPackage.from_dict(self.data)
+        else:
+            split = self.data["type"].split("::", 2)
+            if split[0] == "0x2":
+                match split[1]:
+                    case "coin":
+                        split2 = split[2][5:-1].split("::")
+                        if split2[2] == "SUI":
+                            self.data = SuiGas.from_dict(self.data)
+                        else:
+                            self.data = SuiCoin.from_dict(self.data)
+                    case _:
+                        self.data = SuiData.from_dict(self.data)
+            else:
+                self.data = SuiData.from_dict(self.data)
+
+        if isinstance(self.owner, str):
+            match self.owner:
+                case "Immutable":
+                    self.owner = ImmutableOwner.from_dict({})
+                case _:
+                    raise AttributeError(f"{self.owner} not handled")
+        else:
+            vlist = list(self.owner.items())
+            match vlist[0][0]:
+                case "AddressOwner":
+                    sdict = {}
+                    sdict["owner"] = vlist[0][1]
+                    sdict["owner_type"] = "AddressOwner"
+                    self.owner = AddressOwner.from_dict(sdict)
+                case "ObjectOwner":
+                    sdict = {}
+                    sdict["owner"] = vlist[0][1]
+                    sdict["owner_type"] = "ObjectOwner"
+                    self.owner = ObjectOwner.from_dict(sdict)
+                case "Shared":
+                    sdict = vlist[0][1]
+                    sdict["owner_type"] = "Shared"
+                    self.owner = SharedOwner.from_dict(sdict)
+                case "Immutable":
+                    self.owner = ImmutableOwner.from_dict({})
 
     @property
     def identifier(self) -> ObjectID:
         """Alias object_id."""
-        return ObjectID(self.data.fields["id"]["id"])
+        return ObjectID(self.reference.object_id)
+        # return ObjectID(self.data.fields["id"]["id"])
+
+    @property
+    def balance(self) -> int:
+        """Alias balance for coin types."""
+        if isinstance(self.data, SuiCoin):
+            return self.data.balance
+        raise AttributeError(f"Object {self.identifier} is not a 0x2:coin:Coin type.")
 
     @property
     def version(self) -> int:
-        """Alias object_id."""
+        """Alias version."""
         return self.reference.version
 
     @property
     def digest(self) -> str:
-        """Alias object_id."""
+        """Alias digest."""
         return self.reference.digest
 
     @property
     def type_signature(self) -> str:
-        """Alias object_id."""
+        """Alias type_signature."""
         return self.data.type_
 
     @property
@@ -608,28 +662,17 @@ class ObjectRead(DataClassJsonMixin):
         :return: If it exists, ObjectRead subclass, if not ObjectNotExist or ObjectDeleted if it has been
         :rtype: Union[ObjectRead, ObjectNotExist, ObjectDeleted]
         """
-        # print(indata)
         read_object = indata["details"]
         match indata["status"]:
             case "Exists" | "VersionFound":
-                split = read_object["data"]["type"].split("::", 2)
-                if split[0] == "0x2":
-                    match split[1]:
-                        case "coin":
-                            split2 = split[2][5:-1].split("::")
-                            if split2[2] == "SUI":
-                                return SuiGas.from_dict(read_object)
-                            return SuiCoin.from_dict(read_object)
-                        case _:
-                            return SuiData.from_dict(read_object)
-                else:
-                    return SuiData.from_dict(read_object)
+                result = ObjectRead.from_dict(read_object)
             case "ObjectNotExists" | "NotExists":
-                return ObjectNotExist.from_dict({"object_id": read_object})
+                result: ObjectRead = ObjectNotExist.from_dict({"object_id": read_object})
             case "Deleted":
-                return ObjectDeleted.from_dict({"reference": read_object})
+                result: ObjectRead = ObjectDeleted.from_dict({"reference": read_object})
             case "VersionTooHigh":
-                return ObjectVersionTooHigh.from_dict(read_object)
+                result: ObjectRead = ObjectVersionTooHigh.from_dict(read_object)
+        return result
 
     @classmethod
     def factory(cls, indata: Union[dict, list[dict]]) -> Union[Any, list]:
@@ -646,24 +689,35 @@ class ObjectRead(DataClassJsonMixin):
 
 
 @dataclass
-class SuiData(ObjectRead):
-    """SuiData is object that is not coins.
+class SuiPackage(ObjectPackageReadData):
+    """SuiPackage is a package object.
 
-    :param DObjectRead: superclass
-    :type DObjectRead: DObjectRead
-    :return: Instance of DSuiData
-    :rtype: DSuiData
+    :param ObjectPackageReadData: superclass
+    :type ObjectPackageReadData: ObjectPackageReadData
+    :return: Instance of SuiPackage
+    :rtype: SuiPackage
     """
 
 
 @dataclass
-class SuiCoin(ObjectRead):
+class SuiData(ObjectReadData):
+    """SuiData is object that is not coins.
+
+    :param ObjectReadData: superclass
+    :type ObjectReadData: ObjectReadData
+    :return: Instance of SuiData
+    :rtype: SuiData
+    """
+
+
+@dataclass
+class SuiCoin(ObjectReadData):
     """SuiCoinType is the generic coin.
 
-    :param DObjectRead: superclass
-    :type DObjectRead: DObjectRead
-    :return: Instance of DSuiCoin
-    :rtype: DSuiCoin
+    :param ObjectReadData: superclass
+    :type ObjectReadData: ObjectReadData
+    :return: Instance of SuiCoin
+    :rtype: SuiCoin
     """
 
     @property
@@ -673,17 +727,17 @@ class SuiCoin(ObjectRead):
         :return: balance value
         :rtype: int
         """
-        return self.data.fields["balance"]
+        return self.fields["balance"]
 
 
 @dataclass
 class SuiGas(SuiCoin):
-    """SuiGasType is SUI Gas coin.
+    """SuiGasType is SUI Gas coin object type.
 
-    :param DSuiCoin: superclass
-    :type DSuiCoin: DSuiCoin
-    :return: Instance of DSuiGas
-    :rtype: DSuiGas
+    :param SuiCoin: superclass
+    :type SuiCoin: SuiCoin
+    :return: Instance of SuiGas
+    :rtype: SuiGas
     """
 
 
@@ -1522,3 +1576,15 @@ class SuiMovePackage(DataClassJsonMixin):
             new_mods[mod_key] = mod_value
         indata["modules"] = new_mods
         return SuiMovePackage.from_dict(indata)
+
+
+@dataclass
+class SuiCoinMetadata(DataClassJsonMixin):
+    """From sui_getCoinMetaData."""
+
+    decimals: int
+    name: str
+    symbol: str
+    description: str
+    id_: Optional[str] = field(metadata=config(field_name="id"))
+    icon_url: Optional[str] = field(metadata=config(field_name="iconUrl"))

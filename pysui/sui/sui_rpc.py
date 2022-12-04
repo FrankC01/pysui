@@ -108,18 +108,29 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
+    _RPC_MINIMAL_VERSION: int = 17
+
     def __init__(self, config: SuiConfig) -> None:
         """Client initializer."""
         super().__init__(config)
         self._client = None
         self._rpc_api = {}
         self._schema_dict = {}
+        self._rpc_version: str = None
 
     def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
         """Build the json data block for Rpc."""
         data_block["method"] = method
         data_block["params"] = params
         return data_block
+
+    def rpc_version_support(self) -> None:
+        """rpc_version_support Validats minimal version supported.
+
+        :raises RuntimeError: If RPC API version less than provided
+        """
+        if int(self._rpc_version.split(".")[1]) < self._RPC_MINIMAL_VERSION:
+            raise RuntimeError(f"Requires minimum version '0.{self._RPC_MINIMAL_VERSION}.x found {self._rpc_version}")
 
     def api_exists(self, api_name: str) -> bool:
         """Check if API supported in RPC host."""
@@ -154,7 +165,8 @@ class SuiClient(_ClientMixin):
                 headers=builder.header,
                 json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
             ).json()
-            self._rpc_api, self._schema_dict = build_api_descriptors(result)
+            self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(result)
+            self.rpc_version_support()
         except JSONDecodeError as jexc:
             raise jexc
         except httpx.ReadTimeout as hexc:
@@ -174,6 +186,7 @@ class SuiClient(_ClientMixin):
                     self.config.rpc_url,
                     headers=builder.header,
                     json=jblock,
+                    timeout=15,
                 ).json(),
             )
         except JSONDecodeError as jexc:
@@ -665,7 +678,8 @@ class SuiAsynchClient(_ClientMixin):
                 headers=builder.header,
                 json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
             )
-            self._rpc_api, self._schema_dict = build_api_descriptors(result.json())
+            self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(result.json())
+            self.rpc_version_support()
         except JSONDecodeError as jexc:
             raise jexc
         except httpx.ReadTimeout as hexc:

@@ -4,19 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Current dev version - 0.2.1
+## [Unreleased] - Current dev version - 0.3.0
+
+**Breaking** Changes (noted in bold)
 
 ### Added
 - Pushed `pysui` 0.2.0-beta to [PyPi](https://pypi.org/project/pysui/)
 - Pushed `pysui` 0.2.0-beta to [readthedocs](https://pysui.readthedocs.io/en/v0.2.0-beta/)
 - SuiMoveScalarArgument as type for processing results of `sui_getNormalized...` calls
+- Added 15 second timeout on SuiClient execute
+- Support for `sui_getCoinMetadata` (introduced in sui 0.17.0)
 
 ### Fixed
 - Corrected return signature `type_arguments` on SuiParameterStruct [fixed](https://github.com/FrankC01/pysui/issues/35)
+- Corrected handling of GetObject where ID is package [fixed](https://github.com/FrankC01/pysui/issues/34)
 
 ### Changed
 - Added consistent format for `gas` and `mist` in sample scripts
 - Factored out command line argument validators for sample scripts
+- **_ClientMixin in `sui_rpc` now check RPC API schema version. Minimmal support is 0.17.0**
 
 ### Removed
 

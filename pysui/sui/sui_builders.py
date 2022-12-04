@@ -45,6 +45,7 @@ from pysui.sui.sui_types import (
     SuiBaseType,
     TransactionQueryEnvelope,
     TxEffectResult,
+    SuiCoinMetadata,
 )
 from pysui.sui import sui_utils
 
@@ -165,6 +166,31 @@ class _NativeTransactionBuilder(SuiBaseBuilder):
     def __init__(self, method: str, handler_cls: Type[SuiBaseType] = None, handler_func: str = None) -> None:
         """Initialize builder."""
         super().__init__(method, False, handler_cls, handler_func)
+
+
+class GetCoinMetaData(_NativeTransactionBuilder):
+    """."""
+
+    def __init__(self, *, coin_type: SuiString = None) -> None:
+        """."""
+        super().__init__("sui_getCoinMetadata", handler_cls=SuiCoinMetadata, handler_func="from_dict")
+        if coin_type:
+            self.coin_type = coin_type if isinstance(coin_type, SuiString) else SuiString(coin_type)
+        else:
+            self.coin_type = coin_type
+
+    def set_coin_type(self, coin_type: SuiString) -> "GetCoinMetaData":
+        """."""
+        self.coin_type = coin_type if isinstance(coin_type, SuiString) else SuiString(coin_type)
+        return self
+
+    def _collect_parameters(self) -> list[SuiAddress]:
+        """_collect_parameters Returns expected RPC parameters.
+
+        :return: RPC expects a string representing a coin type signature (e.g. 0x2::sui::SUI)
+        :rtype: list[SuiAddress]
+        """
+        return [self.coin_type]
 
 
 class GetObjectsOwnedByAddress(_NativeTransactionBuilder):

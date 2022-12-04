@@ -199,7 +199,7 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
     raise SuiParamSchemaInvalid(indata)
 
 
-def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
+def build_api_descriptors(indata: dict) -> tuple[str, dict, dict]:
     """Build the schema dictionary then API call dictionary."""
     # print(indata)
     # Validate the inbound data. Keys are present in valid response
@@ -225,5 +225,5 @@ def build_api_descriptors(indata: dict) -> tuple[dict, dict]:
             tpath: list = []
             api_def.result.schema = _resolve_param_type(schema_dict, api_def.result.schema, tpath)
 
-        return (mdict, schema_dict)
+        return (indata["result"]["info"]["version"], mdict, schema_dict)
     raise SuiApiDefinitionInvalid(indata)

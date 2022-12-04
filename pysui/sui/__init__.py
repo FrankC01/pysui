@@ -22,6 +22,7 @@ from pysui.sui.sui_excepts import SuiInvalidAddress
 from pysui.sui.sui_apidesc import SuiApi, build_api_descriptors
 from pysui.sui.sui_builders import (
     SuiBaseBuilder,
+    GetCoinMetaData,
     GetObjectsOwnedByAddress,
     GetObject,
     GetObjectsOwnedByObject,
