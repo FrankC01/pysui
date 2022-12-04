@@ -5,10 +5,6 @@
 # Required
 version: 2
 
-python:
-  install:
-    - requirements: requirements.txt
-
 # Set the version of Python and other tools you might need
 build:
   os: ubuntu-20.04
@@ -18,9 +14,9 @@ build:
     # nodejs: "16"
     # rust: "1.55"
     # golang: "1.17"
-  jobs:
-    pre_build:
-      - sphinx-apidoc -o doc/source pysui/
+  commands:
+    - pip install dataclasses_json
+    - sphinx-apidoc -o doc/source pysui/
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
