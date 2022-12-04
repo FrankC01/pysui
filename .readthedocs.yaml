@@ -7,7 +7,7 @@ version: 2
 python:
   version: "3.10"
   install:
-    - ./doc/requirements.txt
+    - pysui/doc/requirements.txt
 
 # Set the version of Python and other tools you might need
 build:
@@ -20,7 +20,7 @@ build:
     # golang: "1.17"
   jobs:
     pre_build:
-      - sphinx-apidoc -o doc/source pysui/
+      - sphinx-apidoc -o pysui/doc/source pysui/pysui/
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
