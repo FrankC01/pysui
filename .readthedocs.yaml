@@ -7,7 +7,7 @@ version: 2
 
 python:
   install:
-    - requirements: doc/requirements.txt
+    - requirements: pysui/doc/requirements.txt
 
 # Set the version of Python and other tools you might need
 build:
