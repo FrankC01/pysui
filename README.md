@@ -8,7 +8,9 @@ SUI Python Client SDK for Sui
 
 Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
-`pysui` is documented [Here](https://pysui.readthedocs.io/en/v0.2.0-beta/)
+`pysui` is documented:
+* `0.2.x` [Here](https://pysui.readthedocs.io/en/v0.2.0-beta/)
+* `latest [Here](https://pysui.readthedocs.io/en/latest/index.html)
 
 ## Ready to run
 Requires:
