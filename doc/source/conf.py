@@ -40,9 +40,10 @@ html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "display_version": True,
     "sticky_navigation": False,
-    "navigation_depth": -1,
-    "includehidden": False,
-    "titles_only": False,
+    # "navigation_depth": -1,
+    # "includehidden": False,
+    # "titles_only": False,
 }
 
-html_static_path = ["_static"]
+# html_static_path = ["_static"]
+html_static_path = []
