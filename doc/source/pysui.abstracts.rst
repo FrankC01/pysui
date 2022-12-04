@@ -1,7 +1,6 @@
 pysui.abstracts package
 =======================
 
-
 Submodules
 ----------
 

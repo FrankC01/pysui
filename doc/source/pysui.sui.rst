@@ -4,7 +4,6 @@ pysui.sui package
 Submodules
 ----------
 
-
 pysui.sui.sui\_apidesc module
 -----------------------------
 
