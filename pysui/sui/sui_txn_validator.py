@@ -35,7 +35,7 @@ def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[
         att = [getattr(x, api_parm.name) for x in att]
 
     # print(f"att {api_parm.name} = {att}")
-    if att is None:
+    if att is None and api_parm.required:
         raise SuiRpcApiInvalidParameter(f"builder {build_parm} does not have attribute {api_parm.name}")
     return (schema_name, att)
 

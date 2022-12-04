@@ -33,7 +33,7 @@ from pysui.sui.sui_builders import (
     GetTxsMoveFunction,
 )
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
-from pysui.sui.sui_types import SuiBoolean, SuiMap, SuiString, EventID
+from pysui.sui.sui_types import SuiBoolean, SuiMap, SuiString, EventID, SuiNullType
 from pysui.abstracts import SignatureScheme
 from pysui.sui.sui_rpc import SuiRpcResult
 from pysui.sui.sui_utils import build_b64_modules
@@ -339,8 +339,9 @@ def _convert_event_query(var_args: argparse.Namespace, query: Union[SuiString, S
     """Convert arguments to SuiTypes."""
     var_args.pop("version")
     var_args["query"] = query
-    curser_event_id = var_args["cursor"].split(":")
-    var_args["cursor"] = EventID(int(curser_event_id[0]), int(curser_event_id[1]))
+    if isinstance(var_args["cursor"], str):
+        curser_event_id = var_args["cursor"].split(":")
+        var_args["cursor"] = EventID(int(curser_event_id[0]), int(curser_event_id[1]))
     var_args["descending_order"] = SuiBoolean(var_args["descending_order"])
     return var_args
 

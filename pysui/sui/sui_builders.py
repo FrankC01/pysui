@@ -34,6 +34,7 @@ from pysui.sui.sui_types import (
     ObjectID,
     SuiBoolean,
     SuiMoveStruct,
+    SuiNullType,
     SuiString,
     SuiInteger,
     SuiTxBytes,
@@ -562,8 +563,8 @@ class GetEvents(_NativeTransactionBuilder):
         self,
         *,
         query: Union[SuiString, SuiMap] = None,
-        curser: EventID = None,
-        limit: SuiInteger = None,
+        cursor: EventID = None,
+        limit: Union[SuiInteger, SuiNullType] = None,
         descending_order: SuiBoolean = None,
     ) -> None:
         """Initialize builder."""
@@ -571,7 +572,7 @@ class GetEvents(_NativeTransactionBuilder):
         super().__init__("sui_getEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
         self.query: Union[SuiString, SuiMap] = None
         self.cursor: EventID = None
-        self.limit: SuiInteger = None
+        self.limit: Union[SuiInteger, SuiNullType] = None
         self.descending_order: SuiBoolean = False
         for hit in self.events_kwords & set(inargs.keys()):
             setattr(self, hit, inargs[hit])

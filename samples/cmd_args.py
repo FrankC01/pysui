@@ -15,7 +15,7 @@
 """Argument parsing."""
 import argparse
 from cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
-from pysui.sui.sui_types import SuiString
+from pysui.sui.sui_types import SuiString, SuiNullType
 
 
 def _build_read_cmds(subparser) -> None:
@@ -477,14 +477,21 @@ def _build_extended_read_commands(subparser) -> None:
     """More Object read commands."""
 
     def __common_event_opts(eparser) -> None:
-        eparser.add_argument("-l", "--limit", required=True, help="limit results by page", type=check_positive)
+        eparser.add_argument(
+            "-l",
+            "--limit",
+            required=False,
+            default=SuiNullType(None),
+            help="limit results by page",
+            type=check_positive,
+        )
         eparser.add_argument(
             "-c",
             "--cursor",
             required=False,
             help="optional paging cursor, entered as n:n (e.g. 10:0)",
             type=str,
-            default="10:0",
+            default=SuiNullType(None),
         )
         eparser.add_argument(
             "-d",

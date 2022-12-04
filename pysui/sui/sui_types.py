@@ -59,6 +59,34 @@ class SuiBaseType(AbstractType):
         super().__init__(identifier)
 
 
+class SuiNullType(SuiBaseType):
+    """SuiNullType A null type.
+
+    :param SuiBaseType: Super class
+    :type SuiBaseType: _type_
+    :return: _description_
+    :rtype: SuiNullType
+    """
+
+    def __init__(self, identifier: Any) -> None:
+        """__init__ Native string initializing SuiString.
+
+        :param identifier: A native python type
+        :type identifier: Any
+        """
+        super().__init__(None)
+
+    @property
+    def limit(self) -> Any:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def cursor(self) -> Any:
+        """Alias for transactions."""
+        return self.value
+
+
 class SuiScalarType(SuiBaseType):
     """Base most SUI scalar type."""
 
@@ -149,6 +177,11 @@ class SuiString(SuiScalarType):
 
     @property
     def coin_type(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def limit(self) -> str:
         """Alias for transactions."""
         return self.value
 

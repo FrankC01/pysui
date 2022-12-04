@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected return signature `type_arguments` on SuiParameterStruct [fixed](https://github.com/FrankC01/pysui/issues/35)
 - Corrected handling of GetObject where ID is package [fixed](https://github.com/FrankC01/pysui/issues/34)
 - Various readthedocs nuances
+- Added `SuiNullType` with alias tx properties and checking API schema for required/not-required parameters
 
 ### Changed
 - Added consistent format for `gas` and `mist` in sample scripts
