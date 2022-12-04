@@ -480,15 +480,11 @@ class ObjectPackageReadData(DataClassJsonMixin):
 
     disassembled: dict
     data_type: str = field(metadata=config(field_name="dataType"))
+    type_: Optional[str] = ""
 
-    @property
-    def type_(self) -> str:
-        """type_ Returns same as data_type for package.
-
-        :return: Always returns `package`
-        :rtype: str
-        """
-        return self.data_type
+    def __post_init__(self):
+        """Post init processing for parameters."""
+        self.type_ = self.data_type
 
 
 @dataclass
