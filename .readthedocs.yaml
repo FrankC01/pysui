@@ -4,6 +4,10 @@
 
 # Required
 version: 2
+python:
+  version: "3.10"
+  install:
+    - doc/requirements.txt
 
 # Set the version of Python and other tools you might need
 build:
