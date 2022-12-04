@@ -1,1 +1,2 @@
 dataclasses_json==0.5.7
+pyyaml==6.0
