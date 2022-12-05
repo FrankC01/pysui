@@ -2,8 +2,6 @@
 
 Samples are included in both the `pysui` repo as well as when installing through PyPi
 
-- Repo Version: Unpublished **0.2.0**
-- PyPi Version: **0.1.1**
 
 ## Examples:
 - async-gas collects and prints all gas for all addresses found in configuration

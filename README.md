@@ -2,14 +2,11 @@
 
 SUI Python Client SDK for Sui
 
-- Repo Version: Unpublished **0.3.0**
-
-- PyPi Version: **0.2.0-beta**
+- PyPi Version: **0.3.0** (2022-12-4)
 
 Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
 `pysui` is documented:
-* `0.2.x` [Here](https://pysui.readthedocs.io/en/v0.2.0-beta/)
 * `latest [Here](https://pysui.readthedocs.io/en/latest/index.html)
 
 ## Ready to run
