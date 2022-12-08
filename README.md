@@ -1,6 +1,6 @@
 # pysui
 
-SUI Python Client SDK for Sui
+Python Client SDK for Sui blockchain
 
 - PyPi Version: **0.3.0** (2022-12-4)
 

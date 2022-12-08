@@ -84,11 +84,11 @@ class SuiRpcResult(RpcResult):
 
     def is_ok(self) -> bool:
         """Ease of use status."""
-        return self._status is True
+        return self._status
 
     def is_err(self) -> bool:
         """Ease of use status."""
-        return self._status is True
+        return not self._status
 
     @property
     def result_data(self) -> Any:
@@ -174,6 +174,9 @@ class SuiClient(_ClientMixin):
 
     def _execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
+        # Verify we have SUI RPC API for this
+        if not builder.method in self._rpc_api:
+            raise SuiRpcApiNotAvailable(builder.method)
         parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
         jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
         # jout = json.dumps(jblock, indent=2)
@@ -194,10 +197,8 @@ class SuiClient(_ClientMixin):
         except httpx.ReadTimeout as hexc:
             return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
 
-    def execute(self, builder: SuiBaseBuilder, dry_run: bool = False) -> Union[SuiRpcResult, Exception]:
+    def execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
-        if not builder.method in self._rpc_api:
-            raise SuiRpcApiNotAvailable(builder.method)
         if not builder.txn_required:
             result = self._execute(builder)
             if result.is_ok():
@@ -206,35 +207,61 @@ class SuiClient(_ClientMixin):
                 # print(result.result_data)
                 return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
             return result
-        return self._signed_execution(builder, dry_run)
+        return self._signed_execution(builder)
 
-    def _signed_execution(self, builder: SuiBaseBuilder, dry_run: bool = False) -> Union[SuiRpcResult, Exception]:
-        """Subit base transaction, sign valid result and execute."""
-        result = self._execute(builder)
-        if result.is_ok():
-            result = result.result_data
-            if "error" in result:
-                return SuiRpcResult(False, result["error"]["message"], None)
-            kpair = self.config.keypair_for_address(builder.authority)
-            b64tx_bytes = result["result"]["txBytes"]
-            # Dry run the transaction
-            if dry_run:
-                builder = DryRunTransaction()
-                builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-                    kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-                ).set_sig_scheme(kpair.scheme)
-                raise NotImplementedError("Data handling for dry-run result not ready.")
-            else:
-                builder = ExecuteTransaction()
-                builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-                    kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-                ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORLOCALEXECUTION)
+    def execute_no_sign(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+        """Submit transaction and returns the signer and transaction bytes in the result_data as tuple."""
+        if builder.txn_required:
             result = self._execute(builder)
             if result.is_ok():
-                if "error" in result.result_data:
-                    return SuiRpcResult(False, result.result_data["error"]["message"], None)
-                # print(json.dumps(result.result_data["result"], indent=2))
-                return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+                result = result.result_data
+                if "error" in result:
+                    return SuiRpcResult(False, result["error"]["message"], None)
+                result = SuiRpcResult(True, None, (builder.authority, SuiTxBytes(result["result"]["txBytes"])))
+            return result
+        return SuiRpcResult(False, "execute_no_sign is used only with transaction types")
+
+    def sign_and_submit(self, signer: SuiAddress, tx_bytes: SuiTxBytes) -> Union[SuiRpcResult, Exception]:
+        """sign_and_submit Signs the transaction bytes from previous submission, signs and executes.
+
+        :param signer: Signer for transaction. Should be the same from original transaction
+        :type signer: SuiAddress
+        :param tx_bytes: Transaction bytes from previous submission
+        :type tx_bytes: SuiTxBytes
+        :return: Result from execution
+        :rtype: Union[SuiRpcResult, Exception]
+        """
+        kpair = self.config.keypair_for_address(signer)
+        builder = ExecuteTransaction(
+            tx_bytes=tx_bytes,
+            sig_scheme=kpair.scheme,
+            signature=kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes)),
+            pub_key=kpair.public_key,
+            request_type=SuiRequestType.WAITFORLOCALEXECUTION,
+        )
+        result = self._execute(builder)
+        if result.is_ok():
+            if "error" in result.result_data:
+                return SuiRpcResult(False, result.result_data["error"]["message"], None)
+            # print(json.dumps(result.result_data["result"], indent=2))
+            result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+        return result
+
+    def dry_run(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+        """Submit transaction than sui_dryRunTransaction only."""
+        if builder.txn_required:
+            result = self.execute_no_sign(builder)
+            if result.is_ok():
+                _, tx_bytes = result.result_data
+                result = self.execute(DryRunTransaction(tx_bytes=tx_bytes))
+            return result
+        return SuiRpcResult(False, "dry_run is used only with transaction types")
+
+    def _signed_execution(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+        """Subit base transaction, sign valid result and execute."""
+        result = self.execute_no_sign(builder)
+        if result.is_ok():
+            result = self.sign_and_submit(*result.result_data)
         return result
 
     # Build and execute convenience methods
@@ -707,46 +734,71 @@ class SuiAsynchClient(_ClientMixin):
         except httpx.ReadTimeout as hexc:
             return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
 
-    async def execute(self, builder: SuiBaseBuilder, dry_run: bool = False) -> Union[SuiRpcResult, Exception]:
+    async def execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
-        if not builder.method in self._rpc_api:
-            raise SuiRpcApiNotAvailable(builder.method)
         if not builder.txn_required:
             result = await self._execute(builder)
             if result.is_ok():
                 if "error" in result.result_data:
                     return SuiRpcResult(False, result.result_data["error"], None)
+                # print(result.result_data)
                 return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
             return result
-        return await self._signed_execution(builder, dry_run)
+        return await self._signed_execution(builder)
 
-    async def _signed_execution(self, builder: SuiBaseBuilder, dry_run: bool = False) -> Union[SuiRpcResult, Exception]:
-        """Subit base transaction, sign valid result and execute."""
-        result = await self._execute(builder)
-        if result.is_ok():
-            result = result.result_data
-            if "error" in result:
-                return SuiRpcResult(False, result["error"]["message"], None)
-            kpair = self.config.keypair_for_address(builder.authority)
-            b64tx_bytes = result["result"]["txBytes"]
-            # Dry run the transaction
-            if dry_run:
-                # builder = DryRunTransaction()
-                # builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-                #     kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-                # ).set_sig_scheme(kpair.scheme)
-                raise NotImplementedError("Data handling for dry-run result not ready.")
-            else:
-                builder = ExecuteTransaction()
-                builder.set_pub_key(kpair.public_key).set_tx_bytes(SuiTxBytes(b64tx_bytes)).set_signature(
-                    kpair.private_key.sign(base64.b64decode(b64tx_bytes))
-                ).set_sig_scheme(kpair.scheme).set_request_type(SuiRequestType.WAITFORLOCALEXECUTION)
+    async def execute_no_sign(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+        """Submit transaction and returns the signer and transaction bytes in the result_data as tuple."""
+        if builder.txn_required:
             result = await self._execute(builder)
             if result.is_ok():
-                if "error" in result.result_data:
-                    return SuiRpcResult(False, result.result_data["error"]["message"], None)
-                # print(json.dumps(result.result_data["result"], indent=2))
-                return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+                result = result.result_data
+                if "error" in result:
+                    return SuiRpcResult(False, result["error"]["message"], None)
+                result = SuiRpcResult(True, None, (builder.authority, SuiTxBytes(result["result"]["txBytes"])))
+            return result
+        return SuiRpcResult(False, "execute_no_sign is used only with transaction types")
+
+    async def sign_and_submit(self, signer: SuiAddress, tx_bytes: SuiTxBytes) -> Union[SuiRpcResult, Exception]:
+        """sign_and_submit Signs the transaction bytes from previous submission, signs and executes.
+
+        :param signer: Signer for transaction. Should be the same from original transaction
+        :type signer: SuiAddress
+        :param tx_bytes: Transaction bytes from previous submission
+        :type tx_bytes: SuiTxBytes
+        :return: Result from execution
+        :rtype: Union[SuiRpcResult, Exception]
+        """
+        kpair = self.config.keypair_for_address(signer)
+        builder = ExecuteTransaction(
+            tx_bytes=tx_bytes,
+            sig_scheme=kpair.scheme,
+            signature=kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes)),
+            pub_key=kpair.public_key,
+            request_type=SuiRequestType.WAITFORLOCALEXECUTION,
+        )
+        result = await self._execute(builder)
+        if result.is_ok():
+            if "error" in result.result_data:
+                return SuiRpcResult(False, result.result_data["error"]["message"], None)
+            # print(json.dumps(result.result_data["result"], indent=2))
+            result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+        return result
+
+    async def dry_run(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+        """Submit transaction than sui_dryRunTransaction only."""
+        if builder.txn_required:
+            result = await self.execute_no_sign(builder)
+            if result.is_ok():
+                _, tx_bytes = result.result_data
+                result = await self.execute(DryRunTransaction(tx_bytes=tx_bytes))
+            return result
+        return SuiRpcResult(False, "dry_run is used only with transaction types")
+
+    async def _signed_execution(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+        """Subit base transaction, sign valid result and execute."""
+        result = await self.execute_no_sign(builder)
+        if result.is_ok():
+            result = await self.sign_and_submit(*result.result_data)
         return result
 
     # Build and execute convenience methods

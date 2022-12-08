@@ -20,6 +20,7 @@ from pysui.abstracts import Builder
 
 from pysui.sui.sui_excepts import SuiRpcApiInvalidParameter
 from pysui.sui.sui_apidesc import SuiApi, SuiApiParam
+from pysui.sui.sui_types import SuiArray
 
 __partstring_pattern = re.compile(r"[0-9a-fA-F]{38}")
 __fullstring_pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
@@ -31,8 +32,20 @@ def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[
 
     schema_name = type(build_parm).__name__
     att = getattr(build_parm, api_parm.name)
-    if isinstance(att, list) and api_parm.name != "single_transaction_params":
-        att = [getattr(x, api_parm.name) for x in att]
+    match api_parm.schema.type:
+        case "array":
+            if isinstance(att, SuiArray):
+                att = [getattr(x, api_parm.name) for x in att.array]
+            elif isinstance(att, list) and api_parm.name != "single_transaction_params":
+                att = [getattr(x, api_parm.name) for x in att]
+            elif isinstance(att, list) and api_parm.name == "single_transaction_params":
+                pass
+            else:
+                raise ValueError(f"{api_parm.name} requires SuiArray")
+        case _:
+            pass
+    # if isinstance(att, list) and api_parm.name != "single_transaction_params":
+    #     att = [getattr(x, api_parm.name) for x in att]
 
     # print(f"att {api_parm.name} = {att}")
     if att is None and api_parm.required:

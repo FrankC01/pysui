@@ -201,11 +201,8 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
 
 def build_api_descriptors(indata: dict) -> tuple[str, dict, dict]:
     """Build the schema dictionary then API call dictionary."""
-    # print(indata)
     # Validate the inbound data. Keys are present in valid response
     # from rpc.discover
-    # with open("./apidefn.json", "w", encoding="utf8") as inner_file:
-    #     inner_file.write(json.dumps(indata, indent=2))
 
     if (
         isinstance(indata["result"], dict)
@@ -213,6 +210,12 @@ def build_api_descriptors(indata: dict) -> tuple[str, dict, dict]:
         and "components" in indata["result"]
         and "schemas" in indata["result"]["components"]
     ):
+        rpc_version = indata["result"]["info"]["version"]
+
+        # Construct and write out the scheme denoted by version
+        # fname = f"./apidefn{rpc_version}.json"
+        # with open(fname, "w", encoding="utf8") as inner_file:
+        #     inner_file.write(json.dumps(indata, indent=2))
 
         mdict: dict = {}
         schema_dict: dict = indata["result"]["components"]["schemas"]
@@ -225,5 +228,5 @@ def build_api_descriptors(indata: dict) -> tuple[str, dict, dict]:
             tpath: list = []
             api_def.result.schema = _resolve_param_type(schema_dict, api_def.result.schema, tpath)
 
-        return (indata["result"]["info"]["version"], mdict, schema_dict)
+        return (rpc_version, mdict, schema_dict)
     raise SuiApiDefinitionInvalid(indata)

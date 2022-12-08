@@ -45,6 +45,7 @@ from pysui.sui.sui_types import (
     SuiAddress,
     SuiBaseType,
     TransactionQueryEnvelope,
+    Effects,
     TxEffectResult,
     SuiCoinMetadata,
 )
@@ -284,7 +285,7 @@ class GetPastObject(_NativeTransactionBuilder):
     policies.
     """
 
-    def __init__(self, sui_object: Any, version: SuiInteger = None) -> None:
+    def __init__(self, sui_object: Any, version: SuiInteger) -> None:
         """__init__ Initialize builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
@@ -294,10 +295,7 @@ class GetPastObject(_NativeTransactionBuilder):
         """
         super().__init__("sui_tryGetPastObject", handler_cls=ObjectRead, handler_func="factory")
         self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
-        if version:
-            self.version: SuiInteger = version if isinstance(version, SuiInteger) else SuiInteger(version)
-        else:
-            self.version: SuiInteger = SuiInteger(1)
+        self.version: SuiInteger = version if isinstance(version, SuiInteger) else SuiInteger(version)
 
     def set_object(self, sui_object: ObjectID) -> "GetPastObject":
         """Set the object to fetch objects owned by."""
@@ -737,40 +735,19 @@ class DryRunTransaction(_NativeTransactionBuilder):
         self,
         *,
         tx_bytes: SuiTxBytes = None,
-        sig_scheme: SignatureScheme = None,
-        signature: SuiSignature = None,
-        pub_key: PublicKey = None,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_dryRunTransaction")
+        super().__init__("sui_dryRunTransaction", handler_cls=Effects, handler_func="from_dict")
         self.tx_bytes: SuiTxBytes = tx_bytes
-        self.sig_scheme: SignatureScheme = sig_scheme
-        self.signature: SuiSignature = signature
-        self.pub_key: PublicKey = pub_key
 
     def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "DryRunTransaction":
         """Set the transaction base64 string."""
         self.tx_bytes: SuiTxBytes = tbyteb64
         return self
 
-    def set_sig_scheme(self, sig: SignatureScheme) -> "DryRunTransaction":
-        """Set the transaction base64 string."""
-        self.sig_scheme: SignatureScheme = sig
-        return self
-
-    def set_signature(self, sigb64: SuiSignature) -> "DryRunTransaction":
-        """Set the signed transaction base64 string."""
-        self.signature: SuiSignature = sigb64
-        return self
-
-    def set_pub_key(self, pubkey: PublicKey) -> "DryRunTransaction":
-        """Set the public key base64 string."""
-        self.pub_key: PublicKey = pubkey
-        return self
-
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
-        return self._pull_vars()
+        return [self.tx_bytes]
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):

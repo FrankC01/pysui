@@ -136,7 +136,7 @@ def test_get_past_object_pass(sui_client: SuiClient):
     assert gas_objects
     multi_version = list(filter(lambda x: x.version > 1, gas_objects))
     assert multi_version
-    builder = GetPastObject(multi_version[0].identifier)
+    builder = GetPastObject(multi_version[0].identifier, multi_version[0].version - 1)
     gas_object2 = sui_client.execute(builder)
     assert gas_object2
     assert gas_object2.result_data.version < multi_version[0].version

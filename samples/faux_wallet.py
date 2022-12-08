@@ -60,9 +60,9 @@ class SuiWallet:
         """Get all the addresses."""
         return self._client.config.addresses
 
-    def execute(self, builder: Builder, dry_run: bool = False) -> SuiRpcResult:
+    def execute(self, builder: Builder) -> SuiRpcResult:
         """Execute the builder."""
-        return self._client.execute(builder, dry_run)
+        return self._client.execute(builder)
 
     def get_rpc_api_names(self) -> list[str]:
         """Fetch RCP API method names."""

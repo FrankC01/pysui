@@ -8,11 +8,10 @@ if test "$base_dir" = "pysui";
 then
     echo "Removing previous documentation artifacts... if any!"
     # Delete old (if any) rst files
-    for X in doc/source/*.rst; do
-        if [ "$X" != "doc/source/index.rst" ]; then
-            rm $X
-        fi
-    done
+    rm -f -- doc/source/modules.rst
+    rm -f -- doc/source/pysui.rst
+    rm -f -- doc/source/pysui.abstracts.rst
+    rm -f -- doc/source/pysui.sui.rst
     # Generate rst files
     echo "Generating rst files"
     sphinx-apidoc -o doc/source pysui/

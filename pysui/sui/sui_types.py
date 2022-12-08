@@ -534,6 +534,20 @@ class ObjectNotExist(DataClassJsonMixin):
 
 
 @dataclass
+class ObjectVersionNotFound(DataClassJsonMixin):
+    """ObjectNotExist."""
+
+    object_id: str
+    version_requested: int
+    object_state: str = "Object version not found."
+
+    @property
+    def identifier(self) -> ObjectID:
+        """Alias object_id."""
+        return ObjectID(self.object_id)
+
+
+@dataclass
 class ObjectVersionTooHigh(DataClassJsonMixin):
     """ObjectVersionTooHigh."""
 
@@ -697,6 +711,10 @@ class ObjectRead(DataClassJsonMixin):
                 result = ObjectRead.from_dict(read_object)
             case "ObjectNotExists" | "NotExists":
                 result: ObjectRead = ObjectNotExist.from_dict({"object_id": read_object})
+            case "VersionNotFound":
+                result: ObjectRead = ObjectVersionNotFound.from_dict(
+                    {"object_id": read_object[0], "version_requested": read_object[1]}
+                )
             case "Deleted":
                 result: ObjectRead = ObjectDeleted.from_dict({"reference": read_object})
             case "VersionTooHigh":

@@ -12,6 +12,8 @@ Welcome to pysui's documentation!
    :maxdepth: 10
    :caption: Contents:
 
+   intro
+   getting_started
    modules
 
 

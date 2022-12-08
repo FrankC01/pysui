@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Pushed `pysui` 0.3.0 to [PyPi](https://pypi.org/project/pysui/)
+- Pushed `pysui` 0.3.0 to [readthedocs](https://pysui.readthedocs.io)
+- `dry_run` method added to SuiClient(s) [enhancement](https://github.com/FrankC01/pysui/issues/37)
+- `execute_no_sign` method added to SuiClient(s) [enhancement](https://github.com/FrankC01/pysui/issues/37)
+- `sign_and_submit` method added to SuiClient(s) [enhancement](https://github.com/FrankC01/pysui/issues/37)
+- New 'state' returned from `sui_tryGetPastObject`: `VersionNotFound`
 
 ### Fixed
+- SuiRpcResult [bug](https://github.com/FrankC01/pysui/issues/38)
 
 ### Changed
+- GetPastObject default version fell back to 1, which no longer exists as the SUI system changed to reflect the
+transaction sequence number that created the object. Version is no longer an optional argument to GetPastObject
+- Renamed `asynch_gas.py` to `async_gas.py` in samples
 
 ### Removed
 

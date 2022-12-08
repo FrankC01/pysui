@@ -17,7 +17,7 @@ import base64
 from pathlib import Path
 from typing import Union
 from pysui.sui import SuiClient
-from pysui.sui.sui_builders import BatchTransaction, MoveCallRequestParams, Publish, TransferObjectParams
+from pysui.sui.sui_builders import BatchTransaction, MoveCallRequestParams, Publish, TransferObjectParams, MoveCall
 from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_types import (
     ObjectID,
@@ -157,8 +157,6 @@ def test_move_call_single_arg_pass(sui_client: SuiClient):
     assert txresult.succeeded
     tracker = get_tracker(sui_client)
     assert tracker
-    myres = [int(x) for x in list(base64.b64decode(tracker.data.fields["accumulator"]))]
-    assert 5 not in myres
 
 
 def test_transfer_tracker_pass(sui_client: SuiClient):
@@ -300,3 +298,50 @@ def test_batch_transaction_movecall_pass(sui_client: SuiClient):
     assert result.is_ok()
     tracker_out = get_tracker(sui_client)
     assert tracker_out
+
+
+def test_dryrun_pass(sui_client: SuiClient):
+    """."""
+    active_gases = get_gas(sui_client)
+    assert len(active_gases) > 1
+    batch_gas_object = active_gases[0]
+    tracker = get_tracker(sui_client)
+    assert tracker
+    package_id = tracker.type_signature.split(":")[0]
+    builder = MoveCall(
+        signer=sui_client.config.active_address,
+        package_object_id=ObjectID(package_id),
+        module=SuiString(TRACKER_MODULE),
+        function=SuiString("add_value"),
+        type_arguments=SuiArray([]),
+        arguments=SuiArray([tracker.identifier, SuiString("8")]),
+        gas=batch_gas_object.identifier,
+        gas_budget=SuiInteger(1000),
+    )
+    result = sui_client.dry_run(builder)
+    assert result.is_ok()
+
+
+def test_defer_execution_pass(sui_client: SuiClient):
+    """."""
+    active_gases = get_gas(sui_client)
+    assert len(active_gases) > 1
+    batch_gas_object = active_gases[0]
+    tracker = get_tracker(sui_client)
+    assert tracker
+    package_id = tracker.type_signature.split(":")[0]
+    builder = MoveCall(
+        signer=sui_client.config.active_address,
+        package_object_id=ObjectID(package_id),
+        module=SuiString(TRACKER_MODULE),
+        function=SuiString("add_value"),
+        type_arguments=SuiArray([]),
+        arguments=SuiArray([tracker.identifier, SuiString("8")]),
+        gas=batch_gas_object.identifier,
+        gas_budget=SuiInteger(1000),
+    )
+    result = sui_client.execute_no_sign(builder)
+    assert result.is_ok()
+    signer, tx_bytes = result.result_data
+    result = sui_client.sign_and_submit(signer, tx_bytes)
+    assert result.is_ok()

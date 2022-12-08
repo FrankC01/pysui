@@ -10,11 +10,11 @@ Samples are included in both the `pysui` repo as well as when installing through
 
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 - `python -m sample.wallet`
-- `python -m sample.asynch_gas`
+- `python -m sample.async_gas`
 
 **Note:** If running from PyPi install, examples can be started directly
 - `wallet`
-- `asynch-gas`
+- `async-gas`
 
 ### Async Gas
 Example demonstrating using the `pysui` SuiAsynchClient. See [DEVELOP](../DEVELOP.md)
