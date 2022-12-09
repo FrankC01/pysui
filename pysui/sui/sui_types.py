@@ -204,6 +204,15 @@ class SuiSignature(SuiString):
         return str(self)
 
 
+class SuiTransactionDigest(SuiString):
+    """Sui Base58 digest."""
+
+    @property
+    def digest(self) -> str:
+        """Alias for transaction."""
+        return str(self)
+
+
 class ObjectID(SuiString):
     """Sui Object id type."""
 
@@ -1635,3 +1644,10 @@ class SuiCoinMetadata(DataClassJsonMixin):
     description: str
     id_: Optional[str] = field(metadata=config(field_name="id"))
     icon_url: Optional[str] = field(metadata=config(field_name="iconUrl"))
+
+
+@dataclass
+class SuiTxnAuthSigners(DataClassJsonMixin):
+    """From sui_getTransactionAuthSigners."""
+
+    signers: list[str]

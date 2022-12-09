@@ -37,6 +37,7 @@ from pysui.sui.sui_types import (
     SuiNullType,
     SuiString,
     SuiInteger,
+    SuiTransactionDigest,
     SuiTxBytes,
     SuiSignature,
     SuiArray,
@@ -44,6 +45,7 @@ from pysui.sui.sui_types import (
     SuiMap,
     SuiAddress,
     SuiBaseType,
+    SuiTxnAuthSigners,
     TransactionQueryEnvelope,
     Effects,
     TxEffectResult,
@@ -678,6 +680,28 @@ class GetTxs(_NativeTransactionBuilder):
         return self._pull_vars()
 
 
+class GetTxAuthSignatures(_NativeTransactionBuilder):
+    """Fetch transaction authorized signatures public keys."""
+
+    def __init__(self, *, txn_digest: SuiTransactionDigest = None):
+        """__init__ When executed, returns the authorizers public keys array.
+
+        :param txn_digest: Base58 transaction digest, defaults to None
+        :type txn_digest: SuiTransactionDigest, optional
+        """
+        super().__init__("sui_getTransactionAuthSigners", handler_cls=SuiTxnAuthSigners, handler_func="from_dict")
+        self.digest = txn_digest
+
+    def set_txn_digest(self, txn_digest: SuiTransactionDigest) -> "GetTxAuthSignatures":
+        """Sets the transaciotn digest."""
+        self.digest = txn_digest if isinstance(txn_digest, SuiTransactionDigest) else SuiTransactionDigest(txn_digest)
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return [self.digest]
+
+
 class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
@@ -716,6 +740,52 @@ class ExecuteTransaction(_NativeTransactionBuilder):
     def set_pub_key(self, pubkey: PublicKey) -> "ExecuteTransaction":
         """Set the public key base64 string."""
         self.pub_key: PublicKey = pubkey
+        return self
+
+    def set_request_type(self, rtype: SuiRequestType) -> "ExecuteTransaction":
+        """Set the request type for execution."""
+        self.request_type: SuiRequestType = rtype
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
+class ExecuteSerializedTransaction(_NativeTransactionBuilder):
+    """Submit a signed transaction to Sui."""
+
+    def __init__(
+        self,
+        *,
+        tx_bytes: SuiTxBytes = None,
+        signature: SuiSignature = None,
+        request_type: SuiRequestType = None,
+    ) -> None:
+        """__init__ When executed, runs the transaction.
+
+        This can replace ExecuteTransaction and is preferred if RPC version > 0.17.0
+
+        :param tx_bytes: Submitted transaction base64 SuiTxBytes, defaults to None
+        :type tx_bytes: SuiTxBytes, optional
+        :param signature: The key_scheme,signed tx_bytes and signer pubkey serialized to Base64, defaults to None
+        :type signature: SuiSignature, optional
+        :param request_type: The type of request to use in submitting transaction, defaults to None
+        :type request_type: SuiRequestType, optional
+        """
+        super().__init__("sui_executeTransactionSerializedSig", handler_cls=TxEffectResult, handler_func="from_dict")
+        self.tx_bytes: SuiTxBytes = tx_bytes
+        self.signature: SuiSignature = signature
+        self.request_type: SuiRequestType = request_type
+
+    def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "ExecuteTransaction":
+        """Set the transaction base64 string."""
+        self.tx_bytes: SuiTxBytes = tbyteb64
+        return self
+
+    def set_signature(self, sigb64: SuiSignature) -> "ExecuteTransaction":
+        """Set the signed transaction base64 string."""
+        self.signature: SuiSignature = sigb64
         return self
 
     def set_request_type(self, rtype: SuiRequestType) -> "ExecuteTransaction":

@@ -17,7 +17,14 @@ import base64
 from pathlib import Path
 from typing import Union
 from pysui.sui import SuiClient
-from pysui.sui.sui_builders import BatchTransaction, MoveCallRequestParams, Publish, TransferObjectParams, MoveCall
+from pysui.sui.sui_builders import (
+    BatchTransaction,
+    GetTxAuthSignatures,
+    MoveCallRequestParams,
+    Publish,
+    TransferObjectParams,
+    MoveCall,
+)
 from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_types import (
     ObjectID,
@@ -26,6 +33,7 @@ from pysui.sui.sui_types import (
     SuiData,
     SuiInteger,
     SuiString,
+    SuiTransactionDigest,
     TxEffectResult,
 )
 
@@ -238,7 +246,7 @@ def test_transfer_gas_pass(sui_client: SuiClient):
 
 
 def test_batch_transaction_transfer_pass(sui_client: SuiClient):
-    """Test."""
+    """Test batch transaction with transfer."""
     active_gases = get_gas(sui_client)
     assert len(active_gases) > 1
     transfer_gas_object = active_gases[0]
@@ -255,7 +263,7 @@ def test_batch_transaction_transfer_pass(sui_client: SuiClient):
 
 
 def test_batch_transaction_movecall_pass(sui_client: SuiClient):
-    """Test."""
+    """Test batch transaction with movecall."""
     active_gases = get_gas(sui_client)
     assert len(active_gases) > 1
     tracker = get_tracker(sui_client)
@@ -301,7 +309,7 @@ def test_batch_transaction_movecall_pass(sui_client: SuiClient):
 
 
 def test_dryrun_pass(sui_client: SuiClient):
-    """."""
+    """0.4.0: Test of new rpc execution type: dry_run."""
     active_gases = get_gas(sui_client)
     assert len(active_gases) > 1
     batch_gas_object = active_gases[0]
@@ -323,7 +331,7 @@ def test_dryrun_pass(sui_client: SuiClient):
 
 
 def test_defer_execution_pass(sui_client: SuiClient):
-    """."""
+    """0.4.0: Test of new rpc execution types: execute_no_sign and sign_and_submit and GetTxAuthSignatures."""
     active_gases = get_gas(sui_client)
     assert len(active_gases) > 1
     batch_gas_object = active_gases[0]
@@ -344,4 +352,9 @@ def test_defer_execution_pass(sui_client: SuiClient):
     assert result.is_ok()
     signer, tx_bytes = result.result_data
     result = sui_client.sign_and_submit(signer, tx_bytes)
+    assert result.is_ok()
+    builder = GetTxAuthSignatures(
+        txn_digest=SuiTransactionDigest(result.result_data.effects_cert.certificate.transaction_digest)
+    )
+    result = sui_client.execute(builder)
     assert result.is_ok()

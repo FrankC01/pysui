@@ -17,8 +17,11 @@
 import asyncio
 import json
 import base64
+
 from json import JSONDecodeError
 from typing import Any, Union
+from pkg_resources import packaging
+
 import httpx
 from pysui.abstracts import RpcResult, Provider
 from pysui.sui.sui_types import (
@@ -27,6 +30,7 @@ from pysui.sui.sui_types import (
     SuiArray,
     SuiMap,
     SuiInteger,
+    SuiSignature,
     SuiString,
     SuiTxBytes,
     ObjectInfo,
@@ -39,6 +43,7 @@ from pysui.sui.sui_builders import (
     GetRpcAPI,
     SuiBaseBuilder,
     ExecuteTransaction,
+    ExecuteSerializedTransaction,
     SuiRequestType,
     GetObjectsOwnedByAddress,
     GetObject,
@@ -117,24 +122,22 @@ class _ClientMixin(Provider):
         self._rpc_api = {}
         self._schema_dict = {}
         self._rpc_version: str = None
+        self._request_type = SuiRequestType.WAITFORLOCALEXECUTION
 
-    def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
-        """Build the json data block for Rpc."""
-        data_block["method"] = method
-        data_block["params"] = params
-        return data_block
+    @property
+    def rpc_version(self) -> str:
+        """Return the version string."""
+        return self._rpc_version
 
-    def rpc_version_support(self) -> None:
-        """rpc_version_support Validats minimal version supported.
+    @property
+    def request_type(self) -> SuiRequestType:
+        """Return the transaction execution request type."""
+        return self._request_type
 
-        :raises RuntimeError: If RPC API version less than provided
-        """
-        if int(self._rpc_version.split(".")[1]) < self._RPC_MINIMAL_VERSION:
-            raise RuntimeError(f"Requires minimum version '0.{self._RPC_MINIMAL_VERSION}.x found {self._rpc_version}")
-
-    def api_exists(self, api_name: str) -> bool:
-        """Check if API supported in RPC host."""
-        return api_name in self._rpc_api
+    @request_type.setter
+    def set_request_type(self, rqtype: SuiRequestType) -> None:
+        """Sets the transaction execution request type."""
+        self._request_type = rqtype
 
     @property
     def rpc_api(self) -> dict:
@@ -145,6 +148,32 @@ class _ClientMixin(Provider):
     def rpc_api_names(self) -> list[str]:
         """Return names of RPC API methods."""
         return list(self._rpc_api.keys())
+
+    def api_exists(self, api_name: str) -> bool:
+        """Check if API supported in RPC host."""
+        return api_name in self._rpc_api
+
+    def rpc_version_support(self) -> None:
+        """rpc_version_support Validats minimal version supported.
+
+        :raises RuntimeError: If RPC API version less than provided
+        """
+        if int(self._rpc_version.split(".")[1]) < self._RPC_MINIMAL_VERSION:
+            raise RuntimeError(f"Requires minimum version '0.{self._RPC_MINIMAL_VERSION}.x found {self._rpc_version}")
+
+    def version_at_least(self, majver: int, minver: int, bldver: int) -> bool:
+        """Check if minor version is greater than or equal to."""
+        tpa = packaging.version.parse(".".join([str(majver), str(minver), str(bldver)]))
+        rpa = packaging.version.parse(self.rpc_version)
+        if rpa >= tpa:
+            return True
+        return False
+
+    def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
+        """Build the json data block for Rpc."""
+        data_block["method"] = method
+        data_block["params"] = params
+        return data_block
 
 
 class SuiClient(_ClientMixin):
@@ -232,13 +261,23 @@ class SuiClient(_ClientMixin):
         :rtype: Union[SuiRpcResult, Exception]
         """
         kpair = self.config.keypair_for_address(signer)
-        builder = ExecuteTransaction(
-            tx_bytes=tx_bytes,
-            sig_scheme=kpair.scheme,
-            signature=kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes)),
-            pub_key=kpair.public_key,
-            request_type=SuiRequestType.WAITFORLOCALEXECUTION,
-        )
+        if self.version_at_least(0, 18, 0):
+            sig = kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes))
+            compound = [kpair.scheme.value] + list(base64.b64decode(sig.value)) + list(kpair.public_key.key_bytes)
+            sig = base64.b64encode(bytearray(compound))
+            builder = ExecuteSerializedTransaction(
+                tx_bytes=tx_bytes,
+                signature=SuiSignature(sig),
+                request_type=self.request_type,
+            )
+        else:
+            builder = ExecuteTransaction(
+                tx_bytes=tx_bytes,
+                sig_scheme=kpair.scheme,
+                signature=kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes)),
+                pub_key=kpair.public_key,
+                request_type=self.request_type,
+            )
         result = self._execute(builder)
         if result.is_ok():
             if "error" in result.result_data:
@@ -769,13 +808,24 @@ class SuiAsynchClient(_ClientMixin):
         :rtype: Union[SuiRpcResult, Exception]
         """
         kpair = self.config.keypair_for_address(signer)
-        builder = ExecuteTransaction(
-            tx_bytes=tx_bytes,
-            sig_scheme=kpair.scheme,
-            signature=kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes)),
-            pub_key=kpair.public_key,
-            request_type=SuiRequestType.WAITFORLOCALEXECUTION,
-        )
+        kpair = self.config.keypair_for_address(signer)
+        if self.version_at_least(0, 18, 0):
+            sig = kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes))
+            compound = [kpair.scheme.value] + list(base64.b64decode(sig.value)) + list(kpair.public_key.key_bytes)
+            sig = base64.b64encode(bytearray(compound))
+            builder = ExecuteSerializedTransaction(
+                tx_bytes=tx_bytes,
+                signature=SuiSignature(sig),
+                request_type=self.request_type,
+            )
+        else:
+            builder = ExecuteTransaction(
+                tx_bytes=tx_bytes,
+                sig_scheme=kpair.scheme,
+                signature=kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes)),
+                pub_key=kpair.public_key,
+                request_type=self.request_type,
+            )
         result = await self._execute(builder)
         if result.is_ok():
             if "error" in result.result_data:

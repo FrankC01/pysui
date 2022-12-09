@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `execute_no_sign` method added to SuiClient(s) [enhancement](https://github.com/FrankC01/pysui/issues/37)
 - `sign_and_submit` method added to SuiClient(s) [enhancement](https://github.com/FrankC01/pysui/issues/37)
 - New 'state' returned from `sui_tryGetPastObject`: `VersionNotFound`
+- Support for `sui_executeTransactionSerializedSig`
+- `sign_and_submit` uses `sui_executeTransactionSerializedSig` if sui version >= '0.18.0'
+- Support (builders and types) for `sui_getTransactionAuthSigners`
 
 ### Fixed
 - SuiRpcResult [bug](https://github.com/FrankC01/pysui/issues/38)
@@ -21,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GetPastObject default version fell back to 1, which no longer exists as the SUI system changed to reflect the
 transaction sequence number that created the object. Version is no longer an optional argument to GetPastObject
 - Renamed `asynch_gas.py` to `async_gas.py` in samples
+
 
 ### Removed
 

@@ -72,7 +72,7 @@ class SuiPrivateKeyED25519(PrivateKey):
         super().__init__(SignatureScheme.ED25519, indata)
         self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
 
-    def sign(self, data: bytes) -> str:
+    def sign(self, data: bytes) -> SuiSignature:
         """ED25519 sign data bytes."""
         return SuiSignature(self._signing_key.sign(data, encoder=Base64Encoder).signature)
 

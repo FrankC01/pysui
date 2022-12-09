@@ -116,7 +116,7 @@ Gas object: 0xfc7729a83a1e13973cb0bbbd1a92f70ed772e14f has     10000000 mists
 
 ### Example 2 - Asynchronous Query Gas
 Sample script demonstrating the fundementals for asynchronous pysui usage. This
-is included in `samples/asynch_gas.py`:
+is included in `samples/async_gas.py`:
 ```python
 """pysui Asynchronous client example.
 
