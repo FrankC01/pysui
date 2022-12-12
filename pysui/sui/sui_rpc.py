@@ -732,24 +732,20 @@ class SuiAsynchClient(_ClientMixin):
         self._client = httpx.AsyncClient(http2=True)
         self._rpc_api = {}
         self._schema_dict = {}
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._build_api_descriptors())
+        self._build_api_descriptors()
 
-    async def _build_api_descriptors(self) -> None:
+    def _build_api_descriptors(self) -> None:
         """Fetch RPC method descrptors."""
         builder = GetRpcAPI()
-        try:
-            result = await self._client.post(
+
+        with httpx.Client(http2=True) as client:
+            result = client.post(
                 self.config.rpc_url,
                 headers=builder.header,
                 json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
             )
-            self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(result.json())
-            self.rpc_version_support()
-        except JSONDecodeError as jexc:
-            raise jexc
-        except httpx.ReadTimeout as hexc:
-            raise hexc
+        self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(result.json())
+        self.rpc_version_support()
 
     async def _execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
