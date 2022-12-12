@@ -19,11 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - SuiRpcResult [bug](https://github.com/FrankC01/pysui/issues/38)
+- [bug](https://github.com/FrankC01/pysui/issues/41)
 
 ### Changed
 - GetPastObject default version fell back to 1, which no longer exists as the SUI system changed to reflect the
 transaction sequence number that created the object. Version is no longer an optional argument to GetPastObject
 - Renamed `asynch_gas.py` to `async_gas.py` in samples
+- Extrapolate `type_arg`, if any, in ObjectRead post_init
+- Removed creation of a event.loop in the SuiAsyncClient `__init__`
 
 
 ### Removed

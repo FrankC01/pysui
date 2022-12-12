@@ -514,6 +514,15 @@ class ObjectReadData(DataClassJsonMixin):
     fields: dict
     data_type: str = field(metadata=config(field_name="dataType"))
     type_: str = field(metadata=config(field_name="type"))
+    type_arg: str = field(default_factory=str)
+
+    def __post_init__(self):
+        """Post init processing for parameters."""
+        ref = self.type_.split("<")
+        if len(ref) > 1:
+            self.type_arg = ref[1][:-1]
+        if "id" in self.fields:
+            self.fields["id"] = self.fields["id"]["id"]
 
 
 @dataclass

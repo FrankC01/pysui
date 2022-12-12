@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Union
 from dataclasses_json import DataClassJsonMixin
 
-from pysui.sui.sui_types import SuiAddress, SuiString, ObjectID, SuiScalarType, SuiBaseType
+from pysui.sui.sui_types import SuiAddress, SuiString, ObjectID, SuiScalarType
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiMiisingModuleByteCode, SuiPackageBuildFail
 
 
