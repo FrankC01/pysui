@@ -14,7 +14,6 @@
 
 """Sui RPC Result and Synch and Asynch Clients Module."""
 
-import asyncio
 import json
 import base64
 

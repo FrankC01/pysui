@@ -46,10 +46,15 @@ module pysuidance::dancer {
 
     }
 
-    /// Delete a tracker
-    public entry fun delete(object: Tracker,_ctx: &mut TxContext) {
+    public fun delete_tracker(object: Tracker) {
         let Tracker { id, initialized: _, accumulator: _} = object;
         object::delete(id);
+    }
+    /// Delete a tracker
+    public entry fun delete(object: Tracker,_ctx: &mut TxContext) {
+        delete_tracker(object)
+        // let Tracker { id, initialized: _, accumulator: _} = object;
+        // object::delete(id);
     }
 
     /// Override for transfer of tracker
@@ -101,6 +106,5 @@ module pysuidance::dancer {
     public entry fun add_values(tracker: &mut Tracker, values: vector<u8>, _ctx: &mut TxContext) {
         add_from(tracker, values);
     }
-
 
 }
