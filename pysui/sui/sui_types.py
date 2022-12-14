@@ -1212,6 +1212,18 @@ class PublishEvent(SuiTxReturnType, DataClassJsonMixin):
     sender: str
 
 
+@dataclass
+class MoveEvent(SuiTxReturnType, DataClassJsonMixin):
+    """Event Type."""
+
+    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sender: str
+    type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    bcs: str
+    fields: dict
+
+
 _EVENT_LOOKUP = {
     "coinBalanceChange": CoinBalanceChangeEvent,
     "newObject": NewObjectEvent,
@@ -1221,6 +1233,7 @@ _EVENT_LOOKUP = {
     "epochChange": EpochChangeEvent,
     "newCheckPoint": NewCheckpointEvent,
     "publish": PublishEvent,
+    "moveEvent": MoveEvent,
 }
 
 
