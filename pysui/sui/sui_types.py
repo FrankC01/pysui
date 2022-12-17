@@ -1695,6 +1695,25 @@ class CoinBalances(DataClassJsonMixin):
 
 
 @dataclass
+class SuiCoinObject(DataClassJsonMixin):
+    """From sui_getCoins."""
+
+    coin_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    coin_object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    version: int
+    digest: str
+    balance: int
+
+
+@dataclass
+class SuiCoinObjects(DataClassJsonMixin):
+    """."""
+
+    data: list[SuiCoinObject]
+    next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
 class SuiTxnAuthSigners(DataClassJsonMixin):
     """From sui_getTransactionAuthSigners."""
 

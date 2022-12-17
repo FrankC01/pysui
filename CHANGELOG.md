@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 total balance per coin type (i.e. `0x2::sui::SUI`) and is more efficient than getting all coins and
 totalling.
 
+- Support for `sui_getCoins` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns
+address coins for coin type (i.e. `0x2::sui::SUI`) and is more efficient than getting all coin descriptors and
+sui_getObject for each descriptor.
+
 ### Fixed
 
 ### Changed

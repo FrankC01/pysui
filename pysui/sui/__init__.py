@@ -24,6 +24,7 @@ from pysui.sui.sui_builders import (
     SuiBaseBuilder,
     GetCoinMetaData,
     GetCoinTypeBalance,
+    GetCoins,
     GetObjectsOwnedByAddress,
     GetObject,
     GetObjectsOwnedByObject,

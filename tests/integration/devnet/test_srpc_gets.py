@@ -15,13 +15,14 @@
 
 
 from pysui.sui import SuiClient, SuiRpcResult, SuiConfig
-from pysui.sui.sui_builders import GetCommittee, GetObject, GetPastObject, GetCoinTypeBalance
+from pysui.sui.sui_builders import GetCoins, GetCommittee, GetObject, GetPastObject, GetCoinTypeBalance
 from pysui.sui.sui_types import (
     MoveDataDescriptor,
     ObjectNotExist,
     ObjectVersionNotFound,
     ObjectVersionTooHigh,
     SuiData,
+    SuiInteger,
     SuiString,
     SuiGasDescriptor,
     SuiAddress,
@@ -94,6 +95,27 @@ def test_get_gas_balance_pass(sui_client: SuiClient, sui_configuration: SuiConfi
     my_gas = result.result_data.items[0]
     assert my_gas.coin_object_count == gas_count
     assert my_gas.total_balance == total_balance
+
+
+def test_get_coins_pass(sui_client: SuiClient, sui_configuration: SuiConfig):
+    """test_get_gas_balance_pass Check sui_getBalance.
+
+    :param sui_client: Synchronous http client
+    :type sui_client: SuiClient
+    """
+    gas_objects = get_gas(sui_client)
+    gas_count = len(gas_objects)
+    gas_balances = [gas.balance for gas in gas_objects]
+    total_balance = sum(gas_balances)
+    builder = GetCoins(
+        owner=sui_configuration.active_address, coin_type=SuiString("0x2::sui::SUI"), limit=SuiInteger(gas_count)
+    )
+    result = sui_client.execute(builder)
+    assert result.is_ok()
+    assert len(result.result_data.data) == gas_count
+    my_balances = [x.balance for x in result.result_data.data]
+    my_balance = sum(my_balances)
+    assert my_balance == total_balance
 
 
 def test_get_gas_anyaddress_pass(sui_client: SuiClient):
