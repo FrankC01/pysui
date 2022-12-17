@@ -684,7 +684,7 @@ class ObjectRead(DataClassJsonMixin):
         # return ObjectID(self.data.fields["id"]["id"])
 
     @property
-    def balance(self) -> int:
+    def balance(self) -> str:
         """Alias balance for coin types."""
         if isinstance(self.data, SuiCoin):
             return self.data.balance
@@ -785,15 +785,6 @@ class SuiCoin(ObjectReadData):
     :rtype: SuiCoin
     """
 
-    @property
-    def balance(self) -> int:
-        """balance returns the balance of coin<type> for this object.
-
-        :return: balance value
-        :rtype: int
-        """
-        return self.fields["balance"]
-
 
 @dataclass
 class SuiGas(SuiCoin):
@@ -804,6 +795,15 @@ class SuiGas(SuiCoin):
     :return: Instance of SuiGas
     :rtype: SuiGas
     """
+
+    @property
+    def balance(self) -> int:
+        """balance returns the balance of coin<type> for this object.
+
+        :return: balance value
+        :rtype: int
+        """
+        return int(self.fields["balance"])
 
 
 # Committee
