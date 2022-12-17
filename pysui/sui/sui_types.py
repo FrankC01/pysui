@@ -369,6 +369,11 @@ class SuiAddress(SuiBaseType):
         return self.address
 
     @property
+    def owner(self) -> str:
+        """Alias for signer in transaction validation."""
+        return self.address
+
+    @property
     def sender(self) -> str:
         """Alias for signer in transaction validation."""
         return self.address
@@ -1666,6 +1671,27 @@ class SuiCoinMetadata(DataClassJsonMixin):
     description: str
     id_: Optional[str] = field(metadata=config(field_name="id"))
     icon_url: Optional[str] = field(metadata=config(field_name="iconUrl"))
+
+
+@dataclass
+class SuiCoinBalance(DataClassJsonMixin):
+    """From sui_getBalance."""
+
+    coin_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    coin_object_count: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    total_balance: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class CoinBalances(DataClassJsonMixin):
+    """From sui_getBalance."""
+
+    items: list[SuiCoinBalance] = field(default_factory=list)
+
+    @classmethod
+    def ingest_data(cls, indata: list) -> "CoinBalances":
+        """."""
+        return cls.from_dict({"items": indata})
 
 
 @dataclass

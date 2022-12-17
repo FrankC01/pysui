@@ -14,13 +14,15 @@
 """Synchronous RPC testing."""
 
 
-from pysui.sui import SuiClient, SuiRpcResult
-from pysui.sui.sui_builders import GetCommittee, GetObject, GetPastObject
+from pysui.sui import SuiClient, SuiRpcResult, SuiConfig
+from pysui.sui.sui_builders import GetCommittee, GetObject, GetPastObject, GetCoinTypeBalance
 from pysui.sui.sui_types import (
     MoveDataDescriptor,
     ObjectNotExist,
+    ObjectVersionNotFound,
     ObjectVersionTooHigh,
     SuiData,
+    SuiString,
     SuiGasDescriptor,
     SuiAddress,
     SuiGas,
@@ -74,6 +76,24 @@ def test_get_gas_activeaddress_pass(sui_client: SuiClient):
     gas_balances = [gas.balance for gas in gas_objects]
     total_balance = sum(gas_balances)
     assert total_balance > 0
+
+
+def test_get_gas_balance_pass(sui_client: SuiClient, sui_configuration: SuiConfig):
+    """test_get_gas_balance_pass Check sui_getBalance.
+
+    :param sui_client: Synchronous http client
+    :type sui_client: SuiClient
+    """
+    gas_objects = get_gas(sui_client)
+    gas_count = len(gas_objects)
+    gas_balances = [gas.balance for gas in gas_objects]
+    total_balance = sum(gas_balances)
+    builder = GetCoinTypeBalance(owner=sui_configuration.active_address, coin_type=SuiString("0x2::sui::SUI"))
+    result = sui_client.execute(builder)
+    assert result.is_ok()
+    my_gas = result.result_data.items[0]
+    assert my_gas.coin_object_count == gas_count
+    assert my_gas.total_balance == total_balance
 
 
 def test_get_gas_anyaddress_pass(sui_client: SuiClient):
@@ -139,8 +159,9 @@ def test_get_past_object_pass(sui_client: SuiClient):
     builder = GetPastObject(multi_version[0].identifier, multi_version[0].version - 1)
     gas_object2 = sui_client.execute(builder)
     assert gas_object2
-    assert gas_object2.result_data.version < multi_version[0].version
-    assert gas_object2.result_data.balance > multi_version[0].balance
+    if not isinstance(gas_object2.result_data, ObjectVersionNotFound):
+        assert gas_object2.result_data.version < multi_version[0].version
+        assert gas_object2.result_data.balance > multi_version[0].balance
 
 
 def test_get_past_object_fail(sui_client: SuiClient):

@@ -22,9 +22,11 @@ from enum import IntEnum
 from typing import Any, Type, Union
 from pysui.abstracts import Builder, PublicKey, SignatureScheme
 from pysui.sui.sui_types import (
+    CoinBalances,
     CommitteeInfo,
     EventID,
     EventQueryEnvelope,
+    SuiCoinBalance,
     SuiMoveFunction,
     SuiMoveFunctionArgumentTypes,
     SuiMoveModule,
@@ -178,10 +180,7 @@ class GetCoinMetaData(_NativeTransactionBuilder):
     def __init__(self, *, coin_type: SuiString = None) -> None:
         """."""
         super().__init__("sui_getCoinMetadata", handler_cls=SuiCoinMetadata, handler_func="from_dict")
-        if coin_type:
-            self.coin_type = coin_type if isinstance(coin_type, SuiString) else SuiString(coin_type)
-        else:
-            self.coin_type = coin_type
+        self.coin_type = coin_type if isinstance(coin_type, SuiString) else SuiString(coin_type)
 
     def set_coin_type(self, coin_type: SuiString) -> "GetCoinMetaData":
         """."""
@@ -195,6 +194,50 @@ class GetCoinMetaData(_NativeTransactionBuilder):
         :rtype: list[SuiAddress]
         """
         return [self.coin_type]
+
+
+class GetCoinTypeBalance(_NativeTransactionBuilder):
+    """GetCoinTypeBalance Return the total coin balance for each coin type."""
+
+    def __init__(self, *, owner: SuiAddress, coin_type: SuiString) -> "GetCoinTypeBalance":
+        """__init__ Initializes builder with address and coin type to fetch balances for.
+
+        :param owner: the owner's Sui address
+        :type owner: SuiAddress
+        :param coin_type: fully qualified type names for the coin (e.g., 0x168da5bf1f48dafc111b0a488fa454aca95e0b5e::usdc::USDC)
+        :type coin_type: SuiString
+        :return: Initialized builder
+        :rtype: GetCoinTypeBalance
+        """
+        super().__init__("sui_getBalance", handler_cls=CoinBalances, handler_func="ingest_data")
+        self.owner = None
+        self.coin_type = None
+        self.set_owner(owner)
+        self.set_coin_type(coin_type)
+
+    def set_owner(self, owner: SuiAddress) -> "GetCoinTypeBalance":
+        """Set the owner property."""
+        if isinstance(owner, SuiAddress):
+            self.owner = owner
+            return self
+        raise ValueError(f"{owner} is not of type SuiAddress")
+
+    def set_coin_type(self, coin_type: SuiString) -> "GetCoinTypeBalance":
+        """Set the coin_type property."""
+        if isinstance(coin_type, SuiString):
+            self.coin_type = coin_type
+            return self
+        elif isinstance(coin_type, str):
+            self.coin_type = SuiString(coin_type)
+        raise ValueError(f"{coin_type} is not of type SuiString")
+
+    def _collect_parameters(self) -> list[SuiAddress]:
+        """_collect_parameters Returns expected RPC parameters.
+
+        :return: RPC expects a string representing a coin type signature (e.g. 0x2::sui::SUI)
+        :rtype: list[SuiAddress,SuiString]
+        """
+        return [self.owner, self.coin_type]
 
 
 class GetObjectsOwnedByAddress(_NativeTransactionBuilder):

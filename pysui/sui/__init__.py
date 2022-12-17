@@ -23,6 +23,7 @@ from pysui.sui.sui_apidesc import SuiApi, build_api_descriptors
 from pysui.sui.sui_builders import (
     SuiBaseBuilder,
     GetCoinMetaData,
+    GetCoinTypeBalance,
     GetObjectsOwnedByAddress,
     GetObject,
     GetObjectsOwnedByObject,
