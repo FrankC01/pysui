@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support for `sui_getBalance` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns
-total balance per coin type (i.e. `0x2::sui::SUI`) and is more efficient than getting all coins and
+total balance per coin type (i.e. `0x2::sui::SUI`) for owner (SuiAddress) and is more efficient than getting all coins and
 totalling.
-
 - Support for `sui_getCoins` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns
 address coins for coin type (i.e. `0x2::sui::SUI`) and is more efficient than getting all coin descriptors and
 sui_getObject for each descriptor.
+- Support for `sui_getTotalSupply` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns the
+total supply of coin_type (i.e. `0x2::sui::SUI`).
+- Support for `sui_getSuiSystemState` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns
+SUI system state information.
+- Support for `sui_getTransactionsInRange` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns a list of transaction digests strings within the queried transaction sequence range: `start` (inclusive) and `end` (exclusive).
+
 
 ### Fixed
 

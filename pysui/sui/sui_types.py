@@ -328,6 +328,16 @@ class SuiInteger(SuiScalarType):
         return self.value
 
     @property
+    def start(self) -> int:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def end(self) -> int:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def epoch(self) -> int:
         """Alias for transactions."""
         if self.value is None:
@@ -1707,10 +1717,54 @@ class SuiCoinObject(DataClassJsonMixin):
 
 @dataclass
 class SuiCoinObjects(DataClassJsonMixin):
-    """."""
+    """From sui_getCoins."""
 
     data: list[SuiCoinObject]
     next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class StateParameters(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    min_validator_stake: int
+    max_validator_candidate_count: int
+    storage_gas_price: 1
+
+
+@dataclass
+class ValidatorSet(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    active_validators: list[dict]
+    delegation_stake: int
+    next_epoch_validators: list[dict]
+    pending_delegation_switches: dict
+    pending_removals: list[int]
+    pending_validators: list[dict]
+    quorum_stake_threshold: int
+    validator_stake: int
+
+
+@dataclass
+class SuiSystemState(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    info_id: Union[dict, str] = field(metadata=config(field_name="info"))
+    chain_id: int
+    epoch: int
+    parameters: StateParameters
+    reference_gas_price: int
+    storage_fund: Union[dict, int]
+    treasury_cap: Union[dict, int]
+    validator_report_records: dict
+    validators: ValidatorSet
+
+    def __post_init__(self):
+        """Post hydrate parameter fixups."""
+        self.info_id = self.info_id["id"]
+        self.storage_fund = self.storage_fund["value"]
+        self.treasury_cap = self.treasury_cap["value"]
 
 
 @dataclass

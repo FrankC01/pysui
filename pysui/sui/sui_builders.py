@@ -26,7 +26,6 @@ from pysui.sui.sui_types import (
     CommitteeInfo,
     EventID,
     EventQueryEnvelope,
-    SuiCoinBalance,
     SuiCoinObjects,
     SuiMoveFunction,
     SuiMoveFunctionArgumentTypes,
@@ -40,6 +39,7 @@ from pysui.sui.sui_types import (
     SuiNullType,
     SuiString,
     SuiInteger,
+    SuiSystemState,
     SuiTransactionDigest,
     SuiTxBytes,
     SuiSignature,
@@ -205,10 +205,8 @@ class GetCoinTypeBalance(_NativeTransactionBuilder):
 
         :param owner: the owner's Sui address
         :type owner: SuiAddress
-        :param coin_type: fully qualified type names for the coin (e.g., 0x168da5bf1f48dafc111b0a488fa454aca95e0b5e::usdc::USDC)
+        :param coin_type: fully qualified type names for the coin (e.g., 0x2::sui::SUI)
         :type coin_type: SuiString
-        :return: Initialized builder
-        :rtype: GetCoinTypeBalance
         """
         super().__init__("sui_getBalance", handler_cls=CoinBalances, handler_func="ingest_data")
         self.owner = None
@@ -234,16 +232,12 @@ class GetCoinTypeBalance(_NativeTransactionBuilder):
         raise ValueError(f"{coin_type} is not of type SuiString")
 
     def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters.
-
-        :return: RPC expects a string representing a coin type signature (e.g. 0x2::sui::SUI)
-        :rtype: list[SuiAddress,SuiString]
-        """
+        """_collect_parameters Returns expected RPC parameters."""
         return [self.owner, self.coin_type]
 
 
 class GetCoins(_NativeTransactionBuilder):
-    """."""
+    """Return the list of Coin objects owned by an address."""
 
     def __init__(
         self,
@@ -253,7 +247,17 @@ class GetCoins(_NativeTransactionBuilder):
         limit: SuiInteger,
         cursor: ObjectID = None,
     ):
-        """."""
+        """__init__ Initialize builder with address,coin_type, page limits and cursor.
+
+        :param owner: the coin owner's Sui address
+        :type owner: SuiAddress
+        :param coin_type: fully qualified type names for the coin (e.g., 0x2::sui::SUI)
+        :type coin_type: SuiString
+        :param limit: maximum number of items per page
+        :type limit: SuiInteger
+        :param cursor: Optional ObjectID as the starting item in returned page, defaults to None
+        :type cursor: ObjectID, optional
+        """
         super().__init__("sui_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
         self.set_limit(limit)
         self.cursor = cursor if cursor else SuiNullType(None)
@@ -278,7 +282,7 @@ class GetCoins(_NativeTransactionBuilder):
         raise ValueError(f"{coin_type} is not of type SuiString")
 
     def set_limit(self, limit: Union[int, SuiInteger]) -> "GetCoins":
-        """."""
+        """Sets the maximum values returned on the result page."""
         if isinstance(limit, SuiInteger):
             self.limit = limit
             return self
@@ -288,17 +292,53 @@ class GetCoins(_NativeTransactionBuilder):
         raise ValueError(f"{limit} is not of type SuiInteger")
 
     def set_cursor(self, cursor: ObjectID) -> "GetCoins":
-        """."""
+        """Optional ObjectID (of sample ``coin_type``)."""
         self.cursor = cursor
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters.
-
-        :return: RPC expects a string representing a coin type signature (e.g. 0x2::sui::SUI)
-        :rtype: list[SuiAddress,SuiString]
-        """
+        """_collect_parameters Returns expected RPC parameters."""
         return [self.owner, self.coin_type, self.cursor, self.limit]
+
+
+class GetSuiSystemState(_NativeTransactionBuilder):
+    """Return the SUI system state."""
+
+    def __init__(self):
+        """__init__ Initializes builder."""
+        super().__init__("sui_getSuiSystemState", handler_cls=SuiSystemState, handler_func="from_dict")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """_collect_parameters Returns expected RPC parameters."""
+        return []
+
+
+class GetTotalSupply(_NativeTransactionBuilder):
+    """Return the total supply for a given coin type (eg. 0x2::sui::SUI)."""
+
+    def __init__(
+        self,
+        *,
+        coin_type: SuiString,
+    ):
+        """__init__ Initializes builder."""
+        super().__init__("sui_getTotalSupply")
+        self.coin_type = None
+        self.set_coin_type(coin_type)
+
+    def set_coin_type(self, coin_type: SuiString) -> "GetTotalSupply":
+        """Set the coin_type property."""
+        if isinstance(coin_type, SuiString):
+            self.coin_type = coin_type
+            return self
+        if isinstance(coin_type, str):
+            self.coin_type = SuiString(coin_type)
+            return self
+        raise ValueError(f"{coin_type} is not of type SuiString")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """_collect_parameters Returns expected RPC parameters."""
+        return [self.coin_type]
 
 
 class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
@@ -782,6 +822,47 @@ class GetTxs(_NativeTransactionBuilder):
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return self._pull_vars()
+
+
+class GetTransactionsInRange(_NativeTransactionBuilder):
+    """Return list of transaction digests within the queried range."""
+
+    def __init__(
+        self,
+        *,
+        start: SuiInteger,
+        end: SuiInteger,
+    ) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getTransactionsInRange")
+        self.start = None
+        self.end = None
+        self.set_start(start)
+        self.set_end(end)
+
+    def set_start(self, start: SuiInteger) -> "GetTransactionsInRange":
+        """."""
+        if isinstance(start, SuiInteger):
+            self.start = start
+            return self
+        if isinstance(start, int):
+            self.start = SuiInteger(start)
+            return self
+        raise ValueError(f"{start} is not an integer type.")
+
+    def set_end(self, end: SuiInteger) -> "GetTransactionsInRange":
+        """."""
+        if isinstance(end, SuiInteger):
+            self.end = end
+            return self
+        if isinstance(end, int):
+            self.end = SuiInteger(end)
+            return self
+        raise ValueError(f"{end} is not an integer type.")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return [self.start, self.end]
 
 
 class GetTxAuthSignatures(_NativeTransactionBuilder):
