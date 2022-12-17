@@ -3,6 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. image:: pysui_logo_color.png
+   :height: 200px
+   :width: 200px
+   :align: center
+
+
 Welcome to pysui's documentation!
 =================================
 

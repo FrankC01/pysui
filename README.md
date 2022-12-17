@@ -1,6 +1,5 @@
 
-<img src="https://github.com/FrankC01/pysui/blob/main/images//pysui_logo_color.png" width="150" height="200" align="center"/>
-<br clear="center"/>
+<img src="https://github.com/FrankC01/pysui/blob/main/images//pysui_logo_color.png" width="150" height="200"/>
 
 # pysui
 
