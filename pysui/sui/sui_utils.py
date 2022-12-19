@@ -23,7 +23,7 @@ from pysui.sui.sui_types import SuiAddress, SuiString, ObjectID, SuiScalarType
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiMiisingModuleByteCode, SuiPackageBuildFail
 
 
-_SUI_BUILD = ["sui", "move", "build", "--path"]
+_SUI_BUILD = ["sui", "move", "build", "-p"]
 
 
 def _module_to_b64(module: Path) -> Union[SuiString, Exception]:

@@ -148,8 +148,7 @@ def test_move_call_single_arg_pass(sui_client: SuiClient):
     tracker = get_tracker(sui_client)
     assert tracker
     assert len(tracker.data.fields["accumulator"]) > 0
-    myres = [int(x) for x in list(base64.b64decode(tracker.data.fields["accumulator"]))]
-    assert 5 in myres
+    assert 5 in tracker.data.fields["accumulator"]
     result = sui_client.move_call_txn(
         signer=sui_client.config.active_address,
         package_object_id=ObjectID(tracker.type_signature.split(":")[0]),

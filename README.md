@@ -5,12 +5,10 @@
 
 Python Client SDK for Sui blockchain
 
-**BROKEN:** With SUI 0.19.0 the transaction signing has changed. This breaks `pysui` for executing transactions. All `Get`
+**FIXED:** With SUI 0.19.0 the transaction signing has changed. This breaks `pysui` for executing transactions. All `Get`
 types work fine however.  Hope to rectify this ASAP.
 
-- 80% coverage (builders, return types, etc.) of **new** SUI 0.19.0 API (will address pre `pysui` "Lena" milestone)
-- 90% coverage (builders, return types, etc.) of **new** SUI 0.18.0 API (lacking subscriptions, targeted for `pysui` "Lena" milestone)
-- 100% coverage SUI 0.17.0
+- 99.9% coverage (builders, return types, etc.) of **new** SUI 0.19.0 API (lacking subscriptions, targetting "Lena" milestone)
 
 - PyPi Version: [latest](https://pypi.org/project/pysui/)
 

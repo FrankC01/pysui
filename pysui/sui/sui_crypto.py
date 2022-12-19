@@ -74,7 +74,17 @@ class SuiPrivateKeyED25519(PrivateKey):
 
     def sign(self, data: bytes) -> SuiSignature:
         """ED25519 sign data bytes."""
-        return SuiSignature(self._signing_key.sign(data, encoder=Base64Encoder).signature)
+        signed = self._signing_key.sign(data, encoder=Base64Encoder)
+        return SuiSignature(signed.signature)
+
+    def sign_secure(self, public_key: SuiPublicKeyED25519, tx_data: str) -> SuiSignature:
+        """."""
+        indata = bytearray([0, 0, 0])
+        indata.extend(base64.b64decode(tx_data))
+        compound = bytearray([self.scheme])
+        compound.extend(base64.b64decode(self.sign(bytes(indata)).value))
+        compound.extend(public_key.key_bytes)
+        return SuiSignature(base64.b64encode(bytes(compound)))
 
 
 class SuiKeyPairED25519(KeyPair):
@@ -100,6 +110,10 @@ class SuiKeyPairED25519(KeyPair):
     def scheme(self) -> SignatureScheme:
         """Get the keys scheme."""
         return self._scheme
+
+    def new_sign_secure(self, tx_data: str) -> SuiSignature:
+        """New secure sign with intent."""
+        return self.private_key.sign_secure(self.public_key, tx_data)
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""

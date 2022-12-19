@@ -5,7 +5,7 @@
 
 .. image:: pysui_logo_color.png
    :height: 200px
-   :width: 200px
+   :width: 150px
    :align: center
 
 

@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.5.0] - 2022-12-16
+
+### Added
 - Support for `sui_getBalance` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns
 total balance per coin type (i.e. `0x2::sui::SUI`) for owner (SuiAddress) and is more efficient than getting all coins and
 totalling.
@@ -22,6 +31,7 @@ SUI system state information.
 
 
 ### Fixed
+- [bug] (https://github.com/FrankC01/pysui/issues/46)
 
 ### Changed
 
