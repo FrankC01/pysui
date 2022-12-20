@@ -3,6 +3,8 @@
 
 # Virtual environment
 pysuienv
+env
+.env
 
 # Compiled code
 __pycache__
@@ -37,3 +39,6 @@ modules.rst
 pysui.abstracts.rst
 pysui.rst
 pysui.sui.rst
+
+# Misc cruft
+*.txt

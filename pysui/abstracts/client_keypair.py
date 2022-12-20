@@ -17,6 +17,7 @@
 from abc import ABC, abstractmethod
 import base64
 from enum import IntEnum
+from pysui.abstracts import AbstractType
 
 
 class SignatureScheme(IntEnum):
@@ -66,16 +67,20 @@ class Key(ABC):
         return f"{self.to_b64()}"
 
 
+class PublicKey(Key):
+    """PublicKey construct."""
+
+
 class PrivateKey(Key):
     """PrivateKey construct."""
 
     @abstractmethod
-    def sign(self, data: bytes) -> str:
+    def sign(self, data: bytes) -> AbstractType:
         """Sign data and return signature."""
 
-
-class PublicKey(Key):
-    """PublicKey construct."""
+    @abstractmethod
+    def sign_secure(self, public_key: PublicKey, tx_data: bytes) -> AbstractType:
+        """Sign data securley, returning signature."""
 
 
 class KeyPair(ABC):
@@ -105,6 +110,10 @@ class KeyPair(ABC):
     @abstractmethod
     def from_bytes(cls, indata: bytes) -> "KeyPair":
         """Convert bytes to keypair."""
+
+    @abstractmethod
+    def new_sign_secure(self, tx_data: str) -> AbstractType:
+        """Sign transactions securley."""
 
     @abstractmethod
     def to_bytes(self) -> bytes:

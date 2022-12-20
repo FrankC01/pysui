@@ -14,7 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.5.0] - 2022-12-16
+## [0.5.1] - 2022-12-20
+
+### Added
+- Builders section to documentation
+
+### Fixed
+- [bug](https://github.com/FrankC01/pysui/issues/47)
+
+### Changed
+
+### Removed
+
+## [0.5.0] - 2022-12-19
 
 ### Added
 - Support for `sui_getBalance` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns

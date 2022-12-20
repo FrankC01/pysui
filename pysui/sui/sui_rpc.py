@@ -800,21 +800,17 @@ class SuiAsynchClient(_ClientMixin):
         :rtype: Union[SuiRpcResult, Exception]
         """
         kpair = self.config.keypair_for_address(signer)
-        kpair = self.config.keypair_for_address(signer)
         if self.version_at_least(0, 18, 0):
-            sig = kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes))
-            compound = [kpair.scheme.value] + list(base64.b64decode(sig.value)) + list(kpair.public_key.key_bytes)
-            sig = base64.b64encode(bytearray(compound))
             builder = ExecuteSerializedTransaction(
                 tx_bytes=tx_bytes,
-                signature=SuiSignature(sig),
+                signature=kpair.new_sign_secure(tx_bytes.tx_bytes),
                 request_type=self.request_type,
             )
         else:
             builder = ExecuteTransaction(
                 tx_bytes=tx_bytes,
                 sig_scheme=kpair.scheme,
-                signature=kpair.private_key.sign(base64.b64decode(tx_bytes.tx_bytes)),
+                signature=kpair.new_sign_secure(tx_bytes.tx_bytes),
                 pub_key=kpair.public_key,
                 request_type=self.request_type,
             )

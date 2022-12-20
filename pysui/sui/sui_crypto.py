@@ -188,6 +188,15 @@ class SuiPrivateKeySECP256K1(PrivateKey):
         fsig = base64.b64encode(sig_ba).decode()
         return SuiSignature(fsig)
 
+    def sign_secure(self, public_key: SuiPublicKeySECP256K1, tx_data: str) -> SuiSignature:
+        """."""
+        indata = bytearray([0, 0, 0])
+        indata.extend(base64.b64decode(tx_data))
+        compound = bytearray([self.scheme])
+        compound.extend(base64.b64decode(self.sign(bytes(indata)).value))
+        compound.extend(public_key.key_bytes)
+        return SuiSignature(base64.b64encode(bytes(compound)))
+
 
 class SuiKeyPairSECP256K1(KeyPair):
     """A SuiKey Pair."""
@@ -212,6 +221,10 @@ class SuiKeyPairSECP256K1(KeyPair):
     def scheme(self) -> SignatureScheme:
         """Get the keys scheme."""
         return self._scheme
+
+    def new_sign_secure(self, tx_data: str) -> SuiSignature:
+        """New secure sign with intent."""
+        return self.private_key.sign_secure(self.public_key, tx_data)
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""

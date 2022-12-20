@@ -176,7 +176,7 @@ class _NativeTransactionBuilder(SuiBaseBuilder):
 
 
 class GetCoinMetaData(_NativeTransactionBuilder):
-    """."""
+    """GetCoinMetaData returns meta data for a specific `coin_type`."""
 
     def __init__(self, *, coin_type: SuiString = None) -> None:
         """."""

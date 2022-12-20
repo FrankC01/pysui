@@ -50,8 +50,3 @@ The raw workhorse for submitting transactions is :py:meth:`pysui.sui.sui_rpc.Sui
 
 While many of the SuiClient convenience methods (i.e. :meth:`pysui.sui.sui_rpc.SuiClient.get_object`) take care of
 creating a Builder for the caller, and then executing, all **Builders** are available to setup outside of the SuiClient.
-
-The Builders
-------------
-
-See :py:mod:`pysui.sui.sui_builders`
