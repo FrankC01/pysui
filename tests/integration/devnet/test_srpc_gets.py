@@ -13,22 +13,19 @@
 
 """Synchronous RPC testing."""
 
-
-from pysui.sui import SuiClient, SuiRpcResult, SuiConfig
-from pysui.sui.sui_builders import GetCoins, GetCommittee, GetObject, GetPastObject, GetCoinTypeBalance
-from pysui.sui.sui_types import (
-    MoveDataDescriptor,
+from pysui.sui.sui_types.scalars import ObjectID, SuiString, SuiInteger
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_txresults import (
     ObjectNotExist,
+    MoveDataDescriptor,
     ObjectVersionNotFound,
     ObjectVersionTooHigh,
     SuiData,
-    SuiInteger,
-    SuiString,
     SuiGasDescriptor,
-    SuiAddress,
     SuiGas,
-    ObjectID,
 )
+from pysui.sui.sui_builders.get_builders import GetCoins, GetCommittee, GetObject, GetPastObject, GetCoinTypeBalance
+from pysui.sui.sui_rpc import SuiClient, SuiRpcResult, SuiConfig
 
 
 def get_gas(client: SuiClient, for_address: SuiAddress = None) -> list[SuiGas]:

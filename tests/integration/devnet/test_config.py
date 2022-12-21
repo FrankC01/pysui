@@ -13,7 +13,8 @@
 
 """Configuration testing."""
 
-from pysui.sui import SuiConfig, SuiAddress
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_types.address import SuiAddress
 
 
 def test_multi_address_pass(sui_configuration):

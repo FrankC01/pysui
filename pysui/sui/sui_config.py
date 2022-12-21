@@ -22,7 +22,12 @@ from pathlib import Path
 import json
 import yaml
 from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
-from pysui.sui import DEFAULT_DEVNET_PATH_STRING, DEVNET_FAUCET_URL, LOCALNET_ENVIRONMENT_KEY, LOCALNET_FAUCET_URL
+from pysui.sui.sui_constants import (
+    DEFAULT_DEVNET_PATH_STRING,
+    DEVNET_FAUCET_URL,
+    LOCALNET_ENVIRONMENT_KEY,
+    LOCALNET_FAUCET_URL,
+)
 from pysui.sui.sui_crypto import SuiAddress, keypair_from_keystring, create_new_address
 from pysui.sui.sui_excepts import (
     SuiConfigFileError,

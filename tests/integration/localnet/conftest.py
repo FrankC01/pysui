@@ -14,4 +14,5 @@
 """Fixtures for testing."""
 
 import pytest
-from pysui.sui import SuiConfig, SuiClient
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_rpc import SuiClient

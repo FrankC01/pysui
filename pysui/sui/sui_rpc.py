@@ -15,7 +15,7 @@
 """Sui RPC Result and Synch and Asynch Clients Module."""
 
 import json
-import base64
+
 
 from json import JSONDecodeError
 from typing import Any, Union
@@ -23,32 +23,25 @@ from pkg_resources import packaging
 
 import httpx
 from pysui.abstracts import RpcResult, Provider
-from pysui.sui.sui_types import (
-    FaucetGasRequest,
-    ObjectID,
-    SuiArray,
-    SuiMap,
-    SuiInteger,
-    SuiSignature,
-    SuiString,
-    SuiTxBytes,
-    ObjectInfo,
-    SuiAddress,
-)
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiTxBytes, SuiString
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_types.collections import SuiArray, SuiMap
+from pysui.sui.sui_txresults.single_tx import FaucetGasRequest, ObjectInfo
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_builders import (
-    DryRunTransaction,
+from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
+from pysui.sui.sui_builders.get_builders import (
     GetPastObject,
     GetRpcAPI,
-    SuiBaseBuilder,
-    ExecuteTransaction,
-    ExecuteSerializedTransaction,
-    SuiRequestType,
     GetObjectsOwnedByAddress,
     GetObject,
     GetPackage,
     GetEvents,
     GetTxs,
+)
+from pysui.sui.sui_builders.exec_builders import (
+    DryRunTransaction,
+    ExecuteTransaction,
+    ExecuteSerializedTransaction,
     Pay,
     PaySui,
     PayAllSui,

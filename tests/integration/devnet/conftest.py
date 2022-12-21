@@ -17,8 +17,9 @@ import os
 from pathlib import Path
 import pytest
 from pysui.abstracts.client_keypair import SignatureScheme
-from pysui.sui import SuiConfig, SuiClient, SuiRpcResult
-from pysui.sui.sui_types import SuiGasDescriptor
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_rpc import SuiClient, SuiRpcResult
+from pysui.sui.sui_txresults.single_tx import SuiGasDescriptor
 
 TRACKER_DIR: str = "/sui-test"
 

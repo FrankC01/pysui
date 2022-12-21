@@ -26,6 +26,7 @@ import pathlib
 import sys
 import json
 
+
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 PARENT = PROJECT_DIR.parent
 
@@ -34,10 +35,11 @@ sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 
-from pysui.sui import SUI_COIN_DENOMINATOR
+from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_txresults.single_tx import ObjectInfo, SuiGas, SuiGasDescriptor
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_rpc import SuiAsynchClient
-from pysui.sui.sui_types import ObjectInfo, SuiAddress, SuiGasDescriptor, SuiGas
 
 
 def object_stats(objs: list[ObjectInfo]) -> None:

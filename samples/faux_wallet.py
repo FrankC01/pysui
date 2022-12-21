@@ -20,27 +20,12 @@ import json
 
 from typing import Union
 from pysui.abstracts import Builder, SignatureScheme
-from pysui.sui import (
-    SuiClient,
-    SuiConfig,
-    SuiRpcResult,
-    GetCommittee,
-    GetTotalTxCount,
-    GetTx,
-    # DryRunTransaction,
-)
-
-from pysui.sui.sui_crypto import SuiAddress
-
-from pysui.sui.sui_types import (
-    ObjectID,
-    SuiGasDescriptor,
-    SuiString,
-    SuiInteger,
-    SuiCoin,
-    ObjectInfo,
-    MoveDataDescriptor,
-)
+from pysui.sui.sui_types.scalars import ObjectID, SuiString, SuiInteger
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_builders.get_builders import GetCommittee, GetTotalTxCount, GetTx
+from pysui.sui.sui_txresults.single_tx import SuiGasDescriptor, SuiCoin, ObjectInfo, MoveDataDescriptor
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_rpc import SuiClient, SuiRpcResult
 
 
 class SuiWallet:

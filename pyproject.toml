@@ -4,7 +4,7 @@ testpaths = [
     "tests/unit",
     "tests/integration",
 ]
-pythonpath = ["pysui", "abstracts", "sui"]
+pythonpath = ["pysui", "abstracts", "sui","sui/sui_types"]
 
 [build-system]
 requires = ["setuptools>=61.0","wheel"]

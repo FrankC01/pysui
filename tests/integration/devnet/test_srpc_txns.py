@@ -16,26 +16,21 @@
 import base64
 from pathlib import Path
 from typing import Union
-from pysui.sui import SuiClient
-from pysui.sui.sui_builders import (
-    BatchTransaction,
-    GetTxAuthSignatures,
-    MoveCallRequestParams,
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString, SuiTransactionDigest
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_types.collections import SuiArray
+from pysui.sui.sui_rpc import SuiClient
+from pysui.sui.sui_builders.get_builders import GetTxAuthSignatures
+from pysui.sui.sui_builders.exec_builders import (
     Publish,
-    TransferObjectParams,
     MoveCall,
+    BatchTransaction,
+    MoveCallRequestParams,
+    TransferObjectParams,
 )
+from pysui.sui.sui_txresults import SuiData, TxEffectResult
 from pysui.sui.sui_utils import build_b64_modules
-from pysui.sui.sui_types import (
-    ObjectID,
-    SuiAddress,
-    SuiArray,
-    SuiData,
-    SuiInteger,
-    SuiString,
-    SuiTransactionDigest,
-    TxEffectResult,
-)
+
 
 from .test_srpc_gets import get_gas, get_data
 

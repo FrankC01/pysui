@@ -57,4 +57,19 @@ class AbstractType(ABC):
         if isinstance(self.value, NoneType):
             return ""
         raise NotImplementedError
-        # return self._value if isinstance(self._value, str) else self._value.decode()  # f"{self._value}"
+
+
+class SuiBaseType(AbstractType):
+    """Base most SUI object type."""
+
+    def __init__(self, identifier: Any) -> None:
+        """__init__ Initialize type with identifier.
+
+        :param identifier: A native python type
+        :type identifier: Any
+        """
+        super().__init__(identifier)
+
+
+class SuiScalarType(SuiBaseType):
+    """Base most SUI scalar type."""

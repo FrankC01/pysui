@@ -13,14 +13,14 @@
 
 """Transaction result tests."""
 
-from pysui.sui.sui_types import (
+from pysui.sui.sui_txresults.package_meta import SuiMovePackage
+from pysui.sui.sui_txresults.single_tx import (
     FaucetGasRequest,
-    TxEffectResult,
-    SuiMovePackage,
     ObjectInfo,
     ObjectRead,
-    EventQueryEnvelope,
 )
+
+from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TxEffectResult
 
 
 def test_sui_coin_descriptor(sui_coin_descriptor):
