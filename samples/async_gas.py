@@ -18,6 +18,11 @@ Shows:
 * Loading an asynchronous client (see `main`)
 * Fetching all address owned object descriptors from Sui blockchain
 * Fetching all address owned gas objects for each address from Sui blockchain
+* Note that there are new SUI RPC API that can simplify this further and pysui has
+* builders for them. See pysui/sui/sui_builders/get_builders.py:
+*   GetCoinMetaData
+*   GetCoinTypeBalance
+*   GetCoins
 """
 
 import asyncio
@@ -102,18 +107,16 @@ async def main_run(client: SuiAsynchClient):
     config: SuiConfig = client.config
     owned_objects = asyncio.create_task(client.get_address_object_descriptors())
     gasses = asyncio.create_task(get_all_gas(client))
-    print(f"Getting owned objects for :{config.active_address}")
+    print(f"Getting owned objects for: {config.active_address}")
     result = await owned_objects
     object_stats(result.result_data)
     result = await gasses
     grand_total: int = 0
     for key, value in result.items():
-        print(f"\nGas objects for :{key.identifier}")
+        print(f"\nGas objects for: {key.identifier}")
         grand_total += print_gas(value)
         print()
     print(f"Grand Total gas {grand_total:12} -> {grand_total/SUI_COIN_DENOMINATOR:.8f}\n")
-
-    # print(result.keys())
     print("Exiting async pysui")
 
 
