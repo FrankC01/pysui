@@ -15,6 +15,7 @@
 """Commands and dispath dict."""
 import argparse
 import json
+from numbers import Number
 import sys
 from typing import Union
 from pysui import __version__
@@ -24,6 +25,9 @@ from pysui.sui.sui_types.scalars import SuiBoolean, SuiString
 from pysui.sui.sui_types.collections import SuiMap, EventID
 
 from pysui.sui.sui_builders.get_builders import (
+    GetCommittee,
+    GetTotalTxCount,
+    GetTx,
     GetTxsFromAddress,
     GetTxsToAddress,
     GetTxsInputObject,
@@ -38,37 +42,45 @@ from pysui.sui.sui_builders.get_builders import (
     TimeRangeEventQuery,
 )
 
-from pysui.sui.sui_rpc import SuiRpcResult
 from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode
-from samples.faux_wallet import SuiWallet
+from pysui.sui.sui_clients.common import SuiRpcResult
+from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui.sui.sui_txresults.single_tx import MoveDataDescriptor, SuiCoin, SuiGasDescriptor
 
 
-def sdk_version(_wallet: SuiWallet, _args: argparse.Namespace) -> None:
+def sdk_version(_client: SuiClient, _args: argparse.Namespace) -> None:
     """Dispay version."""
     print(f"pysui SDK version: {__version__}")
 
 
-def sui_active_address(wallet: SuiWallet, _args: argparse.Namespace) -> None:
+def sui_active_address(client: SuiClient, _args: argparse.Namespace) -> None:
     """Print active address."""
     print()
-    print(f"Active address = {wallet.current_address.identifier}")
+    print(f"Active address = {client.config.active_address.identifier}")
 
 
-def sui_addresses(wallet: SuiWallet, _args: argparse.Namespace) -> None:
+def sui_addresses(client: SuiClient, _args: argparse.Namespace) -> None:
     """Print all address."""
     print()
     print("Addresses")
     print("---------")
-    for addy in wallet.addresses:
-        if addy == wallet.current_address:
+    for addy in client.config.addresses:
+        if addy == client.config.active_address:
             print(f"{addy} <-- active")
         else:
             print(addy)
 
 
-def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
     """Print gas information."""
+
+    def _total_gas(coin_objects: list[SuiCoin]) -> Number:
+        """Get the total of balances for SuiCoin type."""
+        results = 0
+        for cdesc in coin_objects:
+            results = results + cdesc.balance
+        return results
 
     def _detail_gas(gas_objects: SuiRpcResult):
         if gas_objects.is_ok():
@@ -86,28 +98,30 @@ def sui_gas(wallet: SuiWallet, args: argparse.Namespace) -> None:
                 print(
                     f"{gasobj.identifier} | {str(gasobj.balance):>12s} | {(gasobj.balance / SUI_COIN_DENOMINATOR):.8f}"
                 )
-            mists = wallet.total_gas(gas_objects.result_data)
+            mists = _total_gas(gas_objects.result_data)
             sui = mists / SUI_COIN_DENOMINATOR
             print(f"Total Gas = MISTS: {mists:12} SUI: {sui:.8f}")
         else:
             print(f"Sui RPC Error: {gas_objects.result_string} -> {gas_objects.result_data}")
 
-    _detail_gas(wallet.gas_objects(args.address))
+    descriptor_result = client.get_address_object_descriptors(SuiGasDescriptor, args.address)
+    identities = [ids.identifier for ids in descriptor_result.result_data]
+    _detail_gas(client.get_objects_for(identities))
 
 
-def sui_new_address(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_new_address(client: SuiClient, args: argparse.Namespace) -> None:
     """Generate a new SUI address."""
     if args.ed25519:
-        mnen, address = wallet.create_new_keypair_and_address(SignatureScheme.ED25519)
+        mnen, address = client.config.create_new_keypair_and_address(SignatureScheme.ED25519)
     else:
-        mnen, address = wallet.create_new_keypair_and_address(SignatureScheme.SECP256K1)
+        mnen, address = client.config.create_new_keypair_and_address(SignatureScheme.SECP256K1)
     print(f"Keep this passphrase '{mnen}'")
     print(f"For new address {address}")
 
 
-def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_package(client: SuiClient, args: argparse.Namespace) -> None:
     """Get a package object."""
-    result: SuiRpcResult = wallet.get_package(args.id)
+    result: SuiRpcResult = client.get_package(args.id)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
         print()
@@ -115,12 +129,12 @@ def sui_package(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"{result.result_string}")
 
 
-def sui_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_object(client: SuiClient, args: argparse.Namespace) -> None:
     """Show specific object."""
     # if args.version:
-    #     sobject = wallet.execute(GetPastObject(args.id, args.version))
+    #     sobject = client.execute(GetPastObject(args.id, args.version))
     # else:
-    sobject = wallet.get_object(args.id, args.version)
+    sobject = client.get_object(args.id, args.version)
     if sobject.is_ok():
         print("Object")
         if isinstance(sobject.result_data, list):
@@ -146,14 +160,17 @@ def _objects_header_print() -> None:
     print()
 
 
-def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_objects(client: SuiClient, args: argparse.Namespace) -> None:
     """Show specific object."""
 
     def _object_type(args: argparse.Namespace) -> SuiRpcResult:
         """Get objects of type from Namespace."""
         if args.data:
-            return wallet.data_objects(args.address)
-        return wallet.get_objects(args.address)
+            descriptor_result = client.get_address_object_descriptors(MoveDataDescriptor)
+        else:
+            descriptor_result = client.get_address_object_descriptors()
+        identities = [ids.identifier for ids in descriptor_result.result_data]
+        return client.get_objects_for(identities)
 
     result = _object_type(args)
     if result.is_ok():
@@ -168,9 +185,9 @@ def sui_objects(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"{result.result_string}")
 
 
-def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_api(client: SuiClient, args: argparse.Namespace) -> None:
     """Display information about Sui RPC API."""
-    rpcapi = wallet.get_rpc_api()
+    rpcapi = client.rpc_api
 
     if args.name:
         if rpcapi.get(args.name, None):
@@ -187,87 +204,87 @@ def sui_api(wallet: SuiWallet, args: argparse.Namespace) -> None:
             print(f"Sui RPC API does not contain {args.name}")
 
     else:
-        for api_name in rpcapi:
+        for api_name in rpcapi.keys():
             print(api_name)
 
 
-def transfer_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def transfer_object(client: SuiClient, args: argparse.Namespace) -> None:
     """transfer_object.
 
-    :param wallet: _description_
-    :type wallet: SuiWallet
+    :param client: _description_
+    :type client: SuiClient
     :param args: _description_
     :type args: argparse.Namespace
     """
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     var_args = vars(args)
     var_args.pop("version")
     # print(f"transfer_object args {var_args}")
-    result = wallet.transfer_object(**var_args)
+    result = client.transfer_object_txn(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def transfer_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def transfer_sui(client: SuiClient, args: argparse.Namespace) -> None:
     """Transfer gas object."""
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     var_args = vars(args)
     var_args.pop("version")
     # print(f"transfer_sui args {var_args}")
-    result = wallet.transfer_sui(**var_args)
+    result = client.transfer_sui_txn(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def merge_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def merge_coin(client: SuiClient, args: argparse.Namespace) -> None:
     """Merge two coins together."""
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     # print(args)
     var_args = vars(args)
     var_args.pop("version")
-    result = wallet.merge_coin(**var_args)
+    result = client.merge_coin_txn(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def split_coin(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def split_coin(client: SuiClient, args: argparse.Namespace) -> None:
     """Split coin into amounts."""
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     # print(args)
     var_args = vars(args)
     var_args.pop("version")
-    result = wallet.split_coin(**var_args)
+    result = client.split_coin_txn(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def split_coin_equally(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def split_coin_equally(client: SuiClient, args: argparse.Namespace) -> None:
     """Split coin equally across counts."""
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     # print(args)
     var_args = vars(args)
     var_args.pop("version")
-    result = wallet.split_coin_equally(**var_args)
+    result = client.split_coin_equally_txn(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def sui_pay(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_pay(client: SuiClient, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     var_args = vars(args)
     var_args.pop("version")
-    result = wallet.pay_transfer(**var_args)
+    result = client.pay_txn(**var_args)
 
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
@@ -275,12 +292,12 @@ def sui_pay(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def sui_pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_pay_sui(client: SuiClient, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     var_args = vars(args)
     var_args.pop("version")
-    result = wallet.pay_sui_transfer(**var_args)
+    result = client.pay_sui_txn(**var_args)
 
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
@@ -288,39 +305,39 @@ def sui_pay_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def sui_payall_sui(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_payall_sui(client: SuiClient, args: argparse.Namespace) -> None:
     """Payment of all of a one whole SUI coin to a recipient."""
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     var_args = vars(args)
     var_args.pop("version")
-    result = wallet.pay_all_sui_transfer(**var_args)
+    result = client.pay_allsui_txn(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def move_call(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def move_call(client: SuiClient, args: argparse.Namespace) -> None:
     """Invoke a Sui move smart contract function."""
-    args.signer = args.signer if args.signer else wallet.current_address
+    args.signer = args.signer if args.signer else client.current_address
     var_args = vars(args)
     var_args.pop("version")
-    result = wallet.move_call(**var_args)
+    result = client.move_call_txn(**var_args)
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def publish(client: SuiClient, args: argparse.Namespace) -> None:
     """Publish a sui package."""
     # print(args)
-    args.sender = args.sender if args.sender else wallet.current_address
+    args.sender = args.sender if args.sender else client.current_address
     try:
         args.compiled_modules = build_b64_modules(args.compiled_modules)
         var_args = vars(args)
         var_args.pop("version")
-        result = wallet.publish_package(**var_args)
+        result = client.publish_package_txn(**var_args)
         if result.is_ok():
             print(result.result_data.to_json(indent=2))
         else:
@@ -329,9 +346,9 @@ def publish(wallet: SuiWallet, args: argparse.Namespace) -> None:
         print(exc.args, file=sys.stderr)
 
 
-def committee(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def committee(client: SuiClient, args: argparse.Namespace) -> None:
     """Committee info request handler."""
-    result = wallet.get_committee_info(args.epoch)
+    result = client.execute(GetCommittee(args.epoch))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
@@ -349,114 +366,114 @@ def _convert_event_query(var_args: argparse.Namespace, query: Union[SuiString, S
     return var_args
 
 
-def events_all(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def events_all(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler for all events."""
     var_args = vars(args)
-    result = wallet.get_events(**_convert_event_query(var_args, SuiString("All")))
+    result = client.get_events(**_convert_event_query(var_args, SuiString("All")))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def events_module(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def events_module(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler for module events."""
     var_args = vars(args)
     query = MoveModuleEventQuery(args.module, args.package.value)
     var_args.pop("package")
     var_args.pop("module")
-    result = wallet.get_events(**_convert_event_query(var_args, query))
+    result = client.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def events_struct(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def events_struct(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = MoveEventQuery(args.struct_name)
     var_args.pop("struct_name")
-    result = wallet.get_events(**_convert_event_query(var_args, query))
+    result = client.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def events_object(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def events_object(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = ObjectEventQuery(args.object)
     var_args.pop("object")
-    result = wallet.get_events(**_convert_event_query(var_args, query))
+    result = client.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def events_recipient(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def events_recipient(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = RecipientEventQuery(args.recipient)
     var_args.pop("recipient")
-    result = wallet.get_events(**_convert_event_query(var_args, query))
+    result = client.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def events_sender(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def events_sender(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = SenderEventQuery(args.sender)
     var_args.pop("sender")
-    result = wallet.get_events(**_convert_event_query(var_args, query))
+    result = client.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def events_time(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def events_time(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = TimeRangeEventQuery(args.start_time, args.end_time)
     var_args.pop("start_time")
     var_args.pop("end_time")
-    result = wallet.get_events(**_convert_event_query(var_args, query))
+    result = client.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def events_tx(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def events_tx(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = TransactionEventQuery(args.digest)
     var_args.pop("digest")
-    result = wallet.get_events(**_convert_event_query(var_args, query))
+    result = client.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def txn_count(wallet: SuiWallet, _args: argparse.Namespace) -> None:
+def txn_count(client: SuiClient, _args: argparse.Namespace) -> None:
     """Transaction information request handler."""
-    result = wallet.get_total_tx_count()
+    result = client.execute(GetTotalTxCount())
     if result.is_ok():
         print(result.result_data)
     else:
         print(f"Error: {result.result_string}")
 
 
-def txn_txn(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def txn_txn(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
-    result = wallet.get_transaction(args.digest)
+    result = client.execute(GetTx(args.digest))
     if result.is_ok():
         print(json.dumps(result.result_data, indent=2))
     else:
@@ -473,24 +490,24 @@ def _convert_txns_query(var_args: argparse.Namespace, query: Union[SuiString, Su
     return var_args
 
 
-def txns_all(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def txns_all(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     var_args = vars(args)
-    result = wallet.get_txns(**_convert_txns_query(var_args, SuiString("All")))
+    result = client.get_txns(**_convert_txns_query(var_args, SuiString("All")))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def txns_movefunc(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def txns_movefunc(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     var_args = vars(args)
     query = GetTxsMoveFunction(args.package.value, args.function, args.module)
     var_args.pop("package")
     var_args.pop("function")
     var_args.pop("module")
-    result = wallet.get_txns(**_convert_txns_query(var_args, query))
+    result = client.get_txns(**_convert_txns_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
@@ -498,57 +515,57 @@ def txns_movefunc(wallet: SuiWallet, args: argparse.Namespace) -> None:
     #
 
 
-def txns_input(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def txns_input(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     var_args = vars(args)
     query = GetTxsInputObject(var_args["input"].value)
     var_args.pop("input")
-    result = wallet.get_txns(**_convert_txns_query(var_args, query))
+    result = client.get_txns(**_convert_txns_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def txns_mutate(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def txns_mutate(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     var_args = vars(args)
     query = GetTxsMutateObject(var_args["mutated"].value)
     var_args.pop("mutated")
-    result = wallet.get_txns(**_convert_txns_query(var_args, query))
+    result = client.get_txns(**_convert_txns_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def txns_from(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def txns_from(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     var_args = vars(args)
     query = GetTxsFromAddress(args.froms.value.value)
     var_args.pop("froms")
-    result = wallet.get_txns(**_convert_txns_query(var_args, query))
+    result = client.get_txns(**_convert_txns_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def txns_to(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def txns_to(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     var_args = vars(args)
     query = GetTxsToAddress(args.to.value.value)
     var_args.pop("to")
-    result = wallet.get_txns(**_convert_txns_query(var_args, query))
+    result = client.get_txns(**_convert_txns_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
 
-def sui_faucet(wallet: SuiWallet, args: argparse.Namespace) -> None:
+def sui_faucet(client: SuiClient, args: argparse.Namespace) -> None:
     """Get more gas from SUI faucet."""
-    result = wallet.faucet(args.address)
+    result = client.get_gas_from_faucet(args.address)
     if result.is_ok():
         print(f"Faucet Result: {result.result_data.to_json(indent=2)}.")
     else:

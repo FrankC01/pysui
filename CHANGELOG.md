@@ -16,9 +16,10 @@ BIG BREAKING CHANGES!
 - Refactored `sui.sui_types` as a package
 - Refactored `sui.sui_builders` as a package
 - Refactored `sui.sui_txresults` as a package
-- Refactored `sui.sui_rpc` as a package
+- Refactored `sui.sui_rpc` as a package (`sui.sui_clients`)
 
 ### Removed
+- faux_wallet.py in samples package
 
 ## [0.5.1] - 2022-12-20
 

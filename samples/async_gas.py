@@ -39,7 +39,7 @@ from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import ObjectInfo, SuiGas, SuiGasDescriptor
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_rpc import SuiAsynchClient
+from pysui.sui.sui_clients.async_client import SuiAsynchClient
 
 
 def object_stats(objs: list[ObjectInfo]) -> None:
