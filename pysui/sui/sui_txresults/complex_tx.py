@@ -392,6 +392,23 @@ class EventEnvelope(DataClassJsonMixin):
 
 
 @dataclass
+class SubscribedEventParms(SuiTxReturnType, DataClassJsonMixin):
+    """."""
+
+    subscription: int
+    result: EventEnvelope
+
+
+@dataclass
+class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
+    """."""
+
+    jsonrpc: str
+    method: str
+    params: SubscribedEventParms
+
+
+@dataclass
 class EventQueryEnvelope(DataClassJsonMixin):
     """From sui_getEvents."""
 

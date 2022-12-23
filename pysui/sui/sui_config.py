@@ -25,6 +25,7 @@ from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
     DEFAULT_DEVNET_PATH_STRING,
     DEVNET_FAUCET_URL,
+    DEVNET_SOCKET_URL,
     LOCALNET_ENVIRONMENT_KEY,
     LOCALNET_FAUCET_URL,
 )
@@ -49,9 +50,11 @@ class SuiConfig(ClientConfiguration):
         self._current_env = env
         if env == LOCALNET_ENVIRONMENT_KEY:
             self._faucet_url = LOCALNET_FAUCET_URL
+            self._socket_url = None
 
         else:
             self._faucet_url = DEVNET_FAUCET_URL
+            self._socket_url = DEVNET_SOCKET_URL
 
         if os.path.exists(keystore_file):
             self._keypairs = {}
@@ -165,6 +168,11 @@ class SuiConfig(ClientConfiguration):
     def faucet_url(self) -> str:
         """Return faucet url."""
         return self._faucet_url
+
+    @property
+    def socket_url(self) -> str:
+        """Return socket url."""
+        return self._socket_url
 
     @property
     def active_address(self) -> SuiAddress:

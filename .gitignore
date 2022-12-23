@@ -39,6 +39,9 @@ modules.rst
 pysui.abstracts.rst
 pysui.rst
 pysui.sui.rst
+pysui.sui.sui_builders.rst
+pysui.sui.sui_txresults.rst
+pysui.sui.sui_types.rst
 
 # Misc cruft
 *.txt

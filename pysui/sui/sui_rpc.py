@@ -728,6 +728,10 @@ class SuiAsynchClient(_ClientMixin):
         builder = GetRpcAPI()
 
         with httpx.Client(http2=True) as client:
+            # jblock = self._generate_data_block(builder.data_dict, builder.method, [])
+            # jout = json.dumps(jblock, indent=2)
+            # print(f"{jout}")
+
             result = client.post(
                 self.config.rpc_url,
                 headers=builder.header,

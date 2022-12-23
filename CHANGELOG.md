@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Changed
+BIG BREAKING CHANGES!
+
+- Refactored `sui.sui_types` as a package
+- Refactored `sui.sui_builders` as a package
+- Refactored `sui.sui_txresults` as a package
+- Refactored `sui.sui_rpc` as a package
 
 ### Removed
 
