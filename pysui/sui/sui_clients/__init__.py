@@ -14,4 +14,3 @@
 """Sui Client package."""
 
 from pysui.sui.sui_clients.common import SuiRpcResult
-from pysui.sui.sui_clients.sync_client import SuiClient

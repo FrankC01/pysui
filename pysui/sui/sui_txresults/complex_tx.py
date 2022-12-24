@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
 from pysui.sui.sui_txresults.common import CoinRef, GenericOwnerRef, GenericRef, PackageRef, SuiTxReturnType
-from sui.sui_types.collections import EventID
+from pysui.sui.sui_types.collections import EventID
 
 
 @dataclass
@@ -166,8 +166,13 @@ class NewObjectEvent(SuiTxReturnType, DataClassJsonMixin):
         if isinstance(self.recipient, str):
             if self.recipient == "Immutable":
                 self.recipient = self.recipient
+            else:
+                raise KeyError(f"{self.recipient}")
         else:
-            self.recipient = self.recipient["AddressOwner"]
+            if "AddressOwner" in self.recipient:
+                self.recipient = self.recipient["AddressOwner"]
+            elif "ObjectOwner" in self.recipient:
+                self.recipient = self.recipient["ObjectOwner"]
 
 
 @dataclass
@@ -187,7 +192,20 @@ class TransferObjectEvent(SuiTxReturnType, DataClassJsonMixin):
 
         Convert various to SuiTypes
         """
-        self.recipient = self.recipient["AddressOwner"]
+        if isinstance(self.recipient, str):
+            if self.recipient == "Immutable":
+                self.recipient = self.recipient
+        else:
+            if isinstance(self.recipient, str):
+                if self.recipient == "Immutable":
+                    self.recipient = self.recipient
+                else:
+                    raise KeyError(f"{self.recipient}")
+            else:
+                if "AddressOwner" in self.recipient:
+                    self.recipient = self.recipient["AddressOwner"]
+                elif "ObjectOwner" in self.recipient:
+                    self.recipient = self.recipient["ObjectOwner"]
 
 
 @dataclass
@@ -401,6 +419,15 @@ class SubscribedEventParms(SuiTxReturnType, DataClassJsonMixin):
 
 @dataclass
 class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
+    """."""
+
+    jsonrpc: str
+    method: str
+    params: SubscribedEventParms
+
+
+@dataclass
+class SubscribedTransaction(SuiTxReturnType, DataClassJsonMixin):
     """."""
 
     jsonrpc: str

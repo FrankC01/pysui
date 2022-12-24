@@ -19,7 +19,7 @@ from pysui.sui.sui_types.scalars import ObjectID, SuiString
 from pysui.sui.sui_types.address import SuiAddress, valid_sui_address
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder
-from pysui.sui.sui_txresults.complex_tx import SubscribedEvent
+from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, SubscribedTransaction
 
 
 class _EventFilterType:
@@ -109,9 +109,9 @@ class EventTypeFilter(_EventFilterType, SuiMap):
     def __init__(self, event_name: Union[str, SuiString]):
         """Initialize filter parameter."""
         if isinstance(event_name, str) and event_name in self._event_type_set:
-            super().__init__("MoveEventType", event_name)
+            super().__init__("EventType", event_name)
         elif isinstance(event_name, SuiString) and event_name.value in self._event_type_set:
-            super().__init__("MoveEventType", event_name.value)
+            super().__init__("EventType", event_name.value)
         else:
             raise AttributeError(f"Invalid argument {event_name}. Expect python str or SuiString")
 
@@ -129,7 +129,7 @@ class ObjectFilter(_EventFilterType, SuiMap):
             raise AttributeError(f"Invalid argument {object_id}. Expect python str or ObjectID")
 
 
-class SubScribeEvent(_NativeTransactionBuilder):
+class SubscribeEvent(_NativeTransactionBuilder):
     """Parameter argument for sui_subscribeEvent."""
 
     def __init__(
@@ -138,16 +138,35 @@ class SubScribeEvent(_NativeTransactionBuilder):
         event_filter: _EventFilterType = None,
     ) -> None:
         """."""
-        if isinstance(event_filter, _EventFilterType):
-            super().__init__("sui_subscribeEvent", handler_cls=SubscribedEvent, handler_func="from_dict")
-            self.filter = event_filter
-        else:
-            raise AttributeError(f"Invalid argument {event_filter}. Expected subclass of _EventFilterType")
+        super().__init__("sui_subscribeEvent", handler_cls=SubscribedEvent, handler_func="from_dict")
+        if event_filter:
+            if isinstance(event_filter, _EventFilterType):
 
-    def set_event_filter(self, event_filter: SuiMap) -> "SubScribeEvent":
+                self.filter = event_filter
+            else:
+                raise AttributeError(f"Invalid argument {event_filter}. Expected subclass of _EventFilterType")
+        else:
+            self.filter = SuiMap("All", [])
+
+    def set_event_filter(self, event_filter: SuiMap) -> "SubscribeEvent":
         """."""
         self.filter = event_filter
         return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """."""
+        return [self.filter]
+
+
+class SubscribeTransaction(_NativeTransactionBuilder):
+    """Parameter argument for sui_subscribeTransaction."""
+
+    def __init__(
+        self,
+    ) -> None:
+        """."""
+        super().__init__("sui_subscribeTransaction", handler_cls=SubscribedTransaction, handler_func="from_dict")
+        self.filter = SuiString("Any")
 
     def _collect_parameters(self) -> list[SuiBaseType]:
         """."""

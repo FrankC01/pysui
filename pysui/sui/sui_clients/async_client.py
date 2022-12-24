@@ -25,7 +25,6 @@ from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_builders.base_builder import SuiBaseBuilder
 from pysui.sui.sui_builders.get_builders import (
     GetPastObject,
-    GetRpcAPI,
     GetObjectsOwnedByAddress,
     GetObject,
     GetPackage,
@@ -47,11 +46,9 @@ from pysui.sui.sui_builders.exec_builders import (
     MoveCall,
     Publish,
 )
-from pysui.sui.sui_apidesc import build_api_descriptors
-from pysui.sui.sui_txn_validator import validate_api
 
 
-class SuiAsynchClient(_ClientMixin):
+class SuiClient(_ClientMixin):
     """Sui Asyncrhonous Client."""
 
     def __init__(self, config: SuiConfig) -> None:
@@ -62,34 +59,19 @@ class SuiAsynchClient(_ClientMixin):
         self._schema_dict = {}
         self._build_api_descriptors()
 
-    def _build_api_descriptors(self) -> None:
-        """Fetch RPC method descrptors."""
-        builder = GetRpcAPI()
-
-        with httpx.Client(http2=True) as client:
-            # jblock = self._generate_data_block(builder.data_dict, builder.method, [])
-            # jout = json.dumps(jblock, indent=2)
-            # print(f"{jout}")
-
-            result = client.post(
-                self.config.rpc_url,
-                headers=builder.header,
-                json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
-            )
-        self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(result.json())
-        self.rpc_version_support()
+    @property
+    def is_synchronous(self) -> bool:
+        """Return whether client is syncrhonous (True) or not (False)."""
+        return False
 
     async def _execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
-        parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
-        jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
-        # jout = json.dumps(jblock, indent=2)
-        # print(f"{jout}")
+        # Validate builder and send request
         try:
             result = await self._client.post(
                 self.config.rpc_url,
                 headers=builder.header,
-                json=jblock,
+                json=self._validate_builder(builder),
             )
             return SuiRpcResult(
                 True,
@@ -174,10 +156,6 @@ class SuiAsynchClient(_ClientMixin):
         if result.is_ok():
             result = await self.sign_and_submit(*result.result_data)
         return result
-
-    # Create a subscription event
-    async def start_subscription(self):
-        """."""
 
     # Build and execute convenience methods
 

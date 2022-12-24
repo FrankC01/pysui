@@ -44,7 +44,7 @@ from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import ObjectInfo, SuiGas, SuiGasDescriptor
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients.async_client import SuiAsynchClient
+from pysui.sui.sui_clients.async_client import SuiClient
 
 
 def object_stats(objs: list[ObjectInfo]) -> None:
@@ -78,7 +78,7 @@ def print_gas(gasses: list[SuiGas]) -> int:
     return total
 
 
-async def get_all_gas(client: SuiAsynchClient) -> dict[SuiAddress, list[SuiGas]]:
+async def get_all_gas(client: SuiClient) -> dict[SuiAddress, list[SuiGas]]:
     """get_all_gas Gets all SuiGas for each address in configuration.
 
     :param client: Asynchronous Sui Client
@@ -102,7 +102,7 @@ async def get_all_gas(client: SuiAsynchClient) -> dict[SuiAddress, list[SuiGas]]
     return return_map
 
 
-async def main_run(client: SuiAsynchClient):
+async def main_run(client: SuiClient):
     """main Asynchronous entry point."""
     config: SuiConfig = client.config
     owned_objects = asyncio.create_task(client.get_address_object_descriptors())
@@ -122,7 +122,7 @@ async def main_run(client: SuiAsynchClient):
 
 def main():
     """Setup asynch loop and run."""
-    arpc = SuiAsynchClient(SuiConfig.default())
+    arpc = SuiClient(SuiConfig.default())
     asyncio.get_event_loop().run_until_complete(main_run(arpc))
 
 

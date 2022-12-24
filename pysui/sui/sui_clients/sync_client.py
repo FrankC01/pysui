@@ -25,7 +25,6 @@ from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_builders.base_builder import SuiBaseBuilder
 from pysui.sui.sui_builders.get_builders import (
     GetPastObject,
-    GetRpcAPI,
     GetObjectsOwnedByAddress,
     GetObject,
     GetPackage,
@@ -47,9 +46,6 @@ from pysui.sui.sui_builders.exec_builders import (
     MoveCall,
     Publish,
 )
-from pysui.sui.sui_apidesc import build_api_descriptors
-from pysui.sui.sui_txn_validator import validate_api
-from pysui.sui.sui_excepts import SuiRpcApiNotAvailable
 
 
 class SuiClient(_ClientMixin):
@@ -61,31 +57,14 @@ class SuiClient(_ClientMixin):
         self._client = httpx.Client(http2=True)
         self._build_api_descriptors()
 
-    def _build_api_descriptors(self):
-        """Fetch RPC method descrptors."""
-        builder = GetRpcAPI()
-        try:
-            result = self._client.post(
-                self.config.rpc_url,
-                headers=builder.header,
-                json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
-            ).json()
-            self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(result)
-            self.rpc_version_support()
-        except JSONDecodeError as jexc:
-            raise jexc
-        except httpx.ReadTimeout as hexc:
-            raise hexc
+    @property
+    def is_synchronous(self) -> bool:
+        """Return whether client is syncrhonous (True) or not (False)."""
+        return True
 
     def _execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
-        # Verify we have SUI RPC API for this
-        if not builder.method in self._rpc_api:
-            raise SuiRpcApiNotAvailable(builder.method)
-        parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
-        jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
-        # jout = json.dumps(jblock, indent=2)
-        # print(f"{jout}")
+        # Validate builder and send request
         try:
             return SuiRpcResult(
                 True,
@@ -93,7 +72,7 @@ class SuiClient(_ClientMixin):
                 self._client.post(
                     self.config.rpc_url,
                     headers=builder.header,
-                    json=jblock,
+                    json=self._validate_builder(builder),
                     timeout=15,
                 ).json(),
             )

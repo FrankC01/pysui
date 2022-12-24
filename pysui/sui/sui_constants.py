@@ -23,7 +23,7 @@ DEVNET_ENVIRONMENT_KEY: str = "devnet"
 """Devnet client configuration environment alias."""
 DEVNET_FAUCET_URL: str = "http://faucet.devnet.sui.io/gas"
 """Devnet client faucet url."""
-DEVNET_SOCKET_URL: str = "wss://faucet.devnet.sui.io:443"
+DEVNET_SOCKET_URL: str = "wss://fullnode.devnet.sui.io:443"
 """Devnet socket url."""
 
 LOCALNET_ENVIRONMENT_KEY: str = "localnet"

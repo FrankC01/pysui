@@ -13,11 +13,17 @@
 
 """Sui Client common classes module."""
 
-from typing import Any
+from abc import abstractmethod
+from typing import Any, Union
 from pkg_resources import packaging
+import httpx
 from pysui.abstracts import RpcResult, Provider
-from pysui.sui.sui_builders.base_builder import SuiRequestType
+from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
+from pysui.sui.sui_builders.get_builders import GetRpcAPI
 from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_apidesc import build_api_descriptors
+from pysui.sui.sui_txn_validator import validate_api
+from pysui.sui.sui_excepts import SuiRpcApiNotAvailable
 
 
 class SuiRpcResult(RpcResult):
@@ -67,16 +73,54 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: int = 17
+    _RPC_MINIMAL_VERSION: int = 18
 
-    def __init__(self, config: SuiConfig) -> None:
+    def __init__(self, config: SuiConfig, request_type: SuiRequestType = SuiRequestType.WAITFORLOCALEXECUTION) -> None:
         """Client initializer."""
         super().__init__(config)
         self._client = None
-        self._rpc_api = {}
-        self._schema_dict = {}
+        self._rpc_api: dict = {}
+        self._schema_dict: dict = {}
         self._rpc_version: str = None
-        self._request_type = SuiRequestType.WAITFORLOCALEXECUTION
+        self._request_type: SuiRequestType = request_type
+
+    def _build_api_descriptors(self) -> None:
+        """Fetch RPC method descrptors."""
+        builder = GetRpcAPI()
+
+        with httpx.Client(http2=True) as client:
+            # jblock = self._generate_data_block(builder.data_dict, builder.method, [])
+            # print(f"{json.dumps(jblock, indent=2)}")
+
+            result = client.post(
+                self.config.rpc_url,
+                headers=builder.header,
+                json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
+            )
+        self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(result.json())
+        self.rpc_version_support()
+
+    def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
+        """Build the json data block for Rpc."""
+        data_block["method"] = method
+        data_block["params"] = params
+        return data_block
+
+    def _validate_builder(self, builder: SuiBaseBuilder) -> Union[dict, SuiRpcApiNotAvailable]:
+        """."""
+        if not builder.method in self._rpc_api:
+            raise SuiRpcApiNotAvailable(builder.method)
+        parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
+        jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
+        # jout = json.dumps(jblock, indent=2)
+        # print(f"{jout}")
+
+        return jblock
+
+    @property
+    @abstractmethod
+    def is_synchronous(self) -> bool:
+        """Return whether client is syncrhonous (True) or not (False)."""
 
     @property
     def rpc_version(self) -> str:
@@ -122,9 +166,3 @@ class _ClientMixin(Provider):
         if rpa >= tpa:
             return True
         return False
-
-    def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
-        """Build the json data block for Rpc."""
-        data_block["method"] = method
-        data_block["params"] = params
-        return data_block

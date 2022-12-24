@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unpublished]
 
 ### Added
+- New Provider: Subscribe in `sui.sui_clients.subscribe.py`
 
 ### Fixed
 
@@ -17,6 +18,7 @@ BIG BREAKING CHANGES!
 - Refactored `sui.sui_builders` as a package
 - Refactored `sui.sui_txresults` as a package
 - Refactored `sui.sui_rpc` as a package (`sui.sui_clients`)
+- Renamed `SuiAsynchClient` to `SuiClient`
 
 ### Removed
 - faux_wallet.py in samples package
