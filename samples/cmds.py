@@ -332,7 +332,7 @@ def move_call(client: SuiClient, args: argparse.Namespace) -> None:
 def publish(client: SuiClient, args: argparse.Namespace) -> None:
     """Publish a sui package."""
     # print(args)
-    args.sender = args.sender if args.sender else client.current_address
+    args.sender = args.sender if args.sender else client.config.active_address
     try:
         args.compiled_modules = build_b64_modules(args.compiled_modules)
         var_args = vars(args)

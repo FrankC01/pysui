@@ -12,7 +12,7 @@
 # -*- coding: utf-8 -*-
 
 
-"""Argument parsing."""
+"""Argument parsing for samples/wallet."""
 import argparse
 from cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
 from pysui.sui.sui_types.scalars import SuiString, SuiNullType

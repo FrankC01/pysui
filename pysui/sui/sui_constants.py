@@ -30,6 +30,8 @@ LOCALNET_ENVIRONMENT_KEY: str = "localnet"
 """Localnet client configuration environment alias."""
 LOCALNET_FAUCET_URL: str = "http://127.0.0.1:9123/gas"
 """Localnet client faucet url."""
+LOCALNET_SOCKET_URL: str = "ws://127.0.0.1:9000"
+"""Localnet socket url."""
 
 # Address lengths
 SUI_HEX_ADDRESS_STRING_LEN: int = 42

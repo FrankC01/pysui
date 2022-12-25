@@ -15,7 +15,7 @@ import pysui
 
 
 project = "pysui"
-copyright = "2022, Frank V. Castellucci"
+copyright = "Frank V. Castellucci"
 author = "Frank V. Castellucci"
 version = pysui.version.__version__
 release = version
@@ -40,9 +40,17 @@ html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "display_version": True,
     "sticky_navigation": False,
-    "navigation_depth": 5,
+    "navigation_depth": 9,
     # "includehidden": False,
     # "titles_only": False,
+}
+
+autodoc_default_options = {
+    "members": True,
+    "member-order": "bysource",
+    "special-members": "__init__",
+    "undoc-members": True,
+    "exclude-members": "__weakref__",
 }
 
 # html_static_path = ["_static"]

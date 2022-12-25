@@ -28,6 +28,7 @@ from pysui.sui.sui_constants import (
     DEVNET_SOCKET_URL,
     LOCALNET_ENVIRONMENT_KEY,
     LOCALNET_FAUCET_URL,
+    LOCALNET_SOCKET_URL,
 )
 from pysui.sui.sui_crypto import SuiAddress, keypair_from_keystring, create_new_address
 from pysui.sui.sui_excepts import (
@@ -50,12 +51,13 @@ class SuiConfig(ClientConfiguration):
         self._current_env = env
         if env == LOCALNET_ENVIRONMENT_KEY:
             self._faucet_url = LOCALNET_FAUCET_URL
-            self._socket_url = None
+            self._socket_url = LOCALNET_SOCKET_URL
+            self._local_running = True
 
         else:
             self._faucet_url = DEVNET_FAUCET_URL
             self._socket_url = DEVNET_SOCKET_URL
-
+            self._local_running = False
         if os.path.exists(keystore_file):
             self._keypairs = {}
             self._addresses = {}
@@ -163,6 +165,11 @@ class SuiConfig(ClientConfiguration):
     def rpc_url(self) -> str:
         """Return the current URL."""
         return self._current_url
+
+    @property
+    def local_config(self) -> bool:
+        """Return the mode we are running in."""
+        return self._local_running
 
     @property
     def faucet_url(self) -> str:
