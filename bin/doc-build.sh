@@ -12,6 +12,10 @@ then
     rm -f -- doc/source/pysui.rst
     rm -f -- doc/source/pysui.abstracts.rst
     rm -f -- doc/source/pysui.sui.rst
+    rm -f -- doc/source/pysui.sui.sui_txresults.rst
+    rm -f -- doc/source/pysui.sui.sui_builders.rst
+    rm -f -- doc/source/pysui.sui.sui_clients.rst
+    rm -f -- doc/source/pysui.sui.sui_types.rst
     # Generate rst files
     echo "Generating rst files"
     sphinx-apidoc -o doc/source pysui/

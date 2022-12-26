@@ -14,6 +14,7 @@ sui.log*
 
 # Sandboxing
 temp.py
+temp_sub.py
 
 # pytest cruft
 .pytest_cache
@@ -39,6 +40,10 @@ modules.rst
 pysui.abstracts.rst
 pysui.rst
 pysui.sui.rst
+pysui.sui.sui_builders.rst
+pysui.sui.sui_txresults.rst
+pysui.sui.sui_clients.rst
+pysui.sui.sui_types.rst
 
 # Misc cruft
 *.txt

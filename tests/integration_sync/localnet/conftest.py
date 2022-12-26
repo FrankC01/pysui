@@ -11,5 +11,8 @@
 
 # -*- coding: utf-8 -*-
 
-"""Pysui Version."""
-__version__ = "0.6.0"
+"""Fixtures for testing."""
+
+import pytest
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_clients.sync_client import SuiClient

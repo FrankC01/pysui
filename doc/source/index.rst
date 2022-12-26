@@ -15,7 +15,7 @@ Welcome to pysui's documentation!
 `pysui` is the first unofficial SUI Pyton Client SDK!
 
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 9
    :caption: Contents:
 
    intro

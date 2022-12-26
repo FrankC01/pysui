@@ -13,14 +13,14 @@
 
 """Transaction result tests."""
 
-from pysui.sui.sui_types import (
+from pysui.sui.sui_txresults.package_meta import SuiMovePackage
+from pysui.sui.sui_txresults.single_tx import (
     FaucetGasRequest,
-    TxEffectResult,
-    SuiMovePackage,
     ObjectInfo,
     ObjectRead,
-    EventQueryEnvelope,
 )
+
+from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TxEffectResult, SubscribedTransaction
 
 
 def test_sui_coin_descriptor(sui_coin_descriptor):
@@ -134,3 +134,9 @@ def test_getfaucetgas_pass(get_gas_result):
     """Valid result."""
     result = FaucetGasRequest.from_dict(get_gas_result)
     assert result.error is None
+
+
+def test_subtx_pass(get_txevent_result):
+    """Valid result."""
+    result = SubscribedTransaction.from_dict(get_txevent_result)
+    assert result.succeeded

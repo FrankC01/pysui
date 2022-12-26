@@ -26,11 +26,11 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui.sui import SuiConfig
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_clients.sync_client import SuiClient
 
 from samples.cmd_args import build_parser
 from samples.cmds import SUI_CMD_DISPATCH
-from samples.faux_wallet import SuiWallet
 
 
 def main():
@@ -52,7 +52,7 @@ def main():
         else:
             cfg = SuiConfig.default()
         print(f"Using configuration from {cfg.configuration_path}")
-        cmd_call(SuiWallet(cfg), parsed)
+        cmd_call(SuiClient(cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")
 

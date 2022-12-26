@@ -11,5 +11,8 @@
 
 # -*- coding: utf-8 -*-
 
-"""Pysui Version."""
-__version__ = "0.6.0"
+"""Sui Types package."""
+
+from pysui.sui.sui_types.address import *
+from pysui.sui.sui_types.scalars import *
+from pysui.sui.sui_types.collections import *

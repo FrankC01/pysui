@@ -12,10 +12,10 @@
 # -*- coding: utf-8 -*-
 
 
-"""Argument parsing."""
+"""Argument parsing for samples/wallet."""
 import argparse
 from cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
-from pysui.sui.sui_types import SuiString, SuiNullType
+from pysui.sui.sui_types.scalars import SuiString, SuiNullType
 
 
 def _build_read_cmds(subparser) -> None:
@@ -481,7 +481,7 @@ def _build_extended_read_commands(subparser) -> None:
             "-l",
             "--limit",
             required=False,
-            default=SuiNullType(None),
+            default=SuiNullType(),
             help="limit results by page",
             type=check_positive,
         )
@@ -491,7 +491,7 @@ def _build_extended_read_commands(subparser) -> None:
             required=False,
             help="optional paging cursor, entered as n:n (e.g. 10:0)",
             type=str,
-            default=SuiNullType(None),
+            default=SuiNullType(),
         )
         eparser.add_argument(
             "-d",
