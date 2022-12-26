@@ -19,7 +19,7 @@ from typing import Union
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString, SuiTransactionDigest
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_rpc import SuiClient
+from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_builders.get_builders import GetTxAuthSignatures
 from pysui.sui.sui_builders.exec_builders import (
     Publish,

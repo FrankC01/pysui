@@ -278,6 +278,7 @@ class SubscribeTransaction(_NativeTransactionBuilder):
     ) -> None:
         """."""
         super().__init__("sui_subscribeTransaction", handler_cls=SubscribedTransaction, handler_func="from_dict")
+        # self.filter = AnyFilter(filters=[])
         self.filter = SuiString("Any")
 
     def _collect_parameters(self) -> list[SuiBaseType]:

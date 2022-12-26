@@ -25,7 +25,9 @@ from pysui.sui.sui_txresults import (
     SuiGas,
 )
 from pysui.sui.sui_builders.get_builders import GetCoins, GetCommittee, GetObject, GetPastObject, GetCoinTypeBalance
-from pysui.sui.sui_rpc import SuiClient, SuiRpcResult, SuiConfig
+from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui.sui.sui_clients.common import SuiRpcResult
+from pysui.sui.sui_config import SuiConfig
 
 
 def get_gas(client: SuiClient, for_address: SuiAddress = None) -> list[SuiGas]:

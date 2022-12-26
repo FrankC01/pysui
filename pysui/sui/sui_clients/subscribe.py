@@ -30,6 +30,29 @@ from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, SubscribedTransaction
 
 
+class EventData:
+    """Container for subscription data returned from subscription handler."""
+
+    def __init__(self, tx_name: str):
+        """Initialie container."""
+        self._name = tx_name
+        self._collected: dict[int, Any] = {}
+
+    def add_entry(self, event_index: int, data: Any) -> None:
+        """Add a data entry to container."""
+        self._collected[event_index] = data
+
+    @property
+    def collected(self) -> dict[int, Any]:
+        """Get the data collection dictionary."""
+        return self._collected
+
+    @property
+    def name(self) -> str:
+        """Get the name of the task associated to this container and it's content."""
+        return self._name
+
+
 class SuiClient(Provider):
     """A provider for managing subscriptions of Events or Transactions."""
 
@@ -50,12 +73,15 @@ class SuiClient(Provider):
 
     async def _subscription_drive(
         self,
+        payload_msg: dict,
         builder: Union[SubscribedEvent, SubscribeTransaction],
         websock: WebSocketClientProtocol,
-        handler: Callable[[Union[SubscribedEvent, SubscribedEvent], int], Any],
+        handler: Callable[[Union[SubscribedEvent, SubscribedTransaction], int], Any],
     ) -> SuiRpcResult:
         """_subscription_drive Iterate receiving events and calling handler function.
 
+        :parm payload_msg: A copy of a subscription template RPC call
+        :type payload_msg: dict
         :param builder: The subscription builder submitted for creating subscription filters.
         :type builder: Union[SubscribedEvent, SubscribeTransaction]
         :param websock: The live websocket connection
@@ -65,17 +91,18 @@ class SuiClient(Provider):
         :return: _description_
         :rtype: SuiRpcResult
         """
-        _txsub = self._PAYLOAD_TEMPLATE.copy()
-        _txsub["method"] = builder.method
+        payload_msg["method"] = builder.method
         parm_arg = builder.params[0]
+
         if isinstance(parm_arg, SuiString):
-            _txsub["params"].append(parm_arg.value)
+            payload_msg["params"] = [parm_arg.value]
         elif isinstance(parm_arg, SuiMap):
-            _txsub["params"].append(parm_arg.filter)
+            payload_msg["params"] = [parm_arg.filter]
         else:
+            print(f"Bad parm args {parm_arg}")
             return SuiRpcResult(False, f"{parm_arg} not an accepted type")
-        print(_txsub)
-        await websock.send(json.dumps(_txsub))
+
+        await websock.send(json.dumps(payload_msg))
         # First we get a subscription ID
         response = json.loads(await websock.recv())
         if "error" in response:
@@ -85,7 +112,7 @@ class SuiClient(Provider):
         print(f"Subscription ID = {subscription_id}")
         keep_running = True
         event_counter = 0
-        result_data: dict[int, Any] = {}
+        result_data: EventData = EventData(asyncio.current_task().get_name())
         try:
             while keep_running:
                 # Get an event
@@ -99,8 +126,9 @@ class SuiClient(Provider):
                     # print(f"from ... {the_event}")
                     return SuiRpcResult(False, f"KeyError on {kex}", the_event)
                 if keep_running:
-                    result_data[event_counter] = keep_running
-                    event_counter += 1
+                    if not isinstance(keep_running, bool):
+                        result_data.add_entry(event_counter, keep_running)
+                        event_counter += 1
         except asyncio.CancelledError:
             return SuiRpcResult(True, "Cancelled", result_data)
         except Exception as exc:
@@ -127,7 +155,7 @@ class SuiClient(Provider):
                     self.config.socket_url,
                     extra_headers=self._ADDITIONL_HEADER,
                 ) as websock:
-                    return await self._subscription_drive(builder, websock, handler)
+                    return await self._subscription_drive(self._PAYLOAD_TEMPLATE.copy(), builder, websock, handler)
             else:
                 # Filter the warning about deprecated SSL context
                 warnings.simplefilter("ignore")
@@ -136,7 +164,8 @@ class SuiClient(Provider):
                     extra_headers=self._ADDITIONL_HEADER,
                     ssl=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
                 ) as websock:
-                    return await self._subscription_drive(builder, websock, handler)
+                    warnings.simplefilter("default")
+                    return await self._subscription_drive(self._PAYLOAD_TEMPLATE.copy(), builder, websock, handler)
         except AttributeError as axc:
             return SuiRpcResult(False, "Attribute Error", axc)
         except Exception as axc:
@@ -148,15 +177,15 @@ class SuiClient(Provider):
         handler: Callable[[SubscribedEvent, int], Any],
         task_name: str = None,
     ) -> SuiRpcResult:
-        """new_event_subscription Initiate and run an event subscription feed.
+        """new_event_subscription Initiate and run a move event subscription feed.
 
         :param sbuilder: The subscription builder submitted for creating the event subscription filter.
         :type sbuilder: SubscribeEvent
-        :param handler: The function called for each received event.
+        :param handler: The function called for each received move event.
         :type handler: Callable[[SubscribedEvent, int], Any]
-        :param task_name: A name to assign to the event reader task, defaults to None
+        :param task_name: A name to assign to the listener task, defaults to None
         :type task_name: str, optional
-        :return: Result of subscribed event handling
+        :return: Result of subscribed move event handling
         :rtype: SuiRpcResult
         """
         _result_data: dict[str, asyncio.Task] = {}
@@ -181,7 +210,17 @@ class SuiClient(Provider):
         handler: Callable[[SubscribedTransaction, int], Union[Any, bool]],
         task_name: str = None,
     ) -> SuiRpcResult:
-        """."""
+        """new_txn_subscription Initiate and run a transaction event subscription feed.
+
+        :param tbuilder: The subscription builder submitted for creating the transaction subscription filter.
+        :type tbuilder: SubscribeEvent
+        :param handler: The function called for each received transaction event.
+        :type handler: Callable[[SubscribedTransaction, int], Any]
+        :param task_name: A name to assign to the listener task, defaults to None
+        :type task_name: str, optional
+        :return: Result of subscribed transaction event handling
+        :rtype: SuiRpcResult
+        """
         _result_data: dict[str, asyncio.Task] = {}
         async with self._ACCESS_LOCK:
             if not self._in_shutdown:

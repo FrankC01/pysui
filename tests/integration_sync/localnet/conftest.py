@@ -15,4 +15,4 @@
 
 import pytest
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_rpc import SuiClient
+from pysui.sui.sui_clients.sync_client import SuiClient

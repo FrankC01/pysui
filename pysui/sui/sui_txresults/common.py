@@ -57,7 +57,13 @@ class GenericOwnerRef(SuiTxReturnType, DataClassJsonMixin):
 
         Convert owner to Address (based on result)
         """
-        if isinstance(self.owner, str):
-            self.owner = self.owner
-        else:
-            self.owner = self.owner["AddressOwner"]
+        if self.owner:
+            if isinstance(self.owner, str):
+                self.owner = self.owner
+            else:
+                if "AddressOwner" in self.owner:
+                    self.owner = self.owner["AddressOwner"]
+                if "ObjectOwner" in self.owner:
+                    self.owner = self.owner["ObjectOwner"]
+                if "Shared" in self.owner:
+                    self.owner = self.owner["Shared"]

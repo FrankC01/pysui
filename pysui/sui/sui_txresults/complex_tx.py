@@ -315,7 +315,7 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     deleted: Optional[list[GenericRef]] = field(default_factory=list)
     wrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     unwrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
-    shared_objects: Optional[list[GenericOwnerRef]] = field(
+    shared_objects: Optional[list[GenericRef]] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
     )
 
@@ -427,12 +427,42 @@ class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
+class TransactionEnvelope(SuiTxReturnType, DataClassJsonMixin):
+    """Effects Certification."""
+
+    certificate: Certificate
+    effects: Effects
+    timestamp_ms: int
+    parsed_data: Union[dict, None] = field(default_factory=dict)
+
+
+@dataclass
+class SubscribedTxnParms(SuiTxReturnType, DataClassJsonMixin):
+    """."""
+
+    subscription: int
+    result: TransactionEnvelope
+
+
+@dataclass
 class SubscribedTransaction(SuiTxReturnType, DataClassJsonMixin):
     """."""
 
     jsonrpc: str
     method: str
-    params: SubscribedEventParms
+    params: SubscribedTxnParms
+
+    @property
+    def succeeded(self) -> bool:
+        """Check if transaction result is successful."""
+        return self.params.result.effects.status.succeeded
+
+    @property
+    def status(self) -> str:
+        """Get underlying status string."""
+        if self.succeeded:
+            return "success"
+        return f"{self.params.result.effects.status.status} - {self.params.result.effects.status.error}"
 
 
 @dataclass
