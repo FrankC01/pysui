@@ -93,23 +93,20 @@ class SuiClient(Provider):
         """
         payload_msg["method"] = builder.method
         parm_arg = builder.params[0]
-
         if isinstance(parm_arg, SuiString):
             payload_msg["params"] = [parm_arg.value]
         elif isinstance(parm_arg, SuiMap):
             payload_msg["params"] = [parm_arg.filter]
         else:
-            print(f"Bad parm args {parm_arg}")
             return SuiRpcResult(False, f"{parm_arg} not an accepted type")
 
         await websock.send(json.dumps(payload_msg))
         # First we get a subscription ID
         response = json.loads(await websock.recv())
         if "error" in response:
-            # print(response)
             return SuiRpcResult(False, response["error"], response)
         subscription_id: int = response["result"]
-        print(f"Subscription ID = {subscription_id}")
+        # print(f"Subscription ID = {subscription_id}")
         keep_running = True
         event_counter = 0
         result_data: EventData = EventData(asyncio.current_task().get_name())
@@ -118,12 +115,9 @@ class SuiClient(Provider):
                 # Get an event
                 the_event = await websock.recv()
                 try:
-                    # print("Driver captured event")
                     keep_running = handler(builder.handle_return(json.loads(the_event)), subscription_id, event_counter)
                 # Indicative of deserialization error
                 except KeyError as kex:
-                    # print(f"KeyError on {kex}")
-                    # print(f"from ... {the_event}")
                     return SuiRpcResult(False, f"KeyError on {kex}", the_event)
                 if keep_running:
                     if not isinstance(keep_running, bool):
@@ -131,8 +125,6 @@ class SuiClient(Provider):
                         event_counter += 1
         except asyncio.CancelledError:
             return SuiRpcResult(True, "Cancelled", result_data)
-        except Exception as exc:
-            return SuiRpcResult(False, "General Exception", exc)
         return SuiRpcResult(True, None, result_data)
 
     async def _subscription_listener(
@@ -169,7 +161,7 @@ class SuiClient(Provider):
         except AttributeError as axc:
             return SuiRpcResult(False, "Attribute Error", axc)
         except Exception as axc:
-            return SuiRpcResult(False, "General Exception", axc)
+            return SuiRpcResult(False, "Exception", axc)
 
     async def new_event_subscription(
         self,
@@ -195,7 +187,6 @@ class SuiClient(Provider):
                     self._subscription_listener(sbuilder, handler), name=task_name
                 )
                 _task_name = new_task.get_name()
-                # print(f"{_task_name} created {new_task}")
                 self._event_subscriptions[_task_name] = new_task
                 _result_data[_task_name] = new_task
                 _sui_result = SuiRpcResult(True, None, _result_data)
@@ -237,7 +228,7 @@ class SuiClient(Provider):
         return _sui_result
 
     async def wait_shutdown(self) -> Tuple[list, list]:
-        """wait_shutdown Waits until all subscription tasks complete.
+        """wait_shutdown Waits until all subscription tasks complete and gathers the results.
 
         :return: A tuple of (Tranaction type events result list,Event type events result list)
         :rtype: Tuple[list, list]
@@ -254,7 +245,7 @@ class SuiClient(Provider):
 
         :param wait_seconds: Delay, if any, to perform second cancelation on tasks, defaults to None
         :type wait_seconds: int, optional
-        :return: A tuple of (Tranaction type events result list,Event type events result list)
+        :return: A tuple of (Tranaction type events result list,Event type events result list) from wait_shutdown
         :rtype: Tuple[list, list]
         """
         async with self._ACCESS_LOCK:
@@ -262,21 +253,18 @@ class SuiClient(Provider):
             _results: dict[str, bool] = {}
             # First pass
             for task_name, task in self._event_subscriptions.items():
-                # print(f"Cancelling event subscription {task_name} -> {task}")
                 state = task.cancel()
                 if state:
                     _results[task_name] = task
             for task_name, task in self._txn_subscriptions.items():
-                # print(f"Cancelling transaction subscription {task_name}")
                 state = task.cancel()
                 if state:
                     _results[task_name] = task
             # If we have results and are asked to wait for themm to complete
             if _results and wait_seconds:
-                # print(f"Waiting {wait_seconds} seconds for straglers {len(_results)}")
                 await asyncio.sleep(float(wait_seconds))
                 for _task_name, task in _results.items():
-                    # print(f"Cancelling {task_name}")
                     state = task.cancel()
             self._in_shutdown = False
+        # Wait and gather task results
         return await self.wait_shutdown()

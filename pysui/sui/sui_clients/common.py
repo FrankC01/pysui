@@ -73,7 +73,7 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: int = 18
+    _RPC_MINIMAL_VERSION: int = 19
 
     def __init__(self, config: SuiConfig, request_type: SuiRequestType = SuiRequestType.WAITFORLOCALEXECUTION) -> None:
         """Client initializer."""
@@ -152,7 +152,7 @@ class _ClientMixin(Provider):
         return api_name in self._rpc_api
 
     def rpc_version_support(self) -> None:
-        """rpc_version_support Validats minimal version supported.
+        """rpc_version_support Validates minimal version supported.
 
         :raises RuntimeError: If RPC API version less than provided
         """

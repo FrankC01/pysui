@@ -8,7 +8,7 @@ Python Client SDK for Sui blockchain
 **Lena Milestone-0.6.0**
 - Breaking changes
 - 100% coverage (builders, return types, etc.) of **new** SUI 0.19.0 API
-- Subscriptions
+- **Subscriptions**
 
 **PyPi**
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
