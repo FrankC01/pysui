@@ -77,11 +77,9 @@ async def main_run(sub_manager: subscriber):
         print(thing.result_string)
         return
     if thing.is_ok():
-        print("Sleeping for 10 seconds ", end="")
-        for _ in range(0, 10):
-            await asyncio.sleep(1.00)
-            print(".", end="")
-        print(" killing listeners")
+        print("Sleeping for 10 seconds")
+        await asyncio.sleep(10.00)
+        print("Killing listeners")
         tx_subs_result, ev_subs_result = await sub_manager.kill_shutdown()
         if tx_subs_result:
             print("Transaction event listener results")

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New Provider: SuiClient in `sui.sui_clients.subscribe.py` [enhancement](https://github.com/FrankC01/pysui/issues/40)
 
 ### Fixed
+- ObjectRead supporting dynamic field representation
+- SuiParameterReference supporting str or dict in `reference_to` for scalar types
 
 ### Changed
 BIG BREAKING CHANGES!

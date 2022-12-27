@@ -16,8 +16,7 @@
 from abc import abstractmethod
 from enum import IntEnum
 from typing import Type, Union
-from abstracts.client_types import SuiBaseType
-
+from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_rpc import Builder
 
 

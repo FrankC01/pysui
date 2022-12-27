@@ -128,7 +128,11 @@ class ObjectReadData(DataClassJsonMixin):
         """Post init processing for parameters."""
         ref = self.type_.split("<")
         if len(ref) > 1:
-            self.type_arg = ref[1][:-1]
+            inner_ref = ref[1][:-1].split(",")
+            if len(inner_ref) > 1:
+                self.type_arg = [x.strip() for x in inner_ref]
+            else:
+                self.type_arg = ref[1][:-1]
         if "id" in self.fields:
             self.fields["id"] = self.fields["id"]["id"]
 

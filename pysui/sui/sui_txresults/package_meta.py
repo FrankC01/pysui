@@ -150,14 +150,15 @@ class SuiParameterReference(DataClassJsonMixin):
     """From getNormalize."""
 
     reference_type: str
-    reference_to: dict
+    reference_to: Union[str, dict]
     is_mutable: bool = False
 
     def __post_init__(self):
         """Post init."""
         self.is_mutable = self.reference_type == "MutableReference"
         if self.reference_to:
-            self.reference_to = SuiMoveType.resolve(self.reference_to)
+            if isinstance(self.reference_to, dict):
+                self.reference_to = SuiMoveType.resolve(self.reference_to)
 
 
 @dataclass
@@ -279,6 +280,7 @@ class SuiMovePackage(DataClassJsonMixin):
     @classmethod
     def ingest_data(cls, indata: dict) -> "SuiMovePackage":
         """Ingest from external call."""
+        # print(indata)
         new_mods = {}
         for mod_key, mod_value in indata.items():
             new_mods[mod_key] = mod_value
