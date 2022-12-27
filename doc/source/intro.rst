@@ -28,25 +28,34 @@ The Client
 | All **pysui** SDK usage starts with the creation of a HTTPS client. It's job is handling all
 | the interactions between itself and the SUI blockchain via the SUI RPC API.
 
-**pysui** SDK includes both synchronous :py:class:`~pysui.sui.sui_rpc.SuiClient` and asynchronous :py:class:`~pysui.sui.sui_rpc.SuiAsynchClient` flavors.
+**pysui** SDK includes synchronous and asynchronous clients for interacting with SUI RPC API and an
+asynchronous client for subscriptions.
 
-Both client types have the same methods (parity) so it is a matter of choice, or necessity, on which to use. It
+The first two client types have the same methods (parity) so it is a matter of choice, or necessity, on which to use. It
 is pretty much standard that the client is allocated at the very begining of your application. Here
-are examples of doing just that:
+are examples of doing just that as well as allocating a subscription client:
 
 .. code-block:: Python
    :linenos:
 
+    from pysui.sui.sui_clients.sync_client import SuiClient as sync_client
+    from pysui.sui.sui_clients.async_client import SuiClient as async_client
+    from pysui.sui.sui_clients.subscribe import SuiClient as async_subscriber
+
     # Synchronous client
-    client = SuiClient(SuiConfig.default())  # or
-    client = SuiClient(SuiConfig.from_config_file(...))
+    client = sync_client(SuiConfig.default())  # or
+    client = sync_client(SuiConfig.from_config_file(...))
 
     # Asynchronous client
-    client = SuiAsyncClient(SuiConfig.default())  # or
-    client = SuiAsyncClient(SuiConfig.from_config_file(...))
+    client = async_client(SuiConfig.default())  # or
+    client = async_client(SuiConfig.from_config_file(...))
 
-The raw workhorse for submitting transactions is :py:meth:`pysui.sui.sui_rpc.SuiClient.execute` which takes a
+    # Asynchronous subscriber
+    client = async_subscriber(SuiConfig.default())  # or
+    client = async_subscriber(SuiConfig.from_config_file(...))
+
+The raw workhorse for submitting transactions is :py:meth:`pysui.sui.sui_clients.sync_client.SuiClient.execute` which takes a
 **Builder** object. Builders describe the RPC call, any parameters and how to format sucessful results.
 
-While many of the SuiClient convenience methods (i.e. :meth:`pysui.sui.sui_rpc.SuiClient.get_object`) take care of
+While many of the SuiClient convenience methods (i.e. :meth:`pysui.sui.sui_clients.sync_client..get_object`) take care of
 creating a Builder for the caller, and then executing, all **Builders** are available to setup outside of the SuiClient.

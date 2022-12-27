@@ -11,7 +11,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Sui builders common types."""
+"""Sui Builders: Common types."""
 
 from abc import abstractmethod
 from enum import IntEnum

@@ -11,7 +11,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Sui builders for complex transactio calls."""
+"""Sui Builders: Complex transaction."""
 
 from abc import abstractmethod
 from pysui.abstracts.client_types import SuiBaseType

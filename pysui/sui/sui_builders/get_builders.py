@@ -11,7 +11,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Sui builders for simple sui_getXXX calls."""
+"""Sui Builders: Simple sui_getXXX calls."""
 
 from typing import Any, Union
 from pysui.abstracts.client_types import SuiBaseType

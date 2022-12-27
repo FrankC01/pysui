@@ -11,7 +11,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Sui builders for subscription filtering."""
+"""Sui Builders: For subscriptions and filters."""
 
 from typing import Union
 from pysui.abstracts.client_types import SuiBaseType
