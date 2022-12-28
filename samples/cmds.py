@@ -166,9 +166,9 @@ def sui_objects(client: SuiClient, args: argparse.Namespace) -> None:
     def _object_type(args: argparse.Namespace) -> SuiRpcResult:
         """Get objects of type from Namespace."""
         if args.data:
-            descriptor_result = client.get_address_object_descriptors(MoveDataDescriptor)
+            descriptor_result = client.get_address_object_descriptors(MoveDataDescriptor, args.address)
         else:
-            descriptor_result = client.get_address_object_descriptors()
+            descriptor_result = client.get_address_object_descriptors(None, args.address)
         identities = [ids.identifier for ids in descriptor_result.result_data]
         return client.get_objects_for(identities)
 

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - ObjectRead supporting dynamic field representation
 - SuiParameterReference supporting str or dict in `reference_to` for scalar types
+- Samples: `wallet objects -a ...` was ignoring address
 
 ### Changed
 BIG BREAKING CHANGES!
