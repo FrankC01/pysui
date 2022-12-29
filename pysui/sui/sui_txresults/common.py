@@ -49,7 +49,7 @@ class SuiTxReturnType(ABC):
 class GenericOwnerRef(SuiTxReturnType, DataClassJsonMixin):
     """Owned coin referenece."""
 
-    reference: GenericRef
+    reference: GenericRef = None
     owner: Union[dict, str] = field(default_factory=str)
 
     def __post_init__(self):

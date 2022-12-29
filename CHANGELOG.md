@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Changed
+- Workaround for [sui defect](https://github.com/MystenLabs/sui/issues/7052)
 
 ### Removed
 
