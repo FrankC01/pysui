@@ -5,16 +5,19 @@ Samples are included in both the `pysui` repo as well as when installing through
 
 ## Examples:
 - async-gas collects and prints all gas for all addresses found in configuration
+- async-sub Listens on generally broad events for Move events and Transaction events
 - Sample [Wallet](#wallet) providing equivalent functionality as `sui client ...`
 
 
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 - `python -m sample.wallet`
 - `python -m sample.async_gas`
+- `python -m sample.async_sub`
 
 **Note:** If running from PyPi install, examples can be started directly
 - `wallet`
 - `async-gas`
+- `async-sub`
 
 ### Async Gas
 Example demonstrating using the `pysui` SuiAsynchClient. See [DEVELOP](../DEVELOP.md)
