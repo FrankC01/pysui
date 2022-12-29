@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unpublished]
 
 ### Added
+- async_gas and async_sub support calling with `--local path/file to non-standard client.yaml`
+- Prelim subscription docs
 
 ### Fixed
 

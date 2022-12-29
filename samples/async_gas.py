@@ -122,7 +122,20 @@ async def main_run(client: SuiClient):
 
 def main():
     """Setup asynch loop and run."""
-    arpc = SuiClient(SuiConfig.default())
+    arg_line = sys.argv[1:].copy()
+    cfg_file = None
+    # Handle a different client.yaml than default
+    if arg_line and arg_line[0] == "--local":
+        cfg_file = arg_line[1:2]
+        arg_line = arg_line[2:]
+        if cfg_file:
+            cfg = SuiConfig.from_config_file(cfg_file[0])
+        else:
+            cfg = SuiConfig.default()
+    else:
+        cfg = SuiConfig.default()
+
+    arpc = SuiClient(cfg)
     asyncio.get_event_loop().run_until_complete(main_run(arpc))
 
 

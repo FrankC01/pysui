@@ -21,6 +21,7 @@ Welcome to pysui's documentation!
    getting_started
    intro
    builders
+   subscriptions
    modules
 
 

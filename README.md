@@ -13,10 +13,15 @@ Python Client SDK for Sui blockchain
 **PyPi**
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
+There is a companion package called [pysui-gadgets](https://github.com/FrankC01/pysui_gadgets) with a few utilities and ge-gaws that
+you may find interesting. It is a separate package also on on PyPi.
+
 **Documentation**
 - [ReadTheDocs](https://pysui.readthedocs.io/en/latest/index.html)
 
 Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
+
+
 
 ## Ready to run
 Requires:
