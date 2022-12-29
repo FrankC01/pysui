@@ -18,8 +18,8 @@ Welcome to pysui's documentation!
    :maxdepth: 9
    :caption: Contents:
 
-   intro
    getting_started
+   intro
    builders
    modules
 

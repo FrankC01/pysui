@@ -28,7 +28,9 @@ Setup
     ``pip install pysui``
 
 #. Test install
-    Having setup your environment, you can verify all is well with a sample utility
+    Having setup your environment, you can verify all is well with a sample scripts
     included in the ``pysui`` distribution. From the command line:
 
-    ``async_gas`` This will display Sui gas for each address found in the SUI configuration
+    * ``async-gas`` This will display Sui gas for each address found in the SUI configuration
+    * ``async-sub`` This runs both event and transaction subscriptions
+    * ``wallet`` This emulates the ``sui client ...`` operations

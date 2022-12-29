@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unpublished]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.6.0] 2022-12-29
+
+### Added
 - New Provider: SuiClient in `sui.sui_clients.subscribe.py` [enhancement](https://github.com/FrankC01/pysui/issues/40)
 
 ### Fixed

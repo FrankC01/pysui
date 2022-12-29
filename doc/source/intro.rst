@@ -25,8 +25,9 @@ The role of Sui Binaries
 
 The Client
 ----------
-| All **pysui** SDK usage starts with the creation of a HTTPS client. It's job is handling all
-| the interactions between itself and the SUI blockchain via the SUI RPC API.
+
+All **pysui** SDK usage commonly starts with the creation of one or more SuiClients. Their job is handling
+the interactions between itself and the SUI blockchain via the SUI RPC API.
 
 **pysui** SDK includes synchronous and asynchronous clients for interacting with SUI RPC API and an
 asynchronous client for subscriptions.
@@ -38,8 +39,13 @@ are examples of doing just that as well as allocating a subscription client:
 .. code-block:: Python
    :linenos:
 
+    # For synchronous RPC API interactions
     from pysui.sui.sui_clients.sync_client import SuiClient as sync_client
+
+    # For asynchronous RPC API interactions
     from pysui.sui.sui_clients.async_client import SuiClient as async_client
+
+    # For asynchronous subscriptions interactions
     from pysui.sui.sui_clients.subscribe import SuiClient as async_subscriber
 
     # Synchronous client
