@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - async_gas and async_sub support calling with `--local path/file to non-standard client.yaml`
 - Prelim subscription docs
+- Elaborated subscription doc with examples
 
 ### Fixed
+- Signature on subscription handlers (typing Callable)
 
 ### Changed
 - Workaround for [sui defect](https://github.com/MystenLabs/sui/issues/7052)
@@ -23,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New Provider: SuiClient in `sui.sui_clients.subscribe.py` [enhancement](https://github.com/FrankC01/pysui/issues/40)
 
 ### Fixed
-- ObjectRead supporting dynamic field representation
+- ObjectRead supporting dynamic field type representation
 - SuiParameterReference supporting str or dict in `reference_to` for scalar types
 - Samples: `wallet objects -a ...` was ignoring address
 

@@ -64,6 +64,8 @@ Module: exec_builders - Sui Builders: Complex transaction.
 | :py:class:`pysui.sui.sui_builders.exec_builders.MoveCall`                       |       |
 +---------------------------------------------------------------------------------+-------+
 
+.. _subscription-filters:
+
 Module: subscription_builders - Sui Builders: For subscriptions and filters.
 ----------------------------------------------------------------------------
 

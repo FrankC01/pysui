@@ -76,7 +76,7 @@ class SuiClient(Provider):
         payload_msg: dict,
         builder: Union[SubscribedEvent, SubscribeTransaction],
         websock: WebSocketClientProtocol,
-        handler: Callable[[Union[SubscribedEvent, SubscribedTransaction], int], Any],
+        handler: Callable[[Union[SubscribedEvent, SubscribedTransaction], int, int], Any],
     ) -> SuiRpcResult:
         """_subscription_drive Iterate receiving events and calling handler function.
 
@@ -130,7 +130,7 @@ class SuiClient(Provider):
     async def _subscription_listener(
         self,
         builder: Union[SubscribeEvent, SubscribeTransaction],
-        handler: Callable[[Union[SubscribedEvent, SubscribedEvent], int], Any],
+        handler: Callable[[Union[SubscribedEvent, SubscribedTransaction], int, int], Any],
     ) -> SuiRpcResult:
         """_subscription_listener Sets up websocket subscription and calls _subscription_drive.
 
@@ -166,7 +166,7 @@ class SuiClient(Provider):
     async def new_event_subscription(
         self,
         sbuilder: SubscribeEvent,
-        handler: Callable[[SubscribedEvent, int], Any],
+        handler: Callable[[SubscribedEvent, int, int], Any],
         task_name: str = None,
     ) -> SuiRpcResult:
         """new_event_subscription Initiate and run a move event subscription feed.
@@ -198,7 +198,7 @@ class SuiClient(Provider):
     async def new_txn_subscription(
         self,
         tbuilder: SubscribeTransaction,
-        handler: Callable[[SubscribedTransaction, int], Union[Any, bool]],
+        handler: Callable[[SubscribedTransaction, int, int], Any],
         task_name: str = None,
     ) -> SuiRpcResult:
         """new_txn_subscription Initiate and run a transaction event subscription feed.
