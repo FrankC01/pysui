@@ -463,40 +463,137 @@ class StateParameters(DataClassJsonMixin):
 
     min_validator_stake: int
     max_validator_candidate_count: int
-    storage_gas_price: 1
+    storage_gas_price: int
+
+
+@dataclass
+class PendingDelegator(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    delegator_address: str = field(metadata=config(field_name="delegator"))
+    delegator_sui_amount: int = field(metadata=config(field_name="sui_amount"))
+
+
+@dataclass
+class PendingWithdrawel(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    delegator_address: str = field(metadata=config(field_name="delegator"))
+    principal_withdraw_amount: int
+    withdrawn_pool_tokens: Union[int, dict]
+
+    def __post_init__(self):
+        """Post hydrate parameter fixups."""
+        self.withdrawn_pool_tokens = self.withdrawn_pool_tokens["value"]
+
+
+@dataclass
+class StakingPool(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    delegation_token_supply: Union[dict, int]
+    rewards_pool: Union[dict, int]
+    starting_epoch: int
+    sui_balance: int
+    validator_address: str
+    pending_delegations: list[PendingDelegator] = field(default_factory=list)
+    pending_withdraws: list[PendingWithdrawel] = field(default_factory=list)
+
+    def __post_init__(self):
+        """Post hydrate parameter fixups."""
+        self.delegation_token_supply = self.delegation_token_supply["value"]
+        self.rewards_pool = self.rewards_pool["value"]
+
+
+@dataclass
+class ValidatorMetaData(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    sui_address: str
+    pubkey_bytes: list[int]
+    network_pubkey_bytes: list[int]
+    proof_of_possession_bytes: list[int]
+    name: list[int]
+    net_address: list[int]
+    next_epoch_stake: int
+    next_epoch_delegation: int
+    next_epoch_gas_price: int
+    next_epoch_commission_rate: int
+
+
+@dataclass
+class ValidatorAddressPair(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    from_address: str = field(metadata=config(field_name="from"))
+    to_address: str = field(metadata=config(field_name="iconUrl"))
+
+
+@dataclass
+class VecMapForValidatorPair(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    contents: list[dict[ValidatorAddressPair, PendingWithdrawel]] = field(default_factory=list)
+
+
+@dataclass
+class Validator(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    commission_rate: int
+    delegation_staking_pool: StakingPool
+    gas_price: int
+    metadata: ValidatorMetaData
+    pending_stake: int
+    pending_withdraw: int
+    stake_amount: int
 
 
 @dataclass
 class ValidatorSet(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    active_validators: list[dict]
+    active_validators: list[Validator]
     delegation_stake: int
-    next_epoch_validators: list[dict]
-    pending_delegation_switches: dict
+    next_epoch_validators: list[ValidatorMetaData]
+    pending_delegation_switches: VecMapForValidatorPair
     pending_removals: list[int]
-    pending_validators: list[dict]
+    pending_validators: list[Validator]
     quorum_stake_threshold: int
     validator_stake: int
+
+
+@dataclass
+class VecSetForSuiAddress(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    contents: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ValidatorReportRecords(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    contents: list[dict[str, VecSetForSuiAddress]] = field(default_factory=list)
 
 
 @dataclass
 class SuiSystemState(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    info_id: Union[dict, str] = field(metadata=config(field_name="info"))
+    info_uid: Union[dict, str] = field(metadata=config(field_name="info"))
     chain_id: int
     epoch: int
     parameters: StateParameters
     reference_gas_price: int
     storage_fund: Union[dict, int]
     treasury_cap: Union[dict, int]
-    validator_report_records: dict
+    validator_report_records: ValidatorReportRecords
     validators: ValidatorSet
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""
-        self.info_id = self.info_id["id"]
+        self.info_uid = self.info_uid["id"]
         self.storage_fund = self.storage_fund["value"]
         self.treasury_cap = self.treasury_cap["value"]
 

@@ -15,6 +15,8 @@ sui.log*
 # Sandboxing
 temp.py
 temp_sub.py
+out*
+
 
 # pytest cruft
 .pytest_cache
@@ -22,8 +24,9 @@ temp_sub.py
 # vscode cruft
 .vscode/launch.json
 
-# Local copy of SUI RPC API from `rpc.discover`
+# Local copy of SUI RPC API from `rpc.discover` or some inferencing review
 apidefn*.json
+optionals_*.json
 
 # Local copy of SUI 0x2 modules and functions
 siggen.list

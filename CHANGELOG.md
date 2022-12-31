@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
+Non-breaking
+
 ### Added
 - async_gas and async_sub support calling with `--local path/file to non-standard client.yaml`
 - Prelim subscription docs
@@ -16,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Workaround for [sui defect](https://github.com/MystenLabs/sui/issues/7052)
+- Using new 'temporary' gas retrival API to optimize `async_gas` [discussion](https://github.com/FrankC01/pysui/discussions/50). Targetting
+[milestone](https://github.com/FrankC01/pysui/milestone/5) with [enhancement](https://github.com/FrankC01/pysui/issues/54)
+- Dataclasses for result of calling `sui_getSuiSystemState`
 
 ### Removed
 
