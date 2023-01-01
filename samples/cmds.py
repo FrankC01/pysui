@@ -180,6 +180,8 @@ def sui_api(client: SuiClient, args: argparse.Namespace) -> None:
     """Display information about Sui RPC API."""
     rpcapi = client.rpc_api
 
+    print(f"RPC API Version: {client.rpc_version}")
+
     if args.name:
         if rpcapi.get(args.name, None):
             namedef = rpcapi[args.name]
