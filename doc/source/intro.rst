@@ -20,8 +20,10 @@ The role of Sui Binaries
 
 | *Why roughly?*
 | If you won't be using ``pysui publish`` and you won't be using the ``sui ...`` command line
-| then an alternative would be to generate your own ``client.yaml``
-| and point to that with :meth:`pysui.sui.sui_config.SuiConfig.from_config_file`
+| then an alternative would be to generate your own ``client.yaml``. You can place the generated
+| file in either ~/.sui/sui_config folder and load it with :meth:`pysui.sui.sui_config.SuiConfig.default`
+| or put it in your location of choice and point to the full path to ``client.yaml`` using
+| :meth:`pysui.sui.sui_config.SuiConfig.from_config_file`
 
 The Client
 ----------

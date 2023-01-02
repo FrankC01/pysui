@@ -168,8 +168,7 @@ class SuiClient(_ClientMixin):
 
         :param address: The address to fetch coins of coin_type for
         :type address: SuiAddress
-        :param coin_type: Fully qualified type names for the coin
-        (e.g., 0x168da5bf1f48dafc111b0a488fa454aca95e0b5e::usdc::USDC),
+        :param coin_type: Fully qualified type names for the coin (e.g., 0x168da5bf1f48dafc111b0a488fa454aca95e0b5e::usdc::USDC),
         defaults to SuiString("0x2::sui::SUI")
         :type coin_type: SuiString, optional
         :return: If successful, result contains an array of coins objects of coin_type found
@@ -199,8 +198,7 @@ class SuiClient(_ClientMixin):
     ) -> SuiRpcResult:
         """get_coin Retrieves objects of coin_type for address.
 
-        :param coin_type: Fully qualified type names for the coin
-        (e.g., 0x168da5bf1f48dafc111b0a488fa454aca95e0b5e::usdc::USDC)
+        :param coin_type: Fully qualified type names for the coin (e.g., 0x168da5bf1f48dafc111b0a488fa454aca95e0b5e::usdc::USDC)
         :type coin_type: SuiString
         :param address: If None, active_address will be used, defaults to None
         :type address: SuiAddress, optional
