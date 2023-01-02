@@ -43,11 +43,6 @@ class ClientConfiguration(ABC):
     def active_address(self) -> AbstractType:
         """Return the active address from the client configuration."""
 
-    @classmethod
-    @abstractmethod
-    def generate_configuration(cls) -> "ClientConfiguration":
-        """Generate a default configuration."""
-
     @property
     def configuration_path(self) -> str:
         """configuration_path Returns the configuration path that defined configuraiton instance.
