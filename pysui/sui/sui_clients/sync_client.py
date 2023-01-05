@@ -10,6 +10,7 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
+# pylint: disable=too-many-instance-attributes, too-many-public-methods, line-too-long
 
 """Sui Synchronous RPC Client module."""
 
@@ -68,15 +69,15 @@ class SuiClient(_ClientMixin):
         """Execute the builder construct."""
         # Validate builder and send request
         try:
+            result = self._client.post(
+                self.config.rpc_url,
+                headers=builder.header,
+                json=self._validate_builder(builder),
+            )
             return SuiRpcResult(
                 True,
                 None,
-                self._client.post(
-                    self.config.rpc_url,
-                    headers=builder.header,
-                    json=self._validate_builder(builder),
-                    timeout=15,
-                ).json(),
+                result.json(),
             )
         except JSONDecodeError as jexc:
             return SuiRpcResult(False, f"JSON Decoder Error {jexc.msg}", vars(jexc))
@@ -174,7 +175,7 @@ class SuiClient(_ClientMixin):
         """
         result = self.execute(GetCoinTypeBalance(owner=address, coin_type=coin_type))
         if result.is_ok():
-            limit = SuiInteger(result.result_data.items[0].coin_object_count)
+            limit = SuiInteger(result.result_data.coin_object_count)
             result = self.execute(GetCoins(owner=address, coin_type=coin_type, limit=limit))
         return result
 

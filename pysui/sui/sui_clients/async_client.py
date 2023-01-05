@@ -10,6 +10,7 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
+# pylint: disable=too-many-instance-attributes, too-many-public-methods, line-too-long
 
 """Sui Asynchronous RPC Client module."""
 
@@ -176,7 +177,7 @@ class SuiClient(_ClientMixin):
         """
         result = await self.execute(GetCoinTypeBalance(owner=address, coin_type=coin_type))
         if result.is_ok():
-            limit = SuiInteger(result.result_data.items[0].coin_object_count)
+            limit = SuiInteger(result.result_data.coin_object_count)
             result = await self.execute(GetCoins(owner=address, coin_type=coin_type, limit=limit))
         return result
 

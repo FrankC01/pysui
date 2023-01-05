@@ -89,7 +89,6 @@ async def get_all_gas(client: SuiClient) -> dict[SuiAddress, list[SuiGas]]:
     :rtype: dict[SuiAddress, list[SuiGas]]
     """
     config: SuiConfig = client.config
-    # Build up gas descriptor fetch for each address
     addys = [SuiAddress(x) for x in config.addresses]
     addy_list = [client.get_gas(x) for x in addys]
     gresult = await asyncio.gather(*addy_list, return_exceptions=True)

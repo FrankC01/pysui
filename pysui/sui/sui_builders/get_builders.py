@@ -20,6 +20,7 @@ from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiNull
 from pysui.sui.sui_types.collections import SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
+    SuiCoinBalance,
     SuiCoinMetadata,
     CoinBalances,
     SuiCoinObjects,
@@ -74,7 +75,7 @@ class GetCoinTypeBalance(_NativeTransactionBuilder):
         :param coin_type: fully qualified type names for the coin (e.g., 0x2::sui::SUI), defaults to None
         :type coin_type: SuiString, optional
         """
-        super().__init__("sui_getBalance", handler_cls=CoinBalances, handler_func="ingest_data")
+        super().__init__("sui_getBalance", handler_cls=SuiCoinBalance, handler_func="from_dict")
         self.owner = None
         self.coin_type = SuiNullType()
         self.set_owner(owner)

@@ -13,6 +13,7 @@
 
 """Sui Client common classes module."""
 
+import json
 from abc import abstractmethod
 from typing import Any, Union
 from pkg_resources import packaging

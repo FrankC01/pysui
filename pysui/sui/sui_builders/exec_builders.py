@@ -10,6 +10,7 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
+# pylint: disable=too-many-lines
 
 """Sui Builders: Complex transaction."""
 
