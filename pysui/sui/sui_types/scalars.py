@@ -76,6 +76,11 @@ class SuiString(SuiScalarType):
         return self.value
 
     @property
+    def name(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def function_name(self) -> str:
         """Alias for transactions."""
         return self.value
@@ -197,6 +202,11 @@ class ObjectID(SuiString):
 
     @property
     def package_object_id(self) -> str:
+        """Alias over value."""
+        return self.value
+
+    @property
+    def parent_object_id(self) -> str:
         """Alias over value."""
         return self.value
 

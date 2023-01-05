@@ -17,7 +17,12 @@
 from abc import abstractmethod
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_keypair import SignatureScheme, PublicKey
-from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, SuiRequestType, SuiBaseBuilder
+from pysui.sui.sui_builders.base_builder import (
+    _NativeTransactionBuilder,
+    SuiRequestType,
+    SuiBaseBuilder,
+    SuiTransactionBuilderMode,
+)
 from pysui.sui.sui_types.scalars import SuiTxBytes, SuiSignature, ObjectID, SuiInteger, SuiString
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_types.address import SuiAddress
@@ -810,7 +815,12 @@ class BatchTransaction(_MoveCallTransactionBuilder):
     """BatchTransaction When executed, runs transactions included in the batch."""
 
     def __init__(
-        self, signer: SuiAddress, transaction_params: SuiArray[BatchParameter], gas: ObjectID, gas_budget: SuiInteger
+        self,
+        signer: SuiAddress,
+        transaction_params: SuiArray[BatchParameter],
+        gas: ObjectID,
+        gas_budget: SuiInteger,
+        txn_builder_mode: SuiTransactionBuilderMode = SuiTransactionBuilderMode.COMMIT,
     ) -> None:
         """__init__ BatchTransaction Builder initializer.
 
@@ -829,6 +839,7 @@ class BatchTransaction(_MoveCallTransactionBuilder):
         self.single_transaction_params = None
         self.gas: ObjectID = sui_utils.as_object_id(gas)
         self.gas_budget = gas_budget
+        self.txn_builder_mode = txn_builder_mode
 
         for item in transaction_params.array:
             if not isinstance(item, BatchParameter):
@@ -937,6 +948,7 @@ class MoveCall(_MoveCallTransactionBuilder):
         arguments: SuiArray[SuiString] = None,
         gas: ObjectID = None,
         gas_budget: SuiInteger = None,
+        execution_mode: SuiTransactionBuilderMode = SuiTransactionBuilderMode.COMMIT,
     ) -> None:
         """__init__ MoveCall Builder initializer.
 
@@ -956,6 +968,8 @@ class MoveCall(_MoveCallTransactionBuilder):
         :type gas: ObjectID, optional
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
         :type gas_budget: SuiInteger, optional
+        :param execution_mode: Whether this is a Normal transaction or a Dev Inspect Transaction. Default to be `SuiTransactionBuilderMode::Commit`
+        :type execution_mode: SuiTransactionBuilderMode, optional
         """
         inargs = locals().copy()
         super().__init__("sui_moveCall")
@@ -967,6 +981,7 @@ class MoveCall(_MoveCallTransactionBuilder):
         self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
         self.gas: ObjectID = None
         self.gas_budget: SuiInteger = None
+        self.execution_mode = execution_mode
         for hit in self.move_kwords & set(inargs.keys()):
             if hit in self._movecall_array_keys:
                 if inargs[hit]:

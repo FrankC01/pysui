@@ -20,6 +20,7 @@ from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiNull
 from pysui.sui.sui_types.collections import SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
+    DynamicFields,
     SuiCoinBalance,
     SuiCoinMetadata,
     CoinBalances,
@@ -64,6 +65,86 @@ class GetCoinMetaData(_NativeTransactionBuilder):
         return [self.coin_type]
 
 
+class GetAllCoinBalances(_NativeTransactionBuilder):
+    """GetAllCoinBalances Returns the total coin balances, for all coin types, owned by the address owner.."""
+
+    def __init__(self, *, owner: SuiAddress):
+        """__init__ Initializes builder with address to fetch coin balances for.
+
+        :param owner: the owner's Sui address
+        :type owner: SuiAddress
+        """
+        super().__init__("sui_getAllBalances", handler_cls=CoinBalances, handler_func="ingest_data")
+        # super().__init__("sui_getAllBalances")
+        self.owner = None
+        self.set_owner(owner)
+
+    def set_owner(self, owner: SuiAddress) -> "GetAllCoinBalances":
+        """Set the owner property."""
+        if isinstance(owner, SuiAddress):
+            self.owner = owner
+            return self
+        raise ValueError(f"{owner} is not of type SuiAddress")
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """_collect_parameters Returns expected RPC parameters."""
+        return [self.owner]
+
+
+class GetAllCoins(_NativeTransactionBuilder):
+    """GetAllCoins Returns all Coin objects owned by an address."""
+
+    def __init__(
+        self,
+        *,
+        owner: SuiAddress,
+        limit: SuiInteger = None,
+        cursor: ObjectID = None,
+    ):
+        """__init__ Initialize builder with address and optional page limits and cursor.
+
+        :param owner: the coin owner's Sui address
+        :type owner: SuiAddress
+        :param limit: maximum number of items per page, defaults to None
+        :type limit: SuiInteger, optional
+        :param cursor: Optional ObjectID as the starting item in returned page, defaults to None
+        :type cursor: ObjectID, optional
+        """
+        super().__init__("sui_getAllCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
+        self.set_owner(owner)
+        self.limit = SuiNullType()
+        self.cursor = SuiNullType()
+        if limit:
+            self.set_limit(limit)
+        self.cursor = cursor if cursor else SuiNullType()
+
+    def set_owner(self, owner: SuiAddress) -> "GetCoinTypeBalance":
+        """Set the owner property."""
+        if isinstance(owner, SuiAddress):
+            self.owner = owner
+            return self
+        raise ValueError(f"{owner} is not of type SuiAddress")
+
+    def set_limit(self, limit: Union[int, SuiInteger]) -> "GetCoins":
+        """Sets the maximum values returned on the result page."""
+        if isinstance(limit, SuiInteger):
+            self.limit = limit
+            return self
+        if isinstance(limit, int):
+            self.limit = SuiInteger(limit)
+            return self
+        raise ValueError(f"{limit} is not of type SuiInteger")
+
+    def set_cursor(self, cursor: ObjectID) -> "GetCoins":
+        """Optional ObjectID (of sample ``coin_type``)."""
+        self.cursor = cursor
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """_collect_parameters Returns expected RPC parameters."""
+        return [self.owner, self.cursor, self.limit]
+
+
 class GetCoinTypeBalance(_NativeTransactionBuilder):
     """GetCoinTypeBalance Return the total coin balance for each coin type."""
 
@@ -105,7 +186,7 @@ class GetCoinTypeBalance(_NativeTransactionBuilder):
 
 
 class GetCoins(_NativeTransactionBuilder):
-    """Return the list of Coin objects owned by an address."""
+    """Return the list of Coin objects of specific coin_type owned by an address."""
 
     def __init__(
         self,
@@ -272,6 +353,56 @@ class GetObjectsOwnedByObject(_NativeTransactionBuilder):
     def _collect_parameters(self) -> list[ObjectID]:
         """Collect the call parameters."""
         return [self.object_id]
+
+
+class GetDynamicFieldObject(_NativeTransactionBuilder):
+    """."""
+
+    def __init__(self, parent_object_id: ObjectID, field_name: SuiString) -> None:
+        """."""
+        super().__init__("sui_getDynamicFieldObject", handler_cls=ObjectRead, handler_func="factory")
+        self.parent_object_id = parent_object_id
+        self.name = field_name
+
+    def _collect_parameters(self) -> list[ObjectID]:
+        """Collect the call parameters."""
+        return [self.parent_object_id, self.name]
+
+
+class GetDynamicFields(_NativeTransactionBuilder):
+    """GetDynamicFields When executed, returns the list of dynamic field objects owned by an object."""
+
+    def __init__(
+        self, parent_object_id: ObjectID, limit: Union[int, SuiInteger] = None, cursor: Union[str, ObjectID] = None
+    ) -> None:
+        """."""
+        super().__init__("sui_getDynamicFields", handler_cls=DynamicFields, handler_func="from_dict")
+        self.parent_object_id = parent_object_id
+        self.cursor = SuiNullType()
+        self.limit = SuiNullType()
+        if cursor:
+            self.set_cursor(cursor)
+        if limit:
+            self.set_limit(limit)
+
+    def set_cursor(self, cursor: ObjectID) -> "GetDynamicFields":
+        """Optional paging cursor."""
+        self.cursor = cursor
+        return self
+
+    def set_limit(self, limit: Union[int, SuiInteger]) -> "GetDynamicFields":
+        """Sets the maximum values returned on the result page."""
+        if isinstance(limit, SuiInteger):
+            self.limit = limit
+            return self
+        if isinstance(limit, int):
+            self.limit = SuiInteger(limit)
+            return self
+        raise ValueError(f"{limit} is not of type SuiInteger")
+
+    def _collect_parameters(self) -> list[ObjectID]:
+        """Collect the call parameters."""
+        return [self.parent_object_id, self.cursor, self.limit]
 
 
 class GetObject(_NativeTransactionBuilder):

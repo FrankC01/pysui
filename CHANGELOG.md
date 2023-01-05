@@ -6,12 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
-Non-breaking
+Breaking changes
 
 ### Added
 - async_gas and async_sub support calling with `--local path/file to non-standard client.yaml`
 - Prelim subscription docs
 - Elaborated subscription doc with examples
+- StakeSubsidy added to SuiSystemState result from GetSuiSystemState [0.20.0](https://github.com/FrankC01/pysui/issues/55)
+- delegator_staked_sui_id field added to PendingDelegator result from GetSuiSystemState [0.20.0](https://github.com/FrankC01/pysui/issues/55)
+- SuiTransactionBuilderMode enum added in support of executing `sui_batchTransaction` and `sui_moveCall` [0.20.0](https://github.com/FrankC01/pysui/issues/55)
+- GetAllCoinBalances (`sui_getAllBalances`) builder added [0.20.0](https://github.com/FrankC01/pysui/issues/55)
+- GetAllCoins builder added [0.20.0](https://github.com/FrankC01/pysui/issues/55)
+- GetDynamicFieldObject builder added [0.20.0](https://github.com/FrankC01/pysui/issues/55)
+- GetDynamicFields builder added [0.20.0](https://github.com/FrankC01/pysui/issues/55)
+- consensus_address, worker_address and worker_pubkey_bytes fields added to ValidatorMetaData
+
 
 ### Fixed
 - Signature on subscription handlers (typing Callable)
@@ -21,8 +30,12 @@ Non-breaking
 - Using new 'temporary' gas retrival API to optimize `async_gas` [discussion](https://github.com/FrankC01/pysui/discussions/50). Targetting
 [milestone](https://github.com/FrankC01/pysui/milestone/5) with [enhancement](https://github.com/FrankC01/pysui/issues/54)
 - Dataclasses for result of calling `sui_getSuiSystemState`
+- GetCoinTypeBalance (`sui_getBalance`) now returns a single SuiCoinBalance instead of SuiCoinBalance**s** (array of SuiCoinBalance). See above, in Added, GetAllCoinBalances support
+instead of array [0.20.0](https://github.com/FrankC01/pysui/issues/55)
+- request_type: SuiRequestType to constructors of sync and async SuiClients. Defaults to WAITFORLOCALEXECUTION
 
 ### Removed
+- IMMEDIATERETURN and WAITFORTXCERT removed from `SuiRequestType` for txn execution [0.20.0](https://github.com/FrankC01/pysui/issues/55)
 
 ## [0.6.0] 2022-12-29
 

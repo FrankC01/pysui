@@ -23,7 +23,7 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_txresults.single_tx import FaucetGasRequest, ObjectInfo
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_builders.base_builder import SuiBaseBuilder
+from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
 from pysui.sui.sui_builders.get_builders import (
     GetCoinTypeBalance,
     GetCoins,
@@ -54,9 +54,9 @@ from pysui.sui.sui_builders.exec_builders import (
 class SuiClient(_ClientMixin):
     """Sui Asyncrhonous Client."""
 
-    def __init__(self, config: SuiConfig) -> None:
+    def __init__(self, config: SuiConfig, request_type: SuiRequestType = SuiRequestType.WAITFORLOCALEXECUTION) -> None:
         """Client initializer."""
-        super().__init__(config)
+        super().__init__(config, request_type)
         self._client = httpx.AsyncClient(http2=True)
         self._rpc_api = {}
         self._schema_dict = {}
