@@ -91,7 +91,7 @@ def test_get_gas_balance_pass(sui_client: SuiClient, sui_configuration: SuiConfi
     builder = GetCoinTypeBalance(owner=sui_configuration.active_address, coin_type=SuiString("0x2::sui::SUI"))
     result = sui_client.execute(builder)
     assert result.is_ok()
-    my_gas = result.result_data.items[0]
+    my_gas = result.result_data
     assert my_gas.coin_object_count == gas_count
     assert my_gas.total_balance == total_balance
 

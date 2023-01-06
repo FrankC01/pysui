@@ -10,6 +10,7 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
+# pylint: disable=too-many-instance-attributes, too-many-public-methods, line-too-long
 
 """Sui Asynchronous RPC Client module."""
 
@@ -22,8 +23,10 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_txresults.single_tx import FaucetGasRequest, ObjectInfo
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_builders.base_builder import SuiBaseBuilder
+from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
 from pysui.sui.sui_builders.get_builders import (
+    GetCoinTypeBalance,
+    GetCoins,
     GetPastObject,
     GetObjectsOwnedByAddress,
     GetObject,
@@ -51,9 +54,9 @@ from pysui.sui.sui_builders.exec_builders import (
 class SuiClient(_ClientMixin):
     """Sui Asyncrhonous Client."""
 
-    def __init__(self, config: SuiConfig) -> None:
+    def __init__(self, config: SuiConfig, request_type: SuiRequestType = SuiRequestType.WAITFORLOCALEXECUTION) -> None:
         """Client initializer."""
-        super().__init__(config)
+        super().__init__(config, request_type)
         self._client = httpx.AsyncClient(http2=True)
         self._rpc_api = {}
         self._schema_dict = {}
@@ -158,6 +161,53 @@ class SuiClient(_ClientMixin):
         return result
 
     # Build and execute convenience methods
+
+    async def _get_coins_for_type(
+        self, address: SuiAddress, coin_type: SuiString = SuiString("0x2::sui::SUI")
+    ) -> SuiRpcResult:
+        """_get_coins_for_type Returns all the coins of type for an address.
+
+        :param address: The address to fetch coins of coin_type for
+        :type address: SuiAddress
+        :param coin_type: Fully qualified type names for the coin (e.g., 0x168da5bf1f48dafc111b0a488fa454aca95e0b5e::usdc::USDC),
+        defaults to SuiString("0x2::sui::SUI")
+        :type coin_type: SuiString, optional
+        :return: If successful, result contains an array of coins objects of coin_type found
+        :rtype: SuiRpcResult
+        """
+        result = await self.execute(GetCoinTypeBalance(owner=address, coin_type=coin_type))
+        if result.is_ok():
+            limit = SuiInteger(result.result_data.coin_object_count)
+            result = await self.execute(GetCoins(owner=address, coin_type=coin_type, limit=limit))
+        return result
+
+    async def get_gas(self, address: SuiAddress = None) -> SuiRpcResult:
+        """get_gas Retrieves SUI gas coin objects for address.
+
+        :param address: If None, active_address will be used, defaults to None
+        :type address: SuiAddress, optional
+        :return: If successful, result contains an array of SUI gas objects found
+        :rtype: SuiRpcResult
+        """
+        address = address or self.config.active_address
+        return await self._get_coins_for_type(address)
+
+    async def get_coin(
+        self,
+        coin_type: SuiString,
+        address: SuiAddress = None,
+    ) -> SuiRpcResult:
+        """get_coin Retrieves objects of coin_type for address.
+
+        :param coin_type: Fully qualified type names for the coin (e.g., 0x168da5bf1f48dafc111b0a488fa454aca95e0b5e::usdc::USDC)
+        :type coin_type: SuiString
+        :param address: If None, active_address will be used, defaults to None
+        :type address: SuiAddress, optional
+        :return: If successful, result contains an array of coins objects of coin_type found
+        :rtype: SuiRpcResult
+        """
+        address = address or self.config.active_address
+        return await self._get_coins_for_type(address, coin_type)
 
     async def get_gas_from_faucet(self, for_address: SuiAddress = None) -> Any:
         """get_gas_from_faucet Gets gas from SUI faucet.

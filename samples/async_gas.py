@@ -41,12 +41,9 @@ sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
-from pysui.sui.sui_types import SuiString, SuiInteger
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_builders.get_builders import GetCoinTypeBalance, GetCoins
 from pysui.sui.sui_txresults.single_tx import ObjectInfo, SuiCoinObjects, SuiGas
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_clients.async_client import SuiClient
 
 
@@ -83,17 +80,6 @@ def print_gas(gasses: SuiCoinObjects) -> int:
     return total
 
 
-async def _get_gas(client: SuiClient, address: SuiAddress) -> SuiRpcResult:
-    """Efficient enumeration of SUI coins."""
-    # Will move to client proper for Sizzalena milestone
-    coin_type = SuiString("0x2::sui::SUI")
-    result = await client.execute(GetCoinTypeBalance(owner=address, coin_type=coin_type))
-    if result.is_ok():
-        limit = SuiInteger(result.result_data.items[0].coin_object_count)
-        result = await client.execute(GetCoins(owner=address, coin_type=coin_type, limit=limit))
-    return result
-
-
 async def get_all_gas(client: SuiClient) -> dict[SuiAddress, list[SuiGas]]:
     """get_all_gas Gets all SuiGas for each address in configuration.
 
@@ -103,9 +89,8 @@ async def get_all_gas(client: SuiClient) -> dict[SuiAddress, list[SuiGas]]:
     :rtype: dict[SuiAddress, list[SuiGas]]
     """
     config: SuiConfig = client.config
-    # Build up gas descriptor fetch for each address
     addys = [SuiAddress(x) for x in config.addresses]
-    addy_list = [_get_gas(client, x) for x in addys]
+    addy_list = [client.get_gas(x) for x in addys]
     gresult = await asyncio.gather(*addy_list, return_exceptions=True)
     return_map = {}
     for index, gres in enumerate(gresult):

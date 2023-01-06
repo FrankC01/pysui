@@ -472,6 +472,7 @@ class PendingDelegator(DataClassJsonMixin):
 
     delegator_address: str = field(metadata=config(field_name="delegator"))
     delegator_sui_amount: int = field(metadata=config(field_name="sui_amount"))
+    delegator_staked_sui_id: str = field(metadata=config(field_name="staked_sui_id"))
 
 
 @dataclass
@@ -506,9 +507,23 @@ class StakingPool(DataClassJsonMixin):
 
 
 @dataclass
+class StakeSubsidy(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    balance: dict
+    current_epoch_amount: int
+    epoch_counter: int
+
+    def __post_init__(self):
+        """Post hydrate parameter fixups."""
+        self.balance = self.balance["value"]
+
+
+@dataclass
 class ValidatorMetaData(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
+    consensus_address: int
     sui_address: str
     pubkey_bytes: list[int]
     network_pubkey_bytes: list[int]
@@ -519,6 +534,8 @@ class ValidatorMetaData(DataClassJsonMixin):
     next_epoch_delegation: int
     next_epoch_gas_price: int
     next_epoch_commission_rate: int
+    worker_address: list[int]
+    worker_pubkey_bytes: list[int]
 
 
 @dataclass
@@ -586,6 +603,7 @@ class SuiSystemState(DataClassJsonMixin):
     epoch: int
     parameters: StateParameters
     reference_gas_price: int
+    stake_subsidy: StakeSubsidy
     storage_fund: Union[dict, int]
     treasury_cap: Union[dict, int]
     validator_report_records: ValidatorReportRecords
@@ -654,4 +672,47 @@ class SuiCoinObjects(DataClassJsonMixin):
     """From sui_getCoins."""
 
     data: list[SuiCoinObject]
+    next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+foo = {
+    "data": [
+        {
+            "name": "vector[100u8, 121u8, 110u8, 95u8, 102u8, 105u8, 101u8, 108u8, 100u8]",
+            "type": "DynamicField",
+            "objectType": "0xe43b79b5b81bbb9dfd6203425e109b04cea2be65::base::TrackerField",
+            "objectId": "0xb07c959f83a44d4ecb86fb742282fd35d9c5e117",
+            "version": 14,
+            "digest": "1/EtCqtB+1koTnRlA4NbwfLr6WdpLk+NTfBJ3Tp0yXA=",
+        },
+        {
+            "name": "vector[100u8, 121u8, 110u8, 95u8, 111u8, 98u8, 106u8, 95u8, 102u8, 105u8, 101u8, 108u8, 100u8]",
+            "type": "DynamicObject",
+            "objectType": "0xe43b79b5b81bbb9dfd6203425e109b04cea2be65::base::TrackerObjectField",
+            "objectId": "0x95203990a3db500a6b1628507fd8d57aef360605",
+            "version": 15,
+            "digest": "YAUYKMJ1g82O04In3rVBGhdDJqvWwuw1jW0/6iDfHZs=",
+        },
+    ],
+    "nextCursor": None,
+}
+
+
+@dataclass
+class DynamicFieldInfo(DataClassJsonMixin):
+    """From sui_getDynamicFields."""
+
+    digest: str
+    name: str
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    field_type: str = field(metadata=config(field_name="type"))
+    version: int
+
+
+@dataclass
+class DynamicFields(DataClassJsonMixin):
+    """From sui_getDynamicFields."""
+
+    data: list[DynamicFieldInfo]
     next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))

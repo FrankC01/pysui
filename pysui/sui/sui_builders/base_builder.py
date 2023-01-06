@@ -28,17 +28,11 @@ class SuiRequestType(IntEnum):
     :raises TypeError: _description_
     """
 
-    IMMEDIATERETURN = 0
-    WAITFORTXCERT = 1
-    WAITFOREFFECTSCERT = 2
-    WAITFORLOCALEXECUTION = 3
+    WAITFOREFFECTSCERT = 0
+    WAITFORLOCALEXECUTION = 1
 
     def as_str(self) -> str:
         """Get scheme as string."""
-        if self is SuiRequestType.IMMEDIATERETURN:
-            return "ImmediateReturn"
-        if self is SuiRequestType.WAITFORTXCERT:
-            return "WaitForTxCert"
         if self is SuiRequestType.WAITFOREFFECTSCERT:
             return "WaitForEffectsCert"
         if self is SuiRequestType.WAITFORLOCALEXECUTION:
@@ -47,6 +41,31 @@ class SuiRequestType(IntEnum):
 
     @property
     def request_type(self) -> str:
+        """Satisfy transaction verification."""
+        return self.as_str()
+
+
+class SuiTransactionBuilderMode(IntEnum):
+    """."""
+
+    COMMIT = 0
+    DEVINSPECT = 1
+
+    def as_str(self) -> str:
+        """Get scheme as string."""
+        if self is SuiTransactionBuilderMode.COMMIT:
+            return "Commit"
+        if self is SuiTransactionBuilderMode.DEVINSPECT:
+            return "DevInspect"
+        raise TypeError(f"Unknown builder mode type {self.name}")
+
+    @property
+    def transactio_buid_type(self) -> str:
+        """Satisfy transaction verification."""
+        return self.as_str()
+
+    @property
+    def execution_mode(self) -> str:
         """Satisfy transaction verification."""
         return self.as_str()
 

@@ -93,9 +93,13 @@ class SuiConfig(ClientConfiguration):
             raise SuiFileNotFound((filepath))
 
     def create_new_keypair_and_address(self, scheme: SignatureScheme) -> tuple[str, str]:
-        """Create a new keypair and address identifier and return the address string.
+        """create_new_keypair_and_address Create a new keypair and address identifier.
 
-        The scheme defines generation of ED25519 or SECP256K1 keypairs.
+        :param scheme: Identifies whether new key is ed25519 or secp256k1
+        :type scheme: SignatureScheme
+        :raises NotImplementedError: If invalid scheme is provided
+        :return: A tuple containing the mnemonic 12 words for key recover and the new address
+        :rtype: tuple[str, str]
         """
         if scheme == SignatureScheme.ED25519:
             mnen, keypair, address = create_new_address(scheme)
@@ -148,7 +152,7 @@ class SuiConfig(ClientConfiguration):
 
     @classmethod
     def from_config_file(cls, infile: str) -> "SuiConfig":
-        """Load the local Sui Config from well known path."""
+        """Load the local Sui Config from a fully qualified path to client.yaml."""
         expanded_path = os.path.expanduser(infile)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:
@@ -157,7 +161,7 @@ class SuiConfig(ClientConfiguration):
             raise SuiFileNotFound(f"{expanded_path} not found.")
 
     @classmethod
-    def generate_configuration(cls) -> "ClientConfiguration":
+    def _generate_configuration(cls) -> "ClientConfiguration":
         """Generate a default configuration."""
         raise NotImplementedError("SuiConfig.generate_configuration not implemented yet.")
 

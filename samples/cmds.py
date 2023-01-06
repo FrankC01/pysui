@@ -15,7 +15,6 @@
 """Commands and dispath dict."""
 import argparse
 import json
-from numbers import Number
 import sys
 from typing import Union
 from pysui import __version__
@@ -46,7 +45,7 @@ from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_clients.sync_client import SuiClient
-from pysui.sui.sui_txresults.single_tx import MoveDataDescriptor, SuiCoin, SuiGasDescriptor
+from pysui.sui.sui_txresults.single_tx import MoveDataDescriptor, SuiCoinObjects
 
 
 def sdk_version(_client: SuiClient, _args: argparse.Namespace) -> None:
@@ -73,40 +72,32 @@ def sui_addresses(client: SuiClient, _args: argparse.Namespace) -> None:
 
 
 def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
-    """Print gas information."""
+    """Get gas for address."""
 
-    def _total_gas(coin_objects: list[SuiCoin]) -> Number:
-        """Get the total of balances for SuiCoin type."""
-        results = 0
-        for cdesc in coin_objects:
-            results = results + cdesc.balance
-        return results
+    def _detail_gas_objects(gas_objects: SuiCoinObjects) -> None:
+        total = 0
+        print()
+        header_object_id = "Gas Object ID"
+        header_mist = "Mist"
+        header_sui = "SUI"
+        header_str = format(f"{header_object_id:^50s}{header_mist:^12s}{header_sui:^15s}")
+        print(header_str)
+        for _ in range(0, len(header_str)):
+            print("-", end="")
+        print()
+        for gas_object in gas_objects.data:
+            balance = gas_object.balance
+            total += balance
+            print(f"{gas_object.coin_object_id:^45s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:.8f}")
+        print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
+        print()
+        return total
 
-    def _detail_gas(gas_objects: SuiRpcResult):
-        if gas_objects.is_ok():
-            print()
-            header_object_id = "Gas Object ID"
-            header_mist = "Mist"
-            header_sui = "SUI"
-            header_str = format(f"{header_object_id:^45s}{header_mist:^12s}{header_sui:^15s}")
-            print(header_str)
-            for _ in range(0, len(header_str)):
-                print("-", end="")
-            print()
-
-            for gasobj in gas_objects.result_data:
-                print(
-                    f"{gasobj.identifier} | {str(gasobj.balance):>12s} | {(gasobj.balance / SUI_COIN_DENOMINATOR):.8f}"
-                )
-            mists = _total_gas(gas_objects.result_data)
-            sui = mists / SUI_COIN_DENOMINATOR
-            print(f"Total Gas = MISTS: {mists:12} SUI: {sui:.8f}")
-        else:
-            print(f"Sui RPC Error: {gas_objects.result_string} -> {gas_objects.result_data}")
-
-    descriptor_result = client.get_address_object_descriptors(SuiGasDescriptor, args.address)
-    identities = [ids.identifier for ids in descriptor_result.result_data]
-    _detail_gas(client.get_objects_for(identities))
+    gas_result = client.get_gas(args.address)
+    if gas_result.is_ok():
+        _detail_gas_objects(gas_result.result_data)
+    else:
+        print(f"Error: {gas_result.result_string}")
 
 
 def sui_new_address(client: SuiClient, args: argparse.Namespace) -> None:
@@ -188,6 +179,8 @@ def sui_objects(client: SuiClient, args: argparse.Namespace) -> None:
 def sui_api(client: SuiClient, args: argparse.Namespace) -> None:
     """Display information about Sui RPC API."""
     rpcapi = client.rpc_api
+
+    print(f"RPC API Version: {client.rpc_version}")
 
     if args.name:
         if rpcapi.get(args.name, None):

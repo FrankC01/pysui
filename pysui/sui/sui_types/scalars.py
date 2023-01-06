@@ -43,6 +43,21 @@ class SuiNullType(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def coin_type(self) -> None:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def epoch(self) -> None:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def descending_order(self) -> None:
+        """Alias for transactions."""
+        return self.value
+
 
 class SuiString(SuiScalarType):
     """Sui String type."""
@@ -57,6 +72,11 @@ class SuiString(SuiScalarType):
 
     @property
     def function(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def name(self) -> str:
         """Alias for transactions."""
         return self.value
 
@@ -182,6 +202,11 @@ class ObjectID(SuiString):
 
     @property
     def package_object_id(self) -> str:
+        """Alias over value."""
+        return self.value
+
+    @property
+    def parent_object_id(self) -> str:
         """Alias over value."""
         return self.value
 
