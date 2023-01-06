@@ -10,11 +10,12 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,too-many-instance-attributes,line-too-long
 
 """Sui Builders: Complex transaction."""
 
 from abc import abstractmethod
+from typing import Union
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_keypair import SignatureScheme, PublicKey
 from pysui.sui.sui_builders.base_builder import (
@@ -27,7 +28,7 @@ from pysui.sui.sui_types.scalars import SuiTxBytes, SuiSignature, ObjectID, SuiI
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import SuiGas
-from pysui.sui.sui_txresults.complex_tx import TxEffectResult, Effects
+from pysui.sui.sui_txresults.complex_tx import TxEffectResult, Effects, TxInspectionResult
 
 from pysui.sui import sui_utils
 
@@ -150,6 +151,94 @@ class DryRunTransaction(_NativeTransactionBuilder):
         return [self.tx_bytes]
 
 
+class InspectTransaction(_NativeTransactionBuilder):
+    """InspectTransaction when executed, return dev-inpsect results of the transaction, including both the transaction effects and return values of the transaction."""
+
+    def __init__(self, *, tx_bytes: SuiTxBytes) -> None:
+        """__init__ Initialize builder.
+
+        :param tx_bytes: The transaction bytes returned from previous tx executions to inspect
+        :type tx_bytes: SuiTxBytes
+        """
+        super().__init__("sui_devInspectTransaction", handler_cls=TxInspectionResult, handler_func="from_dict")
+        self.tx_bytes: SuiTxBytes = tx_bytes
+
+    def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "InspectTransaction":
+        """Set the transaction base64 string."""
+        self.tx_bytes: SuiTxBytes = tbyteb64
+        return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return [self.tx_bytes]
+
+
+class InspectMoveCall(_NativeTransactionBuilder):
+    """InspectMoveCall when executed, Similar to `MoveCall` but does not require gas object and budget.
+
+    The main purpose of this is to inspect the changes/effects of the call.
+    """
+
+    move_kwords: set[str] = {
+        "sender_address",
+        "package_object_id",
+        "module",
+        "function",
+        "type_arguments",
+        "arguments",
+    }
+    _movecall_array_keys: set[str] = {
+        "type_arguments",
+        "arguments",
+    }
+
+    def __init__(
+        self,
+        *,
+        sender_address: SuiAddress = None,
+        package_object_id: ObjectID = None,
+        module: SuiString = None,
+        function: SuiString = None,
+        type_arguments: SuiArray[SuiString] = None,
+        arguments: SuiArray[SuiString] = None,
+    ) -> None:
+        """__init__ Builder initializer.
+
+        :param sender_address: the transaction signer's Sui address, defaults to None
+        :type sender_address: SuiAddress, optional
+        :param package_object_id: the Move package ID, e.g. `0x2`, defaults to None
+        :type package_object_id: ObjectID, optional
+        :param module: the Move module name, e.g. `devnet_nft`, defaults to None
+        :type module: SuiString, optional
+        :param function: the move function name, e.g. `mint`, defaults to None
+        :type function: SuiString, optional
+        :param type_arguments: the type arguments of the Move function, defaults to None
+        :type type_arguments: SuiArray[SuiString], optional
+        :param arguments: the arguments to be passed into the Move function, defaults to None
+        :type arguments: SuiArray[SuiString], optional
+        """
+        inargs = locals().copy()
+        super().__init__("sui_devInspectMoveCall", handler_cls=TxInspectionResult, handler_func="from_dict")
+        self.sender_address: SuiAddress = None
+        self.package_object_id: ObjectID = None
+        self.module: SuiString = None
+        self.function: SuiString = None
+        self.type_arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
+        self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
+        for hit in self.move_kwords & set(inargs.keys()):
+            if hit in self._movecall_array_keys:
+                if inargs[hit]:
+                    setattr(self, hit, SuiArray(inargs[hit]))
+                else:
+                    setattr(self, hit, SuiArray([]))
+            else:
+                setattr(self, hit, inargs[hit])
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Collect the call parameters."""
+        return self._pull_vars()
+
+
 class _MoveCallTransactionBuilder(SuiBaseBuilder):
     """Builders that must be processed, signed then executed."""
 
@@ -164,6 +253,8 @@ class _MoveCallTransactionBuilder(SuiBaseBuilder):
             return getattr(self, "signer")
         if hasattr(self, "sender"):
             return getattr(self, "sender")
+        if hasattr(self, "sender_address"):
+            return getattr(self, "sender_address")
         raise ValueError(f"Object {self.__class__.__name__} has no authority property set")
 
 
@@ -417,9 +508,9 @@ class PaySui(_MoveCallTransactionBuilder):
         self,
         *,
         signer: SuiAddress = None,
-        input_coins: SuiArray[ObjectID] = None,
-        recipients: SuiArray[SuiAddress] = None,
-        amounts: SuiArray[SuiInteger] = None,
+        input_coins: Union[list[ObjectID], SuiArray[ObjectID]] = None,
+        recipients: Union[list[SuiAddress], SuiArray[SuiAddress]] = None,
+        amounts: Union[list[SuiInteger], SuiArray[SuiInteger]] = None,
         gas_budget: SuiInteger = None,
     ) -> None:
         """__init__ PaySui Builder initializer.

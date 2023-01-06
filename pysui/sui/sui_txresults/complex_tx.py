@@ -308,7 +308,7 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     gas_used: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
     transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     gas_object: GenericOwnerRef = field(metadata=config(letter_case=LetterCase.CAMEL))
-    events: list[dict]
+    events: list[dict] = field(default_factory=list)
     dependencies: list[str] = field(default_factory=list)
     mutated: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     created: Optional[list[GenericOwnerRef]] = field(default_factory=list)
@@ -376,6 +376,14 @@ class TxEffectResult(SuiTxReturnType, DataClassJsonMixin):
         if self.succeeded:
             return "success"
         return f"{self.effects_cert.effects.effects.status.status} - {self.effects_cert.effects.effects.status.error}"
+
+
+@dataclass
+class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
+    """From sui_devInspectTransaction and sui_devInspectMoveCall."""
+
+    effects: Effects
+    results: dict
 
 
 # Event query results

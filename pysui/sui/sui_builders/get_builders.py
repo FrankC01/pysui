@@ -10,6 +10,7 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
+# pylint: disable=line-too-long
 
 """Sui Builders: Simple sui_getXXX calls."""
 
@@ -146,7 +147,7 @@ class GetAllCoins(_NativeTransactionBuilder):
 
 
 class GetCoinTypeBalance(_NativeTransactionBuilder):
-    """GetCoinTypeBalance Return the total coin balance for each coin type."""
+    """GetCoinTypeBalance Return the total coin balance for a coin type."""
 
     def __init__(self, *, owner: SuiAddress, coin_type: SuiString = None):
         """__init__ Initializes builder with address and coin type to fetch balances for.
@@ -196,7 +197,7 @@ class GetCoins(_NativeTransactionBuilder):
         limit: SuiInteger = None,
         cursor: ObjectID = None,
     ):
-        """__init__ Initialize builder with address,coin_type, page limits and cursor.
+        """__init__ Initialize builder.
 
         :param owner: the coin owner's Sui address
         :type owner: SuiAddress
@@ -356,10 +357,16 @@ class GetObjectsOwnedByObject(_NativeTransactionBuilder):
 
 
 class GetDynamicFieldObject(_NativeTransactionBuilder):
-    """."""
+    """GetDynamicFieldObject when executed, return the dynamic field object information for a specified object."""
 
     def __init__(self, parent_object_id: ObjectID, field_name: SuiString) -> None:
-        """."""
+        """__init__ Builder initializer.
+
+        :param parent_object_id: The ID of the queried parent object
+        :type parent_object_id: ObjectID
+        :param field_name: The Name of the dynamic field
+        :type field_name: SuiString
+        """
         super().__init__("sui_getDynamicFieldObject", handler_cls=ObjectRead, handler_func="factory")
         self.parent_object_id = parent_object_id
         self.name = field_name
@@ -370,12 +377,20 @@ class GetDynamicFieldObject(_NativeTransactionBuilder):
 
 
 class GetDynamicFields(_NativeTransactionBuilder):
-    """GetDynamicFields When executed, returns the list of dynamic field objects owned by an object."""
+    """GetDynamicFields when executed, returns the list of dynamic field objects owned by an object."""
 
     def __init__(
         self, parent_object_id: ObjectID, limit: Union[int, SuiInteger] = None, cursor: Union[str, ObjectID] = None
     ) -> None:
-        """."""
+        """__init__ Builder initializer.
+
+        :param parent_object_id: The ID of the queried parent object
+        :type parent_object_id: ObjectID
+        :param limit: Maximum item returned per page, default to [QUERY_MAX_RESULT_LIMIT] if not specified, defaults to None
+        :type limit: Union[int, SuiInteger], optional
+        :param cursor: Optional paging cursor, defaults to None
+        :type cursor: Union[str, ObjectID], optional
+        """
         super().__init__("sui_getDynamicFields", handler_cls=DynamicFields, handler_func="from_dict")
         self.parent_object_id = parent_object_id
         self.cursor = SuiNullType()

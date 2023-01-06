@@ -82,7 +82,7 @@ def get_address_not_active(client: SuiClient, all_unique: bool = False) -> Union
 
 
 def test_setup_chainmodule_pass(sui_client: SuiClient, sui_test_move_path: Path):
-    """test_get_data_activeaddress_pass Test for any data objects owned by active-address.
+    """test_setup_chainmodule_pass Test for any data objects owned by active-address.
 
     There may or may not be objects based on state when tests start
     :param sui_client: Synchronous http client
