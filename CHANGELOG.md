@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Fixed
+- GetObjectsOwnedByObject result parsing [bug](https://github.com/FrankC01/pysui/issues/58)
 
 ### Changed
 - GetTxn now references result dataclass. Updated samples/cmd.py to use new result.
