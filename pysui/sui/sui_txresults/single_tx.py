@@ -57,7 +57,10 @@ class ObjectInfo(DataClassJsonMixin):
 
     def __post_init__(self):
         """Post init processing for parameters."""
-        self.owner = self.owner["AddressOwner"]
+        if "AddressOwner" in self.owner:
+            self.owner = self.owner["AddressOwner"]
+        elif "ObjectOwner" in self.owner:
+            self.owner = self.owner["ObjectOwner"]
 
     @property
     def identifier(self) -> ObjectID:

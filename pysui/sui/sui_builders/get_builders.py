@@ -337,7 +337,7 @@ class GetObjectsOwnedByObject(_NativeTransactionBuilder):
         :param sui_object: An ObjectID or type that can be coerced to ObjectID, defaults to None
         :type sui_object: Any, optional
         """
-        super().__init__("sui_getObjectsOwnedByObject")
+        super().__init__("sui_getObjectsOwnedByObject", handler_cls=ObjectInfo, handler_func="factory")
         self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
 
     def set_object_id(self, sui_object: Any) -> "GetObjectsOwnedByObject":
