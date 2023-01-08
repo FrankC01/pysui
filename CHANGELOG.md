@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Changed
+- GetTxn now references result dataclass. Updated samples/cmd.py to use new result.
 
 ### Removed
 

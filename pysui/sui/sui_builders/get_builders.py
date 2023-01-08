@@ -32,7 +32,7 @@ from pysui.sui.sui_txresults.single_tx import (
     CommitteeInfo,
     SuiTxnAuthSigners,
 )
-from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TransactionQueryEnvelope
+from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TransactionEnvelope, TransactionQueryEnvelope
 from pysui.sui.sui_txresults.package_meta import (
     SuiMovePackage,
     SuiMoveModule,
@@ -770,7 +770,7 @@ class GetTx(_NativeTransactionBuilder):
 
     def __init__(self, digest: Union[SuiString, str] = None) -> None:
         """Initialize builder."""
-        super().__init__("sui_getTransaction")
+        super().__init__("sui_getTransaction", handler_cls=TransactionEnvelope, handler_func="from_dict")
         self.digest: SuiString = digest if isinstance(digest, SuiString) else SuiString(digest)
 
     def set_digest(self, digest: Union[SuiString, str]) -> "GetTx":

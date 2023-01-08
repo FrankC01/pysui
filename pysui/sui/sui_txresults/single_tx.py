@@ -675,29 +675,6 @@ class SuiCoinObjects(DataClassJsonMixin):
     next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
-foo = {
-    "data": [
-        {
-            "name": "vector[100u8, 121u8, 110u8, 95u8, 102u8, 105u8, 101u8, 108u8, 100u8]",
-            "type": "DynamicField",
-            "objectType": "0xe43b79b5b81bbb9dfd6203425e109b04cea2be65::base::TrackerField",
-            "objectId": "0xb07c959f83a44d4ecb86fb742282fd35d9c5e117",
-            "version": 14,
-            "digest": "1/EtCqtB+1koTnRlA4NbwfLr6WdpLk+NTfBJ3Tp0yXA=",
-        },
-        {
-            "name": "vector[100u8, 121u8, 110u8, 95u8, 111u8, 98u8, 106u8, 95u8, 102u8, 105u8, 101u8, 108u8, 100u8]",
-            "type": "DynamicObject",
-            "objectType": "0xe43b79b5b81bbb9dfd6203425e109b04cea2be65::base::TrackerObjectField",
-            "objectId": "0x95203990a3db500a6b1628507fd8d57aef360605",
-            "version": 15,
-            "digest": "YAUYKMJ1g82O04In3rVBGhdDJqvWwuw1jW0/6iDfHZs=",
-        },
-    ],
-    "nextCursor": None,
-}
-
-
 @dataclass
 class DynamicFieldInfo(DataClassJsonMixin):
     """From sui_getDynamicFields."""

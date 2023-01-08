@@ -39,6 +39,11 @@ class SuiNullType(SuiScalarType):
         return self.value
 
     @property
+    def version(self) -> None:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def cursor(self) -> None:
         """Alias for transactions."""
         return self.value

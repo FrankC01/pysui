@@ -468,7 +468,7 @@ def txn_txn(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = client.execute(GetTx(args.digest))
     if result.is_ok():
-        print(json.dumps(result.result_data, indent=2))
+        print(result.result_data.to_json(indent=2))
     else:
         print(f"Error: {result.result_string}")
 
