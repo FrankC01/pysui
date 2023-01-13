@@ -1,4 +1,5 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -6,21 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
+BREAKING CHANGES
+
 ### Added
 
+- Utility `keys_to_0210.py` [about](utility/README.md)
+
 ### Fixed
+
 - GetObjectsOwnedByObject result parsing [bug](https://github.com/FrankC01/pysui/issues/58)
 
 ### Changed
+
+- Keystring processing as per [sui 0.21.0 change](https://github.com/MystenLabs/sui/pull/6989)
 - GetTxn now references result dataclass. Updated samples/cmd.py to use new result.
+- Code refactoring for all builders in `builders/get_builders.py`
 
 ### Removed
+
+- `unique` from SuiKeyPairED25519 and SuiKeyPairSECP256K1
 
 ## [0.7.0] 2023-01-06
 
 Breaking changes
 
 ### Added
+
 - async_gas and async_sub support calling with `--local path/file to non-standard client.yaml`
 - Prelim subscription docs
 - Elaborated subscription doc with examples
@@ -36,30 +48,36 @@ Breaking changes
 - **consensus_address, worker_address and worker_pubkey_bytes** fields added to ValidatorMetaData
 
 ### Fixed
+
 - Signature on subscription handlers (typing Callable)
 
 ### Changed
+
 - Workaround for [sui defect](https://github.com/MystenLabs/sui/issues/7052)
 - Using new 'temporary' gas retrival API to optimize `async_gas` [discussion](https://github.com/FrankC01/pysui/discussions/50). Targetting
-[milestone](https://github.com/FrankC01/pysui/milestone/5) with [enhancement](https://github.com/FrankC01/pysui/issues/54)
+  [milestone](https://github.com/FrankC01/pysui/milestone/5) with [enhancement](https://github.com/FrankC01/pysui/issues/54)
 - Dataclasses for result of calling `sui_getSuiSystemState`
 - GetCoinTypeBalance (`sui_getBalance`) now returns a single SuiCoinBalance instead of SuiCoinBalance**s** (array of SuiCoinBalance). See above, in Added, GetAllCoinBalances support [0.20.0](https://github.com/FrankC01/pysui/issues/55)
 - request_type: SuiRequestType to constructors of sync and async SuiClients. Defaults to WAITFORLOCALEXECUTION
 
 ### Removed
+
 - IMMEDIATERETURN and WAITFORTXCERT removed from `SuiRequestType` for txn execution [0.20.0](https://github.com/FrankC01/pysui/issues/55)
 
 ## [0.6.0] 2022-12-29
 
 ### Added
+
 - New Provider: SuiClient in `sui.sui_clients.subscribe.py` [enhancement](https://github.com/FrankC01/pysui/issues/40)
 
 ### Fixed
+
 - ObjectRead supporting dynamic field type representation
 - SuiParameterReference supporting str or dict in `reference_to` for scalar types
 - Samples: `wallet objects -a ...` was ignoring address
 
 ### Changed
+
 BIG BREAKING CHANGES!
 
 - Refactored `sui.sui_types` as a package [breaking changes](https://github.com/FrankC01/pysui/issues/48)
@@ -69,14 +87,17 @@ BIG BREAKING CHANGES!
 - Renamed `SuiAsynchClient` to `SuiClient` [breaking changes](https://github.com/FrankC01/pysui/issues/48)
 
 ### Removed
+
 - faux_wallet.py in samples package
 
 ## [0.5.1] - 2022-12-20
 
 ### Added
+
 - Builders section to documentation
 
 ### Fixed
+
 - [bug](https://github.com/FrankC01/pysui/issues/47)
 
 ### Changed
@@ -86,20 +107,21 @@ BIG BREAKING CHANGES!
 ## [0.5.0] - 2022-12-19
 
 ### Added
+
 - Support for `sui_getBalance` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns
-total balance per coin type (i.e. `0x2::sui::SUI`) for owner (SuiAddress) and is more efficient than getting all coins and
-totalling.
+  total balance per coin type (i.e. `0x2::sui::SUI`) for owner (SuiAddress) and is more efficient than getting all coins and
+  totalling.
 - Support for `sui_getCoins` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns
-address coins for coin type (i.e. `0x2::sui::SUI`) and is more efficient than getting all coin descriptors and
-sui_getObject for each descriptor.
+  address coins for coin type (i.e. `0x2::sui::SUI`) and is more efficient than getting all coin descriptors and
+  sui_getObject for each descriptor.
 - Support for `sui_getTotalSupply` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns the
-total supply of coin_type (i.e. `0x2::sui::SUI`).
+  total supply of coin_type (i.e. `0x2::sui::SUI`).
 - Support for `sui_getSuiSystemState` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns
-SUI system state information.
+  SUI system state information.
 - Support for `sui_getTransactionsInRange` [enhancement](https://github.com/FrankC01/pysui/issues/46). This returns a list of transaction digests strings within the queried transaction sequence range: `start` (inclusive) and `end` (exclusive).
 
-
 ### Fixed
+
 - [bug] (https://github.com/FrankC01/pysui/issues/46)
 
 ### Changed
@@ -111,16 +133,17 @@ SUI system state information.
 ### Added
 
 ### Fixed
+
 - SUI 0.19.0 changed type of ObjectRead coin 'balance' from int to string. [bug](https://github.com/FrankC01/pysui/issues/46)
 
 ### Changed
 
 ### Removed
 
-
 ## [0.4.0] - 2022-12-15
 
 ### Added
+
 - Pushed `pysui` 0.3.0 to [PyPi](https://pypi.org/project/pysui/)
 - Pushed `pysui` 0.3.0 to [readthedocs](https://pysui.readthedocs.io)
 - `dry_run` method added to SuiClient(s) [enhancement](https://github.com/FrankC01/pysui/issues/37)
@@ -132,16 +155,17 @@ SUI system state information.
 - Support (builders and types) for `sui_getTransactionAuthSigners`
 
 ### Fixed
+
 - SuiRpcResult [bug](https://github.com/FrankC01/pysui/issues/38)
 - [bug](https://github.com/FrankC01/pysui/issues/41)
 
 ### Changed
+
 - GetPastObject default version fell back to 1, which no longer exists as the SUI system changed to reflect the
-transaction sequence number that created the object. Version is no longer an optional argument to GetPastObject
+  transaction sequence number that created the object. Version is no longer an optional argument to GetPastObject
 - Renamed `asynch_gas.py` to `async_gas.py` in samples
 - Extrapolate `type_arg`, if any, in ObjectRead post_init
 - Removed creation of a event.loop in the SuiAsyncClient `__init__`
-
 
 ### Removed
 
@@ -150,6 +174,7 @@ transaction sequence number that created the object. Version is no longer an opt
 **Breaking** Changes (noted in bold)
 
 ### Added
+
 - Pushed `pysui` 0.2.0-beta to [PyPi](https://pypi.org/project/pysui/)
 - Pushed `pysui` 0.2.0-beta to [readthedocs](https://pysui.readthedocs.io/en/v0.2.0-beta/)
 - SuiMoveScalarArgument as type for processing results of `sui_getNormalized...` calls
@@ -157,15 +182,17 @@ transaction sequence number that created the object. Version is no longer an opt
 - Support for `sui_getCoinMetadata` (introduced in sui 0.17.0)
 
 ### Fixed
+
 - Corrected return signature `type_arguments` on SuiParameterStruct [fixed](https://github.com/FrankC01/pysui/issues/35)
 - Corrected handling of GetObject where ID is package [fixed](https://github.com/FrankC01/pysui/issues/34)
 - Various readthedocs nuances
 - Added `SuiNullType` with alias tx properties and checking API schema for required/not-required parameters
 
 ### Changed
+
 - Added consistent format for `gas` and `mist` in sample scripts
 - Factored out command line argument validators for sample scripts
-- **_ClientMixin in `sui_rpc` now check RPC API schema version. Minimmal support is 0.17.0**
+- **\_ClientMixin in `sui_rpc` now check RPC API schema version. Minimmal support is 0.17.0**
 
 ### Removed
 
@@ -176,6 +203,7 @@ Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, 
 **Breaking** Changes (noted in bold)
 
 ### Added
+
 - Pushed `pysui` 0.1.1 to [PyPi](https://pypi.org/project/pysui/)
 - Support for `sui_splitCoinEqual` in `sui/sui_builders.py`
 - Support for `sui_batchTransaction` in `sui/sui_builders.py`
@@ -189,17 +217,18 @@ Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, 
 - Sphinx generated HTML docs [documentation](https://github.com/FrankC01/pysui/issues/32)
 
 ### Fixed
+
 - Object version result [closed](https://github.com/FrankC01/pysui/issues/29)
 - Sample wallet construction of object version type and `GetPastObject` in `sui/sui_builders.py`
 - **Builder** keyword expansion and initial docs [closed](https://github.com/FrankC01/pysui/issues/30)
 - **SuiType** keyword expansion and initial docs [closed](https://github.com/FrankC01/pysui/issues/31)
 
 ### Changed
+
 - **SuiClient** and **SuiAsynchClinet** [issue](https://github.com/FrankC01/pysui/issues/27)
 - Relaxed build initializer validations [closed](https://github.com/FrankC01/pysui/issues/28)
 - **Refactored data model for results of GetPackage. Now produces SuiMovePackage vs MovePackage**
 - Renamed `samples/asynch.py` to `samples/asynch_gas.py`
-
 
 ### Removed
 
@@ -208,6 +237,7 @@ Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, 
 **Breaking** Changes (noted in bold)
 
 ### Added
+
 - Pushed `pysui` 0.0.11 to [PyPi](https://pypi.org/project/pysui/)
 - `get_gas_from_faucet` **devnet** only [enhancement](https://github.com/FrankC01/pysui/issues/23)
 - Integration testing (**devnet synchronous**) [enhancement](https://github.com/FrankC01/pysui/issues/24)
@@ -220,13 +250,16 @@ Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, 
 - `samples/asynch.py` small asynchronous sample code
 
 ### Fixed
+
 - **Secp256k1** bug fixed [issue](https://github.com/FrankC01/pysui/issues/26)
 
 ### Changed
+
 - **SuiClient** and **SuiAsynchClient** deriving from abstracts `Provider`
 - `samples.wallet` gas and objects formatting
 
 ### Removed
+
 - **SyncHttpRPC** and **AsyncHttpRPC** from `abstracts/client_rpc.py` as part of [issue](https://github.com/FrankC01/pysui/issues/17)
 - `mnemonic` and `pynacl` from requirements... redundant with use of `bip-utils`
 
@@ -235,6 +268,7 @@ Was originally `0.1.2` but changed to `0.2.0` in line with semantic versioning, 
 Breaking Release
 
 ### Added
+
 - Pushed `pysui` 0.0.10 to [PyPi](https://pypi.org/project/pysui/)
 - SUI_COIN_DENOMINATOR: int = 1000000000 to `sui_constants.py`
 - CommitteeInfo type , in `sui_types.py`, for `sui_getCommitteeInfo` RPC API response
@@ -243,6 +277,7 @@ Breaking Release
 - `GetTxs` builder in `sui_builders.py` and TransactionQueryEnvelope, in `sui_types.py` for `sui_getTransactions` RPC API response.
 
 ### Fixed
+
 - Builder and RPC API parameter name fixes.
 - Re-enabled event queries (`sui_getEvents`) on SuiClient (`sui_rpc.py`)
 - Closed [issue](https://github.com/FrankC01/pysui/issues/1)
@@ -250,17 +285,19 @@ Breaking Release
 - Closed [issue](https://github.com/FrankC01/pysui/issues/22)
 
 ### Changed
+
 - ObjectInfo, and subclasses, moved to dataclass types as per [issue](https://github.com/FrankC01/pysui/issues/1)
 - ObjectRead, and subclasses, moved to dataclass types as per [issue](https://github.com/FrankC01/pysui/issues/1)
 - SuiNumber renamed to SuiInteger as per [issue](https://github.com/FrankC01/pysui/issues/22)
 - Update README.md example to reflect RPC Client method additions
 - Handle different 'owner' types in ObjectRead type
 
-
 ### Removed
 
 ## [0.0.10] - 2022-11-14
+
 ### Added
+
 - CHANGELOG.md
 - Hydrate object results from Sui `sui_executeTransaction` API (see sui/sui_tx_return_types.py)
 - Transaction result tests (results are static via conftest.py fixtures in tests/unit)
@@ -287,6 +324,7 @@ Breaking Release
 - `publish_package_txn` on SuiClient [issue](https://github.com/FrankC01/pysui/issues/20)
 
 ### Changed
+
 - Absolute to relative imports
 - Fixed [issue](https://github.com/FrankC01/pysui/issues/12)
 - Moved signed transaction handling to sui/sui_rpc.py from faux_wallet
@@ -307,6 +345,7 @@ Breaking Release
 - Fixed transaction result `deleted` effect for merge-coin transaction to use `GenericRef` result versus `GenericOwnerRef`
 
 ### Removed
+
 - sui/sui_tx_return_types.py
 - All `events` commands from sample as they've been removed in RPC API in favor of general `sui_getEvents`. Will support in future.
 - `get_package_object`

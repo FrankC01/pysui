@@ -13,11 +13,15 @@
 
 """Sui Builders: Common types."""
 
+import inspect
+import functools
+
 from abc import abstractmethod
 from enum import IntEnum
-from typing import Type, Union
+from typing import Type, Union, get_args
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_rpc import Builder
+from pysui.sui.sui_utils import COERCION_FROM_TO_SETS, COERCION_TO_FROM_SETS, COERCION_FN_MAP
 
 
 class SuiRequestType(IntEnum):
@@ -103,15 +107,17 @@ class SuiBaseBuilder(Builder):
         var_map = vars(self)
         return [val for key, val in var_map.items() if key[0] != "_"]
 
-    @abstractmethod
+    # @abstractmethod
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
+        # TODO: Merge with `params` method when refactored or just remove abstract decl
         return self._pull_vars()
 
     @property
     def params(self) -> list[SuiBaseType]:
         """Return parameters list."""
-        return self._collect_parameters()
+        return self._pull_vars()
+        # return self._collect_parameters()
 
     @property
     def header(self) -> dict:
@@ -128,16 +134,6 @@ class SuiBaseBuilder(Builder):
         """Get transaction required flag."""
         return self._txn_required
 
-    # Experimental
-    def _has_return_handler_cls(self) -> bool:
-        """Query presence of return handler."""
-        return self._handler_cls is not None
-
-    def _has_return_handler_func(self) -> bool:
-        """Query presence of return handler."""
-        return self._handler_func is not None
-
-    # Experimental
     def handle_return(self, indata: dict) -> Union[dict, SuiBaseType]:
         """Handle the expected return."""
         if self._handler_cls and self._handler_func:
@@ -147,6 +143,126 @@ class SuiBaseBuilder(Builder):
         if self._handler_cls is None and self._handler_func:
             return self._handler_func(indata)
         return indata
+
+    # EXPERIMENTAL
+    @classmethod
+    def value_type_validator(cls, base_class_name: str, args: dict, builder_types: dict) -> Union[dict, TypeError]:
+        """."""
+        result_dict = {}
+        for ctype_key, ctype_value in builder_types.items():
+            # Get the type of value from args of same name
+            has_type = type(args[ctype_key])
+            # print(f"args {ctype_key} has type {has_type} and expects {ctype_value}")
+            # if hastype is equal to expected type (ctype_value)
+            if has_type == ctype_value:
+                result_dict[ctype_key] = args[ctype_key]
+            # if intype has cross-reference, call the converter
+            elif has_type in COERCION_FROM_TO_SETS and ctype_value in COERCION_FROM_TO_SETS[has_type]:
+                result_dict[ctype_key] = COERCION_FN_MAP[ctype_value](args[ctype_key])
+            # If no value in argument but type supports Optional
+            elif not args[ctype_key]:
+                if "_name" in ctype_value.__dict__ and ctype_value.__dict__["_name"] == "Optional":
+                    result_dict[ctype_key] = COERCION_FN_MAP[has_type](ctype_key)
+                else:
+                    raise TypeError(f"{ctype_key} has no value but missing type hint 'Optional'")
+            # If value in argument and type can be optional Optional
+            elif args[ctype_key] and "_name" in ctype_value.__dict__ and ctype_value.__dict__["_name"] == "Optional":
+                true_type = get_args(ctype_value)[0]
+                if (
+                    true_type in COERCION_TO_FROM_SETS
+                    and has_type in COERCION_TO_FROM_SETS[true_type]
+                    and true_type in COERCION_FN_MAP
+                ):
+                    result_dict[ctype_key] = COERCION_FN_MAP[true_type](args[ctype_key])
+                else:
+                    raise ValueError(f"Unable to handle {ctype_key} attribute assignment")
+            else:
+                # We get here if we can't coerce type
+                raise ValueError(f"{ctype_key} expects {ctype_value} but args {ctype_key} is  {type(args[ctype_key])}")
+        return result_dict
+
+
+def sui_builder(*includes, **kwargs):
+    """sui_builder Decorator to use in Builders."""
+
+    def _autoargs(func):
+        """_autoargs Function that wraps decorator behavior.
+
+        :param func: Function that is being wrapped
+        :type func: CallOnce
+        :raises ValueError: If function being wrapped is not __init__
+        :raises AttributeError: If variable args are declared in __init__
+        :return: The wrapper function for __init__
+        :rtype: CallOnce
+        """
+        __host_class, __host_func = func.__qualname__.split(".")
+        if __host_func != "__init__":
+            raise ValueError(f"@sui_builder is decorator for class __init__, but found {__host_func}")
+        spec: inspect.FullArgSpec = inspect.getfullargspec(func)
+        # handle varargs is an exception for builders
+        if spec.varargs:
+            raise AttributeError(f"Builder initializers do not accept variable args {spec.varargs}")
+
+        def sieve(attr: str) -> bool:
+            """sieve Checks if attribute should be included in results.
+
+            :param attr: attribute name
+            :type attr: str
+            :return: True if keeping for setattr
+            :rtype: bool
+            """
+            if kwargs and attr in kwargs["excludes"]:
+                return False
+            if not includes or attr in includes:
+                return True
+            return False
+
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs) -> None:
+            """wrapper Wrapper that is called on object __init__.
+
+            :return: The constructed object
+            :rtype: Builder
+            """
+            __var_map: dict = {x: None for x in spec.kwonlyargs}
+            __var_type_map: dict = __var_map.copy()
+            # handle default values
+            if spec.defaults:
+                # if defaults:
+                for attr, val in zip(reversed(spec.args), reversed(spec.defaults)):
+                    if sieve(attr):
+                        __var_map[attr] = val
+                        __var_type_map[attr] = spec.annotations[attr]
+            # # handle positional arguments
+            positional_attrs = spec.args[1:]
+            for attr, val in zip(positional_attrs, args):
+                if sieve(attr):
+                    __var_map[attr] = val
+                    __var_type_map[attr] = spec.annotations[attr]
+
+            # handle keyword args
+            if kwargs:
+                for attr, val in kwargs.items():
+                    if sieve(attr):
+                        __var_map[attr] = val
+                        __var_type_map[attr] = spec.annotations[attr]
+
+            # handle keywords with defaults:
+            if spec.kwonlydefaults:
+                for attr, val in spec.kwonlydefaults.items():
+                    if not __var_map[attr] and sieve(attr):
+                        __var_map[attr] = val
+                        __var_type_map[attr] = spec.annotations[attr]
+
+            # Setup the self parameter properties
+            for _new_key, _new_val in self.value_type_validator(__host_class, __var_map, __var_type_map).items():
+                setattr(self, _new_key, _new_val)
+            # Call the underlying __host_class __init__ function
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return _autoargs
 
 
 class _NativeTransactionBuilder(SuiBaseBuilder):

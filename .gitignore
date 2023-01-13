@@ -13,7 +13,7 @@ __pycache__
 sui.log*
 
 # Sandboxing
-temp.py
+temp*.py
 temp_sub.py
 out*
 

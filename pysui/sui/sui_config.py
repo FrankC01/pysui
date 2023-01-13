@@ -69,7 +69,7 @@ class SuiConfig(ClientConfiguration):
                         for keystr in self._keystrings:
                             kpair = keypair_from_keystring(keystr)
                             self._keypairs[keystr] = kpair
-                            addy = SuiAddress.from_keypair_string(keystr)
+                            addy = SuiAddress.from_keypair_string(kpair.to_b64())
                             self._addresses[addy.address] = addy
                             self._address_keypair[addy.address] = kpair
                     else:
@@ -85,8 +85,7 @@ class SuiConfig(ClientConfiguration):
         """Register the keypair and write out to keystore file."""
         filepath = file_path if file_path else self.keystore_file
         if os.path.exists(filepath):
-            serialized = keypair.to_b64()
-            self._keypairs[serialized] = keypair
+            self._keypairs[keypair.serialize()] = keypair
             with open(filepath, "w", encoding="utf8") as keystore:
                 keystore.write(json.dumps(self.keystrings, indent=2))
         else:

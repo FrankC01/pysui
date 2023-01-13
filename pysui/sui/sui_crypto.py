@@ -90,11 +90,12 @@ class SuiPrivateKeyED25519(PrivateKey):
 class SuiKeyPairED25519(KeyPair):
     """A SuiKey Pair."""
 
-    def __init__(self, pub_key_bytes: bytes, priv_key_bytes: bytes) -> None:
+    def __init__(self, secret_bytes: bytes) -> None:
         """Init keypair with public and private byte array."""
         self._scheme = SignatureScheme.ED25519
-        self._private_key = SuiPrivateKeyED25519(priv_key_bytes)
-        self._public_key = SuiPublicKeyED25519(pub_key_bytes)
+        self._private_key = SuiPrivateKeyED25519(secret_bytes)
+        pub_bytes = self._private_key._signing_key.verify_key
+        self._public_key = SuiPublicKeyED25519(pub_bytes.encode())
 
     @property
     def private_key(self) -> PrivateKey:
@@ -121,14 +122,6 @@ class SuiKeyPairED25519(KeyPair):
         return all_bytes
 
     @classmethod
-    def unique(cls) -> "SuiKeyPairED25519":
-        """Generate a unique ED25519 keypair."""
-        signer = SigningKey.generate()
-        verifier = signer.verify_key
-        bytes(verifier)
-        return cls(bytes(verifier), bytes(signer))
-
-    @classmethod
     def from_b64(cls, indata: str) -> KeyPair:
         """Convert base64 string to keypair."""
         if len(indata) != SUI_KEYPAIR_LEN:
@@ -142,8 +135,17 @@ class SuiKeyPairED25519(KeyPair):
     def from_bytes(cls, indata: bytes) -> KeyPair:
         """Convert bytes to keypair."""
         if len(indata) != ED25519_KEYPAIR_BYTES_LEN:
-            raise SuiInvalidKeyPair("Expect bytes len of 64")
-        return SuiKeyPairED25519(indata[0:32], indata[32:])
+            raise SuiInvalidKeyPair(f"Expect bytes len of {ED25519_KEYPAIR_BYTES_LEN}")
+        return SuiKeyPairED25519(indata)
+
+    def serialize(self) -> str:
+        """serialize Returns a SUI conforming keystring.
+
+        :return: a base64 encoded string of schema and private key bytes
+        :rtype: str
+        """
+        all_bytes = self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
+        return base64.b64encode(all_bytes).decode()
 
     def __repr__(self) -> str:
         """To string."""
@@ -201,11 +203,12 @@ class SuiPrivateKeySECP256K1(PrivateKey):
 class SuiKeyPairSECP256K1(KeyPair):
     """A SuiKey Pair."""
 
-    def __init__(self, pub_key_bytes: bytes, priv_key_bytes: bytes) -> None:
+    def __init__(self, secret_bytes: bytes) -> None:
         """Init keypair with public and private byte array."""
         self._scheme = SignatureScheme.SECP256K1
-        self._public_key = SuiPublicKeySECP256K1(pub_key_bytes)
-        self._private_key = SuiPrivateKeySECP256K1(priv_key_bytes)
+        self._private_key = SuiPrivateKeySECP256K1(secret_bytes)
+        pubkey_bytes = self._private_key._signing_key.pubkey.serialize(compressed=True)
+        self._public_key = SuiPublicKeySECP256K1(pubkey_bytes)
 
     @property
     def private_key(self) -> PrivateKey:
@@ -232,12 +235,6 @@ class SuiKeyPairSECP256K1(KeyPair):
         return all_bytes
 
     @classmethod
-    def unique(cls) -> KeyPair:
-        """Generate a unique secp256k1 keypair."""
-        signer = secp256k1.PrivateKey()
-        return cls(signer.pubkey.serialize(compressed=True), signer.private_key)
-
-    @classmethod
     def from_b64(cls, indata: str) -> KeyPair:
         """Convert base64 string to keypair."""
         if len(indata) != SUI_KEYPAIR_LEN:
@@ -252,7 +249,16 @@ class SuiKeyPairSECP256K1(KeyPair):
         """Convert bytes to keypair."""
         if len(indata) != SECP256K1_KEYPAIR_BYTES_LEN:
             raise SuiInvalidKeyPair("Expect bytes len of 65")
-        return SuiKeyPairSECP256K1(indata[0:33], indata[33:])
+        return SuiKeyPairSECP256K1(indata)
+
+    def serialize(self) -> str:
+        """serialize Returns a SUI conforming keystring.
+
+        :return: a base64 encoded string of schema and private key bytes
+        :rtype: str
+        """
+        all_bytes = self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
+        return base64.b64encode(all_bytes).decode()
 
     def __repr__(self) -> str:
         """To string."""
@@ -324,9 +330,8 @@ def _generate_secp256k1(
     # 1. Private, or signer, key
     secp_priv = secp256k1.PrivateKey(prv_key, raw=True)
     # 2. Public, or verifier, key
-    secp_pub = secp_priv.pubkey.serialize(compressed=True)
-    _valid_pubkey("ValidateAndGetSecp256k1Key", secp_pub)
-    return mnemonic_phrase, SuiKeyPairSECP256K1(secp_pub, secp_priv.private_key)
+    _valid_pubkey("ValidateAndGetSecp256k1Key", secp_priv.pubkey.serialize(compressed=True))
+    return mnemonic_phrase, SuiKeyPairSECP256K1(secp_priv.private_key)
 
 
 def _generate_ed25519(mnemonics: Union[str, list[str]] = "", derv_path: str = None) -> tuple[str, SuiKeyPairED25519]:
@@ -351,10 +356,8 @@ def _generate_ed25519(mnemonics: Union[str, list[str]] = "", derv_path: str = No
     ed_priv = SigningKey(base64.b64encode(prv_key), encoder=Base64Encoder)
     ed_enc_prv = ed_priv.encode()
     # Public, or verifier, key
-    ed_pub = ed_priv.verify_key
-    ed_enc_pub = ed_pub.encode()
-    _valid_pubkey("ValidateAndGetEd25519Key", ed_enc_pub)
-    return mnemonic_phrase, SuiKeyPairED25519(ed_enc_pub, ed_enc_prv)
+    _valid_pubkey("ValidateAndGetEd25519Key", ed_priv.verify_key.encode())
+    return mnemonic_phrase, SuiKeyPairED25519(ed_enc_prv)
 
 
 def keypair_from_keystring(keystring: str) -> KeyPair:
@@ -438,8 +441,35 @@ def recover_key_and_address(
     return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
 
 
+# pylint: disable=invalid-name
 if __name__ == "__main__":
     mnems, ed_kp, ed_addy = create_new_address(SignatureScheme.ED25519)
     _, ed_kp1, ed_addy1 = recover_key_and_address(SignatureScheme.ED25519, mnems, ED25519_DEFAULT_KEYPATH)
-    if ed_addy.address == ed_addy1.address:
-        print("Same!")
+    assert ed_addy.address == ed_addy1.address
+    print("Same ed25519 key after recovery")
+
+    ed25519 = "ABxuKTPmP1+iOSJckBNBj0G4sRYC3ys8mRT9/zrIkrSB"
+    edaddy = "0x4cb2a458bcdea8593b261b2d90d0ec73053ca4de"
+    kp = SuiKeyPairED25519.from_b64(ed25519)
+    kp_ser = kp.serialize()
+    assert kp_ser == ed25519
+    print(f"Keystring {kp_ser}")
+    kp_addy = SuiAddress.from_bytes(kp.to_bytes())
+    assert kp_addy.address == edaddy
+    print(f"Address = {kp_addy.address}")
+    print()
+
+    secp256k1s = "AVvk7nnAaMwJYk+pnVfpU57nLjGkxZdXVzU1BAzIH5lk"
+    secpaddy = "0x7c7a86b564d5db0c5837191bd17980b2fb9934db"
+    kp = SuiKeyPairSECP256K1.from_b64(secp256k1s)
+    kp_ser = kp.serialize()
+    assert kp_ser == secp256k1s
+    print(f"Keystring {kp_ser}")
+    kp_addy = SuiAddress.from_bytes(kp.to_bytes())
+    assert kp_addy.address == secpaddy
+    print(f"Address = {kp_addy.address}")
+
+    mnems, ed_kp, ed_addy = create_new_address(SignatureScheme.SECP256K1)
+    _, ed_kp1, ed_addy1 = recover_key_and_address(SignatureScheme.SECP256K1, mnems, SECP256K1_DEFAULT_KEYPATH)
+    assert ed_addy.address == ed_addy1.address
+    print("Same secp256k1 key after recovery")

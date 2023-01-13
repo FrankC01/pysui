@@ -14,9 +14,9 @@
 
 """Sui Builders: Simple sui_getXXX calls."""
 
-from typing import Any, Union
+from typing import Any, Optional, Union
 from pysui.abstracts.client_types import SuiBaseType
-from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder
+from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
 from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiNullType, SuiBoolean, SuiTransactionDigest
 from pysui.sui.sui_types.collections import SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
@@ -47,28 +47,20 @@ from pysui.sui import sui_utils
 class GetCoinMetaData(_NativeTransactionBuilder):
     """GetCoinMetaData returns meta data for a specific `coin_type`."""
 
-    def __init__(self, *, coin_type: SuiString = None) -> None:
-        """."""
-        super().__init__("sui_getCoinMetadata", handler_cls=SuiCoinMetadata, handler_func="from_dict")
-        self.coin_type = coin_type if isinstance(coin_type, SuiString) else SuiString(coin_type)
+    @sui_builder()
+    def __init__(self, *, coin_type: Optional[SuiString] = "0x2::sui::SUI") -> None:
+        """__init__ Initialize builder.
 
-    def set_coin_type(self, coin_type: SuiString) -> "GetCoinMetaData":
-        """."""
-        self.coin_type = coin_type if isinstance(coin_type, SuiString) else SuiString(coin_type)
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters.
-
-        :return: RPC expects a string representing a coin type signature (e.g. 0x2::sui::SUI)
-        :rtype: list[SuiAddress]
+        :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
+        :type coin_type: SuiString, optional
         """
-        return [self.coin_type]
+        super().__init__("sui_getCoinMetadata", handler_cls=SuiCoinMetadata, handler_func="from_dict")
 
 
 class GetAllCoinBalances(_NativeTransactionBuilder):
     """GetAllCoinBalances Returns the total coin balances, for all coin types, owned by the address owner.."""
 
+    @sui_builder()
     def __init__(self, *, owner: SuiAddress):
         """__init__ Initializes builder with address to fetch coin balances for.
 
@@ -76,304 +68,137 @@ class GetAllCoinBalances(_NativeTransactionBuilder):
         :type owner: SuiAddress
         """
         super().__init__("sui_getAllBalances", handler_cls=CoinBalances, handler_func="ingest_data")
-        # super().__init__("sui_getAllBalances")
-        self.owner = None
-        self.set_owner(owner)
-
-    def set_owner(self, owner: SuiAddress) -> "GetAllCoinBalances":
-        """Set the owner property."""
-        if isinstance(owner, SuiAddress):
-            self.owner = owner
-            return self
-        raise ValueError(f"{owner} is not of type SuiAddress")
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters."""
-        return [self.owner]
 
 
 class GetAllCoins(_NativeTransactionBuilder):
     """GetAllCoins Returns all Coin objects owned by an address."""
 
+    @sui_builder()
     def __init__(
         self,
         *,
         owner: SuiAddress,
-        limit: SuiInteger = None,
-        cursor: ObjectID = None,
+        cursor: Optional[ObjectID] = None,
+        limit: Optional[SuiInteger] = None,
     ):
-        """__init__ Initialize builder with address and optional page limits and cursor.
+        """__init__ Initialize builder.
 
-        :param owner: the coin owner's Sui address
+        :param owner: the coin owner's address
         :type owner: SuiAddress
-        :param limit: maximum number of items per page, defaults to None
-        :type limit: SuiInteger, optional
         :param cursor: Optional ObjectID as the starting item in returned page, defaults to None
         :type cursor: ObjectID, optional
+        :param limit: Optional SuiInteger maximum number of items per page, defaults to None
+        :type limit: SuiInteger, optional
         """
         super().__init__("sui_getAllCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
-        self.set_owner(owner)
-        self.limit = SuiNullType()
-        self.cursor = SuiNullType()
-        if limit:
-            self.set_limit(limit)
-        self.cursor = cursor if cursor else SuiNullType()
-
-    def set_owner(self, owner: SuiAddress) -> "GetCoinTypeBalance":
-        """Set the owner property."""
-        if isinstance(owner, SuiAddress):
-            self.owner = owner
-            return self
-        raise ValueError(f"{owner} is not of type SuiAddress")
-
-    def set_limit(self, limit: Union[int, SuiInteger]) -> "GetCoins":
-        """Sets the maximum values returned on the result page."""
-        if isinstance(limit, SuiInteger):
-            self.limit = limit
-            return self
-        if isinstance(limit, int):
-            self.limit = SuiInteger(limit)
-            return self
-        raise ValueError(f"{limit} is not of type SuiInteger")
-
-    def set_cursor(self, cursor: ObjectID) -> "GetCoins":
-        """Optional ObjectID (of sample ``coin_type``)."""
-        self.cursor = cursor
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters."""
-        return [self.owner, self.cursor, self.limit]
 
 
 class GetCoinTypeBalance(_NativeTransactionBuilder):
     """GetCoinTypeBalance Return the total coin balance for a coin type."""
 
-    def __init__(self, *, owner: SuiAddress, coin_type: SuiString = None):
-        """__init__ Initializes builder with address and coin type to fetch balances for.
+    @sui_builder()
+    def __init__(self, *, owner: SuiAddress, coin_type: Optional[SuiString] = "0x2::sui::SUI"):
+        """__init__ Initialize builder.
 
-        :param owner: the owner's Sui address
+        :param owner: The owner's Sui address
         :type owner: SuiAddress
-        :param coin_type: fully qualified type names for the coin (e.g., 0x2::sui::SUI), defaults to None
+        :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
         :type coin_type: SuiString, optional
         """
         super().__init__("sui_getBalance", handler_cls=SuiCoinBalance, handler_func="from_dict")
-        self.owner = None
-        self.coin_type = SuiNullType()
-        self.set_owner(owner)
-        if coin_type:
-            self.set_coin_type(coin_type)
-
-    def set_owner(self, owner: SuiAddress) -> "GetCoinTypeBalance":
-        """Set the owner property."""
-        if isinstance(owner, SuiAddress):
-            self.owner = owner
-            return self
-        raise ValueError(f"{owner} is not of type SuiAddress")
-
-    def set_coin_type(self, coin_type: SuiString) -> "GetCoinTypeBalance":
-        """Set the coin_type property."""
-        if isinstance(coin_type, SuiString):
-            self.coin_type = coin_type
-            return self
-        if isinstance(coin_type, str):
-            self.coin_type = SuiString(coin_type)
-            return self
-        raise ValueError(f"{coin_type} is not of type SuiString")
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters."""
-        return [self.owner, self.coin_type]
 
 
 class GetCoins(_NativeTransactionBuilder):
     """Return the list of Coin objects of specific coin_type owned by an address."""
 
+    @sui_builder()
     def __init__(
         self,
         *,
         owner: SuiAddress,
-        coin_type: SuiString = None,
-        limit: SuiInteger = None,
-        cursor: ObjectID = None,
+        coin_type: Optional[SuiString] = "0x2::sui::SUI",
+        cursor: Optional[ObjectID] = None,
+        limit: Optional[SuiInteger] = None,
     ):
         """__init__ Initialize builder.
 
         :param owner: the coin owner's Sui address
         :type owner: SuiAddress
-        :param coin_type: fully qualified type names for the coin (e.g., 0x2::sui::SUI), defaults to None
+        :param coin_type: fully qualified type names for the coin, defaults to "0x2::sui::SUI"
         :type coin_type: SuiString, optional
-        :param limit: maximum number of items per page, defaults to None
-        :type limit: SuiInteger, optional
         :param cursor: Optional ObjectID as the starting item in returned page, defaults to None
         :type cursor: ObjectID, optional
+        :param limit: maximum number of items per page, defaults to None
+        :type limit: SuiInteger, optional
         """
         super().__init__("sui_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
-        self.set_owner(owner)
-        self.coin_type = SuiNullType()
-        self.limit = SuiNullType()
-        self.cursor = SuiNullType()
-        if coin_type:
-            self.set_coin_type(coin_type)
-        if limit:
-            self.set_limit(limit)
-        self.cursor = cursor if cursor else SuiNullType()
-
-    def set_owner(self, owner: SuiAddress) -> "GetCoinTypeBalance":
-        """Set the owner property."""
-        if isinstance(owner, SuiAddress):
-            self.owner = owner
-            return self
-        raise ValueError(f"{owner} is not of type SuiAddress")
-
-    def set_coin_type(self, coin_type: SuiString) -> "GetCoinTypeBalance":
-        """Set the coin_type property."""
-        if isinstance(coin_type, SuiString):
-            self.coin_type = coin_type
-            return self
-        if isinstance(coin_type, str):
-            self.coin_type = SuiString(coin_type)
-            return self
-        raise ValueError(f"{coin_type} is not of type SuiString")
-
-    def set_limit(self, limit: Union[int, SuiInteger]) -> "GetCoins":
-        """Sets the maximum values returned on the result page."""
-        if isinstance(limit, SuiInteger):
-            self.limit = limit
-            return self
-        if isinstance(limit, int):
-            self.limit = SuiInteger(limit)
-            return self
-        raise ValueError(f"{limit} is not of type SuiInteger")
-
-    def set_cursor(self, cursor: ObjectID) -> "GetCoins":
-        """Optional ObjectID (of sample ``coin_type``)."""
-        self.cursor = cursor
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters."""
-        return [self.owner, self.coin_type, self.cursor, self.limit]
 
 
 class GetSuiSystemState(_NativeTransactionBuilder):
     """Return the SUI system state."""
 
-    def __init__(self):
+    @sui_builder()
+    def __init__(self) -> None:
         """__init__ Initializes builder."""
         super().__init__("sui_getSuiSystemState", handler_cls=SuiSystemState, handler_func="from_dict")
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters."""
-        return []
 
 
 class GetTotalSupply(_NativeTransactionBuilder):
     """Return the total supply for a given coin type (eg. 0x2::sui::SUI)."""
 
+    @sui_builder()
     def __init__(
         self,
         *,
-        coin_type: SuiString,
-    ):
-        """__init__ Initializes builder."""
+        coin_type: Optional[SuiString] = "0x2::sui::SUI",
+    ) -> None:
+        """__init__ Initialize builder.
+
+        :param coin_type: fully qualified type names for the coin, defaults to "0x2::sui::SUI"
+        :type coin_type: SuiString, optional
+        """
         super().__init__("sui_getTotalSupply")
-        self.coin_type = None
-        self.set_coin_type(coin_type)
-
-    def set_coin_type(self, coin_type: SuiString) -> "GetTotalSupply":
-        """Set the coin_type property."""
-        if isinstance(coin_type, SuiString):
-            self.coin_type = coin_type
-            return self
-        if isinstance(coin_type, str):
-            self.coin_type = SuiString(coin_type)
-            return self
-        raise ValueError(f"{coin_type} is not of type SuiString")
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """_collect_parameters Returns expected RPC parameters."""
-        return [self.coin_type]
 
 
 class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
     """GetObjectsOwnedByAddress When executed, returns the list of objects owned by an address."""
 
-    def __init__(self, address: SuiAddress = None) -> None:
-        """__init__ Initializes builder with optional address to fetch objects for.
+    @sui_builder()
+    def __init__(self, address: SuiAddress) -> None:
+        """__init__ Initialize builder.
 
-        :param address: A SuiAddress object whose identifier is used as parameter to RPC calls, defaults to None
-        :type address: SuiAddress, optional
+        :param address: The owner address to fetch list of ObjectInfo results
+        :type address: SuiAddress
         """
         super().__init__("sui_getObjectsOwnedByAddress", handler_cls=ObjectInfo, handler_func="factory")
-        self.address: SuiAddress = address
-
-    def set_address(self, address: SuiAddress) -> "GetObjectsOwnedByAddress":
-        """set_address Set the address whose objects you want to return.
-
-        :param address: A SuiAddress object whose identifier is used as parameter to RPC calls
-        :type address: SuiAddress
-        :return: self
-        :rtype: GetObjectsOwnedByAddress
-        """
-        self.address = address
-        return self
-
-    def _collect_parameters(self) -> list[SuiAddress]:
-        """_collect_parameters Returns expected RPC parameters.
-
-        :return: RPC expects a string representing a SUI address (e.g. 0x....)
-        :rtype: list[SuiAddress]
-        """
-        return [self.address]
 
 
 class GetObjectsOwnedByObject(_NativeTransactionBuilder):
     """GetObjectsOwnedByObject When executed, returns the list of objects owned by an object."""
 
-    def __init__(self, sui_object: Any = None) -> None:
-        """__init__ Initializes builder with ObjectID to fetch objects for.
+    @sui_builder()
+    def __init__(self, object_id: ObjectID) -> None:
+        """__init__ Initalize builder.
 
-        :param sui_object: An ObjectID or type that can be coerced to ObjectID, defaults to None
-        :type sui_object: Any, optional
+        :param object_id: The object id of the owning object
+        :type object_id: ObjectID
         """
         super().__init__("sui_getObjectsOwnedByObject", handler_cls=ObjectInfo, handler_func="factory")
-        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
-
-    def set_object_id(self, sui_object: Any) -> "GetObjectsOwnedByObject":
-        """set_object_id Set the object to fetch objects owned by.
-
-        :param sui_object: An ObjectID or type that can be coerced to ObjectID, defaults to None
-        :type sui_object: Any
-        :return: self
-        :rtype: GetObjectsOwnedByObject
-        """
-        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
-        return self
-
-    def _collect_parameters(self) -> list[ObjectID]:
-        """Collect the call parameters."""
-        return [self.object_id]
 
 
 class GetDynamicFieldObject(_NativeTransactionBuilder):
     """GetDynamicFieldObject when executed, return the dynamic field object information for a specified object."""
 
-    def __init__(self, parent_object_id: ObjectID, field_name: SuiString) -> None:
+    @sui_builder()
+    def __init__(self, parent_object_id: ObjectID, name: SuiString) -> None:
         """__init__ Builder initializer.
 
         :param parent_object_id: The ID of the queried parent object
         :type parent_object_id: ObjectID
-        :param field_name: The Name of the dynamic field
+        :param name: The Name of the dynamic field
         :type field_name: SuiString
         """
         super().__init__("sui_getDynamicFieldObject", handler_cls=ObjectRead, handler_func="factory")
-        self.parent_object_id = parent_object_id
-        self.name = field_name
-
-    def _collect_parameters(self) -> list[ObjectID]:
-        """Collect the call parameters."""
-        return [self.parent_object_id, self.name]
 
 
 class GetDynamicFields(_NativeTransactionBuilder):
@@ -423,23 +248,14 @@ class GetDynamicFields(_NativeTransactionBuilder):
 class GetObject(_NativeTransactionBuilder):
     """GetObject When executed, return the object detailed information for a specified object."""
 
-    def __init__(self, sui_object: Any = None) -> None:
+    @sui_builder()
+    def __init__(self, object_id: ObjectID) -> None:
         """__init__ Initializes builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
         :type sui_object: ObjectID, optional
         """
         super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
-        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
-
-    def set_object(self, sui_object: ObjectID) -> "GetObjectsOwnedByObject":
-        """Set the object to fetch objects owned by."""
-        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
-        return self
-
-    def _collect_parameters(self) -> list[ObjectInfo]:
-        """Collect the call parameters."""
-        return [self.object_id]
 
 
 class GetPastObject(_NativeTransactionBuilder):
@@ -450,7 +266,8 @@ class GetPastObject(_NativeTransactionBuilder):
     policies.
     """
 
-    def __init__(self, sui_object: Any, version: SuiInteger) -> None:
+    @sui_builder()
+    def __init__(self, object_id: ObjectID, version: SuiInteger) -> None:
         """__init__ Initialize builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
@@ -459,27 +276,12 @@ class GetPastObject(_NativeTransactionBuilder):
         :type version: SuiInteger, optional
         """
         super().__init__("sui_tryGetPastObject", handler_cls=ObjectRead, handler_func="factory")
-        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
-        self.version: SuiInteger = version if isinstance(version, SuiInteger) else SuiInteger(version)
-
-    def set_object(self, sui_object: ObjectID) -> "GetPastObject":
-        """Set the object to fetch objects owned by."""
-        self.object_id: ObjectID = sui_utils.as_object_id(sui_object)
-        return self
-
-    def set_version(self, version: SuiInteger) -> "GetPastObject":
-        """Set the object version."""
-        self.version: SuiInteger = version
-        return self
-
-    def _collect_parameters(self) -> list[ObjectInfo]:
-        """Collect the call parameters."""
-        return [self.object_id, self.version]
 
 
 class GetPackage(_NativeTransactionBuilder):
     """GetPackage When executed, return structured representations of all modules in the given package."""
 
+    @sui_builder()
     def __init__(self, *, package: ObjectID) -> None:
         """__init__ Initialize GetPackage object.
 
@@ -489,16 +291,17 @@ class GetPackage(_NativeTransactionBuilder):
         super().__init__(
             "sui_getNormalizedMoveModulesByPackage", handler_cls=SuiMovePackage, handler_func="ingest_data"
         )
-        self.package: ObjectID = sui_utils.as_object_id(package)
 
-    def set_package(self, package: ObjectID) -> "GetPackage":
-        """Set the package ObjectID to be retrieved."""
-        self.package: ObjectID = sui_utils.as_object_id(package)
-        return self
+    #     self.package: ObjectID = sui_utils.as_object_id(package)
 
-    def _collect_parameters(self) -> list[ObjectID]:
-        """Collect the call parameters."""
-        return [self.package]
+    # def set_package(self, package: ObjectID) -> "GetPackage":
+    #     """Set the package ObjectID to be retrieved."""
+    #     self.package: ObjectID = sui_utils.as_object_id(package)
+    #     return self
+
+    # def _collect_parameters(self) -> list[ObjectID]:
+    #     """Collect the call parameters."""
+    #     return [self.package]
 
 
 class GetModule(_NativeTransactionBuilder):

@@ -35,13 +35,14 @@ from pysui.sui.sui_constants import (
     SECP256K1_PUBLICKEY_BYTES_LEN,
 )
 
-TEST_ED25519_KEYSTRING = "AIIKwlBXko96i36aKTeHMYiWPDzNzQA6btkfK8f7uInJ3kX5ZqeoLqJZB2ZLhpj1xXHDlelzmej7yCca+ZGdAhY="
-TEST_SECP256K1_KEYSTRING = "AQMm9+3O2Yn5KBWbwsRt33Gz6e6ankSeukxDFd9G30qSFQnSiMUHzIFGAASqu1PlQInM280Zae9JZMqYl+WzSnTS"
-TEST_ED25519_ADDRESS = "0x83a299c2d0be351bdec7f509d16d5224075d0ab9"
-TEST_SECP256K1_ADDRESS = "0xf5493a8ef4fbf1cbf0edcfdc37687fd6c2874f6c"
+# pylint: disable=line-too-long
+TEST_ED25519_KEYSTRING = "ABxuKTPmP1+iOSJckBNBj0G4sRYC3ys8mRT9/zrIkrSB"
+TEST_SECP256K1_KEYSTRING = "AVvk7nnAaMwJYk+pnVfpU57nLjGkxZdXVzU1BAzIH5lk"
+TEST_ED25519_ADDRESS = "0x4cb2a458bcdea8593b261b2d90d0ec73053ca4de"
+TEST_SECP256K1_ADDRESS = "0x7c7a86b564d5db0c5837191bd17980b2fb9934db"
 SIGN_INPUT_DATA = "APfrWX20DMtUWAvHxuv31tqBHogKNKnxuKA1QeB+wXGUx+Rp9/CGD9TzeazNhELCD2Y4o2VW5dL1juwzOUuEiAI9cjQi2P11jfUgBHa+Ah55U457R8w6ydbqSuIixhMm6w=="
 # SECP_SIG = "3ka2oyct+ukiW65kEQBEFiVbhKRRwACxC6wbGBYjOlpltwqP5gdWildwJJoEAd8fwZqf+kufUWRsOkZFHr0LggA="
-ED25_SIG = "FRS1Amac5cBHHD+HHtHRsmOnc7ytS59pGYiHrWb41XSxRLrtGxX7kvkaSB5IyxzXJNxKzdMMnBS28Jf/Oid1BQ=="
+ED25_SIG = "AKGcSh7lGP9vlPNRiy0lDkuB4I+0Q/LI/Gas/fqqNzF6e6pHpX7blwel0amSPXsO26M0YoUOxa+Bk5y7XXE9DA3GqXCOqPyrn6E/hmbypfgU/5VbAKu0HvOH5CPXtw52rA=="
 
 
 def test_ed25519_pass() -> None:
@@ -49,9 +50,10 @@ def test_ed25519_pass() -> None:
     assert len(TEST_ED25519_KEYSTRING) == SUI_KEYPAIR_LEN
     test_bytes = base64.b64decode(TEST_ED25519_KEYSTRING)
     assert test_bytes[0] == SignatureScheme.ED25519
-    test_pubbytes = test_bytes[1:33]
+    test_kpair = keypair_from_keystring(TEST_ED25519_KEYSTRING)
+    test_pubbytes = test_kpair.to_bytes()[1:33]
     assert len(test_pubbytes) == ED25519_PUBLICKEY_BYTES_LEN
-    test_prvbytes = test_bytes[33:]
+    test_prvbytes = test_kpair.to_bytes()[33:]
     assert len(test_prvbytes) == ED25519_PRIVATEKEY_BYTES_LEN
     sui_pubkey = SuiPublicKeyED25519(test_pubbytes)
     assert sui_pubkey is not None
@@ -69,9 +71,10 @@ def test_secp256k1_pass() -> None:
     assert len(TEST_SECP256K1_KEYSTRING) == SUI_KEYPAIR_LEN
     test_bytes = base64.b64decode(TEST_SECP256K1_KEYSTRING)
     assert test_bytes[0] == SignatureScheme.SECP256K1
-    test_pubbytes = test_bytes[1:34]
+    test_kpair = keypair_from_keystring(TEST_SECP256K1_KEYSTRING)
+    test_pubbytes = test_kpair.to_bytes()[1:34]
     assert len(test_pubbytes) == SECP256K1_PUBLICKEY_BYTES_LEN
-    test_prvbytes = test_bytes[34:]
+    test_prvbytes = test_kpair.to_bytes()[34:]
     assert len(test_prvbytes) == SECP256K1_PRIVATEKEY_BYTES_LEN
     sui_pubkey = SuiPublicKeySECP256K1(test_pubbytes)
     assert sui_pubkey is not None
@@ -113,7 +116,7 @@ def test_secp256k1_address_pass() -> None:
 def test_edwards_signing() -> None:
     """Test signing."""
     edkp = keypair_from_keystring(TEST_ED25519_KEYSTRING)
-    sig = edkp.private_key.sign(base64.b64decode(SIGN_INPUT_DATA))
+    sig = edkp.new_sign_secure(TEST_ED25519_KEYSTRING)
     assert sig.signature == ED25_SIG
 
 

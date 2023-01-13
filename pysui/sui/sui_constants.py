@@ -39,27 +39,39 @@ SUI_HEX_ADDRESS_STRING_LEN: int = 42
 SUI_ADDRESS_STRING_LEN: int = 40
 """Length of valid address string without '0x' prefix."""
 
-SUI_KEYPAIR_LEN: int = 88
-"""Length of keypair string."""
+# Keystring length
+SUI_KEYPAIR_LEN: int = 44
+"""Length of valid key string base64 string."""
 
 # ED25519 Keypair derivation path
 # m / purpose' / coin_type' / account' / change' / address_index'
 ED25519_DEFAULT_KEYPATH: str = "m/44'/784'/0'/0'/0'"
 # ED25519 from keystring bytes
-ED25519_KEYPAIR_BYTES_LEN: int = 64
+ED25519_KEYPAIR_BYTES_LEN: int = 32
 """Length of ED25519 keypair bytes."""
 ED25519_PUBLICKEY_BYTES_LEN: int = 32
 """Length of ED25519 public key bytes."""
 ED25519_PRIVATEKEY_BYTES_LEN: int = 32
 """Length of ED25519 private key bytes."""
 
-# ED25519 Keypair derivation path
+# SECP256K1 Keypair derivation path
 # m / purpose' / coin_type' / account' / change / address_index
 SECP256K1_DEFAULT_KEYPATH: str = "m/54'/784'/0'/0/0"
 # SECP256K1 from address bytes
-SECP256K1_KEYPAIR_BYTES_LEN: int = 65
+SECP256K1_KEYPAIR_BYTES_LEN: int = 32
 """Length of SECP256K1 keypair bytes."""
 SECP256K1_PUBLICKEY_BYTES_LEN: int = 33
 """Length of SECP256K1 public key bytes."""
 SECP256K1_PRIVATEKEY_BYTES_LEN: int = 32
 """Length of SECP256K1 private key bytes."""
+
+# SECP256K1 Keypair derivation path
+# m / purpose' / coin_type' / account' / change / address_index
+SECP256R1_DEFAULT_KEYPATH: str = "m/74'/784'/0'/0/0"
+# SECP256R1 from address bytes
+SECP256R1_KEYPAIR_BYTES_LEN: int = 32
+"""Length of SECP256R1 keypair bytes."""
+SECP256R1_PUBLICKEY_BYTES_LEN: int = 33
+"""Length of SECP256R1 public key bytes."""
+SECP256R1_PRIVATEKEY_BYTES_LEN: int = 32
+"""Length of SECP256R1 private key bytes."""

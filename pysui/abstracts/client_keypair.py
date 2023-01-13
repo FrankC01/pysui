@@ -104,6 +104,10 @@ class KeyPair(ABC):
     def private_key(self) -> PrivateKey:
         """Get the keypair public key."""
 
+    @abstractmethod
+    def new_sign_secure(self, tx_data: str) -> AbstractType:
+        """Sign transactions securley."""
+
     @classmethod
     @abstractmethod
     def from_b64(cls, indata: str) -> "KeyPair":
@@ -115,13 +119,13 @@ class KeyPair(ABC):
         """Convert bytes to keypair."""
 
     @abstractmethod
-    def new_sign_secure(self, tx_data: str) -> AbstractType:
-        """Sign transactions securley."""
-
-    @abstractmethod
     def to_bytes(self) -> bytes:
         """Convert keypair to encoded bytes."""
 
+    @abstractmethod
+    def serialize(self) -> str:
+        """Serialize to platform keystring for persist."""
+
     def to_b64(self) -> str:
-        """Convert key bytes to base64."""
+        """Convert full key bytes (priv and pub) to base64."""
         return base64.b64encode(self.to_bytes()).decode()

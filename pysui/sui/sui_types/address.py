@@ -102,7 +102,6 @@ class SuiAddress(SuiBaseType):
     @classmethod
     def from_bytes(cls, in_bytes: bytes) -> "SuiAddress":
         """Create address from bytes."""
-        # print(f"In bytes = {in_bytes}")
         digest = in_bytes[0:33] if in_bytes[0] == 0 else in_bytes[0:34]
         glg = hashlib.sha3_256()
         glg.update(digest)
@@ -117,4 +116,4 @@ def address_from_keystring(indata: str) -> SuiAddress:
 
     _kp = keypair_from_keystring(indata)
     #   decode from base64 and generate
-    return SuiAddress.from_bytes(base64.b64decode(indata))
+    return SuiAddress.from_bytes(_kp.to_bytes())
