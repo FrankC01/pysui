@@ -5,20 +5,18 @@
 Python Client SDK for Sui blockchain
 
 **NOTICE: README FIRST**
-SUI 0.21.0 introduces a change to keystore (file) keystring persist. We will be providing
-a utility in the next release coming this week to transition existing keys to the new format for those
-who want to keep them. See [sui change](https://github.com/MystenLabs/sui/pull/6989).
-This utility SHOULD BE RUN BEFORE USING ANY OF `pysui` Sui Clients.
+SUI 0.21.0 introduces a change to keystore (file) keystring persist.
 
-If you will be regenerating keys with the new binary install you can ignore the utility usage.
+If you still have keystores from pre 0.21.0, run the utility [keys-to-0210](https://github.com/FrankC01/pysui/blob/main/samples/README.md)
 
-Stay tuned....
+This utility SHOULD BE RUN BEFORE USING `pysui` SDK or samples
 
-**SizaLena Milestone-0.7.0**
+If you have already regenerated keys with the SUI 0.21.0 binary install you can ignore the utility usage.
+
+**Release-0.8.0**
 
 - Breaking changes
-- 99.9% coverage (builders, return types, etc.) of **new** SUI 0.20.0 API (no support for secp256r1 yet)
-- Subscriptions
+- 99.9% coverage (builders, return types, etc.) of **new** SUI 0.20.1 API (no support for secp256r1 yet)
 
 **PyPi**
 

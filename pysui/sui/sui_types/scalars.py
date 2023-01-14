@@ -59,6 +59,11 @@ class SuiNullType(SuiScalarType):
         return self.value
 
     @property
+    def digest(self) -> None:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def descending_order(self) -> None:
         """Alias for transactions."""
         return self.value

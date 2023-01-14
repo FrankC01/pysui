@@ -15,7 +15,7 @@
 """Sui Builders: Complex transaction."""
 
 from abc import abstractmethod
-from typing import Union
+from typing import Optional, Union
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_keypair import SignatureScheme, PublicKey
 from pysui.sui.sui_builders.base_builder import (
@@ -23,6 +23,7 @@ from pysui.sui.sui_builders.base_builder import (
     SuiRequestType,
     SuiBaseBuilder,
     SuiTransactionBuilderMode,
+    sui_builder,
 )
 from pysui.sui.sui_types.scalars import SuiTxBytes, SuiSignature, ObjectID, SuiInteger, SuiString
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
@@ -1120,3 +1121,58 @@ class MoveCall(_MoveCallTransactionBuilder):
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         return self._pull_vars()
+
+
+class RequestAddDelegation(_MoveCallTransactionBuilder):
+    """RequestAddDelegation add delegated stake to a validator's staking pool using multiple coins and amount."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress,
+        coins: SuiArray,
+        amount: Optional[SuiArray],
+        validator: SuiAddress,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
+    ):
+        """."""
+        super().__init__("sui_requestAddDelegation")
+
+
+class RequestSwitchDelegation(_MoveCallTransactionBuilder):
+    """RequestSwitchDelegation to switch delegation from the current validator to a new one."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress,
+        delegation: ObjectID,
+        staked_sui: ObjectID,
+        new_validator_address: SuiAddress,
+        switch_pool_token_amount: SuiInteger,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
+    ):
+        """."""
+        super().__init__("sui_requestSwitchDelegation")
+
+
+class RequestWithdrawDelegation(_MoveCallTransactionBuilder):
+    """RequestWithdrawDelegation Withdraw some portion of a delegation from a validator's staking pool."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress,
+        delegation: ObjectID,
+        staked_sui: ObjectID,
+        principal_withdraw_amount: SuiInteger,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
+    ):
+        """."""
+        super().__init__("sui_requestWithdrawDelegation")

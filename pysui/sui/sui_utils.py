@@ -27,6 +27,7 @@ from pysui.sui.sui_types.scalars import (
     SuiInteger,
     SuiNullType,
     SuiBoolean,
+    SuiTransactionDigest,
     SuiTxBytes,
     SuiSignature,
 )
@@ -155,6 +156,7 @@ def as_object_id(in_data: Any) -> Union[ObjectID, ValueError]:
     :return: An ObjectID
     :rtype: Union[ObjectID, Union[ValueError, AttributeError]]
     """
+    result = SuiNullType()
     # object_id: ObjectID = None
     if isinstance(in_data, ObjectID):
         result = in_data
@@ -349,6 +351,19 @@ def as_sui_signature(in_data: Any) -> Union[SuiSignature, ValueError]:
     return to_base_64(in_data, SuiSignature)
 
 
+def as_sui_txdigest(in_data: Any) -> Union[SuiTransactionDigest, ValueError]:
+    """."""
+    if isinstance(in_data, SuiTransactionDigest):
+        result = in_data
+    elif isinstance(in_data, SuiString):
+        result = SuiTransactionDigest(in_data.value)
+    elif isinstance(in_data, str):
+        result = SuiTransactionDigest(in_data)
+    if not result:
+        raise ValueError(f"Can not get SuiTransactionDigest from {in_data} with type {type(in_data)}")
+    return result
+
+
 #: Keys are the end product pysui type and the value (set) are the types it can convert from.
 
 COERCION_TO_FROM_SETS = {
@@ -360,11 +375,12 @@ COERCION_TO_FROM_SETS = {
     SuiMap: {dict},
     SuiSignature: {str, bytes, bytearray},
     SuiTxBytes: {str, bytes, bytearray},
+    SuiTransactionDigest: {str, SuiString},
     SuiBoolean: {bool, int, str},
 }
 #: Keys are the inbound types that can be represented in SUI types in the value (set).
 COERCION_FROM_TO_SETS = {
-    str: {SuiAddress, ObjectID, SuiString, SuiInteger, SuiBoolean, SuiTxBytes, SuiSignature},
+    str: {SuiAddress, ObjectID, SuiString, SuiInteger, SuiBoolean, SuiTxBytes, SuiSignature, SuiTransactionDigest},
     int: {SuiInteger, SuiString, SuiBoolean},
     bytes: {SuiTxBytes, SuiSignature},
     bytearray: {SuiTxBytes, SuiSignature},
@@ -388,6 +404,7 @@ COERCION_FN_MAP = {
     SuiBoolean: as_sui_boolean,
     SuiSignature: as_sui_signature,
     SuiTxBytes: as_sui_txbytes,
+    SuiTransactionDigest: as_sui_txdigest,
     NoneType: lambda x: SuiNullType(),
 }
 

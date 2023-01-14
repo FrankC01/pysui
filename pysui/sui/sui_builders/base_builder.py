@@ -16,12 +16,12 @@
 import inspect
 import functools
 
-from abc import abstractmethod
+
 from enum import IntEnum
 from typing import Type, Union, get_args
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_rpc import Builder
-from pysui.sui.sui_utils import COERCION_FROM_TO_SETS, COERCION_TO_FROM_SETS, COERCION_FN_MAP
+from pysui.sui.sui_utils import COERCION_FROM_TO_SETS, COERCION_FN_MAP
 
 
 class SuiRequestType(IntEnum):
@@ -107,7 +107,6 @@ class SuiBaseBuilder(Builder):
         var_map = vars(self)
         return [val for key, val in var_map.items() if key[0] != "_"]
 
-    # @abstractmethod
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         # TODO: Merge with `params` method when refactored or just remove abstract decl
@@ -117,7 +116,6 @@ class SuiBaseBuilder(Builder):
     def params(self) -> list[SuiBaseType]:
         """Return parameters list."""
         return self._pull_vars()
-        # return self._collect_parameters()
 
     @property
     def header(self) -> dict:
@@ -152,33 +150,23 @@ class SuiBaseBuilder(Builder):
         for ctype_key, ctype_value in builder_types.items():
             # Get the type of value from args of same name
             has_type = type(args[ctype_key])
-            # print(f"args {ctype_key} has type {has_type} and expects {ctype_value}")
             # if hastype is equal to expected type (ctype_value)
             if has_type == ctype_value:
+                result_dict[ctype_key] = args[ctype_key]
+            elif args[ctype_key] and issubclass(has_type, ctype_value):
                 result_dict[ctype_key] = args[ctype_key]
             # if intype has cross-reference, call the converter
             elif has_type in COERCION_FROM_TO_SETS and ctype_value in COERCION_FROM_TO_SETS[has_type]:
                 result_dict[ctype_key] = COERCION_FN_MAP[ctype_value](args[ctype_key])
             # If no value in argument but type supports Optional
             elif not args[ctype_key]:
-                if "_name" in ctype_value.__dict__ and ctype_value.__dict__["_name"] == "Optional":
+                if has_type in COERCION_FN_MAP:
                     result_dict[ctype_key] = COERCION_FN_MAP[has_type](ctype_key)
                 else:
-                    raise TypeError(f"{ctype_key} has no value but missing type hint 'Optional'")
-            # If value in argument and type can be optional Optional
-            elif args[ctype_key] and "_name" in ctype_value.__dict__ and ctype_value.__dict__["_name"] == "Optional":
-                true_type = get_args(ctype_value)[0]
-                if (
-                    true_type in COERCION_TO_FROM_SETS
-                    and has_type in COERCION_TO_FROM_SETS[true_type]
-                    and true_type in COERCION_FN_MAP
-                ):
-                    result_dict[ctype_key] = COERCION_FN_MAP[true_type](args[ctype_key])
-                else:
-                    raise ValueError(f"Unable to handle {ctype_key} attribute assignment")
+                    raise TypeError(f"{ctype_key} has no value and no coercion function. In {has_type}")
             else:
                 # We get here if we can't coerce type
-                raise ValueError(f"{ctype_key} expects {ctype_value} but args {ctype_key} is  {type(args[ctype_key])}")
+                raise ValueError(f"{ctype_key} expects {ctype_value} but args {ctype_key} is {type(args[ctype_key])}")
         return result_dict
 
 
@@ -217,6 +205,31 @@ def sui_builder(*includes, **kwargs):
                 return True
             return False
 
+        def sui_true_type(anno) -> object:
+            """sui_true_type Resolve arguments true type.
+
+            :param anno: The property annotation
+            :type anno: type
+            :return: True type as object
+            :rtype: object
+            """
+            if "_name" in anno.__dict__ and anno.__dict__["_name"] == "Optional":
+                return get_args(anno)[0]
+            return anno
+
+        def track_map() -> dict:
+            """track_map Setup the mapping of arguments and types.
+
+            :return: Dict of arg_name and none
+            :rtype: dict
+            """
+            if spec.kwonlyargs:
+                var_map: dict = {x: None for x in spec.kwonlyargs}
+            else:
+                var_map: dict = {x: None for x in spec.args[1:]}
+
+            return var_map
+
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs) -> None:
             """wrapper Wrapper that is called on object __init__.
@@ -224,39 +237,80 @@ def sui_builder(*includes, **kwargs):
             :return: The constructed object
             :rtype: Builder
             """
-            __var_map: dict = {x: None for x in spec.kwonlyargs}
-            __var_type_map: dict = __var_map.copy()
+            __var_map = track_map()
+            __var_type_map = __var_map.copy()
             # handle default values
             if spec.defaults:
                 # if defaults:
                 for attr, val in zip(reversed(spec.args), reversed(spec.defaults)):
                     if sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = spec.annotations[attr]
+                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
             # # handle positional arguments
             positional_attrs = spec.args[1:]
             for attr, val in zip(positional_attrs, args):
                 if sieve(attr):
                     __var_map[attr] = val
-                    __var_type_map[attr] = spec.annotations[attr]
+                    __var_type_map[attr] = sui_true_type(spec.annotations[attr])
+                    # __var_type_map[attr] = spec.annotations[attr]
 
             # handle keyword args
             if kwargs:
                 for attr, val in kwargs.items():
                     if sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = spec.annotations[attr]
+                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
+                        # __var_type_map[attr] = spec.annotations[attr]
 
             # handle keywords with defaults:
             if spec.kwonlydefaults:
                 for attr, val in spec.kwonlydefaults.items():
                     if not __var_map[attr] and sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = spec.annotations[attr]
+                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
+                        # __var_type_map[attr] = spec.annotations[attr]
 
-            # Setup the self parameter properties
-            for _new_key, _new_val in self.value_type_validator(__host_class, __var_map, __var_type_map).items():
+            def my_set_lambda(name, coerce, self, val):
+                """my_set_lambda Setter for property on builder.
+
+                :param name: Property Name
+                :type name: Any
+                :param coerce: Coercion utility
+                :type coerce: CallOne
+                :param val: The value to set to the property name
+                :type val: Any
+                :return: self
+                :rtype: SuiBaseBuilder
+                """
+                self.__dict__[name] = coerce(val)
+                return self
+
+            def my_get_lambda(name, self):
+                """my_get_lambda Return the value of propery.
+
+                :param name: The name of the property
+                :type name: Any
+                :return: The value of the named property
+                :rtype: Any
+                """
+                return self.__dict__[name]
+
+            # Setup the initializing values
+            _instance_dict = self.value_type_validator(__host_class, __var_map, __var_type_map)
+            for _new_key, _new_val in _instance_dict.items():
                 setattr(self, _new_key, _new_val)
+            # Setup the properties (getter, setter)
+            myclass = self.__class__
+            for _new_key, _new_val in _instance_dict.items():
+                coercer = COERCION_FN_MAP[__var_type_map[_new_key]]
+                setattr(
+                    myclass,
+                    _new_key,
+                    property(
+                        functools.partial(my_get_lambda, _new_key), functools.partial(my_set_lambda, _new_key, coercer)
+                    ),
+                )
+
             # Call the underlying __host_class __init__ function
             return func(self, *args, **kwargs)
 

@@ -251,6 +251,8 @@ class PublishEvent(SuiTxReturnType, DataClassJsonMixin):
 
     package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     sender: str
+    digest: str
+    version: int
 
 
 @dataclass

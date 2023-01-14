@@ -35,6 +35,10 @@ Module: exec_builders - Sui Builders: Complex transaction.
 +---------------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.exec_builders.DryRunTransaction`              |       |
 +---------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.InspectTransaction`             |       |
++---------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.InspectMoveCall`                |       |
++---------------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.exec_builders.TransferObject`                 |       |
 +---------------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.exec_builders.TransferSui`                    |       |
@@ -62,6 +66,12 @@ Module: exec_builders - Sui Builders: Complex transaction.
 | :py:class:`pysui.sui.sui_builders.exec_builders.Publish`                        |       |
 +---------------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.exec_builders.MoveCall`                       |       |
++---------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.RequestAddDelegation`           |       |
++---------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.RequestSwitchDelegation`        |       |
++---------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.RequestWithdrawDelegation`      |       |
 +---------------------------------------------------------------------------------+-------+
 
 .. _subscription-filters:
@@ -107,6 +117,10 @@ Module: get_builders - Sui Builders: Simple sui_getXXX calls.
 +============================================================================+=======+
 | :py:class:`pysui.sui.sui_builders.get_builders.GetCoinMetaData`            |       |
 +----------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetAllCoinBalances`         |       |
++----------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetAllCoins`                |       |
++----------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.get_builders.GetCoinTypeBalance`         |       |
 +----------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.get_builders.GetCoins`                   |       |
@@ -118,6 +132,10 @@ Module: get_builders - Sui Builders: Simple sui_getXXX calls.
 | :py:class:`pysui.sui.sui_builders.get_builders.GetObjectsOwnedByAddress`   |       |
 +----------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.get_builders.GetObjectsOwnedByObject`    |       |
++----------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetDynamicFieldObject`      |       |
++----------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetDynamicFields`           |       |
 +----------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.get_builders.GetObject`                  |       |
 +----------------------------------------------------------------------------+-------+
@@ -164,4 +182,8 @@ Module: get_builders - Sui Builders: Simple sui_getXXX calls.
 | :py:class:`pysui.sui.sui_builders.get_builders.GetTransactionsInRange`     |       |
 +----------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.get_builders.GetTxAuthSignatures`        |       |
++----------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetDelegatedStakes`         |       |
++----------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetValidators`              |       |
 +----------------------------------------------------------------------------+-------+

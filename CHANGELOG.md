@@ -7,11 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
-BREAKING CHANGES
+### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.8.0] 2023-01-14
+
+BREAKING CHANGES (Keys)
 
 ### Added
 
 - Utility `keys_to_0210.py` [about](utility/README.md)
+- GetDelegatedStakes builder and return types supporting **new** SUI RPC API (0.21.0)
+- GetValidators builder and return types supporting **new** SUI RPC API (0.21.0)
+- RequestAddDelegation builder supporting **new** SUI RPC API (0.21.0)
+- RequestSwitchDelegation builder supporting **new** SUI RPC API (0.21.0)
+- RequestWithdrawDelegation builder supporting **new** SUI RPC API (0.21.0)
 
 ### Fixed
 
@@ -22,6 +37,7 @@ BREAKING CHANGES
 - Keystring processing as per [sui 0.21.0 change](https://github.com/MystenLabs/sui/pull/6989)
 - GetTxn now references result dataclass. Updated samples/cmd.py to use new result.
 - Code refactoring for all builders in `builders/get_builders.py`
+- Added 'lockedUntilEpoch`field to`SuiCoinObject` results (Sui 0.21.0)
 
 ### Removed
 

@@ -14,10 +14,9 @@
 
 """Sui Builders: Simple sui_getXXX calls."""
 
-from typing import Any, Optional, Union
-from pysui.abstracts.client_types import SuiBaseType
+from typing import Optional
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
-from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiNullType, SuiBoolean, SuiTransactionDigest
+from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiBoolean, SuiTransactionDigest
 from pysui.sui.sui_types.collections import SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
@@ -31,6 +30,7 @@ from pysui.sui.sui_txresults.single_tx import (
     ObjectRead,
     CommitteeInfo,
     SuiTxnAuthSigners,
+    Validators,
 )
 from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TransactionEnvelope, TransactionQueryEnvelope
 from pysui.sui.sui_txresults.package_meta import (
@@ -40,8 +40,6 @@ from pysui.sui.sui_txresults.package_meta import (
     SuiMoveStruct,
     SuiMoveFunctionArgumentTypes,
 )
-
-from pysui.sui import sui_utils
 
 
 class GetCoinMetaData(_NativeTransactionBuilder):
@@ -204,45 +202,20 @@ class GetDynamicFieldObject(_NativeTransactionBuilder):
 class GetDynamicFields(_NativeTransactionBuilder):
     """GetDynamicFields when executed, returns the list of dynamic field objects owned by an object."""
 
+    @sui_builder()
     def __init__(
-        self, parent_object_id: ObjectID, limit: Union[int, SuiInteger] = None, cursor: Union[str, ObjectID] = None
+        self, parent_object_id: ObjectID, cursor: Optional[ObjectID] = None, limit: Optional[SuiInteger] = None
     ) -> None:
         """__init__ Builder initializer.
 
         :param parent_object_id: The ID of the queried parent object
         :type parent_object_id: ObjectID
-        :param limit: Maximum item returned per page, default to [QUERY_MAX_RESULT_LIMIT] if not specified, defaults to None
-        :type limit: Union[int, SuiInteger], optional
         :param cursor: Optional paging cursor, defaults to None
-        :type cursor: Union[str, ObjectID], optional
+        :type cursor: ObjectID, optional
+        :param limit: Maximum item returned per page, default to [QUERY_MAX_RESULT_LIMIT] if not specified, defaults to None
+        :type cursor: SuiInteger, optional
         """
         super().__init__("sui_getDynamicFields", handler_cls=DynamicFields, handler_func="from_dict")
-        self.parent_object_id = parent_object_id
-        self.cursor = SuiNullType()
-        self.limit = SuiNullType()
-        if cursor:
-            self.set_cursor(cursor)
-        if limit:
-            self.set_limit(limit)
-
-    def set_cursor(self, cursor: ObjectID) -> "GetDynamicFields":
-        """Optional paging cursor."""
-        self.cursor = cursor
-        return self
-
-    def set_limit(self, limit: Union[int, SuiInteger]) -> "GetDynamicFields":
-        """Sets the maximum values returned on the result page."""
-        if isinstance(limit, SuiInteger):
-            self.limit = limit
-            return self
-        if isinstance(limit, int):
-            self.limit = SuiInteger(limit)
-            return self
-        raise ValueError(f"{limit} is not of type SuiInteger")
-
-    def _collect_parameters(self) -> list[ObjectID]:
-        """Collect the call parameters."""
-        return [self.parent_object_id, self.cursor, self.limit]
 
 
 class GetObject(_NativeTransactionBuilder):
@@ -292,17 +265,6 @@ class GetPackage(_NativeTransactionBuilder):
             "sui_getNormalizedMoveModulesByPackage", handler_cls=SuiMovePackage, handler_func="ingest_data"
         )
 
-    #     self.package: ObjectID = sui_utils.as_object_id(package)
-
-    # def set_package(self, package: ObjectID) -> "GetPackage":
-    #     """Set the package ObjectID to be retrieved."""
-    #     self.package: ObjectID = sui_utils.as_object_id(package)
-    #     return self
-
-    # def _collect_parameters(self) -> list[ObjectID]:
-    #     """Collect the call parameters."""
-    #     return [self.package]
-
 
 class GetModule(_NativeTransactionBuilder):
     """GetModule When executed, returns the structural representation of a module.
@@ -310,6 +272,7 @@ class GetModule(_NativeTransactionBuilder):
     Includes general Module informationn as well as structure and function definitions.
     """
 
+    @sui_builder()
     def __init__(self, *, package: ObjectID, module_name: SuiString) -> None:
         """__init__ Initialize GetModule object.
 
@@ -319,12 +282,6 @@ class GetModule(_NativeTransactionBuilder):
         :type module_name: SuiString
         """
         super().__init__("sui_getNormalizedMoveModule", handler_cls=SuiMoveModule, handler_func="ingest_data")
-        self.package: ObjectID = sui_utils.as_object_id(package)
-        self.module_name: SuiString = module_name
-
-    def _collect_parameters(self) -> list[ObjectID]:
-        """Collect the call parameters."""
-        return [self.package, self.module_name]
 
 
 class GetFunction(_NativeTransactionBuilder):
@@ -333,6 +290,7 @@ class GetFunction(_NativeTransactionBuilder):
     Includes general function arguments and return type definitions.
     """
 
+    @sui_builder()
     def __init__(self, *, package: ObjectID, module_name: SuiString, function_name: SuiString) -> None:
         """__init__ Initialize GetModule object.
 
@@ -344,18 +302,12 @@ class GetFunction(_NativeTransactionBuilder):
         :type function_name: SuiString
         """
         super().__init__("sui_getNormalizedMoveFunction", handler_cls=SuiMoveFunction, handler_func="ingest_data")
-        self.package: ObjectID = sui_utils.as_object_id(package)
-        self.module_name: SuiString = module_name
-        self.function_name: SuiString = function_name
-
-    def _collect_parameters(self) -> list[ObjectID]:
-        """Collect the call parameters."""
-        return [self.package, self.module_name, self.function_name]
 
 
 class GetFunctionArgs(_NativeTransactionBuilder):
     """GetFunction When executed, returns the argument types of a Move function."""
 
+    @sui_builder()
     def __init__(self, *, package: ObjectID, module: SuiString, function: SuiString) -> None:
         """__init__ Initialize GetModule object.
 
@@ -369,18 +321,12 @@ class GetFunctionArgs(_NativeTransactionBuilder):
         super().__init__(
             "sui_getMoveFunctionArgTypes", handler_cls=SuiMoveFunctionArgumentTypes, handler_func="ingest_data"
         )
-        self.package: ObjectID = sui_utils.as_object_id(package)
-        self.module: SuiString = module
-        self.function: SuiString = function
-
-    def _collect_parameters(self) -> list[ObjectID]:
-        """Collect the call parameters."""
-        return [self.package, self.module, self.function]
 
 
 class GetStructure(_NativeTransactionBuilder):
     """GetStructure When executed, returns a module's structure representation."""
 
+    @sui_builder()
     def __init__(self, *, package: ObjectID, module_name: SuiString, structure_name: SuiString) -> None:
         """__init__ Initialize GetModule object.
 
@@ -392,54 +338,28 @@ class GetStructure(_NativeTransactionBuilder):
         :type structure_name: SuiString
         """
         super().__init__("sui_getNormalizedMoveStruct", handler_cls=SuiMoveStruct, handler_func="ingest_data")
-        self.package: ObjectID = sui_utils.as_object_id(package)
-        self.module_name: SuiString = module_name
-        self.structure_name: SuiString = structure_name
-
-    def _collect_parameters(self) -> list[ObjectID]:
-        """Collect the call parameters."""
-        return [self.package, self.module_name, self.structure_name]
 
 
 class GetRpcAPI(_NativeTransactionBuilder):
     """GetRpcAPI When executed, returns full list of SUI node RPC API supported."""
 
+    @sui_builder()
     def __init__(self) -> None:
         """Initialize builder."""
         super().__init__("rpc.discover")
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return []
 
 
 class GetCommittee(_NativeTransactionBuilder):
     """GetCommittee When executed, returns information on committee (collection of nodes)."""
 
-    def __init__(self, epoch: SuiInteger = None) -> None:
+    @sui_builder()
+    def __init__(self, epoch: Optional[SuiInteger] = None) -> None:
         """__init__ GetCommitttee Builder initializer.
 
         :param epoch: Epoch to return state of committee from, defaults to None
         :type epoch: SuiInteger, optional
         """
         super().__init__("sui_getCommitteeInfo", handler_cls=CommitteeInfo, handler_func="factory")
-        self.epoch = SuiNullType()
-        if epoch:
-            self.set_epoch(epoch)
-
-    def set_epoch(self, epoch: SuiInteger) -> "GetCommittee":
-        """Set epoch."""
-        if isinstance(epoch, int):
-            self.epoch = SuiInteger(epoch)
-        elif isinstance(epoch, SuiInteger):
-            self.epoch = epoch
-        else:
-            raise ValueError(f"epoch: {epoch} is not int or SuiInteger")
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return [self.epoch]
 
 
 # Event Query Types
@@ -530,60 +450,35 @@ class TimeRangeEventQuery(SuiMap):
 class GetEvents(_NativeTransactionBuilder):
     """GetEvents When executed, return list of events for a specified query criteria."""
 
-    events_kwords = {"query", "cursor", "limit", "descending_order"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        query: Union[SuiString, SuiMap],
-        cursor: EventID = None,
-        limit: SuiInteger = None,
-        descending_order: SuiBoolean = None,
+        query: SuiMap,
+        cursor: Optional[EventID] = None,
+        limit: Optional[SuiInteger] = None,
+        descending_order: Optional[SuiBoolean] = None,
     ) -> None:
         """Initialize builder."""
-        inargs = locals().copy()
         super().__init__("sui_getEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
-        self.query: Union[SuiString, SuiMap]
-        for key, value in inargs.items():
-            if key in self.events_kwords:
-                if value:
-                    setattr(self, key, inargs[key])
-                else:
-                    setattr(self, key, SuiNullType())
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class GetTotalTxCount(_NativeTransactionBuilder):
     """GetTotalTxCount When executed, return the total number of transactions known to the server."""
 
+    @sui_builder()
     def __init__(self) -> None:
         """Initialize builder."""
         super().__init__("sui_getTotalTransactionNumber")
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class GetTx(_NativeTransactionBuilder):
     """GetTx When executed, return the transaction response object."""
 
-    def __init__(self, digest: Union[SuiString, str] = None) -> None:
+    @sui_builder()
+    def __init__(self, digest: Optional[SuiString] = None) -> None:
         """Initialize builder."""
         super().__init__("sui_getTransaction", handler_cls=TransactionEnvelope, handler_func="from_dict")
-        self.digest: SuiString = digest if isinstance(digest, SuiString) else SuiString(digest)
-
-    def set_digest(self, digest: Union[SuiString, str]) -> "GetTx":
-        """Set digest var."""
-        self.digest = digest if isinstance(digest, SuiString) else SuiString(digest)
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return [self.digest]
 
 
 class GetTxsMoveFunction(SuiMap):
@@ -629,34 +524,23 @@ class GetTxsToAddress(SuiMap):
 class GetTxs(_NativeTransactionBuilder):
     """Return information about a specific transaction."""
 
-    txs_kwords = {"query", "cursor", "limit", "descending_order"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        query: Union[str, SuiMap],
-        cursor: SuiString = None,
-        limit: SuiInteger = None,
-        descending_order: SuiBoolean = None,
+        query: SuiMap,
+        cursor: Optional[SuiString] = None,
+        limit: Optional[SuiInteger] = None,
+        descending_order: Optional[SuiBoolean] = None,
     ) -> None:
         """Initialize builder."""
-        inargs = locals().copy()
         super().__init__("sui_getTransactions", handler_cls=TransactionQueryEnvelope, handler_func="from_dict")
-        for key, value in inargs.items():
-            if key in self.txs_kwords:
-                if value:
-                    setattr(self, key, inargs[key])
-                else:
-                    setattr(self, key, SuiNullType())
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class GetTransactionsInRange(_NativeTransactionBuilder):
     """Return list of transaction digests within the queried range."""
 
+    @sui_builder()
     def __init__(
         self,
         *,
@@ -665,53 +549,34 @@ class GetTransactionsInRange(_NativeTransactionBuilder):
     ) -> None:
         """Initialize builder."""
         super().__init__("sui_getTransactionsInRange")
-        self.start = None
-        self.end = None
-        self.set_start(start)
-        self.set_end(end)
-
-    def set_start(self, start: SuiInteger) -> "GetTransactionsInRange":
-        """."""
-        if isinstance(start, SuiInteger):
-            self.start = start
-        elif isinstance(start, int):
-            self.start = SuiInteger(start)
-        else:
-            raise ValueError(f"{start} is not an integer type.")
-        return self
-
-    def set_end(self, end: SuiInteger) -> "GetTransactionsInRange":
-        """."""
-        if isinstance(end, SuiInteger):
-            self.end = end
-        elif isinstance(end, int):
-            self.end = SuiInteger(end)
-        else:
-            raise ValueError(f"{end} is not an integer type.")
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return [self.start, self.end]
 
 
 class GetTxAuthSignatures(_NativeTransactionBuilder):
     """Fetch transaction authorized signatures public keys."""
 
-    def __init__(self, *, txn_digest: SuiTransactionDigest = None):
+    @sui_builder()
+    def __init__(self, *, digest: SuiTransactionDigest):
         """__init__ When executed, returns the authorizers public keys array.
 
-        :param txn_digest: Base58 transaction digest, defaults to None
-        :type txn_digest: SuiTransactionDigest, optional
+        :param txn_digest: Base58 transaction digest
+        :type txn_digest: SuiTransactionDigest
         """
         super().__init__("sui_getTransactionAuthSigners", handler_cls=SuiTxnAuthSigners, handler_func="from_dict")
-        self.digest = txn_digest
 
-    def set_txn_digest(self, txn_digest: SuiTransactionDigest) -> "GetTxAuthSignatures":
-        """Sets the transaciotn digest."""
-        self.digest = txn_digest if isinstance(txn_digest, SuiTransactionDigest) else SuiTransactionDigest(txn_digest)
-        return self
 
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return [self.digest]
+class GetDelegatedStakes(_NativeTransactionBuilder):
+    """sui_getDelegatedStakes."""
+
+    @sui_builder()
+    def __init__(self, owner: SuiAddress):
+        """."""
+        super().__init__("sui_getDelegatedStakes")
+
+
+class GetValidators(_NativeTransactionBuilder):
+    """sui_getValidators."""
+
+    @sui_builder()
+    def __init__(self):
+        """."""
+        super().__init__("sui_getValidators", handler_cls=Validators, handler_func="ingest_data")

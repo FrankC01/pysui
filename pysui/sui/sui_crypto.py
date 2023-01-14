@@ -443,33 +443,4 @@ def recover_key_and_address(
 
 # pylint: disable=invalid-name
 if __name__ == "__main__":
-    mnems, ed_kp, ed_addy = create_new_address(SignatureScheme.ED25519)
-    _, ed_kp1, ed_addy1 = recover_key_and_address(SignatureScheme.ED25519, mnems, ED25519_DEFAULT_KEYPATH)
-    assert ed_addy.address == ed_addy1.address
-    print("Same ed25519 key after recovery")
-
-    ed25519 = "ABxuKTPmP1+iOSJckBNBj0G4sRYC3ys8mRT9/zrIkrSB"
-    edaddy = "0x4cb2a458bcdea8593b261b2d90d0ec73053ca4de"
-    kp = SuiKeyPairED25519.from_b64(ed25519)
-    kp_ser = kp.serialize()
-    assert kp_ser == ed25519
-    print(f"Keystring {kp_ser}")
-    kp_addy = SuiAddress.from_bytes(kp.to_bytes())
-    assert kp_addy.address == edaddy
-    print(f"Address = {kp_addy.address}")
-    print()
-
-    secp256k1s = "AVvk7nnAaMwJYk+pnVfpU57nLjGkxZdXVzU1BAzIH5lk"
-    secpaddy = "0x7c7a86b564d5db0c5837191bd17980b2fb9934db"
-    kp = SuiKeyPairSECP256K1.from_b64(secp256k1s)
-    kp_ser = kp.serialize()
-    assert kp_ser == secp256k1s
-    print(f"Keystring {kp_ser}")
-    kp_addy = SuiAddress.from_bytes(kp.to_bytes())
-    assert kp_addy.address == secpaddy
-    print(f"Address = {kp_addy.address}")
-
-    mnems, ed_kp, ed_addy = create_new_address(SignatureScheme.SECP256K1)
-    _, ed_kp1, ed_addy1 = recover_key_and_address(SignatureScheme.SECP256K1, mnems, SECP256K1_DEFAULT_KEYPATH)
-    assert ed_addy.address == ed_addy1.address
-    print("Same secp256k1 key after recovery")
+    print("See unit tests")

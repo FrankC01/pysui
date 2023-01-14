@@ -29,6 +29,7 @@ from pysui.sui.sui_constants import (
     LOCALNET_ENVIRONMENT_KEY,
     LOCALNET_FAUCET_URL,
     LOCALNET_SOCKET_URL,
+    SUI_KEYPAIR_LEN,
 )
 from pysui.sui.sui_crypto import SuiAddress, keypair_from_keystring, create_new_address
 from pysui.sui.sui_excepts import (
@@ -37,6 +38,7 @@ from pysui.sui.sui_excepts import (
     SuiNoKeyPairs,
     SuiKeystoreFileError,
     SuiKeystoreAddressError,
+    SuiInvalidKeystringLength,
 )
 
 
@@ -66,7 +68,13 @@ class SuiConfig(ClientConfiguration):
                 with open(keystore_file, encoding="utf8") as keyfile:
                     self._keystrings = json.load(keyfile)
                     if len(self._keystrings) > 0:
+
                         for keystr in self._keystrings:
+                            # TODO: Remove this check in 0.9.0 release
+                            if len(keystr) > SUI_KEYPAIR_LEN:
+                                raise SuiInvalidKeystringLength(
+                                    f"Expected {SUI_KEYPAIR_LEN} found {len(keystr)}\nRun utilities/key_to_0210."
+                                )
                             kpair = keypair_from_keystring(keystr)
                             self._keypairs[keystr] = kpair
                             addy = SuiAddress.from_keypair_string(kpair.to_b64())

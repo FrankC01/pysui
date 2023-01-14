@@ -522,6 +522,7 @@ class StakeSubsidy(DataClassJsonMixin):
         self.balance = self.balance["value"]
 
 
+# pylint: disable=too-many-instance-attributes
 @dataclass
 class ValidatorMetaData(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
@@ -539,6 +540,18 @@ class ValidatorMetaData(DataClassJsonMixin):
     next_epoch_commission_rate: int
     worker_address: list[int]
     worker_pubkey_bytes: list[int]
+
+
+@dataclass
+class Validators(DataClassJsonMixin):
+    """From sui_getValidators."""
+
+    validator_metadata: list[ValidatorMetaData]
+
+    @classmethod
+    def ingest_data(cls, indata: list) -> "Validators":
+        """."""
+        return cls.from_dict({"validator_metadata": indata})
 
 
 @dataclass
@@ -620,6 +633,16 @@ class SuiSystemState(DataClassJsonMixin):
 
 
 @dataclass
+class DelegatedStake(DataClassJsonMixin):
+    """From sui_getDelegatedStakes."""
+
+    # FIXME Update when actualy get results see next
+    delegation_status: Union[dict, str]
+    # FIXME Update when calling API uses what address?
+    staked_sui: dict
+
+
+@dataclass
 class SuiTxnAuthSigners(DataClassJsonMixin):
     """From sui_getTransactionAuthSigners."""
 
@@ -668,6 +691,7 @@ class SuiCoinObject(DataClassJsonMixin):
     version: int
     digest: str
     balance: int
+    locked_until_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass
