@@ -46,7 +46,24 @@ class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
     def __init__(self, config_path: str, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
-        """Initialize the default config."""
+        """__init__ SuiConfig initialization.
+
+        :param config_path: Fully qualified path to client.yaml configuration to use.
+        :type config_path: str
+        :param env: The active environment name (e.g. devnet, localnet)
+        :type env: str
+        :param active_address: Which address to set as active-address
+        :type active_address: str
+        :param keystore_file: Fully qualifed path to keystore file
+        :type keystore_file: str
+        :param current_url: URL of SUI gateway to use (e.g. https://fullnode.devnet.sui.io:443)
+        :type current_url: str
+        :raises SuiInvalidKeystringLength: If, when ingesting keys, pre 0.21.0 keystring found
+        :raises SuiNoKeyPairs: If keystore file is empty
+        :raises SuiKeystoreFileError: If exception occured during keystore file read
+        :raises SuiKeystoreAddressError: If JSON error reading keystring array from keystore file
+        :raises SuiFileNotFound: If path to keystore file does not exist
+        """
         super().__init__(config_path, keystore_file)
         self._active_address = SuiAddress.from_hex_string(active_address)
         self._current_url = current_url
@@ -149,7 +166,12 @@ class SuiConfig(ClientConfiguration):
 
     @classmethod
     def default(cls) -> "SuiConfig":
-        """Load the default Sui Config from well known path."""
+        """default Looks for and loads client.yaml from ~/.sui/sui_config.
+
+        :raises SuiFileNotFound: If client.yaml file not found in default path
+        :return: An instance of SuiConfig
+        :rtype: SuiConfig
+        """
         expanded_path = os.path.expanduser(DEFAULT_DEVNET_PATH_STRING)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:
@@ -159,7 +181,14 @@ class SuiConfig(ClientConfiguration):
 
     @classmethod
     def from_config_file(cls, infile: str) -> "SuiConfig":
-        """Load the local Sui Config from a fully qualified path to client.yaml."""
+        """from_config_file Load a SuiConfig from a fully qualified path to client.yaml.
+
+        :param infile: Path to client.yaml file to load
+        :type infile: str
+        :raises SuiFileNotFound: If client.yaml does not exist in path provided
+        :return: An instance of SuiConfig
+        :rtype: SuiConfig
+        """
         expanded_path = os.path.expanduser(infile)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:

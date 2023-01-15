@@ -470,25 +470,10 @@ class StateParameters(DataClassJsonMixin):
 
 
 @dataclass
-class PendingDelegator(DataClassJsonMixin):
+class TableVec(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    delegator_address: str = field(metadata=config(field_name="delegator"))
-    delegator_sui_amount: int = field(metadata=config(field_name="sui_amount"))
-    delegator_staked_sui_id: str = field(metadata=config(field_name="staked_sui_id"))
-
-
-@dataclass
-class PendingWithdrawel(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
-
-    delegator_address: str = field(metadata=config(field_name="delegator"))
-    principal_withdraw_amount: int
-    withdrawn_pool_tokens: Union[int, dict]
-
-    def __post_init__(self):
-        """Post hydrate parameter fixups."""
-        self.withdrawn_pool_tokens = self.withdrawn_pool_tokens["value"]
+    contents: dict[str, int]
 
 
 @dataclass
@@ -500,8 +485,8 @@ class StakingPool(DataClassJsonMixin):
     starting_epoch: int
     sui_balance: int
     validator_address: str
-    pending_delegations: list[PendingDelegator] = field(default_factory=list)
-    pending_withdraws: list[PendingWithdrawel] = field(default_factory=list)
+    pending_delegations: TableVec
+    pending_withdraws: TableVec
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""
@@ -563,10 +548,10 @@ class ValidatorAddressPair(DataClassJsonMixin):
 
 
 @dataclass
-class VecMapForValidatorPair(DataClassJsonMixin):
+class VecMapForValidatorPairAndTableVec(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    contents: list[dict[ValidatorAddressPair, PendingWithdrawel]] = field(default_factory=list)
+    contents: list[dict[ValidatorAddressPair, TableVec]] = field(default_factory=list)
 
 
 @dataclass
@@ -589,7 +574,7 @@ class ValidatorSet(DataClassJsonMixin):
     active_validators: list[Validator]
     delegation_stake: int
     next_epoch_validators: list[ValidatorMetaData]
-    pending_delegation_switches: VecMapForValidatorPair
+    pending_delegation_switches: VecMapForValidatorPairAndTableVec
     pending_removals: list[int]
     pending_validators: list[Validator]
     quorum_stake_threshold: int
@@ -633,13 +618,53 @@ class SuiSystemState(DataClassJsonMixin):
 
 
 @dataclass
+class StakedSui(DataClassJsonMixin):
+    """From sui_getDelegatedStakes."""
+
+    delegation_request_epoch: int
+    stake_id: str = field(metadata=config(field_name="id"))
+    pool_starting_epoch: int
+    principle: Union[dict, int]
+    sui_token_lock: int
+    validator_address: str
+
+    def __post_init__(self):
+        """Post hydrate parameter fixups."""
+        self.principle = self.principle["value"]
+
+
+@dataclass
+class Delegation(DataClassJsonMixin):
+    """From sui_getDelegatedStakes."""
+
+    delegation_id: str = field(metadata=config(field_name="id"))
+    pool_tokens: int
+    principle_sui_amount: Union[dict, int]
+    staked_sui_id: str
+
+    def __post_init__(self):
+        """Post hydrate parameter fixups."""
+        self.principle_sui_amount = self.principle_sui_amount["value"]
+
+
+@dataclass
 class DelegatedStake(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
-    # FIXME Update when actualy get results see next
-    delegation_status: Union[dict, str]
-    # FIXME Update when calling API uses what address?
-    staked_sui: dict
+    delegation_status: Union[Delegation, str]
+    staked_sui: StakedSui
+
+
+@dataclass
+class DelegatedStakes(DataClassJsonMixin):
+    """From sui_getDelegatedStakes."""
+
+    delegated_stakes: list[DelegatedStake]
+
+    @classmethod
+    def ingest_data(cls, in_data: list) -> "DelegatedStakes":
+        """Handle multiple delegated stake results."""
+        return cls.from_dict({"delegated_stakes": in_data})
 
 
 @dataclass

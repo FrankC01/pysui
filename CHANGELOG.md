@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ChangeEpocTx added to transaction execution result as per SUI 0.21.0
+- GenesisTx added to transaction execution result as per SUI 0.21.0
+
 ### Fixed
 
 ### Changed
+
+- SuiConfig: documentation
+- Wallet: SUI RPC API version printed with SDK version `wallet -v`
+- pending_delegations and pending_withdraws in StakingPool changed to TableVec from list of obsolete structures.
+- DelegatedStakes: Built out result type (from GetDelegatedStakes builder)
 
 ### Removed
 

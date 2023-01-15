@@ -81,6 +81,22 @@ class TransferSuiTx(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
+class ChangeEpocTx(SuiTxReturnType, DataClassJsonMixin):
+    """From sui_executeTransaction forms."""
+
+    computation_charge: int
+    epoch: int
+    storage_charge: int
+
+
+@dataclass
+class GenesisTx(SuiTxReturnType, DataClassJsonMixin):
+    """From sui_executeTransaction forms."""
+
+    objects: list[str]
+
+
+@dataclass
 class AuthSignerInfo(SuiTxReturnType, DataClassJsonMixin):
     """Authorized signer info."""
 
@@ -97,6 +113,8 @@ _TRANSACTION_LOOKUP = {
     "Publish": PublishTx,
     "TransferObject": TransferObjectTx,
     "TransferSui": TransferSuiTx,
+    "ChangeEpoch": ChangeEpocTx,
+    "Genesis": GenesisTx,
 }
 
 

@@ -49,8 +49,8 @@ from pysui.sui.sui_txresults.single_tx import MoveDataDescriptor, SuiCoinObjects
 
 
 def sdk_version(_client: SuiClient, _args: argparse.Namespace) -> None:
-    """Dispay version."""
-    print(f"pysui SDK version: {__version__}")
+    """Dispay version(s)."""
+    print(f"pysui SDK version: {__version__} SUI RPC API version {_client.rpc_version}")
 
 
 def sui_active_address(client: SuiClient, _args: argparse.Namespace) -> None:

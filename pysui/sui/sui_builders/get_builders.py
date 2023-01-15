@@ -20,6 +20,7 @@ from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiBool
 from pysui.sui.sui_types.collections import SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
+    DelegatedStakes,
     DynamicFields,
     SuiCoinBalance,
     SuiCoinMetadata,
@@ -570,7 +571,7 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self, owner: SuiAddress):
         """."""
-        super().__init__("sui_getDelegatedStakes")
+        super().__init__("sui_getDelegatedStakes", handler_cls=DelegatedStakes, handler_func="ingest_data")
 
 
 class GetValidators(_NativeTransactionBuilder):

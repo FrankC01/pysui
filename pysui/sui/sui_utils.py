@@ -18,7 +18,7 @@ import binascii
 import subprocess
 from pathlib import Path
 from types import NoneType
-from typing import Any, Optional, Type, Union, get_args
+from typing import Any, Union
 from dataclasses_json import DataClassJsonMixin
 
 from pysui.sui.sui_types.scalars import (
@@ -365,7 +365,6 @@ def as_sui_txdigest(in_data: Any) -> Union[SuiTransactionDigest, ValueError]:
 
 
 #: Keys are the end product pysui type and the value (set) are the types it can convert from.
-
 COERCION_TO_FROM_SETS = {
     ObjectID: {str, SuiAddress, DataClassJsonMixin},
     SuiAddress: {str, ObjectID, SuiString},
@@ -393,7 +392,6 @@ COERCION_FROM_TO_SETS = {
 }
 
 #: Keys are the types and value is the converter function.
-
 COERCION_FN_MAP = {
     SuiAddress: as_sui_address,
     ObjectID: as_object_id,
@@ -409,153 +407,4 @@ COERCION_FN_MAP = {
 }
 
 if __name__ == "__main__":
-    import inspect
-    import functools
-
-    def builder_init(*includes, **kwargs):
-        """."""
-
-        def _autoargs(func):
-            __host_class, __host_func = func.__qualname__.split(".")
-            if __host_func != "__init__":
-                raise ValueError(f"@builder_init is decorator for class __init__, found {__host_func}")
-            spec = inspect.getfullargspec(func)
-            # handle varargs is an exception for builders
-            if spec.varargs:
-                raise AttributeError(f"Builder initializers do not accept variable args {spec.varargs}")
-
-            def sieve(attr: str) -> bool:
-                """sieve Checks if attribute should be included in results.
-
-                :param attr: attribute name
-                :type attr: str
-                :return: True if keeping for setattr
-                :rtype: bool
-                """
-                if kwargs and attr in kwargs["excludes"]:
-                    return False
-                if not includes or attr in includes:
-                    return True
-                return False
-
-            @functools.wraps(func)
-            def wrapper(self, *args, **kwargs):
-                __var_map: dict = {}
-                __var_type_map: dict = {}
-                # handle default values
-                if spec.defaults:
-                    # if defaults:
-                    for attr, val in zip(reversed(spec.args), reversed(spec.defaults)):
-                        if sieve(attr):
-                            __var_map[attr] = val
-                            __var_type_map[attr] = spec.annotations[attr]
-                            # setattr(self, attr, val)
-                # # handle positional arguments
-                positional_attrs = spec.args[1:]
-                for attr, val in zip(positional_attrs, args):
-                    if sieve(attr):
-                        __var_map[attr] = val
-                        __var_type_map[attr] = spec.annotations[attr]
-
-                # handle keyword args
-                if kwargs:
-                    for attr, val in kwargs.items():
-                        if sieve(attr):
-                            __var_map[attr] = val
-                            __var_type_map[attr] = spec.annotations[attr]
-
-                # handle keywords with defaults:
-                if spec.kwonlydefaults:
-                    for attr, val in spec.kwonlydefaults.items():
-                        if sieve(attr):
-                            __var_map[attr] = val
-                            __var_type_map[attr] = spec.annotations[attr]
-
-                # Setup the self parameter properties
-                for _new_key, _new_val in self.value_type_validator(__host_class, __var_map, __var_type_map).items():
-                    setattr(self, _new_key, _new_val)
-                # Call the underlying __host_class __init__ function
-                return func(self, *args, **kwargs)
-
-            return wrapper
-
-        return _autoargs
-
-    class Moopy:
-        """Faux SuiBaseBuilder."""
-
-        def __init__(
-            self,
-            method: str,
-            handler_cls: Type[DataClassJsonMixin] = None,
-            handler_func: str = None,
-        ) -> None:
-            """."""
-            self._method = method
-            self._handler_cls: Type[DataClassJsonMixin] = handler_cls
-            self._handler_func: str = handler_func
-
-        @property
-        def method(self) -> str:
-            """."""
-            return self._method
-
-        def pull_vars(self) -> list[Any]:
-            """Filter out private/protected var elements."""
-            return [val for _var_key, val in vars(self).items() if _var_key[0] != "_"]
-
-        @classmethod
-        def value_type_validator(cls, base_class_name: str, args: dict, builder_types: dict) -> Union[dict, TypeError]:
-            """."""
-            result_dict = {}
-            for ctype_key, ctype_value in builder_types.items():
-                # Get the type of value from args of same name
-                has_type = type(args[ctype_key])
-                # print(f"args {ctype_key} has type {has_type} and expects {ctype_value}")
-                # if hastype is equal to expected type (ctype_value)
-                if has_type == ctype_value:
-                    result_dict[ctype_key] = args[ctype_key]
-                # if intype has cross-reference, call the converter
-                elif has_type in COERCION_FROM_TO_SETS and ctype_value in COERCION_FROM_TO_SETS[has_type]:
-                    result_dict[ctype_key] = COERCION_FN_MAP[ctype_value](args[ctype_key])
-                # If no value in argument but type supports Optional
-                elif not args[ctype_key]:
-                    if "_name" in ctype_value.__dict__ and ctype_value.__dict__["_name"] == "Optional":
-                        result_dict[ctype_key] = COERCION_FN_MAP[has_type](ctype_key)
-                    else:
-                        raise TypeError(f"{ctype_key} has no value but missing type hint 'Optional'")
-                # If value in argument and type can be optional Optional
-                elif (
-                    args[ctype_key] and "_name" in ctype_value.__dict__ and ctype_value.__dict__["_name"] == "Optional"
-                ):
-                    true_type = get_args(ctype_value)[0]
-                    if (
-                        true_type in COERCION_TO_FROM_SETS
-                        and has_type in COERCION_TO_FROM_SETS[true_type]
-                        and true_type in COERCION_FN_MAP
-                    ):
-                        result_dict[ctype_key] = COERCION_FN_MAP[true_type](args[ctype_key])
-                    else:
-                        raise ValueError(f"Unable to handle {ctype_key} attribute assignment")
-                else:
-                    # We get here if we can't coerce type
-                    raise ValueError(
-                        f"{ctype_key} expects {ctype_value} but args {ctype_key} is  {type(args[ctype_key])}"
-                    )
-            return result_dict
-
-    class WithSpec(Moopy):
-        """."""
-
-        # _builder_types: dict = {"package": ObjectID, "module_name": Optional[SuiString]}
-
-        @builder_init()
-        def __init__(self, *, package: ObjectID, module_name: Optional[SuiString] = "Flimpy") -> None:
-            """."""
-            super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="from_dict")
-
-    # monk = WithSpec(package="0x2", module_name=None)
-    monk = WithSpec(package="foofuckingbar", module_name=None)
-    print(monk.pull_vars())
-    # faux = Faux("0x2", "base")
-    # print(faux.pull_vars())
+    pass
