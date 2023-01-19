@@ -718,6 +718,11 @@ class SuiCoinObject(DataClassJsonMixin):
     balance: int
     locked_until_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
+    @property
+    def identifier(self) -> ObjectID:
+        """Get the identifer as ObjectID."""
+        return ObjectID(self.coin_object_id)
+
 
 @dataclass
 class SuiCoinObjects(DataClassJsonMixin):

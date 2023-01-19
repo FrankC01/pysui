@@ -21,6 +21,7 @@ from types import NoneType
 from typing import Any, Union
 from dataclasses_json import DataClassJsonMixin
 
+
 from pysui.sui.sui_types.scalars import (
     SuiString,
     ObjectID,
@@ -32,7 +33,7 @@ from pysui.sui.sui_types.scalars import (
     SuiSignature,
 )
 from pysui.sui.sui_types.address import SuiAddress, valid_sui_address
-from pysui.sui.sui_types.collections import SuiArray, SuiMap
+from pysui.sui.sui_types.collections import BatchParameter, SuiArray, SuiMap
 from pysui.sui.sui_excepts import (
     SuiException,
     SuiMiisingBuildFolder,
@@ -383,7 +384,14 @@ COERCION_FROM_TO_SETS = {
     int: {SuiInteger, SuiString, SuiBoolean},
     bytes: {SuiTxBytes, SuiSignature},
     bytearray: {SuiTxBytes, SuiSignature},
-    list: {SuiArray},
+    list: {
+        SuiArray,
+        SuiArray[SuiString],
+        SuiArray[SuiAddress],
+        SuiArray[BatchParameter],
+        SuiArray[ObjectID],
+        SuiArray[SuiInteger],
+    },
     tuple: {SuiArray},
     dict: {SuiMap},
     bool: {SuiBoolean},
@@ -398,12 +406,18 @@ COERCION_FN_MAP = {
     SuiString: as_sui_string,
     SuiInteger: as_sui_integer,
     SuiArray: as_sui_array,
+    SuiArray[ObjectID]: as_sui_array,
+    SuiArray[SuiInteger]: as_sui_array,
+    SuiArray[SuiString]: as_sui_array,
+    SuiArray[BatchParameter]: as_sui_array,
+    SuiArray[SuiAddress]: as_sui_array,
     SuiMap: as_sui_map,
     SuiBoolean: as_sui_boolean,
     SuiSignature: as_sui_signature,
     SuiTxBytes: as_sui_txbytes,
     SuiTransactionDigest: as_sui_txdigest,
     NoneType: lambda x: SuiNullType(),
+    Any: lambda x: x,
 }
 
 if __name__ == "__main__":

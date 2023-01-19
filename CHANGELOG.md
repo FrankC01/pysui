@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Code refactoring for most builders in `builders/exec_builders.py` (BatchTransaction is the exception)
 - SuiConfig: documentation
 - Wallet: SUI RPC API version printed with SDK version `wallet -v`
 - pending_delegations and pending_withdraws in StakingPool changed to TableVec from list of obsolete structures.

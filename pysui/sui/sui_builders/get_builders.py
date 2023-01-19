@@ -559,8 +559,8 @@ class GetTxAuthSignatures(_NativeTransactionBuilder):
     def __init__(self, *, digest: SuiTransactionDigest):
         """__init__ When executed, returns the authorizers public keys array.
 
-        :param txn_digest: Base58 transaction digest
-        :type txn_digest: SuiTransactionDigest
+        :param digest: Base58 transaction digest
+        :type digest: SuiTransactionDigest
         """
         super().__init__("sui_getTransactionAuthSigners", handler_cls=SuiTxnAuthSigners, handler_func="from_dict")
 

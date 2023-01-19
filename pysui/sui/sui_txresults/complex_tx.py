@@ -320,6 +320,7 @@ class Status(SuiTxReturnType, DataClassJsonMixin):
         self.succeeded = self.status == "success"
 
 
+# pylint: disable=too-many-instance-attributes
 @dataclass
 class Effects(SuiTxReturnType, DataClassJsonMixin):
     """Effects Certification."""

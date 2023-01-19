@@ -19,9 +19,10 @@ import functools
 
 from enum import IntEnum
 from typing import Type, Union, get_args
+import typing_utils
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_rpc import Builder
-from pysui.sui.sui_utils import COERCION_FROM_TO_SETS, COERCION_FN_MAP
+from pysui.sui.sui_utils import COERCION_FROM_TO_SETS, COERCION_FN_MAP, COERCION_TO_FROM_SETS
 
 
 class SuiRequestType(IntEnum):
@@ -65,6 +66,11 @@ class SuiTransactionBuilderMode(IntEnum):
 
     @property
     def transactio_buid_type(self) -> str:
+        """Satisfy transaction verification."""
+        return self.as_str()
+
+    @property
+    def txn_builder_mode(self) -> str:
         """Satisfy transaction verification."""
         return self.as_str()
 
@@ -153,7 +159,9 @@ class SuiBaseBuilder(Builder):
             # if hastype is equal to expected type (ctype_value)
             if has_type == ctype_value:
                 result_dict[ctype_key] = args[ctype_key]
-            elif args[ctype_key] and issubclass(has_type, ctype_value):
+            elif args[ctype_key] and typing_utils.issubtype(
+                has_type, ctype_value
+            ):  # issubclass(has_type, ctype_value):
                 result_dict[ctype_key] = args[ctype_key]
             # if intype has cross-reference, call the converter
             elif has_type in COERCION_FROM_TO_SETS and ctype_value in COERCION_FROM_TO_SETS[has_type]:
@@ -164,6 +172,8 @@ class SuiBaseBuilder(Builder):
                     result_dict[ctype_key] = COERCION_FN_MAP[has_type](ctype_key)
                 else:
                     raise TypeError(f"{ctype_key} has no value and no coercion function. In {has_type}")
+            elif has_type in COERCION_TO_FROM_SETS:
+                result_dict[ctype_key] = COERCION_FN_MAP[has_type](args[ctype_key])
             else:
                 # We get here if we can't coerce type
                 raise ValueError(f"{ctype_key} expects {ctype_value} but args {ctype_key} is {type(args[ctype_key])}")
@@ -302,7 +312,7 @@ def sui_builder(*includes, **kwargs):
             # Setup the properties (getter, setter)
             myclass = self.__class__
             for _new_key, _new_val in _instance_dict.items():
-                coercer = COERCION_FN_MAP[__var_type_map[_new_key]]
+                coercer = COERCION_FN_MAP.get(__var_type_map[_new_key], lambda x: x)
                 setattr(
                     myclass,
                     _new_key,

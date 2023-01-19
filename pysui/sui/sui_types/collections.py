@@ -13,6 +13,7 @@
 
 """Sui Collection Types."""
 
+from abc import abstractmethod
 from typing import Any, Generic, TypeVar
 from pysui.abstracts import SuiBaseType
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
@@ -117,6 +118,14 @@ class SuiMap(SuiCollection):
     def filter(self) -> dict[str, Any]:
         """Alias for transactions."""
         return self.map
+
+
+class BatchParameter(SuiMap):
+    """BatchParameter is abstraction for TransferObjectParams and MoveCallRequestParams."""
+
+    @abstractmethod
+    def realize_parameters(self) -> dict:
+        """Satisfied by subclasses."""
 
 
 class EventID(SuiMap):

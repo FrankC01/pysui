@@ -139,7 +139,7 @@ class EventTypeFilter(_EventFilterType, SuiMap):
         :raises AttributeError: If event_name neither a string or SuiString
         :raises AttributeError: If event_name not in _event_type_set
         """
-        if isinstance(event_name, str) or isinstance(event_name, SuiString):
+        if isinstance(event_name, (str, SuiString)):
             if isinstance(event_name, str) and event_name in self._event_type_set:
                 super().__init__("EventType", event_name)
             elif isinstance(event_name, SuiString) and event_name.value in self._event_type_set:

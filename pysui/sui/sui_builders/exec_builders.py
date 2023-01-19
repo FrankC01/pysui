@@ -10,12 +10,12 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
-# pylint: disable=too-many-lines,too-many-instance-attributes,line-too-long
+# pylint: disable=too-many-instance-attributes
 
 """Sui Builders: Complex transaction."""
 
 from abc import abstractmethod
-from typing import Optional, Union
+from typing import Optional
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_keypair import SignatureScheme, PublicKey
 from pysui.sui.sui_builders.base_builder import (
@@ -37,62 +37,30 @@ from pysui.sui import sui_utils
 class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
+    @sui_builder()
     def __init__(
         self,
         *,
-        tx_bytes: SuiTxBytes = None,
-        sig_scheme: SignatureScheme = None,
-        signature: SuiSignature = None,
-        pub_key: PublicKey = None,
-        request_type: SuiRequestType = None,
+        tx_bytes: SuiTxBytes,
+        sig_scheme: SignatureScheme,
+        signature: SuiSignature,
+        pub_key: PublicKey,
+        request_type: SuiRequestType,
     ) -> None:
         """Initialize builder."""
         super().__init__("sui_executeTransaction", handler_cls=TxEffectResult, handler_func="from_dict")
-        self.tx_bytes: SuiTxBytes = tx_bytes
-        self.sig_scheme: SignatureScheme = sig_scheme
-        self.signature: SuiSignature = signature
-        self.pub_key: PublicKey = pub_key
-        self.request_type: SuiRequestType = request_type
-
-    def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "ExecuteTransaction":
-        """Set the transaction base64 string."""
-        self.tx_bytes: SuiTxBytes = tbyteb64
-        return self
-
-    def set_sig_scheme(self, sig: SignatureScheme) -> "ExecuteTransaction":
-        """Set the transaction base64 string."""
-        self.sig_scheme: SignatureScheme = sig
-        return self
-
-    def set_signature(self, sigb64: SuiSignature) -> "ExecuteTransaction":
-        """Set the signed transaction base64 string."""
-        self.signature: SuiSignature = sigb64
-        return self
-
-    def set_pub_key(self, pubkey: PublicKey) -> "ExecuteTransaction":
-        """Set the public key base64 string."""
-        self.pub_key: PublicKey = pubkey
-        return self
-
-    def set_request_type(self, rtype: SuiRequestType) -> "ExecuteTransaction":
-        """Set the request type for execution."""
-        self.request_type: SuiRequestType = rtype
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class ExecuteSerializedTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
+    @sui_builder()
     def __init__(
         self,
         *,
-        tx_bytes: SuiTxBytes = None,
-        signature: SuiSignature = None,
-        request_type: SuiRequestType = None,
+        tx_bytes: SuiTxBytes,
+        signature: SuiSignature,
+        request_type: SuiRequestType,
     ) -> None:
         """__init__ When executed, runs the transaction.
 
@@ -106,55 +74,28 @@ class ExecuteSerializedTransaction(_NativeTransactionBuilder):
         :type request_type: SuiRequestType, optional
         """
         super().__init__("sui_executeTransactionSerializedSig", handler_cls=TxEffectResult, handler_func="from_dict")
-        self.tx_bytes: SuiTxBytes = tx_bytes
-        self.signature: SuiSignature = signature
-        self.request_type: SuiRequestType = request_type
-
-    def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "ExecuteTransaction":
-        """Set the transaction base64 string."""
-        self.tx_bytes: SuiTxBytes = tbyteb64
-        return self
-
-    def set_signature(self, sigb64: SuiSignature) -> "ExecuteTransaction":
-        """Set the signed transaction base64 string."""
-        self.signature: SuiSignature = sigb64
-        return self
-
-    def set_request_type(self, rtype: SuiRequestType) -> "ExecuteTransaction":
-        """Set the request type for execution."""
-        self.request_type: SuiRequestType = rtype
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class DryRunTransaction(_NativeTransactionBuilder):
     """Dry run a signed transaction to Sui."""
 
+    @sui_builder()
     def __init__(
         self,
         *,
-        tx_bytes: SuiTxBytes = None,
+        tx_bytes: SuiTxBytes,
     ) -> None:
         """Initialize builder."""
         super().__init__("sui_dryRunTransaction", handler_cls=Effects, handler_func="from_dict")
-        self.tx_bytes: SuiTxBytes = tx_bytes
-
-    def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "DryRunTransaction":
-        """Set the transaction base64 string."""
-        self.tx_bytes: SuiTxBytes = tbyteb64
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return [self.tx_bytes]
 
 
 class InspectTransaction(_NativeTransactionBuilder):
-    """InspectTransaction when executed, return dev-inpsect results of the transaction, including both the transaction effects and return values of the transaction."""
+    """InspectTransaction when executed, return dev-inpsect results of the transaction.
 
+    Includes both the transaction effects and return values of the transaction.
+    """
+
+    @sui_builder()
     def __init__(self, *, tx_bytes: SuiTxBytes) -> None:
         """__init__ Initialize builder.
 
@@ -162,16 +103,6 @@ class InspectTransaction(_NativeTransactionBuilder):
         :type tx_bytes: SuiTxBytes
         """
         super().__init__("sui_devInspectTransaction", handler_cls=TxInspectionResult, handler_func="from_dict")
-        self.tx_bytes: SuiTxBytes = tx_bytes
-
-    def set_tx_bytes(self, tbyteb64: SuiTxBytes) -> "InspectTransaction":
-        """Set the transaction base64 string."""
-        self.tx_bytes: SuiTxBytes = tbyteb64
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return [self.tx_bytes]
 
 
 class InspectMoveCall(_NativeTransactionBuilder):
@@ -180,28 +111,16 @@ class InspectMoveCall(_NativeTransactionBuilder):
     The main purpose of this is to inspect the changes/effects of the call.
     """
 
-    move_kwords: set[str] = {
-        "sender_address",
-        "package_object_id",
-        "module",
-        "function",
-        "type_arguments",
-        "arguments",
-    }
-    _movecall_array_keys: set[str] = {
-        "type_arguments",
-        "arguments",
-    }
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        sender_address: SuiAddress = None,
-        package_object_id: ObjectID = None,
-        module: SuiString = None,
-        function: SuiString = None,
-        type_arguments: SuiArray[SuiString] = None,
-        arguments: SuiArray[SuiString] = None,
+        sender_address: SuiAddress,
+        package_object_id: ObjectID,
+        module: SuiString,
+        function: SuiString,
+        type_arguments: SuiArray[SuiString],
+        arguments: SuiArray[SuiString],
     ) -> None:
         """__init__ Builder initializer.
 
@@ -218,26 +137,7 @@ class InspectMoveCall(_NativeTransactionBuilder):
         :param arguments: the arguments to be passed into the Move function, defaults to None
         :type arguments: SuiArray[SuiString], optional
         """
-        inargs = locals().copy()
         super().__init__("sui_devInspectMoveCall", handler_cls=TxInspectionResult, handler_func="from_dict")
-        self.sender_address: SuiAddress = None
-        self.package_object_id: ObjectID = None
-        self.module: SuiString = None
-        self.function: SuiString = None
-        self.type_arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
-        self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
-        for hit in self.move_kwords & set(inargs.keys()):
-            if hit in self._movecall_array_keys:
-                if inargs[hit]:
-                    setattr(self, hit, SuiArray(inargs[hit]))
-                else:
-                    setattr(self, hit, SuiArray([]))
-            else:
-                setattr(self, hit, inargs[hit])
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):
@@ -265,69 +165,30 @@ class TransferObject(_MoveCallTransactionBuilder):
     The object's type must allow public transfers
     """
 
-    transferobject_kwords: set[str] = {"signer", "object_id", "gas", "gas_budget", "recipient"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        object_id: ObjectID = None,
-        gas: ObjectID = None,
-        gas_budget: SuiInteger = None,
-        recipient: SuiAddress = None,
+        signer: SuiAddress,
+        object_id: ObjectID,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
+        recipient: SuiAddress,
     ) -> None:
         """__init__ TransferObject Builder initializer.
 
-        :param signer: the transaction signer's Sui address, defaults to None
-        :type signer: SuiAddress, optional
-        :param object_id: the ObjectID of the object to be transferred, defaults to None
-        :type object_id: ObjectID, optional
-        :param gas: gas object to be used in this transaction, defaults to None
-        :type gas: ObjectID, optional
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget,
-            defaults to None
-        :type gas_budget: SuiInteger, optional
-        :param recipient: the recipient's Sui address, defaults to None
-        :type recipient: SuiAddress, optional
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param object_id: the ObjectID of the object to be transferred
+        :type object_id: ObjectID
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        :param recipient: the recipient's Sui address
+        :type recipient: SuiAddress
         """
-        inargs = locals().copy()
         super().__init__("sui_transferObject")
-        self.signer: SuiAddress = None
-        self.object_id: ObjectID = None
-        self.gas: ObjectID = None
-        self.gas_budget: SuiInteger = None
-        self.recipient: SuiAddress = None
-        for hit in self.transferobject_kwords & set(inargs.keys()):
-            setattr(self, hit, inargs[hit])
-
-    def set_object_id(self, obj: ObjectID) -> "TransferObject":
-        """Set the object to transfer."""
-        self.object_id: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_signer(self, address: SuiAddress) -> "TransferObject":
-        """Set the gas owner signer."""
-        self.signer: SuiAddress = address
-        return self
-
-    def set_gas(self, obj: ObjectID) -> "TransferObject":
-        """Set sui object gas object."""
-        self.gas: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "TransferObject":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def set_recipient(self, obj: SuiAddress) -> "TransferObject":
-        """Set the address for the receiver."""
-        self.recipient: SuiAddress = obj
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class TransferSui(_MoveCallTransactionBuilder):
@@ -336,69 +197,30 @@ class TransferSui(_MoveCallTransactionBuilder):
     The SUI object is also used as the gas object.
     """
 
-    transfersui_kwords: set[str] = {"signer", "sui_object_id", "gas_budget", "recipient", "amount"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        sui_object_id: ObjectID = None,
-        gas_budget: SuiInteger = None,
-        recipient: SuiAddress = None,
-        amount: SuiInteger = None,
+        signer: SuiAddress,
+        sui_object_id: ObjectID,
+        gas_budget: SuiInteger,
+        recipient: SuiAddress,
+        amount: SuiInteger,
     ) -> None:
         """__init__ TransferSui Builder initializer.
 
-        :param signer: the transaction signer's Sui address, defaults to None
-        :type signer: SuiAddress, optional
-        :param sui_object_id: the Sui coin object to be used in this transaction, defaults to None
-        :type sui_object_id: ObjectID, optional
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget,
-            defaults to None
-        :type gas_budget: SuiInteger, optional
-        :param recipient: the recipient's Sui address, defaults to None
-        :type recipient: SuiAddress, optional
-        :param amount: the amount to be split out and transferred, defaults to None
-        :type amount: SuiInteger, optional
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param sui_object_id: the Sui coin object to be used in this transaction
+        :type sui_object_id: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        :param recipient: the recipient's Sui address
+        :type recipient: SuiAddress
+        :param amount: the amount to be split out and transferred
+        :type amount: SuiInteger
         """
-        inargs = locals().copy()
         super().__init__("sui_transferSui")
-        self.signer: SuiAddress = None
-        self.sui_object_id: ObjectID = None
-        self.gas_budget: SuiInteger = None
-        self.recipient: SuiAddress = None
-        self.amount: SuiInteger = None
-        for hit in self.transfersui_kwords & set(inargs.keys()):
-            setattr(self, hit, inargs[hit])
-
-    def set_signer(self, address: SuiAddress) -> "TransferSui":
-        """Set the gas owner signer."""
-        self.signer: SuiAddress = address
-        return self
-
-    def set_sui_object_id(self, obj: ObjectID) -> "TransferSui":
-        """Set sui object gas object."""
-        self.sui_object_id: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "TransferSui":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def set_recipient(self, obj: SuiAddress) -> "TransferSui":
-        """Set the address for the receiver."""
-        self.recipient: SuiAddress = obj
-        return self
-
-    def set_amount(self, obj: SuiInteger) -> "TransferSui":
-        """Set the amount to transfer to recipient."""
-        self.amount: SuiInteger = obj
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class Pay(_MoveCallTransactionBuilder):
@@ -410,82 +232,33 @@ class Pay(_MoveCallTransactionBuilder):
     The gas object can not appear in `input_coins`.
     """
 
-    pay_kwords: set[str] = {"signer", "input_coins", "recipients", "amounts", "gas", "gas_budget"}
-    _pay_array_keys: set[str] = {"input_coins", "recipients", "amounts"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        input_coins: SuiArray[ObjectID] = None,
-        recipients: SuiArray[SuiAddress] = None,
-        amounts: SuiArray[SuiInteger] = None,
-        gas: ObjectID = None,
-        gas_budget: SuiInteger = None,
+        signer: SuiAddress,
+        input_coins: SuiArray[ObjectID],
+        recipients: SuiArray[SuiAddress],
+        amounts: SuiArray[SuiInteger],
+        gas: ObjectID,
+        gas_budget: SuiInteger,
     ) -> None:
         """__init__ Pay Builder initializer.
 
-        :param signer: the transaction signer's Sui address, defaults to None
-        :type signer: SuiAddress, optional
-        :param input_coins: the Sui coins to be used in this transaction, defaults to None
-        :type input_coins: SuiArray[ObjectID], optional
-        :param recipients: the recipients' addresses, the length of this vector must be the same as amounts,
-            defaults to None
-        :type recipients: SuiArray[SuiAddress], optional
-        :param amounts: the amounts to be transferred to recipients, following the same order, defaults to None
-        :type amounts: SuiArray[SuiInteger], optional
-        :param gas: gas object to be used in this transaction, defaults to None
-        :type gas: ObjectID, optional
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
-        :type gas_budget: SuiInteger, optional
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param input_coins: the Sui coins to be used in this transaction
+        :type input_coins: SuiArray[ObjectID]
+        :param recipients: the recipients' addresses, the length of this vector must be the same as amounts
+        :type recipients: SuiArray[SuiAddress]
+        :param amounts: the amounts to be transferred to recipients, following the same order
+        :type amounts: SuiArray[SuiInteger]
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
         """
-        inargs = locals().copy()
         super().__init__("sui_pay")
-        self.signer: SuiAddress = None
-        self.input_coins: SuiArray[ObjectID] = None
-        self.recipients: SuiArray[SuiAddress] = None
-        self.amounts: SuiArray[SuiInteger] = None
-        self.gas: ObjectID = None
-        self.gas_budget: SuiInteger = None
-        for hit in self.pay_kwords & set(inargs.keys()):
-            if hit in self._pay_array_keys and isinstance(inargs[hit], list):
-                setattr(self, hit, SuiArray(inargs[hit]))
-            else:
-                setattr(self, hit, inargs[hit])
-
-    def set_signer(self, address: SuiAddress) -> "Pay":
-        """Set the gas owner signer."""
-        self.signer: SuiAddress = address
-        return self
-
-    def set_input_coins(self, obj: list[ObjectID]) -> "Pay":
-        """Set sui object gas object."""
-        self.input_coins: SuiArray[ObjectID] = SuiArray[ObjectID](obj)
-        return self
-
-    def set_recipients(self, obj: list[SuiAddress]) -> "Pay":
-        """Set the addresses for the receivers."""
-        self.recipients: SuiArray[SuiAddress] = SuiArray[SuiAddress](obj)
-        return self
-
-    def set_amounts(self, obj: list[SuiInteger]) -> "Pay":
-        """Set the amount(s) to transfer to recipient."""
-        self.amounts: SuiArray[SuiInteger] = SuiArray[SuiInteger](obj)
-        return self
-
-    def set_gas(self, obj: ObjectID) -> "Pay":
-        """Set sui object gas object for paying transaction."""
-        self.gas: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "Pay":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class PaySui(_MoveCallTransactionBuilder):
@@ -502,75 +275,30 @@ class PaySui(_MoveCallTransactionBuilder):
     4. all other input coints other than the first one are deleted.
     """
 
-    paysui_kwords: set[str] = {"signer", "input_coins", "recipients", "amounts", "gas_budget"}
-    _paysui_array_keys: set[str] = {"input_coins", "recipients", "amounts"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        input_coins: Union[list[ObjectID], SuiArray[ObjectID]] = None,
-        recipients: Union[list[SuiAddress], SuiArray[SuiAddress]] = None,
-        amounts: Union[list[SuiInteger], SuiArray[SuiInteger]] = None,
-        gas_budget: SuiInteger = None,
+        signer: SuiAddress,
+        input_coins: SuiArray[ObjectID],
+        recipients: SuiArray[SuiAddress],
+        amounts: SuiArray[SuiInteger],
+        gas_budget: SuiInteger,
     ) -> None:
         """__init__ PaySui Builder initializer.
 
-        :param signer: the transaction signer's Sui address, defaults to None
-        :type signer: SuiAddress, optional
-        :param input_coins: the Sui coins to be used in this transaction, including the coin for gas payment,
-            defaults to None
-        :type input_coins: SuiArray[ObjectID], optional
-        :param recipients: the recipients' addresses, the length of this vector must be the same as amounts,
-            defaults to None
-        :type recipients: SuiArray[SuiAddress], optional
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param input_coins: the Sui coins to be used in this transaction
+        :type input_coins: SuiArray[ObjectID]
+        :param recipients: the recipients' addresses, the length of this vector must be the same as amounts
+        :type recipients: SuiArray[SuiAddress]
         :param amounts: the amounts to be transferred to recipients, following the same order,
-            defaults to None
-        :type amounts: SuiArray[SuiInteger], optional
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
-        :type gas_budget: SuiInteger, optional
+        :type amounts: SuiArray[SuiInteger]
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
         """
-        inargs = locals().copy()
         super().__init__("sui_paySui")
-        self.signer: SuiAddress = None
-        self.input_coins: SuiArray[ObjectID] = None
-        self.recipients: SuiArray[SuiAddress] = None
-        self.amounts: SuiArray[SuiInteger] = None
-        self.gas_budget: SuiInteger = None
-        for hit in self.paysui_kwords & set(inargs.keys()):
-            if hit in self._paysui_array_keys and isinstance(inargs[hit], list):
-                setattr(self, hit, SuiArray(inargs[hit]))
-            else:
-                setattr(self, hit, inargs[hit])
-
-    def set_signer(self, address: SuiAddress) -> "PaySui":
-        """Set the gas owner signer."""
-        self.signer: SuiAddress = address
-        return self
-
-    def set_input_coins(self, obj: list[ObjectID]) -> "PaySui":
-        """Set sui object gas object."""
-        self.input_coins: SuiArray[ObjectID] = SuiArray[ObjectID](obj)
-        return self
-
-    def set_recipients(self, obj: list[SuiAddress]) -> "PaySui":
-        """Set the addresses for the receivers."""
-        self.recipients: SuiArray[SuiAddress] = SuiArray[SuiAddress](obj)
-        return self
-
-    def set_amounts(self, obj: list[SuiInteger]) -> "PaySui":
-        """Set the amount(s) to transfer to recipient."""
-        self.amounts: SuiArray[SuiInteger] = SuiArray[SuiInteger](obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "PaySui":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class PayAllSui(_MoveCallTransactionBuilder):
@@ -585,266 +313,118 @@ class PayAllSui(_MoveCallTransactionBuilder):
     4. all other input coins other than the first are deleted.
     """
 
-    payallsui_kwords: set[str] = {"signer", "input_coins", "recipient", "gas_budget"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        input_coins: SuiArray[ObjectID] = None,
-        recipient: SuiAddress = None,
-        gas_budget: SuiInteger = None,
+        signer: SuiAddress,
+        input_coins: SuiArray[ObjectID],
+        recipient: SuiAddress,
+        gas_budget: SuiInteger,
     ) -> None:
         """__init__ PayAllSui Builder initializer.
 
-        :param signer: the transaction signer's Sui address, defaults to None
-        :type signer: SuiAddress, optional
-        :param input_coins: the Sui coins to be used in this transaction, including the coin for gas payment.,
-            defaults to None
-        :type input_coins: SuiArray[ObjectID], optional
-        :param recipient: the recipient Sui address, defaults to None
-        :type recipient: SuiAddress, optional
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
-        :type gas_budget: SuiInteger, optional
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param input_coins: the Sui coins to be used in this transaction, including the coin for gas payment.
+        :type input_coins: SuiArray[ObjectID]
+        :param recipient: the recipient Sui address
+        :type recipient: SuiAddress
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
         """
-        inargs = locals().copy()
         super().__init__("sui_payAllSui")
-        self.signer: SuiAddress = None
-        self.input_coins: SuiArray[ObjectID] = None
-        self.recipient: SuiAddress = None
-        self.gas_budget: SuiInteger = None
-        for hit in self.payallsui_kwords & set(inargs.keys()):
-            if hit == "input_coins" and isinstance(inargs[hit], list):
-                setattr(self, hit, SuiArray(inargs[hit]))
-            else:
-                setattr(self, hit, inargs[hit])
-
-    def set_signer(self, address: SuiAddress) -> "PayAllSui":
-        """Set the gas owner signer."""
-        self.signer: SuiAddress = address
-        return self
-
-    def set_input_coins(self, obj: list[ObjectID]) -> "PayAllSui":
-        """Set input coin array."""
-        self.input_coins: SuiArray[ObjectID] = SuiArray[ObjectID](obj)
-        return self
-
-    def set_recipient(self, obj: SuiAddress) -> "PayAllSui":
-        """Set the address for the receiver."""
-        self.recipient: SuiAddress = obj
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "PayAllSui":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class MergeCoin(_MoveCallTransactionBuilder):
     """MergeCoin When executed, merge multiple coins into one coin."""
 
-    merge_kwords: set[str] = {"signer", "gas_object", "gas_budget", "primary_coin", "coin_to_merge"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        primary_coin: ObjectID = None,
-        coin_to_merge: ObjectID = None,
-        gas: ObjectID = None,
-        gas_budget: SuiInteger = None,
+        signer: SuiAddress,
+        primary_coin: ObjectID,
+        coin_to_merge: ObjectID,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
     ) -> None:
         """__init__ MergeCoin Builder initializer.
 
-        :param signer: the transaction signer's Sui address, defaults to None
-        :type signer: SuiAddress, optional
-        :param primary_coin: the coin object to merge into, this coin will remain after the transaction,
-            defaults to None
-        :type primary_coin: ObjectID, optional
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param primary_coin: the coin object to merge into, this coin will remain after the transaction
+        :type primary_coin: ObjectID
         :param coin_to_merge: the coin object to be merged, this coin will be destroyed,
-            the balance will be added to `primary_coin`, defaults to None
-        :type coin_to_merge: ObjectID, optional
-        :param gas: gas object to be used in this transaction, defaults to None
-        :type gas_object: ObjectID, optional
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
-        :type gas_budget: SuiInteger, optional
+            the balance will be added to `primary_coin`
+        :type coin_to_merge: ObjectID
+        :param gas: gas object to be used in this transaction
+        :type gas_object: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
         """
-        inargs = locals().copy()
         super().__init__("sui_mergeCoins")
-        self.signer: SuiAddress = None
-        self.primary_coin: ObjectID = None
-        self.coin_to_merge: ObjectID = None
-        self.gas: ObjectID = None
-        self.gas_budget: SuiInteger = None
-        for hit in self.merge_kwords & set(inargs.keys()):
-            setattr(self, hit, inargs[hit])
-
-    def set_signer(self, address: SuiAddress) -> "MergeCoin":
-        """Set the gas owner signer."""
-        self.signer: SuiAddress = address
-        return self
-
-    def set_gas_object(self, obj: ObjectID) -> "MergeCoin":
-        """Set sui object gas object."""
-        self.gas: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "MergeCoin":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def set_coin_to_merge(self, obj: ObjectID) -> "MergeCoin":
-        """Set the address for the receiver."""
-        self.coin_to_merge: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_primary_coin(self, obj: ObjectID) -> "MergeCoin":
-        """Set the primary coin to merge into."""
-        self.primary_coin: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class SplitCoin(_MoveCallTransactionBuilder):
     """SplitCoin When executed, split a coin object into multiple coins."""
 
-    split_kwords: set[str] = {"signer", "gas_object", "gas_budget", "coin_object_id", "split_amounts"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        coin_object_id: ObjectID = None,
-        split_amounts: SuiArray[SuiInteger] = None,
-        gas_object: ObjectID = None,
-        gas_budget: SuiInteger = None,
+        signer: SuiAddress,
+        coin_object_id: ObjectID,
+        split_amounts: SuiArray[SuiInteger],
+        gas_object: ObjectID,
+        gas_budget: SuiInteger,
     ) -> None:
         """__init__ SplitCoin Builder initializer.
 
-        :param signer: the transaction signer's Sui address, defaults to None
-        :type signer: SuiAddress, optional
-        :param coin_object_id: the coin object to be spilt, defaults to None
-        :type coin_object_id: ObjectID, optional
-        :param split_amounts: the amounts to split out from the coin, defaults to None
-        :type split_amounts: SuiArray[SuiInteger], optional
-        :param gas_object: gas object to be used in this transaction, defaults to None
-        :type gas_object: ObjectID, optional
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
-        :type gas_budget: SuiInteger, optional
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param coin_object_id: the coin object to be spilt
+        :type coin_object_id: ObjectID
+        :param split_amounts: the amounts to split out from the coin
+        :type split_amounts: SuiArray[SuiInteger]
+        :param gas_object: gas object to be used in this transaction
+        :type gas_object: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
         """
-        inargs = locals().copy()
         super().__init__("sui_splitCoin")
-        self.signer: SuiAddress = None
-        self.coin_object_id: ObjectID = None
-        self.split_amounts: SuiArray[SuiInteger] = None
-        self.gas_object: ObjectID = None
-        self.gas_budget: SuiInteger = None
-        for hit in self.split_kwords & set(inargs.keys()):
-            setattr(self, hit, inargs[hit])
-
-    def set_signer(self, address: SuiAddress) -> "SplitCoin":
-        """Set the gas owner signer."""
-        self.signer: SuiAddress = address
-        return self
-
-    def set_gas_object(self, obj: ObjectID) -> "SplitCoin":
-        """Set sui object gas object."""
-        self.gas_object: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "SplitCoin":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def set_coin_object_id(self, obj: ObjectID) -> "SplitCoin":
-        """Set the object ID for the coin being split."""
-        self.coin_object_id: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_split_amounts(self, obj: list[SuiInteger]) -> "SplitCoin":
-        """Set the amounts to split the coin into."""
-        self.split_amounts: SuiArray[SuiInteger] = SuiArray[SuiInteger](obj)
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class SplitCoinEqually(_MoveCallTransactionBuilder):
     """SplitCoinEqually When executed, splits a coin object into multiple equal-size coins."""
 
-    splite_kwords: set[str] = {"signer", "gas", "gas_budget", "coin_object_id", "split_count"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        coin_object_id: ObjectID = None,
-        split_count: SuiInteger = None,
-        gas: ObjectID = None,
-        gas_budget: SuiInteger = None,
+        signer: SuiAddress,
+        coin_object_id: ObjectID,
+        split_count: SuiInteger,
+        gas: ObjectID,
+        gas_budget: SuiInteger,
     ) -> None:
         """__init__ SplitCoinEqually Builder initializer.
 
-        :param signer: the transaction signer's Sui address, defaults to None
-        :type signer: SuiAddress, optional
-        :param coin_object_id: the coin object to be spilt, defaults to None
-        :type coin_object_id: ObjectID, optional
-        :param split_count: the number of coins to split into, defaults to None
-        :type split_count: SuiInteger, optional
-        :param gas: gas object to be used in this transaction, defaults to None
-        :type gas: ObjectID, optional
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
-        :type gas_budget: SuiInteger, optional
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param coin_object_id: the coin object to be spilt
+        :type coin_object_id: ObjectID
+        :param split_count: the number of coins to split into
+        :type split_count: SuiInteger
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
         """
-        inargs = locals().copy()
         super().__init__("sui_splitCoinEqual")
-        self.signer: SuiAddress = None
-        self.coin_object_id: ObjectID = None
-        self.split_count: SuiInteger = None
-        self.gas: ObjectID = None
-        self.gas_budget: SuiInteger = None
-        for hit in self.splite_kwords & set(inargs.keys()):
-            setattr(self, hit, inargs[hit])
 
-    def set_signer(self, address: SuiAddress) -> "SplitCoin":
-        """Set the gas owner signer."""
-        self.signer: SuiAddress = address
-        return self
 
-    def set_gas_object(self, obj: ObjectID) -> "SplitCoin":
-        """Set sui object gas object."""
-        self.gas: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "SplitCoin":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def set_coin_object_id(self, obj: ObjectID) -> "SplitCoin":
-        """Set the object ID for the coin being split."""
-        self.coin_object_id: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_split_count(self, obj: SuiInteger) -> "SplitCoin":
-        """Set the amounts to split the coin into."""
-        self.split_count: SuiInteger = obj
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
+# Batch Transaction. Do not use @sui_builder
 
 
 class BatchParameter(SuiMap):
@@ -903,6 +483,7 @@ class MoveCallRequestParams(BatchParameter):
         return self.map
 
 
+# pylint: disable=too-many-arguments
 class BatchTransaction(_MoveCallTransactionBuilder):
     """BatchTransaction When executed, runs transactions included in the batch."""
 
@@ -938,7 +519,8 @@ class BatchTransaction(_MoveCallTransactionBuilder):
                 raise ValueError(f"{item} is not of type BatchParameter")
         self.single_transaction_params = transaction_params
 
-    def _collect_parameters(self) -> list[SuiBaseType]:
+    @property
+    def params(self) -> list[SuiBaseType]:
         """Collect the call parameters."""
         collection = []
         for item in self.single_transaction_params.array:
@@ -947,18 +529,20 @@ class BatchTransaction(_MoveCallTransactionBuilder):
         return self._pull_vars()
 
 
+# Publish and call
+
+
 class Publish(_MoveCallTransactionBuilder):
     """Publish When executed, Publish a Move package to the SUI blockchain."""
 
-    publish_kwords = {"sender", "compiled_modules", "gas", "gas_budget"}
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        sender: SuiAddress = None,
-        compiled_modules: SuiArray[SuiString] = None,
-        gas: ObjectID = None,
-        gas_budget: SuiInteger = None,
+        sender: SuiAddress,
+        compiled_modules: SuiArray[SuiString],
+        gas: ObjectID,
+        gas_budget: SuiInteger,
     ) -> None:
         """__init__ Publish Builder initializer.
 
@@ -971,41 +555,7 @@ class Publish(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
         :type gas_budget: SuiInteger, optional
         """
-        inargs = locals().copy()
         super().__init__("sui_publish")
-        self.sender: SuiAddress = None
-        self.compiled_modules: SuiArray[SuiString] = None
-        self.gas: ObjectID = None
-        self.gas_budget: SuiInteger = None
-        for hit in self.publish_kwords & set(inargs.keys()):
-            if hit == "compiled_modules" and isinstance(inargs[hit], list):
-                setattr(self, hit, SuiArray(inargs[hit]))
-            else:
-                setattr(self, hit, inargs[hit])
-
-    def set_sender(self, obj: SuiAddress) -> "Publish":
-        """Set the publisher address."""
-        self.sender: SuiAddress = obj
-        return self
-
-    def set_compiled_modules(self, obj: SuiArray[SuiString]) -> "Publish":
-        """Set the publishing package base64 modules string array."""
-        self.compiled_modules: SuiArray[SuiString] = obj
-        return self
-
-    def set_gas_object(self, obj: ObjectID) -> "Publish":
-        """Set sui object gas object."""
-        self.gas: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "Publish":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
 
 
 class MoveCall(_MoveCallTransactionBuilder):
@@ -1014,33 +564,19 @@ class MoveCall(_MoveCallTransactionBuilder):
     Calling the specified function in the module of a given package.
     """
 
-    move_kwords: set[str] = {
-        "signer",
-        "package_object_id",
-        "module",
-        "function",
-        "type_arguments",
-        "arguments",
-        "gas",
-        "gas_budget",
-    }
-    _movecall_array_keys: set[str] = {
-        "type_arguments",
-        "arguments",
-    }
-
+    @sui_builder()
     def __init__(
         self,
         *,
-        signer: SuiAddress = None,
-        package_object_id: ObjectID = None,
-        module: SuiString = None,
-        function: SuiString = None,
-        type_arguments: SuiArray[SuiString] = None,
-        arguments: SuiArray[SuiString] = None,
-        gas: ObjectID = None,
-        gas_budget: SuiInteger = None,
-        execution_mode: SuiTransactionBuilderMode = SuiTransactionBuilderMode.COMMIT,
+        signer: SuiAddress,
+        package_object_id: ObjectID,
+        module: SuiString,
+        function: SuiString,
+        type_arguments: SuiArray[SuiString],
+        arguments: SuiArray[SuiString],
+        gas: ObjectID,
+        gas_budget: SuiInteger,
+        execution_mode: Optional[SuiTransactionBuilderMode] = SuiTransactionBuilderMode.COMMIT,
     ) -> None:
         """__init__ MoveCall Builder initializer.
 
@@ -1060,67 +596,14 @@ class MoveCall(_MoveCallTransactionBuilder):
         :type gas: ObjectID, optional
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
         :type gas_budget: SuiInteger, optional
-        :param execution_mode: Whether this is a Normal transaction or a Dev Inspect Transaction. Default to be `SuiTransactionBuilderMode::Commit`
+        :param execution_mode: Whether this is a Normal transaction or a Dev Inspect Transaction.
+            Default to be `SuiTransactionBuilderMode::Commit`
         :type execution_mode: SuiTransactionBuilderMode, optional
         """
-        inargs = locals().copy()
         super().__init__("sui_moveCall")
-        self.signer: SuiAddress = None
-        self.package_object_id: ObjectID = None
-        self.module: SuiString = None
-        self.function: SuiString = None
-        self.type_arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
-        self.arguments: SuiArray[SuiString] = SuiArray[SuiString]([])
-        self.gas: ObjectID = None
-        self.gas_budget: SuiInteger = None
-        self.execution_mode = execution_mode
-        for hit in self.move_kwords & set(inargs.keys()):
-            if hit in self._movecall_array_keys:
-                if inargs[hit]:
-                    setattr(self, hit, SuiArray(inargs[hit]))
-                else:
-                    setattr(self, hit, SuiArray([]))
-            else:
-                setattr(self, hit, inargs[hit])
 
-    def set_signer(self, obj: SuiAddress) -> "MoveCall":
-        """Set signers address."""
-        self.signer: SuiAddress = obj
-        return self
 
-    def set_module(self, obj: SuiString) -> "MoveCall":
-        """Set sui move module name."""
-        self.module: SuiString = obj
-        return self
-
-    def set_function(self, obj: SuiString) -> "MoveCall":
-        """Set sui move function name."""
-        self.function: SuiString = obj
-        return self
-
-    def set_types(self, obj: SuiArray[SuiString]) -> "MoveCall":
-        """Set sui generic types (if any)."""
-        self.type_arguments: SuiArray[SuiString] = obj
-        return self
-
-    def set_arguments(self, obj: SuiArray[SuiString]) -> "MoveCall":
-        """Set sui move call arguments (if any)."""
-        self.arguments: SuiArray[SuiString] = obj
-        return self
-
-    def set_gas_object(self, obj: ObjectID) -> "MoveCall":
-        """Set sui object gas object."""
-        self.gas: ObjectID = sui_utils.as_object_id(obj)
-        return self
-
-    def set_gas_budget(self, obj: SuiInteger) -> "MoveCall":
-        """Set the amount for transaction payment."""
-        self.gas_budget: SuiInteger = obj
-        return self
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect the call parameters."""
-        return self._pull_vars()
+# Stake and Delegation
 
 
 class RequestAddDelegation(_MoveCallTransactionBuilder):

@@ -38,12 +38,12 @@ def get_gas(client: SuiClient, for_address: SuiAddress = None) -> list[SuiGas]:
     :return: _description_
     :rtype: list[SuiGas]
     """
-    result: SuiRpcResult = client.get_address_object_descriptors(SuiGasDescriptor, for_address)
+    result: SuiRpcResult = client.get_gas(for_address)
     assert result.is_ok()
-    ident_list = [desc.identifier for desc in result.result_data]
-    result: SuiRpcResult = client.get_objects_for(ident_list)
-    assert result.is_ok()
-    return result.result_data
+    # ident_list = [desc.identifier for desc in result.result_data]
+    # result: SuiRpcResult = client.get_objects_for(ident_list)
+    # assert result.is_ok()
+    return result.result_data.data
 
 
 def get_data(client: SuiClient, for_address: SuiAddress = None) -> list[SuiData]:

@@ -13,7 +13,6 @@
 
 """Synchronous RPC transaction testing."""
 
-import base64
 from pathlib import Path
 from typing import Union
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString, SuiTransactionDigest
@@ -26,10 +25,12 @@ from pysui.sui.sui_builders.exec_builders import (
     MoveCall,
     BatchTransaction,
     MoveCallRequestParams,
+    SplitCoinEqually,
     TransferObjectParams,
 )
 from pysui.sui.sui_txresults import SuiData, TxEffectResult
 from pysui.sui.sui_utils import build_b64_modules
+from pysui.sui.sui_txresults.single_tx import SuiCoinObject
 
 
 from .test_srpc_gets import get_gas, get_data
@@ -241,16 +242,16 @@ def test_transfer_gas_pass(sui_client: SuiClient):
 
 def test_batch_transaction_transfer_pass(sui_client: SuiClient):
     """Test batch transaction with transfer."""
-    active_gases = get_gas(sui_client)
+    active_gases: list[SuiCoinObject] = get_gas(sui_client)
     assert len(active_gases) > 1
-    transfer_gas_object = active_gases[0]
-    batch_gas_object = active_gases[1]
+    transfer_gas_object: SuiCoinObject = active_gases[0]
+    batch_gas_object: SuiCoinObject = active_gases[1]
     other_address = get_address_not_active(sui_client)
     assert other_address
     assert isinstance(other_address, SuiAddress)
     transfer_params = SuiArray([TransferObjectParams(receiver=other_address, transfer_object=transfer_gas_object)])
     builder = BatchTransaction(
-        sui_client.config.active_address, transfer_params, batch_gas_object.identifier, SuiInteger(3000)
+        sui_client.config.active_address, transfer_params, batch_gas_object.coin_object_id, SuiInteger(2000)
     )
     result = sui_client.execute(builder)
     assert result.is_ok()
@@ -347,8 +348,29 @@ def test_defer_execution_pass(sui_client: SuiClient):
     signer, tx_bytes = result.result_data
     result = sui_client.sign_and_submit(signer, tx_bytes)
     assert result.is_ok()
+
     builder = GetTxAuthSignatures(
-        txn_digest=SuiTransactionDigest(result.result_data.effects_cert.certificate.transaction_digest)
+        digest=SuiTransactionDigest(result.result_data.effects_cert.certificate.transaction_digest)
+    )
+    result = sui_client.execute(builder)
+    assert result.is_ok()
+
+
+def test_split_coin_pass(sui_client: SuiClient):
+    """May go obsolete at some point.
+
+    Test splitting the last coin in list of coins in half.
+    """
+    active_gases: list[SuiCoinObject] = get_gas(sui_client)
+    assert len(active_gases) > 1
+    gas_object: SuiCoinObject = active_gases[0]
+    splitter_coin: SuiCoinObject = active_gases[-1]
+    builder = SplitCoinEqually(
+        signer=sui_client.config.active_address,
+        coin_object_id=splitter_coin.identifier,
+        split_count=2,
+        gas=gas_object.identifier,
+        gas_budget=500,
     )
     result = sui_client.execute(builder)
     assert result.is_ok()
