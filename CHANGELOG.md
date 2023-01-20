@@ -9,10 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.9.0] 2023-01-20
+
+Breaking changes
+
+### Added
+
+- `description`, `image_url` and `project_url` ValidatorMetadata in SystemState result as per SUI 0.22.0
+- `epoch` optional arguments added to InspectTransaction and InspectMoveCall builders as per SUI 0.22.0
+- GetCheckpointContents builder added as per SUI 0.22.0
+- GetCheckpointContentsBySequence builder added as per SUI 0.22.0
+- GetCheckpointSummary builder added as per SUI 0.22.0
+- GetLatestCheckpointSequence builder added as per SUI 0.22.0
 - ChangeEpocTx added to transaction execution result as per SUI 0.21.0
 - GenesisTx added to transaction execution result as per SUI 0.21.0
 
 ### Fixed
+
+- arguments from transaction 'Call' event supports empty list, list strings or int arrays
 
 ### Changed
 
@@ -23,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DelegatedStakes: Built out result type (from GetDelegatedStakes builder)
 
 ### Removed
+
+- `sig_scheme` and `pubkey` from ExecuteTransaction builder as per SUI 0.22.0
+- `switch_pool_token_amount` from RequestSwitchDelegation builder as per SUI 0.22.0
+- `principal_withdraw_amount` from RequestWithdrawDelegation builder as per SUI 0.22.0
+- `chain_id` from result of GetSystemState as per SUI 0.22.0
 
 ## [0.8.0] 2023-01-14
 

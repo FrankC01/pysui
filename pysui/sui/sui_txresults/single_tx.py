@@ -513,6 +513,9 @@ class ValidatorMetaData(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
     consensus_address: int
+    description: list[int]
+    image_url: list[int]
+    project_url: list[int]
     sui_address: str
     pubkey_bytes: list[int]
     network_pubkey_bytes: list[int]
@@ -600,7 +603,6 @@ class SuiSystemState(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
     info_uid: Union[dict, str] = field(metadata=config(field_name="info"))
-    chain_id: int
     epoch: int
     parameters: StateParameters
     reference_gas_price: int

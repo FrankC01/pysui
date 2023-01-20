@@ -119,20 +119,20 @@ class SuiClient(_ClientMixin):
         :rtype: Union[SuiRpcResult, Exception]
         """
         kpair = self.config.keypair_for_address(signer)
-        if self.version_at_least(0, 18, 0):
+        if self.version_at_least(0, 22, 0):
+            builder = ExecuteTransaction(
+                tx_bytes=tx_bytes,
+                signature=kpair.new_sign_secure(tx_bytes.tx_bytes),
+                request_type=self.request_type,
+            )
+        elif self.version_at_least(0, 18, 0):
             builder = ExecuteSerializedTransaction(
                 tx_bytes=tx_bytes,
                 signature=kpair.new_sign_secure(tx_bytes.tx_bytes),
                 request_type=self.request_type,
             )
         else:
-            builder = ExecuteTransaction(
-                tx_bytes=tx_bytes,
-                sig_scheme=kpair.scheme,
-                signature=kpair.new_sign_secure(tx_bytes.tx_bytes),
-                pub_key=kpair.public_key,
-                request_type=self.request_type,
-            )
+            return SuiRpcResult(False, "Unsupported SUI API version")
         result = self._execute(builder)
         if result.is_ok():
             if "error" in result.result_data:

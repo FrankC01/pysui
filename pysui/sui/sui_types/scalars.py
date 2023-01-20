@@ -325,6 +325,11 @@ class SuiInteger(SuiScalarType):
         return self.value
 
     @property
+    def sequence_number(self) -> int:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def version(self) -> int:
         """Alias for transactions."""
         if self.value is None:

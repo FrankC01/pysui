@@ -13,7 +13,7 @@ This utility SHOULD BE RUN BEFORE USING `pysui` SDK or samples
 
 If you have already regenerated keys with the SUI 0.21.0 binary install you can ignore the utility usage.
 
-**Release-0.8.0**
+**Release-0.9.0**
 
 - Breaking changes
 - 99.9% coverage (builders, return types, etc.) of **new** SUI 0.20.1 API (no support for secp256r1 yet)

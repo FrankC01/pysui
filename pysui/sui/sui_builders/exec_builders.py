@@ -17,7 +17,6 @@
 from abc import abstractmethod
 from typing import Optional
 from pysui.abstracts.client_types import SuiBaseType
-from pysui.abstracts.client_keypair import SignatureScheme, PublicKey
 from pysui.sui.sui_builders.base_builder import (
     _NativeTransactionBuilder,
     SuiRequestType,
@@ -38,21 +37,22 @@ class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
     @sui_builder()
-    def __init__(
-        self,
-        *,
-        tx_bytes: SuiTxBytes,
-        sig_scheme: SignatureScheme,
-        signature: SuiSignature,
-        pub_key: PublicKey,
-        request_type: SuiRequestType,
-    ) -> None:
-        """Initialize builder."""
+    def __init__(self, *, tx_bytes: SuiTxBytes, signature: SuiSignature, request_type: SuiRequestType) -> None:
+        """__init__ Initialize builder.
+
+        :param tx_bytes: BCS serialized transaction data bytes without its type tag, as base-64 encoded string
+        :type tx_bytes: SuiTxBytes
+        :param signature: `flag || signature || pubkey` bytes, as base-64 encoded string, signature is committed to the
+            intent message of the transaction data, as base-64 encoded string.
+        :type signature: SuiSignature
+        :param request_type: The request type
+        :type request_type: SuiRequestType
+        """
         super().__init__("sui_executeTransaction", handler_cls=TxEffectResult, handler_func="from_dict")
 
 
 class ExecuteSerializedTransaction(_NativeTransactionBuilder):
-    """Submit a signed transaction to Sui."""
+    """Submit a signed transaction to Sui, SUI plans to deprecate this call."""
 
     @sui_builder()
     def __init__(
@@ -66,12 +66,12 @@ class ExecuteSerializedTransaction(_NativeTransactionBuilder):
 
         This can replace ExecuteTransaction and is preferred if RPC version > 0.17.0
 
-        :param tx_bytes: Submitted transaction base64 SuiTxBytes, defaults to None
-        :type tx_bytes: SuiTxBytes, optional
-        :param signature: The key_scheme,signed tx_bytes and signer pubkey serialized to Base64, defaults to None
-        :type signature: SuiSignature, optional
-        :param request_type: The type of request to use in submitting transaction, defaults to None
-        :type request_type: SuiRequestType, optional
+        :param tx_bytes: Submitted transaction base64 SuiTxBytes
+        :type tx_bytes: SuiTxBytes
+        :param signature: The key_scheme,signed tx_bytes and signer pubkey serialized to Base64
+        :type signature: SuiSignature
+        :param request_type: The type of request to use in submitting transaction
+        :type request_type: SuiRequestType
         """
         super().__init__("sui_executeTransactionSerializedSig", handler_cls=TxEffectResult, handler_func="from_dict")
 
@@ -96,11 +96,13 @@ class InspectTransaction(_NativeTransactionBuilder):
     """
 
     @sui_builder()
-    def __init__(self, *, tx_bytes: SuiTxBytes) -> None:
+    def __init__(self, *, tx_bytes: SuiTxBytes, epoch: Optional[SuiInteger] = None) -> None:
         """__init__ Initialize builder.
 
         :param tx_bytes: The transaction bytes returned from previous tx executions to inspect
         :type tx_bytes: SuiTxBytes
+        :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
+        :type epoch: Optional[SuiInteger]
         """
         super().__init__("sui_devInspectTransaction", handler_cls=TxInspectionResult, handler_func="from_dict")
 
@@ -121,21 +123,24 @@ class InspectMoveCall(_NativeTransactionBuilder):
         function: SuiString,
         type_arguments: SuiArray[SuiString],
         arguments: SuiArray[SuiString],
+        epoch: Optional[SuiInteger] = None,
     ) -> None:
         """__init__ Builder initializer.
 
-        :param sender_address: the transaction signer's Sui address, defaults to None
-        :type sender_address: SuiAddress, optional
-        :param package_object_id: the Move package ID, e.g. `0x2`, defaults to None
-        :type package_object_id: ObjectID, optional
-        :param module: the Move module name, e.g. `devnet_nft`, defaults to None
-        :type module: SuiString, optional
-        :param function: the move function name, e.g. `mint`, defaults to None
-        :type function: SuiString, optional
-        :param type_arguments: the type arguments of the Move function, defaults to None
-        :type type_arguments: SuiArray[SuiString], optional
-        :param arguments: the arguments to be passed into the Move function, defaults to None
-        :type arguments: SuiArray[SuiString], optional
+        :param sender_address: the transaction signer's Sui address
+        :type sender_address: SuiAddress
+        :param package_object_id: the Move package ID, e.g. `0x2`
+        :type package_object_id: ObjectID
+        :param module: the Move module name, e.g. `devnet_nft`
+        :type module: SuiString
+        :param function: the move function name, e.g. `mint`
+        :type function: SuiString
+        :param type_arguments: the type arguments of the Move function
+        :type type_arguments: SuiArray[SuiString]
+        :param arguments: the arguments to be passed into the Move function
+        :type arguments: SuiArray[SuiString]
+        :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
+        :type epoch: Optional[SuiInteger]
         """
         super().__init__("sui_devInspectMoveCall", handler_cls=TxInspectionResult, handler_func="from_dict")
 
@@ -653,7 +658,6 @@ class RequestWithdrawDelegation(_MoveCallTransactionBuilder):
         signer: SuiAddress,
         delegation: ObjectID,
         staked_sui: ObjectID,
-        principal_withdraw_amount: SuiInteger,
         gas: ObjectID,
         gas_budget: SuiInteger,
     ):

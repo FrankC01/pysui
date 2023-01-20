@@ -33,7 +33,13 @@ from pysui.sui.sui_txresults.single_tx import (
     SuiTxnAuthSigners,
     Validators,
 )
-from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TransactionEnvelope, TransactionQueryEnvelope
+from pysui.sui.sui_txresults.complex_tx import (
+    CheckpointContents,
+    CheckpointSummary,
+    EventQueryEnvelope,
+    TransactionEnvelope,
+    TransactionQueryEnvelope,
+)
 from pysui.sui.sui_txresults.package_meta import (
     SuiMovePackage,
     SuiMoveModule,
@@ -581,3 +587,54 @@ class GetValidators(_NativeTransactionBuilder):
     def __init__(self):
         """."""
         super().__init__("sui_getValidators", handler_cls=Validators, handler_func="ingest_data")
+
+
+class GetCheckpointContents(_NativeTransactionBuilder):
+    """GetCheckpointContents return contents of a checkpoint, namely a list of execution digests."""
+
+    @sui_builder()
+    def __init__(self, digest: SuiString):
+        """__init__ Initialize builder.
+
+        :param digest: Base58 digest string
+        :type digest: SuiString
+        """
+        super().__init__("sui_getCheckpointContents", handler_cls=CheckpointContents, handler_func="from_dict")
+
+
+class GetCheckpointContentsBySequence(_NativeTransactionBuilder):
+    """GetCheckpointContentsBySequence return contents of a checkpoint based on its sequence number."""
+
+    @sui_builder()
+    def __init__(self, sequence: SuiInteger):
+        """."""
+        super().__init__(
+            "sui_getCheckpointContentsBySequenceNumber", handler_cls=CheckpointContents, handler_func="from_dict"
+        )
+
+
+class GetCheckpointSummary(_NativeTransactionBuilder):
+    """GetCheckpointSummary return a checkpoint summary based on a checkpoint sequence number."""
+
+    @sui_builder()
+    def __init__(self, sequence: SuiInteger):
+        """."""
+        super().__init__("sui_getCheckpointSummary", handler_cls=CheckpointSummary, handler_func="from_dict")
+
+
+class GetLatestCheckpointSequence(_NativeTransactionBuilder):
+    """GetLatestCheckpointSequence return the sequence number of the latest checkpoint that has been executed."""
+
+    @sui_builder()
+    def __init__(self):
+        """."""
+        super().__init__("sui_getLatestCheckpointSequenceNumber")
+
+
+class GetReferenceGasPrice(_NativeTransactionBuilder):
+    """GetReferenceGasPrice return the reference gas price for the network."""
+
+    @sui_builder()
+    def __init__(self):
+        """."""
+        super().__init__("sui_getReferenceGasPrice")

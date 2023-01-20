@@ -27,7 +27,9 @@ class MoveCallTx(SuiTxReturnType, DataClassJsonMixin):
     function: str
     module: str
     package: PackageRef
-    arguments: Optional[list[str]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
+    arguments: Optional[list[Union[str, list[int]]]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
+    )
     type_arguments: Optional[list[str]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
 
 
@@ -334,7 +336,7 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     mutated: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     created: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     deleted: Optional[list[GenericRef]] = field(default_factory=list)
-    wrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
+    wrapped: Optional[list[GenericRef]] = field(default_factory=list)
     unwrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     shared_objects: Optional[list[GenericRef]] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
@@ -407,6 +409,34 @@ class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
     results: dict
 
 
+@dataclass
+class ExecutionDigests(DataClassJsonMixin):
+    """."""
+
+    effects: str
+    transaction: str
+
+
+@dataclass
+class CheckpointContents(DataClassJsonMixin):
+    """From sui_getCheckpointContents sui_getCheckpointContentsBySequenceNumber."""
+
+    transactions: list[ExecutionDigests]
+    user_signatures: list[str]
+
+
+@dataclass
+class CheckpointSummary(DataClassJsonMixin):
+    """From sui_getCheckpointSummary."""
+
+    content_digest: str
+    epoch: int
+    epoch_rolling_gas_cost_summary: GasCostSummary
+    network_total_transactions: int
+    sequence_number: int
+    next_epoch_committee: Optional[list[int]]
+
+
 # Event query results
 
 
@@ -414,7 +444,7 @@ class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
 class EventEnvelopID(DataClassJsonMixin):
     """From sui_getEvents."""
 
-    transaction_sequence: int = field(metadata=config(field_name="txSeq"))
+    transaction_digest: str = field(metadata=config(field_name="txDigest"))
     event_sequence: int = field(metadata=config(field_name="eventSeq"))
 
 
