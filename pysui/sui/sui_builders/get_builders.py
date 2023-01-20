@@ -576,7 +576,11 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
 
     @sui_builder()
     def __init__(self, owner: SuiAddress):
-        """."""
+        """__init__ Builder initializer.
+
+        :param owner: SuiAddress of staked coin owner
+        :type owner: SuiAddress
+        """
         super().__init__("sui_getDelegatedStakes", handler_cls=DelegatedStakes, handler_func="ingest_data")
 
 
@@ -585,7 +589,7 @@ class GetValidators(_NativeTransactionBuilder):
 
     @sui_builder()
     def __init__(self):
-        """."""
+        """__init__ Builder initializer."""
         super().__init__("sui_getValidators", handler_cls=Validators, handler_func="ingest_data")
 
 
@@ -607,7 +611,11 @@ class GetCheckpointContentsBySequence(_NativeTransactionBuilder):
 
     @sui_builder()
     def __init__(self, sequence: SuiInteger):
-        """."""
+        """__init__ Builder initializer.
+
+        :param sequence: Sequence number to get checkpoint contents for
+        :type sequence: SuiInteger
+        """
         super().__init__(
             "sui_getCheckpointContentsBySequenceNumber", handler_cls=CheckpointContents, handler_func="from_dict"
         )
@@ -618,7 +626,11 @@ class GetCheckpointSummary(_NativeTransactionBuilder):
 
     @sui_builder()
     def __init__(self, sequence: SuiInteger):
-        """."""
+        """__init__ Builder initializer.
+
+        :param sequence: Sequence number to get checkpoint contents summary for
+        :type sequence: SuiInteger
+        """
         super().__init__("sui_getCheckpointSummary", handler_cls=CheckpointSummary, handler_func="from_dict")
 
 
@@ -627,7 +639,7 @@ class GetLatestCheckpointSequence(_NativeTransactionBuilder):
 
     @sui_builder()
     def __init__(self):
-        """."""
+        """__init__ Builder initializer."""
         super().__init__("sui_getLatestCheckpointSequenceNumber")
 
 
@@ -636,5 +648,5 @@ class GetReferenceGasPrice(_NativeTransactionBuilder):
 
     @sui_builder()
     def __init__(self):
-        """."""
+        """Builder initializer."""
         super().__init__("sui_getReferenceGasPrice")

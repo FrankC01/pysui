@@ -29,8 +29,8 @@ class SuiRequestType(IntEnum):
     """SuiRequestType Defines the type of request being made when invoking `sui_executeTransaction`.
 
     :param IntEnum: Base enumeration type
-    :type IntEnum: _type_
-    :raises TypeError: _description_
+    :type IntEnum: IntEnum
+    :raises TypeError: If request type enum not known
     """
 
     WAITFOREFFECTSCERT = 0
@@ -51,7 +51,12 @@ class SuiRequestType(IntEnum):
 
 
 class SuiTransactionBuilderMode(IntEnum):
-    """."""
+    """SuiTransactionBuilderMode Defines the mode of the transaction.
+
+    :param IntEnum: Base enumeration type
+    :type IntEnum: IntEnum
+    :raises TypeError: If request type enum not known
+    """
 
     COMMIT = 0
     DEVINSPECT = 1
@@ -151,7 +156,19 @@ class SuiBaseBuilder(Builder):
     # EXPERIMENTAL
     @classmethod
     def value_type_validator(cls, base_class_name: str, args: dict, builder_types: dict) -> Union[dict, TypeError]:
-        """."""
+        """value_type_validator Aligns and or coerces expected arg type from input arg value.
+
+        :param base_class_name: Class of type
+        :type base_class_name: str
+        :param args: Arguments passed to constructor
+        :type args: dict
+        :param builder_types: Expected types for builder
+        :type builder_types: dict
+        :raises TypeError: If missing or unresolvable coercion function
+        :raises ValueError: If unresolvable type
+        :return: Dictionary of argname to coerced argvalue
+        :rtype: Union[dict, TypeError]
+        """
         result_dict = {}
         for ctype_key, ctype_value in builder_types.items():
             # Get the type of value from args of same name

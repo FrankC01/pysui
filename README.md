@@ -16,7 +16,7 @@ If you have already regenerated keys with the SUI 0.21.0 binary install you can 
 **Release-0.9.0**
 
 - Breaking changes
-- 99.9% coverage (builders, return types, etc.) of **new** SUI 0.20.1 API (no support for secp256r1 yet)
+- 99.9% coverage (builders, return types, etc.) of **new** SUI 0.22.0 API (no support for secp256r1 yet)
 
 **PyPi**
 

@@ -353,7 +353,15 @@ def as_sui_signature(in_data: Any) -> Union[SuiSignature, ValueError]:
 
 
 def as_sui_txdigest(in_data: Any) -> Union[SuiTransactionDigest, ValueError]:
-    """."""
+    """as_sui_txdigest coerces `in_data` to a SuiTransactionDigest.
+
+    :param in_data: Data to attempt coercion with
+    :type in_data: Any
+    :raises ValueError: If `in_data` type is not handled by this utility.
+    :return: A SuiTransactionDigest
+    :rtype: Union[SuiTransactionDigest, ValueError]
+    """
+    return to_base_64(in_data, SuiSignature)
     if isinstance(in_data, SuiTransactionDigest):
         result = in_data
     elif isinstance(in_data, SuiString):

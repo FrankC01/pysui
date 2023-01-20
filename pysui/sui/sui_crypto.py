@@ -78,7 +78,15 @@ class SuiPrivateKeyED25519(PrivateKey):
         return SuiSignature(signed.signature)
 
     def sign_secure(self, public_key: SuiPublicKeyED25519, tx_data: str) -> SuiSignature:
-        """."""
+        """sign_secure Sign transaction intent.
+
+        :param public_key: Public ed25519 key of transaction signer
+        :type public_key: SuiPublicKeyED25519
+        :param tx_data: Transaction bytes being signed
+        :type tx_data: str
+        :return: Singed transaction as base64 SuiSignature.
+        :rtype: SuiSignature
+        """
         indata = bytearray([0, 0, 0])
         indata.extend(base64.b64decode(tx_data))
         compound = bytearray([self.scheme])
@@ -191,7 +199,15 @@ class SuiPrivateKeySECP256K1(PrivateKey):
         return SuiSignature(fsig)
 
     def sign_secure(self, public_key: SuiPublicKeySECP256K1, tx_data: str) -> SuiSignature:
-        """."""
+        """sign_secure Sign transaction intent.
+
+        :param public_key: Public secp256k1 key of transaction signer
+        :type public_key: SuiPublicKeyED25519
+        :param tx_data: Transaction bytes being signed
+        :type tx_data: str
+        :return: Singed transaction as base64 SuiSignature.
+        :rtype: SuiSignature
+        """
         indata = bytearray([0, 0, 0])
         indata.extend(base64.b64decode(tx_data))
         compound = bytearray([self.scheme])
