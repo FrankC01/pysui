@@ -10461,3 +10461,21 @@ def get_txevent_result():
             },
         },
     }
+
+
+@pytest.fixture
+def get_delegated_stakes_result():
+    """Return valid sui_subsribeTransaction result."""
+    return [
+        {
+            "staked_sui": {
+                "id": {"id": "0xcf88de1b6059129213...1cb2a5bd2c"},
+                "validator_address": "0x77c5faae16095f44df...b371780151",
+                "pool_starting_epoch": 1,
+                "delegation_request_epoch": 14,
+                "principal": {"value": 1000000},
+                "sui_token_lock": None,
+            },
+            "delegation_status": "Pending",
+        }
+    ]

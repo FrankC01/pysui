@@ -361,7 +361,6 @@ def as_sui_txdigest(in_data: Any) -> Union[SuiTransactionDigest, ValueError]:
     :return: A SuiTransactionDigest
     :rtype: Union[SuiTransactionDigest, ValueError]
     """
-    return to_base_64(in_data, SuiSignature)
     if isinstance(in_data, SuiTransactionDigest):
         result = in_data
     elif isinstance(in_data, SuiString):

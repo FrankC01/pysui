@@ -538,7 +538,13 @@ class Validators(DataClassJsonMixin):
 
     @classmethod
     def ingest_data(cls, indata: list) -> "Validators":
-        """."""
+        """ingest_data Ingest validators.
+
+        :param indata: List of ValidatorMetaData objects
+        :type indata: list
+        :return: Instance of Validators
+        :rtype: Validators
+        """
         return cls.from_dict({"validator_metadata": indata})
 
 
@@ -626,20 +632,21 @@ class StakedSui(DataClassJsonMixin):
     delegation_request_epoch: int
     stake_id: str = field(metadata=config(field_name="id"))
     pool_starting_epoch: int
-    principle: Union[dict, int]
+    principal: Union[dict, int]
     sui_token_lock: int
     validator_address: str
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""
-        self.principle = self.principle["value"]
+        self.principal = self.principal["value"]
+        self.stake_id = self.stake_id["id"]
 
 
 @dataclass
 class Delegation(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
-    delegation_id: str = field(metadata=config(field_name="id"))
+    delegation_id: dict = field(metadata=config(field_name="id"))
     pool_tokens: int
     principle_sui_amount: Union[dict, int]
     staked_sui_id: str
@@ -653,8 +660,8 @@ class Delegation(DataClassJsonMixin):
 class DelegatedStake(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
-    delegation_status: Union[Delegation, str]
     staked_sui: StakedSui
+    delegation_status: Union[str, Delegation]
 
 
 @dataclass
@@ -705,7 +712,13 @@ class CoinBalances(DataClassJsonMixin):
 
     @classmethod
     def ingest_data(cls, indata: list) -> "CoinBalances":
-        """."""
+        """ingest_data Ingest balances.
+
+        :param indata: Result of SUI tx
+        :type indata: array of balances
+        :return: Instance of CoinBalances
+        :rtype: CoinBalances
+        """
         return cls.from_dict({"items": indata})
 
 

@@ -108,7 +108,7 @@ class _ClientMixin(Provider):
         return data_block
 
     def _validate_builder(self, builder: SuiBaseBuilder) -> Union[dict, SuiRpcApiNotAvailable]:
-        """."""
+        """Validate SUI RPC API field alignment."""
         if not builder.method in self._rpc_api:
             raise SuiRpcApiNotAvailable(builder.method)
         parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]

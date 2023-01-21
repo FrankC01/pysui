@@ -619,13 +619,27 @@ class RequestAddDelegation(_MoveCallTransactionBuilder):
         self,
         *,
         signer: SuiAddress,
-        coins: SuiArray,
-        amount: Optional[SuiArray],
+        coins: SuiArray[ObjectID],
+        amount: Optional[SuiInteger],
         validator: SuiAddress,
         gas: ObjectID,
         gas_budget: SuiInteger,
     ):
-        """."""
+        """__init__ Initialize builder.
+
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param coins: Coin<SUI> or LockedCoin<SUI> object to delegate
+        :type coins: SuiArray
+        :param amount: delegation amount
+        :type amount: Optional[SuiArray]
+        :param validator: the validator's Sui address
+        :type validator: SuiAddress
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        """
         super().__init__("sui_requestAddDelegation")
 
 
@@ -640,11 +654,24 @@ class RequestSwitchDelegation(_MoveCallTransactionBuilder):
         delegation: ObjectID,
         staked_sui: ObjectID,
         new_validator_address: SuiAddress,
-        switch_pool_token_amount: SuiInteger,
         gas: ObjectID,
         gas_budget: SuiInteger,
     ):
-        """."""
+        """__init__ Initialize builder.
+
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param delegation: Delegation object ID
+        :type delegation: ObjectID
+        :param staked_sui: staked Sui object ID
+        :type staked_sui: ObjectID
+        :param new_validator_address: Validator to switch to
+        :type new_validator_address: SuiAddress
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        """
         super().__init__("sui_requestSwitchDelegation")
 
 
@@ -661,5 +688,17 @@ class RequestWithdrawDelegation(_MoveCallTransactionBuilder):
         gas: ObjectID,
         gas_budget: SuiInteger,
     ):
-        """."""
+        """__init__ Initialize builder.
+
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param delegation: Delegation object ID
+        :type delegation: ObjectID
+        :param staked_sui: staked Sui object ID
+        :type staked_sui: ObjectID
+        :param gas: gas object to be used in this transaction
+        :type gas: ObjectID
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiInteger
+        """
         super().__init__("sui_requestWithdrawDelegation")

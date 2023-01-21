@@ -231,12 +231,27 @@ class ObjectID(SuiString):
         return self.value
 
     @property
+    def staked_sui(self) -> str:
+        """Alias over value."""
+        return self.value
+
+    @property
     def gas(self) -> str:
         """Alias over value."""
         return self.value
 
     @property
     def input_coins(self) -> str:
+        """Alias over value."""
+        return self.value
+
+    @property
+    def coins(self) -> str:
+        """Alias over value."""
+        return self.value
+
+    @property
+    def delegation(self) -> str:
         """Alias over value."""
         return self.value
 

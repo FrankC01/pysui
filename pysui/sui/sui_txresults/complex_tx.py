@@ -411,7 +411,7 @@ class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
 
 @dataclass
 class ExecutionDigests(DataClassJsonMixin):
-    """."""
+    """From sui_getCheckpointContents sui_getCheckpointContentsBySequenceNumber."""
 
     effects: str
     transaction: str
@@ -470,7 +470,7 @@ class EventEnvelope(DataClassJsonMixin):
 
 @dataclass
 class SubscribedEventParms(SuiTxReturnType, DataClassJsonMixin):
-    """."""
+    """From sui_subscribeEvents."""
 
     subscription: int
     result: EventEnvelope
@@ -478,7 +478,7 @@ class SubscribedEventParms(SuiTxReturnType, DataClassJsonMixin):
 
 @dataclass
 class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
-    """."""
+    """From sui_subscribeEvents."""
 
     jsonrpc: str
     method: str
@@ -497,7 +497,7 @@ class TransactionEnvelope(SuiTxReturnType, DataClassJsonMixin):
 
 @dataclass
 class SubscribedTxnParms(SuiTxReturnType, DataClassJsonMixin):
-    """."""
+    """From sui_subscribeTransactions."""
 
     subscription: int
     result: TransactionEnvelope
@@ -505,7 +505,7 @@ class SubscribedTxnParms(SuiTxReturnType, DataClassJsonMixin):
 
 @dataclass
 class SubscribedTransaction(SuiTxReturnType, DataClassJsonMixin):
-    """."""
+    """From sui_subscribeTransactions."""
 
     jsonrpc: str
     method: str

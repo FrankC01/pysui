@@ -266,7 +266,7 @@ class SubscribeEvent(_NativeTransactionBuilder):
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
-        """."""
+        """Fetch parameters"""
         return [self.filter]
 
 
@@ -276,21 +276,22 @@ class SubscribeTransaction(_NativeTransactionBuilder):
     def __init__(
         self,
     ) -> None:
-        """."""
+        """__init__ Initialize builder."""
         super().__init__("sui_subscribeTransaction", handler_cls=SubscribedTransaction, handler_func="from_dict")
         # self.filter = AnyFilter(filters=[])
         self.filter = SuiString("Any")
 
     def _collect_parameters(self) -> list[SuiBaseType]:
-        """."""
+        """Collect parameters for transaction."""
         return [self.filter]
 
 
 if __name__ == "__main__":
-    subie = SubscribeEvent(
-        event_filter=AndFilter(
-            lhs_filter=SenderFilter("0xdb17a242dd46de5636615e4499e507f2b3d03366"),
-            rhs_filter=AnyFilter(filters=[EventTypeFilter("Publish"), EventTypeFilter("TransferObject")]),
-        )
-    )
-    print(subie.params[0].filter)
+    pass
+    # subie = SubscribeEvent(
+    #     event_filter=AndFilter(
+    #         lhs_filter=SenderFilter("0xdb17a242dd46de5636615e4499e507f2b3d03366"),
+    #         rhs_filter=AnyFilter(filters=[EventTypeFilter("Publish"), EventTypeFilter("TransferObject")]),
+    #     )
+    # )
+    # print(subie.params[0].filter)

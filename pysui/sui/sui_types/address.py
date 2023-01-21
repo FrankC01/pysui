@@ -82,6 +82,11 @@ class SuiAddress(SuiBaseType):
         return self.address
 
     @property
+    def validator(self) -> str:
+        """Alias for recipient in transaction validation."""
+        return self.address
+
+    @property
     def recipients(self) -> str:
         """Alias for recipients in transaction validation."""
         return self.address

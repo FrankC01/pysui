@@ -51,12 +51,22 @@ class SuiArray(SuiCollection, Generic[AT]):
         return self.array
 
     @property
+    def coins(self) -> list[ObjectID]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
     def recipients(self) -> list[SuiAddress]:
         """Alias for transactions."""
         return self.array
 
     @property
     def amounts(self) -> list[SuiInteger]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def amount(self) -> list[SuiInteger]:
         """Alias for transactions."""
         return self.array
 

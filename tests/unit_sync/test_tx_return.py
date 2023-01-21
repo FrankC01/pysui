@@ -15,6 +15,7 @@
 
 from pysui.sui.sui_txresults.package_meta import SuiMovePackage
 from pysui.sui.sui_txresults.single_tx import (
+    DelegatedStakes,
     FaucetGasRequest,
     ObjectInfo,
     ObjectRead,
@@ -140,3 +141,9 @@ def test_subtx_pass(get_txevent_result):
     """Valid result."""
     result = SubscribedTransaction.from_dict(get_txevent_result)
     assert result.succeeded
+
+
+def test_get_delegation_stakes_pass(get_delegated_stakes_result):
+    """Valid result."""
+    result = DelegatedStakes.ingest_data(get_delegated_stakes_result)
+    assert result is not None
