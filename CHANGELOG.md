@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- More documentation
+
 ### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/62)
+- [bug](https://github.com/FrankC01/pysui/issues/63)
+- [bug](https://github.com/FrankC01/pysui/issues/64)
 
 ### Changed
 

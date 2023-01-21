@@ -647,13 +647,14 @@ class Delegation(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
     delegation_id: dict = field(metadata=config(field_name="id"))
-    pool_tokens: int
-    principle_sui_amount: Union[dict, int]
+    pool_tokens: Union[dict, int]
+    principal_sui_amount: int
     staked_sui_id: str
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""
-        self.principle_sui_amount = self.principle_sui_amount["value"]
+        self.delegation_id = self.delegation_id["id"]
+        self.pool_tokens = self.pool_tokens["value"]
 
 
 @dataclass
@@ -661,7 +662,12 @@ class DelegatedStake(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
     staked_sui: StakedSui
-    delegation_status: Union[str, Delegation]
+    delegation_status: Union[str, dict]
+
+    def __post_init__(self):
+        """Post hydrate parameter fixups."""
+        if isinstance(self.delegation_status, dict):
+            self.delegation_status = Delegation.from_dict(self.delegation_status["Active"])
 
 
 @dataclass

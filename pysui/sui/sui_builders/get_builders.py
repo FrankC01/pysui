@@ -572,7 +572,7 @@ class GetTxAuthSignatures(_NativeTransactionBuilder):
 
 
 class GetDelegatedStakes(_NativeTransactionBuilder):
-    """sui_getDelegatedStakes."""
+    """GetDelegatedStakes return all [DelegatedStake] coins for address owner."""
 
     @sui_builder()
     def __init__(self, owner: SuiAddress):
