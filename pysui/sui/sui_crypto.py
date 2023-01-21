@@ -15,10 +15,12 @@
 """Sui Crpto Utilities."""
 
 import base64
-
+import hashlib
 from typing import Union
+
 import secp256k1
 import bip_utils
+import ecdsa
 from bip_utils.addr.addr_key_validator import AddrKeyValidator
 from bip_utils.bip.bip39.bip39_mnemonic_decoder import Bip39MnemonicDecoder
 from bip_utils.utils.mnemonic.mnemonic_validator import MnemonicValidator
@@ -38,7 +40,7 @@ from pysui.sui.sui_constants import (
     SECP256K1_KEYPAIR_BYTES_LEN,
     SECP256K1_PUBLICKEY_BYTES_LEN,
     SECP256K1_PRIVATEKEY_BYTES_LEN,
-    SECP256R1_DEFAULT_KEYPATH,
+    # SECP256R1_DEFAULT_KEYPATH,
     SECP256R1_KEYPAIR_BYTES_LEN,
     SECP256R1_PUBLICKEY_BYTES_LEN,
     SECP256R1_PRIVATEKEY_BYTES_LEN,
@@ -58,7 +60,7 @@ class SuiPublicKeySECP256R1(PublicKey):
         if len(indata) != SECP256R1_PUBLICKEY_BYTES_LEN:
             raise SuiInvalidKeyPair(f"Public Key expects {SECP256R1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}")
         super().__init__(SignatureScheme.SECP256R1, indata)
-        self._verify_key = VerifyKey(self.to_b64(), encoder=Base64Encoder)
+        self._verify_key = ecdsa.VerifyingKey.from_string(indata, curve=ecdsa.NIST256p, hashfunc=hashlib.sha256)
 
     @property
     def pub_key(self) -> str:
@@ -75,12 +77,13 @@ class SuiPrivateKeySECP256R1(PrivateKey):
         if dlen != SECP256R1_PRIVATEKEY_BYTES_LEN:
             raise SuiInvalidKeyPair(f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
         super().__init__(SignatureScheme.SECP256R1, indata)
-        self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
+        self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha256)
+        self._pad_byte = int(1).to_bytes(1, "little")
 
     def sign(self, data: bytes) -> SuiSignature:
         """SECP256R1 sign data bytes."""
-        signed = self._signing_key.sign(data, encoder=Base64Encoder)
-        return SuiSignature(signed.signature)
+        signed = self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256) + self._pad_byte
+        return SuiSignature(base64.b64encode(signed).decode())
 
     def sign_secure(self, public_key: SuiPublicKeySECP256R1, tx_data: str) -> SuiSignature:
         """sign_secure Sign transaction intent.
@@ -95,9 +98,9 @@ class SuiPrivateKeySECP256R1(PrivateKey):
         indata = bytearray([0, 0, 0])
         indata.extend(base64.b64decode(tx_data))
         compound = bytearray([self.scheme])
-        compound.extend(base64.b64decode(self.sign(bytes(indata)).value))
+        compound.extend(base64.b64decode(self.sign(indata).value))
         compound.extend(public_key.key_bytes)
-        return SuiSignature(base64.b64encode(bytes(compound)))
+        return SuiSignature(base64.b64encode(bytes(compound)).decode())
 
 
 class SuiKeyPairSECP256R1(KeyPair):
@@ -107,8 +110,8 @@ class SuiKeyPairSECP256R1(KeyPair):
         """Init keypair with public and private byte array."""
         self._scheme = SignatureScheme.SECP256R1
         self._private_key = SuiPrivateKeySECP256R1(secret_bytes)
-        pub_bytes = self._private_key._signing_key.verify_key
-        self._public_key = SuiPublicKeySECP256R1(pub_bytes.encode())
+        pub_bytes = self._private_key._signing_key.get_verifying_key().to_string(encoding="compressed")
+        self._public_key = SuiPublicKeySECP256R1(pub_bytes)
 
     @property
     def private_key(self) -> PrivateKey:
@@ -514,6 +517,8 @@ def keypair_from_keystring(keystring: str) -> KeyPair:
             return SuiKeyPairED25519.from_bytes(addy_bytes[1:])
         case SignatureScheme.SECP256K1:
             return SuiKeyPairSECP256K1.from_bytes(addy_bytes[1:])
+        case SignatureScheme.SECP256R1:
+            return SuiKeyPairSECP256R1.from_bytes(addy_bytes[1:])
     raise NotImplementedError
 
 
@@ -577,6 +582,5 @@ def recover_key_and_address(
     return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
 
 
-# pylint: disable=invalid-name
 if __name__ == "__main__":
-    print("See unit tests")
+    pass
