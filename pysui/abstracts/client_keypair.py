@@ -78,12 +78,12 @@ class PrivateKey(Key):
     """PrivateKey construct."""
 
     @abstractmethod
-    def sign(self, data: bytes) -> AbstractType:
-        """Sign data and return signature."""
+    def sign(self, data: bytes) -> bytes:
+        """Sign data and return signature bytes."""
 
     @abstractmethod
-    def sign_secure(self, public_key: PublicKey, tx_data: bytes) -> AbstractType:
-        """Sign data securley, returning signature."""
+    def sign_secure(self, public_key: PublicKey, tx_data: bytes) -> bytes:
+        """Sign data securely, returning signature."""
 
 
 class KeyPair(ABC):

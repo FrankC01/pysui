@@ -97,6 +97,7 @@ class SuiConfig(ClientConfiguration):
                             addy = SuiAddress.from_keypair_string(kpair.to_b64())
                             self._addresses[addy.address] = addy
                             self._address_keypair[addy.address] = kpair
+                            # print(f"Address: {addy.address} keystr: {keystr} Keypair: {kpair}")
                     else:
                         raise SuiNoKeyPairs()
             except IOError as exc:
@@ -132,6 +133,12 @@ class SuiConfig(ClientConfiguration):
             self._write_keypair(keypair)
             return mnen, address.identifier
         if scheme == SignatureScheme.SECP256K1:
+            mnen, keypair, address = create_new_address(scheme)
+            self._addresses[address.address] = address
+            self._address_keypair[address.address] = keypair
+            self._write_keypair(keypair)
+            return mnen, address.identifier
+        if scheme == SignatureScheme.SECP256R1:
             mnen, keypair, address = create_new_address(scheme)
             self._addresses[address.address] = address
             self._address_keypair[address.address] = keypair

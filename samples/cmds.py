@@ -104,8 +104,12 @@ def sui_new_address(client: SuiClient, args: argparse.Namespace) -> None:
     """Generate a new SUI address."""
     if args.ed25519:
         mnen, address = client.config.create_new_keypair_and_address(SignatureScheme.ED25519)
-    else:
+    elif args.secp256k1:
         mnen, address = client.config.create_new_keypair_and_address(SignatureScheme.SECP256K1)
+    elif args.secp256r1:
+        mnen, address = client.config.create_new_keypair_and_address(SignatureScheme.SECP256R1)
+    else:
+        raise ValueError(f"Unknown keytype {args}")
     print(f"Keep this passphrase '{mnen}'")
     print(f"For new address {address}")
 
