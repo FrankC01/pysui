@@ -12,9 +12,8 @@
 # -*- coding: utf-8 -*-
 
 
-"""Sui Crpto Utilities."""
+"""Sui Crpto Keys and Keypairs."""
 
-from abc import abstractmethod
 import base64
 import hashlib
 from typing import Union
@@ -154,13 +153,16 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
             raise SuiInvalidKeyPair(f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
         super().__init__(SignatureScheme.SECP256R1, indata)
         self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha256)
-        self._pad_byte = int(0).to_bytes(1, "little")
+        self._pad_byte = int(1).to_bytes(1, "little")
 
+    # FIXME: Need to understand where the recovery ID comes from
     def sign(self, data: bytes) -> bytes:
         """SECP256R1 sign data bytes."""
-        last_byte = data[-1].to_bytes(1, "little")
-        core_sig = self._signing_key.sign_deterministic(data)
-        core_sig += last_byte  # self._pad_byte
+        core_sig = self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256)
+        print(f"Sig size = {len(core_sig)}")
+        print(f"Last byte = {core_sig[-1]}")
+        core_sig += self._pad_byte
+        # core_sig[-1].to_bytes(1, "little")  # data[-1].to_bytes(1, "little") # self._pad_byte
         return core_sig
 
 
@@ -251,6 +253,7 @@ class SuiKeyPairED25519(SuiKeyPair):
 
 
 # Secp256
+# TODO: Change to use the ecdsa library
 
 
 class SuiPublicKeySECP256K1(SuiPublicKey):
@@ -264,6 +267,7 @@ class SuiPublicKeySECP256K1(SuiPublicKey):
         self._verify_key = secp256k1.PublicKey(indata, raw=True)
 
 
+# TODO: Change to use the ecdsa library
 class SuiPrivateKeySECP256K1(SuiPrivateKey):
     """A SECP256K1 Private Key."""
 
@@ -283,6 +287,7 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
         return bytes(sig_ba)
 
 
+# TODO: Change to use the ecdsa library
 class SuiKeyPairSECP256K1(SuiKeyPair):
     """A SuiKey Pair."""
 
@@ -360,6 +365,7 @@ def _valid_pubkey(key_valmethod: str, pub_key: bytes) -> Union[None, TypeError, 
         raise vexc
 
 
+# TODO: Change to use the ecdsa library
 def _generate_secp256k1(
     mnemonics: Union[str, list[str]] = "", derv_path: str = None
 ) -> tuple[str, SuiKeyPairSECP256K1]:

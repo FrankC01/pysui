@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated SuiSystemState result definition to include `safe_mode` field as per SUI 0.22.1
+- Updated CheckpointSummary result definition to include `timestamp_ms` field as per SUI 0.22.1
+
 ### Removed
 
 ## [0.9.0] 2023-01-20

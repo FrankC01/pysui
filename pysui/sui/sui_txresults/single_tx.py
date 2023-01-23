@@ -612,6 +612,7 @@ class SuiSystemState(DataClassJsonMixin):
     epoch: int
     parameters: StateParameters
     reference_gas_price: int
+    safe_mode: bool
     stake_subsidy: StakeSubsidy
     storage_fund: Union[dict, int]
     treasury_cap: Union[dict, int]

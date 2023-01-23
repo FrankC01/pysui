@@ -435,6 +435,7 @@ class CheckpointSummary(DataClassJsonMixin):
     network_total_transactions: int
     sequence_number: int
     next_epoch_committee: Optional[list[int]]
+    timestamp_ms: int
 
 
 # Event query results
