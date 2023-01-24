@@ -12,18 +12,20 @@
 # -*- coding: utf-8 -*-
 
 
-"""Sui Crpto Utilities."""
+"""Sui Crpto Keys and Keypairs."""
 
 import base64
-
+import hashlib
 from typing import Union
+
 import secp256k1
 import bip_utils
+import ecdsa
 from bip_utils.addr.addr_key_validator import AddrKeyValidator
 from bip_utils.bip.bip39.bip39_mnemonic_decoder import Bip39MnemonicDecoder
 from bip_utils.utils.mnemonic.mnemonic_validator import MnemonicValidator
 from nacl.signing import SigningKey, VerifyKey
-from nacl.encoding import Base64Encoder
+from nacl.encoding import Base64Encoder, RawEncoder
 
 
 from pysui.abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
@@ -38,14 +40,159 @@ from pysui.sui.sui_constants import (
     SECP256K1_KEYPAIR_BYTES_LEN,
     SECP256K1_PUBLICKEY_BYTES_LEN,
     SECP256K1_PRIVATEKEY_BYTES_LEN,
+    SECP256R1_DEFAULT_KEYPATH,
+    SECP256R1_KEYPAIR_BYTES_LEN,
+    SECP256R1_PUBLICKEY_BYTES_LEN,
+    SECP256R1_PRIVATEKEY_BYTES_LEN,
 )
+
 from pysui.sui.sui_types import SuiSignature, SuiAddress
 
 
-# Edwards Curve Keys
+class SuiPublicKey(PublicKey):
+    """SuiPublicKey Sui Basic public key."""
+
+    @property
+    def pub_key(self) -> str:
+        """Return self as base64 encoded string."""
+        return self.to_b64()
 
 
-class SuiPublicKeyED25519(PublicKey):
+class SuiPrivateKey(PrivateKey):
+    """SuiPrivateKey Sui Basic private/signing key."""
+
+    def sign_secure(self, public_key: SuiPublicKey, tx_data: str, recovery_id: int = 0) -> bytes:
+        """sign_secure Sign transaction intent.
+
+        :param public_key: PublicKey from signer/private key
+        :type public_key: SuiPublicKey
+        :param tx_data: Transaction bytes being signed
+        :type tx_data: str
+        :param recovery_id: value used for secp256r1 signature completion,default to 0
+        :type: recovery_id: int, optional
+        :return: Singed transaction as bytes
+        :rtype: bytes
+        """
+        indata = bytearray([0, 0, 0])
+        dec_tx = base64.b64decode(tx_data)
+        indata.extend(dec_tx)
+        compound = bytearray([self.scheme])
+        sig_bytes = self.sign(bytes(indata), recovery_id)
+        compound.extend(sig_bytes)
+        compound.extend(public_key.key_bytes)
+        return bytes(compound)
+
+
+class SuiKeyPair(KeyPair):
+    """SuiKeyPair Sui Basic keypair."""
+
+    def __init__(self) -> None:
+        """__init__ Default keypair initializer."""
+        self._scheme: SignatureScheme = None
+        self._private_key: SuiPrivateKey = None
+        self._public_key: SuiPublicKey = None
+
+    @property
+    def private_key(self) -> SuiPrivateKey:
+        """Return the Private Key."""
+        return self._private_key
+
+    @property
+    def public_key(self) -> SuiPublicKey:
+        """Return the Public Key."""
+        return self._public_key
+
+    @property
+    def scheme(self) -> SignatureScheme:
+        """Get the keys scheme."""
+        return self._scheme
+
+    def new_sign_secure(self, tx_data: str, recovery_id: int = 0) -> SuiSignature:
+        """New secure sign with intent."""
+        sig = self.private_key.sign_secure(self.public_key, tx_data, recovery_id)
+        return SuiSignature(base64.b64encode(sig).decode())
+
+    def serialize(self) -> str:
+        """serialize Returns a SUI conforming keystring.
+
+        :return: a base64 encoded string of schema and private key bytes
+        :rtype: str
+        """
+        all_bytes = self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
+        return base64.b64encode(all_bytes).decode()
+
+    def to_bytes(self) -> bytes:
+        """Convert keypair to bytes."""
+        all_bytes = self.scheme.to_bytes(1, "little") + self.public_key.key_bytes + self.private_key.key_bytes
+        return all_bytes
+
+    def __repr__(self) -> str:
+        """To string."""
+        return f"PubKey {self._public_key}, PrivKey {self._private_key}"
+
+
+# Secp256r1 Curve Keys
+
+
+class SuiPublicKeySECP256R1(SuiPublicKey):
+    """A secp256r1 Public Key."""
+
+    def __init__(self, indata: bytes) -> None:
+        """Initialize public key."""
+        if len(indata) != SECP256R1_PUBLICKEY_BYTES_LEN:
+            raise SuiInvalidKeyPair(f"Public Key expects {SECP256R1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}")
+        super().__init__(SignatureScheme.SECP256R1, indata)
+        self._verify_key = ecdsa.VerifyingKey.from_string(indata, curve=ecdsa.NIST256p, hashfunc=hashlib.sha256)
+
+
+class SuiPrivateKeySECP256R1(SuiPrivateKey):
+    """A secp256r1 Private Key."""
+
+    def __init__(self, indata: bytes) -> None:
+        """Initialize private key."""
+        dlen = len(indata)
+        if dlen != SECP256R1_PRIVATEKEY_BYTES_LEN:
+            raise SuiInvalidKeyPair(f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
+        super().__init__(SignatureScheme.SECP256R1, indata)
+        self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha256)
+
+    def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
+        """SECP256R1 sign data bytes."""
+        core_sig = self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256)
+        core_sig += recovery_id.to_bytes(1, "little")
+        return core_sig
+
+
+class SuiKeyPairSECP256R1(SuiKeyPair):
+    """A SuiKey Pair."""
+
+    def __init__(self, secret_bytes: bytes) -> None:
+        """Init keypair with public and private byte array."""
+        super().__init__()
+        self._scheme = SignatureScheme.SECP256R1
+        self._private_key = SuiPrivateKeySECP256R1(secret_bytes)
+        pub_bytes = self._private_key._signing_key.get_verifying_key().to_string(encoding="compressed")
+        self._public_key = SuiPublicKeySECP256R1(pub_bytes)
+
+    @classmethod
+    def from_b64(cls, indata: str) -> KeyPair:
+        """Convert base64 string to keypair."""
+        if len(indata) != SUI_KEYPAIR_LEN:
+            raise SuiInvalidKeyPair(f"Expect str len of {SUI_KEYPAIR_LEN}")
+        base_decode = base64.b64decode(indata)
+        if base_decode[0] == SignatureScheme.SECP256R1:
+            return SuiKeyPairED25519.from_bytes(base_decode[1:])
+        raise SuiInvalidKeyPair("Scheme not ED25519")
+
+    @classmethod
+    def from_bytes(cls, indata: bytes) -> KeyPair:
+        """Convert bytes to keypair."""
+        if len(indata) != SECP256R1_KEYPAIR_BYTES_LEN:
+            raise SuiInvalidKeyPair(f"Expect bytes len of {SECP256R1_KEYPAIR_BYTES_LEN}")
+        return SuiKeyPairSECP256R1(indata)
+
+
+class SuiPublicKeyED25519(SuiPublicKey):
     """A ED25519 Public Key."""
 
     def __init__(self, indata: bytes) -> None:
@@ -55,13 +202,8 @@ class SuiPublicKeyED25519(PublicKey):
         super().__init__(SignatureScheme.ED25519, indata)
         self._verify_key = VerifyKey(self.to_b64(), encoder=Base64Encoder)
 
-    @property
-    def pub_key(self) -> str:
-        """Return self as base64 encoded string."""
-        return self.to_b64()
 
-
-class SuiPrivateKeyED25519(PrivateKey):
+class SuiPrivateKeyED25519(SuiPrivateKey):
     """A ED25519 Private Key."""
 
     def __init__(self, indata: bytes) -> None:
@@ -72,62 +214,22 @@ class SuiPrivateKeyED25519(PrivateKey):
         super().__init__(SignatureScheme.ED25519, indata)
         self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
 
-    def sign(self, data: bytes) -> SuiSignature:
+    def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """ED25519 sign data bytes."""
-        signed = self._signing_key.sign(data, encoder=Base64Encoder)
-        return SuiSignature(signed.signature)
-
-    def sign_secure(self, public_key: SuiPublicKeyED25519, tx_data: str) -> SuiSignature:
-        """sign_secure Sign transaction intent.
-
-        :param public_key: Public ed25519 key of transaction signer
-        :type public_key: SuiPublicKeyED25519
-        :param tx_data: Transaction bytes being signed
-        :type tx_data: str
-        :return: Singed transaction as base64 SuiSignature.
-        :rtype: SuiSignature
-        """
-        indata = bytearray([0, 0, 0])
-        indata.extend(base64.b64decode(tx_data))
-        compound = bytearray([self.scheme])
-        compound.extend(base64.b64decode(self.sign(bytes(indata)).value))
-        compound.extend(public_key.key_bytes)
-        return SuiSignature(base64.b64encode(bytes(compound)))
+        sig = self._signing_key.sign(data, encoder=RawEncoder).signature
+        return sig
 
 
-class SuiKeyPairED25519(KeyPair):
+class SuiKeyPairED25519(SuiKeyPair):
     """A SuiKey Pair."""
 
     def __init__(self, secret_bytes: bytes) -> None:
         """Init keypair with public and private byte array."""
+        super().__init__()
         self._scheme = SignatureScheme.ED25519
         self._private_key = SuiPrivateKeyED25519(secret_bytes)
         pub_bytes = self._private_key._signing_key.verify_key
         self._public_key = SuiPublicKeyED25519(pub_bytes.encode())
-
-    @property
-    def private_key(self) -> PrivateKey:
-        """Return the Private Key."""
-        return self._private_key
-
-    @property
-    def public_key(self) -> PublicKey:
-        """Return the Public Key."""
-        return self._public_key
-
-    @property
-    def scheme(self) -> SignatureScheme:
-        """Get the keys scheme."""
-        return self._scheme
-
-    def new_sign_secure(self, tx_data: str) -> SuiSignature:
-        """New secure sign with intent."""
-        return self.private_key.sign_secure(self.public_key, tx_data)
-
-    def to_bytes(self) -> bytes:
-        """Convert keypair to bytes."""
-        all_bytes = self.scheme.to_bytes(1, "little") + self.public_key.key_bytes + self.private_key.key_bytes
-        return all_bytes
 
     @classmethod
     def from_b64(cls, indata: str) -> KeyPair:
@@ -146,24 +248,12 @@ class SuiKeyPairED25519(KeyPair):
             raise SuiInvalidKeyPair(f"Expect bytes len of {ED25519_KEYPAIR_BYTES_LEN}")
         return SuiKeyPairED25519(indata)
 
-    def serialize(self) -> str:
-        """serialize Returns a SUI conforming keystring.
-
-        :return: a base64 encoded string of schema and private key bytes
-        :rtype: str
-        """
-        all_bytes = self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
-        return base64.b64encode(all_bytes).decode()
-
-    def __repr__(self) -> str:
-        """To string."""
-        return f"PubKey {self._public_key}, PrivKey {self._private_key}"
-
 
 # Secp256
+# TODO: Change to use the ecdsa library and drop the secp256k1 library requirement
 
 
-class SuiPublicKeySECP256K1(PublicKey):
+class SuiPublicKeySECP256K1(SuiPublicKey):
     """A SECP256K1 Public Key."""
 
     def __init__(self, indata: bytes) -> None:
@@ -173,13 +263,9 @@ class SuiPublicKeySECP256K1(PublicKey):
         super().__init__(SignatureScheme.SECP256K1, indata)
         self._verify_key = secp256k1.PublicKey(indata, raw=True)
 
-    @property
-    def pub_key(self) -> str:
-        """Return self as base64 encoded string."""
-        return self.to_b64()
 
-
-class SuiPrivateKeySECP256K1(PrivateKey):
+# TODO: Change to use the ecdsa library
+class SuiPrivateKeySECP256K1(SuiPrivateKey):
     """A SECP256K1 Private Key."""
 
     def __init__(self, indata: bytes) -> None:
@@ -189,66 +275,26 @@ class SuiPrivateKeySECP256K1(PrivateKey):
         super().__init__(SignatureScheme.SECP256K1, indata)
         self._signing_key = secp256k1.PrivateKey(indata, raw=True)
 
-    def sign(self, data: bytes) -> str:
+    def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """secp256k1 sign data bytes."""
         sig = self._signing_key.ecdsa_sign_recoverable(data)
         sig_sb, sig_si = self._signing_key.ecdsa_recoverable_serialize(sig)
         sig_ba = bytearray(sig_sb)
         sig_ba.append(sig_si)
-        fsig = base64.b64encode(sig_ba).decode()
-        return SuiSignature(fsig)
-
-    def sign_secure(self, public_key: SuiPublicKeySECP256K1, tx_data: str) -> SuiSignature:
-        """sign_secure Sign transaction intent.
-
-        :param public_key: Public secp256k1 key of transaction signer
-        :type public_key: SuiPublicKeyED25519
-        :param tx_data: Transaction bytes being signed
-        :type tx_data: str
-        :return: Singed transaction as base64 SuiSignature.
-        :rtype: SuiSignature
-        """
-        indata = bytearray([0, 0, 0])
-        indata.extend(base64.b64decode(tx_data))
-        compound = bytearray([self.scheme])
-        compound.extend(base64.b64decode(self.sign(bytes(indata)).value))
-        compound.extend(public_key.key_bytes)
-        return SuiSignature(base64.b64encode(bytes(compound)))
+        return bytes(sig_ba)
 
 
-class SuiKeyPairSECP256K1(KeyPair):
+# TODO: Change to use the ecdsa library
+class SuiKeyPairSECP256K1(SuiKeyPair):
     """A SuiKey Pair."""
 
     def __init__(self, secret_bytes: bytes) -> None:
         """Init keypair with public and private byte array."""
+        super().__init__()
         self._scheme = SignatureScheme.SECP256K1
         self._private_key = SuiPrivateKeySECP256K1(secret_bytes)
         pubkey_bytes = self._private_key._signing_key.pubkey.serialize(compressed=True)
         self._public_key = SuiPublicKeySECP256K1(pubkey_bytes)
-
-    @property
-    def private_key(self) -> PrivateKey:
-        """Return the Private Key."""
-        return self._private_key
-
-    @property
-    def public_key(self) -> PublicKey:
-        """Return the Public Key."""
-        return self._public_key
-
-    @property
-    def scheme(self) -> SignatureScheme:
-        """Get the keys scheme."""
-        return self._scheme
-
-    def new_sign_secure(self, tx_data: str) -> SuiSignature:
-        """New secure sign with intent."""
-        return self.private_key.sign_secure(self.public_key, tx_data)
-
-    def to_bytes(self) -> bytes:
-        """Convert keypair to bytes."""
-        all_bytes = self.scheme.to_bytes(1, "little") + self.public_key.key_bytes + self.private_key.key_bytes
-        return all_bytes
 
     @classmethod
     def from_b64(cls, indata: str) -> KeyPair:
@@ -267,22 +313,9 @@ class SuiKeyPairSECP256K1(KeyPair):
             raise SuiInvalidKeyPair("Expect bytes len of 65")
         return SuiKeyPairSECP256K1(indata)
 
-    def serialize(self) -> str:
-        """serialize Returns a SUI conforming keystring.
-
-        :return: a base64 encoded string of schema and private key bytes
-        :rtype: str
-        """
-        all_bytes = self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
-        return base64.b64encode(all_bytes).decode()
-
-    def __repr__(self) -> str:
-        """To string."""
-        return f"PubKey {self._public_key}, PrivKey {self._private_key}"
-
 
 # Utility functions
-def _valid_mnemonic(mnemonics: Union[str, list[str]] = "") -> str:
+def _valid_mnemonic(key_type: SignatureScheme, mnemonics: Union[str, list[str]] = "") -> str:
     """_valid_mnemonic Validate, or create, mnemonic word string.
 
     :param mnemonics: space separated word string (12) or list of words(12), defaults to ""
@@ -298,7 +331,13 @@ def _valid_mnemonic(mnemonics: Union[str, list[str]] = "") -> str:
         if MnemonicValidator(Bip39MnemonicDecoder()).IsValid(mnemonics):
             return mnemonics
         raise ValueError(f"{mnemonics} is not a valid mnemonic phrase.")
-    return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_12).ToStr()
+    match key_type:
+        case SignatureScheme.ED25519 | SignatureScheme.SECP256K1:
+            return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_12).ToStr()
+        case SignatureScheme.SECP256R1:
+            return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_24).ToStr()
+        case _:
+            raise ValueError(f"{key_type} is not a valid key signature scheme type.")
 
 
 def _valid_pubkey(key_valmethod: str, pub_key: bytes) -> Union[None, TypeError, ValueError]:
@@ -323,6 +362,7 @@ def _valid_pubkey(key_valmethod: str, pub_key: bytes) -> Union[None, TypeError, 
         raise vexc
 
 
+# TODO: Change to use the ecdsa library
 def _generate_secp256k1(
     mnemonics: Union[str, list[str]] = "", derv_path: str = None
 ) -> tuple[str, SuiKeyPairSECP256K1]:
@@ -335,7 +375,7 @@ def _generate_secp256k1(
     :return: _description_
     :rtype: KeyPair
     """
-    mnemonic_phrase = _valid_mnemonic(mnemonics)
+    mnemonic_phrase = _valid_mnemonic(SignatureScheme.SECP256K1, mnemonics)
     derv_path = derv_path or SECP256K1_DEFAULT_KEYPATH
     # Generate seed from mnemonic phrase and optional password
     seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
@@ -350,6 +390,33 @@ def _generate_secp256k1(
     return mnemonic_phrase, SuiKeyPairSECP256K1(secp_priv.private_key)
 
 
+def _generate_secp256r1(
+    mnemonics: Union[str, list[str]] = "", derv_path: str = None
+) -> tuple[str, SuiKeyPairSECP256R1]:
+    """_generate_secp256r1 Create a mnemonic seed and use derivation path for secp256r1 keypair.
+
+    :param mnemonics: _description_, defaults to ""
+    :type mnemonics: Union[str, list[str]], optional
+    :param derv_path: _description_, defaults to None
+    :type derv_path: str, optional
+    :return: _description_
+    :rtype: KeyPair
+    """
+    mnemonic_phrase = _valid_mnemonic(SignatureScheme.SECP256R1, mnemonics)
+    derv_path = derv_path or SECP256R1_DEFAULT_KEYPATH
+    # Generate seed from mnemonic phrase and optional password
+    seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
+    bip32_ctx = bip_utils.Bip32Slip10Nist256p1.FromSeedAndPath(seed_bytes, derv_path)
+    # Get private key bytes list
+    prv_key = bip32_ctx.PrivateKey().Raw().ToBytes()
+    # Instantiate secp256k1 library keypair
+    # 1. Private, or signer, key
+    secp_priv = ecdsa.SigningKey.from_string(prv_key, curve=ecdsa.NIST256p)
+    # 2. Public, or verifier, key
+    _valid_pubkey("ValidateAndGetNist256p1Key", secp_priv.get_verifying_key().to_string("compressed"))
+    return mnemonic_phrase, SuiKeyPairSECP256R1(secp_priv.to_string())
+
+
 def _generate_ed25519(mnemonics: Union[str, list[str]] = "", derv_path: str = None) -> tuple[str, SuiKeyPairED25519]:
     """_generate_secp256k1 Create a mnemonic seed and use derivation path for ed25519 keypair.
 
@@ -360,7 +427,7 @@ def _generate_ed25519(mnemonics: Union[str, list[str]] = "", derv_path: str = No
     :return: _description_
     :rtype: KeyPair
     """
-    mnemonic_phrase = _valid_mnemonic(mnemonics)
+    mnemonic_phrase = _valid_mnemonic(SignatureScheme.ED25519, mnemonics)
     derv_path = derv_path or ED25519_DEFAULT_KEYPATH
     # Generate seed from mnemonic phrase and optional password
     seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
@@ -394,6 +461,8 @@ def keypair_from_keystring(keystring: str) -> KeyPair:
             return SuiKeyPairED25519.from_bytes(addy_bytes[1:])
         case SignatureScheme.SECP256K1:
             return SuiKeyPairSECP256K1.from_bytes(addy_bytes[1:])
+        case SignatureScheme.SECP256R1:
+            return SuiKeyPairSECP256R1.from_bytes(addy_bytes[1:])
     raise NotImplementedError
 
 
@@ -402,7 +471,7 @@ def create_new_keypair(
 ) -> tuple[str, KeyPair]:
     """create_new_keypair Generate a new keypair.
 
-    :param keytype: One of ED25519 or SECP256K1 key type, defaults to SignatureScheme.ED25519
+    :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type, defaults to SignatureScheme.ED25519
     :type keytype: SignatureScheme, optional
     :param mnemonics: mnemonic words, defaults to None
     :type mnemonics: Union[str, list[str]], optional
@@ -417,6 +486,8 @@ def create_new_keypair(
             return _generate_ed25519(mnemonics, derv_path)
         case SignatureScheme.SECP256K1:
             return _generate_secp256k1(mnemonics, derv_path)
+        case SignatureScheme.SECP256R1:
+            return _generate_secp256r1(mnemonics, derv_path)
         case _:
             raise NotImplementedError
 
@@ -426,7 +497,7 @@ def create_new_address(
 ) -> tuple[str, KeyPair, SuiAddress]:
     """create_new_address Create a new keypair and address for a key type.
 
-    :param keytype: One of ED25519 or SECP256K1 key type
+    :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type
     :type keytype: SignatureScheme
     :param mnemonics: mnemonic words, defaults to None
     :type mnemonics: Union[str, list[str]], optional
@@ -457,6 +528,21 @@ def recover_key_and_address(
     return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
 
 
-# pylint: disable=invalid-name
+# pylint:disable=line-too-long,invalid-name
 if __name__ == "__main__":
-    print("See unit tests")
+    # r1_mnen, r1_kp, r1_addy = create_new_address(SignatureScheme.SECP256R1)
+    # print(r1_mnen)
+    # print(r1_addy)
+    # print(r1_kp)
+
+    mnen = "garlic multiply raise promote waste during control swim plunge surprise alley endless soccer around salon game supreme achieve ginger hospital salad elder picture utility"
+    # kstr = "AgOmrwvtROqx5uPnYzEFHKUDOLtala2fJsPtV8TB53xT"
+    # addy = "0xa9cdeb2f2dcc6b43929d7775dddb600b17010c14"
+
+    # is_f = "AFVF2jlTA/GUKHFOmmVyjJDTyvg5lGnkkx3GwTWW+z02"
+    # res = SuiAddress.from_keypair_string(is_f)
+    # print(res)
+    r1_mnen, r1_kp, r1_addy = recover_key_and_address(SignatureScheme.SECP256R1, mnen, SECP256R1_DEFAULT_KEYPATH)
+    print(r1_mnen)
+    print(r1_addy)
+    print(r1_kp)

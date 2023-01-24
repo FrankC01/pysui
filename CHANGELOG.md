@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - More documentation
+- Support for `secp256r1` [feature](https://github.com/FrankC01/pysui/issues/59)
+  - Caveat: Key recovery not supported yet
+  - Caveat: Due to the requirement of generating a recovery ID a brute force hack was added to signing with secp256r1 keys. However; this requirement for recovery ID is going to be lifted at some point in SUI [feature](https://github.com/MystenLabs/sui/issues/5654)
 
 ### Fixed
 
@@ -18,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [bug](https://github.com/FrankC01/pysui/issues/64)
 
 ### Changed
+
+- Updated SuiSystemState result definition to include `safe_mode` field as per SUI 0.22.1
+- Updated CheckpointSummary result definition to include `timestamp_ms` field as per SUI 0.22.1
 
 ### Removed
 

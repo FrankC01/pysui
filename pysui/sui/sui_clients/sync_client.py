@@ -37,7 +37,6 @@ from pysui.sui.sui_builders.get_builders import (
 from pysui.sui.sui_builders.exec_builders import (
     DryRunTransaction,
     ExecuteTransaction,
-    ExecuteSerializedTransaction,
     Pay,
     PaySui,
     PayAllSui,
@@ -118,28 +117,29 @@ class SuiClient(_ClientMixin):
         :return: Result from execution
         :rtype: Union[SuiRpcResult, Exception]
         """
+        _recovery_id = 0
         kpair = self.config.keypair_for_address(signer)
-        if self.version_at_least(0, 22, 0):
+
+        def _inner_sign(recovery_id: int) -> SuiRpcResult:
             builder = ExecuteTransaction(
                 tx_bytes=tx_bytes,
-                signature=kpair.new_sign_secure(tx_bytes.tx_bytes),
+                signature=kpair.new_sign_secure(tx_bytes.tx_bytes, recovery_id),
                 request_type=self.request_type,
             )
-        elif self.version_at_least(0, 18, 0):
-            builder = ExecuteSerializedTransaction(
-                tx_bytes=tx_bytes,
-                signature=kpair.new_sign_secure(tx_bytes.tx_bytes),
-                request_type=self.request_type,
-            )
-        else:
-            return SuiRpcResult(False, "Unsupported SUI API version")
-        result = self._execute(builder)
-        if result.is_ok():
-            if "error" in result.result_data:
-                return SuiRpcResult(False, result.result_data["error"]["message"], None)
-            # print(json.dumps(result.result_data["result"], indent=2))
-            result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
-        return result
+            result = self._execute(builder)
+            if result.is_ok() and "error" not in result.result_data:
+                result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+            elif "error" in result.result_data:
+                msg = result.result_data["error"]["message"]
+                if msg == _ClientMixin._SIGNATURE_ERROR and recovery_id > 0:
+                    result = SuiRpcResult(False, msg)
+                elif msg == _ClientMixin._SIGNATURE_ERROR and recovery_id == 0:
+                    result = _inner_sign(1)
+                else:
+                    result = SuiRpcResult(False, msg)
+            return result
+
+        return _inner_sign(_recovery_id)
 
     def dry_run(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Submit transaction than sui_dryRunTransaction only."""

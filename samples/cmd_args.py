@@ -31,6 +31,7 @@ def _build_read_cmds(subparser) -> None:
     addy_arg_group = subp.add_mutually_exclusive_group(required=True)
     addy_arg_group.add_argument("-e", "--ed25519", help="Generate using ed25519 scheme", action="store_true")
     addy_arg_group.add_argument("-s", "--secp256k1", help="Generate using secp256k1 scheme", action="store_true")
+    addy_arg_group.add_argument("-r", "--secp256r1", help="Generate using secp256r1 scheme", action="store_true")
     subp.set_defaults(subcommand="new-address")
     # Gas
     subp = subparser.add_parser("gas", help="Shows gas objects and total mist")

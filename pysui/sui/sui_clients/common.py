@@ -75,6 +75,7 @@ class _ClientMixin(Provider):
     """
 
     _RPC_MINIMAL_VERSION: int = 19
+    _SIGNATURE_ERROR: str = 'Invalid user signature: InvalidSignature { error: "signature error" }.'
 
     def __init__(self, config: SuiConfig, request_type: SuiRequestType = SuiRequestType.WAITFORLOCALEXECUTION) -> None:
         """Client initializer."""
