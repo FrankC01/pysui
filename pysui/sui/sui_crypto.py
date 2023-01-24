@@ -50,7 +50,7 @@ from pysui.sui.sui_types import SuiSignature, SuiAddress
 
 
 class SuiPublicKey(PublicKey):
-    """."""
+    """SuiPublicKey Sui Basic public key."""
 
     @property
     def pub_key(self) -> str:
@@ -59,15 +59,17 @@ class SuiPublicKey(PublicKey):
 
 
 class SuiPrivateKey(PrivateKey):
-    """."""
+    """SuiPrivateKey Sui Basic private/signing key."""
 
-    def sign_secure(self, public_key: SuiPublicKey, tx_data: str) -> bytes:
+    def sign_secure(self, public_key: SuiPublicKey, tx_data: str, recovery_id: int = 0) -> bytes:
         """sign_secure Sign transaction intent.
 
         :param public_key: PublicKey from signer/private key
         :type public_key: SuiPublicKey
         :param tx_data: Transaction bytes being signed
         :type tx_data: str
+        :param recovery_id: value used for secp256r1 signature completion,default to 0
+        :type: recovery_id: int, optional
         :return: Singed transaction as bytes
         :rtype: bytes
         """
@@ -75,17 +77,17 @@ class SuiPrivateKey(PrivateKey):
         dec_tx = base64.b64decode(tx_data)
         indata.extend(dec_tx)
         compound = bytearray([self.scheme])
-        sig_bytes = self.sign(bytes(indata))
+        sig_bytes = self.sign(bytes(indata), recovery_id)
         compound.extend(sig_bytes)
         compound.extend(public_key.key_bytes)
         return bytes(compound)
 
 
 class SuiKeyPair(KeyPair):
-    """."""
+    """SuiKeyPair Sui Basic keypair."""
 
     def __init__(self) -> None:
-        """."""
+        """__init__ Default keypair initializer."""
         self._scheme: SignatureScheme = None
         self._private_key: SuiPrivateKey = None
         self._public_key: SuiPublicKey = None
@@ -105,9 +107,9 @@ class SuiKeyPair(KeyPair):
         """Get the keys scheme."""
         return self._scheme
 
-    def new_sign_secure(self, tx_data: str) -> SuiSignature:
+    def new_sign_secure(self, tx_data: str, recovery_id: int = 0) -> SuiSignature:
         """New secure sign with intent."""
-        sig = self.private_key.sign_secure(self.public_key, tx_data)
+        sig = self.private_key.sign_secure(self.public_key, tx_data, recovery_id)
         return SuiSignature(base64.b64encode(sig).decode())
 
     def serialize(self) -> str:
@@ -153,16 +155,11 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
             raise SuiInvalidKeyPair(f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
         super().__init__(SignatureScheme.SECP256R1, indata)
         self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha256)
-        self._pad_byte = int(1).to_bytes(1, "little")
 
-    # FIXME: Need to understand where the recovery ID comes from
-    def sign(self, data: bytes) -> bytes:
+    def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
         """SECP256R1 sign data bytes."""
         core_sig = self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256)
-        print(f"Sig size = {len(core_sig)}")
-        print(f"Last byte = {core_sig[-1]}")
-        core_sig += self._pad_byte
-        # core_sig[-1].to_bytes(1, "little")  # data[-1].to_bytes(1, "little") # self._pad_byte
+        core_sig += recovery_id.to_bytes(1, "little")
         return core_sig
 
 
@@ -217,7 +214,7 @@ class SuiPrivateKeyED25519(SuiPrivateKey):
         super().__init__(SignatureScheme.ED25519, indata)
         self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
 
-    def sign(self, data: bytes) -> bytes:
+    def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """ED25519 sign data bytes."""
         sig = self._signing_key.sign(data, encoder=RawEncoder).signature
         return sig
@@ -253,7 +250,7 @@ class SuiKeyPairED25519(SuiKeyPair):
 
 
 # Secp256
-# TODO: Change to use the ecdsa library
+# TODO: Change to use the ecdsa library and drop the secp256k1 library requirement
 
 
 class SuiPublicKeySECP256K1(SuiPublicKey):
@@ -278,7 +275,7 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
         super().__init__(SignatureScheme.SECP256K1, indata)
         self._signing_key = secp256k1.PrivateKey(indata, raw=True)
 
-    def sign(self, data: bytes) -> bytes:
+    def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """secp256k1 sign data bytes."""
         sig = self._signing_key.ecdsa_sign_recoverable(data)
         sig_sb, sig_si = self._signing_key.ecdsa_recoverable_serialize(sig)
