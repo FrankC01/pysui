@@ -19,6 +19,7 @@ from pysui.sui.sui_txresults.single_tx import (
     FaucetGasRequest,
     ObjectInfo,
     ObjectRead,
+    SuiSystemState,
 )
 
 from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TxEffectResult, SubscribedTransaction
@@ -146,4 +147,10 @@ def test_subtx_pass(get_txevent_result):
 def test_get_delegation_stakes_pass(get_delegated_stakes_result):
     """Valid result."""
     result = DelegatedStakes.ingest_data(get_delegated_stakes_result)
+    assert result is not None
+
+
+def test_system_state_pass(get_system_state_result):
+    """Valid result."""
+    result = SuiSystemState.from_dict(get_system_state_result)
     assert result is not None

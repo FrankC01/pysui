@@ -128,6 +128,7 @@ class SuiClient(_ClientMixin):
             )
             result = self._execute(builder)
             if result.is_ok() and "error" not in result.result_data:
+                # print(result.result_data["result"])
                 result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
             elif "error" in result.result_data:
                 msg = result.result_data["error"]["message"]

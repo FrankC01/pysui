@@ -461,12 +461,11 @@ class CommitteeInfo(DataClassJsonMixin):
 
 
 @dataclass
-class StateParameters(DataClassJsonMixin):
+class SystemParameters(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
     min_validator_stake: int
     max_validator_candidate_count: int
-    storage_gas_price: int
 
 
 @dataclass
@@ -474,6 +473,16 @@ class TableVec(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
     contents: dict[str, int]
+
+
+@dataclass
+class LinkedTableForObjectID(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    head: dict[str, list[str]]
+    tail: dict[str, list[str]]
+    size: int
+    linked_object_id: str = field(metadata=config(field_name="id"))
 
 
 @dataclass
@@ -485,7 +494,7 @@ class StakingPool(DataClassJsonMixin):
     starting_epoch: int
     sui_balance: int
     validator_address: str
-    pending_delegations: TableVec
+    pending_delegations: LinkedTableForObjectID
     pending_withdraws: TableVec
 
     def __post_init__(self):
@@ -512,7 +521,7 @@ class StakeSubsidy(DataClassJsonMixin):
 class ValidatorMetaData(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    consensus_address: int
+    consensus_address: list[int]
     description: list[int]
     image_url: list[int]
     project_url: list[int]
@@ -567,26 +576,26 @@ class VecMapForValidatorPairAndTableVec(DataClassJsonMixin):
 class Validator(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    commission_rate: int
-    delegation_staking_pool: StakingPool
-    gas_price: int
     metadata: ValidatorMetaData
+    voting_power: int
+    stake_amount: int
     pending_stake: int
     pending_withdraw: int
-    stake_amount: int
+    gas_price: int
+    delegation_staking_pool: StakingPool
+    commission_rate: int
 
 
 @dataclass
 class ValidatorSet(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    active_validators: list[Validator]
+    active_validators: list[Validator]  # list[Validator]
     delegation_stake: int
     next_epoch_validators: list[ValidatorMetaData]
     pending_delegation_switches: VecMapForValidatorPairAndTableVec
     pending_removals: list[int]
     pending_validators: list[Validator]
-    quorum_stake_threshold: int
     validator_stake: int
 
 
@@ -608,9 +617,10 @@ class ValidatorReportRecords(DataClassJsonMixin):
 class SuiSystemState(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    info_uid: Union[dict, str] = field(metadata=config(field_name="info"))
     epoch: int
-    parameters: StateParameters
+    epoch_start_timestamp_ms: int
+    info_uid: Union[dict, int] = field(metadata=config(field_name="info"))
+    parameters: SystemParameters
     reference_gas_price: int
     safe_mode: bool
     stake_subsidy: StakeSubsidy
@@ -738,6 +748,7 @@ class SuiCoinObject(DataClassJsonMixin):
     version: int
     digest: str
     balance: int
+    previous_transaction: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     locked_until_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
     @property

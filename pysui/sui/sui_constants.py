@@ -33,6 +33,16 @@ LOCALNET_FAUCET_URL: str = "http://127.0.0.1:9123/gas"
 LOCALNET_SOCKET_URL: str = "ws://127.0.0.1:9000"
 """Localnet socket url."""
 
+
+TESTNET_ENVIRONMENT_KEY: str = "testnet"
+"""Testnet client configuration environment alias."""
+TESTNET_PATH_STRING: str = "~/.sui/sui_config/client.yaml"
+"""Testnet client configuration default."""
+TESTNET_FAUCET_URL: str = "http://faucet.testnet.sui.io/gas"
+"""Testnet client faucet url."""
+TESTNET_SOCKET_URL: str = "wss://fullnode.testnet.sui.io:443"
+"""Testnet socket url."""
+
 # Address lengths
 SUI_HEX_ADDRESS_STRING_LEN: int = 42
 """Length of valid address string with '0x' prefix."""

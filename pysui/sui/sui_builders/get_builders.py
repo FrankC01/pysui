@@ -597,41 +597,52 @@ class GetCheckpointContents(_NativeTransactionBuilder):
     """GetCheckpointContents return contents of a checkpoint, namely a list of execution digests."""
 
     @sui_builder()
-    def __init__(self, digest: SuiString):
+    def __init__(self, sequence_number: SuiInteger):
         """__init__ Initialize builder.
 
-        :param digest: Base58 digest string
-        :type digest: SuiString
+        :param sequence_number: The sequence number
+        :type sequence_number: SuiInteger
         """
         super().__init__("sui_getCheckpointContents", handler_cls=CheckpointContents, handler_func="from_dict")
 
 
-class GetCheckpointContentsBySequence(_NativeTransactionBuilder):
-    """GetCheckpointContentsBySequence return contents of a checkpoint based on its sequence number."""
+class GetCheckpointContentsByDigest(_NativeTransactionBuilder):
+    """GetCheckpointContentsByDigest return contents of a checkpoint based on its sequence number."""
 
     @sui_builder()
-    def __init__(self, sequence: SuiInteger):
+    def __init__(self, digest: SuiString):
         """__init__ Builder initializer.
 
-        :param sequence: Sequence number to get checkpoint contents for
-        :type sequence: SuiInteger
+        :param digest: Checkpint content digest
+        :type digest: SuiString
         """
-        super().__init__(
-            "sui_getCheckpointContentsBySequenceNumber", handler_cls=CheckpointContents, handler_func="from_dict"
-        )
+        super().__init__("sui_getCheckpointContentsByDigest", handler_cls=CheckpointContents, handler_func="from_dict")
 
 
 class GetCheckpointSummary(_NativeTransactionBuilder):
     """GetCheckpointSummary return a checkpoint summary based on a checkpoint sequence number."""
 
     @sui_builder()
-    def __init__(self, sequence: SuiInteger):
+    def __init__(self, sequence_number: SuiInteger):
         """__init__ Builder initializer.
 
-        :param sequence: Sequence number to get checkpoint contents summary for
-        :type sequence: SuiInteger
+        :param sequence_number: Sequence number to get checkpoint contents summary for
+        :type sequence_number: SuiInteger
         """
         super().__init__("sui_getCheckpointSummary", handler_cls=CheckpointSummary, handler_func="from_dict")
+
+
+class GetCheckpointSummaryByDigest(_NativeTransactionBuilder):
+    """GetCheckpointSummaryByDigest return a checkpoint summary based on checkpoint digest."""
+
+    @sui_builder()
+    def __init__(self, digest: SuiString):
+        """__init__ Builder initializer.
+
+        :param digest: Checkpint content digest
+        :type digest: SuiString
+        """
+        super().__init__("sui_getCheckpointSummaryByDigest", handler_cls=CheckpointSummary, handler_func="from_dict")
 
 
 class GetLatestCheckpointSequence(_NativeTransactionBuilder):

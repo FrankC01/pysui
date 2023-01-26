@@ -30,6 +30,9 @@ from pysui.sui.sui_constants import (
     LOCALNET_FAUCET_URL,
     LOCALNET_SOCKET_URL,
     SUI_KEYPAIR_LEN,
+    TESTNET_ENVIRONMENT_KEY,
+    TESTNET_FAUCET_URL,
+    TESTNET_SOCKET_URL,
 )
 from pysui.sui.sui_crypto import SuiAddress, keypair_from_keystring, create_new_address
 from pysui.sui.sui_excepts import (
@@ -72,7 +75,10 @@ class SuiConfig(ClientConfiguration):
             self._faucet_url = LOCALNET_FAUCET_URL
             self._socket_url = LOCALNET_SOCKET_URL
             self._local_running = True
-
+        elif env == TESTNET_ENVIRONMENT_KEY:
+            self._faucet_url = TESTNET_FAUCET_URL
+            self._socket_url = TESTNET_SOCKET_URL
+            self._local_running = False
         else:
             self._faucet_url = DEVNET_FAUCET_URL
             self._socket_url = DEVNET_SOCKET_URL

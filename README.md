@@ -11,12 +11,19 @@ If you still have keystores from pre 0.21.0, run the utility [keys-to-0210](http
 
 This utility SHOULD BE RUN BEFORE USING `pysui` SDK or samples
 
-If you have already regenerated keys with the SUI 0.21.0 binary install you can ignore the utility usage.
+If you have already regenerated keys with the SUI 0.21.0, or later, binary install you can ignore the utility usage.
 
-**Release-0.9.1**
+**Release-0.10.0**
 
 - Breaking changes
-- 100% coverage (builders, return types, etc.) and parity with _SUI 0.22.1 API_
+- 100% coverage (builders, return types, etc.) for parity with _SUI 0.23.0 API_ on devnet (see Testnet below)
+- ed25519,secp256k1 and secp256r1 account/keypairs supported
+- `--with-unpublished-dependencies` on publish not yet supported [sui](https://github.com/MystenLabs/sui/pull/7426)
+
+_Testnet support_
+
+- Testnet RPC API is versioned at 0.22.0 so some calls and results may break
+- Publishing requires the 0.22.0 binaries installed
 
 **PyPi**
 

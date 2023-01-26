@@ -454,9 +454,9 @@ class EventEnvelope(DataClassJsonMixin):
     """From sui_getEvents."""
 
     timestamp: int
+    event: dict
     transaction_digest: str = field(metadata=config(field_name="txDigest"))
     event_id: EventEnvelopID = field(metadata=config(field_name="id"))
-    event: dict
 
     def __post_init__(self):
         """Post init processing.

@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.10.0] 2023-01-25
+
+Breaking changes
+
+### Added
+
+- `previous_transaction` field on SuiCoinObject result as per SUI 0.23.0
+- `voting_power` field on Validator result (part of SuiSystemState) as per SUI 0.23.0
 - More documentation
 - Support for `secp256r1` [feature](https://github.com/FrankC01/pysui/issues/59)
   - Caveat: Key recovery not supported yet
@@ -22,10 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `pending_delegations` field structure change from TableVec to LinkedTableForObjectID
+- GetCheckpointContents now takes `sequence_number` (SuiInteger) vs `digest` (SuiString) as per SUI 0.23.0
+- GetCheckpointContentsBySequence renamed to _GetCheckpointContentsByDigest_ with argument `digest` as per SUI 0.23.0
 - Updated SuiSystemState result definition to include `safe_mode` field as per SUI 0.22.1
 - Updated CheckpointSummary result definition to include `timestamp_ms` field as per SUI 0.22.1
 
 ### Removed
+
+- `storage_gas_price` field from StateParameters result (part of SuiSystemState) as per SUI 0.23.0
+- `quorum_stake_threshold` field from ValidatorSet result (part of SuiSystemState) as per SUI 0.23.0
 
 ## [0.9.0] 2023-01-20
 
