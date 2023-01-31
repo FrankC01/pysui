@@ -22,6 +22,7 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
     DelegatedStakes,
     DynamicFields,
+    ObjectRawRead,
     SuiCoinBalance,
     SuiCoinMetadata,
     CoinBalances,
@@ -236,6 +237,19 @@ class GetObject(_NativeTransactionBuilder):
         :type sui_object: ObjectID, optional
         """
         super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
+
+
+class GetRawObject(_NativeTransactionBuilder):
+    """."""
+
+    @sui_builder()
+    def __init__(self, object_id: ObjectID) -> None:
+        """__init__ Initializes builder.
+
+        :param sui_object: Object identifier to fetch from chain, defaults to None
+        :type sui_object: ObjectID, optional
+        """
+        super().__init__("sui_getRawObject", handler_cls=ObjectRawRead, handler_func="factory")
 
 
 class GetPastObject(_NativeTransactionBuilder):

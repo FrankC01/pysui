@@ -368,6 +368,83 @@ class ObjectRead(DataClassJsonMixin):
         return cls._differentiate(indata)
 
 
+# Object Raw Data
+
+
+@dataclass
+class ObjectRawData(DataClassJsonMixin):
+    """From sui_getRawObject."""
+
+    has_public_transfer: bool
+    bcs_bytes: str
+    version: int
+    data_type: str = field(metadata=config(field_name="dataType"))
+    type_: str = field(metadata=config(field_name="type"))
+
+
+@dataclass
+class ObjectRawPackage(DataClassJsonMixin):
+    """From sui_getRawObject."""
+
+    package_id: str = field(metadata=config(field_name="id"))
+    data_type: str = field(metadata=config(field_name="dataType"))
+    module_map: dict
+
+
+@dataclass
+class ObjectRawRead(DataClassJsonMixin):
+    """From sui_getRawObject."""
+
+    data: Union[dict, ObjectRead, ObjectRawData, ObjectRawPackage]
+    owner: Any
+    reference: GenericRef
+    storage_rebate: int = field(metadata=config(field_name="storageRebate"))
+    previous_transaction: str = field(metadata=config(field_name="previousTransaction"))
+
+    def __post_init__(self):
+        """Post init processing for parameters."""
+        if self.data["dataType"] == "package":
+            self.data = ObjectRawPackage.from_dict(self.data)
+        else:
+            self.data = ObjectRawData.from_dict(self.data)
+
+    @classmethod
+    def _differentiate(cls, indata: dict) -> Union["ObjectRawRead", ObjectNotExist, ObjectDeleted]:
+        """_differentiate determines concrete type and instantiates it.
+
+        :param indata: Dictionary mapped from JSON result of `sui_getObject`
+        :type indata: dict
+        :return: If it exists, ObjectRead subclass, if not ObjectNotExist or ObjectDeleted if it has been
+        :rtype: Union[ObjectRawRead, ObjectNotExist, ObjectDeleted]
+        """
+        read_object = indata["details"]
+        match indata["status"]:
+            case "Exists":
+                result = ObjectRawRead.from_dict(read_object)
+            case "ObjectNotExists" | "NotExists":
+                result: ObjectRead = ObjectNotExist.from_dict({"object_id": read_object})
+            case "VersionNotFound":
+                result: ObjectRead = ObjectVersionNotFound.from_dict(
+                    {"object_id": read_object[0], "version_requested": read_object[1]}
+                )
+            case "Deleted":
+                result: ObjectRead = ObjectDeleted.from_dict({"reference": read_object})
+        return result
+
+    @classmethod
+    def factory(cls, indata: Union[dict, list[dict]]) -> Union[Any, list]:
+        """factory that consumes inbound data result.
+
+        :param indata: Data received from `sui_getObject`
+        :type indata: Union[dict, list[dict]]
+        :return: results of `indata` parse
+        :rtype: Union[Any, list]
+        """
+        if isinstance(indata, list):
+            return [cls._differentiate(x) for x in indata]
+        return cls._differentiate(indata)
+
+
 @dataclass
 class SuiPackage(ObjectPackageReadData):
     """SuiPackage is a package object.
