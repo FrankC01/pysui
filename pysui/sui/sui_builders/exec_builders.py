@@ -96,53 +96,64 @@ class InspectTransaction(_NativeTransactionBuilder):
     """
 
     @sui_builder()
-    def __init__(self, *, tx_bytes: SuiTxBytes, epoch: Optional[SuiInteger] = None) -> None:
+    def __init__(
+        self,
+        *,
+        sender_address: SuiAddress,
+        tx_bytes: SuiTxBytes,
+        gas_price: Optional[SuiInteger],
+        epoch: Optional[SuiInteger] = None,
+    ) -> None:
         """__init__ Initialize builder.
 
+        :param sender_address: The sender/signer of transaction bytes
+        :type tx_bytes: SuiAddress
         :param tx_bytes: The transaction bytes returned from previous tx executions to inspect
         :type tx_bytes: SuiTxBytes
+        :param gas_price: Gas is not charged, but gas usage is still calculated. Default to use reference gas price
+        :type gas_price: Optional[SuiInteger]
         :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
         :type epoch: Optional[SuiInteger]
         """
         super().__init__("sui_devInspectTransaction", handler_cls=TxInspectionResult, handler_func="from_dict")
 
 
-class InspectMoveCall(_NativeTransactionBuilder):
-    """InspectMoveCall when executed, Similar to `MoveCall` but does not require gas object and budget.
+# class InspectMoveCall(_NativeTransactionBuilder):
+#     """InspectMoveCall when executed, Similar to `MoveCall` but does not require gas object and budget.
 
-    The main purpose of this is to inspect the changes/effects of the call.
-    """
+#     The main purpose of this is to inspect the changes/effects of the call.
+#     """
 
-    @sui_builder()
-    def __init__(
-        self,
-        *,
-        sender_address: SuiAddress,
-        package_object_id: ObjectID,
-        module: SuiString,
-        function: SuiString,
-        type_arguments: SuiArray[SuiString],
-        arguments: SuiArray[SuiString],
-        epoch: Optional[SuiInteger] = None,
-    ) -> None:
-        """__init__ Builder initializer.
+#     @sui_builder()
+#     def __init__(
+#         self,
+#         *,
+#         sender_address: SuiAddress,
+#         package_object_id: ObjectID,
+#         module: SuiString,
+#         function: SuiString,
+#         type_arguments: SuiArray[SuiString],
+#         arguments: SuiArray[SuiString],
+#         epoch: Optional[SuiInteger] = None,
+#     ) -> None:
+#         """__init__ Builder initializer.
 
-        :param sender_address: the transaction signer's Sui address
-        :type sender_address: SuiAddress
-        :param package_object_id: the Move package ID, e.g. `0x2`
-        :type package_object_id: ObjectID
-        :param module: the Move module name, e.g. `devnet_nft`
-        :type module: SuiString
-        :param function: the move function name, e.g. `mint`
-        :type function: SuiString
-        :param type_arguments: the type arguments of the Move function
-        :type type_arguments: SuiArray[SuiString]
-        :param arguments: the arguments to be passed into the Move function
-        :type arguments: SuiArray[SuiString]
-        :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
-        :type epoch: Optional[SuiInteger]
-        """
-        super().__init__("sui_devInspectMoveCall", handler_cls=TxInspectionResult, handler_func="from_dict")
+#         :param sender_address: the transaction signer's Sui address
+#         :type sender_address: SuiAddress
+#         :param package_object_id: the Move package ID, e.g. `0x2`
+#         :type package_object_id: ObjectID
+#         :param module: the Move module name, e.g. `devnet_nft`
+#         :type module: SuiString
+#         :param function: the move function name, e.g. `mint`
+#         :type function: SuiString
+#         :param type_arguments: the type arguments of the Move function
+#         :type type_arguments: SuiArray[SuiString]
+#         :param arguments: the arguments to be passed into the Move function
+#         :type arguments: SuiArray[SuiString]
+#         :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
+#         :type epoch: Optional[SuiInteger]
+#         """
+#         super().__init__("sui_devInspectMoveCall", handler_cls=TxInspectionResult, handler_func="from_dict")
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):

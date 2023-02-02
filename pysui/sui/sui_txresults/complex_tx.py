@@ -16,7 +16,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
-from pysui.sui.sui_txresults.common import CoinRef, GenericOwnerRef, GenericRef, PackageRef, SuiTxReturnType
+from pysui.sui.sui_txresults.common import CoinRef, GenericOwnerRef, GenericRef, SuiTxReturnType
 from pysui.sui.sui_types.collections import EventID
 
 
@@ -26,11 +26,9 @@ class MoveCallTx(SuiTxReturnType, DataClassJsonMixin):
 
     function: str
     module: str
-    package: PackageRef
-    arguments: Optional[list[Union[str, list[int]]]] = field(
-        metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
-    )
-    type_arguments: Optional[list[str]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
+    package: str
+    arguments: list[Any] = field(default_factory=list)
+    type_arguments: list[Any] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
 
 
 @dataclass
@@ -282,7 +280,7 @@ class MoveEvent(SuiTxReturnType, DataClassJsonMixin):
     package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     sender: str
-    type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    event_type: str = field(metadata=config(field_name="type"))
     bcs: str
     fields: dict
 

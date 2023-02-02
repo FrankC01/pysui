@@ -675,3 +675,13 @@ class GetReferenceGasPrice(_NativeTransactionBuilder):
     def __init__(self):
         """Builder initializer."""
         super().__init__("sui_getReferenceGasPrice")
+
+
+class SignRandomnessObject(_NativeTransactionBuilder):
+    """SignRandomnessObject Sign an a Randomness object with threshold BLS."""
+
+    @sui_builder()
+    def __init__(self, object_id: ObjectID, commitment_type: SuiString):
+        """."""
+        super().__init__("sui_tblsSignRandomnessObject")
+        raise NotImplementedError(self)

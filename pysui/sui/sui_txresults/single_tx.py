@@ -412,9 +412,9 @@ class ObjectRawRead(DataClassJsonMixin):
     def _differentiate(cls, indata: dict) -> Union["ObjectRawRead", ObjectNotExist, ObjectDeleted]:
         """_differentiate determines concrete type and instantiates it.
 
-        :param indata: Dictionary mapped from JSON result of `sui_getObject`
+        :param indata: Dictionary mapped from JSON result of `sui_getRawObject`
         :type indata: dict
-        :return: If it exists, ObjectRead subclass, if not ObjectNotExist or ObjectDeleted if it has been
+        :return: If it exists, ObjectRawRead subclass, if not ObjectNotExist or ObjectDeleted if it has been
         :rtype: Union[ObjectRawRead, ObjectNotExist, ObjectDeleted]
         """
         read_object = indata["details"]
@@ -423,10 +423,6 @@ class ObjectRawRead(DataClassJsonMixin):
                 result = ObjectRawRead.from_dict(read_object)
             case "ObjectNotExists" | "NotExists":
                 result: ObjectRead = ObjectNotExist.from_dict({"object_id": read_object})
-            case "VersionNotFound":
-                result: ObjectRead = ObjectVersionNotFound.from_dict(
-                    {"object_id": read_object[0], "version_requested": read_object[1]}
-                )
             case "Deleted":
                 result: ObjectRead = ObjectDeleted.from_dict({"reference": read_object})
         return result
@@ -435,7 +431,7 @@ class ObjectRawRead(DataClassJsonMixin):
     def factory(cls, indata: Union[dict, list[dict]]) -> Union[Any, list]:
         """factory that consumes inbound data result.
 
-        :param indata: Data received from `sui_getObject`
+        :param indata: Data received from `sui_getRawObject`
         :type indata: Union[dict, list[dict]]
         :return: results of `indata` parse
         :rtype: Union[Any, list]

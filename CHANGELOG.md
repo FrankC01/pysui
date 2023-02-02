@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
+Breaking changes
+
 ### Added
 
 - Reintroduce GetRawObject builder and results
@@ -15,7 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Added new required field for DevInspectTransaction `sender_address` as per [SUI 0.24.0](https://github.com/MystenLabs/sui/releases/tag/devnet-0.24.0)
+- `package` on MoveCall transaction result type is now just a object ID string as per [SUI 0.24.0](https://github.com/MystenLabs/sui/releases/tag/devnet-0.24.0)
+
 ### Removed
+
+- DevInspectMoveCall as per [SUI 0.24.0](https://github.com/MystenLabs/sui/releases/tag/devnet-0.24.0)
 
 ## [0.10.0] 2023-01-25
 

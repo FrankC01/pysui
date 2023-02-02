@@ -154,3 +154,9 @@ def test_system_state_pass(get_system_state_result):
     """Valid result."""
     result = SuiSystemState.from_dict(get_system_state_result)
     assert result is not None
+
+
+def test_stake_delegation_pass(stake_delegation_result):
+    """Valid result."""
+    result = TxEffectResult.from_dict(stake_delegation_result)
+    assert result is not None

@@ -5,7 +5,7 @@
 Python Client SDK for Sui blockchain
 
 **NOTICE: README FIRST**
-SUI 0.21.0 introduces a change to keystore (file) keystring persist.
+SUI 0.21.0 introduced a change to keystore/keypair keystring.
 
 If you still have keystores from pre 0.21.0, run the utility [keys-to-0210](https://github.com/FrankC01/pysui/blob/main/samples/README.md)
 
@@ -13,17 +13,18 @@ This utility SHOULD BE RUN BEFORE USING `pysui` SDK or samples
 
 If you have already regenerated keys with the SUI 0.21.0, or later, binary install you can ignore the utility usage.
 
-**Release-0.10.0**
+**Release-0.11.0**
 
 - Breaking changes
-- 100% coverage (builders, return types, etc.) for parity with _SUI 0.23.0 API_ on devnet (see Testnet below)
+- 100% coverage (builders, return types, etc.) for parity with _SUI 0.24.0 API_ on devnet (see Testnet below)
 - ed25519,secp256k1 and secp256r1 account/keypairs supported
 - `--with-unpublished-dependencies` on publish not yet supported [sui](https://github.com/MystenLabs/sui/pull/7426)
+- Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
-_Testnet support_
+_Testnet not supported!_
 
 - Testnet RPC API is versioned at 0.22.0 so some calls and results may break
-- Publishing requires the 0.22.0 binaries installed
+- Publishing requires the 0.22.0 binaries installed conflicting with the more recent devnet 0.24.0 binaries
 
 **PyPi**
 
@@ -35,8 +36,6 @@ you may find interesting. It is a separate package also on on PyPi.
 **Documentation**
 
 - [ReadTheDocs](https://pysui.readthedocs.io/en/latest/index.html)
-
-Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
 ## Ready to run
 

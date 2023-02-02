@@ -160,6 +160,11 @@ class SuiString(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def commitment_type(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
 
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""
@@ -284,6 +289,11 @@ class SuiInteger(SuiScalarType):
 
     @property
     def gas_budget(self) -> int:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def gas_price(self) -> int:
         """Alias for transactions."""
         return self.value
 
