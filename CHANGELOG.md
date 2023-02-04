@@ -13,7 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Move build distro to pyproject.toml from setup.cfg [build](https://github.com/FrankC01/pysui/issues/61)
+
 ### Removed
+
+- setup.cfg
 
 ## [0.11.0] 2023-02-02
 
