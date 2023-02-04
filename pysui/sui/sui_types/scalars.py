@@ -68,6 +68,11 @@ class SuiNullType(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def gas_price(self) -> None:
+        """Alias for transactions."""
+        return self.value
+
 
 class SuiString(SuiScalarType):
     """Sui String type."""
@@ -162,6 +167,11 @@ class SuiString(SuiScalarType):
 
     @property
     def commitment_type(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def tx_bytes(self) -> str:
         """Alias for transactions."""
         return self.value
 

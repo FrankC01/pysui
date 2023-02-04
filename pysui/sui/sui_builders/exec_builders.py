@@ -100,16 +100,16 @@ class InspectTransaction(_NativeTransactionBuilder):
         self,
         *,
         sender_address: SuiAddress,
-        tx_bytes: SuiTxBytes,
-        gas_price: Optional[SuiInteger],
+        tx_bytes: SuiString,
+        gas_price: Optional[SuiInteger] = None,
         epoch: Optional[SuiInteger] = None,
     ) -> None:
         """__init__ Initialize builder.
 
         :param sender_address: The sender/signer of transaction bytes
         :type tx_bytes: SuiAddress
-        :param tx_bytes: The transaction bytes returned from previous tx executions to inspect
-        :type tx_bytes: SuiTxBytes
+        :param tx_bytes: BCS serialize base64 encoded string of TransactionKind
+        :type tx_bytes: SuiString
         :param gas_price: Gas is not charged, but gas usage is still calculated. Default to use reference gas price
         :type gas_price: Optional[SuiInteger]
         :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
