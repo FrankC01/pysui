@@ -534,15 +534,26 @@ if __name__ == "__main__":
     # print(r1_mnen)
     # print(r1_addy)
     # print(r1_kp)
+    kmem_raw = "fire secret satisfy piano candy grab spot material youth front child keep avocado pulse stuff wage useless brave stem sweet anger negative father goose"
+    kmem = kmem_raw.split(" ")
+    kstr = "AHFAKI8MACQiWoym4sEhixNMWiprArwEAvc/XR71TRvl"
+    oaddy = "0x843badffe5ba00864c13b60fdf1784a922ba8a6e"
+    kbin = base64.b64decode(kstr)
+    print(kstr)
+    r1_mnen, r1_kp, r1_addy = create_new_address(SignatureScheme.ED25519, kmem)
+    if r1_addy.value == oaddy:
+        print("Address maps")
+    r1_b64 = r1_kp.serialize()
+    if r1_b64 == kstr:
+        print("Keystring matches")
+    # mnen = "garlic multiply raise promote waste during control swim plunge surprise alley endless soccer around salon game supreme achieve ginger hospital salad elder picture utility"
+    # # kstr = "AgOmrwvtROqx5uPnYzEFHKUDOLtala2fJsPtV8TB53xT"
+    # # addy = "0xa9cdeb2f2dcc6b43929d7775dddb600b17010c14"
 
-    mnen = "garlic multiply raise promote waste during control swim plunge surprise alley endless soccer around salon game supreme achieve ginger hospital salad elder picture utility"
-    # kstr = "AgOmrwvtROqx5uPnYzEFHKUDOLtala2fJsPtV8TB53xT"
-    # addy = "0xa9cdeb2f2dcc6b43929d7775dddb600b17010c14"
-
-    # is_f = "AFVF2jlTA/GUKHFOmmVyjJDTyvg5lGnkkx3GwTWW+z02"
-    # res = SuiAddress.from_keypair_string(is_f)
-    # print(res)
-    r1_mnen, r1_kp, r1_addy = recover_key_and_address(SignatureScheme.SECP256R1, mnen, SECP256R1_DEFAULT_KEYPATH)
-    print(r1_mnen)
-    print(r1_addy)
-    print(r1_kp)
+    # # is_f = "AFVF2jlTA/GUKHFOmmVyjJDTyvg5lGnkkx3GwTWW+z02"
+    # # res = SuiAddress.from_keypair_string(is_f)
+    # # print(res)
+    # r1_mnen, r1_kp, r1_addy = recover_key_and_address(SignatureScheme.SECP256R1, mnen, SECP256R1_DEFAULT_KEYPATH)
+    # print(r1_mnen)
+    # print(r1_addy)
+    # print(r1_kp)

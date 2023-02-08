@@ -29,7 +29,6 @@ from pysui.sui.sui_constants import (
     LOCALNET_ENVIRONMENT_KEY,
     LOCALNET_FAUCET_URL,
     LOCALNET_SOCKET_URL,
-    SUI_KEYPAIR_LEN,
     TESTNET_ENVIRONMENT_KEY,
     TESTNET_FAUCET_URL,
     TESTNET_SOCKET_URL,
@@ -41,7 +40,6 @@ from pysui.sui.sui_excepts import (
     SuiNoKeyPairs,
     SuiKeystoreFileError,
     SuiKeystoreAddressError,
-    SuiInvalidKeystringLength,
 )
 
 
@@ -93,11 +91,6 @@ class SuiConfig(ClientConfiguration):
                     if len(self._keystrings) > 0:
 
                         for keystr in self._keystrings:
-                            # TODO: Remove this check in 0.9.0 release
-                            if len(keystr) > SUI_KEYPAIR_LEN:
-                                raise SuiInvalidKeystringLength(
-                                    f"Expected {SUI_KEYPAIR_LEN} found {len(keystr)}\nRun utilities/key_to_0210."
-                                )
                             kpair = keypair_from_keystring(keystr)
                             self._keypairs[keystr] = kpair
                             addy = SuiAddress.from_keypair_string(kpair.to_b64())
@@ -123,29 +116,35 @@ class SuiConfig(ClientConfiguration):
         else:
             raise SuiFileNotFound((filepath))
 
-    def create_new_keypair_and_address(self, scheme: SignatureScheme) -> tuple[str, str]:
-        """create_new_keypair_and_address Create a new keypair and address identifier.
+    def create_new_keypair_and_address(
+        self, scheme: SignatureScheme, mnemonics: str = None, derivation_path: str = None
+    ) -> tuple[str, KeyPair, SuiAddress]:
+        """create_new_keypair_and_address Create a new keypair and address identifier and writes to client.yaml.
 
         :param scheme: Identifies whether new key is ed25519 or secp256k1
         :type scheme: SignatureScheme
-        :raises NotImplementedError: If invalid scheme is provided
-        :return: A tuple containing the mnemonic 12 words for key recover and the new address
-        :rtype: tuple[str, str]
+        :param mnemonics: string of phrases separated by spaces, defaults to None
+        :type mnemonics: str, optional
+        :param derivation_path: The derivation path for key, specific to Signature scheme, defaults to root path of scheme
+        :type derivation_path: str, optional
+        :raises NotImplementedError: When providing unregognized scheme
+        :return: The input or generated mnemonic string,a new KeyPair and associated SuiAddress
+        :rtype: tuple[str, KeyPair, SuiAddress]
         """
         if scheme == SignatureScheme.ED25519:
-            mnen, keypair, address = create_new_address(scheme)
+            mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
             self._addresses[address.address] = address
             self._address_keypair[address.address] = keypair
             self._write_keypair(keypair)
             return mnen, address.identifier
         if scheme == SignatureScheme.SECP256K1:
-            mnen, keypair, address = create_new_address(scheme)
+            mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
             self._addresses[address.address] = address
             self._address_keypair[address.address] = keypair
             self._write_keypair(keypair)
             return mnen, address.identifier
         if scheme == SignatureScheme.SECP256R1:
-            mnen, keypair, address = create_new_address(scheme)
+            mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
             self._addresses[address.address] = address
             self._address_keypair[address.address] = keypair
             self._write_keypair(keypair)
