@@ -353,12 +353,48 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
+class CertifiedFinality(SuiTxReturnType, DataClassJsonMixin):
+    """From sui_executeTransaction."""
+
+    epoch: int
+    signature: str
+    signers_map: list[int]
+
+
+@dataclass
+class CheckpointedFinality(SuiTxReturnType, DataClassJsonMixin):
+    """From sui_executeTransaction."""
+
+    checkpointed: dict
+
+
+@dataclass
 class EffectsBlock(SuiTxReturnType, DataClassJsonMixin):
     """Effects Block."""
 
     transaction_effects_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     effects: Effects
-    auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
+    # auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
+    finality_info: Union[dict, CertifiedFinality, CheckpointedFinality] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Hydrate relevant Events and other types
+        """
+        if self.finality_info:
+            ev_map = list(self.finality_info.items())
+            event_key = ev_map[0][0]
+            event_value = ev_map[0][1]
+            match event_key:
+                case "certified":
+                    self.finality_info = CertifiedFinality.from_dict(event_value)
+                case "checkpointed":
+                    self.finality_info = CheckpointedFinality({event_key: event_value})
+                case _:
+                    raise ValueError(f"{event_key} unknown finality_info type.")
 
 
 @dataclass
@@ -384,7 +420,14 @@ class EffectsCertTx(SuiTxReturnType, DataClassJsonMixin):
 class TxEffectResult(SuiTxReturnType, DataClassJsonMixin):
     """Transaction Result."""
 
-    effects_cert: EffectsCertTx = field(metadata=config(field_name="EffectsCert"))
+    effects_cert: Union[dict, EffectsCertTx]  # = field(metadata=config(field_name="EffectsCert"))
+
+    # def __post_init__(self):
+    #     """Post init processing.
+
+    #     Hydrate relevant Events and other types
+    #     """
+    #     self.effects_cert = EffectsCertTx.from_dict(self.effects_cert)
 
     @property
     def succeeded(self) -> bool:
@@ -397,6 +440,17 @@ class TxEffectResult(SuiTxReturnType, DataClassJsonMixin):
         if self.succeeded:
             return "success"
         return f"{self.effects_cert.effects.effects.status.status} - {self.effects_cert.effects.effects.status.error}"
+
+    @classmethod
+    def factory(cls, indata: dict) -> "TxEffectResult":
+        """factory deserialize execution result.
+
+        :param indata: Valid response from sui_executeTransaction
+        :type indata: dict
+        :return: Instantiated data tree
+        :rtype: TxEffectResult
+        """
+        return cls(EffectsCertTx.from_dict(indata))  # .from_dict({"effects_cert": indata})
 
 
 @dataclass

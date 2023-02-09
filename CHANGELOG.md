@@ -15,6 +15,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.12.0] 2023-02-09
+
+Breaking change.
+
+### Added
+
+- A new package, `sui_move` for deserialization of move compiled modules. This is primarily used in Publish supporting `--with-unpublished-dependencies`
+
+### Fixed
+
+### Changed
+
+- Results from `sui_executeTransaction` and `sui_executeTransactionSerializedSig` changes aligning to SUI 0.25.0
+- secp256k1 transaction signing changes as per [sui](https://github.com/MystenLabs/sui/pull/7423)
+- Added optional mnemonic phrase and derivation path arguments to `create_new_keypair_and_address` SuiConfig methods.
+- Move build distro to pyproject.toml from setup.cfg [build](https://github.com/FrankC01/pysui/issues/61)
+
+### Removed
+
+- setup.cfg
+
 ## [0.11.0] 2023-02-02
 
 Breaking changes

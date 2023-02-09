@@ -13,12 +13,12 @@ This utility SHOULD BE RUN BEFORE USING `pysui` SDK or samples
 
 If you have already regenerated keys with the SUI 0.21.0, or later, binary install you can ignore the utility usage.
 
-**Release-0.11.0**
+**Release-0.12.0**
 
 - Breaking changes
-- 100% coverage (builders, return types, etc.) for parity with _SUI 0.24.0 API_ on devnet (see Testnet below)
-- ed25519,secp256k1 and secp256r1 account/keypairs supported
-- `--with-unpublished-dependencies` on publish not yet supported [sui](https://github.com/MystenLabs/sui/pull/7426)
+- 100% coverage (builders, return types, etc.) for parity with _SUI 0.25.0 API_ on devnet (see Testnet below)
+- ed25519 and secp256k1 and secp256r1 account/keypairs supported (see next for secp256r1)
+- _**unresolved issue with secp256r1 signing**_ Currently fails with signature error [sui](https://github.com/MystenLabs/sui/pull/7423)
 - Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
 _Testnet not supported!_

@@ -22,7 +22,7 @@ from pysui.sui.sui_txresults.single_tx import (
     SuiSystemState,
 )
 
-from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TxEffectResult, SubscribedTransaction
+from pysui.sui.sui_txresults.complex_tx import EffectsCertTx, EventQueryEnvelope, TxEffectResult, SubscribedTransaction
 
 
 def test_sui_coin_descriptor(sui_coin_descriptor):
@@ -60,6 +60,13 @@ def test_suigas_objectread_pass(suicoin_objectread_type):
 def test_payallsui_result_pass(payallsui_result):
     """Valid result."""
     result = TxEffectResult.from_dict(payallsui_result)
+    assert result.succeeded is True
+    assert result.status == "success"
+
+
+def test_paysui_result_pass(paysui_result):
+    """Valid result."""
+    result = TxEffectResult.factory(paysui_result)
     assert result.succeeded is True
     assert result.status == "success"
 
