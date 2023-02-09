@@ -495,14 +495,4 @@ COERCION_FN_MAP = {
 }
 
 if __name__ == "__main__":
-    project_path = os.path.expanduser("~/frankc01/sui-two/parent")
-    x = _package_modules_to_b64(Path(project_path), True, True)
-    for mod in x:
-        print(mod.value)
-    # build_sdirs = []
-    # if not Path(project_path).exists():
-    #     print("No build")
-    # else:
-    #     build_sdirs = [x for x in os.scandir(project_path) if x.is_dir()]
-    #     for bdir in build_sdirs:
-    #         print(bdir.path)
+    pass

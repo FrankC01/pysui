@@ -125,12 +125,14 @@ class SuiConfig(ClientConfiguration):
         :type scheme: SignatureScheme
         :param mnemonics: string of phrases separated by spaces, defaults to None
         :type mnemonics: str, optional
-        :param derivation_path: The derivation path for key, specific to Signature scheme, defaults to root path of scheme
+        :param derivation_path: The derivation path for key, specific to Signature scheme,
+            defaults to root path of scheme
         :type derivation_path: str, optional
         :raises NotImplementedError: When providing unregognized scheme
         :return: The input or generated mnemonic string,a new KeyPair and associated SuiAddress
         :rtype: tuple[str, KeyPair, SuiAddress]
         """
+        # TODO: Refactor this
         if scheme == SignatureScheme.ED25519:
             mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
             self._addresses[address.address] = address

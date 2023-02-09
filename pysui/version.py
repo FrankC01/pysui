@@ -12,4 +12,4 @@
 # -*- coding: utf-8 -*-
 
 """Pysui Version."""
-__version__ = "0.11.3"
+__version__ = "0.12.0"

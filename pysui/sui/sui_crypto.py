@@ -277,11 +277,7 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
 
     def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """secp256k1 sign data bytes."""
-        sig = self._signing_key.ecdsa_sign_recoverable(data)
-        sig_sb, sig_si = self._signing_key.ecdsa_recoverable_serialize(sig)
-        sig_ba = bytearray(sig_sb)
-        sig_ba.append(sig_si)
-        return bytes(sig_ba)
+        return self._signing_key.ecdsa_serialize_compact(self._signing_key.ecdsa_sign(data))
 
 
 # TODO: Change to use the ecdsa library
@@ -530,30 +526,4 @@ def recover_key_and_address(
 
 # pylint:disable=line-too-long,invalid-name
 if __name__ == "__main__":
-    # r1_mnen, r1_kp, r1_addy = create_new_address(SignatureScheme.SECP256R1)
-    # print(r1_mnen)
-    # print(r1_addy)
-    # print(r1_kp)
-    kmem_raw = "fire secret satisfy piano candy grab spot material youth front child keep avocado pulse stuff wage useless brave stem sweet anger negative father goose"
-    kmem = kmem_raw.split(" ")
-    kstr = "AHFAKI8MACQiWoym4sEhixNMWiprArwEAvc/XR71TRvl"
-    oaddy = "0x843badffe5ba00864c13b60fdf1784a922ba8a6e"
-    kbin = base64.b64decode(kstr)
-    print(kstr)
-    r1_mnen, r1_kp, r1_addy = create_new_address(SignatureScheme.ED25519, kmem)
-    if r1_addy.value == oaddy:
-        print("Address maps")
-    r1_b64 = r1_kp.serialize()
-    if r1_b64 == kstr:
-        print("Keystring matches")
-    # mnen = "garlic multiply raise promote waste during control swim plunge surprise alley endless soccer around salon game supreme achieve ginger hospital salad elder picture utility"
-    # # kstr = "AgOmrwvtROqx5uPnYzEFHKUDOLtala2fJsPtV8TB53xT"
-    # # addy = "0xa9cdeb2f2dcc6b43929d7775dddb600b17010c14"
-
-    # # is_f = "AFVF2jlTA/GUKHFOmmVyjJDTyvg5lGnkkx3GwTWW+z02"
-    # # res = SuiAddress.from_keypair_string(is_f)
-    # # print(res)
-    # r1_mnen, r1_kp, r1_addy = recover_key_and_address(SignatureScheme.SECP256R1, mnen, SECP256R1_DEFAULT_KEYPATH)
-    # print(r1_mnen)
-    # print(r1_addy)
-    # print(r1_kp)
+    pass

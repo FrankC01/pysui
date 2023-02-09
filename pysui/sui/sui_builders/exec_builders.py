@@ -48,7 +48,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         :param request_type: The request type
         :type request_type: SuiRequestType
         """
-        super().__init__("sui_executeTransaction", handler_cls=TxEffectResult, handler_func="from_dict")
+        super().__init__("sui_executeTransaction", handler_cls=TxEffectResult, handler_func="factory")
 
 
 class ExecuteSerializedTransaction(_NativeTransactionBuilder):
@@ -73,7 +73,7 @@ class ExecuteSerializedTransaction(_NativeTransactionBuilder):
         :param request_type: The type of request to use in submitting transaction
         :type request_type: SuiRequestType
         """
-        super().__init__("sui_executeTransactionSerializedSig", handler_cls=TxEffectResult, handler_func="from_dict")
+        super().__init__("sui_executeTransactionSerializedSig", handler_cls=TxEffectResult, handler_func="factory")
 
 
 class DryRunTransaction(_NativeTransactionBuilder):
@@ -116,44 +116,6 @@ class InspectTransaction(_NativeTransactionBuilder):
         :type epoch: Optional[SuiInteger]
         """
         super().__init__("sui_devInspectTransaction", handler_cls=TxInspectionResult, handler_func="from_dict")
-
-
-# class InspectMoveCall(_NativeTransactionBuilder):
-#     """InspectMoveCall when executed, Similar to `MoveCall` but does not require gas object and budget.
-
-#     The main purpose of this is to inspect the changes/effects of the call.
-#     """
-
-#     @sui_builder()
-#     def __init__(
-#         self,
-#         *,
-#         sender_address: SuiAddress,
-#         package_object_id: ObjectID,
-#         module: SuiString,
-#         function: SuiString,
-#         type_arguments: SuiArray[SuiString],
-#         arguments: SuiArray[SuiString],
-#         epoch: Optional[SuiInteger] = None,
-#     ) -> None:
-#         """__init__ Builder initializer.
-
-#         :param sender_address: the transaction signer's Sui address
-#         :type sender_address: SuiAddress
-#         :param package_object_id: the Move package ID, e.g. `0x2`
-#         :type package_object_id: ObjectID
-#         :param module: the Move module name, e.g. `devnet_nft`
-#         :type module: SuiString
-#         :param function: the move function name, e.g. `mint`
-#         :type function: SuiString
-#         :param type_arguments: the type arguments of the Move function
-#         :type type_arguments: SuiArray[SuiString]
-#         :param arguments: the arguments to be passed into the Move function
-#         :type arguments: SuiArray[SuiString]
-#         :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
-#         :type epoch: Optional[SuiInteger]
-#         """
-#         super().__init__("sui_devInspectMoveCall", handler_cls=TxInspectionResult, handler_func="from_dict")
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):
