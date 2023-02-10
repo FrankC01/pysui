@@ -717,8 +717,8 @@ class StakedSui(DataClassJsonMixin):
     stake_id: str = field(metadata=config(field_name="id"))
     pool_starting_epoch: int
     principal: Union[dict, int]
-    sui_token_lock: int
     validator_address: str
+    sui_token_lock: Union[int, None] = 0
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""

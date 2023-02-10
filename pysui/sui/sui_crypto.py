@@ -158,9 +158,7 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
 
     def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
         """SECP256R1 sign data bytes."""
-        core_sig = self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256)
-        core_sig += recovery_id.to_bytes(1, "little")
-        return core_sig
+        return self._signing_key.sign(data, hashfunc=hashlib.sha256, allow_truncate=False)
 
 
 class SuiKeyPairSECP256R1(SuiKeyPair):

@@ -11,7 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- secp256r1 signing [change](https://github.com/FrankC01/pysui/issues/67)
+
 ### Changed
+
+- Made `sui_token_lock` on `StakedSui` optional result
 
 ### Removed
 

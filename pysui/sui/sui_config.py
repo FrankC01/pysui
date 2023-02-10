@@ -42,7 +42,7 @@ from pysui.sui.sui_excepts import (
     SuiKeystoreAddressError,
 )
 
-
+# pylint:disable=too-many-instance-attributes
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
@@ -259,3 +259,6 @@ class SuiConfig(ClientConfiguration):
         stale_addy = self._active_address
         self._active_address = address
         return stale_addy
+
+
+# pylint:enable=too-many-instance-attributes
