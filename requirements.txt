@@ -6,3 +6,5 @@ h2==4.1.0
 bip-utils==2.7.0
 websockets==10.4
 typing_utils==0.1.0
+canoser==0.8.2
+base58==2.1.1

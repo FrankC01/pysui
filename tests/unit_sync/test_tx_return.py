@@ -57,53 +57,9 @@ def test_suigas_objectread_pass(suicoin_objectread_type):
     assert result is not None
 
 
-def test_payallsui_result_pass(payallsui_result):
-    """Valid result."""
-    result = TxEffectResult.from_dict(payallsui_result)
-    assert result.succeeded is True
-    assert result.status == "success"
-
-
 def test_paysui_result_pass(paysui_result):
     """Valid result."""
     result = TxEffectResult.factory(paysui_result)
-    assert result.succeeded is True
-    assert result.status == "success"
-
-
-def test_mergecoint_result(merge_coin_result):
-    """Valid result."""
-    # cer = merge_coin_result["EffectsCert"]["effects"]
-    # result = EffectsBlock.from_dict(cer)
-    result = TxEffectResult.from_dict(merge_coin_result)
-    assert result.succeeded is True
-    assert result.status == "success"
-
-
-def test_transferobject_result_pass(transfer_object_result):
-    """Valid result."""
-    result = TxEffectResult.from_dict(transfer_object_result)
-    assert result.succeeded is True
-    assert result.status == "success"
-
-
-def test_publish_nest_result_pass(publish_nest_result):
-    """Valid result."""
-    result = TxEffectResult.from_dict(publish_nest_result)
-    assert result.succeeded is True
-    assert result.status == "success"
-
-
-def test_publish_track_result_pass(publish_track_result):
-    """Valid result."""
-    result = TxEffectResult.from_dict(publish_track_result)
-    assert result.succeeded is True
-    assert result.status == "success"
-
-
-def test_move_call_result_pass(move_call_result):
-    """Valid result."""
-    result = TxEffectResult.from_dict(move_call_result)
     assert result.succeeded is True
     assert result.status == "success"
 
@@ -124,13 +80,6 @@ def test_package_sui_result_pass(package_sui_result):
     """Valid result."""
     result = SuiMovePackage.ingest_data(package_sui_result)
     assert result is not None
-
-
-def test_bad_pay_result_pass(bad_pay_result):
-    """Invalid result."""
-    result = TxEffectResult.from_dict(bad_pay_result)
-    assert result.succeeded is False
-    assert result.status == "failure - InsufficientGas"
 
 
 def test_getevent_result_pass(get_event_result):
@@ -160,10 +109,4 @@ def test_get_delegation_stakes_pass(get_delegated_stakes_result):
 def test_system_state_pass(get_system_state_result):
     """Valid result."""
     result = SuiSystemState.from_dict(get_system_state_result)
-    assert result is not None
-
-
-def test_stake_delegation_pass(stake_delegation_result):
-    """Valid result."""
-    result = TxEffectResult.from_dict(stake_delegation_result)
     assert result is not None

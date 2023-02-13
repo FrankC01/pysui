@@ -7,7 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
+BREAKING Changes
+
 ### Added
+
+- **Experimental** `sui_bcs.py` - work in progress to enable `sui_devInspectTransaction`
+
+  - Sui 0.25.0 only supports inspection on:
+    - sui_transferObject
+    - sui_transferSui
+    - sui_pay
+    - sui_moveCall
+    - sui_batchTransaction
+  - There are a few ways to get the BCS serialized TransactionKind argument for InspectTransaction builder
+
+    - `sui_bcs.tkind_from_result` - Takes result from a `client.execute_no_sign`. However; this requires
+      providing a `gas` object and `gas_budget` value.
+
+      ```python
+      try:
+          batch_params = SuiArray(
+              [
+                  TransferObjectParams(
+                      receiver=SuiAddress("0x7c7a86b564d5db0c5837191bd17980b2fb9934db"),
+                      transfer_object=ObjectID("0x1A0535C87DE089F4417CA874A646A04914C073D6"),
+                  ),
+                  MoveCallRequestParams(
+                      package_object=ObjectID("0x485304b8416522dfe5bccf5f2477e43fd29b3d1d"),
+                      module_str=SuiString("base"),
+                      function_str=SuiString("set_dynamic_object_field"),
+                      type_arguments=SuiArray([]),
+                      arguments=SuiArray([SuiString("0x293ee0c2af611f66552c64dfa726042a1422d397")]),
+                  ),
+              ]
+          )
+          builder = BatchTransaction(
+              cfg.active_address,
+              batch_params,
+              ObjectID("0x0b5b6f3f2e407d1a3f6c82d716ede72b394b7ca9"),
+              SuiInteger(2000),
+          )
+
+          # Call execution but do not sign and submit
+          rpc_result = client.execute_no_sign(builder)
+
+          iresult = sync_client.execute(
+              InspectTransaction(
+                  sender_address=cfg.active_address,
+                  tx_bytes=tkind_from_result(rpc_result),
+              )
+          )
+          if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+          else:
+            print(result.result_string)
+      # And so on...
+      except ..:
+
+      ```
+
+    - `sui_bcs.bcs_base64_from_builder` - Takes a Builder and returns BCS encoded base64 string. Here the
+      `gas` object and `gas_budget` value are ignored. Note that `BatchTransaction` and `MoveCall` are not implemented for this yet.
+
+      ```python
+        trf_bld = TransferObject(
+            signer="0x4cb2a458bcdea8593b261b2d90d0ec73053ca4de",
+            object_id="0x0b5b6f3f2e407d1a3f6c82d716ede72b394b7ca9",
+            gas="0x100cd33b7012da91d79e1ef2799377d826e503fa",
+            gas_budget=300,
+            recipient="0x7c7a86b564d5db0c5837191bd17980b2fb9934db",
+        )
+        result = client.execute(
+            InspectTransaction(
+                sender_address=trf_bld.signer,
+                tx_bytes=bcs_base64_from_builder(client, trf_bld),
+            )
+        )
+        if result.is_ok():
+          print(result.result_data.to_json(indent=2))
+        else:
+          print(result.result_string)
+
+      ```
+
+    - We are working on the 3rd option where you can directly code the BCS constructs and
+      serialize directly into the InspectTransaction `tx_bytes` field.
 
 ### Fixed
 
@@ -16,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Made `sui_token_lock` on `StakedSui` optional result
+- **BREAKING** TransferObjectParams builder now expects ObjectID as `transfer_object` parameter
 
 ### Removed
 

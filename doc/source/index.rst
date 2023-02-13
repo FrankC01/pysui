@@ -22,6 +22,7 @@ Welcome to pysui's documentation!
    intro
    builders
    subscriptions
+   publish
    modules
 
 

@@ -27,7 +27,6 @@ from pysui.sui.sui_builders.base_builder import (
 from pysui.sui.sui_types.scalars import SuiTxBytes, SuiSignature, ObjectID, SuiInteger, SuiString
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_txresults.single_tx import SuiGas
 from pysui.sui.sui_txresults.complex_tx import TxEffectResult, Effects, TxInspectionResult
 
 from pysui.sui import sui_utils
@@ -416,17 +415,17 @@ class BatchParameter(SuiMap):
 class TransferObjectParams(BatchParameter):
     """For submitting transfer in a batch transaction."""
 
-    def __init__(self, *, receiver: SuiAddress, transfer_object: SuiGas) -> None:
+    def __init__(self, *, receiver: SuiAddress, transfer_object: ObjectID) -> None:
         """Initialize transfer properties."""
         self.receiver: SuiAddress = receiver
-        self.transfer_object: SuiGas = transfer_object
+        self.transfer_object: ObjectID = transfer_object
         super().__init__("transferObjectRequestParams", {})
 
     def realize_parameters(self) -> dict:
         """Satisfied by subclasses."""
         out_dict = self.map["transferObjectRequestParams"]
         out_dict["recipient"] = self.receiver.address
-        out_dict["objectId"] = self.transfer_object.identifier.value
+        out_dict["objectId"] = self.transfer_object.value
         return self.map
 
 

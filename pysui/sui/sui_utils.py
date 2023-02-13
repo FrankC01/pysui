@@ -20,6 +20,7 @@ import subprocess
 from pathlib import Path
 from types import NoneType
 from typing import Any, Union
+import base58
 from dataclasses_json import DataClassJsonMixin
 
 import pysui.sui_move.module.deserialize as deser
@@ -184,6 +185,48 @@ def build_b64_modules(
     raise SuiMiisingBuildFolder(f"Move project path not found: {path_to_package}")
 
 
+# Conversion utilities
+
+
+def hexstring_to_list(indata: str) -> list[int]:
+    """hexstring_to_list convert a hexstr (e.g. 0x...) into a list of ints.
+
+    :param indata: Data to conver to list of ints
+    :type indata: str
+    :return: converted indata to int list
+    :rtype: list[int]
+    """
+    return [int(x) for x in binascii.unhexlify(indata[2:])]
+
+
+def b64str_to_list(indata: str) -> list[int]:
+    """b64str_to_list convert a base64 string into a list of ints.
+
+    :param indata: Base64 encoded string
+    :type indata: str
+    :return: converted indata to int list
+    :rtype: list[int]
+    """
+    b64bytes = base64.b64decode(indata)
+    return [int(x) for x in b64bytes]
+
+
+def b58str_to_list(indata: str) -> list[int]:
+    """b58str_to_list convert a base58 string into a list of ints.
+
+    :param indata: Base58 encoded string
+    :type indata: str
+    :return: converted indata to int list
+    :rtype: list[int]
+    """
+    try:
+        decode_bytes = base58.b58decode(indata)
+    # Fall back if invalid base58 str
+    except ValueError:
+        decode_bytes = base64.b64decode(indata)
+    return [int(x) for x in decode_bytes]
+
+
 # Coercion utilities
 
 
@@ -277,6 +320,7 @@ def as_sui_integer(in_data: Any) -> Union[SuiInteger, ValueError]:
     :return: A SuiInteger
     :rtype: Union[SuiInteger, ValueError]
     """
+    result = SuiNullType()
     if isinstance(in_data, SuiInteger):
         result = in_data
     elif isinstance(in_data, int):
