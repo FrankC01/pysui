@@ -33,11 +33,16 @@ BREAKING Changes
                       transfer_object=ObjectID("0x1A0535C87DE089F4417CA874A646A04914C073D6"),
                   ),
                   MoveCallRequestParams(
-                      package_object=ObjectID("0x485304b8416522dfe5bccf5f2477e43fd29b3d1d"),
-                      module_str=SuiString("base"),
-                      function_str=SuiString("set_dynamic_object_field"),
-                      type_arguments=SuiArray([]),
-                      arguments=SuiArray([SuiString("0x293ee0c2af611f66552c64dfa726042a1422d397")]),
+                      package_object=ObjectID("0x2"),
+                      module_str=SuiString("pay"),
+                      function_str=SuiString("join"),
+                      type_arguments=SuiArray([SuiString("0x2::sui::SUI")]),
+                      arguments=SuiArray(
+                          [
+                              SuiString("0x0b5b6f3f2e407d1a3f6c82d716ede72b394b7ca9"),
+                              SuiString("0x30082e169ba9f2c92b1be1763870ea9a9a7b6180"),
+                          ]
+                      ),
                   ),
               ]
           )
@@ -57,37 +62,53 @@ BREAKING Changes
                   tx_bytes=tkind_from_result(rpc_result),
               )
           )
-          if result.is_ok():
-            print(result.result_data.to_json(indent=2))
+          if iresult.is_ok():
+            print(iresult.result_data.to_json(indent=2))
           else:
-            print(result.result_string)
+            print(iresult.result_string)
       # And so on...
       except ..:
 
       ```
 
     - `sui_bcs.bcs_base64_from_builder` - Takes a Builder and returns BCS encoded base64 string. Here the
-      `gas` object and `gas_budget` value are ignored. Note that `BatchTransaction` and `MoveCall` are not implemented for this yet.
+      `gas` object and `gas_budget` value are ignored.
 
       ```python
-        trf_bld = TransferObject(
-            signer="0x4cb2a458bcdea8593b261b2d90d0ec73053ca4de",
-            object_id="0x0b5b6f3f2e407d1a3f6c82d716ede72b394b7ca9",
-            gas="0x100cd33b7012da91d79e1ef2799377d826e503fa",
-            gas_budget=300,
-            recipient="0x7c7a86b564d5db0c5837191bd17980b2fb9934db",
-        )
-        result = client.execute(
-            InspectTransaction(
-                sender_address=trf_bld.signer,
-                tx_bytes=bcs_base64_from_builder(client, trf_bld),
-            )
-        )
-        if result.is_ok():
-          print(result.result_data.to_json(indent=2))
-        else:
-          print(result.result_string)
+      transfer_params = SuiArray(
+          [
+              MoveCallRequestParams(
+                  package_object=ObjectID("0x2"),
+                  module_str=SuiString("pay"),
+                  function_str=SuiString("join"),
+                  type_arguments=SuiArray([SuiString("0x2::sui::SUI")]),
+                  arguments=SuiArray(
+                      [
+                          SuiString("0x0b5b6f3f2e407d1a3f6c82d716ede72b394b7ca9"),
+                          SuiString("0x30082e169ba9f2c92b1be1763870ea9a9a7b6180"),
+                      ]
+                  ),
+              ),
+              TransferObjectParams(
+                  receiver=SuiAddress("0x7c7a86b564d5db0c5837191bd17980b2fb9934db"),
+                  transfer_object=ObjectID("0xd999644f6da53cc516ca6c6da76d463053fc3dc4"),
+              ),
+          ]
+      )
+      bt_builder = BatchTransaction(
+          SuiAddress(FAKE_ADDRESS_OR_OBJECT), transfer_params, ObjectID(FAKE_ADDRESS_OR_OBJECT), SuiInteger(1)
+      )
+      bcs_bt = bcs_from_builder(sync_client, bt_builder)
 
+      iresult = sync_client.execute(
+          InspectTransaction(
+            sender_address=sync_client.config.active_address,
+            tx_bytes=base64.b64encode(bcs_bt.serialize()).decode())
+      )
+      if iresult.is_ok():
+          print(iresult.result_data.to_json(indent=2))
+      else:
+          print(iresult.result_string)
       ```
 
     - We are working on the 3rd option where you can directly code the BCS constructs and
@@ -96,6 +117,7 @@ BREAKING Changes
 ### Fixed
 
 - secp256r1 signing [change](https://github.com/FrankC01/pysui/issues/67)
+- InspectTransaction alignment to TransactionKind [bug](https://github.com/FrankC01/pysui/issues/69)
 
 ### Changed
 

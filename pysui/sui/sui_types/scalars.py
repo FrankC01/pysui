@@ -377,6 +377,11 @@ class SuiInteger(SuiScalarType):
         return self.value
 
     @property
+    def arguments(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def split_count(self) -> int:
         """Alias for transactions."""
         if self.value is None:

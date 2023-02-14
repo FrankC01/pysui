@@ -21,32 +21,29 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import hexstring_to_list, b58str_to_list, b64str_to_list
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_txresults.common import GenericRef
+from pysui.sui.sui_txresults.single_tx import ObjectRawRead
+from pysui.sui.sui_builders.get_builders import GetRawObject
 from pysui.sui.sui_builders.exec_builders import (
     _MoveCallTransactionBuilder,
+    MoveCall,
+    MoveCallRequestParams,
+    TransferObject,
+    TransferObjectParams,
 )
 
 from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient
-from pysui.sui.sui_types.scalars import ObjectID
+from pysui.sui.sui_types.scalars import ObjectID, SuiString
+from pysui.sui.sui_types.collections import SuiArray
 
 
 _BCS_ADDRESS_LENGTH: int = 20
 _BCS_DIGEST_LENGTH: int = 32
 _TKIND_INDEX: int = 0
 _SUB_TKIND_INDEX: int = 1
+_SKIP_KIND_AND_SINGLE: int = 2
+_SKIP_KIND_AND_BATCH: int = 1
 _GAS_AND_BUDGET_BYTE_OFFSET: int = -97
-
-
-def tkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
-    """tkind_from_result Return a BCS serialized kind as base64 encoded string.
-
-    :param indata: _description_
-    :type indata: SuiRpcResult
-    :rtype: str
-    """
-    if indata.is_ok():
-        _, no_sign_tx_bytes = indata.result_data
-        return base64.b16encode(base64.b64decode(no_sign_tx_bytes)[:-_GAS_AND_BUDGET_BYTE_OFFSET]).decode()
-    return indata
+FAKE_ADDRESS_OR_OBJECT: str = "0x0000000000000000000000000000000000000000"
 
 
 class BCSAddress(canoser.Struct):
@@ -181,6 +178,20 @@ class StructTag(canoser.Struct):
     """StructTag."""
 
     _fields = [("address", BCSAddress), ("module", str), ("name", str), ("type_parameters", [TypeTag])]
+
+    @classmethod
+    def from_type_str(cls, type_str: str) -> "StructTag":
+        """from_type_str convert a type_arg to StructTag.
+
+        :param type_str: Type string (e.g. 0x2::sui::SUI)
+        :type type_str: str
+        :return: Instance of StructTag
+        :rtype: StructTag
+        """
+        if type_str.count("::") == 2:
+            split_type = type_str.split("::")
+            return cls(BCSAddress.from_str(split_type[0]), split_type[1], split_type[2], [])
+        raise ValueError(f"Ill formed type_argument {type_str}")
 
 
 # Overcome forward reference at init time with these injections
@@ -326,8 +337,17 @@ class BCSTransactionKind(canoser.RustEnum):
         return cls._enums[index]
 
 
-def txkind_from_txbytes():
-    """."""
+def tkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
+    """tkind_from_result Return a BCS serialized kind as base64 encoded string.
+
+    :param indata: _description_
+    :type indata: SuiRpcResult
+    :rtype: str
+    """
+    if indata.is_ok():
+        _, no_sign_tx_bytes = indata.result_data
+        return base64.b64encode(base64.b64decode(no_sign_tx_bytes)[:-_GAS_AND_BUDGET_BYTE_OFFSET]).decode()
+    return indata
 
 
 def bcs_from_rpcresult(no_sign_result: SuiRpcResult) -> Union[tuple[str, canoser.Struct], Exception]:
@@ -337,6 +357,7 @@ def bcs_from_rpcresult(no_sign_result: SuiRpcResult) -> Union[tuple[str, canoser
     :type no_sign_result: SuiRpcResult
     :raises NotImplementedError: If not implemented by pysui yet
     :raises AttributeError: Unrecognized TransactionKind
+    :raises AttributeError: No deserialization for BCSSingleTransaction
     :raises ValueError: If no_sign_result success if False
     :return: The BCS decoded transaction kind (i.e. Pay, TransferSui, MoveCall, etc.)
     :rtype: Union[tuple[str, canoser.Struct], Exception]
@@ -351,17 +372,15 @@ def bcs_from_rpcresult(no_sign_result: SuiRpcResult) -> Union[tuple[str, canoser
                 # The second byte is index into concrete transaction type enum
                 tk_name, tx_type_class = tkind_class.variant_for_index(tx_kind[_SUB_TKIND_INDEX])
                 if tx_type_class:
-                    # print(list(tx_kind))
-                    sheded = tx_kind[:-97]
-                    sheded = sheded[2:]
+                    sheded = tx_kind[:_GAS_AND_BUDGET_BYTE_OFFSET]
+                    sheded = sheded[_SKIP_KIND_AND_SINGLE:]
                     return tk_name, tx_type_class.deserialize(sheded)
-                return tk_name, tx_type_class
+                raise AttributeError(f"{tkind_name} has no deserialization entry in BCSSingleTransaction")
             case "Batch":
-                sheded = tx_kind[:-97]
-                sheded = sheded[1:]
+                sheded = tx_kind[:_GAS_AND_BUDGET_BYTE_OFFSET]
+                sheded = sheded[_SKIP_KIND_AND_BATCH:]
                 bdser = BCSBatchTransaction.deserialize(sheded)
                 return "Batch", bdser
-
             case _:
                 raise AttributeError(f"{tkind_name} is unknown TransactionKind")
     else:
@@ -369,10 +388,82 @@ def bcs_from_rpcresult(no_sign_result: SuiRpcResult) -> Union[tuple[str, canoser
 
 
 def _bcs_reference_for_oid(client: SyncClient, object_id: ObjectID) -> Union[BCSObjectReference, Exception]:
-    result = client.get_object(object_id)
-    if result.is_ok():
-        return BCSObjectReference.from_generic_ref(result.result_data.reference)
-    raise ValueError(f"{result.result_string} fetching object {object_id}")
+    """_bcs_reference_for_oid _summary_.
+
+    :param client: _description_
+    :type client: SyncClient
+    :param object_id: _description_
+    :type object_id: ObjectID
+    :raises ValueError: _description_
+    :return: _description_
+    :rtype: Union[BCSObjectReference, Exception]
+    """
+    bro_result = client.get_object(object_id)
+    if bro_result.is_ok():
+        return BCSObjectReference.from_generic_ref(bro_result.result_data.reference)
+    raise ValueError(f"{bro_result.result_string} fetching object {object_id}")
+
+
+def _bcs_call_arg_for_oid(client: SyncClient, object_id: ObjectID):
+    """_bcs_call_arg_for_oid generates a call argument for object_id.
+
+    :param client: _description_
+    :type client: SyncClient
+    :param object_id: _description_
+    :type object_id: ObjectID
+    :raises ValueError: If getting object information RPC fails
+    :return: _description_
+    :rtype: _type_
+    """
+    bro_result = client.execute(GetRawObject(object_id))
+    if bro_result.is_ok():
+        raw_data: ObjectRawRead = bro_result.result_data
+        if isinstance(raw_data.owner, str):
+            if raw_data.owner == "Immutable":
+                arg_type = "ImmOrOwnedObject"
+        elif "AddressOwner" in raw_data.owner:
+            arg_type = "ImmOrOwnedObject"
+        else:
+            arg_type = "SharedObject"
+        return CallArg("Object", ObjectArg(arg_type, BCSObjectReference.from_generic_ref(raw_data.reference)))
+    raise ValueError(f"{bro_result.result_string} fetching object {object_id}")
+
+
+def _from_transfer_parms(parms: TransferObjectParams) -> TransferObject:
+    """_from_transfer_parms convert a TransferObjectParams to TransferObject builder.
+
+    :param parms: The TransferObjectParams object
+    :type parms: TransferObjectParams
+    :return: The TransferObject builder
+    :rtype: TransferObject
+    """
+    return TransferObject(
+        signer=FAKE_ADDRESS_OR_OBJECT,
+        recipient=parms.receiver,
+        object_id=parms.transfer_object,
+        gas=FAKE_ADDRESS_OR_OBJECT,
+        gas_budget=1,
+    )
+
+
+def _from_movecall_parms(parms: MoveCallRequestParams) -> MoveCall:
+    """_from_movecall_parms convert a MoveCallRequestParams to MoveCall builder.
+
+    :param parms: The MoveCallRequestParams object
+    :type parms: MoveCallRequestParams
+    :return: The MoveCall builder
+    :rtype: MoveCall
+    """
+    return MoveCall(
+        signer=FAKE_ADDRESS_OR_OBJECT,
+        gas=FAKE_ADDRESS_OR_OBJECT,
+        gas_budget=1,
+        package_object_id=parms.package_object_id,
+        module=parms.module,
+        function=parms.function,
+        type_arguments=SuiArray([SuiString(x) for x in parms.type_arguments.type_arguments]),
+        arguments=SuiArray([SuiString(x) for x in parms.arguments.arguments]),
+    )
 
 
 def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[BCSTransactionKind, Exception]:
@@ -406,17 +497,31 @@ def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -
                 modules = [b64str_to_list(x.value) for x in builder.compiled_modules.compiled_modules]
                 payload = BCSSingleTransaction(bname, BCSPublish(modules))
             case "MoveCall":
-                # package = BCSAddress.from_sui_address(builder.package_object_id)
-                # module = builder.module.value
-                # function = builder.function.value
-                # type_args = []
-                # arguments = builder.arguments
-                # payload = BCSSingleTransaction(bname, BCSMoveCall(package, module, function, type_args, arguments))
-                raise NotImplementedError("MoveCall not implemented yet")
+                # Create call site basics from package_object_id,module and function name
+                package = BCSAddress.from_str(builder.package_object_id.value)
+                module = builder.module.value
+                function = builder.function.value
+                # Create list of Struct objects for any type_arguments
+                type_args = [
+                    TypeTag("Struct", StructTag.from_type_str(x.value)) for x in builder.type_arguments.type_arguments
+                ]
+                # Create list of Call args for any arguments
+                arguments = [_bcs_call_arg_for_oid(client, x.value) for x in builder.arguments.arguments]
+                payload = BCSSingleTransaction("Call", BCSMoveCall(package, module, function, type_args, arguments))
             case "BatchTransaction":
-                # tx_kind = "Batch"
-                # txs = [builder.transaction_params]
-                raise NotImplementedError("BatchTransaction not implemented yet")
+                tx_kind = "Batch"
+                res_vector = []
+                for parm_type in builder.single_transaction_params.array:
+                    if isinstance(parm_type, TransferObjectParams):
+                        out_parm = bcs_from_builder(client, _from_transfer_parms(parm_type))
+                    elif isinstance(parm_type, MoveCallRequestParams):
+                        out_parm = bcs_from_builder(client, _from_movecall_parms(parm_type))
+                    else:
+                        raise NotImplementedError(
+                            "{parm_type.__class__.__name} batch transaction type not implemented yet"
+                        )
+                    res_vector.append(out_parm.value)
+                payload = BCSBatchTransaction(res_vector)
             case _:
                 raise TypeError(f"conversion from type {bname} builder not supported")
     return BCSTransactionKind(tx_kind, payload)

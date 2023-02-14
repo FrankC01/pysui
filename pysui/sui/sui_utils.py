@@ -188,7 +188,7 @@ def build_b64_modules(
 # Conversion utilities
 
 
-def hexstring_to_list(indata: str) -> list[int]:
+def hexstring_to_list(indata: str, default_length: int = 40) -> list[int]:
     """hexstring_to_list convert a hexstr (e.g. 0x...) into a list of ints.
 
     :param indata: Data to conver to list of ints
@@ -196,6 +196,10 @@ def hexstring_to_list(indata: str) -> list[int]:
     :return: converted indata to int list
     :rtype: list[int]
     """
+    if len(indata) == 3:
+        asplit = indata.split("x") if indata.count("x") == 1 else indata.split("X")
+        indata = f"0x{asplit[1].zfill(default_length)}"
+
     return [int(x) for x in binascii.unhexlify(indata[2:])]
 
 
