@@ -511,6 +511,7 @@ class CommitteeInfo(DataClassJsonMixin):
 
     epoch: int
     committee_info: list[Committee]
+    protocol_version: int
 
     def __post__init__(self):
         """Post initializaation."""
@@ -697,6 +698,7 @@ class SuiSystemState(DataClassJsonMixin):
     reference_gas_price: int
     safe_mode: bool
     stake_subsidy: StakeSubsidy
+    protocol_version: int
     storage_fund: Union[dict, int]
     treasury_cap: Union[dict, int]
     validator_report_records: ValidatorReportRecords

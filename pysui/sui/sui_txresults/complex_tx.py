@@ -478,6 +478,14 @@ class CheckpointContents(DataClassJsonMixin):
 
 
 @dataclass
+class EndOfEpoch(DataClassJsonMixin):
+    """From sui_getCheckpointSummary."""
+
+    next_epoch_protocol_version: int
+    next_epoch_committee: list[int] = field(default_factory=list)
+
+
+@dataclass
 class CheckpointSummary(DataClassJsonMixin):
     """From sui_getCheckpointSummary."""
 
@@ -486,8 +494,13 @@ class CheckpointSummary(DataClassJsonMixin):
     epoch_rolling_gas_cost_summary: GasCostSummary
     network_total_transactions: int
     sequence_number: int
-    next_epoch_committee: Optional[list[int]]
+
     timestamp_ms: int
+    end_of_epoch_data: Optional[EndOfEpoch]
+    version_specific_data: list[int] = field(default_factory=dict)
+    previous_digest: str = field(default_factory=str)
+
+    # next_epoch_committee: list[int] = field(default_factory=list)
 
 
 # Event query results

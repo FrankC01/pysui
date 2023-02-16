@@ -13,18 +13,18 @@ This utility SHOULD BE RUN BEFORE USING `pysui` SDK or samples
 
 If you have already regenerated keys with the SUI 0.21.0, or later, binary install you can ignore the utility usage.
 
-**Release-0.12.0**
+**Release-0.13.0**
 
 - Breaking changes
-- 100% coverage (builders, return types, etc.) for parity with _SUI 0.25.0 API_ on devnet (see Testnet below)
+- 100% coverage (builders, return types, etc.) for parity with _SUI 0.26.0 API_ on devnet (see Testnet below)
+- BCS ser/deser added addressing changes in 0.25.0 for `sui_devInspectTransaction`
 - ed25519 and secp256k1 and secp256r1 account/keypairs supported (see next for secp256r1)
-- _**unresolved issue with secp256r1 signing**_ Currently fails with signature error [sui](https://github.com/MystenLabs/sui/pull/7423)
+- _**unresolved issue with secp256r1 signing**_ Currently fails with signature error [sui](https://github.com/MystenLabs/sui/pull/7423) however; if you generate the key with `sui client new-address`, signing works fine through `pysui`.
 - Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
 _Testnet not supported!_
 
-- Testnet RPC API is versioned at 0.22.0 so some calls and results may break
-- Publishing requires the 0.22.0 binaries installed conflicting with the more recent devnet 0.24.0 binaries
+- Testnet Wave 2 runs back level SUI binaries
 
 **PyPi**
 

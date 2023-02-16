@@ -179,19 +179,6 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
         super().__init__("sui_getObjectsOwnedByAddress", handler_cls=ObjectInfo, handler_func="factory")
 
 
-class GetObjectsOwnedByObject(_NativeTransactionBuilder):
-    """GetObjectsOwnedByObject When executed, returns the list of objects owned by an object."""
-
-    @sui_builder()
-    def __init__(self, object_id: ObjectID) -> None:
-        """__init__ Initalize builder.
-
-        :param object_id: The object id of the owning object
-        :type object_id: ObjectID
-        """
-        super().__init__("sui_getObjectsOwnedByObject", handler_cls=ObjectInfo, handler_func="factory")
-
-
 class GetDynamicFieldObject(_NativeTransactionBuilder):
     """GetDynamicFieldObject when executed, return the dynamic field object information for a specified object."""
 

@@ -26,6 +26,25 @@ __partstring_pattern = re.compile(r"[0-9a-fA-F]{38}")
 __fullstring_pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
 
 
+def __parm_array_list(in_array: Any, api_parm_name: str) -> list[Any]:
+    """."""
+    out_array = []
+    if isinstance(in_array, SuiArray):
+        in_array = in_array.array
+    if isinstance(in_array, list):
+        if api_parm_name != "single_transaction_params":
+            for elem in in_array:
+                if isinstance(elem, (SuiArray, list)):
+                    out_array.append(__parm_array_list(elem, api_parm_name))
+                else:
+                    out_array.append(f"{elem}")
+        else:
+            out_array = in_array
+    else:
+        raise ValueError(f"{api_parm_name} requires SuiArray")
+    return out_array
+
+
 def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
     """Validate the specific parameter."""
     # from .sui_types import SuiArray
@@ -34,18 +53,9 @@ def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[
     att = getattr(build_parm, api_parm.name)
     match api_parm.schema.type:
         case "array":
-            if isinstance(att, SuiArray):
-                att = [getattr(x, api_parm.name) for x in att.array]
-            elif isinstance(att, list) and api_parm.name != "single_transaction_params":
-                att = [getattr(x, api_parm.name) for x in att]
-            elif isinstance(att, list) and api_parm.name == "single_transaction_params":
-                pass
-            else:
-                raise ValueError(f"{api_parm.name} requires SuiArray")
+            att = __parm_array_list(att, api_parm.name)
         case _:
             pass
-    # if isinstance(att, list) and api_parm.name != "single_transaction_params":
-    #     att = [getattr(x, api_parm.name) for x in att]
 
     # print(f"att {api_parm.name} = {att}")
     if att is None and api_parm.required:

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
+### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.13.0] 2023-02-16
+
 BREAKING Changes
 
 ### Added
@@ -14,15 +24,17 @@ BREAKING Changes
 - **Experimental** `sui_bcs.py` - work in progress to enable `sui_devInspectTransaction`
 
   - Sui 0.25.0 only supports inspection on:
+
     - sui_transferObject
     - sui_transferSui
     - sui_pay
     - sui_moveCall
     - sui_batchTransaction
+
   - There are a few ways to get the BCS serialized TransactionKind argument for InspectTransaction builder
 
-    - `sui_bcs.tkind_from_result` - Takes result from a `client.execute_no_sign`. However; this requires
-      providing a `gas` object and `gas_budget` value.
+    - `sui_bcs.tkind_from_result` - Takes result from a `client.execute_no_sign`. However; because calling
+      SUI RPC requires providing a `gas` object and `gas_budget` value that may not be feasible for your use case.
 
       ```python
       try:
@@ -72,7 +84,7 @@ BREAKING Changes
       ```
 
     - `sui_bcs.bcs_base64_from_builder` - Takes a Builder and returns BCS encoded base64 string. Here the
-      `gas` object and `gas_budget` value are ignored.
+      `gas` object and `gas_budget` use a stock substitue value (FAKE_ADDRESS_OR_OBJECT) that are ignored.
 
       ```python
       transfer_params = SuiArray(
@@ -111,20 +123,26 @@ BREAKING Changes
           print(iresult.result_string)
       ```
 
-    - We are working on the 3rd option where you can directly code the BCS constructs and
+    - We are working on the 3rd option (low level) where you can directly code the BCS constructs and
       serialize directly into the InspectTransaction `tx_bytes` field.
 
 ### Fixed
 
-- secp256r1 signing [change](https://github.com/FrankC01/pysui/issues/67)
+- ~~secp256r1 signing~~ [workaround](https://github.com/FrankC01/pysui/issues/67)
 - InspectTransaction alignment to TransactionKind [bug](https://github.com/FrankC01/pysui/issues/69)
 
 ### Changed
 
+- **BREAKING** Bumped minimal supported sui binaries from 0.19.0 to 0.25.0
+- **BREAKING** TransferObjectParams (for Batch) builder now expects ObjectID as `transfer_object` parameter
+- Updated CheckpointSummary as per updated result in SUI 0.26.0
+- Updated CommitteeInfo as per updated result in SUI 0.26.0
+- Updated SuiSystemState as per updated result in SUI 0.26.0
 - Made `sui_token_lock` on `StakedSui` optional result
-- **BREAKING** TransferObjectParams builder now expects ObjectID as `transfer_object` parameter
 
 ### Removed
+
+- **BREAKING** GetObjectsOwnedByObject (i.e. sui_getObjectsOwnedByObject) has been removed in SUI 0.26.0
 
 ## [0.12.0] 2023-02-09
 
