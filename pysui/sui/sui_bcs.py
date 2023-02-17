@@ -15,16 +15,17 @@
 
 import base64
 from functools import partial
-import math
 from typing import Union
 import canoser
+
 
 # pylint:disable=wildcard-import,unused-wildcard-import
 from pysui.sui.sui_types.bcs import *
 
 # pylint:enable=wildcard-import,unused-wildcard-import
+from pysui.abstracts.client_types import SuiScalarType
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_utils import hexstring_to_list, b58str_to_list, b64str_to_list
+from pysui.sui.sui_utils import b64str_to_list, int_to_listu8
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.single_tx import ObjectRawRead
@@ -33,14 +34,24 @@ from pysui.sui.sui_builders.exec_builders import (
     _MoveCallTransactionBuilder,
     MoveCall,
     MoveCallRequestParams,
+    Pay,
+    PayAllSui,
+    PaySui,
+    Publish,
     TransferObject,
     TransferObjectParams,
+    TransferSui,
 )
 
 from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient
 from pysui.sui.sui_types.scalars import ObjectID, SuiString
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_txresults.package_meta import SuiMoveFunction, SuiParameterReference, SuiParameterStruct
+from pysui.sui.sui_txresults.package_meta import (
+    SuiMoveFunction,
+    SuiMoveScalarArgument,
+    SuiParameterReference,
+    SuiParameterStruct,
+)
 
 
 _TKIND_INDEX: int = 0
@@ -107,6 +118,28 @@ def _bcs_call_arg_for_oid(client: SyncClient, object_id: ObjectID) -> Union[Call
     return CallArg("Object", _bcs_objarg_for_oid(client, object_id))
 
 
+def _bcs_callarg_from_scalar(meta_parm: SuiMoveScalarArgument, arg: SuiScalarType) -> Union[CallArg, Exception]:
+    """_bcs_callarg_from_scalar converts scalar type to Pure Callarg.
+
+    :param meta_parm: The scalar type from meta information
+    :type meta_parm: SuiMoveScalarArgument
+    :param arg: The scalar value
+    :type arg: SuiScalarType
+    :raises ValueError: If unhandled scalar type
+    :return: Instance of Pure CallArg
+    :rtype: Union[CallArg, Exception]
+    """
+    if meta_parm.scalar_type[0] == "A" or meta_parm.scalar_type[0] == "S":
+        bcs_arg = CallArg("Pure", getattr(BCSAddress.from_str(arg.value), "Address"))
+    elif meta_parm.scalar_type[0] == "U":
+        bcs_arg = CallArg("Pure", int_to_listu8(int(meta_parm.scalar_type[1:]) / 8, arg.value))
+    elif meta_parm.scalar_type[0] == "B":
+        bcs_arg = CallArg("Pure", [1 if arg.value else 0])
+    else:
+        raise ValueError(f"Unhandled scalar type {meta_parm.scalar_type}")
+    return bcs_arg
+
+
 def _bcs_build_pure_array(vector_of: str, in_vector: SuiArray) -> Union[CallArg, Exception]:
     """_bcs_build_pure_array create a Pure CallArg from array.
 
@@ -125,34 +158,34 @@ def _bcs_build_pure_array(vector_of: str, in_vector: SuiArray) -> Union[CallArg,
     def ints_to_array(byte_count: int, in_el: list[int]) -> list[int]:
         res: list[int] = []
         for elem in in_el:
-            byte_res = math.ceil(elem.bit_length() / 8)
-            if byte_res == byte_count:
-                res.extend(list(elem.to_bytes(byte_res, "little")))
-            else:
-                raise ValueError(f"Expected byte count {byte_count} found byte count {byte_res}")
+            res.extend(int_to_listu8(byte_count, elem))
         return res
 
     def bools_to_array(in_el: list[bool]) -> list[int]:
         return [1 if x else 0 for x in in_el]
 
-    def strs_to_array(in_el: list[str]) -> list[int]:
+    def sigoraddress_to_array(in_el: list[str]) -> list[int]:
         res: list[int] = []
         for elem in in_el:
-            res.extend([ord(x) for x in f"{elem}"])
+            res.extend(getattr(BCSAddress.from_str(elem), "Address"))
         return res
 
     # Determine expectation of element types
+    # Unsigned ints
     if vector_of[0] == "U":
         hmg_type = int
         call_site = partial(ints_to_array, int(vector_of[1:]) / 8)
-    elif vector_of[0] == "s":
+    # Address and Signer
+    elif vector_of[0] == "A" or vector_of[0] == "S":
         hmg_type = str
-        call_site = strs_to_array
-    elif vector_of[0] == "b":
+        call_site = sigoraddress_to_array
+    # Bool
+    elif vector_of[0] == "B":
         hmg_type = bool
         call_site = bools_to_array
+    # Not handled
     else:
-        raise ValueError(f"Unknown vector type {vector_of}")
+        raise ValueError(f"Unknown vector of type {vector_of}")
 
     hmg_list = []
 
@@ -183,7 +216,8 @@ def _bcs_call_arguments(
     :param arguments: The module arguments list
     :type arguments: SuiArray
     :raises ValueError: If length of expected arguments does not match arguments list length
-    :raises ValueError: If expected vector but found other
+    :raises ValueError: If sclar argument type not handled
+    :raises ValueError: If expected SuiArray but found other
     :raises NotImplementedError: If unrecognized function argument meta type
     :raises ValueError: If sui_getNormalizedMoveFunction fails
     :return: List of constructed CallArgs
@@ -209,7 +243,8 @@ def _bcs_call_arguments(
                 case "SuiParameterReference" | "SuiParameterStruct":
                     bcs_arg = _bcs_call_arg_for_oid(client, arg)
                 case "SuiMoveScalarArgument":
-                    bcs_arg = CallArg("Pure", [ord(x) for x in f"{arg}"])
+                    bcs_arg = _bcs_callarg_from_scalar(meta_parm, arg)
+
                 case "SuiMoveVector":
                     if isinstance(arg, SuiArray):
                         if isinstance(meta_parm.vector_of, (SuiParameterReference, SuiParameterStruct)):
@@ -262,8 +297,102 @@ def _from_movecall_parms(parms: MoveCallRequestParams) -> MoveCall:
     )
 
 
+# BCSSingleTransaction type from builders
+
+
+def _bcs_for_transfer_object(client: SyncClient, builder: TransferObject) -> BCSSingleTransaction:
+    """_bcs_for_transfer_object generates the TransferObject BCS Single Transaction from builder.
+
+    :param client: SUI Client
+    :type client: SyncClient
+    :param builder: The TransferObject populated builder
+    :type builder: TransferObject
+    :return: An instance of BCSSingleTransaction
+    :rtype: BCSSingleTransaction
+    """
+    recipient = BCSAddress.from_sui_address(builder.recipient)
+    reference = _bcs_reference_for_oid(client, builder.object_id)
+    return BCSSingleTransaction("TransferObject", BCSTransferObject(recipient, reference))
+
+
+def _bcs_for_transfer_sui(client: SyncClient, builder: TransferSui) -> BCSSingleTransaction:
+    """_bcs_for_transfer_sui generates the TransferSui BCS Single Transaction from builder.
+
+    :param client: SUI Client
+    :type client: SyncClient
+    :param builder: The TransferSui populated builder
+    :type builder: TransferSui
+    :return: An instance of BCSSingleTransaction
+    :rtype: BCSSingleTransaction
+    """
+    recipient = BCSAddress.from_sui_address(builder.recipient)
+    amount = BCSOptionalU64(builder.amount.value)
+    return BCSSingleTransaction("TransferSui", BCSTransferObject(recipient, amount))
+
+
+def _bcs_for_pays(client: SyncClient, builder: Union[Pay, PaySui, PayAllSui]) -> BCSSingleTransaction:
+    """_bcs_for_pays generates a BCS Single Transaction for the various Pay type builders.
+
+    :param client: SUI Client
+    :type client: SyncClient
+    :param builder: One of the Pay type builders
+    :type builder: Union[Pay, PaySui, PayAllSui]
+    :return: An instance of BCSSingleTransaction
+    :rtype: BCSSingleTransaction
+    """
+    coins = [_bcs_reference_for_oid(client, x.value) for x in builder.input_coins.coins]
+    payload: BCSSingleTransaction = None
+    recipients = [BCSAddress.from_sui_address(x) for x in builder.recipients.recipients]
+    if isinstance(builder, Pay):
+        amounts = [x.value for x in builder.amounts.amounts]
+        payload = BCSSingleTransaction("Pay", BCSPay(coins, recipients, amounts))
+    elif isinstance(builder, PaySui):
+        amounts = [x.value for x in builder.amounts.amounts]
+        payload = BCSSingleTransaction("PaySui", BCSPaySui(coins, recipients, amounts))
+    else:
+        recipient = BCSAddress.from_sui_address(builder.recipient)
+        payload = BCSSingleTransaction("PayAllSui", BCSPayAllSui(coins, recipient))
+    return payload
+
+
+def _bcs_for_publish(client: SyncClient, builder: Publish) -> BCSSingleTransaction:
+    """_bcs_for_publish generates a BCS Single Transaction from a Publish builder.
+
+    :param client: SUI Client
+    :type client: SyncClient
+    :param builder: A populated Publish builder
+    :type builder: Publish
+    :return: An instance of BCSSingleTransaction
+    :rtype: BCSSingleTransaction
+    """
+    modules = [b64str_to_list(x.value) for x in builder.compiled_modules.compiled_modules]
+    return BCSSingleTransaction("Publish", BCSPublish(modules))
+
+
+def _bcs_for_call(client: SyncClient, builder: MoveCall) -> BCSSingleTransaction:
+    """_bcs_for_call generates a BCS Single Transaction from a MoveCall builder.
+
+    :param client: SUI Client
+    :type client: SyncClient
+    :param builder: A populated MoveCall builder
+    :type builder: MoveCall
+    :return: An instance of BCSSingleTransaction
+    :rtype: BCSSingleTransaction
+    """
+    package = BCSAddress.from_str(builder.package_object_id.value)
+    module = builder.module.value
+    function = builder.function.value
+    # Create list of Struct objects for any type_arguments
+    type_args = [TypeTag("Struct", StructTag.from_type_str(x.value)) for x in builder.type_arguments.type_arguments]
+    # Create list of Call args for any arguments
+    arguments = _bcs_call_arguments(
+        client, builder.package_object_id, builder.module, builder.function, builder.arguments
+    )
+    return BCSSingleTransaction("Call", BCSMoveCall(package, module, function, type_args, arguments))
+
+
 def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[BCSTransactionKind, Exception]:
-    """bcs_from_builder constructs a Transaction kind from a Builder.
+    """bcs_from_builder constructs a BCS TransactionKind from a Builder.
 
     The result can be serialized and used in sui_devInspectTransaction.
     """
@@ -273,42 +402,15 @@ def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -
     if isinstance(builder, _MoveCallTransactionBuilder):
         match bname:
             case "TransferObject":
-                recipient = BCSAddress.from_sui_address(builder.recipient)
-                reference = _bcs_reference_for_oid(client, builder.object_id)
-                payload = BCSSingleTransaction(bname, BCSTransferObject(recipient, reference))
+                payload = _bcs_for_transfer_object(client, builder)
             case "TransferSui":
-                recipient = BCSAddress.from_sui_address(builder.recipient)
-                amount = BCSOptionalU64(builder.amount.value)
-                payload = BCSSingleTransaction(bname, BCSTransferSui(recipient, amount))
-            case "Pay" | "PaySui":
-                coins = [_bcs_reference_for_oid(client, x.value) for x in builder.input_coins.coins]
-                amounts = [x.value for x in builder.amounts.amounts]
-                recipients = [BCSAddress.from_sui_address(x) for x in builder.recipients.recipients]
-                if bname == "Pay":
-                    payload = BCSSingleTransaction(bname, BCSPay(coins, recipients, amounts))
-                else:
-                    payload = BCSSingleTransaction(bname, BCSPaySui(coins, recipients, amounts))
-            case "PayAllSui":
-                coins = [_bcs_reference_for_oid(client, x.value) for x in builder.input_coins.coins]
-                recipient = BCSAddress.from_sui_address(builder.recipient)
-                payload = BCSSingleTransaction(bname, BCSPayAllSui(coins, recipient))
+                payload = _bcs_for_transfer_sui(client, builder)
+            case "Pay" | "PaySui" | "PayAllSui":
+                payload = _bcs_for_pays(client, builder)
             case "Publish":
-                modules = [b64str_to_list(x.value) for x in builder.compiled_modules.compiled_modules]
-                payload = BCSSingleTransaction(bname, BCSPublish(modules))
+                payload = _bcs_for_publish(client, builder)
             case "MoveCall":
-                # Create call site basics from package_object_id,module and function name
-                package = BCSAddress.from_str(builder.package_object_id.value)
-                module = builder.module.value
-                function = builder.function.value
-                # Create list of Struct objects for any type_arguments
-                type_args = [
-                    TypeTag("Struct", StructTag.from_type_str(x.value)) for x in builder.type_arguments.type_arguments
-                ]
-                # Create list of Call args for any arguments
-                arguments = _bcs_call_arguments(
-                    client, builder.package_object_id, builder.module, builder.function, builder.arguments
-                )
-                payload = BCSSingleTransaction("Call", BCSMoveCall(package, module, function, type_args, arguments))
+                payload = _bcs_for_call(client, builder)
             case "BatchTransaction":
                 tx_kind = "Batch"
                 res_vector = []
@@ -329,7 +431,7 @@ def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -
 
 
 def bcs_base64_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[str, Exception]:
-    """bcs_base64_from_builder converts a builder to BCS serialized base64 string.
+    """bcs_base64_from_builder converts a builder to BCS serialized TransactionKind as base64 string.
 
     Can be then used to submit to sui_devInspectTransaction
 
@@ -344,7 +446,7 @@ def bcs_base64_from_builder(client: SyncClient, builder: _MoveCallTransactionBui
 
 
 def tkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
-    """tkind_from_result Return a BCS serialized kind as base64 encoded string.
+    """tkind_from_result Return a BCS serialized TransactionKind as base64 encoded string.
 
     Can be then used to submit to sui_devInspectTransaction
 

@@ -13,6 +13,7 @@
 
 """Utility functions."""
 
+import math
 import os
 import base64
 import binascii
@@ -229,6 +230,23 @@ def b58str_to_list(indata: str) -> list[int]:
     except ValueError:
         decode_bytes = base64.b64decode(indata)
     return [int(x) for x in decode_bytes]
+
+
+def int_to_listu8(byte_count: int, in_el: int) -> list[int]:
+    """int_to_listu8 converts integer to array of u8 bytes.
+
+    :param byte_count: Expected byte count of integer
+    :type byte_count: int
+    :param in_el: The integer elements
+    :type in_el: int
+    :raises ValueError: If mismatch on expected and actual byte count
+    :return: the integer value converted to list of int (u8)
+    :rtype: list[int]
+    """
+    byte_res = math.ceil(in_el.bit_length() / 8)
+    if byte_res == byte_count:
+        return list(in_el.to_bytes(byte_res, "little"))
+    raise ValueError(f"Expected byte count {byte_count} found byte count {byte_res}")
 
 
 # Coercion utilities

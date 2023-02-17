@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Refactoring of sui_bcs.py
+
 ### Removed
 
 ## [0.13.0] 2023-02-16
