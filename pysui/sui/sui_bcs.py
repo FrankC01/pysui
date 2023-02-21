@@ -445,7 +445,7 @@ def bcs_base64_from_builder(client: SyncClient, builder: _MoveCallTransactionBui
     return base64.b64encode(bcs_from_builder(client, builder).serialize()).decode()
 
 
-def tkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
+def bcs_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
     """tkind_from_result Return a BCS serialized TransactionKind as base64 encoded string.
 
     Can be then used to submit to sui_devInspectTransaction

@@ -13,7 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Refactoring of sui_bcs.py
+- Remove redundant code for `sui_config.create_new_keypair_and_address `
+- Refactor `sui_bcs.py`
+- Rename `sui_bcs.tkind_from_result` to `sui_bcw.bcs_txkind_from_result`
 
 ### Removed
 
@@ -35,7 +37,7 @@ BREAKING Changes
 
   - There are a few ways to get the BCS serialized TransactionKind argument for InspectTransaction builder
 
-    - `sui_bcs.tkind_from_result` - Takes result from a `client.execute_no_sign`. However; because calling
+    - `sui_bcs.bcs_txkind_from_result` - Takes result from a `client.execute_no_sign`. However; because calling
       SUI RPC requires providing a `gas` object and `gas_budget` value that may not be feasible for your use case.
 
       ```python
@@ -73,7 +75,7 @@ BREAKING Changes
           iresult = sync_client.execute(
               InspectTransaction(
                   sender_address=cfg.active_address,
-                  tx_bytes=tkind_from_result(rpc_result),
+                  tx_bytes=bcs_txkind_from_result(rpc_result),
               )
           )
           if iresult.is_ok():

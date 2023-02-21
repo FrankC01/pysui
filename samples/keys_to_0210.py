@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#    Copyright 2022 Frank V. Castellucci
+#    Copyright Frank V. Castellucci
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
 #    You may obtain a copy of the License at
@@ -44,8 +44,8 @@ def build_parser(in_args: list) -> argparse.Namespace:
     return parser.parse_args(in_args if in_args else ["--help"])
 
 
-def conver_key(in_key_str: str) -> str:
-    """conver_key Converts an old base64 keystring to new base64 keystring.
+def convert_key(in_key_str: str) -> str:
+    """convert_key Converts an old base64 keystring to new base64 keystring.
 
     :param in_key_str: Keystring from keystore
     :type in_key_str: str
@@ -98,7 +98,7 @@ def covert_keys(keystore_file_path: Path) -> None:
             with open(keystore_file_path, encoding="utf8") as keyfile:
                 keystrings = json.load(keyfile)
             print(f"Old keystrings {json.dumps(keystrings,indent=2)}")
-            new_keystrings = [conver_key(x) for x in keystrings]
+            new_keystrings = [convert_key(x) for x in keystrings]
             json_keys = json.dumps(new_keystrings, indent=2)
             print(f"Writing new keystrings {json_keys}")
             with open(keystore_file_path, "w", encoding="utf8") as keystore:

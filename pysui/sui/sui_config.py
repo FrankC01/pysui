@@ -1,4 +1,4 @@
-#    Copyright 2022 Frank V. Castellucci
+#    Copyright Frank V. Castellucci
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
 #    You may obtain a copy of the License at
@@ -132,27 +132,15 @@ class SuiConfig(ClientConfiguration):
         :return: The input or generated mnemonic string,a new KeyPair and associated SuiAddress
         :rtype: tuple[str, KeyPair, SuiAddress]
         """
-        # TODO: Refactor this
-        if scheme == SignatureScheme.ED25519:
-            mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
-            self._addresses[address.address] = address
-            self._address_keypair[address.address] = keypair
-            self._write_keypair(keypair)
-            return mnen, address.identifier
-        if scheme == SignatureScheme.SECP256K1:
-            mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
-            self._addresses[address.address] = address
-            self._address_keypair[address.address] = keypair
-            self._write_keypair(keypair)
-            return mnen, address.identifier
-        if scheme == SignatureScheme.SECP256R1:
-            mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
-            self._addresses[address.address] = address
-            self._address_keypair[address.address] = keypair
-            self._write_keypair(keypair)
-            return mnen, address.identifier
-
-        raise NotImplementedError
+        match scheme:
+            case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
+                mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
+                self._addresses[address.address] = address
+                self._address_keypair[address.address] = keypair
+                self._write_keypair(keypair)
+                return mnen, address.identifier
+            case _:
+                raise NotImplementedError(f"{scheme}: Not recognized as valid keypair scheme.")
 
     @classmethod
     def _parse_config(cls, fpath: Path, config_file: TextIOWrapper) -> tuple[str, str, str, str, str]:

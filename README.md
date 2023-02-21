@@ -19,7 +19,7 @@ If you have already regenerated keys with the SUI 0.21.0, or later, binary insta
 - 100% coverage (builders, return types, etc.) for parity with _SUI 0.26.0 API_ on devnet (see Testnet below)
 - BCS ser/deser added addressing changes in 0.25.0 for `sui_devInspectTransaction`
 - ed25519 and secp256k1 and secp256r1 account/keypairs supported (see next for secp256r1)
-- _**unresolved issue with secp256r1 signing**_ Currently fails with signature error [sui](https://github.com/MystenLabs/sui/pull/7423) however; if you generate the key with `sui client new-address`, signing works fine through `pysui`.
+- _**unresolved issue with secp256r1 signing**_ Currently fails intermittently with signature error [sui](https://github.com/MystenLabs/sui/pull/7423).
 - Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
 _Testnet not supported!_

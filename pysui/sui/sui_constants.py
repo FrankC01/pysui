@@ -1,4 +1,4 @@
-#    Copyright 2022 Frank V. Castellucci
+#    Copyright Frank V. Castellucci
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
 #    You may obtain a copy of the License at
@@ -28,7 +28,7 @@ DEVNET_SOCKET_URL: str = "wss://fullnode.devnet.sui.io:443"
 
 LOCALNET_ENVIRONMENT_KEY: str = "localnet"
 """Localnet client configuration environment alias."""
-LOCALNET_FAUCET_URL: str = "http://127.0.0.1:9123/gas"
+LOCALNET_FAUCET_URL: str = "http://127.0.0.1:9000/gas"
 """Localnet client faucet url."""
 LOCALNET_SOCKET_URL: str = "ws://127.0.0.1:9000"
 """Localnet socket url."""
