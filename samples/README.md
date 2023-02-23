@@ -84,7 +84,7 @@ Operation completed!
 ## Examples:
 
 - async-gas collects and prints all gas for all addresses found in configuration
-- async-sub Listens on generally broad events for Move events and Transaction events
+- async-sub Listens on generally broad events for Move events (Transaction events removed by Sui 0.27.0)
 - Sample [Wallet](#wallet) providing equivalent functionality as `sui client ...`
 
 **Note:** If running from cloned repo, examples are started with `python -m ....`

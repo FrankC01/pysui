@@ -13,13 +13,14 @@ This utility SHOULD BE RUN BEFORE USING `pysui` SDK or samples
 
 If you have already regenerated keys with the SUI 0.21.0, or later, binary install you can ignore the utility usage.
 
-**Release-0.13.0**
+**Release-0.14.0**
 
 - Breaking changes
-- 100% coverage (builders, return types, etc.) for parity with _SUI 0.26.0 API_ on devnet (see Testnet below)
+- 99% coverage (builders, return types, etc.) for parity with _SUI 0.27.0 API_ on devnet (see Testnet below)
+  - Multi-sig not yet supported. Waiting to resolve the secp256r1 signing issues first.
 - BCS ser/deser added addressing changes in 0.25.0 for `sui_devInspectTransaction`
 - ed25519 and secp256k1 and secp256r1 account/keypairs supported (see next for secp256r1)
-- _**unresolved issue with secp256r1 signing**_ Currently fails intermittently with signature error [sui](https://github.com/MystenLabs/sui/pull/7423).
+- _**unresolved issue with secp256r1 signing**_ Currently fails intermittently with signature error [sui](https://github.com/MystenLabs/sui/pull/7423). Recommend using ed25519 or secp256k1 in the interim.
 - Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
 _Testnet not supported!_

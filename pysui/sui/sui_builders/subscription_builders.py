@@ -19,7 +19,7 @@ from pysui.sui.sui_types.scalars import ObjectID, SuiString
 from pysui.sui.sui_types.address import SuiAddress, valid_sui_address
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder
-from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, SubscribedTransaction
+from pysui.sui.sui_txresults.complex_tx import SubscribedEvent
 
 
 class _EventFilterType:
@@ -266,23 +266,7 @@ class SubscribeEvent(_NativeTransactionBuilder):
         return self
 
     def _collect_parameters(self) -> list[SuiBaseType]:
-        """Fetch parameters"""
-        return [self.filter]
-
-
-class SubscribeTransaction(_NativeTransactionBuilder):
-    """Parameter argument for sui_subscribeTransaction."""
-
-    def __init__(
-        self,
-    ) -> None:
-        """__init__ Initialize builder."""
-        super().__init__("sui_subscribeTransaction", handler_cls=SubscribedTransaction, handler_func="from_dict")
-        # self.filter = AnyFilter(filters=[])
-        self.filter = SuiString("Any")
-
-    def _collect_parameters(self) -> list[SuiBaseType]:
-        """Collect parameters for transaction."""
+        """Fetch parameters."""
         return [self.filter]
 
 

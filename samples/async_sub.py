@@ -33,11 +33,9 @@ from pysui.sui.sui_txresults.complex_tx import (
     SubscribedEvent,
     SubscribedEventParms,
     EventEnvelope,
-    SubscribedTransaction,
 )
 from pysui.sui.sui_builders.subscription_builders import (
     SubscribeEvent,
-    SubscribeTransaction,
 )
 
 
@@ -48,11 +46,6 @@ def test_event_handler(indata: SubscribedEvent, subscription_id: int, event_coun
     event: dict = result_class.event
     res = next(iter(event))
     return {"func": res}
-
-
-def test_tx_handler(indata: SubscribedTransaction, subscription_id: int, event_counter: int) -> Any:
-    """Handler captures entire transaction event for each received."""
-    return indata
 
 
 async def main_run(sub_manager: subscriber):
@@ -69,31 +62,18 @@ async def main_run(sub_manager: subscriber):
     # ),
     print("Start event type listener")
     thing = await sub_manager.new_event_subscription(subscribe_event_for, test_event_handler, "test_event_handler")
-    if thing.is_ok():
-        print("Start txn type listener")
-        # Txn subscriptions do not have filters?
-        thing = await sub_manager.new_txn_subscription(SubscribeTransaction(), test_tx_handler, "test_tx_handler")
-    else:
-        print(thing.result_string)
-        return
+    # if thing.is_ok():
+    #     print("Start txn type listener")
+    #     # Txn subscriptions do not have filters?
+    #     thing = await sub_manager.new_txn_subscription(SubscribeTransaction(), test_tx_handler, "test_tx_handler")
+    # else:
+    #     print(thing.result_string)
+    #     return
     if thing.is_ok():
         print("Sleeping for 10 seconds")
         await asyncio.sleep(10.00)
         print("Killing listeners")
-        tx_subs_result, ev_subs_result = await sub_manager.kill_shutdown()
-        if tx_subs_result:
-            print("Transaction event listener results")
-            for event in tx_subs_result:
-                match event.result_string:
-                    case "Cancelled" | None:
-                        res_finish = event.result_string or "Normal Exit"
-                        print(f"    {event.result_data.name} task state: {res_finish}")
-                        print(f"    Processed events: {len(event.result_data.collected)}")
-                    case "General Exception":
-                        print(f"Exception {event}")
-                    case _:
-                        print("ERROR")
-                        print(event.result_data)
+        ev_subs_result = await sub_manager.kill_shutdown()
         if ev_subs_result:
             print("Event listener results")
             for event in ev_subs_result:

@@ -236,6 +236,8 @@ class SharedOwner(DataClassJsonMixin):
 class ImmutableOwner(DataClassJsonMixin):
     """From sui_getObject."""
 
+    owner_type: str
+
 
 @dataclass
 class ObjectRead(DataClassJsonMixin):
@@ -269,7 +271,7 @@ class ObjectRead(DataClassJsonMixin):
         if isinstance(self.owner, str):
             match self.owner:
                 case "Immutable":
-                    self.owner = ImmutableOwner.from_dict({})
+                    self.owner = ImmutableOwner.from_dict({"owner_type": "Immutable"})
                 case _:
                     raise AttributeError(f"{self.owner} not handled")
         else:
@@ -596,14 +598,14 @@ class ValidatorMetaData(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
     consensus_address: list[int]
-    description: list[int]
-    image_url: list[int]
+    description: str  # list[int]
+    image_url: str  # list[int]
     project_url: list[int]
     sui_address: str
     pubkey_bytes: list[int]
     network_pubkey_bytes: list[int]
     proof_of_possession_bytes: list[int]
-    name: list[int]
+    name: str  # list[int]
     net_address: list[int]
     next_epoch_stake: int
     next_epoch_delegation: int

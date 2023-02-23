@@ -132,9 +132,9 @@ class SuiClient(_ClientMixin):
                 result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
             elif "error" in result.result_data:
                 msg = result.result_data["error"]["message"]
-                if msg in _ClientMixin._SIGNATURE_ERROR and recovery_id > 0:
+                if msg in _ClientMixin._SIGNATURE_ERROR and recovery_id > 3:
                     result = SuiRpcResult(False, msg)
-                elif msg in _ClientMixin._SIGNATURE_ERROR and recovery_id < 1:
+                elif msg in _ClientMixin._SIGNATURE_ERROR and recovery_id < 4:
                     result = _inner_sign(recovery_id + 1)
                 else:
                     result = SuiRpcResult(False, msg)

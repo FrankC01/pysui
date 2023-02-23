@@ -342,11 +342,13 @@ def _bcs_for_pays(client: SyncClient, builder: Union[Pay, PaySui, PayAllSui]) ->
     """
     coins = [_bcs_reference_for_oid(client, x.value) for x in builder.input_coins.coins]
     payload: BCSSingleTransaction = None
-    recipients = [BCSAddress.from_sui_address(x) for x in builder.recipients.recipients]
+
     if isinstance(builder, Pay):
+        recipients = [BCSAddress.from_sui_address(x) for x in builder.recipients.recipients]
         amounts = [x.value for x in builder.amounts.amounts]
         payload = BCSSingleTransaction("Pay", BCSPay(coins, recipients, amounts))
     elif isinstance(builder, PaySui):
+        recipients = [BCSAddress.from_sui_address(x) for x in builder.recipients.recipients]
         amounts = [x.value for x in builder.amounts.amounts]
         payload = BCSSingleTransaction("PaySui", BCSPaySui(coins, recipients, amounts))
     else:

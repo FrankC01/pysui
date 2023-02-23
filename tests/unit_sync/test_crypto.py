@@ -24,6 +24,8 @@ from pysui.sui.sui_crypto import (
     SuiPrivateKeyED25519,
     SuiPublicKeySECP256K1,
     SuiPrivateKeySECP256K1,
+    SuiPublicKeySECP256R1,
+    SuiPrivateKeySECP256R1,
     keypair_from_keystring,
     create_new_address,
 )
@@ -38,18 +40,21 @@ from pysui.sui.sui_constants import (
 )
 
 # pylint: disable=line-too-long
-TEST_ED25519_KEYSTRING = "ABxuKTPmP1+iOSJckBNBj0G4sRYC3ys8mRT9/zrIkrSB"
+TEST_ED25519_KEYSTRING = "AFGIonkZWixFTVrcNVBh3vGwqCXA2zKwDzpuANkBFWUN"
 TEST_SECP256K1_KEYSTRING = "AT4Be0JOKSRRs0BEZFwH756JEpBjzA9DwG/fJrv/W1Cn"
-TEST_SECP256R1_KEYSTRING = "AsNFwRhuidi9h22wAB/F6YViADB0hQdtPcuWTpS1Hhbm"
-TEST_ED25519_ADDRESS = "0x4cb2a458bcdea8593b261b2d90d0ec73053ca4de"
-TEST_SECP256K1_ADDRESS = "0x49611f06b7e59d09bdc72d2947f6a01cbc9b9480"
-TEST_SECP256R1_ADDRESS = "0xcc9e52e70a2233fe80fea5458a24b94272a1b0e9"
+TEST_SECP256R1_KEYSTRING = "AqPmvgC0d98+QsB9W2TumfztXyyxN3FxiTCBf3Fbd3Mg"
 
-TRANSFER_TX_BYTES = "AAUBCgXxolq2ihNXZPorTrl8qIFfNIu3AgAAAAAAACCrU3V2W/8YXiebK8Rzu+thLb0psW7GJ+VO8j1zqS0YhgF8eoa1ZNXbDFg3GRvReYCy+5k02wHoAwAAAAAAAMyeUucKIjP+gP6lRYokuUJyobDpCgXxolq2ihNXZPorTrl8qIFfNIu3AgAAAAAAACCrU3V2W/8YXiebK8Rzu+thLb0psW7GJ+VO8j1zqS0YhgEAAAAAAAAALAEAAAAAAAA="
-ED25_SIG = "ANN7erYmqtoK0T9cQDDUMUA5AKlV8/KfIuEpAGrDw4HUiihikBqWLsWk3ko8cD73Ls7SlVJp32tD5UyWf8YongLGqXCOqPyrn6E/hmbypfgU/5VbAKu0HvOH5CPXtw52rA=="
-R1_SIG = "AjLmG7Jsw/sT+mhCg0daUVxBTi7zERoDlGn9Yb3QK7sQr8OoccotuWr+Qv/clPHrOhNzv4h9TimXK52YBW5buqYBA2B6+GyuJK67ePAvxN5j2DutAkc50J1UL1FsCDCLs154"
-# K1_SIG = "AYkHenZ85VR6nneGxhUXwaZivGehHHmik3xKU5+WR+vNJHxZFOILOz419QE1N5JscZELlUAqHU3/Pc+k9JDngyUBAiuxonxM5bMWBW5atEJkwdQkY3LhiyMmwiAzdwgAyQEr"
-K1_SIG = "AQVqA+pwA0BN1T+ry3r/+xVRkDNt0XdYFVynTrSxxqF1RQXZxoZWGpsB/4RXOh/w1AnHqtwQk6dX620FWgTGjF0CP/S98MO1Nlcw8ClVtJW4KzLJXzRm+X7vu5/sl33yziY="
+TEST_ED25519_ADDRESS = "0xe58c532315dced9d08fcb9c3aab16eac0d7fbc5f"
+TEST_SECP256K1_ADDRESS = "0x49611f06b7e59d09bdc72d2947f6a01cbc9b9480"
+TEST_SECP256R1_ADDRESS = "0x69fac8d4fb598485d21fd1c599cabfbd07437651"
+
+PAY_FROM_ED25519 = "AAYBLF99r3B6NVs1mOPEqaewM/vckDYKCQAAAAAAACCwIxopOMvtF9OcOqIMQgIAfYbccf+U4zJZ3xO0JlRsMUlhHwa35Z0JvcctKUf2oBy8m5SA5YxTIxXc7Z0I/LnDqrFurA1/vF8sX32vcHo1WzWY48Spp7Az+9yQNgoJAAAAAAAAILAjGik4y+0X05w6ogxCAgB9htxx/5TjMlnfE7QmVGwxAQAAAAAAAAAsAQAAAAAAAA=="
+PAY_FROM_SECP256K1 = "AAYBLF99r3B6NVs1mOPEqaewM/vckDYKCQAAAAAAACCwIxopOMvtF9OcOqIMQgIAfYbccf+U4zJZ3xO0JlRsMWn6yNT7WYSF0h/RxZnKv70HQ3ZRSWEfBrflnQm9xy0pR/agHLyblIAsX32vcHo1WzWY48Spp7Az+9yQNgoJAAAAAAAAILAjGik4y+0X05w6ogxCAgB9htxx/5TjMlnfE7QmVGwxAQAAAAAAAAAsAQAAAAAAAA=="
+PAY_FROM_SECP256R1 = "AAYBLF99r3B6NVs1mOPEqaewM/vckDYKCQAAAAAAACCwIxopOMvtF9OcOqIMQgIAfYbccf+U4zJZ3xO0JlRsMdqhBX9gEEU85ylRDw2BEOnLszSTafrI1PtZhIXSH9HFmcq/vQdDdlEsX32vcHo1WzWY48Spp7Az+9yQNgoJAAAAAAAAILAjGik4y+0X05w6ogxCAgB9htxx/5TjMlnfE7QmVGwxAQAAAAAAAAAsAQAAAAAAAA=="
+
+ED25_SIG = "ALRkZf8rF/Fms9dKWD21YtZKCz93clj/zIlu3EA13QGUJSEMyr3CzjeEyogbCUfFoJyX4H92oUHEILhVypEYBwLOCfvqghldQd/4nAs/0nKZgjGNJD4f9rL0KVolPoPhng=="
+K1_SIG = "ARXVT1zs/azj1ks6wo2G/cs3pSVdQ+13Lhiuqj2/EYCzExKT9YhFPbHflfCeOqjb6yRmKpLRs3aVNtWzriSJ8sQCP/S98MO1Nlcw8ClVtJW4KzLJXzRm+X7vu5/sl33yziY="
+R1_SIG = "Aj3ePiwI34Q1h1Oiulq4WI4p4UrpL2av7M3bZcPKTFaIndaiS9K0y9QuGvf5VLlOl/2KIvq/FDIaLjGf/x8Fun4Dv49dV+NohQCZEk8eU+iO5Ameo8dggMPVCmFZt8lI9iM="
 
 
 def test_ed25519_pass() -> None:
@@ -104,11 +109,11 @@ def test_secp256r1_pass() -> None:
     assert len(test_pubbytes) == SECP256R1_PUBLICKEY_BYTES_LEN
     test_prvbytes = test_kpair.to_bytes()[34:]
     assert len(test_prvbytes) == SECP256R1_PRIVATEKEY_BYTES_LEN
-    sui_pubkey = SuiPublicKeySECP256K1(test_pubbytes)
+    sui_pubkey = SuiPublicKeySECP256R1(test_pubbytes)
     assert sui_pubkey is not None
     assert test_pubbytes == sui_pubkey.key_bytes
     assert len(sui_pubkey.key_bytes) == SECP256R1_PUBLICKEY_BYTES_LEN
-    sui_privkey = SuiPrivateKeySECP256K1(test_prvbytes)
+    sui_privkey = SuiPrivateKeySECP256R1(test_prvbytes)
     assert sui_privkey is not None
     assert test_prvbytes == sui_privkey.key_bytes
     kpair = keypair_from_keystring(TEST_SECP256R1_KEYSTRING)
@@ -151,21 +156,21 @@ def test_secp256r1_address_pass() -> None:
 def test_edwards_signing() -> None:
     """Test signing."""
     edkp = keypair_from_keystring(TEST_ED25519_KEYSTRING)
-    sig = edkp.new_sign_secure(TRANSFER_TX_BYTES)
+    sig = edkp.new_sign_secure(PAY_FROM_ED25519)
     assert sig.signature == ED25_SIG
 
 
 def test_secp256k1_signing() -> None:
     """Test signing."""
     edkp = keypair_from_keystring(TEST_SECP256K1_KEYSTRING)
-    sig = edkp.new_sign_secure(TRANSFER_TX_BYTES)
+    sig = edkp.new_sign_secure(PAY_FROM_SECP256K1)
     assert sig.signature == K1_SIG
 
 
 def test_secp256r1_signing() -> None:
     """Test signing."""
     edkp = keypair_from_keystring(TEST_SECP256R1_KEYSTRING)
-    sig = edkp.new_sign_secure(TRANSFER_TX_BYTES)
+    sig = edkp.new_sign_secure(PAY_FROM_SECP256R1)
     assert sig.signature == R1_SIG
 
 

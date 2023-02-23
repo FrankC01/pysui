@@ -16,7 +16,7 @@
 import asyncio
 import ssl
 import json
-from typing import Any, Callable, Tuple, Union
+from typing import Any, Callable, Tuple
 import warnings
 from websockets.client import connect as ws_connect
 from websockets.client import WebSocketClientProtocol
@@ -25,9 +25,9 @@ from pysui.abstracts import Provider
 from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_clients.common import SuiRpcResult
-from pysui.sui.sui_builders.subscription_builders import SubscribeEvent, SubscribeTransaction
+from pysui.sui.sui_builders.subscription_builders import SubscribeEvent
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, SubscribedTransaction
+from pysui.sui.sui_txresults.complex_tx import SubscribedEvent
 
 
 class EventData:
@@ -68,26 +68,25 @@ class SuiClient(Provider):
         """
         super().__init__(config)
         self._event_subscriptions: dict[str, asyncio.Task] = {}
-        self._txn_subscriptions: dict[str, asyncio.Task] = {}
         self._in_shutdown = False
 
     async def _subscription_drive(
         self,
         payload_msg: dict,
-        builder: Union[SubscribedEvent, SubscribeTransaction],
+        builder: SubscribedEvent,
         websock: WebSocketClientProtocol,
-        handler: Callable[[Union[SubscribedEvent, SubscribedTransaction], int, int], Any],
+        handler: Callable[[SubscribedEvent, int, int], Any],
     ) -> SuiRpcResult:
         """_subscription_drive Iterate receiving events and calling handler function.
 
         :parm payload_msg: A copy of a subscription template RPC call
         :type payload_msg: dict
         :param builder: The subscription builder submitted for creating subscription filters.
-        :type builder: Union[SubscribedEvent, SubscribeTransaction]
+        :type builder: SubscribedEvent
         :param websock: The live websocket connection
         :type websock: WebSocketClientProtocol
         :param handler: The function called for each received event.
-        :type handler: Callable[[Union[SubscribedEvent, SubscribedEvent], int], Any]
+        :type handler: Callable[SubscribedEvent, int], Any]
         :return: _description_
         :rtype: SuiRpcResult
         """
@@ -129,15 +128,15 @@ class SuiClient(Provider):
 
     async def _subscription_listener(
         self,
-        builder: Union[SubscribeEvent, SubscribeTransaction],
-        handler: Callable[[Union[SubscribedEvent, SubscribedTransaction], int, int], Any],
+        builder: SubscribeEvent,
+        handler: Callable[[SubscribedEvent, int, int], Any],
     ) -> SuiRpcResult:
         """_subscription_listener Sets up websocket subscription and calls _subscription_drive.
 
         :param builder: The subscription builder submitted for creating subscription filters.
-        :type builder: Union[SubscribedEvent, SubscribeTransaction]
+        :type builder: SubscribedEvent
         :param handler: The function called for each received event.
-        :type handler: Callable[[Union[SubscribedEvent, SubscribedEvent], int], Any]
+        :type handler: Callable[[SubscribedEvent, int], Any]
         :return: Result of subscription event handling.
         :rtype: SuiRpcResult
         """
@@ -195,68 +194,31 @@ class SuiClient(Provider):
                 _sui_result = SuiRpcResult(False, "Not started: In shutdown mode", _result_data)
         return _sui_result
 
-    async def new_txn_subscription(
-        self,
-        tbuilder: SubscribeTransaction,
-        handler: Callable[[SubscribedTransaction, int, int], Any],
-        task_name: str = None,
-    ) -> SuiRpcResult:
-        """new_txn_subscription Initiate and run a transaction event subscription feed.
-
-        :param tbuilder: The subscription builder submitted for creating the transaction subscription filter.
-        :type tbuilder: SubscribeEvent
-        :param handler: The function called for each received transaction event.
-        :type handler: Callable[[SubscribedTransaction, int], Any]
-        :param task_name: A name to assign to the listener task, defaults to None
-        :type task_name: str, optional
-        :return: Result of subscribed transaction event handling
-        :rtype: SuiRpcResult
-        """
-        _result_data: dict[str, asyncio.Task] = {}
-        async with self._ACCESS_LOCK:
-            if not self._in_shutdown:
-                new_task: asyncio.Task = asyncio.create_task(
-                    self._subscription_listener(tbuilder, handler), name=task_name
-                )
-                _task_name = new_task.get_name()
-                self._txn_subscriptions[_task_name] = new_task
-                _result_data[_task_name] = new_task
-                _sui_result = SuiRpcResult(True, None, _result_data)
-            else:
-                _result_data[task_name] = None
-                _sui_result = SuiRpcResult(False, "Not started: In shutdown mode", _result_data)
-        return _sui_result
-
-    async def wait_shutdown(self) -> Tuple[list, list]:
+    async def wait_shutdown(self) -> list:
         """wait_shutdown Waits until all subscription tasks complete and gathers the results.
 
-        :return: A tuple of (Tranaction type events result list,Event type events result list)
-        :rtype: Tuple[list, list]
+        :return: A list of Event type events results received
+        :rtype: list
         """
         async with self._ACCESS_LOCK:
             self._in_shutdown = True
-            tx_sub_results = await asyncio.gather(*self._txn_subscriptions.values(), return_exceptions=True)
             ev_sub_results = await asyncio.gather(*self._event_subscriptions.values(), return_exceptions=True)
             self._in_shutdown = False
-        return (tx_sub_results, ev_sub_results)
+        return ev_sub_results
 
-    async def kill_shutdown(self, wait_seconds: int = None) -> Tuple[list, list]:
+    async def kill_shutdown(self, wait_seconds: int = None) -> list:
         """kill_shutdown Iterates through any event subscription types, cancelling those still active.
 
         :param wait_seconds: Delay, if any, to perform second cancelation on tasks, defaults to None
         :type wait_seconds: int, optional
-        :return: A tuple of (Tranaction type events result list,Event type events result list) from wait_shutdown
-        :rtype: Tuple[list, list]
+        :return: A list of Event type events results from wait_shutdown
+        :rtype: list
         """
         async with self._ACCESS_LOCK:
             self._in_shutdown = True
             _results: dict[str, bool] = {}
             # First pass
             for task_name, task in self._event_subscriptions.items():
-                state = task.cancel()
-                if state:
-                    _results[task_name] = task
-            for task_name, task in self._txn_subscriptions.items():
                 state = task.cancel()
                 if state:
                     _results[task_name] = task

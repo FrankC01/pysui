@@ -119,12 +119,23 @@ _TRANSACTION_LOOKUP = {
 
 
 @dataclass
+class TxGasData(SuiTxReturnType, DataClassJsonMixin):
+    """Transaction Data."""
+
+    budget: int
+    owner: str
+    price: int
+    payment: GenericRef
+
+
+@dataclass
 class TransactionData(SuiTxReturnType, DataClassJsonMixin):
     """Transaction Data."""
 
     sender: str
-    gas_payment: CoinRef = field(metadata=config(letter_case=LetterCase.CAMEL))
-    gas_budget: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    gas_data: TxGasData = field(metadata=config(letter_case=LetterCase.CAMEL))
+    # gas_payment: CoinRef = field(metadata=config(letter_case=LetterCase.CAMEL))
+    # gas_budget: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     transactions: list[Any] = None
 
     def __post_init__(self):
@@ -336,9 +347,13 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     deleted: Optional[list[GenericRef]] = field(default_factory=list)
     wrapped: Optional[list[GenericRef]] = field(default_factory=list)
     unwrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
+    unwrapped_then_deleted: Optional[list[GenericOwnerRef]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
+    )
     shared_objects: Optional[list[GenericRef]] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
     )
+    executed_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=None)
 
     def __post_init__(self):
         """Post init processing.
@@ -403,8 +418,8 @@ class Certificate(SuiTxReturnType, DataClassJsonMixin):
 
     transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     data: TransactionData
-    tx_signature: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
+    tx_signatures: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
 
 
 @dataclass
@@ -474,7 +489,7 @@ class CheckpointContents(DataClassJsonMixin):
     """From sui_getCheckpointContents sui_getCheckpointContentsBySequenceNumber."""
 
     transactions: list[ExecutionDigests]
-    user_signatures: list[str]
+    user_signatures: list[Union[str, dict]]
 
 
 @dataclass
@@ -559,35 +574,7 @@ class TransactionEnvelope(SuiTxReturnType, DataClassJsonMixin):
     effects: Effects
     timestamp_ms: int
     parsed_data: Union[dict, None] = field(default_factory=dict)
-
-
-@dataclass
-class SubscribedTxnParms(SuiTxReturnType, DataClassJsonMixin):
-    """From sui_subscribeTransactions."""
-
-    subscription: int
-    result: TransactionEnvelope
-
-
-@dataclass
-class SubscribedTransaction(SuiTxReturnType, DataClassJsonMixin):
-    """From sui_subscribeTransactions."""
-
-    jsonrpc: str
-    method: str
-    params: SubscribedTxnParms
-
-    @property
-    def succeeded(self) -> bool:
-        """Check if transaction result is successful."""
-        return self.params.result.effects.status.succeeded
-
-    @property
-    def status(self) -> str:
-        """Get underlying status string."""
-        if self.succeeded:
-            return "success"
-        return f"{self.params.result.effects.status.status} - {self.params.result.effects.status.error}"
+    checkpoint: int = None
 
 
 @dataclass

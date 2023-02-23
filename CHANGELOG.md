@@ -13,11 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Removed
+
+## [0.14.0] 2023-02-23
+
+BREAKING Changes
+
+### Added
+
+### Fixed
+
+### Changed
+
+- samples/async_sub.py updated to remove transaction subscriptions (see 'Removed' below)
+- `name`, `description` and `image_url` changed from int list to strings in ValidatorMetadata as per Sui 0.27.0 updates
+- Added `unwrappedThenDeleted` to Effects as per Sui 0.27.0 updates
+- Added `gas_data` to transaction execution results as per Sui 0.27.0 updates
+- Added `checkpoint` field to results of GetTx (sui_getTransaction), None otherwise, as per Sui 0.27.0 updates
+- Added `executedEpoch` to Effects as per Sui 0.27.0 updates
+- CheckpointContents `user_signatures` change to support multi-sig as per Sui 0.27.0 updates
 - Remove redundant code for `sui_config.create_new_keypair_and_address `
 - Refactor `sui_bcs.py`
 - Rename `sui_bcs.tkind_from_result` to `sui_bcw.bcs_txkind_from_result`
 
 ### Removed
+
+- **BREAKING:** `sui_subscribeTransaction` removed from Sui RPC API as per Sui 0.27.0 updates as a result:
+  - new_txn_subscription removed from `sui_client.subscribe`
+  - SubscribeTransaction removed from sui_builders and respective results from sui_txresults
 
 ## [0.13.0] 2023-02-16
 
