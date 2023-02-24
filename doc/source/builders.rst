@@ -106,8 +106,6 @@ Module: subscription_builders - Sui Builders: For subscriptions and filters.
 +---------------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.subscription_builders.SubscribeEvent`         |       |
 +---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.SubscribeTransaction`   |       |
-+---------------------------------------------------------------------------------+-------+
 
 Module: get_builders - Sui Builders: Simple sui_getXXX calls.
 -------------------------------------------------------------

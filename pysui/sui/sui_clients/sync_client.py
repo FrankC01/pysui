@@ -119,6 +119,7 @@ class SuiClient(_ClientMixin):
         """
         _recovery_id = 0
         kpair = self.config.keypair_for_address(signer)
+        # print(f"tx_bytes = {tx_bytes.value}")
 
         def _inner_sign(recovery_id: int) -> SuiRpcResult:
             builder = ExecuteTransaction(

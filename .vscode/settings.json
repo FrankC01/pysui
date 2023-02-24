@@ -1,6 +1,6 @@
 {
     // "python.envFile": "${workspaceFolder}/pysuienv",
-    "python.envFile": "${workspaceFolder}/pysui-dev.env",
+    // "python.envFile": "${workspaceFolder}/pysui-dev.env",
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.formatting.provider": "black",

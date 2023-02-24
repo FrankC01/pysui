@@ -76,10 +76,13 @@ class SuiPrivateKey(PrivateKey):
         indata = bytearray([0, 0, 0])
         dec_tx = base64.b64decode(tx_data)
         indata.extend(dec_tx)
+        # print(f"public key {public_key}")
+        # print(f"tx with intent prepended = {base64.b64encode(indata).decode()}")
         compound = bytearray([self.scheme])
         sig_bytes = self.sign(bytes(indata), recovery_id)
         compound.extend(sig_bytes)
         compound.extend(public_key.key_bytes)
+        # print(f"'scheme | sign | pubkey = {base64.b64encode(compound).decode()}")
         return bytes(compound)
 
 
@@ -163,19 +166,17 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
 
         def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
             """."""
-            s_max = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
-            if s_int > s_max:
-                # s_int = int(s_int / 2)
-                print(f"S is too high by {s_int - s_max}")
-                s_int = s_int - (s_int - s_max)
-                print(f"S normalized = {s_int}")
+            _s_max = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
+            s_int = s_int % order
+            # print(f"s = {s_int}")
+            # print(f"r = {r_int}")
+            # print(f"order = {order}")
             return ecdsa.util.sigencode_string(r_int, s_int, order)
 
-        # return self._signing_key.sign_digest(data)
-        # return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha3_256)
-        return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256)
+        # return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256)
         # return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=_sigencode_string)
-        # return self._signing_key.sign(data, hashfunc=hashlib.sha256, allow_truncate=False)
+        # return self._signing_key.sign(data, hashfunc=hashlib.sha256, allow_truncate=False, sigencode=_sigencode_string)
+        return self._signing_key.sign(data, hashfunc=hashlib.sha256, allow_truncate=False)
 
 
 class SuiKeyPairSECP256R1(SuiKeyPair):

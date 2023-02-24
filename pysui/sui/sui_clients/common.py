@@ -76,6 +76,7 @@ class _ClientMixin(Provider):
 
     _RPC_MINIMAL_VERSION: int = 26
     _SIGNATURE_ERROR: set[str] = {
+        'Invalid user signature: InvalidSignature { error: "General cryptographic error: The s value of ECDSA signature must be low" }.',
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",
     }
