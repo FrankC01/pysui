@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Removed
+
+## [0.14.1] 2023-02-24
+
+### Added
+
+### Fixed
+
+### Changed
+
 - Docs:
   - Updated subscription primer
   - Updated builders x-ref listing

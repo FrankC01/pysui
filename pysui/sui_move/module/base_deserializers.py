@@ -255,8 +255,6 @@ def deserialize_constants(
     constants: list[Constant] = []
     while reader.pos() < max_pos:
         sig_type = SignatureType(reader.read_as_int())
-        alen = reader.read_as_int()
-        val = reader.read(alen)
         match sig_type:
             case (
                 SignatureType.boolean
@@ -267,9 +265,23 @@ def deserialize_constants(
                 | SignatureType.u128
                 | SignatureType.u256
             ):
+                alen = reader.read_as_int()
+                val = reader.read(alen)
                 val = int.from_bytes(val, "little")
             case SignatureType.Vector:
-                val = reader.read(list(val)[1])
+                # Vectors are followed by the type, which may be nested vectors
+                def walk_vec():
+                    inner_sig = SignatureType(reader.read_as_int())
+                    if inner_sig == SignatureType.Vector:
+                        return walk_vec()
+                    return inner_sig
+
+                _ = walk_vec()
+                #  The next is uleb128 for overall length of content
+                alen = reader.read_uleb128()
+                # The first of value is true type count of elements
+                val = reader.read(alen)
+            # Constants are either native or vector of native
             case _:
                 raise NotImplementedError(f"{sig_type.name}")
         constants.append(Constant(sig_type, alen, val))
