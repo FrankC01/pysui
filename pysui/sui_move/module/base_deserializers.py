@@ -268,6 +268,9 @@ def deserialize_constants(
                 alen = reader.read_as_int()
                 val = reader.read(alen)
                 val = int.from_bytes(val, "little")
+            case SignatureType.Address:
+                alen = reader.read_as_int()
+                val = reader.read(alen)
             case SignatureType.Vector:
                 # Vectors are followed by the type, which may be nested vectors
                 def walk_vec():

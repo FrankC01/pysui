@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Address SignatureType in constant pool (base_deserailizers.py - deserialize_constants)
+
 ### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/76)
 
 ### Changed
 
