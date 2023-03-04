@@ -44,9 +44,9 @@ TESTNET_SOCKET_URL: str = "wss://fullnode.testnet.sui.io:443"
 """Testnet socket url."""
 
 # Address lengths
-SUI_HEX_ADDRESS_STRING_LEN: int = 42
+SUI_HEX_ADDRESS_STRING_LEN: int = 66
 """Length of valid address string with '0x' prefix."""
-SUI_ADDRESS_STRING_LEN: int = 40
+SUI_ADDRESS_STRING_LEN: int = 64
 """Length of valid address string without '0x' prefix."""
 
 # Keystring length

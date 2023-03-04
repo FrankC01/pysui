@@ -17,7 +17,7 @@ from abc import ABC
 import json
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json, DataClassJsonMixin
-from .sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
+from pysui.sui.sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
 
 # T = TypeVar("T", str, float, int, list)
 
@@ -189,7 +189,12 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
         last = head["$ref"].split("/")[-1]
         tpath.append(last)
         return _resolve_param_type(schema_dict, schema_dict.get(last), tpath)
-
+    if "anyOf" in indata:
+        head = indata.get("anyOf")[0]
+        last = indata.get("anyOf")[1]["$ref"].split("/")[-1]
+        # last = head["$ref"].split("/")[-1]
+        tpath.append(last)
+        return _resolve_param_type(schema_dict, schema_dict.get(last), tpath)
     if bool(indata) is False:
         dcp = indata.copy()
         dcp["type_path"] = tpath
@@ -230,3 +235,7 @@ def build_api_descriptors(indata: dict) -> tuple[str, dict, dict]:
 
         return (rpc_version, mdict, schema_dict)
     raise SuiApiDefinitionInvalid(indata)
+
+
+if __name__ == "__main__":
+    pass

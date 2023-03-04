@@ -23,8 +23,8 @@ from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
 from pysui.sui.sui_excepts import SuiInvalidAddress
 
-__partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{38}")
-__fullstring_pattern: re.Pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
+__partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{64}")
+__fullstring_pattern: re.Pattern = re.compile(r"0[xX][0-9a-fA-F]{64}")
 
 
 def valid_sui_address(instr: str) -> bool:
@@ -110,7 +110,7 @@ class SuiAddress(SuiBaseType):
         digest = in_bytes[0:33] if in_bytes[0] == 0 else in_bytes[0:34]
         glg = hashlib.sha3_256()
         glg.update(digest)
-        hash_bytes = binascii.hexlify(glg.digest())[0:40]
+        hash_bytes = binascii.hexlify(glg.digest())[0:64]
         return cls(hash_bytes.decode("utf-8"))
 
 

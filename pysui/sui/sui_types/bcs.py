@@ -21,7 +21,7 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import hexstring_to_list, b58str_to_list
 from pysui.sui.sui_txresults.common import GenericRef
 
-_BCS_ADDRESS_LENGTH: int = 20
+_BCS_ADDRESS_LENGTH: int = 32
 _BCS_DIGEST_LENGTH: int = 32
 
 

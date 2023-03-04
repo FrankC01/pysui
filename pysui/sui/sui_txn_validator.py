@@ -21,9 +21,13 @@ from pysui.abstracts import Builder
 from pysui.sui.sui_excepts import SuiRpcApiInvalidParameter
 from pysui.sui.sui_apidesc import SuiApi, SuiApiParam
 from pysui.sui.sui_types import SuiArray
+from pysui.sui.sui_types.scalars import SuiInteger
 
-__partstring_pattern = re.compile(r"[0-9a-fA-F]{38}")
-__fullstring_pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
+__partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{64}")
+__fullstring_pattern: re.Pattern = re.compile(r"0[xX][0-9a-fA-F]{64}")
+
+# __partstring_pattern = re.compile(r"[0-9a-fA-F]{38}")
+# __fullstring_pattern = re.compile(r"0[xX][0-9a-fA-F]{40}")
 
 
 def __parm_array_list(in_array: Any, api_parm_name: str) -> list[Any]:
@@ -37,7 +41,10 @@ def __parm_array_list(in_array: Any, api_parm_name: str) -> list[Any]:
                 if isinstance(elem, (SuiArray, list)):
                     out_array.append(__parm_array_list(elem, api_parm_name))
                 else:
-                    out_array.append(f"{elem}")
+                    if isinstance(elem, SuiInteger):
+                        out_array.append(elem.value)
+                    else:
+                        out_array.append(f"{elem}")
         else:
             out_array = in_array
     else:
