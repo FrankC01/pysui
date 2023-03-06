@@ -21,8 +21,7 @@ from pysui.sui.sui_txresults.single_tx import (
     ObjectRead,
     SuiSystemState,
 )
-
-from pysui.sui.sui_txresults.complex_tx import EffectsCertTx, EventQueryEnvelope, TxEffectResult, SubscribedTransaction
+from pysui.sui.sui_txresults.complex_tx import EventQueryEnvelope, TxResponse
 
 
 def test_sui_coin_descriptor(sui_coin_descriptor):
@@ -59,7 +58,9 @@ def test_suigas_objectread_pass(suicoin_objectread_type):
 
 def test_paysui_result_pass(paysui_result):
     """Valid result."""
-    result = TxEffectResult.factory(paysui_result)
+    # result = TxResponse.factory(paysui_result)
+    result = TxResponse.from_dict(paysui_result)
+
     assert result.succeeded is True
     assert result.status == "success"
 
@@ -92,12 +93,6 @@ def test_getfaucetgas_pass(get_gas_result):
     """Valid result."""
     result = FaucetGasRequest.from_dict(get_gas_result)
     assert result.error is None
-
-
-def test_subtx_pass(get_txevent_result):
-    """Valid result."""
-    result = SubscribedTransaction.from_dict(get_txevent_result)
-    assert result.succeeded
 
 
 def test_get_delegation_stakes_pass(get_delegated_stakes_result):

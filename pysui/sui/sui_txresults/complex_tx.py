@@ -332,6 +332,8 @@ class Status(SuiTxReturnType, DataClassJsonMixin):
 
 
 # pylint: disable=too-many-instance-attributes
+
+
 @dataclass
 class Effects(SuiTxReturnType, DataClassJsonMixin):
     """Effects Certification."""
@@ -340,7 +342,6 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     gas_used: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
     transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     gas_object: GenericOwnerRef = field(metadata=config(letter_case=LetterCase.CAMEL))
-    events: list[dict] = field(default_factory=list)
     dependencies: list[str] = field(default_factory=list)
     mutated: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     created: Optional[list[GenericOwnerRef]] = field(default_factory=list)
@@ -354,11 +355,76 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
     )
     executed_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=None)
+    events_digest: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=None)
 
     def __post_init__(self):
         """Post init processing.
 
         Hydrate relevant Events and other types
+        """
+
+
+@dataclass
+class TxResponse(SuiTxReturnType, DataClassJsonMixin):
+    """Transaction Result."""
+
+    effects: Effects
+    events: list[dict]
+    transaction: dict
+    checkpoint: Optional[int]
+    confirmed_local_execution: Optional[bool] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=bool
+    )
+    timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Post process events lookup and transaction data
+        """
+        hydrated = []
+        for ev_dict in self.events:
+            key = list(ev_dict.keys())[0]
+            hydrated.append({key: _EVENT_LOOKUP[key].from_dict(ev_dict[key])})
+        self.events = hydrated
+        self.transaction = TransactionData.from_dict(self.transaction["data"])
+
+    @property
+    def succeeded(self) -> bool:
+        """Check if transaction result is successful."""
+        return self.effects.status.succeeded
+
+    @property
+    def status(self) -> str:
+        """Get underlying status string."""
+        if self.succeeded:
+            return "success"
+        return f"{self.effects.status.status} - {self.effects.status.error}"
+
+
+@dataclass
+class TxResponseArray(SuiTxReturnType, DataClassJsonMixin):
+    """From sui_multiGetTransactions."""
+
+    transactions: list[TxResponse]
+
+    @classmethod
+    def factory(cls, in_data: list) -> "TxResponseArray":
+        """."""
+        return cls.from_dict({"transactions": in_data})
+
+
+@dataclass
+class DryRunTxResult(SuiTxReturnType, DataClassJsonMixin):
+    """From sui_dryRunTransaction."""
+
+    effects: Effects
+    events: list[dict]
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Post process events lookup
         """
         hydrated = []
         for ev_dict in self.events:
@@ -368,112 +434,28 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
-class CertifiedFinality(SuiTxReturnType, DataClassJsonMixin):
-    """From sui_executeTransaction."""
-
-    epoch: int
-    signature: str
-    signers_map: list[int]
-
-
-@dataclass
-class CheckpointedFinality(SuiTxReturnType, DataClassJsonMixin):
-    """From sui_executeTransaction."""
-
-    checkpointed: dict
-
-
-@dataclass
-class EffectsBlock(SuiTxReturnType, DataClassJsonMixin):
-    """Effects Block."""
-
-    transaction_effects_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    effects: Effects
-    # auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
-    finality_info: Union[dict, CertifiedFinality, CheckpointedFinality] = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-
-    def __post_init__(self):
-        """Post init processing.
-
-        Hydrate relevant Events and other types
-        """
-        if self.finality_info:
-            ev_map = list(self.finality_info.items())
-            event_key = ev_map[0][0]
-            event_value = ev_map[0][1]
-            match event_key:
-                case "certified":
-                    self.finality_info = CertifiedFinality.from_dict(event_value)
-                case "checkpointed":
-                    self.finality_info = CheckpointedFinality({event_key: event_value})
-                case _:
-                    raise ValueError(f"{event_key} unknown finality_info type.")
-
-
-@dataclass
-class Certificate(SuiTxReturnType, DataClassJsonMixin):
-    """Effects Certification."""
-
-    transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    data: TransactionData
-    auth_sign_info: AuthSignerInfo = field(metadata=config(letter_case=LetterCase.CAMEL))
-    tx_signatures: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
-
-
-@dataclass
-class EffectsCertTx(SuiTxReturnType, DataClassJsonMixin):
-    """Effects Certification."""
-
-    certificate: Certificate
-    effects: EffectsBlock
-    confirmed_local_execution: bool
-
-
-@dataclass
-class TxEffectResult(SuiTxReturnType, DataClassJsonMixin):
-    """Transaction Result."""
-
-    effects_cert: Union[dict, EffectsCertTx]  # = field(metadata=config(field_name="EffectsCert"))
-
-    # def __post_init__(self):
-    #     """Post init processing.
-
-    #     Hydrate relevant Events and other types
-    #     """
-    #     self.effects_cert = EffectsCertTx.from_dict(self.effects_cert)
-
-    @property
-    def succeeded(self) -> bool:
-        """Check if transaction result is successful."""
-        return self.effects_cert.effects.effects.status.succeeded
-
-    @property
-    def status(self) -> str:
-        """Get underlying status string."""
-        if self.succeeded:
-            return "success"
-        return f"{self.effects_cert.effects.effects.status.status} - {self.effects_cert.effects.effects.status.error}"
-
-    @classmethod
-    def factory(cls, indata: dict) -> "TxEffectResult":
-        """factory deserialize execution result.
-
-        :param indata: Valid response from sui_executeTransaction
-        :type indata: dict
-        :return: Instantiated data tree
-        :rtype: TxEffectResult
-        """
-        return cls(EffectsCertTx.from_dict(indata))  # .from_dict({"effects_cert": indata})
-
-
-@dataclass
 class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
     """From sui_devInspectTransaction and sui_devInspectMoveCall."""
 
     effects: Effects
     results: dict
+    events: list[dict]
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Post process events lookup
+        """
+        hydrated = []
+        for ev_dict in self.events:
+            key = list(ev_dict.keys())[0]
+            hydrated.append({key: _EVENT_LOOKUP[key].from_dict(ev_dict[key])})
+        self.events = hydrated
+
+    @classmethod
+    def factory(cls, in_data: dict) -> "TxInspectionResult":
+        """."""
+        return cls.from_dict(in_data)
 
 
 @dataclass
@@ -497,6 +479,7 @@ class EndOfEpoch(DataClassJsonMixin):
     """From sui_getCheckpointSummary."""
 
     next_epoch_protocol_version: int
+    root_state_digest: list[int]
     next_epoch_committee: list[int] = field(default_factory=list)
 
 
@@ -516,6 +499,30 @@ class CheckpointSummary(DataClassJsonMixin):
     previous_digest: str = field(default_factory=str)
 
     # next_epoch_committee: list[int] = field(default_factory=list)
+
+
+@dataclass
+class Checkpoint(DataClassJsonMixin):
+    """From sui_getCheckpointSummary."""
+
+    digest: str
+
+    epoch: int
+    sequence_number: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    epoch_rolling_gas_cost_summary: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
+    network_total_transactions: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    previous_digest: str = field(default_factory=str, metadata=config(letter_case=LetterCase.CAMEL))
+    end_of_epoch_data: Optional[dict] = field(default_factory=dict)
+    transactions: list[int] = field(default_factory=list)
+
+    def __post_init__(self):
+        """Post init processing.
+
+        Post process end_of_epoch_data
+        """
+        if self.end_of_epoch_data:
+            self.end_of_epoch_data = EndOfEpoch.from_dict(self.end_of_epoch_data)
 
 
 # Event query results
@@ -566,15 +573,15 @@ class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
     params: SubscribedEventParms
 
 
-@dataclass
-class TransactionEnvelope(SuiTxReturnType, DataClassJsonMixin):
-    """Effects Certification."""
+# @dataclass
+# class TransactionEnvelope(SuiTxReturnType, DataClassJsonMixin):
+#     """Effects Certification."""
 
-    certificate: Certificate
-    effects: Effects
-    timestamp_ms: int
-    parsed_data: Union[dict, None] = field(default_factory=dict)
-    checkpoint: int = None
+#     certificate: Optional[Certificate]
+#     effects: Effects
+#     timestamp_ms: int
+#     parsed_data: Union[dict, None] = field(default_factory=dict)
+#     checkpoint: int = None
 
 
 @dataclass

@@ -17,6 +17,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, config, LetterCase
+from pysui.sui.sui_txresults.package_meta import SuiMoveStruct
 from pysui.sui.sui_types import ObjectID, SuiAddress
 from pysui.sui.sui_txresults.common import GenericRef
 
@@ -379,6 +380,7 @@ class ObjectRawData(DataClassJsonMixin):
 
     has_public_transfer: bool
     bcs_bytes: str
+    # TODO: In spec, bcs_bytes is remmoved and fields: SuiMoveStruct and version is removed
     version: int
     data_type: str = field(metadata=config(field_name="dataType"))
     type_: str = field(metadata=config(field_name="type"))
@@ -387,6 +389,8 @@ class ObjectRawData(DataClassJsonMixin):
 @dataclass
 class ObjectRawPackage(DataClassJsonMixin):
     """From sui_getRawObject."""
+
+    # TODO: In spec, module_map is removed as weell as package_id, and dissassembled added
 
     package_id: str = field(metadata=config(field_name="id"))
     data_type: str = field(metadata=config(field_name="dataType"))
@@ -513,7 +517,7 @@ class CommitteeInfo(DataClassJsonMixin):
 
     epoch: int
     committee_info: list[Committee]
-    protocol_version: int
+    # protocol_version: int
 
     def __post__init__(self):
         """Post initializaation."""
@@ -565,17 +569,18 @@ class LinkedTableForObjectID(DataClassJsonMixin):
 class StakingPool(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    delegation_token_supply: Union[dict, int]
+    exchange_rates: dict
+    stakinig_pool_id: str = field(metadata=config(field_name="id"))
+    pending_delegation: int
+    pending_pool_token_withdraw: int
+    pending_total_sui_withdraw: int
+    pool_token_balance: int
     rewards_pool: Union[dict, int]
     starting_epoch: int
     sui_balance: int
-    validator_address: str
-    pending_delegations: LinkedTableForObjectID
-    pending_withdraws: TableVec
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""
-        self.delegation_token_supply = self.delegation_token_supply["value"]
         self.rewards_pool = self.rewards_pool["value"]
 
 
@@ -597,20 +602,26 @@ class StakeSubsidy(DataClassJsonMixin):
 class ValidatorMetaData(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    consensus_address: list[int]
+    # consensus_address: list[int]
     description: str  # list[int]
     image_url: str  # list[int]
-    project_url: list[int]
-    sui_address: str
-    pubkey_bytes: list[int]
-    network_pubkey_bytes: list[int]
-    proof_of_possession_bytes: list[int]
     name: str  # list[int]
     net_address: list[int]
-    next_epoch_stake: int
-    next_epoch_delegation: int
-    next_epoch_gas_price: int
-    next_epoch_commission_rate: int
+    network_pubkey_bytes: list[int]
+    next_epoch_net_address: Optional[list[int]]
+    next_epoch_network_pubkey_bytes: Optional[list[int]]
+    next_epoch_p2p_address: Optional[list[int]]
+    next_epoch_primary_address: Optional[list[int]]
+    next_epoch_proof_of_possession: Optional[list[int]]
+    next_epoch_protocol_pubkey_bytes: Optional[list[int]]
+    next_epoch_worker_address: Optional[list[int]]
+    next_epoch_worker_pubkey_bytes: Optional[list[int]]
+    p2p_address: list[int]
+    primary_address: list[int]
+    project_url: str
+    proof_of_possession_bytes: list[int]
+    protocol_pubkey_bytes: list[int]
+    sui_address: str
     worker_address: list[int]
     worker_pubkey_bytes: list[int]
 
@@ -634,45 +645,28 @@ class Validators(DataClassJsonMixin):
 
 
 @dataclass
-class ValidatorAddressPair(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
-
-    from_address: str = field(metadata=config(field_name="from"))
-    to_address: str = field(metadata=config(field_name="iconUrl"))
-
-
-@dataclass
-class VecMapForValidatorPairAndTableVec(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
-
-    contents: list[dict[ValidatorAddressPair, TableVec]] = field(default_factory=list)
-
-
-@dataclass
 class Validator(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    metadata: ValidatorMetaData
-    voting_power: int
-    stake_amount: int
-    pending_stake: int
-    pending_withdraw: int
-    gas_price: int
-    delegation_staking_pool: StakingPool
     commission_rate: int
+    gas_price: int
+    metadata: ValidatorMetaData
+    next_epoch_commission_rate: int
+    next_epoch_gas_price: int
+    next_epoch_stake: int
+    voting_power: int
+    staking_pool: StakingPool
 
 
 @dataclass
 class ValidatorSet(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    active_validators: list[Validator]  # list[Validator]
-    delegation_stake: int
-    next_epoch_validators: list[ValidatorMetaData]
-    pending_delegation_switches: VecMapForValidatorPairAndTableVec
+    active_validators: list[Validator]
     pending_removals: list[int]
     pending_validators: list[Validator]
-    validator_stake: int
+    staking_pool_mappings: dict
+    total_stake: int
 
 
 @dataclass
@@ -693,24 +687,35 @@ class ValidatorReportRecords(DataClassJsonMixin):
 class SuiSystemState(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
+    # "epoch",
+    # "epoch_start_timestamp_ms",
+    # "parameters",
+    # "protocol_version",
+    # "reference_gas_price",
+    # "safe_mode",
+    # "stake_subsidy",
+    # "storage_fund",
+    # "validator_report_records",
+    # "validators"
+
     epoch: int
     epoch_start_timestamp_ms: int
-    info_uid: Union[dict, int] = field(metadata=config(field_name="info"))
+    # info_uid: Union[dict, int] = field(metadata=config(field_name="info"))
     parameters: SystemParameters
     reference_gas_price: int
     safe_mode: bool
     stake_subsidy: StakeSubsidy
     protocol_version: int
     storage_fund: Union[dict, int]
-    treasury_cap: Union[dict, int]
+    # treasury_cap: Union[dict, int]
     validator_report_records: ValidatorReportRecords
     validators: ValidatorSet
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""
-        self.info_uid = self.info_uid["id"]
+        # self.info_uid = self.info_uid["id"]
         self.storage_fund = self.storage_fund["value"]
-        self.treasury_cap = self.treasury_cap["value"]
+        # self.treasury_cap = self.treasury_cap["value"]
 
 
 @dataclass
@@ -719,7 +724,7 @@ class StakedSui(DataClassJsonMixin):
 
     delegation_request_epoch: int
     stake_id: str = field(metadata=config(field_name="id"))
-    pool_starting_epoch: int
+    pool_id: str
     principal: Union[dict, int]
     validator_address: str
     sui_token_lock: Union[int, None] = 0
@@ -770,11 +775,11 @@ class DelegatedStakes(DataClassJsonMixin):
         return cls.from_dict({"delegated_stakes": in_data})
 
 
-@dataclass
-class SuiTxnAuthSigners(DataClassJsonMixin):
-    """From sui_getTransactionAuthSigners."""
+# @dataclass
+# class SuiTxnAuthSigners(DataClassJsonMixin):
+#     """From sui_getTransactionAuthSigners."""
 
-    signers: list[str]
+#     signers: list[str]
 
 
 @dataclass

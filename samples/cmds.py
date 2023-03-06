@@ -80,7 +80,7 @@ def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
         header_object_id = "Gas Object ID"
         header_mist = "Mist"
         header_sui = "SUI"
-        header_str = format(f"{header_object_id:^50s}{header_mist:^12s}{header_sui:^15s}")
+        header_str = format(f"{header_object_id:^72s}{header_mist:^12s}{header_sui:^15s}")
         print(header_str)
         for _ in range(0, len(header_str)):
             print("-", end="")
@@ -88,7 +88,7 @@ def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
         for gas_object in gas_objects.data:
             balance = gas_object.balance
             total += balance
-            print(f"{gas_object.coin_object_id:^45s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:.8f}")
+            print(f"{gas_object.coin_object_id:^66s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:.8f}")
         print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
         print()
         return total
@@ -148,7 +148,7 @@ def _objects_header_print() -> None:
     header_version = "Version"
     header_digest = "Digest"
     header_obj_type = "Object Type"
-    header_str = format(f"{header_object_id:^45s}{header_version:^11s}{header_digest:^50s}{header_obj_type:^40}")
+    header_str = format(f"{header_object_id:^68s}{header_version:^11s}{header_digest:^50s}{header_obj_type:^37}")
     print(header_str)
     for _ in range(0, len(header_str)):
         print("-", end="")

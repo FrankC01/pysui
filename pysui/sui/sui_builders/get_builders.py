@@ -16,8 +16,8 @@
 
 from typing import Optional
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
-from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiBoolean, SuiTransactionDigest
-from pysui.sui.sui_types.collections import SuiMap, EventID
+from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiBoolean
+from pysui.sui.sui_types.collections import SuiArray, SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
     DelegatedStakes,
@@ -31,15 +31,16 @@ from pysui.sui.sui_txresults.single_tx import (
     ObjectInfo,
     ObjectRead,
     CommitteeInfo,
-    SuiTxnAuthSigners,
     Validators,
 )
 from pysui.sui.sui_txresults.complex_tx import (
+    Checkpoint,
     CheckpointContents,
     CheckpointSummary,
     EventQueryEnvelope,
-    TransactionEnvelope,
     TransactionQueryEnvelope,
+    TxResponse,
+    TxResponseArray,
 )
 from pysui.sui.sui_txresults.package_meta import (
     SuiMovePackage,
@@ -183,7 +184,7 @@ class GetDynamicFieldObject(_NativeTransactionBuilder):
     """GetDynamicFieldObject when executed, return the dynamic field object information for a specified object."""
 
     @sui_builder()
-    def __init__(self, parent_object_id: ObjectID, name: SuiString) -> None:
+    def __init__(self, parent_object_id: ObjectID, name: SuiMap) -> None:
         """__init__ Builder initializer.
 
         :param parent_object_id: The ID of the queried parent object
@@ -484,9 +485,18 @@ class GetTx(_NativeTransactionBuilder):
     """GetTx When executed, return the transaction response object."""
 
     @sui_builder()
-    def __init__(self, digest: Optional[SuiString] = None) -> None:
+    def __init__(self, digest: SuiString = None) -> None:
         """Initialize builder."""
-        super().__init__("sui_getTransaction", handler_cls=TransactionEnvelope, handler_func="from_dict")
+        super().__init__("sui_getTransaction", handler_cls=TxResponse, handler_func="from_dict")
+
+
+class GetMultipleTx(_NativeTransactionBuilder):
+    """."""
+
+    @sui_builder()
+    def __init__(self, digests: SuiArray) -> None:
+        """Initialize builder."""
+        super().__init__("sui_multiGetTransactions", handler_cls=TxResponseArray, handler_func="factory")
 
 
 class GetTxsMoveFunction(SuiMap):
@@ -559,17 +569,17 @@ class GetTransactionsInRange(_NativeTransactionBuilder):
         super().__init__("sui_getTransactionsInRange")
 
 
-class GetTxAuthSignatures(_NativeTransactionBuilder):
-    """Fetch transaction authorized signatures public keys."""
+# class GetTxAuthSignatures(_NativeTransactionBuilder):
+#     """Fetch transaction authorized signatures public keys."""
 
-    @sui_builder()
-    def __init__(self, *, digest: SuiTransactionDigest):
-        """__init__ When executed, returns the authorizers public keys array.
+#     @sui_builder()
+#     def __init__(self, *, digest: SuiTransactionDigest):
+#         """__init__ When executed, returns the authorizers public keys array.
 
-        :param digest: Base58 transaction digest
-        :type digest: SuiTransactionDigest
-        """
-        super().__init__("sui_getTransactionAuthSigners", handler_cls=SuiTxnAuthSigners, handler_func="from_dict")
+#         :param digest: Base58 transaction digest
+#         :type digest: SuiTransactionDigest
+#         """
+#         super().__init__("sui_getTransactionAuthSigners", handler_cls=SuiTxnAuthSigners, handler_func="from_dict")
 
 
 class GetDelegatedStakes(_NativeTransactionBuilder):
@@ -655,6 +665,25 @@ class GetLatestCheckpointSequence(_NativeTransactionBuilder):
         super().__init__("sui_getLatestCheckpointSequenceNumber")
 
 
+class GetCheckpoint(_NativeTransactionBuilder):
+    """."""
+
+    @sui_builder()
+    def __init__(self, cp_id: SuiString):
+        """."""
+        super().__init__("sui_getCheckpoint", handler_cls=Checkpoint, handler_func="from_dict")
+
+
+class GetDisplayDeprecated(_NativeTransactionBuilder):
+    """."""
+
+    @sui_builder()
+    def __init__(self, object_id: ObjectID):
+        """."""
+        super().__init__("sui_getDisplayDeprecated")
+        # super().__init__("sui_getDisplayDeprecated", handler_cls=Checkpoint, handler_func="from_dict")
+
+
 class GetReferenceGasPrice(_NativeTransactionBuilder):
     """GetReferenceGasPrice return the reference gas price for the network."""
 
@@ -664,6 +693,7 @@ class GetReferenceGasPrice(_NativeTransactionBuilder):
         super().__init__("sui_getReferenceGasPrice")
 
 
+# TODO: Setup when stablized
 class SignRandomnessObject(_NativeTransactionBuilder):
     """SignRandomnessObject Sign an a Randomness object with threshold BLS."""
 

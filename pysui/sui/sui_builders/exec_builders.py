@@ -27,7 +27,7 @@ from pysui.sui.sui_builders.base_builder import (
 from pysui.sui.sui_types.scalars import SuiTxBytes, SuiSignature, ObjectID, SuiInteger, SuiString
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_txresults.complex_tx import TxEffectResult, Effects, TxInspectionResult
+from pysui.sui.sui_txresults.complex_tx import DryRunTxResult, TxResponse, TxInspectionResult
 
 from pysui.sui import sui_utils
 
@@ -47,7 +47,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         :param request_type: The request type
         :type request_type: SuiRequestType
         """
-        super().__init__("sui_executeTransaction", handler_cls=TxEffectResult, handler_func="factory")
+        super().__init__("sui_executeTransaction", handler_cls=TxResponse, handler_func="from_dict")
 
 
 class ExecuteSerializedTransaction(_NativeTransactionBuilder):
@@ -72,7 +72,30 @@ class ExecuteSerializedTransaction(_NativeTransactionBuilder):
         :param request_type: The type of request to use in submitting transaction
         :type request_type: SuiRequestType
         """
-        super().__init__("sui_executeTransactionSerializedSig", handler_cls=TxEffectResult, handler_func="factory")
+        super().__init__("sui_executeTransactionSerializedSig", handler_cls=TxResponse, handler_func="from_dict")
+
+
+class SubmitTransaction(_NativeTransactionBuilder):
+    """Submit a transaction with multiple signatures."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        tx_bytes: SuiTxBytes,
+        signatures: SuiArray,
+        request_type: SuiRequestType,
+    ) -> None:
+        """__init__ Content for builders
+
+        :param tx_bytes: Submitted transaction base64 SuiTxBytes
+        :type tx_bytes: SuiTxBytes
+        :param signature: Array of key_scheme,signed tx_bytes and signer pubkey serialized to Base64
+        :type signature: SuiSignature
+        :param request_type: The type of request to use in submitting transaction
+        :type request_type: SuiRequestType
+        """
+        super().__init__("sui_submitTransaction", handler_cls=TxResponse, handler_func="from_dict")
 
 
 class DryRunTransaction(_NativeTransactionBuilder):
@@ -85,7 +108,7 @@ class DryRunTransaction(_NativeTransactionBuilder):
         tx_bytes: SuiTxBytes,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_dryRunTransaction", handler_cls=Effects, handler_func="from_dict")
+        super().__init__("sui_dryRunTransaction", handler_cls=DryRunTxResult, handler_func="from_dict")
 
 
 class InspectTransaction(_NativeTransactionBuilder):
@@ -114,7 +137,7 @@ class InspectTransaction(_NativeTransactionBuilder):
         :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
         :type epoch: Optional[SuiInteger]
         """
-        super().__init__("sui_devInspectTransaction", handler_cls=TxInspectionResult, handler_func="from_dict")
+        super().__init__("sui_devInspectTransaction", handler_cls=TxInspectionResult, handler_func="factory")
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):
@@ -613,38 +636,6 @@ class RequestAddDelegation(_MoveCallTransactionBuilder):
         :type gas_budget: SuiInteger
         """
         super().__init__("sui_requestAddDelegation")
-
-
-class RequestSwitchDelegation(_MoveCallTransactionBuilder):
-    """RequestSwitchDelegation to switch delegation from the current validator to a new one."""
-
-    @sui_builder()
-    def __init__(
-        self,
-        *,
-        signer: SuiAddress,
-        delegation: ObjectID,
-        staked_sui: ObjectID,
-        new_validator_address: SuiAddress,
-        gas: ObjectID,
-        gas_budget: SuiInteger,
-    ):
-        """__init__ Initialize builder.
-
-        :param signer: the transaction signer's Sui address
-        :type signer: SuiAddress
-        :param delegation: Delegation object ID
-        :type delegation: ObjectID
-        :param staked_sui: staked Sui object ID
-        :type staked_sui: ObjectID
-        :param new_validator_address: Validator to switch to
-        :type new_validator_address: SuiAddress
-        :param gas: gas object to be used in this transaction
-        :type gas: ObjectID
-        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
-        :type gas_budget: SuiInteger
-        """
-        super().__init__("sui_requestSwitchDelegation")
 
 
 class RequestWithdrawDelegation(_MoveCallTransactionBuilder):

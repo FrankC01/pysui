@@ -95,6 +95,11 @@ class SuiArray(SuiCollection, Generic[AT]):
         """Alias for transactions."""
         return self.array
 
+    @property
+    def digests(self) -> list[dict]:
+        """Alias for transactions."""
+        return self.array
+
 
 class SuiMap(SuiCollection):
     """Dictionary Type."""
@@ -126,6 +131,11 @@ class SuiMap(SuiCollection):
 
     @property
     def filter(self) -> dict[str, Any]:
+        """Alias for transactions."""
+        return self.map
+
+    @property
+    def name(self) -> dict[str, Any]:
         """Alias for transactions."""
         return self.map
 

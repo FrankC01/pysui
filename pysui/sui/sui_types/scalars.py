@@ -86,6 +86,11 @@ class SuiString(SuiScalarType):
         super().__init__(identifier)
 
     @property
+    def id(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def function(self) -> str:
         """Alias for transactions."""
         return self.value
