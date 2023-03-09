@@ -470,7 +470,7 @@ def txn_count(client: SuiClient, _args: argparse.Namespace) -> None:
 
 def txn_txn(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
-    result = client.execute(GetTx(args.digest))
+    result = client.execute(GetTx(digest=args.digest))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:

@@ -368,14 +368,16 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
 class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     """Transaction Result."""
 
-    effects: Effects
-    events: list[dict]
+    digest: str
+    errors: list[str]
     transaction: dict
-    checkpoint: Optional[int]
+    effects: Optional[Effects] = field(default_factory=dict)
+    events: Optional[list[dict]] = field(default_factory=list)
+    checkpoint: Optional[int] = field(default_factory=int)
     confirmed_local_execution: Optional[bool] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=bool
     )
-    timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
+    timestamp_ms: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
 
     def __post_init__(self):
         """Post init processing.

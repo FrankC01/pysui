@@ -23,7 +23,6 @@ Breaking Changes - Significant
 
 ### Changed
 
-- `sui_getSuiSystemState` is being deprecated as per Sui 0.28.0. Use GetLatestSuiSystemState instead.
 - **Breaking Change** TxEffectResult renamed to TxResponse and restructured as per Sui 0.28.0
 - **Breaking Change** Sui has moved from 20 byte address to 32 byte addresses. This changes all SuiAddress and ObjectID constructs.
 - **Breaking Change** ValidatorMetaData changes as per Sui 0.28.0
@@ -32,14 +31,16 @@ Breaking Changes - Significant
 - **Breaking Change** GetDynamicFieldObject now takes a mapping for name as per Sui 0.28.0
 - **Breaking Change** GetTx result changes as per Sui 0.28.0
 - **Breaking Change** GetObject result changes as per Sui 0.28.0
+- GetObject now takes flag options on what to include or not in result
 - Removed `protocol_version` field from CommitteeInfo results as per Sui 0.28.0
 - InspectTransaction results now include eveents as per Sui 0.28.0
 
 ### Removed
 
-- **Breaking Change** GetTxAuthSignatures remvoed as `sui_getTransactionAuthSigners` removed as per Sui 0.28.0
-- **Breaking Change** RequestSwitchDelegation removed as `sui_requestSwitchDelegation` removed as per Sui 0.28.0
-- **Breaking Change** GetRawObject removed as `sui_getRawObject` removed as per Sui 0.28.0
+- **Breaking Change** GetTxAuthSignatures removed for `sui_getTransactionAuthSigners` removed as per Sui 0.28.0
+- **Breaking Change** RequestSwitchDelegation removed for `sui_requestSwitchDelegation` removed as per Sui 0.28.0
+- **Breaking Change** GetRawObject removed for `sui_getRawObject` removed as per Sui 0.28.0. Raw information is now part of GetObject
+- **Breaking Change** GetSuiSystemState removed for `sui_getSuiSystemState` as per Sui 0.28.0. Use GetLatestSuiSystemState instead.
 
 ## [0.14.1] 2023-02-24
 

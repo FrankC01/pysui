@@ -272,7 +272,9 @@ class SuiClient(_ClientMixin):
         :return: The objeect's ObjectRead data
         :rtype: Union[SuiRpcResult, Exception]
         """
-        return await self.execute(GetObject(identifier) if version is None else GetPastObject(identifier, version))
+        return await self.execute(
+            GetObject(object_id=identifier) if version is None else GetPastObject(identifier, version)
+        )
 
     async def get_objects_for(self, identifiers: list[ObjectID]) -> Union[SuiRpcResult, Exception]:
         """get_objects_for Get objects for the list of identifiers.

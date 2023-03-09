@@ -247,13 +247,12 @@ class ImmutableOwner(DataClassJsonMixin):
 class ObjectRawData(DataClassJsonMixin):
     """From sui_getRawObject."""
 
-    bcs_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    has_public_transfer: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
-
-    # TODO: In spec, bcs_bytes is remmoved and fields: SuiMoveStruct and version is removed
     version: int
     data_type: str = field(metadata=config(field_name="dataType"))
-    type_: str = field(metadata=config(field_name="type"))
+    type_: Optional[str] = field(metadata=config(field_name="type"), default_factory=str)
+    has_public_transfer: Optional[bool] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=bool)
+    bcs_bytes: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=str)
+    module_map: Optional[dict] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
 
 
 @dataclass
@@ -267,7 +266,7 @@ class ObjectRead(DataClassJsonMixin):
     previous_transaction: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
     storage_rebate: Optional[int] = field(metadata=config(field_name="storageRebate"))
     content: Optional[dict] = field(default_factory=dict)
-    bcs: Optional[ObjectRawData] = field(default_factory=dict)
+    bcs: Optional[dict] = field(default_factory=dict)
     digest: Optional[str] = field(default_factory=str)
     display: Optional[str] = field(default_factory=str)
     owner: Optional[Any] = field(default_factory=str)
@@ -276,8 +275,12 @@ class ObjectRead(DataClassJsonMixin):
 
     def __post_init__(self):
         """Post init processing for parameters."""
-        if self.content["dataType"] == "package":
-            self.content = SuiPackage.from_dict(self.content)
+        # Check if pure raw pacakge
+
+        if self.content and self.content["dataType"] == "package":
+            self.bcs = self.content = SuiPackage.from_dict(self.content)
+        elif self.bcs and self.bcs["dataType"] == "package":
+            self.bcs = self.content = ObjectRawData.from_dict(self.bcs)
         else:
             split = self.content["type"].split("::", 2)
             if split[0] == "0x2":
@@ -389,11 +392,10 @@ class ObjectRead(DataClassJsonMixin):
 class ObjectRawPackage(DataClassJsonMixin):
     """From sui_getRawObject."""
 
-    # TODO: In spec, module_map is removed as weell as package_id, and dissassembled added
-
     package_id: str = field(metadata=config(field_name="id"))
     data_type: str = field(metadata=config(field_name="dataType"))
     module_map: dict
+    version: int
 
 
 @dataclass
@@ -538,13 +540,14 @@ class CommitteeInfo(DataClassJsonMixin):
         return CommitteeInfo.from_dict(indata)
 
 
-@dataclass
-class SystemParameters(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
+# TODO: Deprecated
+# @dataclass
+# class SystemParameters(DataClassJsonMixin):
+#     """From sui_getSuiSystemState."""
 
-    governance_start_epoch: int
-    max_validator_count: int
-    min_validator_stake: int
+#     governance_start_epoch: int
+#     max_validator_count: int
+#     min_validator_stake: int
 
 
 @dataclass
@@ -555,21 +558,23 @@ class Table(DataClassJsonMixin):
     table_id: str = field(metadata=config(field_name="id"))
 
 
-@dataclass
-class TableVec(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
+# TODO: Deprecated
+# @dataclass
+# class TableVec(DataClassJsonMixin):
+#     """From sui_getSuiSystemState."""
 
-    contents: dict[str, int]
+#     contents: dict[str, int]
 
 
-@dataclass
-class LinkedTableForObjectID(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
+# TODO: Deprecated
+# @dataclass
+# class LinkedTableForObjectID(DataClassJsonMixin):
+#     """From sui_getSuiSystemState."""
 
-    head: dict[str, list[str]]
-    tail: dict[str, list[str]]
-    size: int
-    linked_object_id: str = field(metadata=config(field_name="id"))
+#     head: dict[str, list[str]]
+#     tail: dict[str, list[str]]
+#     size: int
+#     linked_object_id: str = field(metadata=config(field_name="id"))
 
 
 @dataclass
@@ -591,19 +596,6 @@ class StakingPool(DataClassJsonMixin):
     def __post_init__(self):
         """Post hydrate parameter fixups."""
         self.rewards_pool = self.rewards_pool["value"]
-
-
-@dataclass
-class StakeSubsidy(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
-
-    balance: dict
-    current_epoch_amount: int
-    epoch_counter: int
-
-    def __post_init__(self):
-        """Post hydrate parameter fixups."""
-        self.balance = self.balance["value"]
 
 
 # pylint: disable=too-many-instance-attributes
@@ -635,22 +627,23 @@ class ValidatorMetaData(DataClassJsonMixin):
     worker_pubkey_bytes: list[int]
 
 
-@dataclass
-class Validators(DataClassJsonMixin):
-    """From sui_getValidators."""
+# TODO: Deprecated
+# @dataclass
+# class Validators(DataClassJsonMixin):
+#     """From sui_getValidators."""
 
-    validator_metadata: list[ValidatorMetaData]
+#     validator_metadata: list[ValidatorMetaData]
 
-    @classmethod
-    def ingest_data(cls, indata: list) -> "Validators":
-        """ingest_data Ingest validators.
+#     @classmethod
+#     def ingest_data(cls, indata: list) -> "Validators":
+#         """ingest_data Ingest validators.
 
-        :param indata: List of ValidatorMetaData objects
-        :type indata: list
-        :return: Instance of Validators
-        :rtype: Validators
-        """
-        return cls.from_dict({"validator_metadata": indata})
+#         :param indata: List of ValidatorMetaData objects
+#         :type indata: list
+#         :return: Instance of Validators
+#         :rtype: Validators
+#         """
+#         return cls.from_dict({"validator_metadata": indata})
 
 
 @dataclass
@@ -709,6 +702,7 @@ class ValidatorSummary(DataClassJsonMixin):
     worker_pubkey_bytes: list[int]
 
 
+# TODO: Deprecated
 @dataclass
 class ValidatorSet(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
@@ -727,38 +721,40 @@ class ValidatorSet(DataClassJsonMixin):
             self.pending_active_validators = Table.from_dict(self.pending_active_validators["contents"])
 
 
-@dataclass
-class VecSetForSuiAddress(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
+# TODO: Deprecated
+# @dataclass
+# class VecSetForSuiAddress(DataClassJsonMixin):
+#     """From sui_getSuiSystemState."""
 
-    contents: list[str] = field(default_factory=list)
-
-
-@dataclass
-class ValidatorReportRecords(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
-
-    contents: list[dict[str, VecSetForSuiAddress]] = field(default_factory=list)
+#     contents: list[str] = field(default_factory=list)
 
 
-@dataclass
-class SuiSystemState(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
+# TODO: Deprecated
+# @dataclass
+# class ValidatorReportRecords(DataClassJsonMixin):
+#     """From sui_getSuiSystemState."""
 
-    epoch: int
-    epoch_start_timestamp_ms: int
-    parameters: SystemParameters
-    protocol_version: int
-    reference_gas_price: int
-    safe_mode: bool
-    stake_subsidy: StakeSubsidy
-    storage_fund: Union[dict, int]
-    validator_report_records: ValidatorReportRecords
-    validators: ValidatorSet
+#     contents: list[dict[str, VecSetForSuiAddress]] = field(default_factory=list)
 
-    def __post_init__(self):
-        """Post hydrate parameter fixups."""
-        self.storage_fund = self.storage_fund["value"]
+# TODO: Deprecated
+# @dataclass
+# class SuiSystemState(DataClassJsonMixin):
+#     """From sui_getSuiSystemState."""
+
+#     epoch: int
+#     epoch_start_timestamp_ms: int
+#     parameters: SystemParameters
+#     protocol_version: int
+#     reference_gas_price: int
+#     safe_mode: bool
+#     stake_subsidy: StakeSubsidy
+#     storage_fund: Union[dict, int]
+#     validator_report_records: ValidatorReportRecords
+#     validators: ValidatorSet
+
+#     def __post_init__(self):
+#         """Post hydrate parameter fixups."""
+#         self.storage_fund = self.storage_fund["value"]
 
 
 @dataclass
@@ -769,16 +765,26 @@ class SuiLatestSystemState(DataClassJsonMixin):
     epoch: int
     epoch_start_timestamp_ms: int
     governance_start_epoch: int
-    max_validator_candidate_count: int
+    inactive_pools_id: str
+    inactive_pools_size: int
+    max_validator_count: int
     min_validator_stake: int
+    pending_active_validators_id: str
+    pending_active_validators_size: int
+    pending_removals: int
     protocol_version: int
     reference_gas_price: int
     safe_mode: bool
     stake_subsidy_balance: int
     stake_subsidy_current_epoch_amount: int
     stake_subsidy_epoch_counter: int
+    staking_pool_mappings_id: str
+    staking_pool_mappings_size: int
     storage_fund: int
     total_stake: int
+    validator_candidates_id: str
+    validator_candidates_size: int
+    validator_report_records: list[Any]
 
 
 @dataclass

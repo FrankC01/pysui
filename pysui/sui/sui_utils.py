@@ -384,6 +384,7 @@ def as_sui_map(in_data: Any) -> Union[SuiMap, ValueError]:
     :return: A SuiMap
     :rtype: Union[SuiMap, ValueError]
     """
+    result = None
     if isinstance(in_data, SuiMap):
         result = in_data
     elif isinstance(in_data, dict):

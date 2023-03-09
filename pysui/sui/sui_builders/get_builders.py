@@ -16,7 +16,7 @@
 
 from typing import Final, Optional
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
-from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiBoolean
+from pysui.sui.sui_types.scalars import SuiNullType, SuiString, SuiInteger, ObjectID, SuiBoolean
 from pysui.sui.sui_types.collections import SuiArray, SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
@@ -27,11 +27,11 @@ from pysui.sui.sui_txresults.single_tx import (
     CoinBalances,
     SuiCoinObjects,
     SuiLatestSystemState,
-    SuiSystemState,
+    # SuiSystemState,
     ObjectInfo,
     ObjectRead,
     CommitteeInfo,
-    Validators,
+    # Validators,
 )
 from pysui.sui.sui_txresults.complex_tx import (
     Checkpoint,
@@ -49,6 +49,7 @@ from pysui.sui.sui_txresults.package_meta import (
     SuiMoveStruct,
     SuiMoveFunctionArgumentTypes,
 )
+import pysui.sui.sui_utils as sutils
 
 
 class GetCoinMetaData(_NativeTransactionBuilder):
@@ -141,14 +142,13 @@ class GetCoins(_NativeTransactionBuilder):
         super().__init__("sui_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
 
 
-# TODO: Deprecated
-class GetSuiSystemState(_NativeTransactionBuilder):
-    """Return the SUI system state. This is deprecated in favor of GetLatestSuiSystemState."""
+# class GetSuiSystemState(_NativeTransactionBuilder):
+#     """Return the SUI system state. This is deprecated in favor of GetLatestSuiSystemState."""
 
-    @sui_builder()
-    def __init__(self) -> None:
-        """__init__ Initializes builder."""
-        super().__init__("sui_getSuiSystemState", handler_cls=SuiSystemState, handler_func="from_dict")
+#     @sui_builder()
+#     def __init__(self) -> None:
+#         """__init__ Initializes builder."""
+#         super().__init__("sui_getSuiSystemState", handler_cls=SuiSystemState, handler_func="from_dict")
 
 
 class GetLatestSuiSystemState(_NativeTransactionBuilder):
@@ -227,7 +227,7 @@ class GetDynamicFields(_NativeTransactionBuilder):
 class GetObject(_NativeTransactionBuilder):
     """GetObject When executed, return the object detailed information for a specified object."""
 
-    DEFAULT_GET_OBJECT_OPTIONS: Final[dict] = {
+    _DEFAULT_GET_OBJECT_OPTIONS: Final[dict] = {
         "showType": True,
         "showOwner": True,
         "showPreviousTransaction": True,
@@ -237,14 +237,33 @@ class GetObject(_NativeTransactionBuilder):
         "showStorageRebate": True,
     }
 
-    @sui_builder()
-    def __init__(self, object_id: ObjectID, options: SuiMap = DEFAULT_GET_OBJECT_OPTIONS) -> None:
+    _DEFAULT_GET_PACKAGE_OPTIONS: Final[dict] = {
+        "showType": True,
+        "showOwner": True,
+        "showPreviousTransaction": True,
+        "showDisplay": False,
+        "showContent": False,
+        "showBcs": True,
+        "showStorageRebate": True,
+    }
+
+    def __init__(self, *, object_id: ObjectID, options: Optional[SuiMap] = None) -> None:
         """__init__ Initializes builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
         :type sui_object: ObjectID, optional
         """
         super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
+        self.object_id = sutils.as_object_id(object_id)
+        if options is None or isinstance(options, SuiNullType):
+            self.options = sutils.as_sui_map(self._DEFAULT_GET_OBJECT_OPTIONS.copy())
+        else:
+            self.options = sutils.as_sui_map(options)
+
+    @classmethod
+    def package_options(cls):
+        """."""
+        return cls._DEFAULT_GET_PACKAGE_OPTIONS.copy()
 
 
 class GetPastObject(_NativeTransactionBuilder):
@@ -491,19 +510,34 @@ class GetTotalTxCount(_NativeTransactionBuilder):
 class GetTx(_NativeTransactionBuilder):
     """GetTx When executed, return the transaction response object."""
 
-    @sui_builder()
-    def __init__(self, digest: SuiString = None) -> None:
+    _DEFAULT_GET_TX_OPTIONS: Final[dict] = {
+        "showEffects": True,
+        "showEvents": True,
+        "showInput": True,
+    }
+
+    def __init__(self, *, digest: SuiString, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
         super().__init__("sui_getTransaction", handler_cls=TxResponse, handler_func="from_dict")
+        self.digest = sutils.as_sui_string(digest)
+        if options is None or isinstance(options, SuiNullType):
+            self.options = sutils.as_sui_map(self._DEFAULT_GET_TX_OPTIONS.copy())
+        else:
+            self.options = sutils.as_sui_map(options)
 
 
 class GetMultipleTx(_NativeTransactionBuilder):
     """."""
 
     @sui_builder()
-    def __init__(self, digests: SuiArray) -> None:
+    def __init__(self, *, digests: SuiArray, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
         super().__init__("sui_multiGetTransactions", handler_cls=TxResponseArray, handler_func="factory")
+        self.digests = sutils.as_sui_array(digests)
+        if options is None or isinstance(options, SuiNullType):
+            self.options = sutils.as_sui_map(GetTx._DEFAULT_GET_TX_OPTIONS.copy())
+        else:
+            self.options = sutils.as_sui_map(options)
 
 
 class GetTxsMoveFunction(SuiMap):
@@ -602,15 +636,17 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
         super().__init__("sui_getDelegatedStakes", handler_cls=DelegatedStakes, handler_func="ingest_data")
 
 
-class GetValidators(_NativeTransactionBuilder):
-    """sui_getValidators."""
+# TODO: Deprecated
+# class GetValidators(_NativeTransactionBuilder):
+#     """sui_getValidators."""
 
-    @sui_builder()
-    def __init__(self):
-        """__init__ Builder initializer."""
-        super().__init__("sui_getValidators", handler_cls=Validators, handler_func="ingest_data")
+#     @sui_builder()
+#     def __init__(self):
+#         """__init__ Builder initializer."""
+#         super().__init__("sui_getValidators", handler_cls=Validators, handler_func="ingest_data")
 
 
+# TODO: Deprecated
 # class GetCheckpointContents(_NativeTransactionBuilder):
 #     """GetCheckpointContents return contents of a checkpoint, namely a list of execution digests."""
 
