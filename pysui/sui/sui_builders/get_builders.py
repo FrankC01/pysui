@@ -513,7 +513,7 @@ class GetTx(_NativeTransactionBuilder):
     _DEFAULT_GET_TX_OPTIONS: Final[dict] = {
         "showEffects": True,
         "showEvents": True,
-        "showInput": True,
+        "showInput": False,
     }
 
     def __init__(self, *, digest: SuiString, options: Optional[SuiMap] = None) -> None:

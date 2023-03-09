@@ -34,6 +34,7 @@ Breaking Changes - Significant
 - GetObject now takes flag options on what to include or not in result
 - Removed `protocol_version` field from CommitteeInfo results as per Sui 0.28.0
 - InspectTransaction results now include eveents as per Sui 0.28.0
+- Renamed `bcs_from_rpcresult` to `bcs_struct_from_rpcresult` in
 
 ### Removed
 

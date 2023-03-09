@@ -28,7 +28,7 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import b64str_to_list, int_to_listu8
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_txresults.common import GenericRef
-from pysui.sui.sui_txresults.single_tx import ObjectRawRead
+from pysui.sui.sui_txresults.single_tx import AddressOwner, ObjectRawRead
 from pysui.sui.sui_builders.get_builders import GetFunction, GetObject
 from pysui.sui.sui_builders.exec_builders import (
     _MoveCallTransactionBuilder,
@@ -53,11 +53,11 @@ from pysui.sui.sui_txresults.package_meta import (
     SuiParameterStruct,
 )
 
-
-_TKIND_INDEX: int = 0
-_SUB_TKIND_INDEX: int = 1
-_SKIP_KIND_AND_SINGLE: int = 2
-_SKIP_KIND_AND_BATCH: int = 1
+_TKDATA_INDEX: int = 0
+_TKIND_INDEX: int = 1
+_SUB_TKIND_INDEX: int = 2
+_SKIP_DATA_KIND_AND_SINGLE: int = 3
+_SKIP_KIND_AND_BATCH: int = 2
 _GAS_AND_BUDGET_BYTE_OFFSET: int = -155
 FAKE_ADDRESS_OR_OBJECT: str = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
@@ -91,17 +91,18 @@ def _bcs_objarg_for_oid(client: SyncClient, object_id: ObjectID) -> Union[Object
     :return: The constructed ObjectArg
     :rtype: Union[ObjectArg, Exception]
     """
-    bro_result = client.execute(GetObject(object_id))
+    bro_result = client.execute(GetObject(object_id=object_id))
     if bro_result.is_ok():
         raw_data: ObjectRawRead = bro_result.result_data
         if isinstance(raw_data.owner, str):
             if raw_data.owner == "Immutable":
                 arg_type = "ImmOrOwnedObject"
-        elif "AddressOwner" in raw_data.owner:
+        elif isinstance(raw_data.owner, AddressOwner):
+            # elif "AddressOwner" in raw_data.owner:
             arg_type = "ImmOrOwnedObject"
         else:
             arg_type = "SharedObject"
-        return ObjectArg(arg_type, BCSObjectReference.from_generic_ref(raw_data.reference))
+        return ObjectArg(arg_type, BCSObjectReference.from_generic_ref(raw_data))
     raise ValueError(f"{bro_result.result_string} fetching object {object_id}")
 
 
@@ -434,7 +435,7 @@ def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -
 
 
 def bcs_base64_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[str, Exception]:
-    """bcs_base64_from_builder converts a builder to BCS serialized TransactionKind as base64 string.
+    """bcs_base64_from_builder converts a builder to BCS serialized TransactionData as base64 string.
 
     Can be then used to submit to sui_devInspectTransaction
 
@@ -451,7 +452,7 @@ def bcs_base64_from_builder(client: SyncClient, builder: _MoveCallTransactionBui
 def bcs_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
     """tkind_from_result Return a BCS serialized TransactionKind as base64 encoded string.
 
-    Can be then used to submit to sui_devInspectTransaction
+    Can be then used to submit to InspectTransaction
 
     :param indata: The result of calling a complex transaction prior to signing
     :type indata: SuiRpcResult
@@ -461,12 +462,18 @@ def bcs_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
     if indata.is_ok():
         _, no_sign_tx_bytes = indata.result_data
         # print(list(base64.b64decode(no_sign_tx_bytes.value)))
-        return base64.b64encode(base64.b64decode(no_sign_tx_bytes.value)[:_GAS_AND_BUDGET_BYTE_OFFSET]).decode()
+        raw_b64 = no_sign_tx_bytes.value
+        raw_bytes = base64.b64decode(raw_b64)
+        # print(list(raw_bytes))
+        # print()
+        raw_shredded = raw_bytes[: _GAS_AND_BUDGET_BYTE_OFFSET + (-_SKIP_DATA_KIND_AND_SINGLE)]
+        # print(list(raw_shredded))
+        return base64.b64encode(raw_shredded).decode()
     return indata
 
 
-def bcs_from_rpcresult(no_sign_result: SuiRpcResult) -> Union[tuple[str, canoser.Struct], Exception]:
-    """bcs_from_rpcresult converts the transaction bytes from an unsigned transaction result into BCS.
+def bcs_struct_from_rpcresult(no_sign_result: SuiRpcResult) -> Union[canoser.Struct, Exception]:
+    """bcs_struct_from_rpcresult converts the transaction bytes into BCS struct.
 
     :param no_sign_result: The result from calling (not signing) transaction
     :type no_sign_result: SuiRpcResult
@@ -485,17 +492,17 @@ def bcs_from_rpcresult(no_sign_result: SuiRpcResult) -> Union[tuple[str, canoser
         match tkind_name:
             case "Single":
                 # The second byte is index into concrete transaction type enum
-                tk_name, tx_type_class = tkind_class.variant_for_index(tx_kind[_SUB_TKIND_INDEX])
+                _tk_name, tx_type_class = tkind_class.variant_for_index(tx_kind[_SUB_TKIND_INDEX])
                 if tx_type_class:
                     sheded = tx_kind[:_GAS_AND_BUDGET_BYTE_OFFSET]
-                    sheded = sheded[_SKIP_KIND_AND_SINGLE:]
-                    return tk_name, tx_type_class.deserialize(sheded)
+                    sheded = sheded[_SKIP_DATA_KIND_AND_SINGLE:]
+                    return tx_type_class.deserialize(sheded)
                 raise AttributeError(f"{tkind_name} has no deserialization entry in BCSSingleTransaction")
             case "Batch":
                 sheded = tx_kind[:_GAS_AND_BUDGET_BYTE_OFFSET]
                 sheded = sheded[_SKIP_KIND_AND_BATCH:]
                 bdser = BCSBatchTransaction.deserialize(sheded)
-                return "Batch", bdser
+                return bdser
             case _:
                 raise AttributeError(f"{tkind_name} is unknown TransactionKind")
     else:
