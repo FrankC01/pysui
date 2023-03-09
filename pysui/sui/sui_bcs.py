@@ -29,7 +29,7 @@ from pysui.sui.sui_utils import b64str_to_list, int_to_listu8
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.single_tx import ObjectRawRead
-from pysui.sui.sui_builders.get_builders import GetFunction, GetRawObject
+from pysui.sui.sui_builders.get_builders import GetFunction, GetObject
 from pysui.sui.sui_builders.exec_builders import (
     _MoveCallTransactionBuilder,
     MoveCall,
@@ -58,7 +58,7 @@ _TKIND_INDEX: int = 0
 _SUB_TKIND_INDEX: int = 1
 _SKIP_KIND_AND_SINGLE: int = 2
 _SKIP_KIND_AND_BATCH: int = 1
-_GAS_AND_BUDGET_BYTE_OFFSET: int = -154
+_GAS_AND_BUDGET_BYTE_OFFSET: int = -155
 FAKE_ADDRESS_OR_OBJECT: str = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 
@@ -75,7 +75,8 @@ def _bcs_reference_for_oid(client: SyncClient, object_id: ObjectID) -> Union[BCS
     """
     bro_result = client.get_object(object_id)
     if bro_result.is_ok():
-        return BCSObjectReference.from_generic_ref(bro_result.result_data.reference)
+        return BCSObjectReference.from_generic_ref(bro_result.result_data)
+        # return BCSObjectReference.from_generic_ref(bro_result.result_data.reference)
     raise ValueError(f"{bro_result.result_string} fetching object {object_id}")
 
 
@@ -90,7 +91,7 @@ def _bcs_objarg_for_oid(client: SyncClient, object_id: ObjectID) -> Union[Object
     :return: The constructed ObjectArg
     :rtype: Union[ObjectArg, Exception]
     """
-    bro_result = client.execute(GetRawObject(object_id))
+    bro_result = client.execute(GetObject(object_id))
     if bro_result.is_ok():
         raw_data: ObjectRawRead = bro_result.result_data
         if isinstance(raw_data.owner, str):
@@ -393,8 +394,8 @@ def _bcs_for_call(client: SyncClient, builder: MoveCall) -> BCSSingleTransaction
     return BCSSingleTransaction("Call", BCSMoveCall(package, module, function, type_args, arguments))
 
 
-def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[BCSTransactionKind, Exception]:
-    """bcs_from_builder constructs a BCS TransactionKind from a Builder.
+def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[BCSTransactionData, Exception]:
+    """bcs_from_builder constructs a BCS TransactionData from a Builder.
 
     The result can be serialized and used in sui_devInspectTransaction.
     """
@@ -429,7 +430,7 @@ def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -
                 payload = BCSBatchTransaction(res_vector)
             case _:
                 raise TypeError(f"conversion from type {bname} builder not supported")
-    return BCSTransactionKind(tx_kind, payload)
+    return BCSTransactionData("V1", BCSTransactionKind(tx_kind, payload))
 
 
 def bcs_base64_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[str, Exception]:
@@ -459,6 +460,7 @@ def bcs_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
     """
     if indata.is_ok():
         _, no_sign_tx_bytes = indata.result_data
+        # print(list(base64.b64decode(no_sign_tx_bytes.value)))
         return base64.b64encode(base64.b64decode(no_sign_tx_bytes.value)[:_GAS_AND_BUDGET_BYTE_OFFSET]).decode()
     return indata
 

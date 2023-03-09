@@ -239,3 +239,5 @@ def from_base64(in_base64: str, form: Deserialize = Deserialize.ALL) -> Union[Ra
 
 if __name__ == "__main__":
     pass
+    # deser_track = from_file("~/frankc01/sui-track/build/SuiTrack/bytecode_modules/base.mv")
+    # print("Success")

@@ -26,6 +26,8 @@ class SignatureScheme(IntEnum):
     ED25519 = 0
     SECP256K1 = 1
     SECP256R1 = 2
+    BLS12381 = 3
+    MULTISIG = 4
 
     def as_str(self) -> str:
         """Get scheme as string."""
@@ -72,6 +74,14 @@ class Key(ABC):
 
 class PublicKey(Key):
     """PublicKey construct."""
+
+    def scheme_and_key(self) -> bytes:
+        """scheme_and_key returns bytes of key scheme + pubkey bytes.
+
+        :return: pubkey bytes with scheme value prefix
+        :rtype: bytes
+        """
+        return self.scheme.value.to_bytes(1, "little") + self.key_bytes
 
 
 class PrivateKey(Key):

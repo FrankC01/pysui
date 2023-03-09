@@ -16,6 +16,7 @@
 import binascii
 from typing import Any, Union
 import canoser
+from pysui.sui.sui_txresults.single_tx import ObjectRead
 
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import hexstring_to_list, b58str_to_list
@@ -82,7 +83,9 @@ class BCSObjectReference(canoser.Struct):
         :return: The instantiated BCS object
         :rtype: BCSSharedObjectReference
         """
-        return cls(BCSAddress.from_str(indata.object_id), indata.version, BCSDigest.from_str(indata.digest))
+        if isinstance(indata, ObjectRead):
+            return cls(BCSAddress.from_str(indata.object_id), indata.version, BCSDigest.from_str(indata.digest))
+        raise ValueError(f"{indata} is not valid")
 
 
 class BCSSharedObjectReference(canoser.Struct):
@@ -316,8 +319,28 @@ class BCSTransactionKind(canoser.RustEnum):
 
     _enums = [
         ("Single", BCSSingleTransaction),
-        ("Batch", BCSBatchTransaction),  # Not implemented
+        ("Batch", BCSBatchTransaction),
     ]
+
+    @classmethod
+    def variant_for_index(cls, index: int) -> Union[tuple[str, canoser.RustEnum], IndexError]:
+        """variant_for_index returns the enum name and reference tuple from specific index.
+
+        :param index: The index into list of enum values
+        :type index: int
+        :raises IndexError: When index provided is not valid
+        :return: The name,value tuple of the enum index
+        :rtype: Union[tuple[str, canoser.RustEnum], ValueError]
+        """
+        if index > len(cls._enums):
+            raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
+        return cls._enums[index]
+
+
+class BCSTransactionData(canoser.RustEnum):
+    """BCSTransactionData is enumeration of transaction kind."""
+
+    _enums = [("V1", BCSTransactionKind)]
 
     @classmethod
     def variant_for_index(cls, index: int) -> Union[tuple[str, canoser.RustEnum], IndexError]:

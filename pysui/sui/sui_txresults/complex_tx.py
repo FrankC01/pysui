@@ -458,6 +458,7 @@ class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
         return cls.from_dict(in_data)
 
 
+# TODO: Trace for removal
 @dataclass
 class ExecutionDigests(DataClassJsonMixin):
     """From sui_getCheckpointContents sui_getCheckpointContentsBySequenceNumber."""
@@ -466,6 +467,7 @@ class ExecutionDigests(DataClassJsonMixin):
     transaction: str
 
 
+# TODO: Trace for removal
 @dataclass
 class CheckpointContents(DataClassJsonMixin):
     """From sui_getCheckpointContents sui_getCheckpointContentsBySequenceNumber."""
@@ -475,14 +477,27 @@ class CheckpointContents(DataClassJsonMixin):
 
 
 @dataclass
+class ECMHLiveObjectSetDigest(DataClassJsonMixin):
+    """From sui_getCheckpoint."""
+
+    digest: list[int]
+
+
+@dataclass
 class EndOfEpoch(DataClassJsonMixin):
-    """From sui_getCheckpointSummary."""
+    """From sui_getCheckpoint."""
 
+    # "epoch_commitments",
+    # "next_epoch_committee",
+    # "next_epoch_protocol_version"
+
+    epoch_commitments: list[ECMHLiveObjectSetDigest]
     next_epoch_protocol_version: int
-    root_state_digest: list[int]
-    next_epoch_committee: list[int] = field(default_factory=list)
+    # root_state_digest: list[int]
+    next_epoch_committee: Optional[list[int]] = field(default_factory=list)
 
 
+# TODO: Trace for removal
 @dataclass
 class CheckpointSummary(DataClassJsonMixin):
     """From sui_getCheckpointSummary."""
@@ -503,15 +518,15 @@ class CheckpointSummary(DataClassJsonMixin):
 
 @dataclass
 class Checkpoint(DataClassJsonMixin):
-    """From sui_getCheckpointSummary."""
+    """From sui_getCheckpoint."""
 
+    checkpoint_commitments: list[ECMHLiveObjectSetDigest] = field(metadata=config(letter_case=LetterCase.CAMEL))
     digest: str
-
     epoch: int
-    sequence_number: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     epoch_rolling_gas_cost_summary: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
     network_total_transactions: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sequence_number: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     previous_digest: str = field(default_factory=str, metadata=config(letter_case=LetterCase.CAMEL))
     end_of_epoch_data: Optional[dict] = field(default_factory=dict)
     transactions: list[int] = field(default_factory=list)

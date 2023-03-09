@@ -122,7 +122,7 @@ class MoveDataDescriptor(ObjectInfo):
 class ObjectReadData(DataClassJsonMixin):
     """From sui_getObject."""
 
-    has_public_transfer: bool
+    has_public_transfer: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
     fields: dict
     data_type: str = field(metadata=config(field_name="dataType"))
     type_: str = field(metadata=config(field_name="type"))
@@ -240,34 +240,58 @@ class ImmutableOwner(DataClassJsonMixin):
     owner_type: str
 
 
+# Object Raw Data
+
+
+@dataclass
+class ObjectRawData(DataClassJsonMixin):
+    """From sui_getRawObject."""
+
+    bcs_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    has_public_transfer: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+    # TODO: In spec, bcs_bytes is remmoved and fields: SuiMoveStruct and version is removed
+    version: int
+    data_type: str = field(metadata=config(field_name="dataType"))
+    type_: str = field(metadata=config(field_name="type"))
+
+
 @dataclass
 class ObjectRead(DataClassJsonMixin):
     """ObjectRead is base sui_getObject result."""
 
-    data: Union[dict, ObjectReadData, ObjectPackageReadData]
-    owner: Any
-    reference: GenericRef
-    storage_rebate: int = field(metadata=config(field_name="storageRebate"))
-    previous_transaction: str = field(metadata=config(field_name="previousTransaction"))
+    version: int
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    # content: Optional[Union[dict, ObjectReadData, ObjectPackageReadData]]
+    object_type: Optional[str] = field(metadata=config(field_name="type"))
+    previous_transaction: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    storage_rebate: Optional[int] = field(metadata=config(field_name="storageRebate"))
+    content: Optional[dict] = field(default_factory=dict)
+    bcs: Optional[ObjectRawData] = field(default_factory=dict)
+    digest: Optional[str] = field(default_factory=str)
+    display: Optional[str] = field(default_factory=str)
+    owner: Optional[Any] = field(default_factory=str)
+
+    # reference: GenericRef
 
     def __post_init__(self):
         """Post init processing for parameters."""
-        if self.data["dataType"] == "package":
-            self.data = SuiPackage.from_dict(self.data)
+        if self.content["dataType"] == "package":
+            self.content = SuiPackage.from_dict(self.content)
         else:
-            split = self.data["type"].split("::", 2)
+            split = self.content["type"].split("::", 2)
             if split[0] == "0x2":
                 match split[1]:
                     case "coin":
                         split2 = split[2][5:-1].split("::")
                         if split2[2] == "SUI":
-                            self.data = SuiGas.from_dict(self.data)
+                            self.content = SuiGas.from_dict(self.content)
                         else:
-                            self.data = SuiCoin.from_dict(self.data)
+                            self.content = SuiCoin.from_dict(self.content)
                     case _:
-                        self.data = SuiData.from_dict(self.data)
+                        self.content = SuiData.from_dict(self.content)
             else:
-                self.data = SuiData.from_dict(self.data)
+                self.content = SuiData.from_dict(self.content)
 
         if isinstance(self.owner, str):
             match self.owner:
@@ -298,30 +322,20 @@ class ObjectRead(DataClassJsonMixin):
     @property
     def identifier(self) -> ObjectID:
         """Alias object_id."""
-        return ObjectID(self.reference.object_id)
+        return ObjectID(self.object_id)
         # return ObjectID(self.data.fields["id"]["id"])
 
     @property
     def balance(self) -> str:
         """Alias balance for coin types."""
-        if isinstance(self.data, SuiCoin):
-            return self.data.balance
+        if isinstance(self.content, SuiCoin):
+            return self.content.balance
         raise AttributeError(f"Object {self.identifier} is not a 0x2:coin:Coin type.")
-
-    @property
-    def version(self) -> int:
-        """Alias version."""
-        return self.reference.version
-
-    @property
-    def digest(self) -> str:
-        """Alias digest."""
-        return self.reference.digest
 
     @property
     def type_signature(self) -> str:
         """Alias type_signature."""
-        return self.data.type_
+        return self.content.type_
 
     @property
     def owner_address(self) -> SuiAddress:
@@ -369,21 +383,6 @@ class ObjectRead(DataClassJsonMixin):
         if isinstance(indata, list):
             return [cls._differentiate(x) for x in indata]
         return cls._differentiate(indata)
-
-
-# Object Raw Data
-
-
-@dataclass
-class ObjectRawData(DataClassJsonMixin):
-    """From sui_getRawObject."""
-
-    has_public_transfer: bool
-    bcs_bytes: str
-    # TODO: In spec, bcs_bytes is remmoved and fields: SuiMoveStruct and version is removed
-    version: int
-    data_type: str = field(metadata=config(field_name="dataType"))
-    type_: str = field(metadata=config(field_name="type"))
 
 
 @dataclass
@@ -516,7 +515,7 @@ class CommitteeInfo(DataClassJsonMixin):
     """From sui_getCommittee."""
 
     epoch: int
-    committee_info: list[Committee]
+    validators: list[Committee]
     # protocol_version: int
 
     def __post__init__(self):
@@ -532,11 +531,10 @@ class CommitteeInfo(DataClassJsonMixin):
         :rtype: CommitteeInfo
         """
         temp_list = []
-        if indata["committee_info"]:
-            for intcomm in indata["committee_info"]:
-                sdict = {"authority_key": intcomm[0], "staked_units": intcomm[1]}
-                temp_list.append(sdict)
-        indata["committee_info"] = temp_list
+        if indata["validators"]:
+            for intcomm in indata["validators"]:
+                temp_list.append({"authority_key": intcomm[0], "staked_units": intcomm[1]})
+        indata["validators"] = temp_list
         return CommitteeInfo.from_dict(indata)
 
 
@@ -544,8 +542,17 @@ class CommitteeInfo(DataClassJsonMixin):
 class SystemParameters(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
+    governance_start_epoch: int
+    max_validator_count: int
     min_validator_stake: int
-    max_validator_candidate_count: int
+
+
+@dataclass
+class Table(DataClassJsonMixin):
+    """From sui_getSuiSystemState."""
+
+    size: int
+    table_id: str = field(metadata=config(field_name="id"))
 
 
 @dataclass
@@ -569,6 +576,8 @@ class LinkedTableForObjectID(DataClassJsonMixin):
 class StakingPool(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
+    activation_epoch: list[int]
+    deactivation_epoch: list[int]
     exchange_rates: dict
     stakinig_pool_id: str = field(metadata=config(field_name="id"))
     pending_delegation: int
@@ -576,7 +585,7 @@ class StakingPool(DataClassJsonMixin):
     pending_total_sui_withdraw: int
     pool_token_balance: int
     rewards_pool: Union[dict, int]
-    starting_epoch: int
+    # starting_epoch: int
     sui_balance: int
 
     def __post_init__(self):
@@ -659,14 +668,63 @@ class Validator(DataClassJsonMixin):
 
 
 @dataclass
+class ValidatorSummary(DataClassJsonMixin):
+    """From sui_getLatestSuiSystemState."""
+
+    commission_rate: int
+    description: str
+    gas_price: int
+    image_url: str
+    name: str
+    net_address: list[int]
+    network_pubkey_bytes: list[int]
+    next_epoch_commission_rate: int
+    next_epoch_gas_price: int
+    next_epoch_net_address: Optional[list[int]]
+    next_epoch_network_pubkey_bytes: Optional[list[int]]
+    next_epoch_p2p_address: Optional[list[int]]
+    next_epoch_primary_address: Optional[list[int]]
+    next_epoch_proof_of_possession: Optional[list[int]]
+    next_epoch_protocol_pubkey_bytes: Optional[list[int]]
+    next_epoch_stake: int
+    next_epoch_worker_address: Optional[list[int]]
+    next_epoch_worker_pubkey_bytes: Optional[list[int]]
+    p2p_address: list[int]
+    pending_delegation: int
+    pending_pool_token_withdraw: int
+    pending_total_sui_withdraw: int
+    pool_token_balance: int
+    primary_address: list[int]
+    project_url: str
+    proof_of_possession_bytes: list[int]
+    protocol_pubkey_bytes: list[int]
+    rewards_pool: int
+    staking_pool_activation_epoch: Optional[int]
+    staking_pool_deactivation_epoch: Optional[int]
+    staking_pool_id: str
+    staking_pool_sui_balance: int
+    sui_address: str
+    voting_power: int
+    worker_address: list[int]
+    worker_pubkey_bytes: list[int]
+
+
+@dataclass
 class ValidatorSet(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
     active_validators: list[Validator]
+    inactive_pools: Table
+    pending_active_validators: dict
+    validator_candidates: Table
     pending_removals: list[int]
-    pending_validators: list[Validator]
-    staking_pool_mappings: dict
+    staking_pool_mappings: Table
     total_stake: int
+
+    def __post_init__(self):
+        """Post hydrate parameter fixups."""
+        if self.pending_active_validators:
+            self.pending_active_validators = Table.from_dict(self.pending_active_validators["contents"])
 
 
 @dataclass
@@ -687,35 +745,40 @@ class ValidatorReportRecords(DataClassJsonMixin):
 class SuiSystemState(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
-    # "epoch",
-    # "epoch_start_timestamp_ms",
-    # "parameters",
-    # "protocol_version",
-    # "reference_gas_price",
-    # "safe_mode",
-    # "stake_subsidy",
-    # "storage_fund",
-    # "validator_report_records",
-    # "validators"
-
     epoch: int
     epoch_start_timestamp_ms: int
-    # info_uid: Union[dict, int] = field(metadata=config(field_name="info"))
     parameters: SystemParameters
+    protocol_version: int
     reference_gas_price: int
     safe_mode: bool
     stake_subsidy: StakeSubsidy
-    protocol_version: int
     storage_fund: Union[dict, int]
-    # treasury_cap: Union[dict, int]
     validator_report_records: ValidatorReportRecords
     validators: ValidatorSet
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""
-        # self.info_uid = self.info_uid["id"]
         self.storage_fund = self.storage_fund["value"]
-        # self.treasury_cap = self.treasury_cap["value"]
+
+
+@dataclass
+class SuiLatestSystemState(DataClassJsonMixin):
+    """."""
+
+    active_validators: list[ValidatorSummary]
+    epoch: int
+    epoch_start_timestamp_ms: int
+    governance_start_epoch: int
+    max_validator_candidate_count: int
+    min_validator_stake: int
+    protocol_version: int
+    reference_gas_price: int
+    safe_mode: bool
+    stake_subsidy_balance: int
+    stake_subsidy_current_epoch_amount: int
+    stake_subsidy_epoch_counter: int
+    storage_fund: int
+    total_stake: int
 
 
 @dataclass

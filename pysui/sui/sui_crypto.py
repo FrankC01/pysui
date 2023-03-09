@@ -16,6 +16,7 @@
 
 import base64
 import hashlib
+import binascii
 from typing import Union
 
 import secp256k1
@@ -326,6 +327,36 @@ class SuiKeyPairSECP256K1(SuiKeyPair):
         return SuiKeyPairSECP256K1(indata)
 
 
+class MultiSigPublicKey:
+    """."""
+
+    _KEY_COUNT_MAX: int = 10
+
+    def __init__(self, pk_keys: list[SuiPublicKey], pk_weights: list[int], threshold: int) -> None:
+        """Initialize a multisig."""
+        if len(pk_keys) <= self._KEY_COUNT_MAX and len(pk_keys) == len(pk_weights) and threshold <= len(pk_keys):
+            self._scheme = SignatureScheme.MULTISIG
+            self._threshold = threshold
+            self._pkmaps = list(zip(pk_keys, weights))
+        else:
+            raise ValueError
+
+    @property
+    def scheme(self) -> SignatureScheme:
+        """Return the multisig scheme."""
+        return self._scheme
+
+    @property
+    def key_map(self) -> list[tuple[str, int]]:
+        """Return the key map list of tuples."""
+        return self._pkmaps
+
+    @property
+    def threshold(self) -> int:
+        """."""
+        return self._threshold
+
+
 # Utility functions
 def _valid_mnemonic(key_type: SignatureScheme, mnemonics: Union[str, list[str]] = "") -> str:
     """_valid_mnemonic Validate, or create, mnemonic word string.
@@ -540,6 +571,56 @@ def recover_key_and_address(
     return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
 
 
+def _msta(msig: MultiSigPublicKey) -> str:
+    """."""
+
+    glg = hashlib.new("sha3_256")
+    # glg.update(bytearray(msig.scheme.value.to_bytes(1, "little")))
+    glg.update(msig.scheme.value.to_bytes(1, "little"))
+    glg.update(msig.threshold.to_bytes(1, "little"))
+    for ktup in msig.key_map:
+        p_key: SuiPublicKey = ktup[0]
+        p_w: int = ktup[1]
+        # glg.update(p_key.scheme.value.to_bytes(1, "little"))
+        # glg.update(bytearray(p_key.scheme.value))
+        # glg.update(p_key.key_bytes)
+        glg.update(p_key.scheme_and_key())
+        glg.update(p_w.to_bytes(1, "little"))
+    hash_bytes = glg.digest()[:20]
+    print(f"hash leng {len(hash_bytes)}")
+    return binascii.hexlify(hash_bytes)
+
+    # hash_bytes = binascii.hexlify(glg.digest())[0:64]
+    # return hash_bytes.decode("utf-8")
+
+
 # pylint:disable=line-too-long,invalid-name
 if __name__ == "__main__":
-    pass
+
+    # A muti-sig address  bye combinning multiple keypair info and generating an address
+    # hash
+    # This address can then be used to send things to (like Sui coinage)
+    # However; when using that address to affect change, some number of thresh-holds keys
+    # will need to sign individually and that gets combined in submitTransaction
+    pk1 = "AN6lrNm8Jw8SYZkVUya0GnHvVmUr1wovoKAyhdZpNTIG"
+    pk2 = "AIt/WXBsG2wsxy8Zue9rzTMFhhztVDE24d2wvZJKo3ra"
+    pk3 = "AKN8AmBJBK9xClsiQUEFK+MocOgd41a5p4hhOYpdCYYs"
+    pk_list = [pk1, pk2, pk3]
+    weights = [1, 2, 3]
+    sig_threshold = 3
+    ppkey_list: list[SuiPublicKey] = []
+    msaddy = "0xc7ede328ce77608cac5c1a295b30285e37d1bf73ff300309e26033f4f04d7eab"
+    mres = binascii.unhexlify(msaddy[2:])
+    print(f"first byte {mres[0]}")
+    for pk_e in pk_list:
+        pk_uh = base64.b64decode(pk_e)
+        print(f"Byte 0 = {pk_uh[0]} len_ok = {len(pk_uh[1:])}")
+        match pk_uh[0]:
+            case 0:
+                ppkey_list.append(SuiPublicKeyED25519(pk_uh[1:]))
+            case 1:
+                ppkey_list.append(SuiPublicKeySECP256K1(pk_uh[1:]))
+            case 2:
+                ppkey_list.append(SuiPublicKeySECP256R1(pk_uh[1:]))
+    multi_sig = MultiSigPublicKey(ppkey_list, weights, sig_threshold)
+    print(_msta(multi_sig))

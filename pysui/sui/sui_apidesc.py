@@ -190,8 +190,10 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
         tpath.append(last)
         return _resolve_param_type(schema_dict, schema_dict.get(last), tpath)
     if "anyOf" in indata:
-        head = indata.get("anyOf")[0]
-        last = indata.get("anyOf")[1]["$ref"].split("/")[-1]
+        if len(indata.get("anyOf")) == 1:
+            last = indata.get("anyOf")[0]["$ref"].split("/")[-1]
+        else:
+            last = indata.get("anyOf")[1]["$ref"].split("/")[-1]
         # last = head["$ref"].split("/")[-1]
         tpath.append(last)
         return _resolve_param_type(schema_dict, schema_dict.get(last), tpath)

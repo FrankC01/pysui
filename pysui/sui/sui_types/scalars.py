@@ -370,6 +370,11 @@ class SuiInteger(SuiScalarType):
         return self.value
 
     @property
+    def id(self) -> int:
+        """Alias for transactions."""
+        return self.value
+
+    @property
     def version(self) -> int:
         """Alias for transactions."""
         if self.value is None:

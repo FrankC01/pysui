@@ -14,7 +14,7 @@
 
 """Sui Builders: Simple sui_getXXX calls."""
 
-from typing import Optional
+from typing import Final, Optional
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
 from pysui.sui.sui_types.scalars import SuiString, SuiInteger, ObjectID, SuiBoolean
 from pysui.sui.sui_types.collections import SuiArray, SuiMap, EventID
@@ -22,11 +22,11 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
     DelegatedStakes,
     DynamicFields,
-    ObjectRawRead,
     SuiCoinBalance,
     SuiCoinMetadata,
     CoinBalances,
     SuiCoinObjects,
+    SuiLatestSystemState,
     SuiSystemState,
     ObjectInfo,
     ObjectRead,
@@ -141,13 +141,23 @@ class GetCoins(_NativeTransactionBuilder):
         super().__init__("sui_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
 
 
+# TODO: Deprecated
 class GetSuiSystemState(_NativeTransactionBuilder):
-    """Return the SUI system state."""
+    """Return the SUI system state. This is deprecated in favor of GetLatestSuiSystemState."""
 
     @sui_builder()
     def __init__(self) -> None:
         """__init__ Initializes builder."""
         super().__init__("sui_getSuiSystemState", handler_cls=SuiSystemState, handler_func="from_dict")
+
+
+class GetLatestSuiSystemState(_NativeTransactionBuilder):
+    """Return the latest known SUI system state."""
+
+    @sui_builder()
+    def __init__(self) -> None:
+        """__init__ Initializes builder."""
+        super().__init__("sui_getLatestSuiSystemState", handler_cls=SuiLatestSystemState, handler_func="from_dict")
 
 
 class GetTotalSupply(_NativeTransactionBuilder):
@@ -217,27 +227,24 @@ class GetDynamicFields(_NativeTransactionBuilder):
 class GetObject(_NativeTransactionBuilder):
     """GetObject When executed, return the object detailed information for a specified object."""
 
+    DEFAULT_GET_OBJECT_OPTIONS: Final[dict] = {
+        "showType": True,
+        "showOwner": True,
+        "showPreviousTransaction": True,
+        "showDisplay": True,
+        "showContent": True,
+        "showBcs": True,
+        "showStorageRebate": True,
+    }
+
     @sui_builder()
-    def __init__(self, object_id: ObjectID) -> None:
+    def __init__(self, object_id: ObjectID, options: SuiMap = DEFAULT_GET_OBJECT_OPTIONS) -> None:
         """__init__ Initializes builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
         :type sui_object: ObjectID, optional
         """
         super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
-
-
-class GetRawObject(_NativeTransactionBuilder):
-    """."""
-
-    @sui_builder()
-    def __init__(self, object_id: ObjectID) -> None:
-        """__init__ Initializes builder.
-
-        :param sui_object: Object identifier to fetch from chain, defaults to None
-        :type sui_object: ObjectID, optional
-        """
-        super().__init__("sui_getRawObject", handler_cls=ObjectRawRead, handler_func="factory")
 
 
 class GetPastObject(_NativeTransactionBuilder):
@@ -604,17 +611,17 @@ class GetValidators(_NativeTransactionBuilder):
         super().__init__("sui_getValidators", handler_cls=Validators, handler_func="ingest_data")
 
 
-class GetCheckpointContents(_NativeTransactionBuilder):
-    """GetCheckpointContents return contents of a checkpoint, namely a list of execution digests."""
+# class GetCheckpointContents(_NativeTransactionBuilder):
+#     """GetCheckpointContents return contents of a checkpoint, namely a list of execution digests."""
 
-    @sui_builder()
-    def __init__(self, sequence_number: SuiInteger):
-        """__init__ Initialize builder.
+#     @sui_builder()
+#     def __init__(self, sequence_number: SuiInteger):
+#         """__init__ Initialize builder.
 
-        :param sequence_number: The sequence number
-        :type sequence_number: SuiInteger
-        """
-        super().__init__("sui_getCheckpointContents", handler_cls=CheckpointContents, handler_func="from_dict")
+#         :param sequence_number: The sequence number
+#         :type sequence_number: SuiInteger
+#         """
+#         super().__init__("sui_getCheckpointContents", handler_cls=CheckpointContents, handler_func="from_dict")
 
 
 class GetCheckpointContentsByDigest(_NativeTransactionBuilder):
@@ -665,23 +672,30 @@ class GetLatestCheckpointSequence(_NativeTransactionBuilder):
         super().__init__("sui_getLatestCheckpointSequenceNumber")
 
 
-class GetCheckpoint(_NativeTransactionBuilder):
-    """."""
+class GetCheckpointByDigest(_NativeTransactionBuilder):
+    """GetCheckpointByDigest return a checkpoint for cp_id."""
 
     @sui_builder()
     def __init__(self, cp_id: SuiString):
-        """."""
+        """__init__ Builder initializer.
+
+        :param cp_id: Checkpoint digest id
+        :type cp_id: SuiString
+        """
         super().__init__("sui_getCheckpoint", handler_cls=Checkpoint, handler_func="from_dict")
 
 
-class GetDisplayDeprecated(_NativeTransactionBuilder):
-    """."""
+class GetCheckpointBySequence(_NativeTransactionBuilder):
+    """GetCheckpoint return a checkpoint for cp_id."""
 
     @sui_builder()
-    def __init__(self, object_id: ObjectID):
-        """."""
-        super().__init__("sui_getDisplayDeprecated")
-        # super().__init__("sui_getDisplayDeprecated", handler_cls=Checkpoint, handler_func="from_dict")
+    def __init__(self, cp_seq: SuiInteger):
+        """__init__ Builder initializer.
+
+        :param cp_id: Checkpoint sequence number
+        :type cp_id: SuiString
+        """
+        super().__init__("sui_getCheckpoint", handler_cls=Checkpoint, handler_func="from_dict")
 
 
 class GetReferenceGasPrice(_NativeTransactionBuilder):
