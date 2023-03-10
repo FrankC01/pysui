@@ -823,13 +823,16 @@ class Delegation(DataClassJsonMixin):
 class DelegatedStake(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
-    staked_sui: StakedSui
-    delegation_status: Union[str, dict]
+    stakes: list[StakedSui]
+    staking_pool: str
+    validator_address: str
+    # staked_sui: StakedSui
+    # delegation_status: Union[str, dict]
 
     def __post_init__(self):
         """Post hydrate parameter fixups."""
-        if isinstance(self.delegation_status, dict):
-            self.delegation_status = Delegation.from_dict(self.delegation_status["Active"])
+        # if isinstance(self.delegation_status, dict):
+        #     self.delegation_status = Delegation.from_dict(self.delegation_status["Active"])
 
 
 @dataclass
@@ -922,6 +925,7 @@ class DynamicFieldInfo(DataClassJsonMixin):
 
     digest: str
     name: str
+    bcs_name: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     field_type: str = field(metadata=config(field_name="type"))
@@ -933,4 +937,5 @@ class DynamicFields(DataClassJsonMixin):
     """From sui_getDynamicFields."""
 
     data: list[DynamicFieldInfo]
+    has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
     next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))

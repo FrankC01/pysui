@@ -68,6 +68,17 @@ class SuiInvalidKeyPair(SuiException):
     """Invalid KeyPair Exception."""
 
 
+# Signing exceptions
+
+
+class SuiNotComplexTransaction(SuiException):
+    """Exception for attempting to sign a simple transaction."""
+
+    def __init__(self, tx_name) -> None:
+        """Initialize."""
+        self.args = (f"{tx_name} does not require signing",)
+
+
 # RPC API Discover Corruptions
 
 

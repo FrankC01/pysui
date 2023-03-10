@@ -36,66 +36,20 @@ class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
     @sui_builder()
-    def __init__(self, *, tx_bytes: SuiTxBytes, signature: SuiSignature, request_type: SuiRequestType) -> None:
+    def __init__(
+        self, *, tx_bytes: SuiTxBytes, signatures: SuiArray[SuiSignature], request_type: SuiRequestType
+    ) -> None:
         """__init__ Initialize builder.
 
         :param tx_bytes: BCS serialized transaction data bytes without its type tag, as base-64 encoded string
         :type tx_bytes: SuiTxBytes
-        :param signature: `flag || signature || pubkey` bytes, as base-64 encoded string, signature is committed to the
-            intent message of the transaction data, as base-64 encoded string.
-        :type signature: SuiSignature
+        :param signatures: Array of `flag || signature || pubkey` bytes, as base-64 encoded string, signatures are committed to the
+            intent message of the transaction data, as base-64 encoded string wrapped in SuiSignatures.
+        :type signatures: SuiArray[SuiSignature]
         :param request_type: The request type
         :type request_type: SuiRequestType
         """
         super().__init__("sui_executeTransaction", handler_cls=TxResponse, handler_func="from_dict")
-
-
-class ExecuteSerializedTransaction(_NativeTransactionBuilder):
-    """Submit a signed transaction to Sui, SUI plans to deprecate this call."""
-
-    @sui_builder()
-    def __init__(
-        self,
-        *,
-        tx_bytes: SuiTxBytes,
-        signature: SuiSignature,
-        request_type: SuiRequestType,
-    ) -> None:
-        """__init__ When executed, runs the transaction.
-
-        This can replace ExecuteTransaction and is preferred if RPC version > 0.17.0
-
-        :param tx_bytes: Submitted transaction base64 SuiTxBytes
-        :type tx_bytes: SuiTxBytes
-        :param signature: The key_scheme,signed tx_bytes and signer pubkey serialized to Base64
-        :type signature: SuiSignature
-        :param request_type: The type of request to use in submitting transaction
-        :type request_type: SuiRequestType
-        """
-        super().__init__("sui_executeTransactionSerializedSig", handler_cls=TxResponse, handler_func="from_dict")
-
-
-class SubmitTransaction(_NativeTransactionBuilder):
-    """Submit a transaction with multiple signatures."""
-
-    @sui_builder()
-    def __init__(
-        self,
-        *,
-        tx_bytes: SuiTxBytes,
-        signatures: SuiArray,
-        request_type: SuiRequestType,
-    ) -> None:
-        """__init__ Content for builders
-
-        :param tx_bytes: Submitted transaction base64 SuiTxBytes
-        :type tx_bytes: SuiTxBytes
-        :param signature: Array of key_scheme,signed tx_bytes and signer pubkey serialized to Base64
-        :type signature: SuiSignature
-        :param request_type: The type of request to use in submitting transaction
-        :type request_type: SuiRequestType
-        """
-        super().__init__("sui_submitTransaction", handler_cls=TxResponse, handler_func="from_dict")
 
 
 class DryRunTransaction(_NativeTransactionBuilder):
@@ -152,6 +106,8 @@ class _MoveCallTransactionBuilder(SuiBaseBuilder):
         """Fetch the authority."""
         if hasattr(self, "signer"):
             return getattr(self, "signer")
+        if hasattr(self, "signers"):
+            return getattr(self, "signers")
         if hasattr(self, "sender"):
             return getattr(self, "sender")
         if hasattr(self, "sender_address"):
@@ -239,7 +195,7 @@ class Pay(_MoveCallTransactionBuilder):
         signer: SuiAddress,
         input_coins: SuiArray[ObjectID],
         recipients: SuiArray[SuiAddress],
-        amounts: SuiArray[SuiInteger],
+        amounts: SuiArray[SuiString],
         gas: ObjectID,
         gas_budget: SuiInteger,
     ) -> None:
@@ -252,7 +208,7 @@ class Pay(_MoveCallTransactionBuilder):
         :param recipients: the recipients' addresses, the length of this vector must be the same as amounts
         :type recipients: SuiArray[SuiAddress]
         :param amounts: the amounts to be transferred to recipients, following the same order
-        :type amounts: SuiArray[SuiInteger]
+        :type amounts: SuiArray[SuiString]
         :param gas: gas object to be used in this transaction
         :type gas: ObjectID
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
@@ -282,7 +238,7 @@ class PaySui(_MoveCallTransactionBuilder):
         signer: SuiAddress,
         input_coins: SuiArray[ObjectID],
         recipients: SuiArray[SuiAddress],
-        amounts: SuiArray[SuiInteger],
+        amounts: SuiArray[SuiString],
         gas_budget: SuiInteger,
     ) -> None:
         """__init__ PaySui Builder initializer.
@@ -294,7 +250,7 @@ class PaySui(_MoveCallTransactionBuilder):
         :param recipients: the recipients' addresses, the length of this vector must be the same as amounts
         :type recipients: SuiArray[SuiAddress]
         :param amounts: the amounts to be transferred to recipients, following the same order,
-        :type amounts: SuiArray[SuiInteger]
+        :type amounts: SuiArray[SuiString]
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """

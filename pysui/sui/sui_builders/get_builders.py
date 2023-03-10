@@ -142,6 +142,7 @@ class GetCoins(_NativeTransactionBuilder):
         super().__init__("sui_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
 
 
+# TODO: Deprecated
 # class GetSuiSystemState(_NativeTransactionBuilder):
 #     """Return the SUI system state. This is deprecated in favor of GetLatestSuiSystemState."""
 
@@ -225,7 +226,7 @@ class GetDynamicFields(_NativeTransactionBuilder):
 
 
 class GetObject(_NativeTransactionBuilder):
-    """GetObject When executed, return the object detailed information for a specified object."""
+    """GetObject When executed, returns the object detailed information for a specified object."""
 
     _DEFAULT_GET_OBJECT_OPTIONS: Final[dict] = {
         "showType": True,
@@ -250,8 +251,8 @@ class GetObject(_NativeTransactionBuilder):
     def __init__(self, *, object_id: ObjectID, options: Optional[SuiMap] = None) -> None:
         """__init__ Initializes builder.
 
-        :param sui_object: Object identifier to fetch from chain, defaults to None
-        :type sui_object: ObjectID, optional
+        :param object_id: Object identifier to fetch from chain
+        :type object_id: ObjectID
         """
         super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
         self.object_id = sutils.as_object_id(object_id)
@@ -261,9 +262,57 @@ class GetObject(_NativeTransactionBuilder):
             self.options = sutils.as_sui_map(options)
 
     @classmethod
-    def package_options(cls):
-        """."""
+    def object_options(cls) -> dict:
+        """object_options get the default options for sui_getObject.
+
+        :return: The default options map
+        :rtype: dict
+        """
+        return cls._DEFAULT_GET_OBJECT_OPTIONS.copy()
+
+    @classmethod
+    def package_options(cls) -> dict:
+        """package_options get the options that correctly fetch package objects.
+
+        :return: The package options map
+        :rtype: dict
+        """
         return cls._DEFAULT_GET_PACKAGE_OPTIONS.copy()
+
+
+class GetMultipleObjects(_NativeTransactionBuilder):
+    """GetMultipleObjects When executed, returns the objects detailed information for a list of object identifiers."""
+
+    def __init__(self, *, object_ids: SuiArray[ObjectID], options: Optional[SuiMap] = None) -> None:
+        """__init__ Initializes builder.
+
+        :param object_ids: SuiArray[ObjectID] of object identifiers to fetch from chain
+        :type object_ids: SuiArray
+        """
+        super().__init__("sui_multiGetObjects", handler_cls=ObjectRead, handler_func="factory")
+        self.object_ids = sutils.as_sui_array(object_ids)
+        if options is None or isinstance(options, SuiNullType):
+            self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
+        else:
+            self.options = sutils.as_sui_map(options)
+
+    @classmethod
+    def object_options(cls) -> dict:
+        """object_options get the default options for sui_getObject.
+
+        :return: The default options map
+        :rtype: dict
+        """
+        return GetObject.object_options()
+
+    @classmethod
+    def package_options(cls) -> dict:
+        """package_options get the options that correctly fetch package objects.
+
+        :return: The package options map
+        :rtype: dict
+        """
+        return GetObject.package_options()
 
 
 class GetPastObject(_NativeTransactionBuilder):
@@ -525,6 +574,15 @@ class GetTx(_NativeTransactionBuilder):
         else:
             self.options = sutils.as_sui_map(options)
 
+    @classmethod
+    def default_options(cls) -> dict:
+        """default_options get the default options for fetching transactions.
+
+        :return: The option flags map for `sui_getTransaction`
+        :rtype: dict
+        """
+        return cls._DEFAULT_GET_TX_OPTIONS.copy()
+
 
 class GetMultipleTx(_NativeTransactionBuilder):
     """."""
@@ -538,6 +596,15 @@ class GetMultipleTx(_NativeTransactionBuilder):
             self.options = sutils.as_sui_map(GetTx._DEFAULT_GET_TX_OPTIONS.copy())
         else:
             self.options = sutils.as_sui_map(options)
+
+    @classmethod
+    def default_options(cls) -> dict:
+        """default_options get the default options for fetching transactions.
+
+        :return: The option flags map for `sui_multiGetTransactions`
+        :rtype: dict
+        """
+        return GetTx.default_options()
 
 
 class GetTxsMoveFunction(SuiMap):
@@ -743,12 +810,12 @@ class GetReferenceGasPrice(_NativeTransactionBuilder):
         super().__init__("sui_getReferenceGasPrice")
 
 
-# TODO: Setup when stablized
-class SignRandomnessObject(_NativeTransactionBuilder):
-    """SignRandomnessObject Sign an a Randomness object with threshold BLS."""
+# TODO: Dropped
+# class SignRandomnessObject(_NativeTransactionBuilder):
+#     """SignRandomnessObject Sign an a Randomness object with threshold BLS."""
 
-    @sui_builder()
-    def __init__(self, object_id: ObjectID, commitment_type: SuiString):
-        """."""
-        super().__init__("sui_tblsSignRandomnessObject")
-        raise NotImplementedError(self)
+#     @sui_builder()
+#     def __init__(self, object_id: ObjectID, commitment_type: SuiString):
+#         """."""
+#         super().__init__("sui_tblsSignRandomnessObject")
+#         raise NotImplementedError(self)

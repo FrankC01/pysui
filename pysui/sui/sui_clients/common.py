@@ -15,16 +15,21 @@
 
 import json
 from abc import abstractmethod
-from typing import Any, Union
+from typing import Any, Optional, Union
 from pkg_resources import packaging
 import httpx
 from pysui.abstracts import RpcResult, Provider
+from pysui.abstracts.client_keypair import KeyPair
 from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
+from pysui.sui.sui_builders.exec_builders import _MoveCallTransactionBuilder, ExecuteTransaction
 from pysui.sui.sui_builders.get_builders import GetRpcAPI
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_apidesc import build_api_descriptors
 from pysui.sui.sui_txn_validator import validate_api
-from pysui.sui.sui_excepts import SuiRpcApiNotAvailable
+from pysui.sui.sui_excepts import SuiException, SuiRpcApiNotAvailable, SuiNotComplexTransaction
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_types.collections import SuiArray
+from pysui.sui.sui_types.scalars import SuiSignature, SuiString, SuiTxBytes
 
 
 class SuiRpcResult(RpcResult):
@@ -171,3 +176,24 @@ class _ClientMixin(Provider):
         if rpa >= tpa:
             return True
         return False
+
+    def sign_for_execution(
+        self, tx_bytes: SuiTxBytes, builder: _MoveCallTransactionBuilder, signers: Optional[SuiArray[SuiAddress]] = None
+    ) -> Union[ExecuteTransaction, SuiException, ValueError]:
+        """."""
+        if not builder.txn_required:
+            raise SuiNotComplexTransaction(builder.__class__.__name__)
+        # Gather keypairs for signing
+        signers_list: list[KeyPair] = []
+        base_signer = builder.authority
+        signers_list.append(self.config.keypair_for_address(base_signer))
+        if signers:
+            for other_address in signers.array:
+                signers_list.append(self.config.keypair_for_address(other_address))
+        # Iterate and return signatures list
+        return ExecuteTransaction(
+            tx_bytes=tx_bytes,
+            signatures=SuiArray([kpair.new_sign_secure(tx_bytes.tx_bytes) for kpair in signers_list]),
+            request_type=self.request_type,
+        )
+        # signers_list.append()

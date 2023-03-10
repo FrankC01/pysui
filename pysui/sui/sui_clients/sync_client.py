@@ -83,7 +83,9 @@ class SuiClient(_ClientMixin):
         except httpx.ReadTimeout as hexc:
             return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
 
-    def execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
+    def execute(
+        self, builder: SuiBaseBuilder, additional_signatures: SuiArray[SuiAddress] = None
+    ) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
         if not builder.txn_required:
             result = self._execute(builder)
@@ -93,7 +95,8 @@ class SuiClient(_ClientMixin):
                 # print(result.result_data)
                 return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
             return result
-        return self._signed_execution(builder)
+        return self._multi_signed_execution(builder, additional_signatures)
+        # return self._signed_execution(builder)
 
     def execute_no_sign(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Submit transaction and returns the signer and transaction bytes in the result_data as tuple."""
@@ -107,41 +110,35 @@ class SuiClient(_ClientMixin):
             return result
         return SuiRpcResult(False, "execute_no_sign is used only with transaction types")
 
-    def sign_and_submit(self, signer: SuiAddress, tx_bytes: SuiTxBytes) -> Union[SuiRpcResult, Exception]:
+    def sign_and_submit(
+        self, signer: SuiAddress, tx_bytes: SuiTxBytes, additional_signatures: SuiArray[SuiAddress] = None
+    ) -> Union[SuiRpcResult, Exception]:
         """sign_and_submit Signs the transaction bytes from previous submission, signs and executes.
 
         :param signer: Signer for transaction. Should be the same from original transaction
         :type signer: SuiAddress
         :param tx_bytes: Transaction bytes from previous submission
         :type tx_bytes: SuiTxBytes
-        :return: Result from execution
+        :param additional_signatures: Array of additional signatures to sign with, defaults to None
+        :type additional_signatures: SuiArray[SuiAddress], optional
+        :return: Result of execution
         :rtype: Union[SuiRpcResult, Exception]
         """
-        _recovery_id = 0
-        kpair = self.config.keypair_for_address(signer)
-        # print(f"tx_bytes = {tx_bytes.value}")
-
-        def _inner_sign(recovery_id: int) -> SuiRpcResult:
-            builder = ExecuteTransaction(
-                tx_bytes=tx_bytes,
-                signature=kpair.new_sign_secure(tx_bytes.tx_bytes, recovery_id),
-                request_type=self.request_type,
-            )
-            result = self._execute(builder)
-            if result.is_ok() and "error" not in result.result_data:
-                # print(result.result_data["result"])
-                result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
-            elif "error" in result.result_data:
-                msg = result.result_data["error"]["message"]
-                if msg in _ClientMixin._SIGNATURE_ERROR and recovery_id > 3:
-                    result = SuiRpcResult(False, msg)
-                elif msg in _ClientMixin._SIGNATURE_ERROR and recovery_id < 4:
-                    result = _inner_sign(recovery_id + 1)
-                else:
-                    result = SuiRpcResult(False, msg)
-            return result
-
-        return _inner_sign(_recovery_id)
+        signers_list = []
+        signers_list.append(self.config.keypair_for_address(signer))
+        if additional_signatures:
+            for addy in additional_signatures.array:
+                signers_list.append(self.config.keypair_for_address(addy))
+        builder = ExecuteTransaction(
+            tx_bytes=tx_bytes,
+            signatures=SuiArray([kpair.new_sign_secure(tx_bytes.tx_bytes) for kpair in signers_list]),
+            request_type=self.request_type,
+        )
+        result = self._execute(builder)
+        if result.is_ok() and "error" not in result.result_data:
+            # print(result.result_data["result"])
+            result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+        return result
 
     def dry_run(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Submit transaction than sui_dryRunTransaction only."""
@@ -158,6 +155,20 @@ class SuiClient(_ClientMixin):
         result = self.execute_no_sign(builder)
         if result.is_ok():
             result = self.sign_and_submit(*result.result_data)
+        return result
+
+    def _multi_signed_execution(
+        self, builder: SuiBaseBuilder, additional_signers: SuiArray[SuiAddress] = None
+    ) -> Union[SuiRpcResult, Exception]:
+        """."""
+        result = self.execute_no_sign(builder)
+        if result.is_ok():
+            tx_bytes = result.result_data[1]
+            exec_builder = self.sign_for_execution(tx_bytes, builder, additional_signers)
+            result = self._execute(exec_builder)
+            if result.is_ok() and "error" not in result.result_data:
+                # print(result.result_data["result"])
+                result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
         return result
 
     # Build and execute convenience methods

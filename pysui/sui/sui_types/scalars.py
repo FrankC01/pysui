@@ -180,6 +180,11 @@ class SuiString(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def amounts(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
 
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""
@@ -195,6 +200,11 @@ class SuiSignature(SuiString):
 
     @property
     def signature(self) -> str:
+        """Satisfy transaction verification."""
+        return str(self)
+
+    @property
+    def signatures(self) -> str:
         """Satisfy transaction verification."""
         return str(self)
 
@@ -217,6 +227,11 @@ class ObjectID(SuiString):
 
     @property
     def object_id(self) -> str:
+        """Alias over value."""
+        return self.value
+
+    @property
+    def object_ids(self) -> str:
         """Alias over value."""
         return self.value
 

@@ -14,7 +14,7 @@
 """Sui Collection Types."""
 
 from abc import abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, Union
 from pysui.abstracts import SuiBaseType
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
 from pysui.sui.sui_types.address import SuiAddress
@@ -61,7 +61,7 @@ class SuiArray(SuiCollection, Generic[AT]):
         return self.array
 
     @property
-    def amounts(self) -> list[SuiInteger]:
+    def amounts(self) -> list[Union[SuiInteger, SuiString]]:
         """Alias for transactions."""
         return self.array
 
@@ -97,6 +97,16 @@ class SuiArray(SuiCollection, Generic[AT]):
 
     @property
     def digests(self) -> list[dict]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def signatures(self) -> list[dict]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
+    def object_ids(self) -> list[dict]:
         """Alias for transactions."""
         return self.array
 

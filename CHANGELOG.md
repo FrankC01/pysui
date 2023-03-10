@@ -15,7 +15,7 @@ Breaking Changes - Significant
 - GetCheckpoint builder and Checkpoint result for `sui_getCheckpoint` as per Sui 0.28.0
 - GetLatestSuiSystemState builder and results for `sui_getLatestSuiSystemState` as per Sui 0.28.0
 - GetMultipleTx builder and TxResponseArray result for `sui_multiGetTransactions` as per Sui 0.28.0
-- SubmitTransaction build for `sui_submitTransaction` supporting multiple sinatures
+- GetMultipleObjects builder for `sui_multiGetObjects` as per Sui 0.28.0
 
 ### Fixed
 
@@ -30,7 +30,11 @@ Breaking Changes - Significant
 - **Breaking Change** Added DryRunTxResult for new result definition as per Sui 0.28.0
 - **Breaking Change** GetDynamicFieldObject now takes a mapping for name as per Sui 0.28.0
 - **Breaking Change** GetTx result changes as per Sui 0.28.0
-- **Breaking Change** GetObject result changes as per Sui 0.28.0
+- **Breaking Change** GetObject options and result changes as per Sui 0.28.0
+- **Breaking Change** ExecuteTransaction now takes a list of signatures as per Sui 0.28.0
+- **Breaking Change** Result types (TxResult, TxInspectionResult and DryRunTxResult) changes as per Sui 0.28.0
+- **Breaking Change** Pay and PaySui now takes a list of SuiStrings for amounts as per Sui 0.28.0
+- async_client and sync_client now take optional `additional_signers` towards support Sui multi-sign
 - GetObject now takes flag options on what to include or not in result
 - Removed `protocol_version` field from CommitteeInfo results as per Sui 0.28.0
 - InspectTransaction results now include eveents as per Sui 0.28.0
@@ -42,6 +46,7 @@ Breaking Changes - Significant
 - **Breaking Change** RequestSwitchDelegation removed for `sui_requestSwitchDelegation` removed as per Sui 0.28.0
 - **Breaking Change** GetRawObject removed for `sui_getRawObject` removed as per Sui 0.28.0. Raw information is now part of GetObject
 - **Breaking Change** GetSuiSystemState removed for `sui_getSuiSystemState` as per Sui 0.28.0. Use GetLatestSuiSystemState instead.
+- **Breaking Change** ExecuteSerializedTransaction removed for `sui_executeTransactionSerializedSig` as per Sui 0.28.0
 
 ## [0.14.1] 2023-02-24
 
