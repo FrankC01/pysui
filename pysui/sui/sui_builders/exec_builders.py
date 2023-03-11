@@ -562,8 +562,8 @@ class MoveCall(_MoveCallTransactionBuilder):
 # Stake and Delegation
 
 
-class RequestAddDelegation(_MoveCallTransactionBuilder):
-    """RequestAddDelegation add delegated stake to a validator's staking pool using multiple coins and amount."""
+class RequestAddStake(_MoveCallTransactionBuilder):
+    """RequestAddStake add delegated stake to a validator's staking pool using multiple coins and amount."""
 
     @sui_builder()
     def __init__(
@@ -582,7 +582,7 @@ class RequestAddDelegation(_MoveCallTransactionBuilder):
         :type signer: SuiAddress
         :param coins: Coin<SUI> or LockedCoin<SUI> object to delegate
         :type coins: SuiArray
-        :param amount: delegation amount
+        :param amount: stake amount
         :type amount: Optional[SuiArray]
         :param validator: the validator's Sui address
         :type validator: SuiAddress
@@ -591,11 +591,11 @@ class RequestAddDelegation(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_requestAddDelegation")
+        super().__init__("sui_requestAddStake")
 
 
-class RequestWithdrawDelegation(_MoveCallTransactionBuilder):
-    """RequestWithdrawDelegation Withdraw some portion of a delegation from a validator's staking pool."""
+class RequestWithdrawStake(_MoveCallTransactionBuilder):
+    """RequestWithdrawStake Withdraw some portion of a stake from a validator's staking pool."""
 
     @sui_builder()
     def __init__(

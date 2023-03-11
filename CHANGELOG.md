@@ -20,9 +20,12 @@ Breaking Changes - Significant
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/76)
+- [bug](https://github.com/FrankC01/pysui/issues/78)
 
 ### Changed
 
+- Renamed RequestAddDelegation builder to RequestAddStake, aligning with `sui_requestAddStake` as per Sui 0.28.0
+- Renamed RequestWithdrawDelegation builder to RequestWithdrawStake, aligning with `sui_requestWithdrawStake` as per Sui 0.28.0
 - **Breaking Change** TxEffectResult renamed to TxResponse and restructured as per Sui 0.28.0
 - **Breaking Change** Sui has moved from 20 byte address to 32 byte addresses. This changes all SuiAddress and ObjectID constructs.
 - **Breaking Change** ValidatorMetaData changes as per Sui 0.28.0

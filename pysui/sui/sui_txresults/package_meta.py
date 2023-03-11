@@ -15,7 +15,7 @@
 
 from dataclasses import dataclass, field
 from typing import Any, Union
-from dataclasses_json import DataClassJsonMixin, config
+from dataclasses_json import DataClassJsonMixin, LetterCase, config
 
 # Sui Normalized Data Types
 
@@ -59,12 +59,12 @@ class SuiMoveField(DataClassJsonMixin):
     """From getNormalized."""
 
     name: str
-    type_: Union[str, dict]  # = field(default_factory=list)
+    field_type: Union[str, dict] = field(metadata=config(field_name="type"))
 
     def __post_init__(self):
         """Post init processing for field_type."""
-        if isinstance(self.type_, dict):
-            self.type_ = SuiMoveType.resolve(self.type_)
+        if isinstance(self.field_type, dict):
+            self.field_type = SuiMoveType.resolve(self.field_type)
 
 
 @dataclass
@@ -82,7 +82,7 @@ class SuiMoveStructTypeParameter(DataClassJsonMixin):
     """From getNormalized."""
 
     constraints: SuiMoveAbilitySet
-    is_phantom: bool = False
+    is_phantom: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass
@@ -91,7 +91,7 @@ class SuiMoveStruct(DataClassJsonMixin):
 
     abilities: SuiMoveAbilitySet
     fields: list[SuiMoveField]
-    type_parameters: list[SuiMoveStructTypeParameter]
+    type_parameters: list[SuiMoveStructTypeParameter] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
     def __post_init__(self):
         """Post init processing for type parameters."""
@@ -134,7 +134,7 @@ class SuiParameterStruct(DataClassJsonMixin):
     address: str
     module: str
     name: str
-    type_arguments: list[Any]
+    type_arguments: list[Any] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
     def __post_init__(self):
         """Post init."""
@@ -191,10 +191,10 @@ class SuiMoveFunction(DataClassJsonMixin):
     """From getNormalized."""
 
     visibility: str
-    is_entry: bool
-    type_parameters: list[SuiMoveAbilitySet]
+    is_entry: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+    type_parameters: list[SuiMoveAbilitySet] = field(metadata=config(letter_case=LetterCase.CAMEL))
     parameters: list[Union[str, dict]]
-    returns: list[Union[str, dict]] = field(metadata=config(field_name="return_"), default_factory=list)
+    returns: list[Union[str, dict]] = field(metadata=config(field_name="return"), default_factory=list)
 
     def __post_init__(self):
         """Post init processing for parameters and returns."""
@@ -247,10 +247,10 @@ class SuiMoveModule(DataClassJsonMixin):
 
     name: str
     address: str
-    file_format_version: int
+    file_format_version: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     friends: list[SuiMoveModuleId]
     structs: dict[str, SuiMoveStruct]
-    exposed_functions: dict[str, SuiMoveFunction]
+    exposed_functions: dict[str, SuiMoveFunction] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
     def __post_init__(self):
         """Post init processing for parameters."""

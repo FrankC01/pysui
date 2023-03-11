@@ -141,7 +141,7 @@ class GetCoins(_NativeTransactionBuilder):
 
 
 class GetLatestSuiSystemState(_NativeTransactionBuilder):
-    """Return the latest known SUI system state."""
+    """GetLatestSuiSystemState return the latest known SUI system state."""
 
     @sui_builder()
     def __init__(self) -> None:
