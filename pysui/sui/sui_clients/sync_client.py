@@ -27,6 +27,7 @@ from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
 from pysui.sui.sui_builders.get_builders import (
     GetCoinTypeBalance,
     GetCoins,
+    GetMultipleObjects,
     GetPastObject,
     GetObjectsOwnedByAddress,
     GetObject,
@@ -96,7 +97,6 @@ class SuiClient(_ClientMixin):
                 return SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
             return result
         return self._multi_signed_execution(builder, additional_signatures)
-        # return self._signed_execution(builder)
 
     def execute_no_sign(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Submit transaction and returns the signer and transaction bytes in the result_data as tuple."""
@@ -150,13 +150,6 @@ class SuiClient(_ClientMixin):
             return result
         return SuiRpcResult(False, "dry_run is used only with transaction types")
 
-    def _signed_execution(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
-        """Subit base transaction, sign valid result and execute."""
-        result = self.execute_no_sign(builder)
-        if result.is_ok():
-            result = self.sign_and_submit(*result.result_data)
-        return result
-
     def _multi_signed_execution(
         self, builder: SuiBaseBuilder, additional_signers: SuiArray[SuiAddress] = None
     ) -> Union[SuiRpcResult, Exception]:
@@ -166,9 +159,9 @@ class SuiClient(_ClientMixin):
             tx_bytes = result.result_data[1]
             exec_builder = self.sign_for_execution(tx_bytes, builder, additional_signers)
             result = self._execute(exec_builder)
-            if result.is_ok() and "error" not in result.result_data:
+            if result.is_ok() and "error" not in result.result_data["result"]:
                 # print(result.result_data["result"])
-                result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+                result = SuiRpcResult(True, None, exec_builder.handle_return(result.result_data["result"]))
         return result
 
     # Build and execute convenience methods
@@ -294,14 +287,8 @@ class SuiClient(_ClientMixin):
         :returns: A list of object data
         :rtype: SuiRpcResult
         """
-        obj_types = []
-        for identity in identifiers:
-            result = self.get_object(identity)
-            if result.is_ok():
-                obj_types.append(result.result_data)
-            else:
-                return result
-        return SuiRpcResult(True, None, obj_types)
+        # Revert to new multiOp
+        return self.execute(GetMultipleObjects(object_ids=identifiers))
 
     def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """get_package Get details of Sui package.

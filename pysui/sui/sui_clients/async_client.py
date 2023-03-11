@@ -27,6 +27,7 @@ from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
 from pysui.sui.sui_builders.get_builders import (
     GetCoinTypeBalance,
     GetCoins,
+    GetMultipleObjects,
     GetPastObject,
     GetObjectsOwnedByAddress,
     GetObject,
@@ -151,13 +152,6 @@ class SuiClient(_ClientMixin):
             return result
         return SuiRpcResult(False, "dry_run is used only with transaction types")
 
-    async def _signed_execution(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
-        """Subit base transaction, sign valid result and execute."""
-        result = await self.execute_no_sign(builder)
-        if result.is_ok():
-            result = await self.sign_and_submit(*result.result_data)
-        return result
-
     async def _multi_signed_execution(
         self, builder: SuiBaseBuilder, additional_signers: SuiArray[SuiAddress] = None
     ) -> Union[SuiRpcResult, Exception]:
@@ -169,7 +163,7 @@ class SuiClient(_ClientMixin):
             result = await self._execute(exec_builder)
             if result.is_ok() and "error" not in result.result_data:
                 # print(result.result_data["result"])
-                result = SuiRpcResult(True, None, builder.handle_return(result.result_data["result"]))
+                result = SuiRpcResult(True, None, exec_builder.handle_return(result.result_data["result"]))
         return result
 
     # Build and execute convenience methods
@@ -298,14 +292,8 @@ class SuiClient(_ClientMixin):
         :returns: A list of object data
         :rtype: SuiRpcResult
         """
-        obj_types = []
-        for identity in identifiers:
-            result = await self.get_object(identity)
-            if result.is_ok():
-                obj_types.append(result.result_data)
-            else:
-                return result
-        return SuiRpcResult(True, None, obj_types)
+        # Use new multi get
+        return await self.execute(GetMultipleObjects(object_ids=identifiers))
 
     async def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """get_package Get details of Sui package.

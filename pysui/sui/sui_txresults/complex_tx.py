@@ -462,6 +462,15 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
         """
 
 
+# @dataclass
+# class TxBytes(SuiTxReturnType, DataClassJsonMixin):
+#     """From various API results."""
+
+#     gas: int
+#     input_objects: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+#     tx_bytes: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
 @dataclass
 class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     """Transaction Result."""
@@ -493,7 +502,6 @@ class TxResponse(SuiTxReturnType, DataClassJsonMixin):
             self.effects = Effects.from_dict(self.effects)
         if self.transaction:
             self.transaction = Transaction.from_dict(self.transaction)
-        print("foo")
 
     @property
     def succeeded(self) -> bool:
@@ -558,9 +566,6 @@ class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
             event_type = ev_dict["type"]
             event_content = ev_dict["content"]
             hydrated.append({event_type: _EVENT_LOOKUP[event_type].from_dict(event_content)})
-        # for ev_dict in self.events:
-        #     key = list(ev_dict.keys())[0]
-        #     hydrated.append({key: _EVENT_LOOKUP[key].from_dict(ev_dict[key])})
         self.events = hydrated
 
     @classmethod

@@ -27,11 +27,9 @@ from pysui.sui.sui_txresults.single_tx import (
     CoinBalances,
     SuiCoinObjects,
     SuiLatestSystemState,
-    # SuiSystemState,
     ObjectInfo,
     ObjectRead,
     CommitteeInfo,
-    # Validators,
 )
 from pysui.sui.sui_txresults.complex_tx import (
     Checkpoint,
@@ -140,16 +138,6 @@ class GetCoins(_NativeTransactionBuilder):
         :type limit: SuiInteger, optional
         """
         super().__init__("sui_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
-
-
-# TODO: Deprecated
-# class GetSuiSystemState(_NativeTransactionBuilder):
-#     """Return the SUI system state. This is deprecated in favor of GetLatestSuiSystemState."""
-
-#     @sui_builder()
-#     def __init__(self) -> None:
-#         """__init__ Initializes builder."""
-#         super().__init__("sui_getSuiSystemState", handler_cls=SuiSystemState, handler_func="from_dict")
 
 
 class GetLatestSuiSystemState(_NativeTransactionBuilder):
@@ -703,30 +691,6 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
         super().__init__("sui_getDelegatedStakes", handler_cls=DelegatedStakes, handler_func="ingest_data")
 
 
-# TODO: Deprecated
-# class GetValidators(_NativeTransactionBuilder):
-#     """sui_getValidators."""
-
-#     @sui_builder()
-#     def __init__(self):
-#         """__init__ Builder initializer."""
-#         super().__init__("sui_getValidators", handler_cls=Validators, handler_func="ingest_data")
-
-
-# TODO: Deprecated
-# class GetCheckpointContents(_NativeTransactionBuilder):
-#     """GetCheckpointContents return contents of a checkpoint, namely a list of execution digests."""
-
-#     @sui_builder()
-#     def __init__(self, sequence_number: SuiInteger):
-#         """__init__ Initialize builder.
-
-#         :param sequence_number: The sequence number
-#         :type sequence_number: SuiInteger
-#         """
-#         super().__init__("sui_getCheckpointContents", handler_cls=CheckpointContents, handler_func="from_dict")
-
-
 class GetCheckpointContentsByDigest(_NativeTransactionBuilder):
     """GetCheckpointContentsByDigest return contents of a checkpoint based on its sequence number."""
 
@@ -808,14 +772,3 @@ class GetReferenceGasPrice(_NativeTransactionBuilder):
     def __init__(self):
         """Builder initializer."""
         super().__init__("sui_getReferenceGasPrice")
-
-
-# TODO: Dropped
-# class SignRandomnessObject(_NativeTransactionBuilder):
-#     """SignRandomnessObject Sign an a Randomness object with threshold BLS."""
-
-#     @sui_builder()
-#     def __init__(self, object_id: ObjectID, commitment_type: SuiString):
-#         """."""
-#         super().__init__("sui_tblsSignRandomnessObject")
-#         raise NotImplementedError(self)

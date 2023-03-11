@@ -664,42 +664,45 @@ class Validator(DataClassJsonMixin):
 class ValidatorSummary(DataClassJsonMixin):
     """From sui_getLatestSuiSystemState."""
 
-    commission_rate: int
-    description: str
-    gas_price: int
-    image_url: str
-    name: str
-    net_address: list[int]
-    network_pubkey_bytes: list[int]
-    next_epoch_commission_rate: int
-    next_epoch_gas_price: int
-    next_epoch_net_address: Optional[list[int]]
-    next_epoch_network_pubkey_bytes: Optional[list[int]]
-    next_epoch_p2p_address: Optional[list[int]]
-    next_epoch_primary_address: Optional[list[int]]
-    next_epoch_proof_of_possession: Optional[list[int]]
-    next_epoch_protocol_pubkey_bytes: Optional[list[int]]
-    next_epoch_stake: int
-    next_epoch_worker_address: Optional[list[int]]
-    next_epoch_worker_pubkey_bytes: Optional[list[int]]
-    p2p_address: list[int]
-    pending_delegation: int
-    pending_pool_token_withdraw: int
-    pending_total_sui_withdraw: int
-    pool_token_balance: int
-    primary_address: list[int]
-    project_url: str
-    proof_of_possession_bytes: list[int]
-    protocol_pubkey_bytes: list[int]
-    rewards_pool: int
-    staking_pool_activation_epoch: Optional[int]
-    staking_pool_deactivation_epoch: Optional[int]
-    staking_pool_id: str
-    staking_pool_sui_balance: int
-    sui_address: str
-    voting_power: int
-    worker_address: list[int]
-    worker_pubkey_bytes: list[int]
+    commission_rate: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    description: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    exchange_rates_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    exchange_rates_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    gas_price: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    image_url: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    name: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    net_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    network_pubkey_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_commission_rate: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_gas_price: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_net_address: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_network_pubkey_bytes: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_p2p_address: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_primary_address: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_proof_of_possession: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_protocol_pubkey_bytes: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_stake: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_worker_address: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_worker_pubkey_bytes: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    operation_cap_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    p2p_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    pending_delegation: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    pending_pool_token_withdraw: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    pending_total_sui_withdraw: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    pool_token_balance: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    primary_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    project_url: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    proof_of_possession_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    protocol_pubkey_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    rewards_pool: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    staking_pool_activation_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    staking_pool_deactivation_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    staking_pool_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    staking_pool_sui_balance: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sui_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    voting_power: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    worker_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    worker_pubkey_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 # TODO: Deprecated
@@ -761,62 +764,58 @@ class ValidatorSet(DataClassJsonMixin):
 class SuiLatestSystemState(DataClassJsonMixin):
     """."""
 
-    active_validators: list[ValidatorSummary]
-    epoch: int
-    epoch_start_timestamp_ms: int
-    governance_start_epoch: int
-    inactive_pools_id: str
-    inactive_pools_size: int
-    max_validator_count: int
-    min_validator_stake: int
-    pending_active_validators_id: str
-    pending_active_validators_size: int
-    pending_removals: int
-    protocol_version: int
-    reference_gas_price: int
-    safe_mode: bool
-    stake_subsidy_balance: int
-    stake_subsidy_current_epoch_amount: int
-    stake_subsidy_epoch_counter: int
-    staking_pool_mappings_id: str
-    staking_pool_mappings_size: int
-    storage_fund: int
-    total_stake: int
-    validator_candidates_id: str
-    validator_candidates_size: int
-    validator_report_records: list[Any]
+    active_validators: list[ValidatorSummary] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    epoch_start_timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    governance_start_epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    inactive_pools_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    inactive_pools_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    max_validator_count: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    min_validator_stake: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    pending_active_validators_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    pending_active_validators_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    pending_removals: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    protocol_version: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    reference_gas_price: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    safe_mode: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_subsidy_balance: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_subsidy_current_epoch_amount: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_subsidy_epoch_counter: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    staking_pool_mappings_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    staking_pool_mappings_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    storage_fund: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    total_stake: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    validator_candidates_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    validator_candidates_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    validator_report_records: list[Any] = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+# @dataclass
+# class Delegation(DataClassJsonMixin):
+#     """From sui_getDelegatedStakes."""
+
+#     delegation_id: dict = field(metadata=config(field_name="id"))
+#     pool_tokens: Union[dict, int]
+#     principal_sui_amount: int
+#     staked_sui_id: str
+
+#     def __post_init__(self):
+#         """Post hydrate parameter fixups."""
+#         self.delegation_id = self.delegation_id["id"]
+#         self.pool_tokens = self.pool_tokens["value"]
 
 
 @dataclass
 class StakedSui(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
-    delegation_request_epoch: int
-    stake_id: str = field(metadata=config(field_name="id"))
-    pool_id: str
-    principal: Union[dict, int]
-    validator_address: str
-    sui_token_lock: Union[int, None] = 0
-
-    def __post_init__(self):
-        """Post hydrate parameter fixups."""
-        self.principal = self.principal["value"]
-        self.stake_id = self.stake_id["id"]
-
-
-@dataclass
-class Delegation(DataClassJsonMixin):
-    """From sui_getDelegatedStakes."""
-
-    delegation_id: dict = field(metadata=config(field_name="id"))
-    pool_tokens: Union[dict, int]
-    principal_sui_amount: int
-    staked_sui_id: str
-
-    def __post_init__(self):
-        """Post hydrate parameter fixups."""
-        self.delegation_id = self.delegation_id["id"]
-        self.pool_tokens = self.pool_tokens["value"]
+    staked_sui_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_active_epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    principal: int
+    token_lock: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    status: str
+    stage_request_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
+    estimated_reward: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
 
 
 @dataclass
@@ -824,15 +823,8 @@ class DelegatedStake(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
     stakes: list[StakedSui]
-    staking_pool: str
-    validator_address: str
-    # staked_sui: StakedSui
-    # delegation_status: Union[str, dict]
-
-    def __post_init__(self):
-        """Post hydrate parameter fixups."""
-        # if isinstance(self.delegation_status, dict):
-        #     self.delegation_status = Delegation.from_dict(self.delegation_status["Active"])
+    staking_pool: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    validator_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass
@@ -845,13 +837,6 @@ class DelegatedStakes(DataClassJsonMixin):
     def ingest_data(cls, in_data: list) -> "DelegatedStakes":
         """Handle multiple delegated stake results."""
         return cls.from_dict({"delegated_stakes": in_data})
-
-
-# @dataclass
-# class SuiTxnAuthSigners(DataClassJsonMixin):
-#     """From sui_getTransactionAuthSigners."""
-
-#     signers: list[str]
 
 
 @dataclass
@@ -872,6 +857,7 @@ class SuiCoinBalance(DataClassJsonMixin):
 
     coin_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     coin_object_count: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    locked_balance: dict = field(metadata=config(letter_case=LetterCase.CAMEL))
     total_balance: int = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 

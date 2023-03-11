@@ -50,10 +50,10 @@ class AbstractType(ABC):
             return self.value
         if isinstance(self.value, bytes):
             return self.value.decode()
-        if isinstance(self.value, int):
-            return str(self.value)
         if isinstance(self.value, bool):
             return "true" if self.value else "false"
+        if isinstance(self.value, int):
+            return str(self.value)
         if isinstance(self.value, AbstractType):
             return str(self.value.value)
         if isinstance(self.value, NoneType):
