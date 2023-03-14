@@ -32,10 +32,10 @@ from pysui.sui.sui_builders.get_builders import (
     GetTxsInputObject,
     GetTxsMutateObject,
     GetTxsMoveFunction,
-    MoveEventQuery,
+    MoveEventTypeQuery,
     MoveModuleEventQuery,
-    ObjectEventQuery,
-    RecipientEventQuery,
+    # ObjectEventQuery,
+    # RecipientEventQuery,
     SenderEventQuery,
     TransactionEventQuery,
     TimeRangeEventQuery,
@@ -389,32 +389,8 @@ def events_module(client: SuiClient, args: argparse.Namespace) -> None:
 def events_struct(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
-    query = MoveEventQuery(args.struct_name)
+    query = MoveEventTypeQuery(args.struct_name)
     var_args.pop("struct_name")
-    result = client.get_events(**_convert_event_query(var_args, query))
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def events_object(client: SuiClient, args: argparse.Namespace) -> None:
-    """Event info request handler."""
-    var_args = vars(args)
-    query = ObjectEventQuery(args.object)
-    var_args.pop("object")
-    result = client.get_events(**_convert_event_query(var_args, query))
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def events_recipient(client: SuiClient, args: argparse.Namespace) -> None:
-    """Event info request handler."""
-    var_args = vars(args)
-    query = RecipientEventQuery(args.recipient)
-    var_args.pop("recipient")
     result = client.get_events(**_convert_event_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
@@ -573,8 +549,6 @@ SUI_CMD_DISPATCH = {
     "event-all": events_all,
     "event-module": events_module,
     "event-struct": events_struct,
-    "event-object": events_object,
-    "event-recipient": events_recipient,
     "event-sender": events_sender,
     "event-time": events_time,
     "event-tx": events_tx,

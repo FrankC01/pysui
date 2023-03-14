@@ -237,6 +237,18 @@ def from_base64(in_base64: str, form: Deserialize = Deserialize.ALL) -> Union[Ra
     return deserialize(ModuleReader.read_from_base64(in_base64), form)
 
 
+# def from_base58(in_base58: str, form: Deserialize = Deserialize.ALL) -> Union[RawModuleContent, Exception]:
+#     """from_base58 Deserialize the content of a module base58 representation.
+
+#     :param in_base58: The sui module base64 string
+#     :type in_base64: str
+#     :param form: Defines how many tables to walk from module, defaults to Deserialize.ALL
+#     :type form: Deserialize, optional
+#     :return: Container of deserialized tables
+#     :rtype: Union[RawModuleContent, Exception]
+#     """
+
+
 if __name__ == "__main__":
     pass
     # deser_track = from_file("~/frankc01/sui-track/build/SuiTrack/bytecode_modules/base.mv")

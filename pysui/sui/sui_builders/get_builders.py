@@ -35,6 +35,7 @@ from pysui.sui.sui_txresults.complex_tx import (
     Checkpoint,
     CheckpointContents,
     CheckpointSummary,
+    EventBlock,
     EventQueryEnvelope,
     TransactionQueryEnvelope,
     TxResponse,
@@ -236,6 +237,7 @@ class GetObject(_NativeTransactionBuilder):
         "showStorageRebate": True,
     }
 
+    @sui_builder()
     def __init__(self, *, object_id: ObjectID, options: Optional[SuiMap] = None) -> None:
         """__init__ Initializes builder.
 
@@ -243,7 +245,6 @@ class GetObject(_NativeTransactionBuilder):
         :type object_id: ObjectID
         """
         super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
-        self.object_id = sutils.as_object_id(object_id)
         if options is None or isinstance(options, SuiNullType):
             self.options = sutils.as_sui_map(self._DEFAULT_GET_OBJECT_OPTIONS.copy())
         else:
@@ -271,6 +272,7 @@ class GetObject(_NativeTransactionBuilder):
 class GetMultipleObjects(_NativeTransactionBuilder):
     """GetMultipleObjects When executed, returns the objects detailed information for a list of object identifiers."""
 
+    @sui_builder()
     def __init__(self, *, object_ids: SuiArray[ObjectID], options: Optional[SuiMap] = None) -> None:
         """__init__ Initializes builder.
 
@@ -278,7 +280,6 @@ class GetMultipleObjects(_NativeTransactionBuilder):
         :type object_ids: SuiArray
         """
         super().__init__("sui_multiGetObjects", handler_cls=ObjectRead, handler_func="factory")
-        self.object_ids = sutils.as_sui_array(object_ids)
         if options is None or isinstance(options, SuiNullType):
             self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
         else:
@@ -312,7 +313,7 @@ class GetPastObject(_NativeTransactionBuilder):
     """
 
     @sui_builder()
-    def __init__(self, object_id: ObjectID, version: SuiInteger) -> None:
+    def __init__(self, object_id: ObjectID, version: SuiInteger, options: Optional[SuiMap] = None) -> None:
         """__init__ Initialize builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
@@ -321,6 +322,34 @@ class GetPastObject(_NativeTransactionBuilder):
         :type version: SuiInteger, optional
         """
         super().__init__("sui_tryGetPastObject", handler_cls=ObjectRead, handler_func="factory")
+        if options is None or isinstance(options, SuiNullType):
+            self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
+        else:
+            self.options = sutils.as_sui_map(options)
+
+
+class GetMultiplePastObjects(_NativeTransactionBuilder):
+    """GetMultiplePastObjects When executed, return the object information for a specified version.
+
+    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
+    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
+    policies.
+    """
+
+    @sui_builder()
+    def __init__(self, past_objects: SuiArray[SuiMap], options: Optional[SuiMap] = None) -> None:
+        """__init__ Initialize builder.
+
+        :param sui_object: Object identifier to fetch from chain, defaults to None
+        :type sui_object: ObjectID, optional
+        :param version: Specific version sequence number being requested, defaults to None
+        :type version: SuiInteger, optional
+        """
+        super().__init__("sui_tryMultiGetPastObjects", handler_cls=ObjectRead, handler_func="factory")
+        if options is None or isinstance(options, SuiNullType):
+            self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
+        else:
+            self.options = sutils.as_sui_map(options)
 
 
 class GetPackage(_NativeTransactionBuilder):
@@ -437,12 +466,28 @@ class GetCommittee(_NativeTransactionBuilder):
 # Event Query Types
 
 
+class SenderEventQuery(SuiMap):
+    """Query events for Sender address."""
+
+    def __init__(self, sender: SuiAddress):
+        """Initialize query parameter."""
+        super().__init__("Sender", sender.value.value)
+
+
 class TransactionEventQuery(SuiMap):
     """Query events for Transaction."""
 
     def __init__(self, txid: str):
         """Initialize query parameter."""
         super().__init__("Transaction", txid)
+
+
+class PackageEventQuery(SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(self, txid: str):
+        """Initialize query parameter."""
+        super().__init__("Package", txid)
 
 
 class MoveModuleEventQuery(SuiMap):
@@ -454,60 +499,65 @@ class MoveModuleEventQuery(SuiMap):
         super().__init__("MoveModule", sdict)
 
 
-class MoveEventQuery(SuiMap):
-    """Query events for Move Event."""
+class MoveEventTypeQuery(SuiMap):
+    """Query events for Move Event on Struct type."""
 
     def __init__(self, struct: str):
         """Initialize query parameter."""
-        super().__init__("MoveEvent", struct)
+        super().__init__("MoveEventType", struct)
 
 
-class EventTypeQuery(SuiMap):
-    """Query events for Event types."""
+class MoveEventField(SuiMap):
+    """Query events for Move Event fields."""
 
-    _evtype_set = {
-        "MoveEvent",
-        "Publish",
-        "CoinBalanceChange",
-        "EpochChange",
-        "Checkpoint",
-        "TransferObject",
-        "MutateObject",
-        "DeleteObject",
-        "NewObject",
-    }
+    def __init__(self, field_path: dict[str, str]):
+        """Initialize query parameter.
 
-    def __init__(self, event_type: str):
-        """Initialize query parameter."""
-        if event_type in self._evtype_set:
-            super().__init__("EventType", event_type)
-        else:
-            raise ValueError(f"event_type: {event_type} not one of {self._evtype_set}")
+        field_path argument is dict with {'path':PATH_TO_FILE,'value':true}
+        """
+        super().__init__("MoveEventField", field_path)
 
 
-class SenderEventQuery(SuiMap):
-    """Query events for Sender address."""
+# TODO: Deprecated
+# class EventTypeQuery(SuiMap):
+#     """Query events for Event types."""
 
-    def __init__(self, sender: SuiAddress):
-        """Initialize query parameter."""
-        super().__init__("Sender", sender.value.value)
+#     _evtype_set = {
+#         "MoveEvent",
+#         "Publish",
+#         "CoinBalanceChange",
+#         "EpochChange",
+#         "Checkpoint",
+#         "TransferObject",
+#         "MutateObject",
+#         "DeleteObject",
+#         "NewObject",
+#     }
+
+#     def __init__(self, event_type: str):
+#         """Initialize query parameter."""
+#         if event_type in self._evtype_set:
+#             super().__init__("EventType", event_type)
+#         else:
+#             raise ValueError(f"event_type: {event_type} not one of {self._evtype_set}")
+
+# TODO: Deprecated
+# class RecipientEventQuery(SuiMap):
+#     """Query events for Recipient address."""
+
+#     def __init__(self, recipient: SuiAddress):
+#         """Initialize query parameter."""
+#         sdict = {"AddressOwner": recipient.value.value}
+#         super().__init__("Recipient", sdict)
 
 
-class RecipientEventQuery(SuiMap):
-    """Query events for Recipient address."""
+# TODO: Deprecated
+# class ObjectEventQuery(SuiMap):
+#     """Query events for Object id."""
 
-    def __init__(self, recipient: SuiAddress):
-        """Initialize query parameter."""
-        sdict = {"AddressOwner": recipient.value.value}
-        super().__init__("Recipient", sdict)
-
-
-class ObjectEventQuery(SuiMap):
-    """Query events for Object id."""
-
-    def __init__(self, object_id: ObjectID):
-        """Initialize query parameter."""
-        super().__init__("Object", object_id.value)
+#     def __init__(self, object_id: ObjectID):
+#         """Initialize query parameter."""
+#         super().__init__("Object", object_id.value)
 
 
 class TimeRangeEventQuery(SuiMap):
@@ -515,12 +565,13 @@ class TimeRangeEventQuery(SuiMap):
 
     def __init__(self, start_time: SuiInteger, end_time: SuiInteger):
         """Initialize query parameter."""
-        sdict = {"start_time": start_time.value, "end_time": end_time.value}
+        sdict = {"startTime": start_time.value, "endTime": end_time.value}
         super().__init__("TimeRange", sdict)
 
 
-class GetEvents(_NativeTransactionBuilder):
-    """GetEvents When executed, return list of events for a specified query criteria."""
+# TODO: Implement All, Any, And and Or constructs
+class QueryEvents(_NativeTransactionBuilder):
+    """QueryEvents takes event query criteria (options) as parameters and returns events matching criteria."""
 
     @sui_builder()
     def __init__(
@@ -532,7 +583,21 @@ class GetEvents(_NativeTransactionBuilder):
         descending_order: Optional[SuiBoolean] = None,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_getEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
+        super().__init__("sui_queryEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
+
+
+class GetEvents(_NativeTransactionBuilder):
+    """GetEvents When executed, return list of events for a specified query criteria."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        transaction_digest: SuiString,
+    ) -> None:
+        """Initialize builder."""
+        super().__init__("sui_getEvents", handler_cls=EventBlock, handler_func="factory")
+        # super().__init__("sui_getEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
 
 
 class GetTotalTxCount(_NativeTransactionBuilder):
@@ -553,10 +618,10 @@ class GetTx(_NativeTransactionBuilder):
         "showInput": False,
     }
 
+    @sui_builder()
     def __init__(self, *, digest: SuiString, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
         super().__init__("sui_getTransaction", handler_cls=TxResponse, handler_func="from_dict")
-        self.digest = sutils.as_sui_string(digest)
         if options is None or isinstance(options, SuiNullType):
             self.options = sutils.as_sui_map(self._DEFAULT_GET_TX_OPTIONS.copy())
         else:
@@ -579,7 +644,6 @@ class GetMultipleTx(_NativeTransactionBuilder):
     def __init__(self, *, digests: SuiArray, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
         super().__init__("sui_multiGetTransactions", handler_cls=TxResponseArray, handler_func="factory")
-        self.digests = sutils.as_sui_array(digests)
         if options is None or isinstance(options, SuiNullType):
             self.options = sutils.as_sui_map(GetTx._DEFAULT_GET_TX_OPTIONS.copy())
         else:
@@ -648,7 +712,7 @@ class GetTxs(_NativeTransactionBuilder):
         descending_order: Optional[SuiBoolean] = None,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_getTransactions", handler_cls=TransactionQueryEnvelope, handler_func="from_dict")
+        super().__init__("sui_queryTransactions", handler_cls=TransactionQueryEnvelope, handler_func="from_dict")
 
 
 class GetTransactionsInRange(_NativeTransactionBuilder):
@@ -662,20 +726,7 @@ class GetTransactionsInRange(_NativeTransactionBuilder):
         end: SuiInteger,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_getTransactionsInRange")
-
-
-# class GetTxAuthSignatures(_NativeTransactionBuilder):
-#     """Fetch transaction authorized signatures public keys."""
-
-#     @sui_builder()
-#     def __init__(self, *, digest: SuiTransactionDigest):
-#         """__init__ When executed, returns the authorizers public keys array.
-
-#         :param digest: Base58 transaction digest
-#         :type digest: SuiTransactionDigest
-#         """
-#         super().__init__("sui_getTransactionAuthSigners", handler_cls=SuiTxnAuthSigners, handler_func="from_dict")
+        super().__init__("sui_getTransactionsInRangeDeprecated")
 
 
 class GetDelegatedStakes(_NativeTransactionBuilder):

@@ -185,6 +185,11 @@ class SuiString(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def transaction_digest(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
 
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""

@@ -37,7 +37,9 @@ Breaking Changes - Significant
 - **Breaking Change** ExecuteTransaction now takes a list of signatures as per Sui 0.28.0
 - **Breaking Change** Result types (TxResult, TxInspectionResult and DryRunTxResult) changes as per Sui 0.28.0
 - **Breaking Change** Pay and PaySui now takes a list of SuiStrings for amounts as per Sui 0.28.0
+- **Breaking Change** GetEvents now take a transaction digest as parameter as per Sui 0.28.0. See Added above for QueryEvent for old behavior.
 - async_client and sync_client now take optional `additional_signers` towards support Sui multi-sign
+- async_client and sync_client "execute_no_sign" now returns a PreExecutionResult data object in SuiRpcResult
 - GetObject now takes flag options on what to include or not in result
 - Removed `protocol_version` field from CommitteeInfo results as per Sui 0.28.0
 - InspectTransaction results now include eveents as per Sui 0.28.0

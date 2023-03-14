@@ -390,6 +390,9 @@ def as_sui_map(in_data: Any) -> Union[SuiMap, ValueError]:
     elif isinstance(in_data, dict):
         result = SuiMap("", "")
         result.map = in_data
+    elif isinstance(in_data, SuiNullType):
+        result = SuiMap("", "")
+        result.map = {}
     if not result:
         raise ValueError(f"Can not get SuiMap from {in_data} with type {type(in_data)}")
     return result

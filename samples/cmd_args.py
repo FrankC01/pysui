@@ -14,7 +14,7 @@
 
 """Argument parsing for samples/wallet."""
 import argparse
-from cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
+from samples.cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
 from pysui.sui.sui_types.scalars import SuiString, SuiNullType
 
 
@@ -522,16 +522,6 @@ def _build_extended_read_commands(subparser) -> None:
     esubp.add_argument("-s", "--struct", required=True, dest="struct_name", type=str)
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-struct")
-    # Object events
-    esubp = ecmds.add_parser("object", help="Return events associated with the given object")
-    esubp.add_argument("-o", "--object", required=True, help="the SUI object ID", action=ValidateObjectID)
-    __common_event_opts(esubp)
-    esubp.set_defaults(subcommand="event-object")
-    # Recipient events
-    esubp = ecmds.add_parser("recipient", help="Return events associated with the given recipient")
-    esubp.add_argument("-r", "--recipient", required=True, help="the SUI address of recipient", action=ValidateAddress)
-    __common_event_opts(esubp)
-    esubp.set_defaults(subcommand="event-recipient")
     # Sender events
     esubp = ecmds.add_parser("sender", help="Return events associated with the given sender")
     esubp.add_argument("-s", "--sender", required=True, help="the SUI address of sender", action=ValidateAddress)

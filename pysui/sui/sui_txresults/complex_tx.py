@@ -174,7 +174,7 @@ class ProgrammableTransaction(SuiTxReturnType, DataClassJsonMixin):
 
     kind: str
     commands: list[dict]
-    inputs: list[dict]
+    inputs: list[Any]
 
 
 @dataclass
@@ -407,6 +407,33 @@ _EVENT_LOOKUP = {
 
 
 @dataclass
+class Event(SuiTxReturnType, DataClassJsonMixin):
+    """Result of various get and result API."""
+
+    bcs: str
+    package_id: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    parsed_json: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sender: str
+    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    event_type: str = field(metadata=config(field_name="type"))
+    event_id: int = field(metadata=config(field_name="id"))
+    # timestamp_ms: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    timestamp_ms: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default=0)
+
+
+@dataclass
+class EventBlock(SuiTxReturnType, DataClassJsonMixin):
+    """Collection of events."""
+
+    events: list[Event]
+
+    @classmethod
+    def factory(cls, in_data: list[dict]) -> "EventBlock":
+        """Process array of Events."""
+        return cls.from_dict({"events": in_data})
+
+
+@dataclass
 class GasCostSummary(SuiTxReturnType, DataClassJsonMixin):
     """Gas used."""
 
@@ -462,42 +489,28 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
         """
 
 
-# @dataclass
-# class TxBytes(SuiTxReturnType, DataClassJsonMixin):
-#     """From various API results."""
-
-#     gas: int
-#     input_objects: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-#     tx_bytes: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-
-
 @dataclass
 class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     """Transaction Result."""
 
     digest: str
-    # digest: Optional[str] = field(default_factory=str)
+    balance_changes: Optional[list[dict]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
+    object_changes: Optional[list[dict]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
     transaction: Optional[dict] = field(default_factory=dict)
     errors: Optional[list[str]] = field(default_factory=list)
     effects: Optional[dict] = field(default_factory=dict)
-    events: Optional[list[dict]] = field(default_factory=list)
+    events: Optional[list[Event]] = field(default_factory=list)
     checkpoint: Optional[int] = field(default_factory=int)
     confirmed_local_execution: Optional[bool] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=bool
     )
-    timestamp_ms: Optional[int] = field(metadata=config(field_name="timestampMs"), default_factory=int)
+    timestamp_ms: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default=0)
 
     def __post_init__(self):
         """Post init processing.
 
         Post process events lookup and transaction data
         """
-        hydrated = []
-        for ev_dict in self.events:
-            event_type = ev_dict["type"]
-            event_content = ev_dict["content"]
-            hydrated.append({event_type: _EVENT_LOOKUP[event_type].from_dict(event_content)})
-        self.events = hydrated
         if self.effects:
             self.effects = Effects.from_dict(self.effects)
         if self.transaction:
@@ -533,19 +546,13 @@ class DryRunTxResult(SuiTxReturnType, DataClassJsonMixin):
     """From sui_dryRunTransaction."""
 
     effects: Effects
-    events: list[dict]
+    events: list[Event]
 
     def __post_init__(self):
         """Post init processing.
 
         Post process events lookup
         """
-        hydrated = []
-        for ev_dict in self.events:
-            event_type = ev_dict["type"]
-            event_content = ev_dict["content"]
-            hydrated.append({event_type: _EVENT_LOOKUP[event_type].from_dict(event_content)})
-        self.events = hydrated
 
 
 @dataclass
@@ -572,6 +579,15 @@ class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
     def factory(cls, in_data: dict) -> "TxInspectionResult":
         """."""
         return cls.from_dict(in_data)
+
+
+@dataclass
+class TransactionBytes(DataClassJsonMixin):
+    """From pre-signed execution (i.e. sui_moveCall, sui_pay, etc.)."""
+
+    gas: list[GenericRef]
+    input_objects: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    tx_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 # TODO: Trace for removal
@@ -692,7 +708,8 @@ class SubscribedEventParms(SuiTxReturnType, DataClassJsonMixin):
     """From sui_subscribeEvents."""
 
     subscription: int
-    result: EventEnvelope
+    # result: EventEnvelope
+    result: Event
 
 
 @dataclass
@@ -727,5 +744,6 @@ class EventQueryEnvelope(DataClassJsonMixin):
 class TransactionQueryEnvelope(DataClassJsonMixin):
     """From sui_getTransactions."""
 
-    data: list[str]
-    next_cursor: Union[None, dict] = field(metadata=config(field_name="nextCursor"))
+    data: list[TxResponse]
+    has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
+    next_cursor: Optional[str] = field(metadata=config(field_name="nextCursor"))

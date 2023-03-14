@@ -314,33 +314,96 @@ class BCSBatchTransaction(canoser.Struct):
     _fields = [("Singles", [BCSSingleTransaction])]
 
 
-class BCSTransactionKind(canoser.RustEnum):
-    """BCSTransactionKind is enumeration of different transaction types."""
+# class BCSTransactionKind(canoser.RustEnum):
+#     """BCSTransactionKind is enumeration of different transaction types."""
 
-    _enums = [
-        ("Single", BCSSingleTransaction),
-        ("Batch", BCSBatchTransaction),
+#     _enums = [
+#         ("Single", BCSSingleTransaction),
+#         ("Batch", BCSBatchTransaction),
+#     ]
+
+#     @classmethod
+#     def variant_for_index(cls, index: int) -> Union[tuple[str, canoser.RustEnum], IndexError]:
+#         """variant_for_index returns the enum name and reference tuple from specific index.
+
+#         :param index: The index into list of enum values
+#         :type index: int
+#         :raises IndexError: When index provided is not valid
+#         :return: The name,value tuple of the enum index
+#         :rtype: Union[tuple[str, canoser.RustEnum], ValueError]
+#         """
+#         if index > len(cls._enums):
+#             raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
+#         return cls._enums[index]
+
+
+class Command(canoser.RustEnum):
+    """."""
+
+    # /// A call to either an entry or a public Move function
+    # MoveCall(Box<ProgrammableMoveCall>),
+    # /// `(Vec<forall T:key+store. T>, address)`
+    # /// It sends n-objects to the specified address. These objects must have store
+    # /// (public transfer) and either the previous owner must be an address or the object must
+    # /// be newly created.
+    # TransferObjects(Vec<Argument>, Argument),
+    # /// `(&mut Coin<T>, u64)` -> `Coin<T>`
+    # /// It splits off some amount into a new coin
+    # SplitCoin(Argument, Argument),
+    # /// `(&mut Coin<T>, Vec<Coin<T>>)`
+    # /// It merges n-coins into the first coin
+    # MergeCoins(Argument, Vec<Argument>),
+    # /// Publishes a Move package
+    # Publish(Vec<Vec<u8>>),
+    # /// `forall T: Vec<T> -> vector<T>`
+    # /// Given n-values of the same type, it constructs a vector. For non objects or an empty vector,
+    # /// the type tag must be specified.
+    # MakeMoveVec(Option<TypeTag>, Vec<Argument>),
+    # /// Upgrades a Move package
+    # Upgrade(Vec<Vec<u8>>, Vec<ObjectID>, Argument),
+    _enum = [
+        ("MoveCall", None),
+        ("TransferObjects", None),
+        ("SplitCoin", None),
+        ("MergeCoins", None),
+        ("Publish", None),
+        ("MakeMoveVec", None),
+        ("Upgrade", None),
     ]
 
-    @classmethod
-    def variant_for_index(cls, index: int) -> Union[tuple[str, canoser.RustEnum], IndexError]:
-        """variant_for_index returns the enum name and reference tuple from specific index.
 
-        :param index: The index into list of enum values
-        :type index: int
-        :raises IndexError: When index provided is not valid
-        :return: The name,value tuple of the enum index
-        :rtype: Union[tuple[str, canoser.RustEnum], ValueError]
-        """
-        if index > len(cls._enums):
-            raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
-        return cls._enums[index]
+class ProgrammableTransaction(canoser.Struct):
+    """."""
+
+    _fields = [("Inputs", [CallArg]), ("Commands", [Command])]
 
 
-class BCSTransactionData(canoser.RustEnum):
+class TransactionKind(canoser.RustEnum):
+    """."""
+
+    _enums = [
+        ("ProgrammableTransaction", ProgrammableTransaction),
+        ("ChangeEpoch", None),
+        ("Genesis", None),
+        ("ConsensusCommitPrologue", None),
+    ]
+
+
+class TransactionDataV1(canoser.Struct):
+    """."""
+
+    _fields = [
+        ("TransactionKind", TransactionKind),
+        ("Sender", None),
+        ("GasData", None),
+        ("TransactionExpiration", None),
+    ]
+
+
+class TransactionData(canoser.RustEnum):
     """BCSTransactionData is enumeration of transaction kind."""
 
-    _enums = [("V1", BCSTransactionKind)]
+    _enums = [("V1", TransactionDataV1)]
 
     @classmethod
     def variant_for_index(cls, index: int) -> Union[tuple[str, canoser.RustEnum], IndexError]:

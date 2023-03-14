@@ -13,6 +13,7 @@
 
 """Sui Client common classes module."""
 
+from dataclasses import dataclass
 import json
 from abc import abstractmethod
 from typing import Any, Optional, Union
@@ -27,6 +28,7 @@ from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_apidesc import build_api_descriptors
 from pysui.sui.sui_txn_validator import validate_api
 from pysui.sui.sui_excepts import SuiException, SuiRpcApiNotAvailable, SuiNotComplexTransaction
+from pysui.sui.sui_txresults.complex_tx import TransactionBytes
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray
 from pysui.sui.sui_types.scalars import SuiSignature, SuiString, SuiTxBytes
@@ -70,6 +72,23 @@ class SuiRpcResult(RpcResult):
     def result_string(self) -> str:
         """Get result string."""
         return self._result_str
+
+
+@dataclass
+class PreExecutionResult:
+    """Results of pre-execution transaction submission."""
+
+    authority_address: SuiAddress
+    pre_transaction_result: TransactionBytes
+
+    @property
+    def tx_bytes(self) -> SuiTxBytes:
+        """tx_bytes return the tx_byte string as a SuiTxBytes.
+
+        :return: tx_bytes in TransactionBytes as SuiTxBytes
+        :rtype: SuiSignature
+        """
+        return SuiTxBytes(self.pre_transaction_result.tx_bytes)
 
 
 class _ClientMixin(Provider):

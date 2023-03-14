@@ -765,13 +765,13 @@ class SuiLatestSystemState(DataClassJsonMixin):
     """."""
 
     active_validators: list[ValidatorSummary] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    at_risk_validators: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
     epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    epoch_duration_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     epoch_start_timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     governance_start_epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     inactive_pools_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     inactive_pools_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    # max_validator_count: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    # min_validator_stake: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     pending_active_validators_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     pending_active_validators_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     pending_removals: int = field(metadata=config(letter_case=LetterCase.CAMEL))
@@ -813,7 +813,7 @@ class StakedSui(DataClassJsonMixin):
     staked_sui_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     stake_active_epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     principal: int
-    token_lock: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    # token_lock: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
     status: str
     stage_request_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
     estimated_reward: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)

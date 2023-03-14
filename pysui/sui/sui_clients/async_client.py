@@ -17,7 +17,7 @@
 from typing import Any, Union
 from json import JSONDecodeError
 import httpx
-from pysui.sui.sui_clients.common import _ClientMixin, SuiRpcResult
+from pysui.sui.sui_clients.common import _ClientMixin, PreExecutionResult, SuiRpcResult
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiTxBytes, SuiString
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
@@ -108,7 +108,10 @@ class SuiClient(_ClientMixin):
                 result = result.result_data
                 if "error" in result:
                     return SuiRpcResult(False, result["error"]["message"], None)
-                result = SuiRpcResult(True, None, (builder.authority, SuiTxBytes(result["result"]["txBytes"])))
+                result = SuiRpcResult(
+                    True, None, PreExecutionResult(builder.authority, builder.handle_return(result["result"]))
+                )
+                # result = SuiRpcResult(True, None, (builder.authority, SuiTxBytes(result["result"]["txBytes"])))
             return result
         return SuiRpcResult(False, "execute_no_sign is used only with transaction types")
 
@@ -147,8 +150,7 @@ class SuiClient(_ClientMixin):
         if builder.txn_required:
             result = await self.execute_no_sign(builder)
             if result.is_ok():
-                _, tx_bytes = result.result_data
-                result = await self.execute(DryRunTransaction(tx_bytes=tx_bytes))
+                result = self.execute(DryRunTransaction(tx_bytes=result.result_data.tx_bytes))
             return result
         return SuiRpcResult(False, "dry_run is used only with transaction types")
 
@@ -158,8 +160,7 @@ class SuiClient(_ClientMixin):
         """."""
         result = await self.execute_no_sign(builder)
         if result.is_ok():
-            tx_bytes = result.result_data[1]
-            exec_builder = self.sign_for_execution(tx_bytes, builder, additional_signers)
+            exec_builder = self.sign_for_execution(result.result_data.tx_bytes, builder, additional_signers)
             result = await self._execute(exec_builder)
             if result.is_ok() and "error" not in result.result_data:
                 # print(result.result_data["result"])

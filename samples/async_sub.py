@@ -32,7 +32,7 @@ from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_txresults.complex_tx import (
     SubscribedEvent,
     SubscribedEventParms,
-    EventEnvelope,
+    Event,
 )
 from pysui.sui.sui_builders.subscription_builders import (
     SubscribeEvent,
@@ -42,10 +42,9 @@ from pysui.sui.sui_builders.subscription_builders import (
 def test_event_handler(indata: SubscribedEvent, subscription_id: int, event_counter: int) -> Any:
     """Handler captures the move event type for each received."""
     event_parms: SubscribedEventParms = indata.params
-    result_class: EventEnvelope = event_parms.result
-    event: dict = result_class.event
-    res = next(iter(event))
-    return {"func": res}
+    result_class: Event = event_parms.result
+    print(result_class)
+    return {"func": result_class.event_type}
 
 
 async def main_run(sub_manager: subscriber):

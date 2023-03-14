@@ -15,7 +15,7 @@
 """Sui Builders: Complex transaction."""
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Final, Optional
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.sui.sui_builders.base_builder import (
     _NativeTransactionBuilder,
@@ -24,10 +24,10 @@ from pysui.sui.sui_builders.base_builder import (
     SuiTransactionBuilderMode,
     sui_builder,
 )
-from pysui.sui.sui_types.scalars import SuiTxBytes, SuiSignature, ObjectID, SuiInteger, SuiString
+from pysui.sui.sui_types.scalars import SuiNullType, SuiTxBytes, SuiSignature, ObjectID, SuiInteger, SuiString
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_txresults.complex_tx import DryRunTxResult, TxResponse, TxInspectionResult
+from pysui.sui.sui_txresults.complex_tx import DryRunTxResult, TransactionBytes, TxResponse, TxInspectionResult
 
 from pysui.sui import sui_utils
 
@@ -35,9 +35,22 @@ from pysui.sui import sui_utils
 class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
+    _DEFAULT_EXECUTE_TX_OPTIONS: Final[dict] = {
+        "showBalanceChanges": True,
+        "showEffects": True,
+        "showEvents": True,
+        "showInput": True,
+        "showObjectChanges": True,
+    }
+
     @sui_builder()
     def __init__(
-        self, *, tx_bytes: SuiTxBytes, signatures: SuiArray[SuiSignature], request_type: SuiRequestType
+        self,
+        *,
+        tx_bytes: SuiTxBytes,
+        signatures: SuiArray[SuiSignature],
+        options: Optional[SuiMap] = None,
+        request_type: SuiRequestType,
     ) -> None:
         """__init__ Initialize builder.
 
@@ -50,6 +63,10 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         :type request_type: SuiRequestType
         """
         super().__init__("sui_executeTransaction", handler_cls=TxResponse, handler_func="from_dict")
+        if options is None or isinstance(options, SuiNullType):
+            self.options = sui_utils.as_sui_map(self._DEFAULT_EXECUTE_TX_OPTIONS.copy())
+        else:
+            self.options = sui_utils.as_sui_map(options)
 
 
 class DryRunTransaction(_NativeTransactionBuilder):
@@ -99,7 +116,7 @@ class _MoveCallTransactionBuilder(SuiBaseBuilder):
 
     def __init__(self, method: str) -> None:
         """Initialize builder."""
-        super().__init__(method, True)
+        super().__init__(method, True, handler_cls=TransactionBytes, handler_func="from_dict")
 
     @property
     def authority(self) -> SuiAddress:
