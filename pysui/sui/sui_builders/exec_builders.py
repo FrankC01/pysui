@@ -161,7 +161,7 @@ class TransferObject(_MoveCallTransactionBuilder):
         :param recipient: the recipient's Sui address
         :type recipient: SuiAddress
         """
-        super().__init__("sui_transferObject")
+        super().__init__("unsafe_transferObject")
 
 
 class TransferSui(_MoveCallTransactionBuilder):
@@ -193,7 +193,7 @@ class TransferSui(_MoveCallTransactionBuilder):
         :param amount: the amount to be split out and transferred
         :type amount: SuiInteger
         """
-        super().__init__("sui_transferSui")
+        super().__init__("unsafe_transferSui")
 
 
 class Pay(_MoveCallTransactionBuilder):
@@ -231,7 +231,7 @@ class Pay(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_pay")
+        super().__init__("unsafe_pay")
 
 
 class PaySui(_MoveCallTransactionBuilder):
@@ -271,7 +271,7 @@ class PaySui(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_paySui")
+        super().__init__("unsafe_paySui")
 
 
 class PayAllSui(_MoveCallTransactionBuilder):
@@ -306,7 +306,7 @@ class PayAllSui(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_payAllSui")
+        super().__init__("unsafe_payAllSui")
 
 
 class MergeCoin(_MoveCallTransactionBuilder):
@@ -336,7 +336,7 @@ class MergeCoin(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_mergeCoins")
+        super().__init__("unsafe_mergeCoins")
 
 
 class SplitCoin(_MoveCallTransactionBuilder):
@@ -365,7 +365,7 @@ class SplitCoin(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_splitCoin")
+        super().__init__("unsafe_splitCoin")
 
 
 class SplitCoinEqually(_MoveCallTransactionBuilder):
@@ -394,7 +394,7 @@ class SplitCoinEqually(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_splitCoinEqual")
+        super().__init__("unsafe_splitCoinEqual")
 
 
 # Batch Transaction. Do not use @sui_builder
@@ -480,7 +480,7 @@ class BatchTransaction(_MoveCallTransactionBuilder):
         :type gas_budget: SuiInteger
         :raises ValueError: _description_
         """
-        super().__init__("sui_batchTransaction")
+        super().__init__("unsafe_batchTransaction")
         self.signer: SuiAddress = signer
         self.single_transaction_params = None
         self.gas: ObjectID = sui_utils.as_object_id(gas)
@@ -528,7 +528,7 @@ class Publish(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget, defaults to None
         :type gas_budget: SuiInteger, optional
         """
-        super().__init__("sui_publish")
+        super().__init__("unsafe_publish")
 
 
 class MoveCall(_MoveCallTransactionBuilder):
@@ -573,7 +573,7 @@ class MoveCall(_MoveCallTransactionBuilder):
             Default to be `SuiTransactionBuilderMode::Commit`
         :type execution_mode: SuiTransactionBuilderMode, optional
         """
-        super().__init__("sui_moveCall")
+        super().__init__("unsafe_moveCall")
 
 
 # Stake and Delegation
@@ -608,7 +608,7 @@ class RequestAddStake(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_requestAddStake")
+        super().__init__("unsafe_requestAddStake")
 
 
 class RequestWithdrawStake(_MoveCallTransactionBuilder):
@@ -637,4 +637,4 @@ class RequestWithdrawStake(_MoveCallTransactionBuilder):
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
         :type gas_budget: SuiInteger
         """
-        super().__init__("sui_requestWithdrawDelegation")
+        super().__init__("unsafe_requestWithdrawDelegation")

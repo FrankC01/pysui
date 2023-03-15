@@ -108,10 +108,8 @@ class SuiAddress(SuiBaseType):
     def from_bytes(cls, in_bytes: bytes) -> "SuiAddress":
         """Create address from bytes."""
         digest = in_bytes[0:33] if in_bytes[0] == 0 else in_bytes[0:34]
-        glg = hashlib.sha3_256()
-        glg.update(digest)
-        hash_bytes = binascii.hexlify(glg.digest())[0:64]
-        return cls(hash_bytes.decode("utf-8"))
+        hash_bytes = hashlib.blake2b(digest, digest_size=32).hexdigest()
+        return cls(hash_bytes)
 
 
 def address_from_keystring(indata: str) -> SuiAddress:
