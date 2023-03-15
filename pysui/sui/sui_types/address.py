@@ -14,7 +14,6 @@
 """Sui Address Type."""
 
 import base64
-import binascii
 import hashlib
 import re
 from typing import Union

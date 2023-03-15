@@ -395,7 +395,7 @@ def _bcs_for_call(client: SyncClient, builder: MoveCall) -> BCSSingleTransaction
     return BCSSingleTransaction("Call", BCSMoveCall(package, module, function, type_args, arguments))
 
 
-def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[BCSTransactionData, Exception]:
+def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[TransactionData, Exception]:
     """bcs_from_builder constructs a BCS TransactionData from a Builder.
 
     The result can be serialized and used in sui_devInspectTransaction.
@@ -431,7 +431,7 @@ def bcs_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -
                 payload = BCSBatchTransaction(res_vector)
             case _:
                 raise TypeError(f"conversion from type {bname} builder not supported")
-    return BCSTransactionData("V1", BCSTransactionKind(tx_kind, payload))
+    return TransactionData("V1", TransactionKind(tx_kind, payload))
 
 
 def bcs_base64_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> Union[str, Exception]:
@@ -460,14 +460,10 @@ def bcs_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
     :rtype: str
     """
     if indata.is_ok():
-        _, no_sign_tx_bytes = indata.result_data
-        # print(list(base64.b64decode(no_sign_tx_bytes.value)))
+        no_sign_tx_bytes = indata.result_data.tx_bytes
         raw_b64 = no_sign_tx_bytes.value
         raw_bytes = base64.b64decode(raw_b64)
-        # print(list(raw_bytes))
-        # print()
-        raw_shredded = raw_bytes[: _GAS_AND_BUDGET_BYTE_OFFSET + (-_SKIP_DATA_KIND_AND_SINGLE)]
-        # print(list(raw_shredded))
+        raw_shredded = raw_bytes[:_GAS_AND_BUDGET_BYTE_OFFSET][_TKIND_INDEX:]
         return base64.b64encode(raw_shredded).decode()
     return indata
 
@@ -485,10 +481,10 @@ def bcs_struct_from_rpcresult(no_sign_result: SuiRpcResult) -> Union[canoser.Str
     :rtype: Union[tuple[str, canoser.Struct], Exception]
     """
     if no_sign_result.is_ok():
-        _, txbytes = no_sign_result.result_data
+        txbytes = no_sign_result.result_data.tx_bytes
         tx_kind = base64.b64decode(txbytes.value)
         # The first byte is index of TransactionKind variant (enum)
-        tkind_name, tkind_class = BCSTransactionKind.variant_for_index(tx_kind[_TKIND_INDEX])
+        tkind_name, tkind_class = TransactionKind.variant_for_index(tx_kind[_TKIND_INDEX])
         match tkind_name:
             case "Single":
                 # The second byte is index into concrete transaction type enum

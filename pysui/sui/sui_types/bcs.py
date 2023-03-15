@@ -201,7 +201,8 @@ class CallArg(canoser.RustEnum):
     Pure type is for scalares, or native, values.
     """
 
-    _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg), ("ObjVec", [ObjectArg])]
+    _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
+    # _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg), ("ObjVec", [ObjectArg])]
 
 
 class BCSMoveCall(canoser.Struct):
@@ -336,6 +337,31 @@ class BCSBatchTransaction(canoser.Struct):
 #             raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
 #         return cls._enums[index]
 
+# pub enum Argument {
+#     /// The gas coin. The gas coin can only be used by-ref, except for with
+#     /// `TransferObjects`, which can use it by-value.
+#     GasCoin,
+#     /// One of the input objects or primitive values (from
+#     /// `ProgrammableTransaction` inputs)
+#     Input(u16),
+#     /// The result of another command (from `ProgrammableTransaction` commands)
+#     Result(u16),
+#     /// Like a `Result` but it accesses a nested result. Currently, the only usage
+#     /// of this is to access a value from a Move call with multiple return values.
+#     NestedResult(u16, u16),
+# }
+
+
+class Argument(canoser.RustEnum):
+    """."""
+
+    _enums = [
+        ("GasCoin", None),
+        ("Input", canoser.Uint16),
+        ("Result", canoser.Uint16),
+        ("NestedResult", (canoser.Uint16, canoser.Uint16)),
+    ]
+
 
 class Command(canoser.RustEnum):
     """."""
@@ -362,7 +388,7 @@ class Command(canoser.RustEnum):
     # /// Upgrades a Move package
     # Upgrade(Vec<Vec<u8>>, Vec<ObjectID>, Argument),
     _enum = [
-        ("MoveCall", None),
+        ("MoveCall", BCSMoveCall),
         ("TransferObjects", None),
         ("SplitCoin", None),
         ("MergeCoins", None),
