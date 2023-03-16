@@ -17,6 +17,7 @@
 import base64
 import hashlib
 import binascii
+import subprocess
 from typing import Union
 
 import secp256k1
@@ -163,21 +164,43 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
         # self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha3_256)
 
     def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
-        """SECP256R1 sign data bytes."""
+        """."""
+        addy_bytes = self.scheme.to_bytes(1, "little") + self._signing_key.get_verifying_key().to_string(
+            encoding="compressed"
+        )
+        # addy_bytes.append(self._signing_key.get_verifying_key().to_string(encoding="compressed"))
+        address_str = SuiAddress.from_bytes(addy_bytes).address
+        tx_bytes = base64.b64encode(data[3:]).decode()
+        _sui_sign: list[str] = ["sui", "keytool", "sign", "--address", f"{address_str}", "--data", f"{tx_bytes}"]
+        exec_res = subprocess.run(_sui_sign, capture_output=True, text=True)
+        if exec_res.stderr:
+            raise ValueError(f"Error signing secp256r1 {exec_res.stderr}")
+        return base64.b64decode(exec_res.stdout.split()[-1])[1:-33]
+
+    def _sign(self, data: bytes, recovery_id: int = 0) -> bytes:
+        """SECP256R1 sign data bytes.
+
+        OLD: Do not use. Broken
+        """
 
         def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
             """."""
-            _s_max = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
-            s_int = s_int % order
+            _s_max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+            # _s_max = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
+            # s_int = s_int % order
+            if s_int > _s_max:
+                s_int = _s_max - s_int
             # print(f"s = {s_int}")
             # print(f"r = {r_int}")
             # print(f"order = {order}")
             return ecdsa.util.sigencode_string(r_int, s_int, order)
 
-        # return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256)
         # return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=_sigencode_string)
-        # return self._signing_key.sign(data, hashfunc=hashlib.sha256, allow_truncate=False, sigencode=_sigencode_string)
-        return self._signing_key.sign(data, hashfunc=hashlib.sha256, allow_truncate=False)
+        # return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=_sigencode_string)
+        return self._signing_key.sign(
+            data, hashfunc=hashlib.sha3_256, allow_truncate=False, sigencode=_sigencode_string
+        )
+        # return self._signing_key.sign(data, hashfunc=hashlib.sha256, allow_truncate=False)
 
 
 class SuiKeyPairSECP256R1(SuiKeyPair):

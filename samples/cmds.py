@@ -14,7 +14,6 @@
 
 """Commands and dispath dict."""
 import argparse
-import json
 import sys
 from typing import Union
 from pysui import __version__
@@ -45,7 +44,7 @@ from pysui.sui.sui_utils import build_b64_modules
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_clients.sync_client import SuiClient
-from pysui.sui.sui_txresults.single_tx import MoveDataDescriptor, SuiCoinObjects
+from pysui.sui.sui_txresults.single_tx import SuiCoinObjects
 
 
 def sdk_version(_client: SuiClient, _args: argparse.Namespace) -> None:
@@ -148,7 +147,7 @@ def _objects_header_print() -> None:
     header_version = "Version"
     header_digest = "Digest"
     header_obj_type = "Object Type"
-    header_str = format(f"{header_object_id:^68s}{header_version:^11s}{header_digest:^50s}{header_obj_type:^37}")
+    header_str = format(f"{header_object_id:^70s}{header_version:^8s}{header_digest:^50s}{header_obj_type:^37}")
     print(header_str)
     for _ in range(0, len(header_str)):
         print("-", end="")
@@ -157,25 +156,14 @@ def _objects_header_print() -> None:
 
 def sui_objects(client: SuiClient, args: argparse.Namespace) -> None:
     """Show specific object."""
-
-    def _object_type(args: argparse.Namespace) -> SuiRpcResult:
-        """Get objects of type from Namespace."""
-        if args.data:
-            descriptor_result = client.get_address_object_descriptors(MoveDataDescriptor, args.address)
-        else:
-            descriptor_result = client.get_address_object_descriptors(None, args.address)
-        identities = [ids.identifier for ids in descriptor_result.result_data]
-        return client.get_objects_for(identities)
-
-    result = _object_type(args)
+    result = client.get_objects(args.address)
     if result.is_ok():
         if args.json:
-            for desc in result.result_data:
-                print(desc.to_json(indent=2))
+            print(result.result_data.to_json(indent=2))
         else:
             _objects_header_print()
-            for desc in result.result_data:
-                print(f"{desc.identifier} |  {desc.version:^11} | {desc.digest} | {desc.type_signature}")
+            for desc in result.result_data.data:
+                print(f"{desc.identifier} |  {desc.version:^8} | {desc.digest} | {desc.object_type}")
     else:
         print(f"{result.result_string}")
 

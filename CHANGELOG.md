@@ -11,6 +11,7 @@ Breaking Changes - Significant
 
 ### Added
 
+- Added `get_objects` to synchronous and asynchronous SuiClients
 - Address SignatureType in constant pool (base_deserailizers.py - deserialize_constants)
 - GetCheckpoint builder and Checkpoint result for `sui_getCheckpoint` as per Sui 0.28.0
 - GetLatestSuiSystemState builder and results for `sui_getLatestSuiSystemState` as per Sui 0.28.0
@@ -55,6 +56,7 @@ Breaking Changes - Significant
 - **Breaking Change** GetRawObject removed for `sui_getRawObject` removed as per Sui 0.28.0. Raw information is now part of GetObject
 - **Breaking Change** GetSuiSystemState removed for `sui_getSuiSystemState` as per Sui 0.28.0. Use GetLatestSuiSystemState instead.
 - **Breaking Change** ExecuteSerializedTransaction removed for `sui_executeTransactionSerializedSig` as per Sui 0.28.0
+- **Breaking Change** Removed `get_address_object_descriptors` from synchronous and asynchronous SuiClients
 
 ## [0.14.1] 2023-02-24
 

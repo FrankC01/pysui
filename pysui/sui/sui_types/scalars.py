@@ -73,6 +73,11 @@ class SuiNullType(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def at_checkpoint(self) -> None:
+        """Alias for transactions."""
+        return self.value
+
 
 class SuiString(SuiScalarType):
     """Sui String type."""

@@ -20,7 +20,6 @@ from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_clients.sync_client import SuiClient
-from pysui.sui.sui_txresults.single_tx import SuiGasDescriptor
 
 TRACKER_DIR: str = "/sui-test"
 
@@ -55,7 +54,7 @@ def sui_client(sui_configuration):
     """
     config = sui_configuration
     client: SuiClient = SuiClient(config)
-    result: SuiRpcResult = client.get_address_object_descriptors(SuiGasDescriptor)
+    result: SuiRpcResult = client.get_gas()
     if result.is_ok():
         if len(result.result_data) == 0:
             client.get_gas_from_faucet(config.active_address)

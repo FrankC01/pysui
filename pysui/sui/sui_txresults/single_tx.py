@@ -42,79 +42,6 @@ class FaucetGasRequest(DataClassJsonMixin):
     error: Optional[dict] = None
 
 
-# ObjectInfo
-
-
-@dataclass
-class ObjectInfo(DataClassJsonMixin):
-    """Base ObjectInfo type."""
-
-    object_id: str = field(metadata=config(field_name="objectId"))
-    version: int
-    digest: str
-    type_: str = field(metadata=config(field_name="type"))
-    owner: dict
-    previous_transaction: str = field(metadata=config(field_name="previousTransaction"))
-
-    def __post_init__(self):
-        """Post init processing for parameters."""
-        if "AddressOwner" in self.owner:
-            self.owner = self.owner["AddressOwner"]
-        elif "ObjectOwner" in self.owner:
-            self.owner = self.owner["ObjectOwner"]
-
-    @property
-    def identifier(self) -> ObjectID:
-        """Alias object_id."""
-        return ObjectID(self.object_id)
-
-    @property
-    def owner_address(self) -> SuiAddress:
-        """owner_address Return owner as SuiAddress.
-
-        :return: owner
-        :rtype: SuiAddress
-        """
-        return SuiAddress.from_hex_string(self.owner)
-
-    @classmethod
-    def _differentiate(cls, indata: dict) -> Any:
-        """Derive which description type."""
-        split = indata["type"].split("::", 2)
-        if split[0] == "0x2":
-            match split[1]:
-                case "coin":
-                    split2 = split[2][5:-1].split("::")
-                    if split2[2] == "SUI":
-                        return SuiGasDescriptor.from_dict(indata)
-                    return CoinDescriptor.from_dict(indata)
-                case _:
-                    return MoveDataDescriptor.from_dict(indata)
-        else:
-            return MoveDataDescriptor.from_dict(indata)
-
-    @classmethod
-    def factory(cls, indata: Union[dict, list[dict]]) -> Union[Any, list]:
-        """Instantiate descriptor types."""
-        if isinstance(indata, list):
-            return [cls._differentiate(x) for x in indata]
-        return cls._differentiate(indata)
-
-
-@dataclass
-class CoinDescriptor(ObjectInfo):
-    """Base Coin descriptor."""
-
-
-class SuiGasDescriptor(CoinDescriptor):
-    """SUI Coin descriptor."""
-
-
-@dataclass
-class MoveDataDescriptor(ObjectInfo):
-    """Data descriptor."""
-
-
 # ObjectRead
 
 
@@ -264,7 +191,7 @@ class ObjectRead(DataClassJsonMixin):
     # content: Optional[Union[dict, ObjectReadData, ObjectPackageReadData]]
     object_type: Optional[str] = field(metadata=config(field_name="type"))
     previous_transaction: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
-    storage_rebate: Optional[int] = field(metadata=config(field_name="storageRebate"))
+    storage_rebate: Optional[int] = field(metadata=config(field_name="storageRebate"), default=0)
     content: Optional[dict] = field(default_factory=dict)
     bcs: Optional[dict] = field(default_factory=dict)
     digest: Optional[str] = field(default_factory=str)
@@ -282,19 +209,20 @@ class ObjectRead(DataClassJsonMixin):
         elif self.bcs and self.bcs["dataType"] == "package":
             self.bcs = self.content = ObjectRawData.from_dict(self.bcs)
         else:
-            split = self.content["type"].split("::", 2)
-            if split[0] == "0x2":
-                match split[1]:
-                    case "coin":
-                        split2 = split[2][5:-1].split("::")
-                        if split2[2] == "SUI":
-                            self.content = SuiGas.from_dict(self.content)
-                        else:
-                            self.content = SuiCoin.from_dict(self.content)
-                    case _:
-                        self.content = SuiData.from_dict(self.content)
-            else:
-                self.content = SuiData.from_dict(self.content)
+            if self.content and "type" in self.content:
+                split = self.content["type"].split("::", 2)
+                if split[0] == "0x2":
+                    match split[1]:
+                        case "coin":
+                            split2 = split[2][5:-1].split("::")
+                            if split2[2] == "SUI":
+                                self.content = SuiGas.from_dict(self.content)
+                            else:
+                                self.content = SuiCoin.from_dict(self.content)
+                        case _:
+                            self.content = SuiData.from_dict(self.content)
+                else:
+                    self.content = SuiData.from_dict(self.content)
 
         if isinstance(self.owner, str):
             match self.owner:
@@ -350,7 +278,7 @@ class ObjectRead(DataClassJsonMixin):
         return SuiAddress.from_hex_string(self.owner)
 
     @classmethod
-    def _differentiate(cls, indata: dict) -> Union["ObjectRead", ObjectNotExist, ObjectDeleted]:
+    def differentiate(cls, indata: dict) -> Union["ObjectRead", ObjectNotExist, ObjectDeleted]:
         """_differentiate determines concrete type and instantiates it.
 
         :param indata: Dictionary mapped from JSON result of `sui_getObject`
@@ -384,8 +312,21 @@ class ObjectRead(DataClassJsonMixin):
         :rtype: Union[Any, list]
         """
         if isinstance(indata, list):
-            return [cls._differentiate(x) for x in indata]
-        return cls._differentiate(indata)
+            return [cls.differentiate(x) for x in indata]
+        return cls.differentiate(indata)
+
+
+@dataclass
+class ObjectReadPage(DataClassJsonMixin):
+    """From sui_getOwnedObjects."""
+
+    data: list[dict]
+    has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+    def __post_init__(self):
+        """Post init processing for parameters."""
+        self.data = [ObjectRead.differentiate(x) for x in self.data]
 
 
 @dataclass
@@ -540,41 +481,12 @@ class CommitteeInfo(DataClassJsonMixin):
         return CommitteeInfo.from_dict(indata)
 
 
-# TODO: Deprecated
-# @dataclass
-# class SystemParameters(DataClassJsonMixin):
-#     """From sui_getSuiSystemState."""
-
-#     governance_start_epoch: int
-#     max_validator_count: int
-#     min_validator_stake: int
-
-
 @dataclass
 class Table(DataClassJsonMixin):
     """From sui_getSuiSystemState."""
 
     size: int
     table_id: str = field(metadata=config(field_name="id"))
-
-
-# TODO: Deprecated
-# @dataclass
-# class TableVec(DataClassJsonMixin):
-#     """From sui_getSuiSystemState."""
-
-#     contents: dict[str, int]
-
-
-# TODO: Deprecated
-# @dataclass
-# class LinkedTableForObjectID(DataClassJsonMixin):
-#     """From sui_getSuiSystemState."""
-
-#     head: dict[str, list[str]]
-#     tail: dict[str, list[str]]
-#     size: int
-#     linked_object_id: str = field(metadata=config(field_name="id"))
 
 
 @dataclass
@@ -625,25 +537,6 @@ class ValidatorMetaData(DataClassJsonMixin):
     sui_address: str
     worker_address: list[int]
     worker_pubkey_bytes: list[int]
-
-
-# TODO: Deprecated
-# @dataclass
-# class Validators(DataClassJsonMixin):
-#     """From sui_getValidators."""
-
-#     validator_metadata: list[ValidatorMetaData]
-
-#     @classmethod
-#     def ingest_data(cls, indata: list) -> "Validators":
-#         """ingest_data Ingest validators.
-
-#         :param indata: List of ValidatorMetaData objects
-#         :type indata: list
-#         :return: Instance of Validators
-#         :rtype: Validators
-#         """
-#         return cls.from_dict({"validator_metadata": indata})
 
 
 @dataclass
@@ -724,42 +617,6 @@ class ValidatorSet(DataClassJsonMixin):
             self.pending_active_validators = Table.from_dict(self.pending_active_validators["contents"])
 
 
-# TODO: Deprecated
-# @dataclass
-# class VecSetForSuiAddress(DataClassJsonMixin):
-#     """From sui_getSuiSystemState."""
-
-#     contents: list[str] = field(default_factory=list)
-
-
-# TODO: Deprecated
-# @dataclass
-# class ValidatorReportRecords(DataClassJsonMixin):
-#     """From sui_getSuiSystemState."""
-
-#     contents: list[dict[str, VecSetForSuiAddress]] = field(default_factory=list)
-
-# TODO: Deprecated
-# @dataclass
-# class SuiSystemState(DataClassJsonMixin):
-#     """From sui_getSuiSystemState."""
-
-#     epoch: int
-#     epoch_start_timestamp_ms: int
-#     parameters: SystemParameters
-#     protocol_version: int
-#     reference_gas_price: int
-#     safe_mode: bool
-#     stake_subsidy: StakeSubsidy
-#     storage_fund: Union[dict, int]
-#     validator_report_records: ValidatorReportRecords
-#     validators: ValidatorSet
-
-#     def __post_init__(self):
-#         """Post hydrate parameter fixups."""
-#         self.storage_fund = self.storage_fund["value"]
-
-
 @dataclass
 class SuiLatestSystemState(DataClassJsonMixin):
     """."""
@@ -789,21 +646,6 @@ class SuiLatestSystemState(DataClassJsonMixin):
     validator_candidates_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     validator_candidates_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     validator_report_records: list[Any] = field(metadata=config(letter_case=LetterCase.CAMEL))
-
-
-# @dataclass
-# class Delegation(DataClassJsonMixin):
-#     """From sui_getDelegatedStakes."""
-
-#     delegation_id: dict = field(metadata=config(field_name="id"))
-#     pool_tokens: Union[dict, int]
-#     principal_sui_amount: int
-#     staked_sui_id: str
-
-#     def __post_init__(self):
-#         """Post hydrate parameter fixups."""
-#         self.delegation_id = self.delegation_id["id"]
-#         self.pool_tokens = self.pool_tokens["value"]
 
 
 @dataclass

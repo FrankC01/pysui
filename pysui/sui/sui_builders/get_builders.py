@@ -22,12 +22,12 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
     DelegatedStakes,
     DynamicFields,
+    ObjectReadPage,
     SuiCoinBalance,
     SuiCoinMetadata,
     CoinBalances,
     SuiCoinObjects,
     SuiLatestSystemState,
-    ObjectInfo,
     ObjectRead,
     CommitteeInfo,
 )
@@ -167,19 +167,6 @@ class GetTotalSupply(_NativeTransactionBuilder):
         super().__init__("sui_getTotalSupply")
 
 
-class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
-    """GetObjectsOwnedByAddress When executed, returns the list of objects owned by an address."""
-
-    @sui_builder()
-    def __init__(self, address: SuiAddress) -> None:
-        """__init__ Initialize builder.
-
-        :param address: The owner address to fetch list of ObjectInfo results
-        :type address: SuiAddress
-        """
-        super().__init__("sui_getObjectsOwnedByAddress", handler_cls=ObjectInfo, handler_func="factory")
-
-
 class GetDynamicFieldObject(_NativeTransactionBuilder):
     """GetDynamicFieldObject when executed, return the dynamic field object information for a specified object."""
 
@@ -302,6 +289,31 @@ class GetMultipleObjects(_NativeTransactionBuilder):
         :rtype: dict
         """
         return GetObject.package_options()
+
+
+class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
+    """GetObjectsOwnedByAddress When executed, returns the list of objects owned by an address."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        address: SuiAddress,
+        options: Optional[SuiMap] = None,
+        cursor: Optional[ObjectID] = None,
+        limit: Optional[SuiInteger] = None,
+        at_checkpoint: Optional[SuiInteger] = None,
+    ) -> None:
+        """__init__ Initialize builder.
+
+        :param address: The owner address to fetch list of ObjectInfo results
+        :type address: SuiAddress
+        """
+        super().__init__("sui_getOwnedObjects", handler_cls=ObjectReadPage, handler_func="from_dict")
+        # super().__init__("sui_getOwnedObjects", handler_cls=ObjectInfo, handler_func="factory")
+        if options is None or isinstance(options, SuiNullType):
+            self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
+        else:
+            self.options = sutils.as_sui_map(options)
 
 
 class GetPastObject(_NativeTransactionBuilder):

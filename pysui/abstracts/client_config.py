@@ -63,6 +63,11 @@ class ClientConfiguration(ABC):
         return list(self._keypairs)
 
     @property
+    def addresses_and_keys(self) -> dict:
+        """Get a copy of dictionary of address/keypair."""
+        return self._address_keypair.copy()
+
+    @property
     def addresses(self) -> list[str]:
         """Get all the addresses."""
         return list(self._addresses.keys())

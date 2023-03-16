@@ -47,8 +47,6 @@ def _build_read_cmds(subparser) -> None:
     subp = subparser.add_parser("objects", help="Show all objects")
     subp.add_argument("-a", "--address", required=False, help="Objects for address", action=ValidateAddress)
     subp.add_argument("-j", "--json", required=False, help="Display output as json", action="store_true")
-    obj_arg_group = subp.add_mutually_exclusive_group()
-    obj_arg_group.add_argument("-d", "--data", help="Only show data objects", action="store_true")
     subp.set_defaults(subcommand="objects")
     # RPC information
     subp = subparser.add_parser("rpcapi", help="Show Sui RPC API information")

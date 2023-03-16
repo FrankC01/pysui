@@ -42,22 +42,22 @@ sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_txresults.single_tx import ObjectInfo, SuiCoinObjects, SuiGas
+from pysui.sui.sui_txresults.single_tx import ObjectReadPage, SuiCoinObjects, SuiGas
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_clients.async_client import SuiClient
 
 
-def object_stats(objs: list[ObjectInfo]) -> None:
+def object_stats(objs: list[ObjectReadPage]) -> None:
     """object_stats Print stats about objects for address.
 
     :param objs: List of object descriptors
     :type objs: list[ObjectInfo]
     """
     obj_types = {}
-    for desc in objs:
-        if desc.type_ not in obj_types:
-            obj_types[desc.type_] = 0
-        obj_types[desc.type_] = obj_types[desc.type_] + 1
+    for desc in objs.data:
+        if desc.object_type not in obj_types:
+            obj_types[desc.object_type] = 0
+        obj_types[desc.object_type] = obj_types[desc.object_type] + 1
     print(f"owned types and counts:\n{json.dumps(obj_types,indent=2)}")
 
 
@@ -101,7 +101,7 @@ async def get_all_gas(client: SuiClient) -> dict[SuiAddress, list[SuiGas]]:
 async def main_run(client: SuiClient):
     """main Asynchronous entry point."""
     config: SuiConfig = client.config
-    owned_objects = asyncio.create_task(client.get_address_object_descriptors())
+    owned_objects = asyncio.create_task(client.get_objects())
     gasses = asyncio.create_task(get_all_gas(client))
     print(f"Getting owned objects for: {config.active_address}")
     result = await owned_objects

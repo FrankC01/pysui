@@ -21,7 +21,7 @@ from pysui.sui.sui_clients.common import _ClientMixin, PreExecutionResult, SuiRp
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiTxBytes, SuiString
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
-from pysui.sui.sui_txresults.single_tx import FaucetGasRequest, ObjectInfo
+from pysui.sui.sui_txresults.single_tx import FaucetGasRequest
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
 from pysui.sui.sui_builders.get_builders import (
@@ -165,6 +165,8 @@ class SuiClient(_ClientMixin):
             if result.is_ok() and "error" not in result.result_data:
                 # print(result.result_data["result"])
                 result = SuiRpcResult(True, None, exec_builder.handle_return(result.result_data["result"]))
+            else:
+                result = SuiRpcResult(False, result.result_data["error"])
         return result
 
     # Build and execute convenience methods
@@ -243,31 +245,15 @@ class SuiClient(_ClientMixin):
         except TypeError as texc:
             return SuiRpcResult(False, "Type error", vars(texc))
 
-    async def get_address_object_descriptors(
-        self, claz: ObjectInfo = None, address: SuiAddress = None
-    ) -> Union[SuiRpcResult, Exception]:
-        """get_address_object_descriptors Get object descriptors for address.
+    async def get_objects(self, address: SuiAddress = None) -> Union[SuiRpcResult, Exception]:
+        """get_objects Returns all objects owned by address.
 
-        :param claz: Class type to filter result on. If None then ObjectInfo types will be returned
-        :type claz: ObjectInfo
-        :param address: The address of which is being queried. If None then currrent `active_address` is used
-        :type address: SuiAddress
-        :raises: :class:`SuiException`: if returned from `self.execute`
-
-        :returns: A list of ObjectInfo objects
-        :rtype: SuiRpcResult
+        :param address: Address to object ownership, defaults to None
+        :type address: SuiAddress, optional
+        :return: list of owned objects
+        :rtype: Union[SuiRpcResult,Exception]
         """
-        claz = claz if claz else ObjectInfo
-        builder = GetObjectsOwnedByAddress(address if address else self.config.active_address)
-        result = await self.execute(builder)
-        if result.is_ok():
-            result = result.result_data
-            type_descriptors = []
-            for sui_objdesc in result:
-                if isinstance(sui_objdesc, claz):
-                    type_descriptors.append(sui_objdesc)
-            return SuiRpcResult(True, None, type_descriptors)
-        return result
+        return await self.execute(GetObjectsOwnedByAddress(address if address else self.config.active_address))
 
     async def get_object(self, identifier: ObjectID, version: SuiInteger = None) -> Union[SuiRpcResult, Exception]:
         """get_object Get specific object by it's identifier and version if provided.

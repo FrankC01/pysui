@@ -99,6 +99,7 @@ class _ClientMixin(Provider):
     """
 
     _RPC_MINIMAL_VERSION: int = 28
+    _RPC_REQUIRED_VERSION: str = "0.28.1"
     _SIGNATURE_ERROR: set[str] = {
         'Invalid user signature: InvalidSignature { error: "General cryptographic error: The s value of ECDSA signature must be low" }.',
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
@@ -185,8 +186,11 @@ class _ClientMixin(Provider):
 
         :raises RuntimeError: If RPC API version less than provided
         """
-        if int(self._rpc_version.split(".")[1]) < self._RPC_MINIMAL_VERSION:
-            raise RuntimeError(f"Requires minimum version '0.{self._RPC_MINIMAL_VERSION}.x found {self._rpc_version}")
+        rpa = packaging.version.parse(self.rpc_version)
+        mpa = packaging.version.parse(self._RPC_REQUIRED_VERSION)
+        if rpa < mpa:
+            # if int(self._rpc_version.split(".")[1]) < self._RPC_MINIMAL_VERSION:
+            raise RuntimeError(f"Requires minimum version '{self._RPC_REQUIRED_VERSION} found {self._rpc_version}")
 
     def version_at_least(self, majver: int, minver: int, bldver: int) -> bool:
         """Check if minor version is greater than or equal to."""
