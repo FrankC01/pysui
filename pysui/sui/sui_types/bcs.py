@@ -195,13 +195,46 @@ class ObjectArg(canoser.RustEnum):
     _enums = [("ImmOrOwnedObject", BCSObjectReference), ("SharedObject", BCSSharedObjectReference)]
 
 
+class Pure(canoser.Struct):
+    """."""
+
+    _fields = [("Data", [canoser.Uint8])]
+
+    def post_deser(self):
+        """."""
+        darray: list[int] = getattr(self, "Data").copy()
+        counter = darray.pop(0)
+        setattr(self, "count", counter)
+        modulo = len(darray) % counter
+        if modulo == 0:
+            results: list[int] = []
+            dlen = int(len(darray) / counter)
+            for _ in range(counter):
+                results.append(int.from_bytes(bytearray(darray[0 : dlen - 1]), "little"))
+                darray = darray[0 : dlen - 1]
+            setattr(self, "values", results)
+
+    def to_json_serializable(self) -> dict:
+        """."""
+        return {"count": getattr(self, "count"), "values": getattr(self, "values")}
+
+    @classmethod
+    def decode(cls, cursor) -> "Pure":
+        """."""
+        pure_inst = super().decode(cursor)
+        getattr(pure_inst, "post_deser")()
+        return pure_inst
+
+
+# class Pure()
 class CallArg(canoser.RustEnum):
     """CallArg represents an argument (parameters) of a MoveCall.
 
     Pure type is for scalares, or native, values.
     """
 
-    _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
+    _enums = [("Pure", Pure), ("Object", ObjectArg)]
+    # _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
     # _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg), ("ObjVec", [ObjectArg])]
 
 
@@ -337,64 +370,107 @@ class BCSBatchTransaction(canoser.Struct):
 #             raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
 #         return cls._enums[index]
 
-# pub enum Argument {
-#     /// The gas coin. The gas coin can only be used by-ref, except for with
-#     /// `TransferObjects`, which can use it by-value.
-#     GasCoin,
-#     /// One of the input objects or primitive values (from
-#     /// `ProgrammableTransaction` inputs)
-#     Input(u16),
-#     /// The result of another command (from `ProgrammableTransaction` commands)
-#     Result(u16),
-#     /// Like a `Result` but it accesses a nested result. Currently, the only usage
-#     /// of this is to access a value from a Move call with multiple return values.
-#     NestedResult(u16, u16),
+
+# pub struct GasData {
+#     pub payment: Vec<ObjectRef>,
+#     pub owner: SuiAddress,
+#     pub price: u64,
+#     pub budget: u64,
 # }
+
+
+class GasData(canoser.Struct):
+    """."""
+
+    _fields = [
+        ("Payment", [BCSObjectReference]),
+        ("Owner", BCSAddress),
+        ("Price", canoser.Uint64),
+        ("Budget", canoser.Uint64),
+    ]
 
 
 class Argument(canoser.RustEnum):
     """."""
 
     _enums = [
-        ("GasCoin", None),
+        ("GasCoin", GasData),
         ("Input", canoser.Uint16),
         ("Result", canoser.Uint16),
         ("NestedResult", (canoser.Uint16, canoser.Uint16)),
     ]
 
 
+class OptionalTypeTag(canoser.RustOptional):
+    """OptionalTypeTag Optional assignment of TypeTag."""
+
+    _type = TypeTag
+
+
+class ProgrammableMoveCall(canoser.Struct):
+    """A call to either an entry or a public Move function."""
+
+    _fields = [
+        # The module or function containing Package ID
+        ("Package", BCSAddress),
+        # Module name
+        ("Module", str),
+        # Function name
+        ("Function", str),
+        # Array of types for generic substitution
+        ("Type_Arguments", [TypeTag]),
+        # Arguments to the function or entry point
+        ("Arguments", [Argument]),
+    ]
+
+
+class TransferObjects(canoser.Struct):
+    """It sends n-objects to the specified address."""
+
+    _fields = [("Objects", [Argument]), ("Address", Argument)]
+
+
+class SplitCoin(canoser.Struct):
+    """It splits off some amount into a new coin."""
+
+    _fields = [("FromCoin", Argument), ("Amount", Argument)]
+
+
+class MergeCoins(canoser.Struct):
+    """It merges n-coins into the first coin."""
+
+    _fields = [("ToCoin", Argument), ("FromCoins", [Argument])]
+
+
+class Publish(canoser.Struct):
+    """Publish represents a sui_publish structure."""
+
+    _fields = [("Modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8)))]
+
+
+class MakeMoveVec(canoser.Struct):
+    """Given n-values of the same type, it constructs a vector."""
+
+    _fields = [("TypeTag", OptionalTypeTag), ("Vector", [Argument])]
+
+
+class Upgrade(canoser.Struct):
+    """Upgrade an existing move package onchain."""
+
+    _fields = [("Modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8))), ("OIDs", [BCSAddress]), ("Arg", Argument)]
+
+
 class Command(canoser.RustEnum):
     """."""
 
-    # /// A call to either an entry or a public Move function
-    # MoveCall(Box<ProgrammableMoveCall>),
-    # /// `(Vec<forall T:key+store. T>, address)`
-    # /// It sends n-objects to the specified address. These objects must have store
-    # /// (public transfer) and either the previous owner must be an address or the object must
-    # /// be newly created.
-    # TransferObjects(Vec<Argument>, Argument),
-    # /// `(&mut Coin<T>, u64)` -> `Coin<T>`
-    # /// It splits off some amount into a new coin
-    # SplitCoin(Argument, Argument),
-    # /// `(&mut Coin<T>, Vec<Coin<T>>)`
-    # /// It merges n-coins into the first coin
-    # MergeCoins(Argument, Vec<Argument>),
-    # /// Publishes a Move package
-    # Publish(Vec<Vec<u8>>),
-    # /// `forall T: Vec<T> -> vector<T>`
-    # /// Given n-values of the same type, it constructs a vector. For non objects or an empty vector,
-    # /// the type tag must be specified.
-    # MakeMoveVec(Option<TypeTag>, Vec<Argument>),
-    # /// Upgrades a Move package
-    # Upgrade(Vec<Vec<u8>>, Vec<ObjectID>, Argument),
-    _enum = [
-        ("MoveCall", BCSMoveCall),
-        ("TransferObjects", None),
-        ("SplitCoin", None),
-        ("MergeCoins", None),
-        ("Publish", None),
-        ("MakeMoveVec", None),
-        ("Upgrade", None),
+    _enums = [
+        ("MoveCall", ProgrammableMoveCall),
+        ("TransferObjects", TransferObjects),
+        ("SplitCoin", SplitCoin),
+        ("MergeCoins", MergeCoins),
+        ("Publish", Publish),
+        ("MakeMoveVec", MakeMoveVec),
+        ("Upgrade", Upgrade),
     ]
 
 
@@ -405,7 +481,14 @@ class ProgrammableTransaction(canoser.Struct):
 
 
 class TransactionKind(canoser.RustEnum):
-    """."""
+    """TransactionKind is enumeration of transaction kind.
+
+    Deserialization (from_bytes) should only called if attempting to deserialize from
+    the results of calling a transaction (i.e. unsafe_pay) with the first byte and last bytes
+    have been pruned.
+
+    This is a stopgap until programmable txns implemented with TransactionBuilder
+    """
 
     _enums = [
         ("ProgrammableTransaction", ProgrammableTransaction),
@@ -413,6 +496,11 @@ class TransactionKind(canoser.RustEnum):
         ("Genesis", None),
         ("ConsensusCommitPrologue", None),
     ]
+
+    @classmethod
+    def from_bytes(cls, in_data: bytes) -> "TransactionKind":
+        """."""
+        return cls.deserialize(in_data)
 
 
 class TransactionDataV1(canoser.Struct):
@@ -427,7 +515,11 @@ class TransactionDataV1(canoser.Struct):
 
 
 class TransactionData(canoser.RustEnum):
-    """BCSTransactionData is enumeration of transaction kind."""
+    """TransactionData is enumeration of transaction kind.
+
+    Deserialization (from_bytes) should only called if attempting to deserialize from
+    the results of calling a transaction (i.e. unsafe_pay).
+    """
 
     _enums = [("V1", TransactionDataV1)]
 
@@ -444,3 +536,8 @@ class TransactionData(canoser.RustEnum):
         if index > len(cls._enums):
             raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
         return cls._enums[index]
+
+    @classmethod
+    def from_bytes(cls, in_data: bytes) -> "TransactionData":
+        """."""
+        return cls.deserialize(in_data)
