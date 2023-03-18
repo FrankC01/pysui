@@ -677,7 +677,7 @@ class DelegatedStakes(DataClassJsonMixin):
     delegated_stakes: list[DelegatedStake]
 
     @classmethod
-    def ingest_data(cls, in_data: list) -> "DelegatedStakes":
+    def factory(cls, in_data: list) -> "DelegatedStakes":
         """Handle multiple delegated stake results."""
         return cls.from_dict({"delegated_stakes": in_data})
 

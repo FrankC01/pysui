@@ -294,11 +294,33 @@ class GetMultipleObjects(_NativeTransactionBuilder):
 class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
     """GetObjectsOwnedByAddress When executed, returns the list of objects owned by an address."""
 
+    _DEFAULT_GET_OWNED_OBJECT_OPTIONS: Final[dict] = {
+        "showType": True,
+        "showOwner": True,
+        "showPreviousTransaction": True,
+        "showDisplay": True,
+        "showContent": True,
+        "showBcs": True,
+        "showStorageRebate": True,
+    }
+
+    _DEFAULT_GET_OWNED_PACKAGE_OPTIONS: Final[dict] = {
+        "showType": True,
+        "showOwner": True,
+        "showPreviousTransaction": True,
+        "showDisplay": False,
+        "showContent": False,
+        "showBcs": True,
+        "showStorageRebate": True,
+    }
+
+    _DEFAULT_GET_OWNED_OBJECT_QUERY: Final[dict] = {"filter": None, "options": _DEFAULT_GET_OWNED_OBJECT_OPTIONS}
+
     @sui_builder()
     def __init__(
         self,
         address: SuiAddress,
-        options: Optional[SuiMap] = None,
+        query: Optional[SuiMap] = None,
         cursor: Optional[ObjectID] = None,
         limit: Optional[SuiInteger] = None,
         at_checkpoint: Optional[SuiInteger] = None,
@@ -310,10 +332,10 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
         """
         super().__init__("sui_getOwnedObjects", handler_cls=ObjectReadPage, handler_func="from_dict")
         # super().__init__("sui_getOwnedObjects", handler_cls=ObjectInfo, handler_func="factory")
-        if options is None or isinstance(options, SuiNullType):
-            self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
+        if query is None or isinstance(query, SuiNullType):
+            self.query = sutils.as_sui_map(self._DEFAULT_GET_OWNED_OBJECT_QUERY.copy())
         else:
-            self.options = sutils.as_sui_map(options)
+            self.query = sutils.as_sui_map(query)
 
 
 class GetPastObject(_NativeTransactionBuilder):
@@ -751,7 +773,7 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
         :param owner: SuiAddress of staked coin owner
         :type owner: SuiAddress
         """
-        super().__init__("sui_getDelegatedStakes", handler_cls=DelegatedStakes, handler_func="ingest_data")
+        super().__init__("sui_getStakes", handler_cls=DelegatedStakes, handler_func="factory")
 
 
 class GetCheckpointContentsByDigest(_NativeTransactionBuilder):

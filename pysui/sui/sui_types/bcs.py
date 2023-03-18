@@ -195,35 +195,36 @@ class ObjectArg(canoser.RustEnum):
     _enums = [("ImmOrOwnedObject", BCSObjectReference), ("SharedObject", BCSSharedObjectReference)]
 
 
-class Pure(canoser.Struct):
-    """."""
+# TODO: Remove
+# class Pure(canoser.Struct):
+#     """."""
 
-    _fields = [("Data", [canoser.Uint8])]
+#     _fields = [("Data", [canoser.Uint8])]
 
-    def post_deser(self):
-        """."""
-        darray: list[int] = getattr(self, "Data").copy()
-        counter = darray.pop(0)
-        setattr(self, "count", counter)
-        modulo = len(darray) % counter
-        if modulo == 0:
-            results: list[int] = []
-            dlen = int(len(darray) / counter)
-            for _ in range(counter):
-                results.append(int.from_bytes(bytearray(darray[0 : dlen - 1]), "little"))
-                darray = darray[0 : dlen - 1]
-            setattr(self, "values", results)
+#     def post_deser(self):
+#         """."""
+#         darray: list[int] = getattr(self, "Data").copy()
+#         counter = darray.pop(0)
+#         setattr(self, "count", counter)
+#         modulo = len(darray) % counter
+#         if modulo == 0:
+#             results: list[int] = []
+#             dlen = int(len(darray) / counter)
+#             for _ in range(counter):
+#                 results.append(int.from_bytes(bytearray(darray[0 : dlen - 1]), "little"))
+#                 darray = darray[0 : dlen - 1]
+#             setattr(self, "values", results)
 
-    def to_json_serializable(self) -> dict:
-        """."""
-        return {"count": getattr(self, "count"), "values": getattr(self, "values")}
+#     def to_json_serializable(self) -> dict:
+#         """."""
+#         return {"count": getattr(self, "count"), "values": getattr(self, "values")}
 
-    @classmethod
-    def decode(cls, cursor) -> "Pure":
-        """."""
-        pure_inst = super().decode(cursor)
-        getattr(pure_inst, "post_deser")()
-        return pure_inst
+#     @classmethod
+#     def decode(cls, cursor) -> "Pure":
+#         """."""
+#         pure_inst = super().decode(cursor)
+#         getattr(pure_inst, "post_deser")()
+#         return pure_inst
 
 
 # class Pure()
@@ -233,7 +234,7 @@ class CallArg(canoser.RustEnum):
     Pure type is for scalares, or native, values.
     """
 
-    _enums = [("Pure", Pure), ("Object", ObjectArg)]
+    _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
     # _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
     # _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg), ("ObjVec", [ObjectArg])]
 

@@ -25,10 +25,10 @@ Breaking Changes - Significant
 
 ### Changed
 
-
-- Renamed RequestAddDelegation builder to RequestAddStake, aligning with `sui_requestAddStake` as per Sui 0.28.0
+- Renamed GetDelegatedStakes builder to GetStakes aligning with `sui_getStakes` as per Sui 0.28.1
+- Renamed RequestAddDelegation builder to RequestAddStake aligning with `sui_requestAddStake` as per Sui 0.28.0
 - Renamed RequestWithdrawDelegation builder to RequestWithdrawStake, aligning with `sui_requestWithdrawStake` as per Sui 0.28.0
-- All transaction RPC API calls (Batch,Publish,MoveCall,PayXX,SplitXX,MergeXX,StakeXX) now invoke `unsafe_<NAME>` as per Sui 0.28.0 in light of the new ProgrammableTransaction. Consider these builders deprecated and likely disappear in upcoming releases.
+- All transaction RPC API calls (Batch,Publish,MoveCall,PayXX,SplitXX,MergeXX,StakeXX) now invoke `unsafe_<NAME>` as per Sui 0.28.0 in light of the new ProgrammableTransaction.
 - **Breaking Change** Addresses are now generated from keys using `blake2b` instead of `sha3_256`
 - **Breaking Change** TxEffectResult renamed to TxResponse and restructured as per Sui 0.28.0
 - **Breaking Change** Sui has moved from 20 byte address to 32 byte addresses. This changes all SuiAddress and ObjectID constructs.
