@@ -17,7 +17,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, config, LetterCase
-from pysui.sui.sui_txresults.package_meta import SuiMoveStruct
 from pysui.sui.sui_types import ObjectID, SuiAddress
 from pysui.sui.sui_txresults.common import GenericRef
 
@@ -598,23 +597,23 @@ class ValidatorSummary(DataClassJsonMixin):
     worker_pubkey_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
-# TODO: Deprecated
-@dataclass
-class ValidatorSet(DataClassJsonMixin):
-    """From sui_getSuiSystemState."""
+# # TODO: Deprecated
+# @dataclass
+# class ValidatorSet(DataClassJsonMixin):
+#     """From sui_getSuiSystemState."""
 
-    active_validators: list[Validator]
-    inactive_pools: Table
-    pending_active_validators: dict
-    validator_candidates: Table
-    pending_removals: list[int]
-    staking_pool_mappings: Table
-    total_stake: int
+#     active_validators: list[Validator]
+#     inactive_pools: Table
+#     pending_active_validators: dict
+#     validator_candidates: Table
+#     pending_removals: list[int]
+#     staking_pool_mappings: Table
+#     total_stake: int
 
-    def __post_init__(self):
-        """Post hydrate parameter fixups."""
-        if self.pending_active_validators:
-            self.pending_active_validators = Table.from_dict(self.pending_active_validators["contents"])
+#     def __post_init__(self):
+#         """Post hydrate parameter fixups."""
+#         if self.pending_active_validators:
+#             self.pending_active_validators = Table.from_dict(self.pending_active_validators["contents"])
 
 
 @dataclass

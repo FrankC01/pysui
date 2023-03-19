@@ -139,165 +139,6 @@ class Transaction(SuiTxReturnType, DataClassJsonMixin):
         self.tx_signatures = hydrate
 
 
-# Events
-
-
-@dataclass
-class CoinBalanceChangeEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sender: str
-    owner: dict
-    change_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    coin_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    coin_object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    version: int
-    amount: int
-
-    def __post_init__(self):
-        """Post init processing.
-
-        Convert various to SuiTypes
-        """
-        self.owner = self.owner["AddressOwner"]
-
-
-@dataclass
-class NewObjectEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sender: str
-    recipient: Union[dict, str]
-    version: int
-    object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-
-    def __post_init__(self):
-        """Post init processing.
-
-        Convert various to SuiTypes
-        """
-        if isinstance(self.recipient, str):
-            if self.recipient == "Immutable":
-                self.recipient = self.recipient
-            else:
-                raise KeyError(f"{self.recipient}")
-        else:
-            if "AddressOwner" in self.recipient:
-                self.recipient = self.recipient["AddressOwner"]
-            elif "ObjectOwner" in self.recipient:
-                self.recipient = self.recipient["ObjectOwner"]
-
-
-@dataclass
-class TransferObjectEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sender: str
-    recipient: dict
-    version: int
-    object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-
-    def __post_init__(self):
-        """Post init processing.
-
-        Convert various to SuiTypes
-        """
-        if isinstance(self.recipient, str):
-            if self.recipient == "Immutable":
-                self.recipient = self.recipient
-        else:
-            if isinstance(self.recipient, str):
-                if self.recipient == "Immutable":
-                    self.recipient = self.recipient
-                else:
-                    raise KeyError(f"{self.recipient}")
-            else:
-                if "AddressOwner" in self.recipient:
-                    self.recipient = self.recipient["AddressOwner"]
-                elif "ObjectOwner" in self.recipient:
-                    self.recipient = self.recipient["ObjectOwner"]
-
-
-@dataclass
-class MutateObjectEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sender: str
-    object_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    version: int
-
-
-@dataclass
-class DeleteObjectEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sender: str
-    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    version: int
-
-
-@dataclass
-class EpochChangeEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    epoch_change: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-
-
-@dataclass
-class NewCheckpointEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    checkpoint: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-
-
-@dataclass
-class PublishEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sender: str
-    digest: str
-    version: int
-
-
-@dataclass
-class MoveEvent(SuiTxReturnType, DataClassJsonMixin):
-    """Event Type."""
-
-    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sender: str
-    event_type: str = field(metadata=config(field_name="type"))
-    bcs: str
-    fields: dict
-
-
-_EVENT_LOOKUP = {
-    "coinBalanceChange": CoinBalanceChangeEvent,
-    "newObject": NewObjectEvent,
-    "transferObject": TransferObjectEvent,
-    "mutateObject": MutateObjectEvent,
-    "deleteObject": DeleteObjectEvent,
-    "epochChange": EpochChangeEvent,
-    "newCheckPoint": NewCheckpointEvent,
-    "publish": PublishEvent,
-    "moveEvent": MoveEvent,
-}
-
-
 @dataclass
 class Event(SuiTxReturnType, DataClassJsonMixin):
     """Result of various get and result API."""
@@ -422,6 +263,9 @@ class TxResponse(SuiTxReturnType, DataClassJsonMixin):
         return f"{self.effects.status.status} - {self.effects.status.error}"
 
 
+# pylint: enable=too-many-instance-attributes
+
+
 @dataclass
 class TxResponseArray(SuiTxReturnType, DataClassJsonMixin):
     """From sui_multiGetTransactions."""
@@ -454,19 +298,13 @@ class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
 
     effects: Effects
     results: dict
-    events: list[dict]
+    events: list[Event]
 
     def __post_init__(self):
         """Post init processing.
 
         Post process events lookup
         """
-        hydrated = []
-        for ev_dict in self.events:
-            event_type = ev_dict["type"]
-            event_content = ev_dict["content"]
-            hydrated.append({event_type: _EVENT_LOOKUP[event_type].from_dict(event_content)})
-        self.events = hydrated
 
     @classmethod
     def factory(cls, in_data: dict) -> "TxInspectionResult":
@@ -501,6 +339,7 @@ class EndOfEpoch(DataClassJsonMixin):
     )
 
 
+# pylint: disable=too-many-instance-attributes
 @dataclass
 class Checkpoint(DataClassJsonMixin):
     """From sui_getCheckpoint."""
@@ -523,6 +362,9 @@ class Checkpoint(DataClassJsonMixin):
         """
         if self.end_of_epoch_data:
             self.end_of_epoch_data = EndOfEpoch.from_dict(self.end_of_epoch_data)
+
+
+# pylint: enable=too-many-instance-attributes
 
 
 @dataclass
