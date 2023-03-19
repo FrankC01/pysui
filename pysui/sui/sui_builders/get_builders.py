@@ -16,6 +16,7 @@
 
 from typing import Final, Optional
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
+from pysui.sui.sui_types.event_filter import _EventFilterType, AllFilter
 from pysui.sui.sui_types.scalars import SuiNullType, SuiString, SuiInteger, ObjectID, SuiBoolean
 from pysui.sui.sui_types.collections import SuiArray, SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
@@ -33,8 +34,9 @@ from pysui.sui.sui_txresults.single_tx import (
 )
 from pysui.sui.sui_txresults.complex_tx import (
     Checkpoint,
-    CheckpointContents,
-    CheckpointSummary,
+    Checkpoints,
+    # CheckpointContents,
+    # CheckpointSummary,
     EventBlock,
     EventQueryEnvelope,
     TransactionQueryEnvelope,
@@ -497,113 +499,9 @@ class GetCommittee(_NativeTransactionBuilder):
         super().__init__("sui_getCommitteeInfo", handler_cls=CommitteeInfo, handler_func="factory")
 
 
-# Event Query Types
+# Event Query
 
 
-class SenderEventQuery(SuiMap):
-    """Query events for Sender address."""
-
-    def __init__(self, sender: SuiAddress):
-        """Initialize query parameter."""
-        super().__init__("Sender", sender.value.value)
-
-
-class TransactionEventQuery(SuiMap):
-    """Query events for Transaction."""
-
-    def __init__(self, txid: str):
-        """Initialize query parameter."""
-        super().__init__("Transaction", txid)
-
-
-class PackageEventQuery(SuiMap):
-    """Query events for Transaction."""
-
-    def __init__(self, txid: str):
-        """Initialize query parameter."""
-        super().__init__("Package", txid)
-
-
-class MoveModuleEventQuery(SuiMap):
-    """Query events for Move Module."""
-
-    def __init__(self, module: str, package: str) -> None:
-        """Initialize query parameter."""
-        sdict = {"module": module, "package": package}
-        super().__init__("MoveModule", sdict)
-
-
-class MoveEventTypeQuery(SuiMap):
-    """Query events for Move Event on Struct type."""
-
-    def __init__(self, struct: str):
-        """Initialize query parameter."""
-        super().__init__("MoveEventType", struct)
-
-
-class MoveEventField(SuiMap):
-    """Query events for Move Event fields."""
-
-    def __init__(self, field_path: dict[str, str]):
-        """Initialize query parameter.
-
-        field_path argument is dict with {'path':PATH_TO_FILE,'value':true}
-        """
-        super().__init__("MoveEventField", field_path)
-
-
-# TODO: Deprecated
-# class EventTypeQuery(SuiMap):
-#     """Query events for Event types."""
-
-#     _evtype_set = {
-#         "MoveEvent",
-#         "Publish",
-#         "CoinBalanceChange",
-#         "EpochChange",
-#         "Checkpoint",
-#         "TransferObject",
-#         "MutateObject",
-#         "DeleteObject",
-#         "NewObject",
-#     }
-
-#     def __init__(self, event_type: str):
-#         """Initialize query parameter."""
-#         if event_type in self._evtype_set:
-#             super().__init__("EventType", event_type)
-#         else:
-#             raise ValueError(f"event_type: {event_type} not one of {self._evtype_set}")
-
-# TODO: Deprecated
-# class RecipientEventQuery(SuiMap):
-#     """Query events for Recipient address."""
-
-#     def __init__(self, recipient: SuiAddress):
-#         """Initialize query parameter."""
-#         sdict = {"AddressOwner": recipient.value.value}
-#         super().__init__("Recipient", sdict)
-
-
-# TODO: Deprecated
-# class ObjectEventQuery(SuiMap):
-#     """Query events for Object id."""
-
-#     def __init__(self, object_id: ObjectID):
-#         """Initialize query parameter."""
-#         super().__init__("Object", object_id.value)
-
-
-class TimeRangeEventQuery(SuiMap):
-    """Query events for Time Range."""
-
-    def __init__(self, start_time: SuiInteger, end_time: SuiInteger):
-        """Initialize query parameter."""
-        sdict = {"startTime": start_time.value, "endTime": end_time.value}
-        super().__init__("TimeRange", sdict)
-
-
-# TODO: Implement All, Any, And and Or constructs
 class QueryEvents(_NativeTransactionBuilder):
     """QueryEvents takes event query criteria (options) as parameters and returns events matching criteria."""
 
@@ -617,7 +515,16 @@ class QueryEvents(_NativeTransactionBuilder):
         descending_order: Optional[SuiBoolean] = None,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_queryEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
+        super().__init__(
+            "sui_queryEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict"
+        )  # , handler_cls=EventQueryEnvelope, handler_func="from_dict")
+        if query:
+            if isinstance(query, _EventFilterType):
+                self.query = query
+            else:
+                raise AttributeError(f"Invalid argument {query}. Expected subclass of _EventFilterType")
+        else:
+            self.query = AllFilter(filters=[])
 
 
 class GetEvents(_NativeTransactionBuilder):
@@ -776,45 +683,6 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
         super().__init__("sui_getStakes", handler_cls=DelegatedStakes, handler_func="factory")
 
 
-class GetCheckpointContentsByDigest(_NativeTransactionBuilder):
-    """GetCheckpointContentsByDigest return contents of a checkpoint based on its sequence number."""
-
-    @sui_builder()
-    def __init__(self, digest: SuiString):
-        """__init__ Builder initializer.
-
-        :param digest: Checkpint content digest
-        :type digest: SuiString
-        """
-        super().__init__("sui_getCheckpointContentsByDigest", handler_cls=CheckpointContents, handler_func="from_dict")
-
-
-class GetCheckpointSummary(_NativeTransactionBuilder):
-    """GetCheckpointSummary return a checkpoint summary based on a checkpoint sequence number."""
-
-    @sui_builder()
-    def __init__(self, sequence_number: SuiInteger):
-        """__init__ Builder initializer.
-
-        :param sequence_number: Sequence number to get checkpoint contents summary for
-        :type sequence_number: SuiInteger
-        """
-        super().__init__("sui_getCheckpointSummary", handler_cls=CheckpointSummary, handler_func="from_dict")
-
-
-class GetCheckpointSummaryByDigest(_NativeTransactionBuilder):
-    """GetCheckpointSummaryByDigest return a checkpoint summary based on checkpoint digest."""
-
-    @sui_builder()
-    def __init__(self, digest: SuiString):
-        """__init__ Builder initializer.
-
-        :param digest: Checkpint content digest
-        :type digest: SuiString
-        """
-        super().__init__("sui_getCheckpointSummaryByDigest", handler_cls=CheckpointSummary, handler_func="from_dict")
-
-
 class GetLatestCheckpointSequence(_NativeTransactionBuilder):
     """GetLatestCheckpointSequence return the sequence number of the latest checkpoint that has been executed."""
 
@@ -848,6 +716,21 @@ class GetCheckpointBySequence(_NativeTransactionBuilder):
         :type cp_id: SuiString
         """
         super().__init__("sui_getCheckpoint", handler_cls=Checkpoint, handler_func="from_dict")
+
+
+class GetCheckpoints(_NativeTransactionBuilder):
+    """GetCheckpoints return paginated list of checkpoints."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        cursor: Optional[SuiString] = None,
+        limit: Optional[SuiInteger] = None,
+        descending_order: Optional[SuiBoolean] = False,
+    ):
+        """."""
+        super().__init__("sui_getCheckpoints", handler_cls=Checkpoints, handler_func="from_dict")
 
 
 class GetReferenceGasPrice(_NativeTransactionBuilder):

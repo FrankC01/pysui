@@ -16,116 +16,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
-from pysui.sui.sui_txresults.common import CoinRef, GenericOwnerRef, GenericRef, SuiTxReturnType
+from pysui.sui.sui_txresults.common import GenericOwnerRef, GenericRef, SuiTxReturnType
 from pysui.sui.sui_types.collections import EventID
-
-
-# TODO: Deprecate
-@dataclass
-class MoveCallTx(SuiTxReturnType, DataClassJsonMixin):
-    """sui_moveCall transaction."""
-
-    function: str
-    module: str
-    package: str
-    arguments: list[Any] = field(default_factory=list)
-    type_arguments: list[Any] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=list)
-
-
-# TODO: Deprecate
-@dataclass
-class PayTx(SuiTxReturnType, DataClassJsonMixin):
-    """sui_pay transaction."""
-
-    coins: list[CoinRef]
-    amounts: list[int]
-    recipients: list[str]
-
-
-# TODO: Deprecate
-@dataclass
-class PayAllSuiTx(SuiTxReturnType, DataClassJsonMixin):
-    """sui_payAllSui transaction."""
-
-    coins: list[CoinRef]
-    recipient: str
-
-
-# TODO: Deprecate
-@dataclass
-class PaySuiTx(SuiTxReturnType, DataClassJsonMixin):
-    """sui_paySui transaction."""
-
-    coins: list[CoinRef]
-    amounts: list[int]
-    recipients: list[str]
-
-
-# TODO: Deprecate
-@dataclass
-class PublishTx(SuiTxReturnType, DataClassJsonMixin):
-    """sui_publish transaction."""
-
-    disassembled: dict[str, str]
-
-
-# TODO: Deprecate
-@dataclass
-class TransferObjectTx(SuiTxReturnType, DataClassJsonMixin):
-    """sui_transferObject transaction."""
-
-    object_ref: GenericRef = field(metadata=config(letter_case=LetterCase.CAMEL))
-    recipient: str
-
-
-# TODO: Deprecate
-@dataclass
-class TransferSuiTx(SuiTxReturnType, DataClassJsonMixin):
-    """sui_transferSui transaction."""
-
-    recipient: str
-    amount: int
-
-
-# TODO: Deprecate
-@dataclass
-class ChangeEpocTx(SuiTxReturnType, DataClassJsonMixin):
-    """From sui_executeTransaction forms."""
-
-    computation_charge: int
-    epoch: int
-    storage_charge: int
-
-
-# TODO: Deprecate
-@dataclass
-class GenesisTx(SuiTxReturnType, DataClassJsonMixin):
-    """From sui_executeTransaction forms."""
-
-    objects: list[str]
-
-
-# TODO: Deprecate
-@dataclass
-class AuthSignerInfo(SuiTxReturnType, DataClassJsonMixin):
-    """Authorized signer info."""
-
-    epoch: int
-    signature: str
-    signers_map: list[int]
-
-
-_TRANSACTION_LOOKUP = {
-    "Call": MoveCallTx,
-    "Pay": PayTx,
-    "PaySui": PaySuiTx,
-    "PayAllSui": PayAllSuiTx,
-    "Publish": PublishTx,
-    "TransferObject": TransferObjectTx,
-    "TransferSui": TransferSuiTx,
-    "ChangeEpoch": ChangeEpocTx,
-    "Genesis": GenesisTx,
-}
 
 
 @dataclass
@@ -494,6 +386,7 @@ class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     """Transaction Result."""
 
     digest: str
+    raw_transaction: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     balance_changes: Optional[list[dict]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
     object_changes: Optional[list[dict]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
     transaction: Optional[dict] = field(default_factory=dict)
@@ -590,24 +483,6 @@ class TransactionBytes(DataClassJsonMixin):
     tx_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
-# TODO: Trace for removal
-@dataclass
-class ExecutionDigests(DataClassJsonMixin):
-    """From sui_getCheckpointContents sui_getCheckpointContentsBySequenceNumber."""
-
-    effects: str
-    transaction: str
-
-
-# TODO: Trace for removal
-@dataclass
-class CheckpointContents(DataClassJsonMixin):
-    """From sui_getCheckpointContents sui_getCheckpointContentsBySequenceNumber."""
-
-    transactions: list[ExecutionDigests]
-    user_signatures: list[Union[str, dict]]
-
-
 @dataclass
 class ECMHLiveObjectSetDigest(DataClassJsonMixin):
     """From sui_getCheckpoint."""
@@ -619,33 +494,11 @@ class ECMHLiveObjectSetDigest(DataClassJsonMixin):
 class EndOfEpoch(DataClassJsonMixin):
     """From sui_getCheckpoint."""
 
-    # "epoch_commitments",
-    # "next_epoch_committee",
-    # "next_epoch_protocol_version"
-
-    epoch_commitments: list[ECMHLiveObjectSetDigest]
-    next_epoch_protocol_version: int
-    # root_state_digest: list[int]
-    next_epoch_committee: Optional[list[int]] = field(default_factory=list)
-
-
-# TODO: Trace for removal
-@dataclass
-class CheckpointSummary(DataClassJsonMixin):
-    """From sui_getCheckpointSummary."""
-
-    content_digest: str
-    epoch: int
-    epoch_rolling_gas_cost_summary: GasCostSummary
-    network_total_transactions: int
-    sequence_number: int
-
-    timestamp_ms: int
-    end_of_epoch_data: Optional[EndOfEpoch]
-    version_specific_data: list[int] = field(default_factory=dict)
-    previous_digest: str = field(default_factory=str)
-
-    # next_epoch_committee: list[int] = field(default_factory=list)
+    epoch_commitments: list[ECMHLiveObjectSetDigest] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_protocol_version: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_epoch_committee: Optional[list[int]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
+    )
 
 
 @dataclass
@@ -672,35 +525,13 @@ class Checkpoint(DataClassJsonMixin):
             self.end_of_epoch_data = EndOfEpoch.from_dict(self.end_of_epoch_data)
 
 
-# Event query results
-
-
 @dataclass
-class EventEnvelopID(DataClassJsonMixin):
-    """From sui_getEvents."""
+class Checkpoints(DataClassJsonMixin):
+    """From sui_getCheckpoints."""
 
-    transaction_digest: str = field(metadata=config(field_name="txDigest"))
-    event_sequence: int = field(metadata=config(field_name="eventSeq"))
-
-
-@dataclass
-class EventEnvelope(DataClassJsonMixin):
-    """From sui_getEvents."""
-
-    timestamp: int
-    event: dict
-    transaction_digest: str = field(metadata=config(field_name="txDigest"))
-    event_id: EventEnvelopID = field(metadata=config(field_name="id"))
-
-    def __post_init__(self):
-        """Post init processing.
-
-        Hydrate relevant Events and other types
-        """
-        ev_map = list(self.event.items())
-        event_key = ev_map[0][0]
-        event_value = ev_map[0][1]
-        self.event[event_key] = _EVENT_LOOKUP[event_key].from_dict(event_value)
+    data: list[Checkpoint]
+    has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_cursor: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass
@@ -721,22 +552,13 @@ class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
     params: SubscribedEventParms
 
 
-# @dataclass
-# class TransactionEnvelope(SuiTxReturnType, DataClassJsonMixin):
-#     """Effects Certification."""
-
-#     certificate: Optional[Certificate]
-#     effects: Effects
-#     timestamp_ms: int
-#     parsed_data: Union[dict, None] = field(default_factory=dict)
-#     checkpoint: int = None
-
-
 @dataclass
 class EventQueryEnvelope(DataClassJsonMixin):
     """From sui_getEvents."""
 
-    data: list[EventEnvelope]
+    # data: list[EventEnvelope]
+    data: list[Event]
+    has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
     next_cursor: Union[None, EventID] = field(metadata=config(field_name="nextCursor"))
 
 

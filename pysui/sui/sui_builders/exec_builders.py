@@ -41,6 +41,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         "showEvents": True,
         "showInput": True,
         "showObjectChanges": True,
+        "showRawInput": True,
     }
 
     @sui_builder()

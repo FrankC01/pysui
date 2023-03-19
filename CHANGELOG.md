@@ -7,16 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
-Breaking Changes - Significant
+Breaking Changes - Significant changes with Sui 0.28.0
 
 ### Added
 
 - Added `get_objects` to synchronous and asynchronous SuiClients
 - Address SignatureType in constant pool (base_deserailizers.py - deserialize_constants)
 - GetCheckpoint builder and Checkpoint result for `sui_getCheckpoint` as per Sui 0.28.0
+- GetCheckpoints builder and Checkpoint paginated results for `sui_getCheckpoints` as per Sui 0.28.1
 - GetLatestSuiSystemState builder and results for `sui_getLatestSuiSystemState` as per Sui 0.28.0
 - GetMultipleTx builder and TxResponseArray result for `sui_multiGetTransactions` as per Sui 0.28.0
 - GetMultipleObjects builder for `sui_multiGetObjects` as per Sui 0.28.0
+- QueryEvents builder for `sui_queryEvents` as per Sui 0.28.0
 
 ### Fixed
 
@@ -29,6 +31,7 @@ Breaking Changes - Significant
 - Renamed RequestAddDelegation builder to RequestAddStake aligning with `sui_requestAddStake` as per Sui 0.28.0
 - Renamed RequestWithdrawDelegation builder to RequestWithdrawStake, aligning with `sui_requestWithdrawStake` as per Sui 0.28.0
 - All transaction RPC API calls (Batch,Publish,MoveCall,PayXX,SplitXX,MergeXX,StakeXX) now invoke `unsafe_<NAME>` as per Sui 0.28.0 in light of the new ProgrammableTransaction.
+- **Breaking Change** event filters for QueryEvents and SubscribeEvents moved to `sui_types/event_filter.py`. Note that per Sui 0.28.0 the filters have changed.
 - **Breaking Change** Addresses are now generated from keys using `blake2b` instead of `sha3_256`
 - **Breaking Change** TxEffectResult renamed to TxResponse and restructured as per Sui 0.28.0
 - **Breaking Change** Sui has moved from 20 byte address to 32 byte addresses. This changes all SuiAddress and ObjectID constructs.
@@ -56,6 +59,7 @@ Breaking Changes - Significant
 - **Breaking Change** GetRawObject removed for `sui_getRawObject` removed as per Sui 0.28.0. Raw information is now part of GetObject
 - **Breaking Change** GetSuiSystemState removed for `sui_getSuiSystemState` as per Sui 0.28.0. Use GetLatestSuiSystemState instead.
 - **Breaking Change** ExecuteSerializedTransaction removed for `sui_executeTransactionSerializedSig` as per Sui 0.28.0
+- **Breaking Change** GetCheckpointContentsByDigest, GetCheckpointSummary,GetCheckpointSummaryByDigest as per Sui 0.28.0
 - **Breaking Change** Removed `get_address_object_descriptors` from synchronous and asynchronous SuiClients
 
 ## [0.14.1] 2023-02-24

@@ -19,6 +19,13 @@ from typing import Union
 from pysui import __version__
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
+from pysui.sui.sui_types.event_filter import (
+    MoveEventTypeQuery,
+    MoveModuleEventQuery,
+    SenderEventQuery,
+    TimeRangeEventQuery,
+    TransactionEventQuery,
+)
 from pysui.sui.sui_types.scalars import SuiBoolean, SuiString
 from pysui.sui.sui_types.collections import SuiMap, EventID
 
@@ -31,13 +38,6 @@ from pysui.sui.sui_builders.get_builders import (
     GetTxsInputObject,
     GetTxsMutateObject,
     GetTxsMoveFunction,
-    MoveEventTypeQuery,
-    MoveModuleEventQuery,
-    # ObjectEventQuery,
-    # RecipientEventQuery,
-    SenderEventQuery,
-    TransactionEventQuery,
-    TimeRangeEventQuery,
 )
 
 from pysui.sui.sui_utils import build_b64_modules
