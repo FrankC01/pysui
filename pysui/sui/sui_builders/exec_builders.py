@@ -56,8 +56,9 @@ class ExecuteTransaction(_NativeTransactionBuilder):
 
         :param tx_bytes: BCS serialized transaction data bytes without its type tag, as base-64 encoded string
         :type tx_bytes: SuiTxBytes
-        :param signatures: Array of `flag || signature || pubkey` bytes, as base-64 encoded string, signatures are committed to the
-            intent message of the transaction data, as base-64 encoded string wrapped in SuiSignatures.
+        :param signatures: Array of `flag || signature || pubkey` bytes, as base-64 encoded string,
+            signatures are committed to the intent message of the transaction data,
+            as base-64 encoded string wrapped in SuiSignatures.
         :type signatures: SuiArray[SuiSignature]
         :param request_type: The request type
         :type request_type: SuiRequestType
