@@ -22,14 +22,14 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import hexstring_to_list, b58str_to_list
 from pysui.sui.sui_txresults.common import GenericRef
 
-_BCS_ADDRESS_LENGTH: int = 32
-_BCS_DIGEST_LENGTH: int = 32
+_ADDRESS_LENGTH: int = 32
+_DIGEST_LENGTH: int = 32
 
 
-class BCSAddress(canoser.Struct):
-    """BCSAddress Represents a Sui Address or ObjectID as list of ints."""
+class Address(canoser.Struct):
+    """Address Represents a Sui Address or ObjectID as list of ints."""
 
-    _fields = [("Address", canoser.ArrayT(canoser.Uint8, _BCS_ADDRESS_LENGTH, False))]
+    _fields = [("Address", canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH, False))]
 
     def to_str(self) -> str:
         """."""
@@ -44,73 +44,73 @@ class BCSAddress(canoser.Struct):
         return SuiAddress(self.to_address_str())
 
     @classmethod
-    def from_sui_address(cls, indata: SuiAddress) -> "BCSAddress":
+    def from_sui_address(cls, indata: SuiAddress) -> "Address":
         """."""
         return cls(hexstring_to_list(indata.address))
 
     @classmethod
-    def from_str(cls, indata: str) -> "BCSAddress":
+    def from_str(cls, indata: str) -> "Address":
         """."""
         return cls(hexstring_to_list(indata))
 
 
-class BCSDigest(canoser.Struct):
-    """BCSDigest represents a transaction or object base58 value as list of ints."""
+class Digest(canoser.Struct):
+    """Digest represents a transaction or object base58 value as list of ints."""
 
-    _fields = [("Digest", canoser.ArrayT(canoser.Uint8, _BCS_DIGEST_LENGTH))]
+    _fields = [("Digest", canoser.ArrayT(canoser.Uint8, _DIGEST_LENGTH))]
 
     @classmethod
-    def from_str(cls, indata: str) -> "BCSDigest":
+    def from_str(cls, indata: str) -> "Digest":
         """."""
         return cls(b58str_to_list(indata))
 
 
-class BCSObjectReference(canoser.Struct):
-    """BCSObjectReference represents an object by it's objects reference fields."""
+class ObjectReference(canoser.Struct):
+    """ObjectReference represents an object by it's objects reference fields."""
 
     _fields = [
-        ("ObjectID", BCSAddress),
+        ("ObjectID", Address),
         ("SequenceNumber", canoser.Uint64),
-        ("ObjectDigest", BCSDigest),
+        ("ObjectDigest", Digest),
     ]
 
     @classmethod
-    def from_generic_ref(cls, indata: GenericRef) -> "BCSObjectReference":
+    def from_generic_ref(cls, indata: GenericRef) -> "ObjectReference":
         """from_generic_ref init construct with GenericRef from ObjectRead structure.
 
         :param indata: The reference information for an Object from ObjectRead
         :type indata: GenericRef
         :return: The instantiated BCS object
-        :rtype: BCSSharedObjectReference
+        :rtype: SharedObjectReference
         """
         if isinstance(indata, ObjectRead):
-            return cls(BCSAddress.from_str(indata.object_id), indata.version, BCSDigest.from_str(indata.digest))
+            return cls(Address.from_str(indata.object_id), indata.version, Digest.from_str(indata.digest))
         raise ValueError(f"{indata} is not valid")
 
 
-class BCSSharedObjectReference(canoser.Struct):
-    """BCSSharedObjectReference represents a shared object by it's objects reference fields."""
+class SharedObjectReference(canoser.Struct):
+    """SharedObjectReference represents a shared object by it's objects reference fields."""
 
     _fields = [
-        ("ObjectID", BCSAddress),  # canoser.ArrayT(canoser.Uint8, _BCS_ADDRESS_LENGTH)),
+        ("ObjectID", Address),  # canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH)),
         ("SequenceNumber", canoser.Uint64),
         ("Mutable", bool),
     ]
 
     @classmethod
-    def from_generic_ref(cls, indata: GenericRef) -> "BCSSharedObjectReference":
+    def from_generic_ref(cls, indata: GenericRef) -> "SharedObjectReference":
         """from_generic_ref init construct with GenericRef from ObjectRead structure.
 
         :param indata: The reference information for an Object from ObjectRead
         :type indata: GenericRef
         :return: The instantiated BCS object
-        :rtype: BCSSharedObjectReference
+        :rtype: SharedObjectReference
         """
-        return cls(BCSAddress.from_str(indata.object_id), indata.version, BCSDigest.from_str(indata.digest))
+        return cls(Address.from_str(indata.object_id), indata.version, Digest.from_str(indata.digest))
 
 
-class BCSOptionalU64(canoser.RustOptional):
-    """BCSOptionalU64 Optional assignment of unsigned 64 bit int."""
+class OptionalU64(canoser.RustOptional):
+    """OptionalU64 Optional assignment of unsigned 64 bit int."""
 
     _type = canoser.Uint64
 
@@ -143,7 +143,7 @@ class TypeTag(canoser.RustEnum):
         ("U8", canoser.Uint8),
         ("U64", canoser.Uint64),
         ("U128", canoser.Uint128),
-        ("Address", BCSAddress),
+        ("Address", Address),
         ("Signer", None),
         ("Vector", None),  # Injected below StructTag
         ("Struct", None),  # Injected below StructTag
@@ -167,7 +167,7 @@ class TypeTag(canoser.RustEnum):
 class StructTag(canoser.Struct):
     """StructTag represents a type value (e.g. 0x2::sui::SUI) in BCS when used in MoveCall."""
 
-    _fields = [("address", BCSAddress), ("module", str), ("name", str), ("type_parameters", [TypeTag])]
+    _fields = [("address", Address), ("module", str), ("name", str), ("type_parameters", [TypeTag])]
 
     @classmethod
     def from_type_str(cls, type_str: str) -> "StructTag":
@@ -180,7 +180,7 @@ class StructTag(canoser.Struct):
         """
         if type_str.count("::") == 2:
             split_type = type_str.split("::")
-            return cls(BCSAddress.from_str(split_type[0]), split_type[1], split_type[2], [])
+            return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
         raise ValueError(f"Ill formed type_argument {type_str}")
 
 
@@ -192,7 +192,7 @@ TypeTag.update_value_at(7, StructTag)
 class ObjectArg(canoser.RustEnum):
     """ObjectArg enum for type of object and it's reference data when used in MoveCall."""
 
-    _enums = [("ImmOrOwnedObject", BCSObjectReference), ("SharedObject", BCSSharedObjectReference)]
+    _enums = [("ImmOrOwnedObject", ObjectReference), ("SharedObject", SharedObjectReference)]
 
 
 class CallArg(canoser.RustEnum):
@@ -202,15 +202,13 @@ class CallArg(canoser.RustEnum):
     """
 
     _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
-    # _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
-    # _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg), ("ObjVec", [ObjectArg])]
 
 
 class BCSMoveCall(canoser.Struct):
     """BCSMoveCall represents a sui_moveCall structure in BCS."""
 
     _fields = [
-        ("package", BCSAddress),
+        ("package", Address),
         ("module", str),
         ("function", str),
         ("type_arguments", [TypeTag]),
@@ -222,8 +220,8 @@ class BCSPay(canoser.Struct):
     """BCSPay represents a sui_pay structure in BCS."""
 
     _fields = [
-        ("coins", [BCSObjectReference]),
-        ("recipients", [BCSAddress]),
+        ("coins", [ObjectReference]),
+        ("recipients", [Address]),
         ("amounts", [canoser.Uint64]),
     ]
 
@@ -235,8 +233,8 @@ class BCSPaySui(canoser.Struct):
     """
 
     _fields = [
-        ("coins", [BCSObjectReference]),
-        ("recipients", [BCSAddress]),
+        ("coins", [ObjectReference]),
+        ("recipients", [Address]),
         ("amounts", [canoser.Uint64]),
     ]
 
@@ -248,8 +246,8 @@ class BCSPayAllSui(canoser.Struct):
     """
 
     _fields = [
-        ("coins", [BCSObjectReference]),
-        ("recipient", BCSAddress),
+        ("coins", [ObjectReference]),
+        ("recipient", Address),
     ]
 
 
@@ -257,8 +255,8 @@ class BCSTransferObject(canoser.Struct):
     """BCSTransferObject represents a sui_transferObjecrt structure in BCS."""
 
     _fields = [
-        ("recipient", BCSAddress),
-        ("object_ref", BCSObjectReference),
+        ("recipient", Address),
+        ("object_ref", ObjectReference),
     ]
 
 
@@ -266,8 +264,8 @@ class BCSTransferSui(canoser.Struct):
     """BCSTransferSui represents a sui_transferSui structure in BCS."""
 
     _fields = [
-        ("recipient", BCSAddress),
-        ("amount", BCSOptionalU64),
+        ("recipient", Address),
+        ("amount", OptionalU64),
     ]
 
 
@@ -316,43 +314,12 @@ class BCSBatchTransaction(canoser.Struct):
     _fields = [("Singles", [BCSSingleTransaction])]
 
 
-# class BCSTransactionKind(canoser.RustEnum):
-#     """BCSTransactionKind is enumeration of different transaction types."""
-
-#     _enums = [
-#         ("Single", BCSSingleTransaction),
-#         ("Batch", BCSBatchTransaction),
-#     ]
-
-#     @classmethod
-#     def variant_for_index(cls, index: int) -> Union[tuple[str, canoser.RustEnum], IndexError]:
-#         """variant_for_index returns the enum name and reference tuple from specific index.
-
-#         :param index: The index into list of enum values
-#         :type index: int
-#         :raises IndexError: When index provided is not valid
-#         :return: The name,value tuple of the enum index
-#         :rtype: Union[tuple[str, canoser.RustEnum], ValueError]
-#         """
-#         if index > len(cls._enums):
-#             raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
-#         return cls._enums[index]
-
-
-# pub struct GasData {
-#     pub payment: Vec<ObjectRef>,
-#     pub owner: SuiAddress,
-#     pub price: u64,
-#     pub budget: u64,
-# }
-
-
 class GasData(canoser.Struct):
     """."""
 
     _fields = [
-        ("Payment", [BCSObjectReference]),
-        ("Owner", BCSAddress),
+        ("Payment", [ObjectReference]),
+        ("Owner", Address),
         ("Price", canoser.Uint64),
         ("Budget", canoser.Uint64),
     ]
@@ -380,7 +347,7 @@ class ProgrammableMoveCall(canoser.Struct):
 
     _fields = [
         # The module or function containing Package ID
-        ("Package", BCSAddress),
+        ("Package", Address),
         # Module name
         ("Module", str),
         # Function name
@@ -425,7 +392,7 @@ class MakeMoveVec(canoser.Struct):
 class Upgrade(canoser.Struct):
     """Upgrade an existing move package onchain."""
 
-    _fields = [("Modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8))), ("OIDs", [BCSAddress]), ("Arg", Argument)]
+    _fields = [("Modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8))), ("OIDs", [Address]), ("Arg", Argument)]
 
 
 class Command(canoser.RustEnum):
@@ -445,7 +412,7 @@ class Command(canoser.RustEnum):
 class ProgrammableTransaction(canoser.Struct):
     """."""
 
-    _fields = [("Inputs", [CallArg]), ("Commands", [Command])]
+    _fields = [("Inputs", [CallArg]), ("Command", [Command])]
 
 
 class TransactionKind(canoser.RustEnum):
@@ -471,14 +438,20 @@ class TransactionKind(canoser.RustEnum):
         return cls.deserialize(in_data)
 
 
+class TransactionExpiration(canoser.RustEnum):
+    """."""
+
+    _enums = [("None", None), ("Epoch", canoser.Uint64)]
+
+
 class TransactionDataV1(canoser.Struct):
     """."""
 
     _fields = [
         ("TransactionKind", TransactionKind),
-        ("Sender", None),
-        ("GasData", None),
-        ("TransactionExpiration", None),
+        ("Sender", Address),
+        ("GasData", GasData),
+        ("TransactionExpiration", TransactionExpiration),
     ]
 
 

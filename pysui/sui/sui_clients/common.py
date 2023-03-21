@@ -23,7 +23,7 @@ from pysui.abstracts import RpcResult, Provider
 from pysui.abstracts.client_keypair import KeyPair
 from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
 from pysui.sui.sui_builders.exec_builders import _MoveCallTransactionBuilder, ExecuteTransaction
-from pysui.sui.sui_builders.get_builders import GetRpcAPI
+from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetRpcAPI
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_apidesc import build_api_descriptors
 from pysui.sui.sui_txn_validator import validate_api
@@ -31,7 +31,7 @@ from pysui.sui.sui_excepts import SuiException, SuiRpcApiNotAvailable, SuiNotCom
 from pysui.sui.sui_txresults.complex_tx import TransactionBytes
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import SuiSignature, SuiString, SuiTxBytes
+from pysui.sui.sui_types.scalars import SuiTxBytes
 
 
 class SuiRpcResult(RpcResult):
@@ -110,6 +110,7 @@ class _ClientMixin(Provider):
         """Client initializer."""
         super().__init__(config)
         self._client = None
+        self._gas_price: int = None
         self._rpc_api: dict = {}
         self._schema_dict: dict = {}
         self._rpc_version: str = None
@@ -117,18 +118,29 @@ class _ClientMixin(Provider):
 
     def _build_api_descriptors(self) -> None:
         """Fetch RPC method descrptors."""
-        builder = GetRpcAPI()
+        builder_rpc_api = GetRpcAPI()
+        builder_gas_price = GetReferenceGasPrice()
 
         with httpx.Client(http2=True) as client:
             # jblock = self._generate_data_block(builder.data_dict, builder.method, [])
             # print(f"{json.dumps(jblock, indent=2)}")
 
-            result = client.post(
+            rpc_api_result = client.post(
                 self.config.rpc_url,
-                headers=builder.header,
-                json=self._generate_data_block(builder.data_dict, builder.method, builder.params),
+                headers=builder_rpc_api.header,
+                json=self._generate_data_block(
+                    builder_rpc_api.data_dict, builder_rpc_api.method, builder_rpc_api.params
+                ),
             )
-        self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(result.json())
+            rpc_gas_result = client.post(
+                self.config.rpc_url,
+                headers=builder_gas_price.header,
+                json=self._generate_data_block(
+                    builder_gas_price.data_dict, builder_gas_price.method, builder_gas_price.params
+                ),
+            )
+            self._gas_price = rpc_gas_result.json()["result"]
+        self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(rpc_api_result.json())
         self.rpc_version_support()
 
     def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
@@ -151,6 +163,11 @@ class _ClientMixin(Provider):
     @abstractmethod
     def is_synchronous(self) -> bool:
         """Return whether client is syncrhonous (True) or not (False)."""
+
+    @property
+    def current_gas_price(self) -> int:
+        """Returns session gas price."""
+        return self._gas_price
 
     @property
     def rpc_version(self) -> str:

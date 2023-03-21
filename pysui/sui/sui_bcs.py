@@ -26,7 +26,7 @@ from pysui.sui.sui_types.bcs import *
 from pysui.abstracts.client_types import SuiScalarType
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import b64str_to_list, int_to_listu8
-from pysui.sui.sui_clients.common import SuiRpcResult
+from pysui.sui.sui_clients.common import PreExecutionResult, SuiRpcResult
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.single_tx import AddressOwner, ObjectRawRead
 from pysui.sui.sui_builders.get_builders import GetFunction, GetObject
@@ -62,7 +62,7 @@ _GAS_AND_BUDGET_BYTE_OFFSET: int = -155
 FAKE_ADDRESS_OR_OBJECT: str = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 
-def _bcs_reference_for_oid(client: SyncClient, object_id: ObjectID) -> Union[BCSObjectReference, Exception]:
+def _bcs_reference_for_oid(client: SyncClient, object_id: ObjectID) -> Union[ObjectReference, Exception]:
     """_bcs_reference_for_oid _summary_.
 
     :param client: Sui Client
@@ -71,12 +71,12 @@ def _bcs_reference_for_oid(client: SyncClient, object_id: ObjectID) -> Union[BCS
     :type object_id: ObjectID
     :raises ValueError: If sui_getObject fails
     :return: The BCS ObjectReference
-    :rtype: Union[BCSObjectReference, Exception]
+    :rtype: Union[ObjectReference, Exception]
     """
     bro_result = client.get_object(object_id)
     if bro_result.is_ok():
-        return BCSObjectReference.from_generic_ref(bro_result.result_data)
-        # return BCSObjectReference.from_generic_ref(bro_result.result_data.reference)
+        return ObjectReference.from_generic_ref(bro_result.result_data)
+        # return ObjectReference.from_generic_ref(bro_result.result_data.reference)
     raise ValueError(f"{bro_result.result_string} fetching object {object_id}")
 
 
@@ -102,7 +102,7 @@ def _bcs_objarg_for_oid(client: SyncClient, object_id: ObjectID) -> Union[Object
             arg_type = "ImmOrOwnedObject"
         else:
             arg_type = "SharedObject"
-        return ObjectArg(arg_type, BCSObjectReference.from_generic_ref(raw_data))
+        return ObjectArg(arg_type, ObjectReference.from_generic_ref(raw_data))
     raise ValueError(f"{bro_result.result_string} fetching object {object_id}")
 
 
@@ -132,7 +132,7 @@ def _bcs_callarg_from_scalar(meta_parm: SuiMoveScalarArgument, arg: SuiScalarTyp
     :rtype: Union[CallArg, Exception]
     """
     if meta_parm.scalar_type[0] == "A" or meta_parm.scalar_type[0] == "S":
-        bcs_arg = CallArg("Pure", getattr(BCSAddress.from_str(arg.value), "Address"))
+        bcs_arg = CallArg("Pure", getattr(Address.from_str(arg.value), "Address"))
     elif meta_parm.scalar_type[0] == "U":
         bcs_arg = CallArg("Pure", int_to_listu8(int(meta_parm.scalar_type[1:]) / 8, arg.value))
     elif meta_parm.scalar_type[0] == "B":
@@ -169,7 +169,7 @@ def _bcs_build_pure_array(vector_of: str, in_vector: SuiArray) -> Union[CallArg,
     def sigoraddress_to_array(in_el: list[str]) -> list[int]:
         res: list[int] = []
         for elem in in_el:
-            res.extend(getattr(BCSAddress.from_str(elem), "Address"))
+            res.extend(getattr(Address.from_str(elem), "Address"))
         return res
 
     # Determine expectation of element types
@@ -312,7 +312,7 @@ def _bcs_for_transfer_object(client: SyncClient, builder: TransferObject) -> BCS
     :return: An instance of BCSSingleTransaction
     :rtype: BCSSingleTransaction
     """
-    recipient = BCSAddress.from_sui_address(builder.recipient)
+    recipient = Address.from_sui_address(builder.recipient)
     reference = _bcs_reference_for_oid(client, builder.object_id)
     return BCSSingleTransaction("TransferObject", BCSTransferObject(recipient, reference))
 
@@ -327,8 +327,8 @@ def _bcs_for_transfer_sui(client: SyncClient, builder: TransferSui) -> BCSSingle
     :return: An instance of BCSSingleTransaction
     :rtype: BCSSingleTransaction
     """
-    recipient = BCSAddress.from_sui_address(builder.recipient)
-    amount = BCSOptionalU64(builder.amount.value)
+    recipient = Address.from_sui_address(builder.recipient)
+    amount = OptionalU64(builder.amount.value)
     return BCSSingleTransaction("TransferSui", BCSTransferObject(recipient, amount))
 
 
@@ -346,15 +346,15 @@ def _bcs_for_pays(client: SyncClient, builder: Union[Pay, PaySui, PayAllSui]) ->
     payload: BCSSingleTransaction = None
 
     if isinstance(builder, Pay):
-        recipients = [BCSAddress.from_sui_address(x) for x in builder.recipients.recipients]
+        recipients = [Address.from_sui_address(x) for x in builder.recipients.recipients]
         amounts = [x.value for x in builder.amounts.amounts]
         payload = BCSSingleTransaction("Pay", BCSPay(coins, recipients, amounts))
     elif isinstance(builder, PaySui):
-        recipients = [BCSAddress.from_sui_address(x) for x in builder.recipients.recipients]
+        recipients = [Address.from_sui_address(x) for x in builder.recipients.recipients]
         amounts = [x.value for x in builder.amounts.amounts]
         payload = BCSSingleTransaction("PaySui", BCSPaySui(coins, recipients, amounts))
     else:
-        recipient = BCSAddress.from_sui_address(builder.recipient)
+        recipient = Address.from_sui_address(builder.recipient)
         payload = BCSSingleTransaction("PayAllSui", BCSPayAllSui(coins, recipient))
     return payload
 
@@ -383,7 +383,7 @@ def _bcs_for_call(client: SyncClient, builder: MoveCall) -> BCSSingleTransaction
     :return: An instance of BCSSingleTransaction
     :rtype: BCSSingleTransaction
     """
-    package = BCSAddress.from_str(builder.package_object_id.value)
+    package = Address.from_str(builder.package_object_id.value)
     module = builder.module.value
     function = builder.function.value
     # Create list of Struct objects for any type_arguments
@@ -449,8 +449,48 @@ def bcs_base64_from_builder(client: SyncClient, builder: _MoveCallTransactionBui
     return base64.b64encode(bcs_from_builder(client, builder).serialize()).decode()
 
 
+def transaction_kind_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> TransactionKind:
+    """."""
+    bname = builder.__class__.__name__
+
+
+def _gas_data_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> GasData:
+    """."""
+    bname = builder.__class__.__name__
+    budget: int = builder.gas_budget.value
+    gas_price: int = client.current_gas_price
+    match bname:
+        case "TransferSui":
+            object_id = builder.sui_object_id
+        case "PaySui" | "PayAllSui":
+            object_id = builder.input_coins.input_coins[0]
+        case _:
+            object_id = builder.gas
+
+    get_gas = client.get_object(object_id)
+    if get_gas.is_ok():
+        gas_obj: ObjectRead = get_gas.result_data
+        obj_ref = ObjectReference.from_generic_ref(gas_obj)
+        return GasData([obj_ref], Address.from_str(gas_obj.owner.address_owner), gas_price, budget)
+    raise ValueError(f"Error attempting to get object {object_id}")
+
+
+def transaction_data_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> TransactionData:
+    """."""
+    # Build the gas object
+    return TransactionData(
+        "V1",
+        TransactionDataV1(
+            transaction_kind_from_builder(client, builder),
+            Address.from_sui_address(builder.authority),
+            _gas_data_from_builder(client, builder),
+            TransactionExpiration("None"),
+        ),
+    )
+
+
 def bcs_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
-    """tkind_from_result Return a BCS serialized TransactionKind as base64 encoded string.
+    """bcs_txkind_from_result Return a BCS serialized TransactionKind as base64 encoded string.
 
     Can be then used to submit to InspectTransaction
 
@@ -460,9 +500,8 @@ def bcs_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
     :rtype: str
     """
     if indata.is_ok():
-        no_sign_tx_bytes = indata.result_data.tx_bytes
-        raw_b64 = no_sign_tx_bytes.value
-        raw_bytes = base64.b64decode(raw_b64)
+        tx_result: PreExecutionResult = indata.result_data.pre_transaction_result
+        raw_bytes = base64.b64decode(tx_result.tx_bytes)
         raw_shredded = raw_bytes[:_GAS_AND_BUDGET_BYTE_OFFSET][_TKIND_INDEX:]
         return base64.b64encode(raw_shredded).decode()
     return indata

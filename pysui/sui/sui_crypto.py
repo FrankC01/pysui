@@ -186,21 +186,13 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
         def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
             """."""
             _s_max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-            # _s_max = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
-            # s_int = s_int % order
             if s_int > _s_max:
                 s_int = _s_max - s_int
-            # print(f"s = {s_int}")
-            # print(f"r = {r_int}")
-            # print(f"order = {order}")
             return ecdsa.util.sigencode_string(r_int, s_int, order)
 
-        # return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=_sigencode_string)
-        # return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=_sigencode_string)
         return self._signing_key.sign(
             data, hashfunc=hashlib.sha3_256, allow_truncate=False, sigencode=_sigencode_string
         )
-        # return self._signing_key.sign(data, hashfunc=hashlib.sha256, allow_truncate=False)
 
 
 class SuiKeyPairSECP256R1(SuiKeyPair):

@@ -16,7 +16,7 @@
 import asyncio
 import ssl
 import json
-from typing import Any, Callable, Tuple
+from typing import Any, Callable
 import warnings
 from websockets.client import connect as ws_connect
 from websockets.client import WebSocketClientProtocol
