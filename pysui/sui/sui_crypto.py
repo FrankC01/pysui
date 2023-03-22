@@ -17,7 +17,6 @@
 import base64
 import hashlib
 import binascii
-import subprocess
 from typing import Union
 
 import secp256k1
@@ -78,13 +77,10 @@ class SuiPrivateKey(PrivateKey):
         indata = bytearray([0, 0, 0])
         dec_tx = base64.b64decode(tx_data)
         indata.extend(dec_tx)
-        # print(f"public key {public_key}")
-        # print(f"tx with intent prepended = {base64.b64encode(indata).decode()}")
         compound = bytearray([self.scheme])
         sig_bytes = self.sign(bytes(indata), recovery_id)
         compound.extend(sig_bytes)
         compound.extend(public_key.key_bytes)
-        # print(f"'scheme | sign | pubkey = {base64.b64encode(compound).decode()}")
         return bytes(compound)
 
 
@@ -147,7 +143,6 @@ class SuiPublicKeySECP256R1(SuiPublicKey):
         if len(indata) != SECP256R1_PUBLICKEY_BYTES_LEN:
             raise SuiInvalidKeyPair(f"Public Key expects {SECP256R1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}")
         super().__init__(SignatureScheme.SECP256R1, indata)
-        # self._verify_key = ecdsa.VerifyingKey.from_string(indata, curve=ecdsa.NIST256p, hashfunc=hashlib.sha3_256)
         self._verify_key = ecdsa.VerifyingKey.from_string(indata, curve=ecdsa.NIST256p, hashfunc=hashlib.sha256)
 
 
@@ -160,42 +155,19 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
         if dlen != SECP256R1_PRIVATEKEY_BYTES_LEN:
             raise SuiInvalidKeyPair(f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
         super().__init__(SignatureScheme.SECP256R1, indata)
-        self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha3_256)
-        # self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha3_256)
+        self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha256)
 
     def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
-        """."""
-        addy_bytes = self.scheme.to_bytes(1, "little") + self._signing_key.get_verifying_key().to_string(
-            encoding="compressed"
-        )
-        # addy_bytes.append(self._signing_key.get_verifying_key().to_string(encoding="compressed"))
-        address_str = SuiAddress.from_bytes(addy_bytes).address
-        tx_bytes = base64.b64encode(data[3:]).decode()
-        _sui_sign: list[str] = ["sui", "keytool", "sign", "--address", f"{address_str}", "--data", f"{tx_bytes}"]
-        exec_res = subprocess.run(_sui_sign, capture_output=True, text=True)
-        if exec_res.stderr:
-            raise ValueError(f"Error signing secp256r1 {exec_res.stderr}")
-        return base64.b64decode(exec_res.stdout.split()[-1])[1:-33]
-
-    def sign_old(self, data: bytes, recovery_id: int = 0) -> bytes:
-        """SECP256R1 sign data bytes.
-
-        OLD: Do not use. Broken
-        """
+        """SECP256R1 signing bytes."""
 
         def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
-            """."""
+            """s adjustment to go small"""
             _s_max = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
-            # _s_max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-
             if s_int > _s_max / 2:
                 s_int = _s_max - s_int
-
             return ecdsa.util.sigencode_string(r_int, s_int, order)
 
-        return self._signing_key.sign(
-            data, hashfunc=hashlib.sha3_256, allow_truncate=False, sigencode=_sigencode_string
-        )
+        return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=_sigencode_string)
 
 
 class SuiKeyPairSECP256R1(SuiKeyPair):
