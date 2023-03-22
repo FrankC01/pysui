@@ -65,6 +65,17 @@ class Digest(canoser.Struct):
         return cls(b58str_to_list(indata))
 
 
+class BuilderArg(canoser.RustEnum):
+    """BuilderArg objects are generated in the TransactionBuilder."""
+
+    _enums = [("Object", Address), ("Pure", [canoser.Uint8]), ("ForcedNonUniquePure", None)]
+
+    def __hash__(self) -> int:
+        """Override hash to use builder arg as key in dict."""
+        hself = hash(str(self))
+        return hself
+
+
 class ObjectReference(canoser.Struct):
     """ObjectReference represents an object by it's objects reference fields."""
 
@@ -135,13 +146,21 @@ class Uint256(canoser.int_type.IntType):
         return value.to_bytes(32, byteorder="little", signed=False)
 
 
+U8 = canoser.Uint8
+U16 = canoser.Uint16
+U32 = canoser.Uint32
+U64 = canoser.Uint64
+U128 = canoser.Uint128
+U256 = Uint256
+
+
 class TypeTag(canoser.RustEnum):
     """TypeTag enum for move call type_arguments."""
 
     _enums = [
         ("Bool", bool),
-        ("U8", canoser.Uint8),
-        ("U64", canoser.Uint64),
+        ("U8", U8),
+        ("U64", U64),
         ("U128", canoser.Uint128),
         ("Address", Address),
         ("Signer", None),

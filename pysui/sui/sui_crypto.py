@@ -160,7 +160,7 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
         if dlen != SECP256R1_PRIVATEKEY_BYTES_LEN:
             raise SuiInvalidKeyPair(f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
         super().__init__(SignatureScheme.SECP256R1, indata)
-        self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha256)
+        self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha3_256)
         # self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha3_256)
 
     def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
@@ -177,7 +177,7 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
             raise ValueError(f"Error signing secp256r1 {exec_res.stderr}")
         return base64.b64decode(exec_res.stdout.split()[-1])[1:-33]
 
-    def _sign(self, data: bytes, recovery_id: int = 0) -> bytes:
+    def sign_old(self, data: bytes, recovery_id: int = 0) -> bytes:
         """SECP256R1 sign data bytes.
 
         OLD: Do not use. Broken
@@ -185,9 +185,12 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
 
         def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
             """."""
-            _s_max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-            if s_int > _s_max:
+            _s_max = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+            # _s_max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
+            if s_int > _s_max / 2:
                 s_int = _s_max - s_int
+
             return ecdsa.util.sigencode_string(r_int, s_int, order)
 
         return self._signing_key.sign(
