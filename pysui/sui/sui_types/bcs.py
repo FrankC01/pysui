@@ -399,7 +399,8 @@ class MergeCoins(canoser.Struct):
 class Publish(canoser.Struct):
     """Publish represents a sui_publish structure."""
 
-    _fields = [("Modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8)))]
+    # _fields = [("Modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8)))]
+    _fields = [("Modules", [[canoser.Uint8]])]  # canoser.ArrayT(canoser.ArrayT(canoser.Uint8)))]
 
 
 class MakeMoveVec(canoser.Struct):

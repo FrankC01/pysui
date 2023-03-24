@@ -53,6 +53,11 @@ _IGNORE_DEPENDENCY: set[str] = {"Sui", "MoveStdlib"}
 _UNPUBLISHED: str = "0000000000000000000000000000000000000000"
 
 
+def _module_bytes(module: Path) -> Union[bytes, OSError]:
+    """."""
+    return module.read_bytes()
+
+
 def _module_to_b64(module: Path) -> Union[SuiString, OSError]:
     """_module_to_b64 Convert binary modules to base64.
 
@@ -61,16 +66,45 @@ def _module_to_b64(module: Path) -> Union[SuiString, OSError]:
     :return: A base64 encoded string of tile content or OSError
     :rtype: Union[SuiString, OSError]
     """
-    return SuiString(base64.b64encode(module.read_bytes()).decode())
+    return SuiString(base64.b64encode(_module_bytes(module)).decode())
 
 
-def _modules_to_b64(module_path: Path) -> Union[list[SuiString], SuiMiisingModuleByteCode, OSError]:
+def _modules_bytes(module_path: Path) -> Union[list[bytes], SuiMiisingModuleByteCode, OSError]:
     """."""
     mod_list = list(module_path.glob("*.mv"))
     if not mod_list:
         raise SuiMiisingModuleByteCode(f"{module_path} is empty")
     # Open and get the SuiString base64 representation of same
-    result_list = [SuiString(base64.b64encode(x.read_bytes()).decode()) for x in mod_list]
+    result_list = [_module_bytes(x) for x in mod_list]
+    return result_list
+
+
+def _modules_to_b64(module_path: Path) -> Union[list[SuiString], SuiMiisingModuleByteCode, OSError]:
+    """."""
+    byte_list = _modules_bytes(module_path)
+    result_list = [SuiString(base64.b64encode(x).decode()) for x in byte_list]
+    # mod_list = list(module_path.glob("*.mv"))
+    # if not mod_list:
+    #     raise SuiMiisingModuleByteCode(f"{module_path} is empty")
+    # # Open and get the SuiString base64 representation of same
+    # result_list = [SuiString(base64.b64encode(x.read_bytes()).decode()) for x in mod_list]
+    return result_list
+
+
+def _dependencies_bytes(byte_module_path: Path) -> Union[list[bytes], OSError]:
+    """."""
+    dep_dir = byte_module_path.joinpath("dependencies")
+    result_list: list[bytes] = []
+    if dep_dir.exists():
+        # Get unique folders
+        dep_folders = [sdir for sdir in dep_dir.iterdir() if sdir.name not in _IGNORE_DEPENDENCY]
+        for deps in dep_folders:
+            mod_list = list(deps.glob("*.mv"))
+            for mod_entry in mod_list:
+                raw_data = deser.from_file(mod_entry, deser.Deserialize.MODULE_HANDLES)
+                mod_handle = raw_data.module_handles[raw_data.module_self]
+                if raw_data.addresses[mod_handle.address_index].address == _UNPUBLISHED:
+                    result_list.append(_module_bytes(mod_entry))
     return result_list
 
 
@@ -82,21 +116,50 @@ def _dependencies_to_b64(byte_module_path: Path) -> Union[list[SuiString], OSErr
     :return: List of base64 modules strings for those dependencies found to be unpublished
     :rtype: Union[list[SuiString], OSError]
     """
-    dep_dir = byte_module_path.joinpath("dependencies")
-    # Get dependencies content
-    # dep_dir = bmods[0].joinpath("bytecode_modules/dependencies")
     result_list: list[SuiString] = []
-    if dep_dir.exists():
-        # Get unique folders
-        dep_folders = [sdir for sdir in dep_dir.iterdir() if sdir.name not in _IGNORE_DEPENDENCY]
-        for deps in dep_folders:
-            mod_list = list(deps.glob("*.mv"))
-            for mod_entry in mod_list:
-                raw_data = deser.from_file(mod_entry, deser.Deserialize.MODULE_HANDLES)
-                mod_handle = raw_data.module_handles[raw_data.module_self]
-                if raw_data.addresses[mod_handle.address_index].address == _UNPUBLISHED:
-                    result_list.append(_module_to_b64(mod_entry))
+    bytes_list = _dependencies_bytes(byte_module_path)
+    if bytes_list:
+        result_list.append(SuiString(base64.b64encode(x).decode()) for x in bytes_list)
+    # dep_dir = byte_module_path.joinpath("dependencies")
+    # # Get dependencies content
+    # # dep_dir = bmods[0].joinpath("bytecode_modules/dependencies")
+    # result_list: list[SuiString] = []
+    # if dep_dir.exists():
+    #     # Get unique folders
+    #     dep_folders = [sdir for sdir in dep_dir.iterdir() if sdir.name not in _IGNORE_DEPENDENCY]
+    #     for deps in dep_folders:
+    #         mod_list = list(deps.glob("*.mv"))
+    #         for mod_entry in mod_list:
+    #             raw_data = deser.from_file(mod_entry, deser.Deserialize.MODULE_HANDLES)
+    #             mod_handle = raw_data.module_handles[raw_data.module_self]
+    #             if raw_data.addresses[mod_handle.address_index].address == _UNPUBLISHED:
+    #                 result_list.append(_module_to_b64(mod_entry))
 
+    return result_list
+
+
+def _package_modules_to_bytes(
+    project: Path, include_unpublished: bool, skip_git_dependencie: bool
+) -> Union[list[bytes], OSError, SuiException]:
+    """."""
+    # Find the build folder
+    build_path = project.joinpath("build")
+    if not build_path.exists():
+        raise SuiMiisingBuildFolder(f"No build folder found in {project}")
+    # Get the project folder
+    build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
+    if len(build_subdir) > 1:
+        raise SuiMiisingBuildFolder(f"No build folder found in {project}")
+    # Finally, get the module(s) bytecode folder
+    byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
+    if not byte_modules.exists():
+        raise SuiMiisingBuildFolder(f"No bytecode_modules folder found for {project}/build")
+    # Get all immediate compiled modules
+    result_list = _modules_bytes(byte_modules)
+    # If wanting to include unpublished dependencies
+    if include_unpublished:
+        # Get the dependencies folder
+        result_list.extend(_dependencies_bytes(byte_modules))
     return result_list
 
 
@@ -117,25 +180,28 @@ def _package_modules_to_b64(
     :return: List of base64 encoded SuiStrings for each module found
     :rtype: Union[list[SuiString], Union[OSError, SuiException]]
     """
+    result_list: list[SuiString] = []
+    bytes_list: list[bytes] = _package_modules_to_bytes(project, include_unpublished, skip_git_dependencie)
+    return [SuiString(base64.b64encode(x).decode()) for x in bytes_list]
     # Find the build folder
-    build_path = project.joinpath("build")
-    if not build_path.exists():
-        raise SuiMiisingBuildFolder(f"No build folder found in {project}")
-    # Get the project folder
-    build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
-    if len(build_subdir) > 1:
-        raise SuiMiisingBuildFolder(f"No build folder found in {project}")
-    # Finally, get the module(s) bytecode folder
-    byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
-    if not byte_modules.exists():
-        raise SuiMiisingBuildFolder(f"No bytecode_modules folder found for {project}/build")
-    # Get all immediate compiled modules
-    result_list = _modules_to_b64(byte_modules)
-    # If wanting to include unpublished dependencies
-    if include_unpublished:
-        # Get the dependencies folder
-        result_list.extend(_dependencies_to_b64(byte_modules))
-    return result_list
+    # build_path = project.joinpath("build")
+    # if not build_path.exists():
+    #     raise SuiMiisingBuildFolder(f"No build folder found in {project}")
+    # # Get the project folder
+    # build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
+    # if len(build_subdir) > 1:
+    #     raise SuiMiisingBuildFolder(f"No build folder found in {project}")
+    # # Finally, get the module(s) bytecode folder
+    # byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
+    # if not byte_modules.exists():
+    #     raise SuiMiisingBuildFolder(f"No bytecode_modules folder found for {project}/build")
+    # # Get all immediate compiled modules
+    # result_list = _modules_to_b64(byte_modules)
+    # # If wanting to include unpublished dependencies
+    # if include_unpublished:
+    #     # Get the dependencies folder
+    #     result_list.extend(_dependencies_to_b64(byte_modules))
+    # return result_list
 
 
 def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Union[Path, SuiException]:
@@ -164,6 +230,19 @@ def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Unio
     raise SuiPackageBuildFail(result.stdout)
 
 
+def build_modules(
+    path_to_package: Path, include_unpublished: bool = False, skip_git_dependencie: bool = False
+) -> Union[list[list[int]], Union[OSError, SuiException]]:
+    """."""
+    if path_to_package.exists():
+        bytes_list = _package_modules_to_bytes(
+            _compile_project(path_to_package, skip_git_dependencie), include_unpublished, skip_git_dependencie
+        )
+        return [list(x) for x in bytes_list]
+    raise SuiMiisingBuildFolder(f"Move project path not found: {path_to_package}")
+
+
+# Support legacy build for publish while API supports
 def build_b64_modules(
     path_to_package: Path, include_unpublished: bool = False, skip_git_dependencie: bool = False
 ) -> Union[list[SuiString], Union[OSError, SuiException]]:
@@ -565,4 +644,11 @@ COERCION_FN_MAP = {
 }
 
 if __name__ == "__main__":
-    pass
+    track_package = "~/frankc01/sui-track"
+    _old_temp = build_b64_modules(Path(os.path.expanduser(track_package)))
+    for x in _old_temp:
+        print(x.value)
+    _new_temp = build_modules(Path(os.path.expanduser(track_package)))
+    for x in _new_temp:
+        print(base64.b64encode(bytearray(x)).decode())
+    print()

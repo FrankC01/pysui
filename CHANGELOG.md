@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
-Breaking Changes - Significant changes with Sui 0.28.0
+Breaking Changes - Significant changes with Sui 0.28.0/0.28.1
 
 ### Added
 
@@ -24,9 +24,11 @@ Breaking Changes - Significant changes with Sui 0.28.0
 
 - [bug](https://github.com/FrankC01/pysui/issues/76)
 - [bug](https://github.com/FrankC01/pysui/issues/78)
+- [bug](https://github.com/FrankC01/pysui/issues/67)
 
 ### Changed
 
+- Subscribing to events now only gets events emitted by a module as per Sui 0.28.0
 - Renamed GetDelegatedStakes builder to GetStakes aligning with `sui_getStakes` as per Sui 0.28.1
 - Renamed RequestAddDelegation builder to RequestAddStake aligning with `sui_requestAddStake` as per Sui 0.28.0
 - Renamed RequestWithdrawDelegation builder to RequestWithdrawStake, aligning with `sui_requestWithdrawStake` as per Sui 0.28.0

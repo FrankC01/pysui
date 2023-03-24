@@ -42,9 +42,9 @@ class TransactionEventQuery(_EventFilterType, SuiMap):
 class PackageEventQuery(_EventFilterType, SuiMap):
     """Query events for Transaction."""
 
-    def __init__(self, txid: str):
+    def __init__(self, package_id: str):
         """Initialize query parameter."""
-        super().__init__("Package", txid)
+        super().__init__("Package", package_id)
 
 
 class MoveModuleEventQuery(_EventFilterType, SuiMap):

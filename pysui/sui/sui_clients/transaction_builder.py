@@ -12,7 +12,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-many-instance-attributes
 
-"""Sui Builders: Transactions, TransactionData and TransactionKind."""
+"""Sui low level Transaction Builder supports generation of TransactionKind."""
 
 
 import binascii
@@ -32,40 +32,40 @@ class PureInput:
     @singledispatchmethod
     @classmethod
     def pure(cls, arg):
-        """."""
+        """Template dispatch method."""
         return f"I'm converting {arg} pure."
 
     @pure.register
     @classmethod
     def _(cls, arg: int) -> list:
-        """."""
+        """Convert int to minimal list of bytes."""
         ccount = ceil(arg.bit_length() / 8.0)
         return list(int.to_bytes(arg, ccount, "little"))
 
     @pure.register
     @classmethod
     def _(cls, arg: str) -> list:
-        """."""
+        """Convert str to list of bytes."""
         base_list = list(bytearray(arg, encoding="utf-8"))
         return base_list
 
     @pure.register
     @classmethod
     def _(cls, arg: bytes) -> list:
-        """."""
+        """Bytes to list."""
         base_list = list(arg)
         return base_list
 
     @pure.register
     @classmethod
     def _(cls, arg: ObjectID) -> list:
-        """."""
+        """Convert ObjectID to list of bytes."""
         return cls.pure(binascii.unhexlify(arg.value[2:]))
 
     @pure.register
     @classmethod
     def _(cls, arg: SuiAddress) -> list:
-        """."""
+        """Convert SuiAddress to list of bytes."""
         return PureInput.pure(binascii.unhexlify(arg.address[2:]))
 
     @pure.register
@@ -76,7 +76,7 @@ class PureInput:
 
     @classmethod
     def as_input(cls, args) -> bcs.BuilderArg:
-        """."""
+        """Convert scalars and ObjectIDs to a Pure BuilderArg."""
         return bcs.BuilderArg("Pure", cls.pure(args))
 
 
@@ -131,6 +131,27 @@ class ProgrammableTransactionBuilder:
         self.commands.append(command_obj)
         return bcs.Argument("Result", out_index)
 
+    def split_coin(self, *, amount: int, from_coin: Union[bcs.Argument, ObjectRead] = None) -> bcs.Argument:
+        """."""
+        # coin_arg: bcs.Argument = None
+        if from_coin:
+            if isinstance(from_coin, ObjectRead):
+                coin_arg = self.input_obj(
+                    bcs.BuilderArg("Object", bcs.Address.from_str(from_coin.object_id)),
+                    bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(from_coin)),
+                )
+            elif isinstance(from_coin, bcs.Argument):
+                if from_coin.enum_name == "GasCoin":
+                    coin_arg = from_coin
+        else:
+            coin_arg = bcs.Argument("GasCoin")
+        return self.command(
+            bcs.Command(
+                "SplitCoin",
+                bcs.SplitCoin(coin_arg, self.input_pure(PureInput.as_input(bcs.U64.encode(amount)))),
+            )
+        )
+
     def transfer_object(self, *, recipient: Union[str, ObjectID, SuiAddress], object_ref: ObjectRead) -> bcs.Argument:
         """."""
         if isinstance(recipient, str):
@@ -149,12 +170,7 @@ class ProgrammableTransactionBuilder:
         reciever_arg = self.input_pure(PureInput.as_input(recipient))
         coin_arg = None
         if amount:
-            coin_arg = self.command(
-                bcs.Command(
-                    "SplitCoin",
-                    bcs.SplitCoin(bcs.Argument("GasCoin"), self.input_pure(PureInput.as_input(bcs.U64.encode(amount)))),
-                )
-            )
+            coin_arg = self.split_coin(amount=amount)
         else:
             coin_arg = bcs.Argument("GasCoin")
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([coin_arg], reciever_arg)))
@@ -177,6 +193,14 @@ class ProgrammableTransactionBuilder:
     ) -> bcs.Argument:
         """."""
         raise NotImplementedError("pay")
+
+    def publish_upgradable(self, *, modules: list[list[int]]) -> bcs.Argument:
+        """."""
+        return self.command(bcs.Command("Publish", bcs.Publish(modules)))
+
+    def publish_immutable(self, *, modules: list[list[int]]) -> bcs.Argument:
+        """."""
+        cap = self.command(bcs.Command("Publish", bcs.Publish(modules)))
 
 
 if __name__ == "__main__":

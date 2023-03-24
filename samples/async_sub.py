@@ -50,24 +50,13 @@ def test_event_handler(indata: SubscribedEvent, subscription_id: int, event_coun
 async def main_run(sub_manager: subscriber):
     """Main async loop to run subscriptions."""
     print()
-    # This will get all move events
+    # With Sui 0.28.0, the only events sent to listeners are those that are 'emitted' by
+    # a module during some operations. The filters apply primarily to that context
+    # This will get all move events emitted by modules
     subscribe_event_for = SubscribeEvent()
-    # This will get all publish and coin balance changes for sender
-    # demonstrates using conjunctions with filters
-    # subscribe_event_for = SubscribeEvent(
-    #   event_filter=AndFilter(
-    #     lhs_filter=SenderFilter(sub_manager.config.active_address),
-    #     rhs_filter=AnyFilter(filters=[EventTypeFilter("Publish"), EventTypeFilter("CoinBalanceChange")]),
-    # ),
+    # Start listening
     print("Start event type listener")
     thing = await sub_manager.new_event_subscription(subscribe_event_for, test_event_handler, "test_event_handler")
-    # if thing.is_ok():
-    #     print("Start txn type listener")
-    #     # Txn subscriptions do not have filters?
-    #     thing = await sub_manager.new_txn_subscription(SubscribeTransaction(), test_tx_handler, "test_tx_handler")
-    # else:
-    #     print(thing.result_string)
-    #     return
     if thing.is_ok():
         print("Sleeping for 10 seconds")
         await asyncio.sleep(10.00)
