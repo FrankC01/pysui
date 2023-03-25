@@ -268,7 +268,7 @@ def build_b64_modules(
 # Conversion utilities
 
 
-def hexstring_to_list(indata: str, default_length: int = 40) -> list[int]:
+def hexstring_to_list(indata: str, default_length: int = 64) -> list[int]:
     """hexstring_to_list convert a hexstr (e.g. 0x...) into a list of ints.
 
     :param indata: Data to conver to list of ints
@@ -644,11 +644,4 @@ COERCION_FN_MAP = {
 }
 
 if __name__ == "__main__":
-    track_package = "~/frankc01/sui-track"
-    _old_temp = build_b64_modules(Path(os.path.expanduser(track_package)))
-    for x in _old_temp:
-        print(x.value)
-    _new_temp = build_modules(Path(os.path.expanduser(track_package)))
-    for x in _new_temp:
-        print(base64.b64encode(bytearray(x)).decode())
-    print()
+    pass

@@ -25,6 +25,10 @@ from pysui.sui.sui_txresults.single_tx import ObjectRead
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.scalars import ObjectID
 
+_SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
+_SUI_PACKAGE_MODULE: str = "package"
+_SUI_PACKAGE_MAKE_IMMUTABLE: str = "make_immutable"
+
 
 class PureInput:
     """."""
@@ -194,13 +198,19 @@ class ProgrammableTransactionBuilder:
         """."""
         raise NotImplementedError("pay")
 
-    def publish_upgradable(self, *, modules: list[list[int]]) -> bcs.Argument:
+    def publish(self, *, modules: list[list[int]]) -> bcs.Argument:
         """."""
         return self.command(bcs.Command("Publish", bcs.Publish(modules)))
 
     def publish_immutable(self, *, modules: list[list[int]]) -> bcs.Argument:
         """."""
-        cap = self.command(bcs.Command("Publish", bcs.Publish(modules)))
+        cap = self.publish(modules=modules)
+        return self.command(
+            bcs.Command(
+                "MoveCall",
+                bcs.ProgrammableMoveCall(_SUI_PACKAGE_ID, _SUI_PACKAGE_MODULE, _SUI_PACKAGE_MAKE_IMMUTABLE, [], [cap]),
+            )
+        )
 
 
 if __name__ == "__main__":
