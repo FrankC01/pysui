@@ -72,8 +72,9 @@ class BuilderArg(canoser.RustEnum):
 
     def __hash__(self) -> int:
         """Override hash to use builder arg as key in dict."""
-        hself = hash(str(self))
-        return hself
+        # hself = hash(str(self))
+        # return hself
+        return id(self)
 
 
 class ObjectReference(canoser.Struct):
@@ -223,116 +224,6 @@ class CallArg(canoser.RustEnum):
     _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
 
 
-class BCSMoveCall(canoser.Struct):
-    """BCSMoveCall represents a sui_moveCall structure in BCS."""
-
-    _fields = [
-        ("package", Address),
-        ("module", str),
-        ("function", str),
-        ("type_arguments", [TypeTag]),
-        ("arguments", [CallArg]),
-    ]
-
-
-class BCSPay(canoser.Struct):
-    """BCSPay represents a sui_pay structure in BCS."""
-
-    _fields = [
-        ("coins", [ObjectReference]),
-        ("recipients", [Address]),
-        ("amounts", [canoser.Uint64]),
-    ]
-
-
-class BCSPaySui(canoser.Struct):
-    """BCSPaySui represents a sui_paySui structure.
-
-    **Not Supported in sui_devInspectTransaction yet.**
-    """
-
-    _fields = [
-        ("coins", [ObjectReference]),
-        ("recipients", [Address]),
-        ("amounts", [canoser.Uint64]),
-    ]
-
-
-class BCSPayAllSui(canoser.Struct):
-    """BCSPayAllSui represents a sui_payAllSui structure.
-
-    **Not Supported in sui_devInspectTransaction yet.**
-    """
-
-    _fields = [
-        ("coins", [ObjectReference]),
-        ("recipient", Address),
-    ]
-
-
-class BCSTransferObject(canoser.Struct):
-    """BCSTransferObject represents a sui_transferObjecrt structure in BCS."""
-
-    _fields = [
-        ("recipient", Address),
-        ("object_ref", ObjectReference),
-    ]
-
-
-class BCSTransferSui(canoser.Struct):
-    """BCSTransferSui represents a sui_transferSui structure in BCS."""
-
-    _fields = [
-        ("recipient", Address),
-        ("amount", OptionalU64),
-    ]
-
-
-class BCSPublish(canoser.Struct):
-    """BCSPublish represents a sui_publish structure.
-
-    **Not Supported in sui_devInspectTransaction yet.**
-    """
-
-    _fields = [("modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8)))]
-
-
-class BCSSingleTransaction(canoser.RustEnum):
-    """BCSSingleTransaction is enumeration of the different single (not batch) transactions."""
-
-    _enums = [
-        ("TransferObject", BCSTransferObject),  # Works
-        ("Publish", BCSPublish),  # Not Works
-        ("Call", BCSMoveCall),  # Works
-        ("TransferSui", BCSTransferSui),  # Works
-        ("Pay", BCSPay),  # Works
-        ("PaySui", BCSPaySui),  # Not work
-        ("PayAllSui", BCSPayAllSui),  # Not work
-        ("ChangeEpoch", None),  # Not implemented
-        ("Genesis", None),  # Not implemented
-    ]
-
-    @classmethod
-    def variant_for_index(cls, index: int) -> Union[tuple[str, canoser.RustEnum], IndexError]:
-        """variant_for_index returns the enum name and reference tuple from specific index.
-
-        :param index: The index into list of enum values
-        :type index: int
-        :raises IndexError: When index provided is not valid
-        :return: The name,value tuple of the enum index
-        :rtype: Union[tuple[str, canoser.RustEnum], ValueError]
-        """
-        if index > len(cls._enums):
-            raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
-        return cls._enums[index]
-
-
-class BCSBatchTransaction(canoser.Struct):
-    """BCSBatchTransaction represents a sui_batchTransaction structure."""
-
-    _fields = [("Singles", [BCSSingleTransaction])]
-
-
 class GasData(canoser.Struct):
     """."""
 
@@ -399,8 +290,7 @@ class MergeCoins(canoser.Struct):
 class Publish(canoser.Struct):
     """Publish represents a sui_publish structure."""
 
-    # _fields = [("Modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8)))]
-    _fields = [("Modules", [[canoser.Uint8]])]  # canoser.ArrayT(canoser.ArrayT(canoser.Uint8)))]
+    _fields = [("Modules", [[canoser.Uint8]])]
 
 
 class MakeMoveVec(canoser.Struct):
