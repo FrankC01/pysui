@@ -28,13 +28,8 @@ Breaking Changes - Significant changes with Sui 0.28.0/0.28.1
 
 ### Changed
 
-- Subscribing to events now only gets events emitted by a module as per Sui 0.28.0
-- Renamed GetDelegatedStakes builder to GetStakes aligning with `sui_getStakes` as per Sui 0.28.1
-- Renamed RequestAddDelegation builder to RequestAddStake aligning with `sui_requestAddStake` as per Sui 0.28.0
-- Renamed RequestWithdrawDelegation builder to RequestWithdrawStake, aligning with `sui_requestWithdrawStake` as per Sui 0.28.0
-- All transaction RPC API calls (Batch,Publish,MoveCall,PayXX,SplitXX,MergeXX,StakeXX) now invoke `unsafe_<NAME>` as per Sui 0.28.0 in light of the new ProgrammableTransaction.
-- **Breaking Change** event filters for QueryEvents and SubscribeEvents moved to `sui_types/event_filter.py`. Note that per Sui 0.28.0 the filters have changed.
 - **Breaking Change** Addresses are now generated from keys using `blake2b` instead of `sha3_256`
+- **Breaking Change** event filters for QueryEvents and SubscribeEvents moved to `sui_types/event_filter.py`. Note that per Sui 0.28.0 the filters have changed.
 - **Breaking Change** TxEffectResult renamed to TxResponse and restructured as per Sui 0.28.0
 - **Breaking Change** Sui has moved from 20 byte address to 32 byte addresses. This changes all SuiAddress and ObjectID constructs.
 - **Breaking Change** ValidatorMetaData changes as per Sui 0.28.0
@@ -47,6 +42,11 @@ Breaking Changes - Significant changes with Sui 0.28.0/0.28.1
 - **Breaking Change** Result types (TxResult, TxInspectionResult and DryRunTxResult) changes as per Sui 0.28.0
 - **Breaking Change** Pay and PaySui now takes a list of SuiStrings for amounts as per Sui 0.28.0
 - **Breaking Change** GetEvents now take a transaction digest as parameter as per Sui 0.28.0. See Added above for QueryEvent for old behavior.
+- Subscribing to events now only gets events emitted by a module as per Sui 0.28.0
+- Renamed GetDelegatedStakes builder to GetStakes aligning with `sui_getStakes` as per Sui 0.28.1
+- Renamed RequestAddDelegation builder to RequestAddStake aligning with `sui_requestAddStake` as per Sui 0.28.0
+- Renamed RequestWithdrawDelegation builder to RequestWithdrawStake, aligning with `sui_requestWithdrawStake` as per Sui 0.28.0
+- All transaction RPC API calls (Batch,Publish,MoveCall,PayXX,SplitXX,MergeXX,StakeXX) now invoke `unsafe_<NAME>` as per Sui 0.28.0 in light of the new ProgrammableTransaction.
 - async_client and sync_client now take optional `additional_signers` towards support Sui multi-sign
 - async_client and sync_client "execute_no_sign" now returns a PreExecutionResult data object in SuiRpcResult
 - GetObject now takes flag options on what to include or not in result

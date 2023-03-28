@@ -576,6 +576,7 @@ def _msta(msig: MultiSigPublicKey) -> str:
         # glg.update(p_key.key_bytes)
         glg.update(p_key.scheme_and_key())
         glg.update(p_w.to_bytes(1, "little"))
+    # hash_bytes = hashlib.blake2b(digest, digest_size=32).hexdigest()
     hash_bytes = glg.digest()[:20]
     print(f"hash leng {len(hash_bytes)}")
     return binascii.hexlify(hash_bytes)
@@ -587,6 +588,13 @@ def _msta(msig: MultiSigPublicKey) -> str:
 # pylint:disable=line-too-long,invalid-name
 if __name__ == "__main__":
 
+    # sui-base
+    # localnet set-sui-repo --path ~/my_repos/sui
+    # localnet start
+    # MULTI_SIG
+    # 1 Define the multi-sig constituents by <public keys>, <weights> and overall threshold
+    #   This produces an SuiAddress which can have things done to it (i.e. transfer Sui to)
+    #
     # A muti-sig address  bye combinning multiple keypair info and generating an address
     # hash
     # This address can then be used to send things to (like Sui coinage)

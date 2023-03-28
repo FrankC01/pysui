@@ -85,7 +85,8 @@ class ObjectNotExist(DataClassJsonMixin):
     """From sui_getObject."""
 
     object_id: str
-    object_state: str = "Object does not exist."
+    asked_version: Optional[int]
+    code: Optional[str]
 
     @property
     def identifier(self) -> ObjectID:
@@ -98,8 +99,8 @@ class ObjectVersionNotFound(DataClassJsonMixin):
     """From sui_getObject."""
 
     object_id: str
-    version_requested: int
-    object_state: str = "Object version not found."
+    asked_version: int
+    latest_version: int
 
     @property
     def identifier(self) -> ObjectID:
@@ -114,7 +115,7 @@ class ObjectVersionTooHigh(DataClassJsonMixin):
     asked_version: int
     latest_version: int
     object_id: str
-    object_state: str = "Object version requested too high."
+    code: str = "Object version requested too high."
 
     @property
     def identifier(self) -> ObjectID:
@@ -126,13 +127,15 @@ class ObjectVersionTooHigh(DataClassJsonMixin):
 class ObjectDeleted(DataClassJsonMixin):
     """From sui_getObject."""
 
-    reference: GenericRef
-    object_state: str = "Object has been deleted."
+    code: str
+    object_id: str
+    digest: str
+    version: int
 
     @property
     def identifier(self) -> ObjectID:
         """Alias object_id."""
-        return self.reference.object_id
+        return self.object_id
 
 
 @dataclass
@@ -285,20 +288,41 @@ class ObjectRead(DataClassJsonMixin):
         :return: If it exists, ObjectRead subclass, if not ObjectNotExist or ObjectDeleted if it has been
         :rtype: Union[ObjectRead, ObjectNotExist, ObjectDeleted]
         """
-        read_object = indata["details"]
-        match indata["status"]:
-            case "Exists" | "VersionFound":
-                result = ObjectRead.from_dict(read_object)
-            case "ObjectNotExists" | "NotExists":
-                result: ObjectRead = ObjectNotExist.from_dict({"object_id": read_object})
-            case "VersionNotFound":
-                result: ObjectRead = ObjectVersionNotFound.from_dict(
-                    {"object_id": read_object[0], "version_requested": read_object[1]}
-                )
-            case "Deleted":
-                result: ObjectRead = ObjectDeleted.from_dict({"reference": read_object})
-            case "VersionTooHigh":
-                result: ObjectRead = ObjectVersionTooHigh.from_dict(read_object)
+        if "status" in indata:
+            instatus = indata["status"]
+            indata = indata["details"]
+            match instatus:
+                case "VersionFound":
+                    result = ObjectRead.from_dict(indata)
+                case "VersionNotFound":
+                    vth = {"code": "notExist", "asked_version": indata[1], "object_id": indata[0]}
+                    result = ObjectNotExist.from_dict(vth)
+                case "VersionTooHigh":
+                    indata["code"] = instatus
+                    result = ObjectVersionTooHigh.from_dict(indata)
+                case "ObjectNotExists":
+                    vth = {"code": "notExist", "object_id": indata}
+                    result = ObjectNotExist.from_dict(vth)
+                case "ObjectDeleted":
+                    vth = {
+                        "code": instatus,
+                        "digest": indata["digest"],
+                        "object_id": indata["objectId", "version" : indata["version"]],
+                    }
+                    ObjectDeleted.from_dict(vth)
+                case _:
+                    result = None
+        elif "data" in indata:
+            result = ObjectRead.from_dict(indata["data"])
+        else:
+            indata = indata["error"]
+            match indata["code"]:
+                case "notExists":
+                    result = ObjectNotExist.from_dict(indata)
+                case "deleted":
+                    result = ObjectDeleted.from_dict(indata)
+                case _:
+                    return indata["error"]
         return result
 
     @classmethod
@@ -625,26 +649,38 @@ class SuiLatestSystemState(DataClassJsonMixin):
     epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     epoch_duration_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     epoch_start_timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    governance_start_epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     inactive_pools_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     inactive_pools_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    max_validator_count: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    min_validator_joining_stake: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     pending_active_validators_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     pending_active_validators_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     pending_removals: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     protocol_version: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     reference_gas_price: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     safe_mode: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+    safe_mode_computation_rewards: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    safe_mode_non_refundable_storage_fee: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    safe_mode_storage_rebates: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    safe_mode_storage_rewards: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     stake_subsidy_balance: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    stake_subsidy_current_epoch_amount: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    stake_subsidy_epoch_counter: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_subsidy_current_distribution_amount: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_subsidy_decrease_rate: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_subsidy_distribution_counter: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_subsidy_period_length: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    stake_subsidy_start_epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     staking_pool_mappings_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     staking_pool_mappings_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    storage_fund: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    storage_fund_non_refundable_balance: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    storage_fund_total_object_storage_rebates: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     system_state_version: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     total_stake: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     validator_candidates_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     validator_candidates_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    validator_low_stake_threshold: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     validator_report_records: list[Any] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    validator_very_low_stake_threshold: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    validator_low_stake_grace_period: int = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass

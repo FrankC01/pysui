@@ -37,7 +37,7 @@ class SubscribeEvent(_NativeTransactionBuilder):
         :type event_filter: _EventFilterType, optional
         :raises AttributeError: If event_filters is not of type _EventFilterType
         """
-        super().__init__("sui_subscribeEvent", handler_cls=SubscribedEvent, handler_func="from_dict")
+        super().__init__("suix_subscribeEvent", handler_cls=SubscribedEvent, handler_func="from_dict")
         if event_filter:
             if isinstance(event_filter, _EventFilterType):
                 self.filter = event_filter

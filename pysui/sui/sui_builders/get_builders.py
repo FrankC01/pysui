@@ -63,7 +63,7 @@ class GetCoinMetaData(_NativeTransactionBuilder):
         :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
         :type coin_type: SuiString, optional
         """
-        super().__init__("sui_getCoinMetadata", handler_cls=SuiCoinMetadata, handler_func="from_dict")
+        super().__init__("suix_getCoinMetadata", handler_cls=SuiCoinMetadata, handler_func="from_dict")
 
 
 class GetAllCoinBalances(_NativeTransactionBuilder):
@@ -76,7 +76,7 @@ class GetAllCoinBalances(_NativeTransactionBuilder):
         :param owner: the owner's Sui address
         :type owner: SuiAddress
         """
-        super().__init__("sui_getAllBalances", handler_cls=CoinBalances, handler_func="ingest_data")
+        super().__init__("suix_getAllBalances", handler_cls=CoinBalances, handler_func="ingest_data")
 
 
 class GetAllCoins(_NativeTransactionBuilder):
@@ -99,7 +99,7 @@ class GetAllCoins(_NativeTransactionBuilder):
         :param limit: Optional SuiInteger maximum number of items per page, defaults to None
         :type limit: SuiInteger, optional
         """
-        super().__init__("sui_getAllCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
+        super().__init__("suix_getAllCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
 
 
 class GetCoinTypeBalance(_NativeTransactionBuilder):
@@ -114,7 +114,7 @@ class GetCoinTypeBalance(_NativeTransactionBuilder):
         :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
         :type coin_type: SuiString, optional
         """
-        super().__init__("sui_getBalance", handler_cls=SuiCoinBalance, handler_func="from_dict")
+        super().__init__("suix_getBalance", handler_cls=SuiCoinBalance, handler_func="from_dict")
 
 
 class GetCoins(_NativeTransactionBuilder):
@@ -140,7 +140,7 @@ class GetCoins(_NativeTransactionBuilder):
         :param limit: maximum number of items per page, defaults to None
         :type limit: SuiInteger, optional
         """
-        super().__init__("sui_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
+        super().__init__("suix_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
 
 
 class GetLatestSuiSystemState(_NativeTransactionBuilder):
@@ -149,7 +149,7 @@ class GetLatestSuiSystemState(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self) -> None:
         """__init__ Initializes builder."""
-        super().__init__("sui_getLatestSuiSystemState", handler_cls=SuiLatestSystemState, handler_func="from_dict")
+        super().__init__("suix_getLatestSuiSystemState", handler_cls=SuiLatestSystemState, handler_func="from_dict")
 
 
 class GetTotalSupply(_NativeTransactionBuilder):
@@ -166,7 +166,7 @@ class GetTotalSupply(_NativeTransactionBuilder):
         :param coin_type: fully qualified type names for the coin, defaults to "0x2::sui::SUI"
         :type coin_type: SuiString, optional
         """
-        super().__init__("sui_getTotalSupply")
+        super().__init__("suix_getTotalSupply")
 
 
 class GetDynamicFieldObject(_NativeTransactionBuilder):
@@ -181,7 +181,7 @@ class GetDynamicFieldObject(_NativeTransactionBuilder):
         :param name: The Name of the dynamic field
         :type field_name: SuiString
         """
-        super().__init__("sui_getDynamicFieldObject", handler_cls=ObjectRead, handler_func="factory")
+        super().__init__("suix_getDynamicFieldObject", handler_cls=ObjectRead, handler_func="factory")
 
 
 class GetDynamicFields(_NativeTransactionBuilder):
@@ -200,7 +200,7 @@ class GetDynamicFields(_NativeTransactionBuilder):
         :param limit: Maximum item returned per page, default to [QUERY_MAX_RESULT_LIMIT] if not specified, defaults to None
         :type cursor: SuiInteger, optional
         """
-        super().__init__("sui_getDynamicFields", handler_cls=DynamicFields, handler_func="from_dict")
+        super().__init__("suix_getDynamicFields", handler_cls=DynamicFields, handler_func="from_dict")
 
 
 class GetObject(_NativeTransactionBuilder):
@@ -325,14 +325,13 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
         query: Optional[SuiMap] = None,
         cursor: Optional[ObjectID] = None,
         limit: Optional[SuiInteger] = None,
-        at_checkpoint: Optional[SuiInteger] = None,
     ) -> None:
         """__init__ Initialize builder.
 
         :param address: The owner address to fetch list of ObjectInfo results
         :type address: SuiAddress
         """
-        super().__init__("sui_getOwnedObjects", handler_cls=ObjectReadPage, handler_func="from_dict")
+        super().__init__("suix_getOwnedObjects", handler_cls=ObjectReadPage, handler_func="from_dict")
         # super().__init__("sui_getOwnedObjects", handler_cls=ObjectInfo, handler_func="factory")
         if query is None or isinstance(query, SuiNullType):
             self.query = sutils.as_sui_map(self._DEFAULT_GET_OWNED_OBJECT_QUERY.copy())
@@ -496,7 +495,7 @@ class GetCommittee(_NativeTransactionBuilder):
         :param epoch: Epoch to return state of committee from, defaults to None
         :type epoch: SuiInteger, optional
         """
-        super().__init__("sui_getCommitteeInfo", handler_cls=CommitteeInfo, handler_func="factory")
+        super().__init__("suix_getCommitteeInfo", handler_cls=CommitteeInfo, handler_func="factory")
 
 
 # Event Query
@@ -516,7 +515,7 @@ class QueryEvents(_NativeTransactionBuilder):
     ) -> None:
         """Initialize builder."""
         super().__init__(
-            "sui_queryEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict"
+            "suix_queryEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict"
         )  # , handler_cls=EventQueryEnvelope, handler_func="from_dict")
         if query:
             if isinstance(query, _EventFilterType):
@@ -680,7 +679,7 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
         :param owner: SuiAddress of staked coin owner
         :type owner: SuiAddress
         """
-        super().__init__("sui_getStakes", handler_cls=DelegatedStakes, handler_func="factory")
+        super().__init__("suix_getStakes", handler_cls=DelegatedStakes, handler_func="factory")
 
 
 class GetLatestCheckpointSequence(_NativeTransactionBuilder):
@@ -739,4 +738,4 @@ class GetReferenceGasPrice(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self):
         """Builder initializer."""
-        super().__init__("sui_getReferenceGasPrice")
+        super().__init__("suix_getReferenceGasPrice")

@@ -64,7 +64,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         :param request_type: The request type
         :type request_type: SuiRequestType
         """
-        super().__init__("sui_executeTransaction", handler_cls=TxResponse, handler_func="from_dict")
+        super().__init__("sui_executeTransactionBlock", handler_cls=TxResponse, handler_func="from_dict")
         if options is None or isinstance(options, SuiNullType):
             self.options = sui_utils.as_sui_map(self._DEFAULT_EXECUTE_TX_OPTIONS.copy())
         else:
@@ -81,7 +81,7 @@ class DryRunTransaction(_NativeTransactionBuilder):
         tx_bytes: SuiTxBytes,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_dryRunTransaction", handler_cls=DryRunTxResult, handler_func="from_dict")
+        super().__init__("sui_dryRunTransactionBlock", handler_cls=DryRunTxResult, handler_func="from_dict")
 
 
 class InspectTransaction(_NativeTransactionBuilder):
@@ -110,7 +110,7 @@ class InspectTransaction(_NativeTransactionBuilder):
         :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
         :type epoch: Optional[SuiInteger]
         """
-        super().__init__("sui_devInspectTransaction", handler_cls=TxInspectionResult, handler_func="factory")
+        super().__init__("sui_devInspectTransactionBlock", handler_cls=TxInspectionResult, handler_func="factory")
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):

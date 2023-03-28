@@ -26,8 +26,8 @@ class SignatureScheme(IntEnum):
     ED25519 = 0
     SECP256K1 = 1
     SECP256R1 = 2
-    BLS12381 = 3
-    MULTISIG = 4
+    MULTISIG = 3
+    BLS12381 = 0xFF
 
     def as_str(self) -> str:
         """Get scheme as string."""
@@ -37,6 +37,10 @@ class SignatureScheme(IntEnum):
             return "Secp256k1"
         if self is SignatureScheme.SECP256R1:
             return "Secp256r1"
+        if self is SignatureScheme.MULTISIG:
+            return "MultiSig"
+        if self is SignatureScheme.BLS12381:
+            return "Bls12381"
         raise TypeError(f"Unknown scheme {self.name}")
 
     @property

@@ -8,13 +8,12 @@ Python Client SDK for Sui blockchain
 
 **Release-0.15.0**
 
-Sui release 0.28.1 brings **_significant_** breaking changes. Please read the CHANGLOG first as many builders and data models have
+Sui release 0.29.0 brings **_significant_** breaking changes. Please read the CHANGLOG first as many builders and data models have
 changed or even been removed. Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
 
-- 100% coverage (builders, return types, etc.) for parity with _SUI 0.28.1 API_ on devnet (see Testnet below)
+- 100% coverage (builders, return types, etc.) for parity with _SUI 0.29.0 API_ on devnet (see Testnet below)
   - Multi-sig not yet supported.
-- BCS ser/deser added addressing changes in 0.28.1 for `sui_devInspectTransaction`
-- ed25519 and secp256k1 and secp256r1 account/keypairs and signing supported
+  - Programmable Transactions not yet supported. We are working on a TransactionBuilder and should have this available soon.
 
 
 **PyPi**
