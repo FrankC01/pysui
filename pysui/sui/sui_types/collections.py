@@ -91,6 +91,11 @@ class SuiArray(SuiCollection, Generic[AT]):
         return self.array
 
     @property
+    def dependencies(self) -> list[SuiString]:
+        """Alias for transactions."""
+        return self.array
+
+    @property
     def single_transaction_params(self) -> list[dict]:
         """Alias for transactions."""
         return self.array

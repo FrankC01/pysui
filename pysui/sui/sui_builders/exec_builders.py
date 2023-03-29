@@ -516,6 +516,7 @@ class Publish(_MoveCallTransactionBuilder):
         *,
         sender: SuiAddress,
         compiled_modules: SuiArray[SuiString],
+        dependencies: SuiArray[ObjectID],
         gas: ObjectID,
         gas_budget: SuiInteger,
     ) -> None:

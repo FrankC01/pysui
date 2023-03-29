@@ -561,7 +561,7 @@ class GetTx(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self, *, digest: SuiString, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
-        super().__init__("sui_getTransaction", handler_cls=TxResponse, handler_func="from_dict")
+        super().__init__("sui_getTransactionBlock", handler_cls=TxResponse, handler_func="from_dict")
         if options is None or isinstance(options, SuiNullType):
             self.options = sutils.as_sui_map(self._DEFAULT_GET_TX_OPTIONS.copy())
         else:

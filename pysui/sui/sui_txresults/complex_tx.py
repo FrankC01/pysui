@@ -65,7 +65,7 @@ class ProgrammableTransaction(SuiTxReturnType, DataClassJsonMixin):
     """A series of commands where the results of one command can be used in future commands."""
 
     kind: str
-    commands: list[dict]
+    transactions: list[dict]
     inputs: list[Any]
 
 
@@ -200,6 +200,7 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     gas_used: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
     transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     gas_object: GenericOwnerRef = field(metadata=config(letter_case=LetterCase.CAMEL))
+    modified_at_versions: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
     dependencies: list[str] = field(default_factory=list)
     mutated: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     created: Optional[list[GenericOwnerRef]] = field(default_factory=list)
@@ -227,7 +228,7 @@ class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     """Transaction Result."""
 
     digest: str
-    raw_transaction: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    raw_transaction: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=str)
     balance_changes: Optional[list[dict]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
     object_changes: Optional[list[dict]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
     transaction: Optional[dict] = field(default_factory=dict)
@@ -297,8 +298,9 @@ class TxInspectionResult(SuiTxReturnType, DataClassJsonMixin):
     """From sui_devInspectTransaction and sui_devInspectMoveCall."""
 
     effects: Effects
-    results: dict
     events: list[Event]
+    results: Optional[list[dict]] = field(default_factory=list)
+    error: Optional[str] = field(default_factory=str)
 
     def __post_init__(self):
         """Post init processing.

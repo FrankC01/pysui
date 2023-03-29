@@ -31,14 +31,21 @@ FAKE_ADDRESS_OR_OBJECT: str = "0x00000000000000000000000000000000000000000000000
 
 
 # TODO: Move to SuiTransaction when ready
-def transaction_data_from_builder(client: SyncClient, builder: _MoveCallTransactionBuilder) -> bcs.TransactionData:
-    """."""
 
 
-# TODO: Move to SuiTransaction when ready
+def get_txkind_from_tx_bytes(tx_bytes: str) -> bytes:
+    """get_txkind_from_tx_bytes extracts the TransactionKind bytes from tx_bytes.
+
+    :param tx_bytes: base64 transaction bytes string
+    :type tx_bytes: str
+    :return: Transaction Kind as bytes.
+    :rtype: bytes
+    """
+    raw_bytes = base64.b64decode(tx_bytes)
+    return raw_bytes[:_GAS_AND_BUDGET_BYTE_OFFSET][_TKIND_INDEX:]
 
 
-def inspect_ready_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
+def get_txkind_from_result_asb64(indata: SuiRpcResult) -> Union[str, SuiRpcResult]:
     """inspect_ready_txkind_from_result Return a serialized TransactionKind as base64 encoded string.
 
     Can be then used to submit to InspectTransaction
@@ -50,8 +57,9 @@ def inspect_ready_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcR
     """
     if indata.is_ok():
         tx_result: PreExecutionResult = indata.result_data.pre_transaction_result
-        raw_bytes = base64.b64decode(tx_result.tx_bytes)
-        raw_shredded = raw_bytes[:_GAS_AND_BUDGET_BYTE_OFFSET][_TKIND_INDEX:]
+        raw_shredded = get_txkind_from_tx_bytes(tx_result.tx_bytes)
+        # raw_bytes = base64.b64decode(tx_result.tx_bytes)
+        # raw_shredded = raw_bytes[:_GAS_AND_BUDGET_BYTE_OFFSET][_TKIND_INDEX:]
         return base64.b64encode(raw_shredded).decode()
     return indata
 
@@ -59,7 +67,7 @@ def inspect_ready_txkind_from_result(indata: SuiRpcResult) -> Union[str, SuiRpcR
 # TODO: Move to SuiTransaction when ready
 
 
-def transaction_kind_from_rpcresult(indata: SuiRpcResult) -> Union[bcs.TransactionKind, Exception]:
+def get_txkind_from_result(indata: SuiRpcResult) -> Union[bcs.TransactionKind, Exception]:
     """transaction_kind_from_rpcresult converts the transaction bytes into BCS TransactionKind struct.
 
     :param indata: The result of calling a complex transaction prior to signing

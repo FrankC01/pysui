@@ -14,7 +14,6 @@
 """Sui Client common classes module."""
 
 from dataclasses import dataclass
-import json
 from abc import abstractmethod
 from typing import Any, Optional, Union
 from pkg_resources import packaging
@@ -231,9 +230,10 @@ class _ClientMixin(Provider):
             for other_address in signers.array:
                 signers_list.append(self.config.keypair_for_address(other_address))
         # Iterate and return signatures list
+        total_signed = SuiArray([kpair.new_sign_secure(tx_bytes.tx_bytes) for kpair in signers_list])
         return ExecuteTransaction(
             tx_bytes=tx_bytes,
-            signatures=SuiArray([kpair.new_sign_secure(tx_bytes.tx_bytes) for kpair in signers_list]),
+            signatures=total_signed,
             request_type=self.request_type,
         )
         # signers_list.append()

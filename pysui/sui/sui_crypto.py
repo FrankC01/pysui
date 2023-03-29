@@ -16,7 +16,6 @@
 
 import base64
 import hashlib
-import binascii
 from typing import Union
 
 import secp256k1
@@ -74,11 +73,13 @@ class SuiPrivateKey(PrivateKey):
         :return: Singed transaction as bytes
         :rtype: bytes
         """
+        # Sign hash of transaction intent
         indata = bytearray([0, 0, 0])
-        dec_tx = base64.b64decode(tx_data)
-        indata.extend(dec_tx)
+        indata.extend(base64.b64decode(tx_data))
+        sig_bytes = self.sign(hashlib.blake2b(indata, digest_size=32).digest(), recovery_id)
+        # Embelish results
+        # flag | sig | public_key
         compound = bytearray([self.scheme])
-        sig_bytes = self.sign(bytes(indata), recovery_id)
         compound.extend(sig_bytes)
         compound.extend(public_key.key_bytes)
         return bytes(compound)
@@ -161,7 +162,7 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
         """SECP256R1 signing bytes."""
 
         def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
-            """s adjustment to go small"""
+            """s adjustment to go small."""
             _s_max = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
             if s_int > _s_max / 2:
                 s_int = _s_max - s_int
@@ -223,8 +224,7 @@ class SuiPrivateKeyED25519(SuiPrivateKey):
 
     def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """ED25519 sign data bytes."""
-        sig = self._signing_key.sign(data, encoder=RawEncoder).signature
-        return sig
+        return self._signing_key.sign(data, encoder=RawEncoder).signature
 
 
 class SuiKeyPairED25519(SuiKeyPair):
@@ -327,7 +327,7 @@ class MultiSigPublicKey:
         if len(pk_keys) <= self._KEY_COUNT_MAX and len(pk_keys) == len(pk_weights) and threshold <= len(pk_keys):
             self._scheme = SignatureScheme.MULTISIG
             self._threshold = threshold
-            self._pkmaps = list(zip(pk_keys, weights))
+            self._pkmaps = list(zip(pk_keys, pk_weights))
         else:
             raise ValueError
 
@@ -561,64 +561,6 @@ def recover_key_and_address(
     return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
 
 
-def _msta(msig: MultiSigPublicKey) -> str:
-    """."""
-
-    glg = hashlib.new("sha3_256")
-    # glg.update(bytearray(msig.scheme.value.to_bytes(1, "little")))
-    glg.update(msig.scheme.value.to_bytes(1, "little"))
-    glg.update(msig.threshold.to_bytes(1, "little"))
-    for ktup in msig.key_map:
-        p_key: SuiPublicKey = ktup[0]
-        p_w: int = ktup[1]
-        # glg.update(p_key.scheme.value.to_bytes(1, "little"))
-        # glg.update(bytearray(p_key.scheme.value))
-        # glg.update(p_key.key_bytes)
-        glg.update(p_key.scheme_and_key())
-        glg.update(p_w.to_bytes(1, "little"))
-    # hash_bytes = hashlib.blake2b(digest, digest_size=32).hexdigest()
-    hash_bytes = glg.digest()[:20]
-    print(f"hash leng {len(hash_bytes)}")
-    return binascii.hexlify(hash_bytes)
-
-    # hash_bytes = binascii.hexlify(glg.digest())[0:64]
-    # return hash_bytes.decode("utf-8")
-
-
 # pylint:disable=line-too-long,invalid-name
 if __name__ == "__main__":
-
-    # sui-base
-    # localnet set-sui-repo --path ~/my_repos/sui
-    # localnet start
-    # MULTI_SIG
-    # 1 Define the multi-sig constituents by <public keys>, <weights> and overall threshold
-    #   This produces an SuiAddress which can have things done to it (i.e. transfer Sui to)
-    #
-    # A muti-sig address  bye combinning multiple keypair info and generating an address
-    # hash
-    # This address can then be used to send things to (like Sui coinage)
-    # However; when using that address to affect change, some number of thresh-holds keys
-    # will need to sign individually and that gets combined in submitTransaction
-    pk1 = "AN6lrNm8Jw8SYZkVUya0GnHvVmUr1wovoKAyhdZpNTIG"
-    pk2 = "AIt/WXBsG2wsxy8Zue9rzTMFhhztVDE24d2wvZJKo3ra"
-    pk3 = "AKN8AmBJBK9xClsiQUEFK+MocOgd41a5p4hhOYpdCYYs"
-    pk_list = [pk1, pk2, pk3]
-    weights = [1, 2, 3]
-    sig_threshold = 3
-    ppkey_list: list[SuiPublicKey] = []
-    msaddy = "0xc7ede328ce77608cac5c1a295b30285e37d1bf73ff300309e26033f4f04d7eab"
-    mres = binascii.unhexlify(msaddy[2:])
-    print(f"first byte {mres[0]}")
-    for pk_e in pk_list:
-        pk_uh = base64.b64decode(pk_e)
-        print(f"Byte 0 = {pk_uh[0]} len_ok = {len(pk_uh[1:])}")
-        match pk_uh[0]:
-            case 0:
-                ppkey_list.append(SuiPublicKeyED25519(pk_uh[1:]))
-            case 1:
-                ppkey_list.append(SuiPublicKeySECP256K1(pk_uh[1:]))
-            case 2:
-                ppkey_list.append(SuiPublicKeySECP256R1(pk_uh[1:]))
-    multi_sig = MultiSigPublicKey(ppkey_list, weights, sig_threshold)
-    print(_msta(multi_sig))
+    pass
