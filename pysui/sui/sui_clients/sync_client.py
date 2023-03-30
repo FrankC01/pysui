@@ -594,6 +594,7 @@ class SuiClient(_ClientMixin):
         self,
         sender: SuiAddress,
         compiled_modules: SuiArray[SuiString],
+        dependencies: SuiArray[ObjectID],
         gas: ObjectID,
         gas_budget: SuiInteger,
     ) -> SuiRpcResult:

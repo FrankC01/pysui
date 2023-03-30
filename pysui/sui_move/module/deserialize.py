@@ -211,6 +211,17 @@ def deserialize(reader: ModuleReader, form: Deserialize) -> Union[RawModuleConte
     raise ValueError("No module byte code defined in file")
 
 
+def reader_from_file(module: str) -> Union[ModuleReader, Exception]:
+    """reader_from_file Returns a module reader for module.
+
+    :param module: Full qualified module path
+    :type module: str
+    :return: Instance of the module reader
+    :rtype: Union[ModuleReader,Exception]
+    """
+    return ModuleReader.read_from_file(module)
+
+
 def from_file(module: str, form: Deserialize = Deserialize.ALL) -> Union[RawModuleContent, Exception]:
     """from_file Deserialize the content of a module from file system.
 
@@ -250,6 +261,5 @@ def from_base64(in_base64: str, form: Deserialize = Deserialize.ALL) -> Union[Ra
 
 
 if __name__ == "__main__":
-    pass
-    # deser_track = from_file("~/frankc01/sui-track/build/SuiTrack/bytecode_modules/base.mv")
+    deser_track = from_file("~/frankc01/sui-track/build/SuiTrack/bytecode_modules/base.mv")
     # print("Success")

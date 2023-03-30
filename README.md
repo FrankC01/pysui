@@ -8,8 +8,14 @@ Python Client SDK for Sui blockchain
 
 **Release-0.15.0**
 
-Sui release 0.29.0 brings **_significant_** breaking changes. Please read the CHANGLOG first as many builders and data models have
-changed or even been removed. Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, fixes and removals...
+This is a _**beta**_ release. The degree of changes from 0.27.1 to 0.29.1 are such that we have not completed thorough testing. We wanted to get something out there for users who have moved to 0.29.x devnet or testinet.
+
+We would appreciate any issues being reported in the [github issue log](https://github.com/FrankC01/pysui/issues)
+
+Also, the amount of changes have eviscerated the pytest implementations and should not be trusted at this time.
+
+
+Sui release 0.29.0 brings **_significant_** breaking changes. Please read the CHANGLOG first as many builders and data models have changed or even been removed. Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, constraints, fixes and removals...
 
 - 100% coverage (builders, return types, etc.) for parity with _SUI 0.29.0 API_ on devnet (see Testnet below)
   - Multi-sig not yet supported.

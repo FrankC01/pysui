@@ -28,7 +28,8 @@ Breaking Changes - Significant changes with Sui 0.28.0/0.28.1
 
 ### Changed
 
-- **Breaking Change** Addresses are now generated from keys using `blake2b` instead of `sha3_256`
+- **Breaking Change** Addresses are now 32 bytes (as apposed to 20) and are generated from keys using `blake2b` instead of `sha3_256`
+- **Breaking Change** Prior 'module build' functions in `sui_utils.py` to support publishing have been replaced with `publish_build`. At the moment this will only prepare the core package modules. We will follow up with publishing unpublished dependencies in a later release. If you need that capabilit, use `sui client publish ...` from command line.
 - **Breaking Change** event filters for QueryEvents and SubscribeEvents moved to `sui_types/event_filter.py`. Note that per Sui 0.28.0 the filters have changed.
 - **Breaking Change** TxEffectResult renamed to TxResponse and restructured as per Sui 0.28.0
 - **Breaking Change** Sui has moved from 20 byte address to 32 byte addresses. This changes all SuiAddress and ObjectID constructs.

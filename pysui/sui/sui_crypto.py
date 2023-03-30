@@ -348,13 +348,13 @@ class MultiSigPublicKey:
 
 
 # Utility functions
-def _valid_mnemonic(key_type: SignatureScheme, mnemonics: Union[str, list[str]] = "") -> str:
+def _valid_mnemonic(mnemonics: Union[str, list[str]] = "") -> str:
     """_valid_mnemonic Validate, or create, mnemonic word string.
 
     :param mnemonics: space separated word string (12) or list of words(12), defaults to ""
     :type mnemonics: Union[str, list[str]], optional
     :raises ValueError: If the validation of supplied mnemonics fails
-    :return: mnemonic word (12) string separated by spaces
+    :return: mnemonic word (24) string separated by spaces
     :rtype: str
     """
     if mnemonics:
@@ -364,13 +364,7 @@ def _valid_mnemonic(key_type: SignatureScheme, mnemonics: Union[str, list[str]] 
         if MnemonicValidator(Bip39MnemonicDecoder()).IsValid(mnemonics):
             return mnemonics
         raise ValueError(f"{mnemonics} is not a valid mnemonic phrase.")
-    match key_type:
-        case SignatureScheme.ED25519 | SignatureScheme.SECP256K1:
-            return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_12).ToStr()
-        case SignatureScheme.SECP256R1:
-            return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_24).ToStr()
-        case _:
-            raise ValueError(f"{key_type} is not a valid key signature scheme type.")
+    return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_24).ToStr()
 
 
 def _valid_pubkey(key_valmethod: str, pub_key: bytes) -> Union[None, TypeError, ValueError]:
@@ -408,7 +402,7 @@ def _generate_secp256k1(
     :return: _description_
     :rtype: KeyPair
     """
-    mnemonic_phrase = _valid_mnemonic(SignatureScheme.SECP256K1, mnemonics)
+    mnemonic_phrase = _valid_mnemonic(mnemonics)
     derv_path = derv_path or SECP256K1_DEFAULT_KEYPATH
     # Generate seed from mnemonic phrase and optional password
     seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
@@ -435,7 +429,7 @@ def _generate_secp256r1(
     :return: _description_
     :rtype: KeyPair
     """
-    mnemonic_phrase = _valid_mnemonic(SignatureScheme.SECP256R1, mnemonics)
+    mnemonic_phrase = _valid_mnemonic(mnemonics)
     derv_path = derv_path or SECP256R1_DEFAULT_KEYPATH
     # Generate seed from mnemonic phrase and optional password
     seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
@@ -460,7 +454,7 @@ def _generate_ed25519(mnemonics: Union[str, list[str]] = "", derv_path: str = No
     :return: _description_
     :rtype: KeyPair
     """
-    mnemonic_phrase = _valid_mnemonic(SignatureScheme.ED25519, mnemonics)
+    mnemonic_phrase = _valid_mnemonic(mnemonics)
     derv_path = derv_path or ED25519_DEFAULT_KEYPATH
     # Generate seed from mnemonic phrase and optional password
     seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()

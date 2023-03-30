@@ -25,6 +25,7 @@ import base58
 from dataclasses_json import DataClassJsonMixin
 
 import pysui.sui_move.module.deserialize as deser
+from pysui.sui_move.bin_reader.module_reader import ModuleReader
 
 from pysui.sui.sui_types.scalars import (
     SuiString,
@@ -53,157 +54,6 @@ _IGNORE_DEPENDENCY: set[str] = {"Sui", "MoveStdlib"}
 _UNPUBLISHED: str = "0000000000000000000000000000000000000000"
 
 
-def _module_bytes(module: Path) -> Union[bytes, OSError]:
-    """."""
-    return module.read_bytes()
-
-
-def _module_to_b64(module: Path) -> Union[SuiString, OSError]:
-    """_module_to_b64 Convert binary modules to base64.
-
-    :param module: Fully qualified path to move compiled module
-    :type module: Path
-    :return: A base64 encoded string of tile content or OSError
-    :rtype: Union[SuiString, OSError]
-    """
-    return SuiString(base64.b64encode(_module_bytes(module)).decode())
-
-
-def _modules_bytes(module_path: Path) -> Union[list[bytes], SuiMiisingModuleByteCode, OSError]:
-    """."""
-    mod_list = list(module_path.glob("*.mv"))
-    if not mod_list:
-        raise SuiMiisingModuleByteCode(f"{module_path} is empty")
-    # Open and get the SuiString base64 representation of same
-    result_list = [_module_bytes(x) for x in mod_list]
-    return result_list
-
-
-def _modules_to_b64(module_path: Path) -> Union[list[SuiString], SuiMiisingModuleByteCode, OSError]:
-    """."""
-    byte_list = _modules_bytes(module_path)
-    result_list = [SuiString(base64.b64encode(x).decode()) for x in byte_list]
-    # mod_list = list(module_path.glob("*.mv"))
-    # if not mod_list:
-    #     raise SuiMiisingModuleByteCode(f"{module_path} is empty")
-    # # Open and get the SuiString base64 representation of same
-    # result_list = [SuiString(base64.b64encode(x.read_bytes()).decode()) for x in mod_list]
-    return result_list
-
-
-def _dependencies_bytes(byte_module_path: Path) -> Union[list[bytes], OSError]:
-    """."""
-    dep_dir = byte_module_path.joinpath("dependencies")
-    result_list: list[bytes] = []
-    if dep_dir.exists():
-        # Get unique folders
-        dep_folders = [sdir for sdir in dep_dir.iterdir() if sdir.name not in _IGNORE_DEPENDENCY]
-        for deps in dep_folders:
-            mod_list = list(deps.glob("*.mv"))
-            for mod_entry in mod_list:
-                raw_data = deser.from_file(mod_entry, deser.Deserialize.MODULE_HANDLES)
-                mod_handle = raw_data.module_handles[raw_data.module_self]
-                if raw_data.addresses[mod_handle.address_index].address == _UNPUBLISHED:
-                    result_list.append(_module_bytes(mod_entry))
-    return result_list
-
-
-def _dependencies_to_b64(byte_module_path: Path) -> Union[list[SuiString], OSError]:
-    """_dependencies_to_b64 Iterates through valid depdencies and checks for unpublished, serilizing if true.
-
-    :param byte_module_path: Fully qualified path to project bytemodules folder
-    :type byte_module_path: Path
-    :return: List of base64 modules strings for those dependencies found to be unpublished
-    :rtype: Union[list[SuiString], OSError]
-    """
-    result_list: list[SuiString] = []
-    bytes_list = _dependencies_bytes(byte_module_path)
-    if bytes_list:
-        result_list.append(SuiString(base64.b64encode(x).decode()) for x in bytes_list)
-    # dep_dir = byte_module_path.joinpath("dependencies")
-    # # Get dependencies content
-    # # dep_dir = bmods[0].joinpath("bytecode_modules/dependencies")
-    # result_list: list[SuiString] = []
-    # if dep_dir.exists():
-    #     # Get unique folders
-    #     dep_folders = [sdir for sdir in dep_dir.iterdir() if sdir.name not in _IGNORE_DEPENDENCY]
-    #     for deps in dep_folders:
-    #         mod_list = list(deps.glob("*.mv"))
-    #         for mod_entry in mod_list:
-    #             raw_data = deser.from_file(mod_entry, deser.Deserialize.MODULE_HANDLES)
-    #             mod_handle = raw_data.module_handles[raw_data.module_self]
-    #             if raw_data.addresses[mod_handle.address_index].address == _UNPUBLISHED:
-    #                 result_list.append(_module_to_b64(mod_entry))
-
-    return result_list
-
-
-def _package_modules_to_bytes(
-    project: Path, include_unpublished: bool, skip_git_dependencie: bool
-) -> Union[list[bytes], OSError, SuiException]:
-    """."""
-    # Find the build folder
-    build_path = project.joinpath("build")
-    if not build_path.exists():
-        raise SuiMiisingBuildFolder(f"No build folder found in {project}")
-    # Get the project folder
-    build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
-    if len(build_subdir) > 1:
-        raise SuiMiisingBuildFolder(f"No build folder found in {project}")
-    # Finally, get the module(s) bytecode folder
-    byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
-    if not byte_modules.exists():
-        raise SuiMiisingBuildFolder(f"No bytecode_modules folder found for {project}/build")
-    # Get all immediate compiled modules
-    result_list = _modules_bytes(byte_modules)
-    # If wanting to include unpublished dependencies
-    if include_unpublished:
-        # Get the dependencies folder
-        result_list.extend(_dependencies_bytes(byte_modules))
-    return result_list
-
-
-def _package_modules_to_b64(
-    project: Path, include_unpublished: bool, skip_git_dependencie: bool
-) -> Union[list[SuiString], OSError, SuiException]:
-    """_package_modules_to_b64 Converts found sui move binary modules to base64 strings.
-
-    :param project: Path to the project folder
-    :type project: Path
-    :param include_unpublished: Include unpublished dependencies
-    :type include_unpublished: bool
-    :param skip_git_dependencie: Skip sui move buikd checking git dependencies,defaults to False.
-    :type skip_git_dependencie: bool, optional
-    :raises SuiMiisingBuildFolder: If project folder does not contain 'build' subfolder
-    :raises SuiMiisingBuildFolder: If project/build folder does not contain 'bytecode_modules' subfolder
-    :raises SuiMiisingModuleByteCode: If there are no '*.mv' files to convert
-    :return: List of base64 encoded SuiStrings for each module found
-    :rtype: Union[list[SuiString], Union[OSError, SuiException]]
-    """
-    result_list: list[SuiString] = []
-    bytes_list: list[bytes] = _package_modules_to_bytes(project, include_unpublished, skip_git_dependencie)
-    return [SuiString(base64.b64encode(x).decode()) for x in bytes_list]
-    # Find the build folder
-    # build_path = project.joinpath("build")
-    # if not build_path.exists():
-    #     raise SuiMiisingBuildFolder(f"No build folder found in {project}")
-    # # Get the project folder
-    # build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
-    # if len(build_subdir) > 1:
-    #     raise SuiMiisingBuildFolder(f"No build folder found in {project}")
-    # # Finally, get the module(s) bytecode folder
-    # byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
-    # if not byte_modules.exists():
-    #     raise SuiMiisingBuildFolder(f"No bytecode_modules folder found for {project}/build")
-    # # Get all immediate compiled modules
-    # result_list = _modules_to_b64(byte_modules)
-    # # If wanting to include unpublished dependencies
-    # if include_unpublished:
-    #     # Get the dependencies folder
-    #     result_list.extend(_dependencies_to_b64(byte_modules))
-    # return result_list
-
-
 def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Union[Path, SuiException]:
     """_compile_project Compiles a sui move project.
 
@@ -230,39 +80,61 @@ def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Unio
     raise SuiPackageBuildFail(result.stdout)
 
 
-def build_modules(
-    path_to_package: Path, include_unpublished: bool = False, skip_git_dependencie: bool = False
-) -> Union[list[list[int]], Union[OSError, SuiException]]:
+def _module_bytes(module: Path) -> Union[ModuleReader, OSError]:
+    """Fetch the module reader for this module."""
+    return deser.reader_from_file(str(module))
+
+
+def _modules_bytes(module_path: Path) -> Union[list[ModuleReader], SuiMiisingModuleByteCode, OSError]:
     """."""
-    if path_to_package.exists():
-        bytes_list = _package_modules_to_bytes(
-            _compile_project(path_to_package, skip_git_dependencie), include_unpublished, skip_git_dependencie
-        )
-        return [list(x) for x in bytes_list]
-    raise SuiMiisingBuildFolder(f"Move project path not found: {path_to_package}")
+    mod_list = list(module_path.glob("*.mv"))
+    if not mod_list:
+        raise SuiMiisingModuleByteCode(f"{module_path} is empty")
+    # Open and get the bytes representation of same
+    result_list: list[ModuleReader] = [_module_bytes(module) for module in mod_list]
+    return result_list
 
 
-# Support legacy build for publish while API supports
-def build_b64_modules(
+def _dependency_object_ids(readers: list[ModuleReader]) -> list[ObjectID]:
+    """Fetch dependencies object ids as SuiStrings."""
+    oid_set: set[str] = set()
+    not_set: set[str] = {"0000000000000000000000000000000000000000000000000000000000000000"}
+    for mod_reader in readers:
+        raw_table: deser.RawModuleContent = deser.deserialize(mod_reader, deser.Deserialize.MODULE_HANDLES)
+        for addy in raw_table.addresses:
+            # print(f"Checking addy {addy.address}")
+            # print(f"Length addy {len(addy.address)}")
+            if addy.address not in not_set:
+                oid_set.add(addy.address)
+    return [ObjectID(f"0x{x}") for x in oid_set]
+
+
+def publish_build(
     path_to_package: Path, include_unpublished: bool = False, skip_git_dependencie: bool = False
-) -> Union[list[SuiString], Union[OSError, SuiException]]:
-    """build_b64_modules Builds and encoedes a sui move package for publishing.
+) -> Union[tuple[list[SuiString], list[ObjectID]], Exception]:
+    """Build and collect module base64 strings and dependencies ObjectIDs."""
+    # Compile the package
+    path_to_package = _compile_project(path_to_package, skip_git_dependencie)
+    # Find the build folder
+    build_path = path_to_package.joinpath("build")
+    if not build_path.exists():
+        raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
+    # Get the project folder
+    build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
+    if len(build_subdir) > 1:
+        raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
+    # Finally, get the module(s) bytecode folder
+    byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
+    if not byte_modules.exists():
+        raise SuiMiisingBuildFolder(f"No bytecode_modules folder found for {path_to_package}/build")
 
-    :param path_to_package: Qualified path to SUI move project.
-    :type path_to_package: Path
-    :param include_unpublished: Include unpublished dependencies, default to False.
-    :type include_unpublished: bool, optional
-    :param skip_git_dependencie: Skip sui move buikd checking git dependencies,defaults to False.
-    :type skip_git_dependencie: bool, optional
-    :raises SuiMiisingBuildFolder: If path does not exist
-    :return: List of base64 encoded SuiStrings, each representing a compiled sui module.
-    :rtype: Union[list[SuiString], Union[OSError, SuiException]]
-    """
-    if path_to_package.exists():
-        return _package_modules_to_b64(
-            _compile_project(path_to_package, skip_git_dependencie), include_unpublished, skip_git_dependencie
-        )
-    raise SuiMiisingBuildFolder(f"Move project path not found: {path_to_package}")
+    module_readers: list[ModuleReader] = _modules_bytes(byte_modules)
+    # Get module bytes as base64 strings
+    module_results: list[SuiString] = [
+        SuiString(base64.b64encode(mr.reader.getvalue()).decode()) for mr in module_readers
+    ]
+    dep_ids = _dependency_object_ids(module_readers)
+    return module_results, dep_ids
 
 
 # Conversion utilities
@@ -644,4 +516,6 @@ COERCION_FN_MAP = {
 }
 
 if __name__ == "__main__":
-    pass
+    ppath = Path(os.path.expanduser("~/frankc01/sui-track"))
+    stuff = publish_build(ppath)
+    print("Yo")

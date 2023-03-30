@@ -40,7 +40,7 @@ from pysui.sui.sui_builders.get_builders import (
     GetTxsMoveFunction,
 )
 
-from pysui.sui.sui_utils import build_b64_modules
+from pysui.sui.sui_utils import publish_build
 from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_clients.sync_client import SuiClient
@@ -319,7 +319,9 @@ def publish(client: SuiClient, args: argparse.Namespace) -> None:
     # print(args)
     args.sender = args.sender if args.sender else client.config.active_address
     try:
-        args.compiled_modules = build_b64_modules(args.compiled_modules)
+        module_b64, dep_oids = publish_build(args.compiled_modules)
+        args.compiled_modules = module_b64
+        args.dependencies = dep_oids
         var_args = vars(args)
         var_args.pop("version")
         result = client.publish_package_txn(**var_args)

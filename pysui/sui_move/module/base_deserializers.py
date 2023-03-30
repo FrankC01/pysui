@@ -24,7 +24,6 @@ from pysui.sui_move.model.common_types import (
     Visibility,
 )
 from pysui.sui_move.model.bytecode_tables import (
-    Address,
     Constant,
     FieldHandle,
     FieldInstantiation,
@@ -41,6 +40,8 @@ from pysui.sui_move.model.bytecode_tables import (
     StructTypeParameter,
     Friend,
 )
+
+import pysui.sui_move.model.bytecode_tables as bcd
 
 
 def sig_walk(reader: ModuleReader) -> list:
@@ -216,7 +217,7 @@ def deserialize_identifiers(
 def deserialize_addresses(
     table_header: TableHeader,
     reader: ModuleReader,
-) -> list[Address]:
+) -> list[bcd.Address]:
     """deserialize_addresses builds collection of Addresses from it's table content.
 
     :param table_header: TableHeader for Signatures
@@ -224,15 +225,15 @@ def deserialize_addresses(
     :param reader: Stream reader
     :type reader: ModuleReader
     :return: All Addresses found in Address content
-    :rtype: list[Address]
+    :rtype: list[bcd.Address]
     """
     # Point reader to my content area
     _ = reader.position_content_for(table_header)
     max_pos = table_header.pos + table_header.length
-    addresses: list[Address] = []
-    address_len = 20
+    addresses: list[bcd.Address] = []
+    address_len = 32
     while reader.pos() < max_pos:
-        addresses.append(Address(reader.read(address_len).hex()))
+        addresses.append(bcd.Address(reader.read(address_len).hex()))
     return addresses
 
 
