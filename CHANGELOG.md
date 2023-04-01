@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added missing options for querying transactions
+- Implemented QueryTransactions [enhancement](https://github.com/FrankC01/pysui/issues/84) builder and results supporing `suix_queryTransactions`
 - MultiSig added [enhancement](https://github.com/FrankC01/pysui/issues/75)
 
 ### Fixed
