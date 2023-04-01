@@ -397,8 +397,17 @@ class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
+class TransactionQueryEnvelope(DataClassJsonMixin):
+    """from suix_queryTransactionBlocks."""
+
+    data: list[TxResponse]
+    has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
+    next_cursor: Union[None, str] = field(metadata=config(field_name="nextCursor"))
+
+
+@dataclass
 class EventQueryEnvelope(DataClassJsonMixin):
-    """From sui_getEvents."""
+    """From suix_queryEvents."""
 
     # data: list[EventEnvelope]
     data: list[Event]

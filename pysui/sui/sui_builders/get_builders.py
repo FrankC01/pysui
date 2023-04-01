@@ -37,6 +37,7 @@ from pysui.sui.sui_txresults.complex_tx import (
     Checkpoints,
     EventBlock,
     EventQueryEnvelope,
+    TransactionQueryEnvelope,
     TxResponse,
     TxResponseArray,
 )
@@ -47,6 +48,7 @@ from pysui.sui.sui_txresults.package_meta import (
     SuiMoveStruct,
     SuiMoveFunctionArgumentTypes,
 )
+from pysui.sui.sui_types.transaction_filter import DEFAULT_GET_TX_OPTIONS, _TransactionFilterType
 import pysui.sui.sui_utils as sutils
 
 
@@ -499,7 +501,7 @@ class GetCommittee(_NativeTransactionBuilder):
 
 
 class QueryEvents(_NativeTransactionBuilder):
-    """QueryEvents takes event query criteria (options) as parameters and returns events matching criteria."""
+    """QueryEvents returns a list of events for a specified query criteria."""
 
     @sui_builder()
     def __init__(
@@ -521,6 +523,29 @@ class QueryEvents(_NativeTransactionBuilder):
                 raise AttributeError(f"Invalid argument {query}. Expected subclass of _EventFilterType")
         else:
             self.query = AllFilter(filters=[])
+
+
+class QueryTransactions(_NativeTransactionBuilder):
+    """QueryTransactions returns a list of transactions for a specified query criteria.."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        query: SuiMap,
+        cursor: Optional[SuiString] = None,
+        limit: Optional[SuiInteger] = None,
+        descending_order: Optional[SuiBoolean] = None,
+    ) -> None:
+        """."""
+        super().__init__("suix_queryTransactionBlocks", handler_cls=TransactionQueryEnvelope, handler_func="from_dict")
+        if query:
+            if isinstance(query, _TransactionFilterType):
+                self.query = query
+            else:
+                raise AttributeError(f"Invalid argument {query}. Expected subclass of _TransactionFilterType")
+        else:
+            raise ValueError("Expected query for QueryTransaciton builder.")
 
 
 class GetEvents(_NativeTransactionBuilder):
@@ -549,21 +574,12 @@ class GetTotalTxCount(_NativeTransactionBuilder):
 class GetTx(_NativeTransactionBuilder):
     """GetTx When executed, return the transaction response object."""
 
-    _DEFAULT_GET_TX_OPTIONS: Final[dict] = {
-        "showEffects": True,
-        "showEvents": True,
-        "showBalanceChanges": True,
-        "showObjectChanges": True,
-        "showRawInput": True,
-        "showInput": False,
-    }
-
     @sui_builder()
     def __init__(self, *, digest: SuiString, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
         super().__init__("sui_getTransactionBlock", handler_cls=TxResponse, handler_func="from_dict")
         if options is None or isinstance(options, SuiNullType):
-            self.options = sutils.as_sui_map(self._DEFAULT_GET_TX_OPTIONS.copy())
+            self.options = sutils.as_sui_map(DEFAULT_GET_TX_OPTIONS.copy())
         else:
             self.options = sutils.as_sui_map(options)
 
@@ -574,7 +590,7 @@ class GetTx(_NativeTransactionBuilder):
         :return: The option flags map for `sui_getTransaction`
         :rtype: dict
         """
-        return cls._DEFAULT_GET_TX_OPTIONS.copy()
+        return DEFAULT_GET_TX_OPTIONS.copy()
 
 
 class GetMultipleTx(_NativeTransactionBuilder):
@@ -585,7 +601,7 @@ class GetMultipleTx(_NativeTransactionBuilder):
         """Initialize builder."""
         super().__init__("sui_multiGetTransactionBlocks", handler_cls=TxResponseArray, handler_func="factory")
         if options is None or isinstance(options, SuiNullType):
-            self.options = sutils.as_sui_map(GetTx._DEFAULT_GET_TX_OPTIONS.copy())
+            self.options = sutils.as_sui_map(DEFAULT_GET_TX_OPTIONS.copy())
         else:
             self.options = sutils.as_sui_map(options)
 
