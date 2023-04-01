@@ -18,7 +18,8 @@ from typing import Any, Union
 from json import JSONDecodeError
 import httpx
 from pysui.sui.sui_clients.common import _ClientMixin, PreExecutionResult, SuiRpcResult
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiTxBytes, SuiString
+from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiSignature, SuiTxBytes, SuiString
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_txresults.single_tx import FaucetGasRequest
@@ -33,7 +34,6 @@ from pysui.sui.sui_builders.get_builders import (
     GetObject,
     GetPackage,
     GetEvents,
-    GetTxs,
 )
 from pysui.sui.sui_builders.exec_builders import (
     DryRunTransaction,
@@ -114,6 +114,26 @@ class SuiClient(_ClientMixin):
                 # result = SuiRpcResult(True, None, (builder.authority, SuiTxBytes(result["result"]["txBytes"])))
             return result
         return SuiRpcResult(False, "execute_no_sign is used only with transaction types")
+
+    async def execute_with_multisig(
+        self, builder: SuiBaseBuilder, multi_sig: MultiSig, pub_keys: list[SuiPublicKey]
+    ) -> Union[SuiRpcResult, Exception]:
+        """execute_with_multisig Executes a transaction, signing with MultiSig."""
+        if builder.txn_required:
+            result = await self.execute_no_sign(builder)
+            if result.is_ok():
+                tx_bytes = result.result_data.tx_bytes
+                new_sig = multi_sig.sign(tx_bytes, pub_keys)
+                if isinstance(new_sig, SuiSignature):
+                    exec_tx = ExecuteTransaction(
+                        tx_bytes=tx_bytes,
+                        signatures=SuiArray([new_sig]),
+                        request_type=SuiRequestType.WAITFORLOCALEXECUTION,
+                    )
+                    return await self.execute(exec_tx)
+                return SuiRpcResult(False, f"Signing error code {new_sig}")
+            return result
+        return await self._execute(builder)
 
     async def sign_and_submit(
         self, signer: SuiAddress, tx_bytes: SuiTxBytes, additional_signatures: SuiArray[SuiAddress] = None
@@ -312,24 +332,6 @@ class SuiClient(_ClientMixin):
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(GetEvents(**inargs))
-
-    async def get_txns(self, *, query: SuiMap, cursor: str, limit: int, descending_order: bool) -> SuiRpcResult:
-        """get_txns `sui_getTransactions` API.
-
-        :param query: The transaction query type map.
-        :type query: SuiMap
-        :param cursor: _description_
-        :type cursor: str
-        :param limit: _description_
-        :type limit: int
-        :param descending_order: _description_
-        :type descending_order: bool
-        :return: API call result
-        :rtype: SuiRpcResult
-        """
-        inargs: dict = locals().copy()
-        inargs.pop("self")
-        return await self.execute(GetTxs(**inargs))
 
     async def pay_txn(
         self,

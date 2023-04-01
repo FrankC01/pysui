@@ -14,8 +14,11 @@
 
 """Sui Crpto Keys and Keypairs."""
 
+import ast
 import base64
+import binascii
 import hashlib
+import subprocess
 from typing import Union
 
 import secp256k1
@@ -31,6 +34,7 @@ from nacl.encoding import Base64Encoder, RawEncoder
 from pysui.abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
 from pysui.sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength
 from pysui.sui.sui_constants import (
+    SCHEME_PRIVATE_KEY_BYTE_LEN,
     SUI_KEYPAIR_LEN,
     ED25519_DEFAULT_KEYPATH,
     ED25519_PUBLICKEY_BYTES_LEN,
@@ -47,6 +51,10 @@ from pysui.sui.sui_constants import (
 )
 
 from pysui.sui.sui_types import SuiSignature, SuiAddress
+from pysui.sui.sui_types.scalars import SuiTxBytes
+
+_SUI_MS_SIGN_CMD: list[str] = ["sui", "keytool", "multi-sig-combine-partial-sig"]
+"""Use sui binary keytool for MultiSig signing."""
 
 
 class SuiPublicKey(PublicKey):
@@ -109,9 +117,10 @@ class SuiKeyPair(KeyPair):
         """Get the keys scheme."""
         return self._scheme
 
-    def new_sign_secure(self, tx_data: str, recovery_id: int = 0) -> SuiSignature:
+    def new_sign_secure(self, tx_data: Union[str, SuiTxBytes]) -> SuiSignature:
         """New secure sign with intent."""
-        sig = self.private_key.sign_secure(self.public_key, tx_data, recovery_id)
+        tx_data = tx_data if isinstance(tx_data, str) else tx_data.value
+        sig = self.private_key.sign_secure(self.public_key, tx_data)
         return SuiSignature(base64.b64encode(sig).decode())
 
     def serialize(self) -> str:
@@ -122,6 +131,14 @@ class SuiKeyPair(KeyPair):
         """
         all_bytes = self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
         return base64.b64encode(all_bytes).decode()
+
+    def serialize_to_bytes(self) -> bytes:
+        """serialize_to_bytes Returns a SUI conforming keystring as bytes.
+
+        :return: Bytes of signature scheme + private key
+        :rtype: bytes
+        """
+        return self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
@@ -317,34 +334,184 @@ class SuiKeyPairSECP256K1(SuiKeyPair):
         return SuiKeyPairSECP256K1(indata)
 
 
-class MultiSigPublicKey:
+class MultiSig:
     """."""
 
-    _KEY_COUNT_MAX: int = 10
+    _MIN_KEYS: int = 2
+    _MAX_KEYS: int = 10
+    _MAX_WEIGHT: int = 255
+    _MAX_THRESHOLD: int = 65535
+    _SIGNATURE_SCHEME: SignatureScheme = SignatureScheme.MULTISIG
 
-    def __init__(self, pk_keys: list[SuiPublicKey], pk_weights: list[int], threshold: int) -> None:
-        """Initialize a multisig."""
-        if len(pk_keys) <= self._KEY_COUNT_MAX and len(pk_keys) == len(pk_weights) and threshold <= len(pk_keys):
-            self._scheme = SignatureScheme.MULTISIG
-            self._threshold = threshold
-            self._pkmaps = list(zip(pk_keys, pk_weights))
+    def __init__(self, suikeys: list[SuiKeyPair], weights: list[int], threshold: int):
+        """__init__ Initiate a MultiSig object.
+
+        Note that Sui multi-sig accepts up to a maximum of ten (10) individual signer keys.
+
+        :param suikeys: The list of keys participating in the multi-sig signing operations.
+        :type suikeys: list[SuiKeyPair]
+        :param weights: Corresponding weights for each key. Max value of each weight is 255 (8 bit unsigned)
+        :type weights: list[int]
+        :param threshold: The threshold criteria for this MultiSig. Max value is 65,535 (16 bit unsigned)
+        :type threshold: int
+        """
+        if (
+            len(suikeys) in range(self._MIN_KEYS, self._MAX_KEYS)
+            and len(suikeys) == len(weights)
+            and threshold <= self._MAX_THRESHOLD
+            and max(weights) <= self._MAX_WEIGHT
+        ):
+            self._keys: list[SuiKeyPair] = suikeys
+            self._weights: list[int] = weights
+            self._threshold: int = threshold
+            self._schema: SignatureScheme = SignatureScheme.MULTISIG
+            self._address: SuiAddress = self._multi_sig_address()
+            self._public_keys: list[SuiPublicKey] = [x.public_key for x in self._keys]
         else:
-            raise ValueError
+            raise ValueError("Invalid arguments provided to constructor")
+
+    def _multi_sig_address(self) -> SuiAddress:
+        """multi_sig_address Generates the unique address derived from the keys in the MultiSig.
+
+        :return: A unique address that can be used to participate as recipeint and sender in transactions.
+        :rtype: SuiAddress
+        """
+        # Build the digest to generate a SuiAddress (hash) from
+        digest = self._schema.to_bytes(1, "little")
+        digest += self._threshold.to_bytes(2, "little")
+        for index, kkeys in enumerate(self._keys):
+            digest += kkeys.public_key.scheme_and_key()
+            digest += self._weights[index].to_bytes(1, "little")
+        return SuiAddress(hashlib.blake2b(digest, digest_size=32).hexdigest())
 
     @property
     def scheme(self) -> SignatureScheme:
-        """Return the multisig scheme."""
-        return self._scheme
+        """Return the MultiSig signature scheme."""
+        return self._SIGNATURE_SCHEME
 
     @property
-    def key_map(self) -> list[tuple[str, int]]:
-        """Return the key map list of tuples."""
-        return self._pkmaps
+    def address(self) -> SuiAddress:
+        """Return the address generated from the initial keys."""
+        return self._address
+
+    @property
+    def public_keys(self) -> list[SuiPublicKey]:
+        """Return a copy of the list of SuiPublicKeys used in this MultiSig."""
+        return self._public_keys.copy()
+
+    @property
+    def weights(self) -> list[int]:
+        """Return a copy of the list of weights used in this MultiSig."""
+        return self._weights.copy()
 
     @property
     def threshold(self) -> int:
-        """."""
+        """Return the threshold amount used in this MultiSig."""
         return self._threshold
+
+    def _validate_signers(self, pub_keys: list[SuiPublicKey]) -> list[int]:
+        """Validate pubkeys part of multisig and have enough weight."""
+        # Must be subset of full ms list
+        if len(pub_keys) <= len(self._public_keys):
+            hit_indexes = [i for i, j in enumerate(pub_keys) if j in self._public_keys]
+            # If all inbound pubkeys have reference to item in ms list
+            if len(hit_indexes) == len(pub_keys):
+                if sum([self._weights[x] for x in hit_indexes]) >= self._threshold:
+                    return hit_indexes
+        return None
+
+    def sign(self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]) -> Union[int, SuiSignature]:
+        """sign Signs transaction bytes for operation that changes objects owned by MultiSig address.
+
+        :param tx_bytes: Transaction bytes base64 string from 'unsafe...' result or Transaction BCS
+        :type tx_bytes: Union[str, SuiTxBytes]
+        :param pub_keys: List of SuiPublicKeys to sign the transaction bytes
+        :type pub_keys: list[SuiPublicKey]
+        :raises ValueError: If pubkeys fail verification as member of MultiSig or threshold constraint
+        :return: The new signature produced from MultiSig
+        :rtype: SuiSignature
+        """
+        # Validate the pub_keys align to self._keys
+        key_indx = self._validate_signers(pub_keys)
+        if key_indx:
+            tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value
+            # Build the command line for `sui keytool multi-sig-combine-partial-sig`
+            # Public keys of all keys
+            pk_args = ["--pks"]
+            pk_args.extend([base64.b64encode(x.public_key.scheme_and_key()).decode() for x in self._keys])
+            # all weights
+            weight_args = ["--weights"]
+            weight_args.extend([str(x) for x in self._weights])
+            # all threshold
+            threshold_args = ["--threshold", str(self._threshold)]
+            # Get the signatures
+            sig_args = ["--sigs"]
+            sig_args.extend([self._keys[x].new_sign_secure(tx_bytes).value for x in key_indx])
+            # Build command line
+            invoke_args = _SUI_MS_SIGN_CMD.copy()
+            invoke_args.extend(pk_args)
+            invoke_args.extend(weight_args)
+            invoke_args.extend(threshold_args)
+            invoke_args.extend(sig_args)
+            # Invoke signing
+            result = subprocess.run(invoke_args, capture_output=True, text=True)
+            if result.returncode == 0:
+                sargs = ast.literal_eval(result.stdout.split()[-1])
+                return SuiSignature(sargs)
+            else:
+                return result.returncode
+        raise ValueError("Invalid signer pub_keys")
+
+    def serialize(self) -> str:
+        """serialize Serializes the MultiSig object to base64 string.
+
+        :return: Base64 string of serialized MultiSig
+        :rtype: str
+        """
+        # Build from scheme and counts,keystrings,weights and threshold
+        all_bytes = self.scheme.to_bytes(1, "little") + len(self._keys).to_bytes(1, "little")
+        for key in self._keys:
+            all_bytes += key.serialize_to_bytes()
+        for assoc_weight in self._weights:
+            all_bytes += assoc_weight.to_bytes(2, "little")
+        all_bytes += self._threshold.to_bytes(2, "little")
+        return base64.b64encode(all_bytes).decode()
+
+    @classmethod
+    def deserialize(cls, ser_str: str) -> Union[ValueError, "MultiSig"]:
+        """deserialize Deserializes a MultSig base64 string to object instance.
+
+        :param ser_str: base64 encoded string
+        :type ser_str: str
+        :raises ValueError: If invalid base64 or undecodeable ser_str
+        :return: The MultiSig instance
+        :rtype: MultiSig
+        """
+        try:
+            ms_bytes = base64.b64decode(ser_str)
+            assert SignatureScheme(ms_bytes[0]) == cls._SIGNATURE_SCHEME
+            count = int(ms_bytes[1])
+            kes_index = 2
+            wei_index = kes_index + (count * SCHEME_PRIVATE_KEY_BYTE_LEN)
+            # Get the keystrings
+            key_block: list[SuiKeyPair] = []
+            for idex in range(count):
+                start = kes_index + (idex * SCHEME_PRIVATE_KEY_BYTE_LEN)
+                key_block.append(
+                    keypair_from_keystring(
+                        base64.b64encode(ms_bytes[start : start + SCHEME_PRIVATE_KEY_BYTE_LEN]).decode()
+                    )
+                )
+            # Get the weights
+            weight_block: list[int] = []
+            for idex in range(count):
+                start = wei_index + (idex * 2)
+                weight_block.append(int.from_bytes(ms_bytes[start : start + 2], "little"))
+            # Get the threshold
+            threshold = int.from_bytes(ms_bytes[-2:], "little")
+            return MultiSig(key_block, weight_block, threshold)
+        except binascii.Error as berr:
+            raise ValueError(f"{berr.args}") from berr
 
 
 # Utility functions

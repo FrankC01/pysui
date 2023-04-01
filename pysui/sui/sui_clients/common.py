@@ -13,6 +13,7 @@
 
 """Sui Client common classes module."""
 
+import sys
 from dataclasses import dataclass
 from abc import abstractmethod
 from typing import Any, Optional, Union
@@ -100,7 +101,6 @@ class _ClientMixin(Provider):
     _RPC_MINIMAL_VERSION: int = 29
     _RPC_REQUIRED_VERSION: str = "0.29.1"
     _SIGNATURE_ERROR: set[str] = {
-        'Invalid user signature: InvalidSignature { error: "General cryptographic error: The s value of ECDSA signature must be low" }.',
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",
     }
@@ -237,3 +237,34 @@ class _ClientMixin(Provider):
             request_type=self.request_type,
         )
         # signers_list.append()
+
+
+def pysui_default_handler(result: SuiRpcResult) -> Any:
+    """pysui_default_handler Out of box SuiRpcResult error handler.
+
+    Exits the application!!!
+
+    :param result: The result from calling Sui RPC API
+    :type result: SuiRpcResult
+    :return: The data from call if valid
+    :rtype: Any
+    """
+    if result and result.is_ok():
+        return result.result_data
+    print(f"Error in result: {result.result_string}")
+    sys.exit(-1)
+
+
+def handle_result(from_cmd: SuiRpcResult, handler=pysui_default_handler) -> Any:
+    """handle_result Returns value from invoking handler.
+
+    :param from_cmd: The result from calling Sui RPC API
+    :type from_cmd: SuiRpcResult
+    :param handler: The result handler function, defaults to pysui_default_handler
+    :type handler: Function, optional
+    :return: Result from handler
+    :rtype: Any
+    """
+    assert callable(handler), "Invalid 'handler' argument"
+    assert isinstance(from_cmd, SuiRpcResult), "Invalid 'from_command' return"
+    return handler(from_cmd)

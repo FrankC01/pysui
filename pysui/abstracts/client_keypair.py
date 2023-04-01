@@ -119,7 +119,7 @@ class KeyPair(ABC):
         """Get the keypair public key."""
 
     @abstractmethod
-    def new_sign_secure(self, tx_data: str, recovery_id: int = 0) -> AbstractType:
+    def new_sign_secure(self, tx_data: str) -> AbstractType:
         """Sign transactions securley."""
 
     @classmethod

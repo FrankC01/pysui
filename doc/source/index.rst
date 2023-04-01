@@ -21,6 +21,7 @@ Welcome to pysui's documentation!
    getting_started
    intro
    builders
+   multi_sig
    subscriptions
    publish
    modules

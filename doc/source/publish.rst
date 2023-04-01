@@ -20,25 +20,27 @@ In ``pysui`` there are *two* modules specifically for publishing:
 
 To ``Publish`` to the Sui block chain you first have to retreive the base64 encoded content from compiled contract source.
 
-In the utils module the main tool for retrieving the contract to publish use :py:meth:`pysui.sui.sui_utils.build_b64_modules`
+In the utils module the main tool for retrieving the contract to publish use :py:meth:`pysui.sui.sui_utils.publish_build`
 
 .. code-block:: Python
 
     from pathlib import Path
     from pysui.sui.sui_clients.sync_client import SuiClient
-    from pysui.sui.sui_utils import build_b64_modules
+    from pysui.sui.sui_utils import publish_build
     from pysui.sui.sui_builders.exec_builders import Publish
 
     # Identify the path to the smart-contract project
     expanded_path = Path(os.path.expanduser("~/frankc01/sui-two/parent"))
 
     # Compile project and fetch list of base64 encoded contract module(s)
-    modules: list[str] = build_b64_modules(expanded_path)
+    # As well as any ObjectIDs of published modules that the project depends on.
+    modules_b64, dep_ids = publish_build(expanded_path)
 
     # Setup the Publish builder
     builder = Publish(
         sender=<SUI ADDRESS OF PUBLISHING SIGNER>,
         compiled_modules=modules,
+        dependencies=dep_ids,
         gas=<OBJECT ID OF GAS OBJECT TO PAY FOR PUBLISHING>,
         gas_budget=2000,
     )

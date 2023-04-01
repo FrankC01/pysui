@@ -5,16 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unpublished]
+## [0.16.0 Unpublished]
 
 ### Added
 
+- Added missing options for querying transactions
+- MultiSig added [enhancement](https://github.com/FrankC01/pysui/issues/75)
+
 ### Fixed
+
+- GetTotalTxCount underlying RPC API method [fixed](https://github.com/FrankC01/pysui/issues/82)
+- GetMultipleTx was calling obsolete RPC API method.
+- Result type from calling faucet
 
 ### Changed
 
 ### Removed
 
+- GetTxs aligning to dropped methods in RPC API 0.29.1
+- GetTransactionsInRange aligning to dropped methods in RPC API 0.29.1
 
 ## [0.15.0] 2023-03-30
 

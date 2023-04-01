@@ -35,11 +35,8 @@ from pysui.sui.sui_txresults.single_tx import (
 from pysui.sui.sui_txresults.complex_tx import (
     Checkpoint,
     Checkpoints,
-    # CheckpointContents,
-    # CheckpointSummary,
     EventBlock,
     EventQueryEnvelope,
-    TransactionQueryEnvelope,
     TxResponse,
     TxResponseArray,
 )
@@ -546,7 +543,7 @@ class GetTotalTxCount(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self) -> None:
         """Initialize builder."""
-        super().__init__("sui_getTotalTransactionNumber")
+        super().__init__("sui_getTotalTransactionBlocks")
 
 
 class GetTx(_NativeTransactionBuilder):
@@ -555,6 +552,9 @@ class GetTx(_NativeTransactionBuilder):
     _DEFAULT_GET_TX_OPTIONS: Final[dict] = {
         "showEffects": True,
         "showEvents": True,
+        "showBalanceChanges": True,
+        "showObjectChanges": True,
+        "showRawInput": True,
         "showInput": False,
     }
 
@@ -583,7 +583,7 @@ class GetMultipleTx(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self, *, digests: SuiArray, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
-        super().__init__("sui_multiGetTransactions", handler_cls=TxResponseArray, handler_func="factory")
+        super().__init__("sui_multiGetTransactionBlocks", handler_cls=TxResponseArray, handler_func="factory")
         if options is None or isinstance(options, SuiNullType):
             self.options = sutils.as_sui_map(GetTx._DEFAULT_GET_TX_OPTIONS.copy())
         else:
@@ -597,76 +597,6 @@ class GetMultipleTx(_NativeTransactionBuilder):
         :rtype: dict
         """
         return GetTx.default_options()
-
-
-class GetTxsMoveFunction(SuiMap):
-    """For GetTxns."""
-
-    def __init__(self, package: str, function: str, module: str):
-        """Initialize query params."""
-        super().__init__("MoveFunction", {"package": package, "function": function, "module": module})
-
-
-class GetTxsInputObject(SuiMap):
-    """For GetTxns."""
-
-    def __init__(self, object_id: str):
-        """Initialize query params."""
-        super().__init__("InputObject", object_id)
-
-
-class GetTxsMutateObject(SuiMap):
-    """For GetTxns."""
-
-    def __init__(self, object_id: str):
-        """Initialize query params."""
-        super().__init__("MutatedObject", object_id)
-
-
-class GetTxsFromAddress(SuiMap):
-    """For GetTxns."""
-
-    def __init__(self, address_id: str):
-        """Initialize query params."""
-        super().__init__("FromAddress", address_id)
-
-
-class GetTxsToAddress(SuiMap):
-    """For GetTxns."""
-
-    def __init__(self, address_id: str):
-        """Initialize query params."""
-        super().__init__("ToAddress", address_id)
-
-
-class GetTxs(_NativeTransactionBuilder):
-    """Return information about a specific transaction."""
-
-    @sui_builder()
-    def __init__(
-        self,
-        *,
-        query: SuiMap,
-        cursor: Optional[SuiString] = None,
-        limit: Optional[SuiInteger] = None,
-        descending_order: Optional[SuiBoolean] = None,
-    ) -> None:
-        """Initialize builder."""
-        super().__init__("sui_queryTransactions", handler_cls=TransactionQueryEnvelope, handler_func="from_dict")
-
-
-class GetTransactionsInRange(_NativeTransactionBuilder):
-    """Return list of transaction digests within the queried range."""
-
-    @sui_builder()
-    def __init__(
-        self,
-        *,
-        start: SuiInteger,
-        end: SuiInteger,
-    ) -> None:
-        """Initialize builder."""
-        super().__init__("sui_getTransactionsInRangeDeprecated")
 
 
 class GetDelegatedStakes(_NativeTransactionBuilder):

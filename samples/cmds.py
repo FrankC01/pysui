@@ -33,11 +33,6 @@ from pysui.sui.sui_builders.get_builders import (
     GetCommittee,
     GetTotalTxCount,
     GetTx,
-    GetTxsFromAddress,
-    GetTxsToAddress,
-    GetTxsInputObject,
-    GetTxsMutateObject,
-    GetTxsMoveFunction,
 )
 
 from pysui.sui.sui_utils import publish_build
@@ -429,7 +424,7 @@ def txn_count(client: SuiClient, _args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = client.execute(GetTotalTxCount())
     if result.is_ok():
-        print(result.result_data)
+        print(f"\nTotal count: {result.result_data}")
     else:
         print(f"Error: {result.result_string}")
 
@@ -437,89 +432,6 @@ def txn_count(client: SuiClient, _args: argparse.Namespace) -> None:
 def txn_txn(client: SuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = client.execute(GetTx(digest=args.digest))
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def _convert_txns_query(var_args: argparse.Namespace, query: Union[SuiString, SuiMap]) -> dict:
-    """Convert arguments to GetTxns."""
-    var_args.pop("version")
-    var_args["query"] = query
-    var_args["cursor"] = SuiString(var_args["digest"])
-    var_args.pop("digest")
-    var_args["descending_order"] = SuiBoolean(var_args["descending_order"])
-    return var_args
-
-
-def txns_all(client: SuiClient, args: argparse.Namespace) -> None:
-    """Transaction information request handler."""
-    var_args = vars(args)
-    result = client.get_txns(**_convert_txns_query(var_args, SuiString("All")))
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def txns_movefunc(client: SuiClient, args: argparse.Namespace) -> None:
-    """Transaction information request handler."""
-    var_args = vars(args)
-    query = GetTxsMoveFunction(args.package.value, args.function, args.module)
-    var_args.pop("package")
-    var_args.pop("function")
-    var_args.pop("module")
-    result = client.get_txns(**_convert_txns_query(var_args, query))
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-    #
-
-
-def txns_input(client: SuiClient, args: argparse.Namespace) -> None:
-    """Transaction information request handler."""
-    var_args = vars(args)
-    query = GetTxsInputObject(var_args["input"].value)
-    var_args.pop("input")
-    result = client.get_txns(**_convert_txns_query(var_args, query))
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def txns_mutate(client: SuiClient, args: argparse.Namespace) -> None:
-    """Transaction information request handler."""
-    var_args = vars(args)
-    query = GetTxsMutateObject(var_args["mutated"].value)
-    var_args.pop("mutated")
-    result = client.get_txns(**_convert_txns_query(var_args, query))
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def txns_from(client: SuiClient, args: argparse.Namespace) -> None:
-    """Transaction information request handler."""
-    var_args = vars(args)
-    query = GetTxsFromAddress(args.froms.value.value)
-    var_args.pop("froms")
-    result = client.get_txns(**_convert_txns_query(var_args, query))
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def txns_to(client: SuiClient, args: argparse.Namespace) -> None:
-    """Transaction information request handler."""
-    var_args = vars(args)
-    query = GetTxsToAddress(args.to.value.value)
-    var_args.pop("to")
-    result = client.get_txns(**_convert_txns_query(var_args, query))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
@@ -544,12 +456,6 @@ SUI_CMD_DISPATCH = {
     "event-tx": events_tx,
     "txn-count": txn_count,
     "txn-txn": txn_txn,
-    "txnsq-all": txns_all,
-    "txnsq-movefunc": txns_movefunc,
-    "txnsq-input": txns_input,
-    "txnsq-mutate": txns_mutate,
-    "txnsq-from": txns_from,
-    "txnsq-to": txns_to,
     "active-address": sui_active_address,
     "addresses": sui_addresses,
     "gas": sui_gas,

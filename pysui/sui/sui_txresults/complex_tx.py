@@ -404,12 +404,3 @@ class EventQueryEnvelope(DataClassJsonMixin):
     data: list[Event]
     has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
     next_cursor: Union[None, EventID] = field(metadata=config(field_name="nextCursor"))
-
-
-@dataclass
-class TransactionQueryEnvelope(DataClassJsonMixin):
-    """From sui_getTransactions."""
-
-    data: list[TxResponse]
-    has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
-    next_cursor: Optional[str] = field(metadata=config(field_name="nextCursor"))

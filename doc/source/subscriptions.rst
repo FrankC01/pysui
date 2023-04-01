@@ -4,7 +4,7 @@ Subscriptions
 
 General
 -------
-**Sui** supports subscriptions to listen for Sui Events and/or Transaction vis-a-vis web-sockets.
+**Sui** supports subscriptions to listen for Sui Events via web-sockets.
 
 * The Sui Events type listeners support a plethora of logical filtering capabilities that can further narrow results to exect events types.
 * Interestingly enough, MystenLabs dropped support for subscribing to transactions.
@@ -12,7 +12,7 @@ General
 SuiClient and subscription Builders
 -----------------------------------
 
-In ``pysui`` there are *two* modules specifically defined for subscriptions:
+In ``pysui`` there are *two* core modules specifically defined for subscriptions:
 
 #. :py:mod:`pysui.sui.sui_clients.subscribe` - This module contains the subscription SuiClient and a data collector class.
 #. :py:mod:`pysui.sui.sui_builders.subscription_builders` - This module contains the ``Builders`` for event subscription types.

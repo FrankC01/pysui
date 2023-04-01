@@ -29,16 +29,16 @@ class FaucetGas(DataClassJsonMixin):
     """Faucet Gas Object."""
 
     amount: int
+    transfer_tx_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     object_id: str = field(metadata=config(field_name="id"))
-    transfer_tx_digest: str
 
 
 @dataclass
 class FaucetGasRequest(DataClassJsonMixin):
     """Result of faucet get gas."""
 
-    transferred_gas_objects: list[FaucetGas]
-    error: Optional[dict] = None
+    transferred_gas_objects: list[FaucetGas] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    error: Optional[dict] = field(default_factory=dict)
 
 
 # ObjectRead
