@@ -19,14 +19,12 @@ from dataclasses import dataclass, field
 from typing import Union
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
 
-from pysui.sui.sui_types import ObjectID
-
 
 @dataclass
 class GenericRef(DataClassJsonMixin):
     """Generic object reference."""
 
-    object_id: ObjectID = field(metadata=config(letter_case=LetterCase.CAMEL))
+    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     version: int
     digest: str
 

@@ -4,9 +4,9 @@
 
 Python Client SDK for Sui blockchain
 
-**NOTICE: README FIRST**
+## **NOTICE: README FIRST**
 
-**Release-0.16.0 - REPO ONLY**
+**Release-0.16.0 - IN REPO ONLY**
 
 This is a _**beta**_ release. The degree of changes from 0.27.1 to 0.29.1 are such that we have not completed thorough testing. We wanted to get something out there for users who have moved to 0.29.x devnet or testinet.
 
@@ -26,10 +26,16 @@ Sui release 0.29.0 brings **_significant_** breaking changes. Please read the CH
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
+## Connect with us!
+
+We have a channel in the [sui-base](https://github.com/sui-base/sui-base) Discord server [click here](https://discord.com/invite/Erb6SwsVbH):
+
+## Additions
+
 There is a companion package called [pysui-gadgets](https://github.com/FrankC01/pysui_gadgets) with a few utilities and ge-gaws that
 you may find interesting. It is a separate package also on on PyPi.
 
-**Documentation**
+## Documentation
 
 - [ReadTheDocs](https://pysui.readthedocs.io/en/latest/index.html)
 

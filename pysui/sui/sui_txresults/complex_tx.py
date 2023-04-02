@@ -174,6 +174,16 @@ class GasCostSummary(SuiTxReturnType, DataClassJsonMixin):
     storage_cost: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     storage_rebate: int = field(metadata=config(letter_case=LetterCase.CAMEL))
 
+    @property
+    def total(self) -> int:
+        """Totals all components of gas cost."""
+        return int(self.computation_cost) + int(self.storage_cost) + int(self.storage_rebate)
+
+    @property
+    def total_after_rebate(self) -> int:
+        """All cost after rebate removed."""
+        return self.total - int(self.storage_rebate)
+
 
 @dataclass
 class Status(SuiTxReturnType, DataClassJsonMixin):
