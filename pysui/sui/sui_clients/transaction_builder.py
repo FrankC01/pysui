@@ -17,7 +17,7 @@
 
 import binascii
 from math import ceil
-from typing import Optional, Union
+from typing import Optional, Set, Union
 from functools import singledispatchmethod
 
 from pysui.sui.sui_types import bcs
@@ -94,6 +94,7 @@ class ProgrammableTransactionBuilder:
         """Builder initializer."""
         self.inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
         self.commands: list[bcs.Command] = []
+        self.objects_registry: Set[str] = set()
 
     def finish(self) -> bcs.ProgrammableTransaction:
         """finish returns ProgrammableTransaction structure.
@@ -130,6 +131,7 @@ class ProgrammableTransactionBuilder:
             self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
         else:
             raise ValueError(f"Expected Object builder arg and ObjectArg, found {key.enum_name} and {type(object_arg)}")
+        self.objects_registry.add(key.value.to_address_str())
         return bcs.Argument("Input", out_index)
 
     # def obj(self, obj_arg: bcs.ObjectArg) -> bcs.Argument:
@@ -163,7 +165,7 @@ class ProgrammableTransactionBuilder:
         return self.command(
             bcs.Command(
                 "SplitCoin",
-                bcs.SplitCoin(coin_arg, amount_arg),
+                bcs.SplitCoin(coin_arg, [amount_arg]),
             )
         )
 
@@ -195,13 +197,18 @@ class ProgrammableTransactionBuilder:
         obj_arg = object_ref if isinstance(object_ref, bcs.Argument) else self.input_obj(*object_ref)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([obj_arg], receiver_arg)))
 
-    def transfer_sui(self, recipient: bcs.BuilderArg, amount: Optional[bcs.BuilderArg] = None) -> bcs.Argument:
+    def transfer_sui(
+        self,
+        recipient: bcs.BuilderArg,
+        from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
+        amount: Optional[bcs.BuilderArg] = None,
+    ) -> bcs.Argument:
         """."""
         reciever_arg = self.input_pure(recipient)
         if amount:
-            coin_arg = self.split_coin(bcs.Argument("GasCoin"), amount)
+            coin_arg = self.split_coin(from_coin=from_coin, amount=amount)
         else:
-            coin_arg = bcs.Argument("GasCoin")
+            coin_arg = self.input_obj(*from_coin)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([coin_arg], reciever_arg)))
 
     def pay_all_sui(self, recipient: bcs.BuilderArg) -> bcs.Argument:

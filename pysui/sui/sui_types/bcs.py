@@ -95,7 +95,7 @@ class ObjectReference(canoser.Struct):
         :return: The instantiated BCS object
         :rtype: SharedObjectReference
         """
-        if isinstance(indata, ObjectRead):
+        if isinstance(indata, GenericRef):
             return cls(Address.from_str(indata.object_id), indata.version, Digest.from_str(indata.digest))
         raise ValueError(f"{indata} is not valid")
 
@@ -278,7 +278,7 @@ class TransferObjects(canoser.Struct):
 class SplitCoin(canoser.Struct):
     """It splits off some amount into a new coin."""
 
-    _fields = [("FromCoin", Argument), ("Amount", Argument)]
+    _fields = [("FromCoin", Argument), ("Amount", [Argument])]
 
 
 class MergeCoins(canoser.Struct):

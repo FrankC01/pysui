@@ -20,6 +20,7 @@ from pysui.sui.sui_builders.exec_builders import InspectTransaction
 from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_clients.transaction_builder as tx_builder
+from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
 from pysui.sui.sui_txresults.single_tx import ObjectRead, SuiCoinObject
 from pysui.sui.sui_types import bcs
@@ -155,22 +156,22 @@ class SuiTransaction:
         """."""
         if owner == self._sender:
             for gobj in self._gasses:
-                if gobj.balance > budget:
+                if gobj.balance > budget and gobj.coin_object_id not in self.builder.objects_registry:
                     return gobj
         else:
             coin_objs = self._reset_gas(owner)
             for gobj in coin_objs:
-                if gobj.balance > budget:
+                if gobj.balance > budget and gobj.coin_object_id not in self.builder.objects_registry:
                     return gobj
         return None
 
-    def execute(
+    def build_for_execute(
         self,
         *,
         signer: Union[str, SuiAddress],
         gas: Optional[Union[str, ObjectID]] = None,
         gas_budget: Union[int, SuiInteger],
-    ) -> SuiRpcResult:
+    ) -> tuple[str, SuiCoinObject, bcs.TransactionData]:
         """."""
         # Get the transaction body
         tx_kind = self.raw_kind()
@@ -181,18 +182,19 @@ class SuiTransaction:
         max_cost, _, _ = self.inspect_for_cost(signer)
 
         gas_budget = gas_budget if isinstance(gas_budget, int) else gas_budget.value
-        if gas_budget < max_cost:
-            gas_budget = max_cost
+        gas_budget = max(max_cost, gas_budget)
+        # FIXME Clean this up
         if signer == self._sender:
             if not gas:
                 gas: SuiCoinObject = self._gas_for_budget(signer, gas_budget)
             else:
                 for gasobj in self._gasses:
-                    if gasobj.balance > gas_budget:
+                    if gasobj.balance > gas_budget and gasobj.coin_object_id not in self.builder.objects_registry:
                         gas: SuiCoinObject = gasobj
                         break
         else:
             gas: SuiCoinObject = self._gas_for_budget(signer, gas_budget)
+        assert gas
         gas_object = bcs.GasData(
             [
                 bcs.ObjectReference(
@@ -204,10 +206,26 @@ class SuiTransaction:
             gas_budget,
         )
         # If budget not provided, get high end cost
-        tx_data = bcs.TransactionData(
-            "V1",
-            bcs.TransactionDataV1(tx_kind, bcs.Address.from_str(signer), gas_object, bcs.TransactionExpiration("None")),
+        return (
+            signer,
+            gas,
+            bcs.TransactionData(
+                "V1",
+                bcs.TransactionDataV1(
+                    tx_kind, bcs.Address.from_str(signer), gas_object, bcs.TransactionExpiration("None")
+                ),
+            ),
         )
+
+    def execute(
+        self,
+        *,
+        signer: Union[str, SuiAddress],
+        gas: Optional[Union[str, ObjectID]] = None,
+        gas_budget: Union[int, SuiInteger],
+    ) -> SuiRpcResult:
+        """."""
+        signer, gas_object, tx_data = self.build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
         tx_b64 = base64.b64encode(tx_data.serialize()).decode()
         iresult = self.client.sign_and_submit(SuiAddress(signer), SuiTxBytes(tx_b64), SuiArray([]))
         return iresult
@@ -233,7 +251,11 @@ class SuiTransaction:
         return self.builder.transfer_object(tx_builder.PureInput.as_input(recipient), transfer_ref)
 
     def transfer_sui(
-        self, *, recipient: Union[ObjectID, SuiAddress], amount: Optional[Union[int, SuiInteger]] = None
+        self,
+        *,
+        recipient: Union[ObjectID, SuiAddress],
+        from_coin: Union[str, ObjectID, ObjectRead, SuiCoinObject] = None,
+        amount: Optional[Union[int, SuiInteger]] = None,
     ) -> bcs.Argument:
         """."""
         assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
@@ -241,7 +263,22 @@ class SuiTransaction:
             assert isinstance(amount, (int, SuiInteger))
             amount = amount if isinstance(amount, int) else amount.value
             amount = tx_builder.PureInput.as_input(bcs.U64.encode(amount))
-        return self.builder.transfer_sui(tx_builder.PureInput.as_input(recipient), amount)
+        if from_coin:
+            if not isinstance(from_coin, ObjectRead) and not isinstance(from_coin, SuiCoinObject):
+                result = self.client.get_object(from_coin)
+                if result.is_ok():
+                    from_coin = result.result_data
+                else:
+                    raise ValueError(f"Fetching object {from_coin.object_id} failed")
+            elif isinstance(from_coin, SuiCoinObject):
+                from_coin = GenericRef(from_coin.object_id, from_coin.version, from_coin.digest)
+            from_coin_ref = (
+                bcs.BuilderArg("Object", bcs.Address.from_str(from_coin.object_id)),
+                bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(from_coin)),
+            )
+        else:
+            from_coin_ref = bcs.Argument("GasCoin")
+        return self.builder.transfer_sui(tx_builder.PureInput.as_input(recipient), from_coin_ref, amount)
 
     def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
         """."""
@@ -252,6 +289,7 @@ class SuiTransaction:
             result = self.client.get_object(coin)
             if result.is_ok():
                 coin = result.result_data
+                coin = GenericRef(coin.object_id, coin.version, coin.digest)
             else:
                 raise ValueError(f"Fetching object {coin.object_id} failed")
         coin_ref = (

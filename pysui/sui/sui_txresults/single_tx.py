@@ -774,6 +774,11 @@ class SuiCoinObject(DataClassJsonMixin):
         """Get the identifer as ObjectID."""
         return ObjectID(self.coin_object_id)
 
+    @property
+    def object_id(self) -> str:
+        """Get as object_id"""
+        return self.coin_object_id
+
 
 @dataclass
 class SuiCoinObjects(DataClassJsonMixin):
