@@ -70,15 +70,15 @@ class SuiTransaction:
         return out_list
 
     def _gas_price(self) -> int:
-        """."""
+        """Retrieve the current gas price from the chain during initialization."""
         result = self.client.execute(GetReferenceGasPrice())
         if result.is_ok():
             return int(result.result_data)
-        raise ValueError(f"Failed calling host for gas price {result.result_string}")
+        raise ValueError(f"Failed calling chain for gas price {result.result_string}")
 
     @property
     def gas_price(self) -> int:
-        """."""
+        """Returns the current gas price for the chain."""
         return self._current_gas_price
 
     @property
@@ -87,12 +87,18 @@ class SuiTransaction:
         return self._gasses
 
     def set_sender(self, sender: Union[str, SuiAddress]) -> None:
-        """Set the Transaction Sender."""
+        """Set the Transaction Sender.
+
+        This will also reset the coin object list if the sender is different from current sender
+        """
         if self._set_sender(sender):
             self._gasses = self._reset_gas(self._sender)
 
     def raw_kind(self) -> bcs.TransactionKind:
-        """."""
+        """Returns the TransactionKind object hierarchy of inputs, returns and commands.
+
+        This is useful for reviewing the transaction that will be executed or inspected.
+        """
         return self.builder.finish_for_inspect()
 
     def build_for_inspection(self) -> str:
@@ -104,9 +110,9 @@ class SuiTransaction:
         return base64.b64encode(self.raw_kind().serialize()).decode()
 
     def inspect_all(self, for_sender: Union[str, SuiAddress] = None) -> Union[TxInspectionResult, None]:
-        """inspect_all Returns results of InspectTransaction on the current Transaction.
+        """inspect_all Returns results of sui_devInspectTransactionBlock on the current Transaction.
 
-        :param for_sender: Use for inspection. If not supplied, uses current Transaction sender, defaults to None
+        :param for_sender: Used for inspection. If not supplied, uses current Transaction sender, defaults to None
         :type for_sender: Union[str, SuiAddress], optional
         :return: The successful result or None if inspect transaction failed.
         :rtype: Union[TxInspectionResult, None]
@@ -137,23 +143,9 @@ class SuiTransaction:
             return gas_max, gas_min, ispec.effects.gas_object.reference.object_id
         return None
 
-    def final(self) -> str:
-        """final returns a base64 string that can be used to sign and execute a transaction.
-
-        :return: base64 string representation of TransactionData
-        :rtype: str
-        """
-        _tx_kind: bcs.TransactionKind = self.raw_kind()
-        raise NotImplementedError("final")
-
-    #    signer: SuiAddress,
-    #     object_id: ObjectID,
-    #     gas: Option<ObjectID>,
-    #     gas_budget: u64,
-    #     recipient: SuiAddress,
-
+    # FIXME: Not complete, used for testing WIP
     def _gas_for_budget(self, owner: str, budget: int) -> SuiCoinObject:
-        """."""
+        """Used internally to select a gas object to use in transaction."""
         if owner == self._sender:
             for gobj in self._gasses:
                 if gobj.balance > budget and gobj.coin_object_id not in self.builder.objects_registry:
@@ -165,6 +157,12 @@ class SuiTransaction:
                     return gobj
         return None
 
+    #    signer: SuiAddress,
+    #     object_id: ObjectID,
+    #     gas: Option<ObjectID>,
+    #     gas_budget: u64,
+    #     recipient: SuiAddress,
+
     def build_for_execute(
         self,
         *,
@@ -172,7 +170,22 @@ class SuiTransaction:
         gas: Optional[Union[str, ObjectID]] = None,
         gas_budget: Union[int, SuiInteger],
     ) -> tuple[str, SuiCoinObject, bcs.TransactionData]:
-        """."""
+        """build_for_execute Generates the TransactionData object.
+
+        Note: If wanting to execute, this structure needs to be serialized to a base64 string. See
+        the execute method below
+
+        :param signer: The signer of transaction address
+        :type signer: Union[str, SuiAddress]
+        :param gas_budget: The gas budget to use. An introspection of the transaciton is performed and
+        and this method will use the larger of the two.
+        :type gas_budget: Union[int, SuiInteger]
+        :param gas: An gas coin object id. If not provided, one of the signers gas object sill be used, defaults to None
+        :type gas: Optional[Union[str, ObjectID]], optional
+        :return: A tuple containing the resolved sender address, the resolved gas coin object and
+        the TransactionData object replete with all required fields for execution
+        :rtype: tuple[str, SuiCoinObject, bcs.TransactionData]
+        """
         # Get the transaction body
         tx_kind = self.raw_kind()
         # We already have gas price
@@ -205,7 +218,6 @@ class SuiTransaction:
             self._current_gas_price,
             gas_budget,
         )
-        # If budget not provided, get high end cost
         return (
             signer,
             gas,
@@ -224,13 +236,114 @@ class SuiTransaction:
         gas: Optional[Union[str, ObjectID]] = None,
         gas_budget: Union[int, SuiInteger],
     ) -> SuiRpcResult:
-        """."""
-        signer, gas_object, tx_data = self.build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
+        """execute Finalizes transaction and submits for execution on the chain.
+
+        :param signer: The signer of transaction address
+        :type signer: Union[str, SuiAddress]
+        :param gas_budget: The gas budget to use. An introspection of the transaciton is performed and
+        and this method will use the larger of the two.
+        :type gas_budget: Union[int, SuiInteger]
+        :param gas: An gas coin object id. If not provided, one of the signers gas object sill be used, defaults to None
+        :type gas: Optional[Union[str, ObjectID]], optional
+        :return: The result of signing and executing the transaction
+        :rtype: SuiRpcResult
+        """
+        signer, _, tx_data = self.build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
         tx_b64 = base64.b64encode(tx_data.serialize()).decode()
         iresult = self.client.sign_and_submit(SuiAddress(signer), SuiTxBytes(tx_b64), SuiArray([]))
         return iresult
 
+    # TODO: Add method for MultiSig signing and execution
+
     # Commands
+
+    def _resolve_reference(
+        self, item: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+    ) -> Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]:
+        """."""
+        assert item, "None type found for item"
+        assert isinstance(item, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "Type not valid for item"
+        # bcs.Arguments fall through as it is ready to go
+        match item.__class__.__name__:
+            # Resolve the object on chain then convert to a tuple BuilderArg,ObjectArg
+            case "str" | "ObjectID":
+                result = self.client.get_object(item)
+                item = item if isinstance(item, str) else item.value
+                if result.is_ok():
+                    obj_data = result.result_data
+                    obj_ref = GenericRef(obj_data.object_id, obj_data.version, obj_data.digest)
+                    item = (
+                        bcs.BuilderArg("Object", bcs.Address.from_str(obj_data.object_id)),
+                        bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref)),
+                    )
+                else:
+                    raise ValueError(f"Error attempting to get {item} from chain")
+            # convert to a tuple BuilderArg,ObjectArg
+            case "ObjectRead" | "SuiCoinObject":
+                obj_ref = GenericRef(item.object_id, item.version, item.digest)
+                item = (
+                    bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
+                    bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref)),
+                )
+        return item
+
+    def _resolve_references(
+        self, items: list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]]
+    ) -> list[bcs.Argument]:
+        """."""
+        return [self._resolve_reference(x) for x in items]
+
+    def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
+        """split_coin Creates a split coin command.
+
+        Note: In execution, at some point in the transaction commands, you must transfer the result
+        otherwise, upon inspection or execution, you will get and error similar to this:
+        "UnusedValueWithoutDrop { result_idx: 0, secondary_idx: 0 }
+
+        :param coin: The coin address (object id) to split from.
+        :type coin: Union[str, ObjectID, ObjectRead]
+        :param amount: The amount to split out from coin
+        :type amount: Union[int, SuiInteger]
+        :raises ValueError: if the coin object can not be found on the chain.
+        :return: The command result that can be used in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        assert isinstance(coin, (str, ObjectID, ObjectRead)), "invalid coin object type"
+        assert isinstance(amount, (int, SuiInteger)), "invalid amount type"
+        amount = amount if isinstance(amount, int) else amount.value
+        if not isinstance(coin, ObjectRead):
+            result = self.client.get_object(coin)
+            if result.is_ok():
+                coin = result.result_data
+                coin = GenericRef(coin.object_id, coin.version, coin.digest)
+            else:
+                raise ValueError(f"Fetching object {coin.object_id} failed")
+        coin_ref = (
+            bcs.BuilderArg("Object", bcs.Address.from_str(coin.object_id)),
+            bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(coin)),
+        )
+        return self.builder.split_coin(coin_ref, tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
+
+    def merge_coins(
+        self,
+        *,
+        merge_to: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        merge_from: Union[list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray],
+    ):
+        """."""
+        assert isinstance(
+            merge_to, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+        ), "Unsupported type for merge_to"
+        assert isinstance(merge_from, (list, SuiArray)), "Unsupported merge_from collection type"
+        # Depper from_coin type verification
+        merge_from = merge_from if isinstance(merge_from, list) else merge_from.coins
+        for fcoin in merge_from:
+            assert isinstance(
+                fcoin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            ), "Unsupported entry in merge_from"
+        merge_to = self._resolve_reference(merge_to)
+        merge_from = self._resolve_references(merge_from)
+        return self.builder.merge_coins(merge_to, merge_from)
 
     def transfer_object(
         self, *, transfer: Union[str, ObjectID, ObjectRead], recipient: Union[ObjectID, SuiAddress]
@@ -279,24 +392,6 @@ class SuiTransaction:
         else:
             from_coin_ref = bcs.Argument("GasCoin")
         return self.builder.transfer_sui(tx_builder.PureInput.as_input(recipient), from_coin_ref, amount)
-
-    def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
-        """."""
-        assert isinstance(coin, (str, ObjectID, ObjectRead)), "invalid coin object type"
-        assert isinstance(amount, (int, SuiInteger)), "invalid amount type"
-        amount = amount if isinstance(amount, int) else amount.value
-        if not isinstance(coin, ObjectRead):
-            result = self.client.get_object(coin)
-            if result.is_ok():
-                coin = result.result_data
-                coin = GenericRef(coin.object_id, coin.version, coin.digest)
-            else:
-                raise ValueError(f"Fetching object {coin.object_id} failed")
-        coin_ref = (
-            bcs.BuilderArg("Object", bcs.Address.from_str(coin.object_id)),
-            bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(coin)),
-        )
-        return self.builder.split_coin(coin_ref, tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
 
     def pay_all_sui(self, *, recipient: Union[ObjectID, SuiAddress]) -> bcs.Argument:
         """."""

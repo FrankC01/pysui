@@ -16,7 +16,6 @@
 import binascii
 from typing import Any, Union
 import canoser
-from pysui.sui.sui_txresults.single_tx import ObjectRead
 
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import hexstring_to_list, b58str_to_list

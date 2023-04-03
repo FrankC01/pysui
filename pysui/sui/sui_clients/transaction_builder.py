@@ -169,25 +169,17 @@ class ProgrammableTransactionBuilder:
             )
         )
 
-    # def split_coin(self, *, from_coin: tuple[bcs.BuilderArg, bcs.ObjectArg], amount: int) -> bcs.Argument:
-    #     """."""
-    #     if from_coin:
-    #         if isinstance(from_coin, ObjectRead):
-    #             coin_arg = self.input_obj(
-    #                 bcs.BuilderArg("Object", bcs.Address.from_str(from_coin.object_id)),
-    #                 bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(from_coin)),
-    #             )
-    #         elif isinstance(from_coin, bcs.Argument):
-    #             if from_coin.enum_name == "GasCoin":
-    #                 coin_arg = from_coin
-    #     else:
-    #         coin_arg = bcs.Argument("GasCoin")
-    #     return self.command(
-    #         bcs.Command(
-    #             "SplitCoin",
-    #             bcs.SplitCoin(coin_arg, self.input_pure(PureInput.as_input(bcs.U64.encode(amount)))),
-    #         )
-    #     )
+    def merge_coins(
+        self,
+        to_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
+        from_coins: list[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
+    ) -> bcs.Argument:
+        """."""
+        to_coin = to_coin if isinstance(to_coin, bcs.Argument) else self.input_obj(*to_coin)
+        from_args: list[bcs.Argument] = []
+        for fcoin in from_coins:
+            from_args.append(fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin))
+        return self.command(bcs.Command("MergeCoins", bcs.MergeCoins(to_coin, from_args)))
 
     def transfer_object(
         self, recipient: bcs.BuilderArg, object_ref: tuple[bcs.BuilderArg, bcs.ObjectArg]
