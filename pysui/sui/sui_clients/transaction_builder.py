@@ -181,13 +181,18 @@ class ProgrammableTransactionBuilder:
             from_args.append(fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin))
         return self.command(bcs.Command("MergeCoins", bcs.MergeCoins(to_coin, from_args)))
 
-    def transfer_object(
-        self, recipient: bcs.BuilderArg, object_ref: tuple[bcs.BuilderArg, bcs.ObjectArg]
+    def transfer_objects(
+        self,
+        recipient: bcs.BuilderArg,
+        object_ref: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
     ) -> bcs.Argument:
         """."""
         receiver_arg = self.input_pure(recipient)
-        obj_arg = object_ref if isinstance(object_ref, bcs.Argument) else self.input_obj(*object_ref)
-        return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([obj_arg], receiver_arg)))
+        # object_ref = object_ref if isinstance(object_ref, bcs.Argument) else self.input_obj(*object_ref)
+        from_args: list[bcs.Argument] = []
+        for fcoin in object_ref:
+            from_args.append(fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin))
+        return self.command(bcs.Command("TransferObjects", bcs.TransferObjects(from_args, receiver_arg)))
 
     def transfer_sui(
         self,

@@ -294,11 +294,9 @@ class SuiTransaction:
         return [self._resolve_reference(x) for x in items]
 
     def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
-        """split_coin Creates a split coin command.
+        """split_coin Creates a new coin with the defined amount, split from the provided coin.
 
-        Note: In execution, at some point in the transaction commands, you must transfer the result
-        otherwise, upon inspection or execution, you will get and error similar to this:
-        "UnusedValueWithoutDrop { result_idx: 0, secondary_idx: 0 }
+        Note: Returns the coin so that it can be used in subsequent commands.
 
         :param coin: The coin address (object id) to split from.
         :type coin: Union[str, ObjectID, ObjectRead]
@@ -345,23 +343,40 @@ class SuiTransaction:
         merge_from = self._resolve_references(merge_from)
         return self.builder.merge_coins(merge_to, merge_from)
 
-    def transfer_object(
-        self, *, transfer: Union[str, ObjectID, ObjectRead], recipient: Union[ObjectID, SuiAddress]
-    ) -> bcs.Argument:
+    def transfer_objects(
+        self,
+        *,
+        transfers: Union[list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray],
+        recipient: Union[ObjectID, SuiAddress],
+    ):
         """."""
-        assert isinstance(transfer, (str, ObjectID, ObjectRead)), "invalid object id type"
+        assert isinstance(transfers, (list, SuiArray)), "Unsupported trasfers collection type"
         assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
-        if not isinstance(transfer, ObjectRead):
-            result = self.client.get_object(transfer)
-            if result.is_ok():
-                transfer = result.result_data
-            else:
-                raise ValueError(f"Fetching object {transfer.object_id} failed")
-        transfer_ref = (
-            bcs.BuilderArg("Object", bcs.Address.from_str(transfer.object_id)),
-            bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(transfer)),
-        )
-        return self.builder.transfer_object(tx_builder.PureInput.as_input(recipient), transfer_ref)
+        transfers = transfers if isinstance(transfers, list) else transfers.array
+        for txfer in transfers:
+            assert isinstance(
+                txfer, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            ), "Unsupported entry in transfers"
+        transfers = self._resolve_references(transfers)
+        return self.builder.transfer_objects(tx_builder.PureInput.as_input(recipient), transfers)
+
+    # def transfer_object(
+    #     self, *, transfer: Union[str, ObjectID, ObjectRead], recipient: Union[ObjectID, SuiAddress]
+    # ) -> bcs.Argument:
+    #     """."""
+    #     assert isinstance(transfer, (str, ObjectID, ObjectRead)), "invalid object id type"
+    #     assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
+    #     if not isinstance(transfer, ObjectRead):
+    #         result = self.client.get_object(transfer)
+    #         if result.is_ok():
+    #             transfer = result.result_data
+    #         else:
+    #             raise ValueError(f"Fetching object {transfer.object_id} failed")
+    #     transfer_ref = (
+    #         bcs.BuilderArg("Object", bcs.Address.from_str(transfer.object_id)),
+    #         bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(transfer)),
+    #     )
+    #     return self.builder.transfer_object(tx_builder.PureInput.as_input(recipient), transfer_ref)
 
     def transfer_sui(
         self,
