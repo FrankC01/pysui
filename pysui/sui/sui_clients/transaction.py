@@ -17,7 +17,7 @@
 import base64
 from typing import Optional, Union
 from pysui.sui.sui_builders.exec_builders import InspectTransaction
-from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice
+from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetMultipleObjects
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_clients.transaction_builder as tx_builder
 from pysui.sui.sui_txresults.common import GenericRef
@@ -27,7 +27,7 @@ from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiTxBytes
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString, SuiTxBytes
 
 
 class SuiTransaction:
@@ -278,6 +278,7 @@ class SuiTransaction:
                     )
                 else:
                     raise ValueError(f"Error attempting to get {item} from chain")
+            # FIXME: Not handling shared objects yet
             # convert to a tuple BuilderArg,ObjectArg
             case "ObjectRead" | "SuiCoinObject":
                 obj_ref = GenericRef(item.object_id, item.version, item.digest)
@@ -292,6 +293,98 @@ class SuiTransaction:
     ) -> list[bcs.Argument]:
         """."""
         return [self._resolve_reference(x) for x in items]
+
+    def _resolve_arguments(self, items: list) -> list:
+        """."""
+        objref_indexes: list[int] = []
+        objtup_indexes: list[int] = []
+        # Separate the index based on conversion types
+        for index, item in enumerate(items):
+            clz_name = item.__class__.__name__
+            # TODO: Can simplify with sets
+            match clz_name:
+                # Pure conversion Types
+                case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
+                    items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
+                # Pure conversion Types
+                case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress":
+                    items[index] = tx_builder.PureInput.as_input(items[index])
+                # Need to get objects to generics
+                case "ObjectID":
+                    objref_indexes.append(index)
+                # Need to extract generics
+                case "ObjectRead" | "SuiCoinObject":
+                    objtup_indexes.append(index)
+                # Direct passthrough
+                case "Argument":
+                    pass
+                case _:
+                    raise ValueError(f"Uknown class type handler {clz_name}")
+        # Result object ID to tuple candidate
+        if objref_indexes:
+            res = self.client.execute(GetMultipleObjects(object_ids=[items[x] for x in objref_indexes]))
+            if res.is_ok():
+                res_list = res.result_data
+                if len(res_list) != len(objref_indexes):
+                    raise ValueError(f"Unable to find object in set {[items[x] for x in objref_indexes]}")
+                # Update items list and register tuple conversion
+                for index, result in enumerate(res_list):
+                    items[objref_indexes[index]] = result
+                    objtup_indexes.append(objref_indexes[index])
+            else:
+                raise ValueError(f"{res.result_string}")
+        # Convert tuple candidates to tuples
+        if objtup_indexes:
+            for tindex in objtup_indexes:
+                item = items[index]
+                obj_ref = GenericRef(item.object_id, item.version, item.digest)
+                # FIXME: Not handling shared objects yet
+                items[tindex] = (
+                    bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
+                    bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref)),
+                )
+
+        return items
+
+    def move_call(
+        self,
+        *,
+        target: Union[str, SuiString, ObjectID],
+        arguments: Union[list, SuiArray],
+        type_arguments: Optional[Union[list, SuiArray]] = None,
+        module: Optional[Union[str, SuiString]] = None,
+        function: Optional[Union[str, SuiString]] = None,
+    ) -> bcs.Argument:
+        """."""
+        target_id = None
+        module_id = None
+        function_id = None
+        # Standardize the input parameters
+        if isinstance(target, ObjectID) and (module is None or function is None):
+            raise ValueError("If target is only ObjectID, you must fill in both 'module' and 'function' fields")
+        if isinstance(target, (str, SuiString)):
+            target = target if isinstance(target, str) else target.value
+            target_id, module_id, function_id = target.split("::")
+            target_id = bcs.Address.from_str(target_id)
+        elif isinstance(target, ObjectID):
+            target_id = target_id = bcs.Address.from_str(target.value)
+            module_id = module if isinstance(module, str) else module.value
+            function_id = function if isinstance(function, str) else function.value
+        # Standardize the arguments to list
+        if arguments:
+            arguments = arguments if isinstance(arguments, list) else arguments.array
+            arguments = self._resolve_arguments(arguments)
+        else:
+            arguments = []
+        # Standardize the type_arguments to list
+        if type_arguments:
+            type_arguments = type_arguments if isinstance(type_arguments, list) else type_arguments.array
+        else:
+            type_arguments = []
+
+        return self.builder.move_call(
+            target=target_id, arguments=arguments, type_arguments=type_arguments, module=module_id, function=function_id
+        )
 
     def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
         """split_coin Creates a new coin with the defined amount, split from the provided coin.
@@ -412,3 +505,7 @@ class SuiTransaction:
         """."""
         assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
         return self.builder.pay_all_sui(tx_builder.PureInput.as_input(recipient))
+
+
+if __name__ == "__main__":
+    pass

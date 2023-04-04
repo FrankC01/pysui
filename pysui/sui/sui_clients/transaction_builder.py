@@ -23,7 +23,7 @@ from functools import singledispatchmethod
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_txresults.single_tx import ObjectRead
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_types.scalars import ObjectID
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
 
 # Well known aliases
 _SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
@@ -51,10 +51,22 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: SuiInteger) -> list:
+        """Convert int to minimal list of bytes."""
+        return cls.pure(arg.value)
+
+    @pure.register
+    @classmethod
     def _(cls, arg: str) -> list:
         """Convert str to list of bytes."""
         base_list = list(bytearray(arg, encoding="utf-8"))
         return base_list
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiString) -> list:
+        """Convert int to minimal list of bytes."""
+        return cls.pure(arg.value)
 
     @pure.register
     @classmethod
@@ -150,6 +162,31 @@ class ProgrammableTransactionBuilder:
         out_index = len(self.commands)
         self.commands.append(command_obj)
         return bcs.Argument("Result", out_index)
+
+    def move_call(
+        self,
+        *,
+        target: bcs.Address,
+        arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
+        type_arguments: list[bcs.TypeTag],
+        module: str,
+        function: str,
+    ) -> bcs.Argument:
+        """."""
+        argrefs: list[bcs.Argument] = []
+        for arg in arguments:
+            if isinstance(arg, bcs.BuilderArg):
+                argrefs.append(self.input_pure(arg))
+            elif isinstance(arg, tuple):
+                argrefs.append(self.input_obj(*arg))
+            else:
+                raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
+        return self.command(
+            bcs.Command(
+                "MoveCall",
+                bcs.ProgrammableMoveCall(target, module, function, type_arguments, argrefs),
+            )
+        )
 
     def split_coin(
         self,

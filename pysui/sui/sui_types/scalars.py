@@ -422,3 +422,84 @@ class SuiInteger(SuiScalarType):
         if self.value is None:
             return 0
         return self.value
+
+
+# pylint:disable=too-few-public-methods
+class _SuiIntegerType:
+    def to_bytes(self) -> bytes:
+        """."""
+        value: int = getattr(self, "value")
+        maxer: int = getattr(self, "_BYTE_COUNT")
+        return value.to_bytes(maxer, "little")
+
+
+class SuiU8(_SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFF
+    _BYTE_COUNT: int = 1
+
+    def __init__(self, val: int):
+        """."""
+        assert val <= self._MAX_VAL
+        self.value = val
+
+
+class SuiU16(_SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFF
+    _BYTE_COUNT: int = 2
+
+    def __init__(self, val: int):
+        """."""
+        assert val <= self._MAX_VAL
+        self.value = val
+
+
+class SuiU32(_SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFFFFFF
+    _BYTE_COUNT: int = 4
+
+    def __init__(self, val: int):
+        """."""
+        assert val <= self._MAX_VAL
+        self.value = val
+
+
+class SuiU64(_SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFFFFFFFFFFFFFF
+    _BYTE_COUNT: int = 8
+
+    def __init__(self, val: int):
+        """."""
+        assert val <= self._MAX_VAL
+        self.value = val
+
+
+class SuiU128(_SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    _BYTE_COUNT: int = 16
+
+    def __init__(self, val: int):
+        """."""
+        assert val <= self._MAX_VAL
+        self.value = val
+
+
+class SuiU256(_SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    _BYTE_COUNT: int = 32
+
+    def __init__(self, val: int):
+        """."""
+        assert val <= self._MAX_VAL
+        self.value = val
