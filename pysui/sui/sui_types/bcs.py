@@ -157,19 +157,48 @@ U256 = Uint256
 class TypeTag(canoser.RustEnum):
     """TypeTag enum for move call type_arguments."""
 
+    _LCASE_SCALARS: list[str] = ["bool", "u8", "u16", "u32", "u64", "u128", "u256"]
+    _UCASE_SCALARS: list[str] = ["Bool", "U8", "U16", "U32", "U64", "uU28", "U256"]
+
     _enums = [
-        ("Bool", bool),
-        ("U8", U8),
-        ("U64", U64),
-        ("U128", canoser.Uint128),
+        ("Bool", None),
+        ("U8", None),
+        ("U64", None),
+        ("U128", None),
         ("Address", Address),
         ("Signer", None),
         ("Vector", None),  # Injected below StructTag
         ("Struct", None),  # Injected below StructTag
-        ("U16", canoser.Uint16),
-        ("U32", canoser.Uint32),
-        ("U256", Uint256),
+        ("U16", None),
+        ("U32", None),
+        ("U256", None),
     ]
+
+    @classmethod
+    def type_tag_from(cls, value: str) -> "TypeTag":
+        """."""
+        assert isinstance(value, str), f"Expected string, found {type(value)}"
+        # Scalar types
+        if value in cls._LCASE_SCALARS:
+            index = cls._LCASE_SCALARS.index(value)
+            return cls(cls._UCASE_SCALARS[index])
+        if value in cls._UCASE_SCALARS:
+            return cls(cls._UCASE_SCALARS[cls._UCASE_SCALARS.index(value)])
+        # Struct types
+        spliter = value.split("::")
+        if len(spliter) > 2:
+            return TypeTag.new_with_index_value(TypeTag.get_index("Struct"), StructTag.from_type_str(value))
+        # Address types
+        if value.startswith("0x") or value.startswith("0X"):
+            return cls("Address", Address.from_str(value))
+        # Vector types
+        vcount = value.count("vector")
+        if vcount:
+            inner_type_tag = cls.type_tag_from(value[value.rfind("<") + 1 : value.index(">")])
+            for _ in range(vcount):
+                inner_type_tag = TypeTag.new_with_index_value(TypeTag.get_index("Vector"), [inner_type_tag])
+            return inner_type_tag
+        raise ValueError(f"{value} not a recognized TypeTag")
 
     @classmethod
     def update_value_at(cls, index: int, value: Any):

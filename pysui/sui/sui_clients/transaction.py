@@ -379,6 +379,7 @@ class SuiTransaction:
         # Standardize the type_arguments to list
         if type_arguments:
             type_arguments = type_arguments if isinstance(type_arguments, list) else type_arguments.array
+            type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
         else:
             type_arguments = []
 
