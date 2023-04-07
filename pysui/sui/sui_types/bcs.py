@@ -16,6 +16,7 @@
 import binascii
 from typing import Any, Union
 import canoser
+from pysui.sui.sui_txresults.single_tx import ObjectRead
 
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import hexstring_to_list, b58str_to_list
@@ -109,7 +110,7 @@ class SharedObjectReference(canoser.Struct):
     ]
 
     @classmethod
-    def from_generic_ref(cls, indata: GenericRef) -> "SharedObjectReference":
+    def from_object_read(cls, indata: ObjectRead) -> "SharedObjectReference":
         """from_generic_ref init construct with GenericRef from ObjectRead structure.
 
         :param indata: The reference information for an Object from ObjectRead
@@ -117,7 +118,7 @@ class SharedObjectReference(canoser.Struct):
         :return: The instantiated BCS object
         :rtype: SharedObjectReference
         """
-        return cls(Address.from_str(indata.object_id), indata.version, Digest.from_str(indata.digest))
+        return cls(Address.from_str(indata.object_id), indata.version, True)
 
 
 class OptionalU64(canoser.RustOptional):
@@ -165,7 +166,7 @@ class TypeTag(canoser.RustEnum):
         ("U8", None),
         ("U64", None),
         ("U128", None),
-        ("Address", Address),
+        ("Address", None),
         ("Signer", None),
         ("Vector", None),  # Injected below StructTag
         ("Struct", None),  # Injected below StructTag
@@ -190,10 +191,12 @@ class TypeTag(canoser.RustEnum):
             return TypeTag.new_with_index_value(TypeTag.get_index("Struct"), StructTag.from_type_str(value))
         # Address types
         if value.startswith("0x") or value.startswith("0X"):
-            return cls("Address", Address.from_str(value))
+            return cls("Address")
+            # return cls("Address", Address.from_str(value))
         # Vector types
         vcount = value.count("vector")
         if vcount:
+            # Get the most inner type tag
             inner_type_tag = cls.type_tag_from(value[value.rfind("<") + 1 : value.index(">")])
             for _ in range(vcount):
                 inner_type_tag = TypeTag.new_with_index_value(TypeTag.get_index("Vector"), [inner_type_tag])
@@ -278,6 +281,11 @@ class OptionalTypeTag(canoser.RustOptional):
     """OptionalTypeTag Optional assignment of TypeTag."""
 
     _type = TypeTag
+
+    # @classmethod
+    # def check_value(cls, value):
+    #     """."""
+    #     print(value)
 
 
 class ProgrammableMoveCall(canoser.Struct):

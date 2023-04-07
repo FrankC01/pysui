@@ -89,6 +89,12 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: bcs.OptionalU64) -> list:
+        """Convert SuiAddress to list of bytes."""
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
     def _(cls, arg: list) -> list:
         """."""
         raise NotImplementedError("PureInput for lists")
@@ -163,6 +169,25 @@ class ProgrammableTransactionBuilder:
         self.commands.append(command_obj)
         return bcs.Argument("Result", out_index)
 
+    def make_move_vector(
+        self,
+        vtype: bcs.OptionalTypeTag,
+        items: list[Union[bcs.Argument, bcs.BuilderArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
+    ) -> bcs.Argument:
+        """Create a call to convert a list of items to a Sui 'vector' type."""
+        # Sample first for type
+        argrefs: list[bcs.Argument] = []
+        for arg in items:
+            if isinstance(arg, bcs.BuilderArg):
+                argrefs.append(self.input_pure(arg))
+            elif isinstance(arg, tuple):
+                argrefs.append(self.input_obj(*arg))
+            elif isinstance(arg, bcs.Argument):
+                argrefs.append(arg)
+            else:
+                raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
+        return self.command(bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs)))
+
     def move_call(
         self,
         *,
@@ -179,6 +204,8 @@ class ProgrammableTransactionBuilder:
                 argrefs.append(self.input_pure(arg))
             elif isinstance(arg, tuple):
                 argrefs.append(self.input_obj(*arg))
+            elif isinstance(arg, bcs.Argument) or isinstance(arg, bcs.OptionalU64):
+                argrefs.append(arg)
             else:
                 raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
         return self.command(

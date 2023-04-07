@@ -15,19 +15,22 @@
 """Sui high level Transaction Builder supports generation of TransactionKind and TransactionData."""
 
 import base64
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from pysui.sui.sui_builders.exec_builders import InspectTransaction
 from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetMultipleObjects
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_clients.transaction_builder as tx_builder
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
-from pysui.sui.sui_txresults.single_tx import ObjectRead, SuiCoinObject
+from pysui.sui.sui_txresults.single_tx import AddressOwner, ObjectRead, SharedOwner, SuiCoinObject
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString, SuiTxBytes
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiString, SuiTxBytes
+
+_SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
+_STAKE_REQUEST_TARGET: str = "0x3::sui_system::request_add_stake_mul_coin"
 
 
 class SuiTransaction:
@@ -255,17 +258,20 @@ class SuiTransaction:
 
     # TODO: Add method for MultiSig signing and execution
 
-    # Commands
+    # Commands and helpers
+    # TODO: Remove the asserts at some point
+    # TODO: This is way too much code, refactor when stable
 
     def _resolve_reference(
         self, item: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
     ) -> Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]:
-        """."""
+        """Resolve an input item to either a pure Argument type or an object reference tuple."""
         assert item, "None type found for item"
         assert isinstance(item, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "Type not valid for item"
         # bcs.Arguments fall through as it is ready to go
         match item.__class__.__name__:
             # Resolve the object on chain then convert to a tuple BuilderArg,ObjectArg
+            # FIXME: Not handling shared objects yet
             case "str" | "ObjectID":
                 result = self.client.get_object(item)
                 item = item if isinstance(item, str) else item.value
@@ -291,7 +297,7 @@ class SuiTransaction:
     def _resolve_references(
         self, items: list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]]
     ) -> list[bcs.Argument]:
-        """."""
+        """Resolve a list of items to it's respect pure or object reference tuples."""
         return [self._resolve_reference(x) for x in items]
 
     def _resolve_arguments(self, items: list) -> list:
@@ -309,14 +315,16 @@ class SuiTransaction:
                 # Pure conversion Types
                 case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress":
                     items[index] = tx_builder.PureInput.as_input(items[index])
+                case "OptionalU64":
+                    items[index] = tx_builder.PureInput.as_input(items[index])
                 # Need to get objects to generics
                 case "ObjectID":
                     objref_indexes.append(index)
                 # Need to extract generics
                 case "ObjectRead" | "SuiCoinObject":
                     objtup_indexes.append(index)
-                # Direct passthrough
-                case "Argument":
+                # Direct passthroughs
+                case "Argument" | "BuilderArg" | "tuple":
                     pass
                 case _:
                     raise ValueError(f"Uknown class type handler {clz_name}")
@@ -336,15 +344,58 @@ class SuiTransaction:
         # Convert tuple candidates to tuples
         if objtup_indexes:
             for tindex in objtup_indexes:
-                item = items[index]
-                obj_ref = GenericRef(item.object_id, item.version, item.digest)
+                item: ObjectRead = items[tindex]
+                if isinstance(item.owner, AddressOwner):
+                    obj_ref = GenericRef(item.object_id, item.version, item.digest)
+                    b_obj_arg = bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref))
+                elif isinstance(item.owner, SharedOwner):
+                    b_obj_arg = bcs.ObjectArg("SharedObject", bcs.SharedObjectReference.from_object_read(item))
+
                 # FIXME: Not handling shared objects yet
                 items[tindex] = (
                     bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
-                    bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref)),
+                    b_obj_arg,
                 )
 
         return items
+
+    def make_move_vector(self, items: list[Any]) -> bcs.Argument:
+        """Create a call to convert a list of items to a Sui 'vector' type."""
+        # Sample first for type
+        def _first_non_argument_type(inner_list: list) -> Any:
+            """."""
+            result = None
+            for inner_item in inner_list:
+                if not isinstance(inner_item, bcs.Argument):
+                    result = inner_item
+                    break
+            return result
+
+        type_tag = bcs.OptionalTypeTag()
+        if items:
+            first_item = _first_non_argument_type(items)
+            if first_item:
+                # If not all arguments, ensure the remaining are consistent
+                first_class = first_item.__class__.__name__
+                for item in items:
+                    item_class = item.__class__.__name__
+                    if item_class == "Argument":
+                        pass
+                    else:
+                        assert item_class == first_class, f"Expected {first_class} found {item_class}"
+                match first_class:
+                    case "int":
+                        suit = SuiIntegerType.to_best_fit_integer_type(first_item)
+                        type_tag = bcs.OptionalTypeTag(bcs.TypeTag(suit.type_tag_name))
+                    case "str":
+                        type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from("u8"))
+                    case "SuiAddress":
+                        type_tag = bcs.OptionalTypeTag(bcs.TypeTag("Address"))
+                    # type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(first_item.address))
+                    case _:
+                        pass
+            return self.builder.make_move_vector(type_tag, self._resolve_arguments(items))
+        raise ValueError("make_vector requires a non-empty list")
 
     def move_call(
         self,
@@ -354,6 +405,7 @@ class SuiTransaction:
         type_arguments: Optional[Union[list, SuiArray]] = None,
         module: Optional[Union[str, SuiString]] = None,
         function: Optional[Union[str, SuiString]] = None,
+        skip_arg_resolve: Optional[bool] = False,
     ) -> bcs.Argument:
         """."""
         target_id = None
@@ -371,9 +423,11 @@ class SuiTransaction:
             module_id = module if isinstance(module, str) else module.value
             function_id = function if isinstance(function, str) else function.value
         # Standardize the arguments to list
-        if arguments:
+        if arguments and not skip_arg_resolve:
             arguments = arguments if isinstance(arguments, list) else arguments.array
             arguments = self._resolve_arguments(arguments)
+        elif arguments and skip_arg_resolve:
+            pass
         else:
             arguments = []
         # Standardize the type_arguments to list
@@ -386,6 +440,28 @@ class SuiTransaction:
         return self.builder.move_call(
             target=target_id, arguments=arguments, type_arguments=type_arguments, module=module_id, function=function_id
         )
+
+    def stake_coin(
+        self,
+        *,
+        coins: list[ObjectID],
+        validator_address: Union[str, SuiAddress],
+        amount: Optional[Union[int, SuiInteger]] = None,
+    ) -> bcs.Argument:
+        """."""
+        params: list = []
+        params.append(_SYSTEMSTATE_OBJECT)
+        params.append(self.make_move_vector(coins))
+        if amount:
+            amount = amount if isinstance(amount, int) else amount.value
+            params.append(bcs.OptionalU64(amount))
+        else:
+            params.append(bcs.OptionalU64())
+        params.append(validator_address if isinstance(validator_address, SuiAddress) else SuiAddress(validator_address))
+        return self.move_call(
+            target=_STAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params), skip_arg_resolve=True
+        )
+        # return self._resolve_arguments(params)
 
     def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
         """split_coin Creates a new coin with the defined amount, split from the provided coin.

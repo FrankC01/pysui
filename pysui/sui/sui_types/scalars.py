@@ -13,6 +13,7 @@
 
 """Sui Scalar Types."""
 
+import math
 from pysui.abstracts import SuiScalarType
 
 
@@ -425,19 +426,36 @@ class SuiInteger(SuiScalarType):
 
 
 # pylint:disable=too-few-public-methods
-class _SuiIntegerType:
+class SuiIntegerType:
+    """."""
+
     def to_bytes(self) -> bytes:
         """."""
         value: int = getattr(self, "value")
         maxer: int = getattr(self, "_BYTE_COUNT")
         return value.to_bytes(maxer, "little")
 
+    @property
+    def type_tag_name(self) -> str:
+        """."""
+        return getattr(self, "_TYPE_TAG_NAME")
 
-class SuiU8(_SuiIntegerType):
+    @classmethod
+    def to_best_fit_integer_type(cls, value: int) -> "SuiIntegerType":
+        """."""
+        byte_count = math.ceil(value.bit_count() / 8)
+        for sclz in cls.__subclasses__():
+            if getattr(sclz, "_BYTE_COUNT") == byte_count:
+                return sclz(value)
+        raise ValueError(f"Unable to resolve type to hold {byte_count} bytes")
+
+
+class SuiU8(SuiIntegerType):
     """."""
 
     _MAX_VAL: int = 0xFF
     _BYTE_COUNT: int = 1
+    _TYPE_TAG_NAME: str = "U8"
 
     def __init__(self, val: int):
         """."""
@@ -445,11 +463,12 @@ class SuiU8(_SuiIntegerType):
         self.value = val
 
 
-class SuiU16(_SuiIntegerType):
+class SuiU16(SuiIntegerType):
     """."""
 
     _MAX_VAL: int = 0xFFFF
     _BYTE_COUNT: int = 2
+    _TYPE_TAG_NAME: str = "U16"
 
     def __init__(self, val: int):
         """."""
@@ -457,11 +476,12 @@ class SuiU16(_SuiIntegerType):
         self.value = val
 
 
-class SuiU32(_SuiIntegerType):
+class SuiU32(SuiIntegerType):
     """."""
 
     _MAX_VAL: int = 0xFFFFFFFF
     _BYTE_COUNT: int = 4
+    _TYPE_TAG_NAME: str = "U32"
 
     def __init__(self, val: int):
         """."""
@@ -469,11 +489,12 @@ class SuiU32(_SuiIntegerType):
         self.value = val
 
 
-class SuiU64(_SuiIntegerType):
+class SuiU64(SuiIntegerType):
     """."""
 
     _MAX_VAL: int = 0xFFFFFFFFFFFFFFFF
     _BYTE_COUNT: int = 8
+    _TYPE_TAG_NAME: str = "U64"
 
     def __init__(self, val: int):
         """."""
@@ -481,11 +502,12 @@ class SuiU64(_SuiIntegerType):
         self.value = val
 
 
-class SuiU128(_SuiIntegerType):
+class SuiU128(SuiIntegerType):
     """."""
 
     _MAX_VAL: int = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     _BYTE_COUNT: int = 16
+    _TYPE_TAG_NAME: str = "U128"
 
     def __init__(self, val: int):
         """."""
@@ -493,13 +515,23 @@ class SuiU128(_SuiIntegerType):
         self.value = val
 
 
-class SuiU256(_SuiIntegerType):
+class SuiU256(SuiIntegerType):
     """."""
 
     _MAX_VAL: int = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
     _BYTE_COUNT: int = 32
+    _TYPE_TAG_NAME: str = "U256"
 
     def __init__(self, val: int):
         """."""
         assert val <= self._MAX_VAL
         self.value = val
+
+
+if __name__ == "__main__":
+    print(SuiIntegerType.to_best_fit_integer_type(5).type_tag_name)
+    print(
+        SuiIntegerType.to_best_fit_integer_type(
+            0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        ).type_tag_name
+    )
