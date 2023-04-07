@@ -8,16 +8,19 @@ Python Client SDK for Sui blockchain
 
 **Release-0.16.0 - IN REPO ONLY**
 
-This is a _**beta**_ release. The degree of changes from 0.27.1 to 0.29.1 are such that we have not completed thorough testing. We wanted to get something out there for users who have moved to 0.29.x devnet or testinet.
-
 This release introduces **MultiSig** (multiple keyt signing) for extra security governance! A section in the online
 documentation has been added to describe the basics.
 
+This release introduces **Programmable Transactions** See `pysui/sui/sui_client/transaction.py` It is still being worked
+and contains too much code, asserts,TODO and FIXME. Note\_ that the legacy Builders and ease of use API on SuiClient are still available.
+
 We would appreciate any issues being reported in the [github issue log](https://github.com/FrankC01/pysui/issues)
 
-Also, the amount of changes have eviscerated the pytest implementations and should not be trusted at this time.
+This is a _**beta**_ release. The degree of changes from 0.27.1 to 0.29.1 are such that we have not completed thorough testing. We wanted to get something out there for users who have moved to 0.29.x devnet or testinet.
 
-Sui release 0.29.0 brings **_significant_** breaking changes. Please read the CHANGLOG first as many builders and data models have changed or even been removed. Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, constraints, fixes and removals...
+The amount of changes have eviscerated the pytest implementations and should not be trusted at this time.
+
+Sui release 0.29.x brings **_significant_** breaking changes. Please read the CHANGLOG first as many builders and data models have changed or even been removed. Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, constraints, fixes and removals...
 
 - 100% coverage (builders, return types, etc.) for parity with _SUI 0.29.0 API_ on devnet (see Testnet below)
   - Programmable Transactions not yet supported. We are working on a TransactionBuilder and should have this available soon.
@@ -58,9 +61,13 @@ If, instead, you want to work with repo latest source code then read [DEVELOP](h
 
 `source env/bin/activate`
 
+or
+
+`. env/bin/activate`
+
 ### Install `pysui`
 
-`pip install pysui`
+`pip install --use-pep517 pysui`
 
 ## Samples
 

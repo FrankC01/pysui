@@ -272,23 +272,6 @@ class ProgrammableTransactionBuilder:
             coin_arg = self.input_obj(*from_coin)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([coin_arg], reciever_arg)))
 
-    def pay_all_sui(self, recipient: bcs.BuilderArg) -> bcs.Argument:
-        """."""
-        reciever_arg = self.input_pure(recipient)
-        return self.command(
-            bcs.Command("TransferObjects", bcs.TransferObjects([bcs.Argument("GasCoin")], reciever_arg))
-        )
-
-    def pay_sui(self, *, recipients: list[Union[str, ObjectID, SuiAddress]], amounts: list[int]) -> bcs.Argument:
-        """."""
-        raise NotImplementedError("pay_sui")
-
-    def pay(
-        self, *, coins: list[ObjectRead], recipients: list[Union[str, ObjectID, SuiAddress]], amounts: list[int]
-    ) -> bcs.Argument:
-        """."""
-        raise NotImplementedError("pay")
-
     def publish(self, *, modules: list[list[int]]) -> bcs.Argument:
         """."""
         return self.command(bcs.Command("Publish", bcs.Publish(modules)))

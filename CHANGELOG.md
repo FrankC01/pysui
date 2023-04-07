@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added missing options for querying transactions
 - Implemented QueryTransactions [enhancement](https://github.com/FrankC01/pysui/issues/84) builder and results supporing `suix_queryTransactions`
 - MultiSig added [enhancement](https://github.com/FrankC01/pysui/issues/75)
+- Implemented pysui.sui.sui_clients.Transaction/Transaction builder supporting Programmable Transactions [enhancement](https://github.com/FrankC01/pysui/issues/83)
 
 ### Fixed
 
@@ -20,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Result type from calling faucet
 
 ### Changed
+
+- Increased default RPC timeout from 30 to 60 seconds on synch and asynch SuiClients.
 
 ### Removed
 
