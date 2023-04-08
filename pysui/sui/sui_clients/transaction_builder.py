@@ -272,19 +272,25 @@ class ProgrammableTransactionBuilder:
             coin_arg = self.input_obj(*from_coin)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([coin_arg], reciever_arg)))
 
-    def publish(self, *, modules: list[list[int]]) -> bcs.Argument:
+    def publish(
+        self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address], recipient: bcs.BuilderArg
+    ) -> bcs.Argument:
         """."""
-        return self.command(bcs.Command("Publish", bcs.Publish(modules)))
+        # result = self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
+        return self.transfer_objects(recipient, [self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))])
 
-    def publish_immutable(self, *, modules: list[list[int]]) -> bcs.Argument:
-        """."""
-        cap = self.publish(modules=modules)
-        return self.command(
-            bcs.Command(
-                "MoveCall",
-                bcs.ProgrammableMoveCall(_SUI_PACKAGE_ID, _SUI_PACKAGE_MODULE, _SUI_PACKAGE_MAKE_IMMUTABLE, [], [cap]),
-            )
-        )
+    # def publish_immutable(
+    #     self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address], recipient: bcs.BuilderArg
+    # ) -> bcs.Argument:
+    #     """."""
+    #     cap = self.publish(modules, dep_ids)
+    #     self.transfer_objects(recipient, [cap])
+    #     return self.command(
+    #         bcs.Command(
+    #             "MoveCall",
+    #             bcs.ProgrammableMoveCall(_SUI_PACKAGE_ID, _SUI_PACKAGE_MODULE, _SUI_PACKAGE_MAKE_IMMUTABLE, [], [cap]),
+    #         )
+    #     )
 
 
 if __name__ == "__main__":

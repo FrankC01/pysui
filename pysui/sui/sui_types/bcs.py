@@ -118,7 +118,8 @@ class SharedObjectReference(canoser.Struct):
         :return: The instantiated BCS object
         :rtype: SharedObjectReference
         """
-        return cls(Address.from_str(indata.object_id), indata.version, True)
+        # return cls(Address.from_str(indata.object_id), indata.version, True)
+        return cls(Address.from_str(indata.object_id), indata.owner.initial_shared_version, True)
 
 
 class OptionalU64(canoser.RustOptional):
@@ -326,7 +327,7 @@ class MergeCoins(canoser.Struct):
 class Publish(canoser.Struct):
     """Publish represents a sui_publish structure."""
 
-    _fields = [("Modules", [[canoser.Uint8]])]
+    _fields = [("Modules", [[canoser.Uint8]]), ("Dependents", [Address])]
 
 
 class MakeMoveVec(canoser.Struct):
@@ -338,7 +339,12 @@ class MakeMoveVec(canoser.Struct):
 class Upgrade(canoser.Struct):
     """Upgrade an existing move package onchain."""
 
-    _fields = [("Modules", canoser.ArrayT(canoser.ArrayT(canoser.Uint8))), ("OIDs", [Address]), ("Arg", Argument)]
+    _fields = [
+        ("Modules", [[canoser.Uint8]]),
+        ("Dependents", [Address]),
+        ("Package", Address),
+        ("UpgradeTicket", Argument),
+    ]
 
 
 class Command(canoser.RustEnum):

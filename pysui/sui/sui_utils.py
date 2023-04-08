@@ -51,7 +51,7 @@ from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectReadData
 _SUI_BUILD: list[str] = ["sui", "move", "build", "-p"]
 _SUI_BUILD_SKIP_GIT: list[str] = ["sui", "move", "build", "--skip-fetch-latest-git-deps", "-p"]
 _IGNORE_DEPENDENCY: set[str] = {"Sui", "MoveStdlib"}
-_UNPUBLISHED: str = "0000000000000000000000000000000000000000"
+_UNPUBLISHED: str = "0000000000000000000000000000000000000000000000000000000000000000"
 
 
 def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Union[Path, SuiException]:
@@ -98,7 +98,7 @@ def _modules_bytes(module_path: Path) -> Union[list[ModuleReader], SuiMiisingMod
 def _dependency_object_ids(readers: list[ModuleReader]) -> list[ObjectID]:
     """Fetch dependencies object ids as SuiStrings."""
     oid_set: set[str] = set()
-    not_set: set[str] = {"0000000000000000000000000000000000000000000000000000000000000000"}
+    not_set: set[str] = {_UNPUBLISHED}
     for mod_reader in readers:
         raw_table: deser.RawModuleContent = deser.deserialize(mod_reader, deser.Deserialize.MODULE_HANDLES)
         for addy in raw_table.addresses:

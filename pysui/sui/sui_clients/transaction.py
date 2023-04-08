@@ -487,6 +487,46 @@ class SuiTransaction:
             target=target_id, arguments=arguments, type_arguments=type_arguments, module=module_id, function=function_id
         )
 
+    def _to_bytes_from_str(self, inbound: Union[str, SuiString]) -> list[int]:
+        """."""
+        return list(base64.b64decode(inbound if isinstance(inbound, str) else inbound.value))
+
+    def publish(
+        self,
+        *,
+        modules: list[str, SuiString],
+        dependencies: list[str, ObjectID],
+        recipient: Optional[SuiAddress] = None,
+    ) -> bcs.Argument:
+        """."""
+        assert isinstance(modules, list), "modules requires a list"
+        assert isinstance(dependencies, list), "dependencies requires a list"
+        modules = list(map(self._to_bytes_from_str, modules))
+        dependencies = [bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in dependencies]
+        if recipient:
+            recipient = tx_builder.PureInput.as_input(recipient)
+        else:
+            recipient = tx_builder.PureInput.as_input(SuiAddress(self._sender))
+        return self.builder.publish(modules, dependencies, recipient)
+
+    # def publish_immutable(
+    #     self,
+    #     *,
+    #     modules: list[str, SuiString],
+    #     dependencies: list[str, ObjectID],
+    #     recipient: Optional[SuiAddress] = None,
+    # ) -> bcs.Argument:
+    #     """."""
+    #     assert isinstance(modules, list), "modules requires a list"
+    #     assert isinstance(dependencies, list), "dependencies requires a list"
+    #     modules = list(map(self._to_bytes_from_str, modules))
+    #     dependencies = [bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in dependencies]
+    #     if recipient:
+    #         recipient = tx_builder.PureInput.as_input(recipient)
+    #     else:
+    #         recipient = tx_builder.PureInput.as_input(SuiAddress(self._sender))
+    #     return self.builder.publish_immutable(modules, dependencies, recipient)
+
     # TODO: Verify results expectation
     def stake_coin(
         self,
