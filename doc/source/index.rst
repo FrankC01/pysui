@@ -22,6 +22,7 @@ Welcome to pysui's documentation!
    intro
    builders
    multi_sig
+   prog_txn
    subscriptions
    publish
    modules

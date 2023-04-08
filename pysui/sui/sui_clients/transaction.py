@@ -22,7 +22,7 @@ from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_clients.transaction_builder as tx_builder
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
-from pysui.sui.sui_txresults.single_tx import AddressOwner, ObjectRead, SharedOwner, SuiCoinObject
+from pysui.sui.sui_txresults.single_tx import AddressOwner, ObjectRead, SharedOwner, StakedSui, SuiCoinObject
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
@@ -31,6 +31,7 @@ from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, Su
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
 _STAKE_REQUEST_TARGET: str = "0x3::sui_system::request_add_stake_mul_coin"
+_UNSTAKE_REQUEST_TARGET: str = "0x3::sui_system::request_withdraw_stake"
 
 
 class SuiTransaction:
@@ -556,6 +557,21 @@ class SuiTransaction:
             params.append(bcs.OptionalU64())
         params.append(validator_address if isinstance(validator_address, SuiAddress) else SuiAddress(validator_address))
         return self._move_call(target=_STAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params))
+
+    def unstake_coin(self, *, staked_coin: Union[str, ObjectID, StakedSui]) -> bcs.Argument:
+        """."""
+        params: list = []
+        params.append(_SYSTEMSTATE_OBJECT)
+        if isinstance(staked_coin, str):
+            params.append(ObjectID(staked_coin))
+        elif isinstance(staked_coin, StakedSui):
+            if staked_coin.status != "Pending":
+                params.append(ObjectID(staked_coin.staked_sui_id))
+            else:
+                raise ValueError(f"Can not unstake non-activated staked coin {staked_coin}")
+        else:
+            params.append(staked_coin)
+        return self._move_call(target=_UNSTAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params))
 
     def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
         """split_coin Creates a new coin with the defined amount, split from the provided coin.
