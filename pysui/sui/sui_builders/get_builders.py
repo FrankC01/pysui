@@ -488,11 +488,11 @@ class GetCommittee(_NativeTransactionBuilder):
     """GetCommittee When executed, returns information on committee (collection of nodes)."""
 
     @sui_builder()
-    def __init__(self, epoch: Optional[SuiInteger] = None) -> None:
+    def __init__(self, epoch: Optional[SuiString] = None) -> None:
         """__init__ GetCommitttee Builder initializer.
 
         :param epoch: Epoch to return state of committee from, defaults to None
-        :type epoch: SuiInteger, optional
+        :type epoch: SuiString, optional
         """
         super().__init__("suix_getCommitteeInfo", handler_cls=CommitteeInfo, handler_func="factory")
 
@@ -654,7 +654,7 @@ class GetCheckpointBySequence(_NativeTransactionBuilder):
     """GetCheckpoint return a checkpoint for cp_id."""
 
     @sui_builder()
-    def __init__(self, cp_seq: SuiInteger):
+    def __init__(self, cp_seq: SuiString):
         """__init__ Builder initializer.
 
         :param cp_id: Checkpoint sequence number
@@ -671,7 +671,7 @@ class GetCheckpoints(_NativeTransactionBuilder):
         self,
         *,
         cursor: Optional[SuiString] = None,
-        limit: Optional[SuiInteger] = None,
+        limit: Optional[SuiString] = None,
         descending_order: Optional[SuiBoolean] = False,
     ):
         """."""

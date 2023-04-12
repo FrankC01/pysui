@@ -69,11 +69,11 @@ def print_gas(gasses: SuiCoinObjects) -> int:
     :return: Total gas summed from all SuiGas in gasses
     :rtype: int
     """
-    total = 0
+    total: int = 0
     for gas_result in gasses.data:
-        total += gas_result.balance
+        total += int(gas_result.balance)
         print(
-            f"{gas_result.coin_object_id} has {gas_result.balance:12} -> {gas_result.balance/SUI_COIN_DENOMINATOR:.8f}"
+            f"{gas_result.coin_object_id} has {int(gas_result.balance):12} -> {int(gas_result.balance)/SUI_COIN_DENOMINATOR:.8f}"
         )
     print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
     print()

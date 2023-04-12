@@ -57,7 +57,7 @@ class SuiClient(_ClientMixin):
     def __init__(self, config: SuiConfig, request_type: SuiRequestType = SuiRequestType.WAITFORLOCALEXECUTION) -> None:
         """Client initializer."""
         super().__init__(config, request_type)
-        self._client = httpx.Client(http2=True, timeout=60.0)
+        self._client = httpx.Client(http2=True, timeout=120.0)
         self._build_api_descriptors()
 
     @property

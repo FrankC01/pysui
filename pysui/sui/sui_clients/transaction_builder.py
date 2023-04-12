@@ -29,6 +29,8 @@ from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
 _SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
 _SUI_PACKAGE_MODULE: str = "package"
 _SUI_PACKAGE_MAKE_IMMUTABLE: str = "make_immutable"
+_SUI_PACAKGE_AUTHORIZE_UPGRADE: str = "authorize_upgrade"
+_SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 
 # Command aliases
 
@@ -278,6 +280,48 @@ class ProgrammableTransactionBuilder:
         """."""
         # result = self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
         return self.transfer_objects(recipient, [self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))])
+
+    def authorize_upgrade(
+        self, upgrade_cap: tuple[bcs.BuilderArg, bcs.ObjectArg], policy: bcs.BuilderArg, digest: bcs.BuilderArg
+    ) -> bcs.Argument:
+        """."""
+        return self.command(
+            bcs.Command(
+                "MoveCall",
+                bcs.ProgrammableMoveCall(
+                    _SUI_PACKAGE_ID,
+                    _SUI_PACKAGE_MODULE,
+                    _SUI_PACAKGE_AUTHORIZE_UPGRADE,
+                    [],
+                    [self.input_obj(*upgrade_cap), self.input_pure(policy), self.input_pure(digest)],
+                ),
+            )
+        )
+
+    def publish_upgrade(
+        self,
+        modules: list[list[bcs.U8]],
+        dep_ids: list[bcs.Address],
+        package_id: bcs.Address,
+        upgrade_ticket: bcs.Argument,
+    ) -> bcs.Argument:
+        """."""
+        return self.command(bcs.Command("Upgrade", bcs.Upgrade(modules, dep_ids, package_id, upgrade_ticket)))
+
+    def commit_upgrade(self, upgrade_cap: tuple[bcs.BuilderArg, bcs.ObjectArg], receipt: bcs.Argument) -> bcs.Argument:
+        """."""
+        return self.command(
+            bcs.Command(
+                "MoveCall",
+                bcs.ProgrammableMoveCall(
+                    _SUI_PACKAGE_ID,
+                    _SUI_PACKAGE_MODULE,
+                    _SUI_PACAKGE_COMMIt_UPGRADE,
+                    [],
+                    [self.input_obj(*upgrade_cap), receipt],
+                ),
+            )
+        )
 
     # def publish_immutable(
     #     self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address], recipient: bcs.BuilderArg

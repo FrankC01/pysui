@@ -13,16 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented QueryTransactions [enhancement](https://github.com/FrankC01/pysui/issues/84) builder and results supporing `suix_queryTransactions`
 - MultiSig added [enhancement](https://github.com/FrankC01/pysui/issues/75)
 - Implemented pysui.sui.sui_clients.Transaction/Transaction builder supporting Programmable Transactions [enhancement](https://github.com/FrankC01/pysui/issues/83)
+- Documentation for Programmable Transaction in read-the-docs
 
 ### Fixed
 
 - GetTotalTxCount underlying RPC API method [fixed](https://github.com/FrankC01/pysui/issues/82)
 - GetMultipleTx was calling obsolete RPC API method.
 - Result type from calling faucet
+- Added default dependency IDs for 0x1 and 0x2 in sui_utils.py for publishing
 
 ### Changed
 
-- Increased default RPC timeout from 30 to 60 seconds on synch and asynch SuiClients.
+- _**Most, if not all, integer values as arguments to RPC methods have been changes in Sui 0.31.0 to strings
+  to support bigger integers for platforms without arbitrarily large numbers (ALN). This has resulted in
+  changes to many `pysui` Builder and result types.**_
+- Increased default RPC timeout from 30 to 120 seconds on synch and asynch SuiClients.
 
 ### Removed
 

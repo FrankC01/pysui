@@ -18,10 +18,13 @@ import os
 import base64
 import binascii
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from types import NoneType
 from typing import Any, Union
+import binascii
 import base58
+import yaml
 from dataclasses_json import DataClassJsonMixin
 
 import pysui.sui_move.module.deserialize as deser
@@ -52,6 +55,17 @@ _SUI_BUILD: list[str] = ["sui", "move", "build", "-p"]
 _SUI_BUILD_SKIP_GIT: list[str] = ["sui", "move", "build", "--skip-fetch-latest-git-deps", "-p"]
 _IGNORE_DEPENDENCY: set[str] = {"Sui", "MoveStdlib"}
 _UNPUBLISHED: str = "0000000000000000000000000000000000000000000000000000000000000000"
+
+
+@dataclass
+class CompiledPackage:
+    """."""
+
+    project_name: str
+    project_id: str
+    project_digest: bytes
+    dependencies: list[str]
+    compiled_modules: list[SuiString] = None
 
 
 def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Union[Path, SuiException]:
@@ -95,23 +109,25 @@ def _modules_bytes(module_path: Path) -> Union[list[ModuleReader], SuiMiisingMod
     return result_list
 
 
-def _dependency_object_ids(readers: list[ModuleReader]) -> list[ObjectID]:
-    """Fetch dependencies object ids as SuiStrings."""
-    oid_set: set[str] = set()
-    not_set: set[str] = {_UNPUBLISHED}
-    for mod_reader in readers:
-        raw_table: deser.RawModuleContent = deser.deserialize(mod_reader, deser.Deserialize.MODULE_HANDLES)
-        for addy in raw_table.addresses:
-            # print(f"Checking addy {addy.address}")
-            # print(f"Length addy {len(addy.address)}")
-            if addy.address not in not_set:
-                oid_set.add(addy.address)
-    return [ObjectID(f"0x{x}") for x in oid_set]
+def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
+    """Fetch details about build."""
+    build_info = Path(build_path).joinpath("BuildInfo.yaml")
+    if build_info.exists():
+        build_info_dict = yaml.safe_load(build_info.read_text(encoding="utf-8"))["compiled_package_info"]
+        pname = build_info_dict["package_name"].lower()
+        inner_dep = build_info_dict["address_alias_instantiation"]
+        pindent = f"0x{inner_dep[pname]}"
+        dep_ids: list[ObjectID] = []
+        for key, value in inner_dep.items():
+            if key != pname:
+                dep_ids.append(f"0x{value}")
+        return CompiledPackage(pname, pindent, binascii.unhexlify(build_info_dict["source_digest"]), dep_ids)
+    raise ValueError("Corrupt publish build information")
 
 
 def publish_build(
     path_to_package: Path, include_unpublished: bool = False, skip_git_dependencie: bool = False
-) -> Union[tuple[list[SuiString], list[ObjectID]], Exception]:
+) -> Union[CompiledPackage, Exception]:
     """Build and collect module base64 strings and dependencies ObjectIDs."""
     # Compile the package
     path_to_package = _compile_project(path_to_package, skip_git_dependencie)
@@ -128,13 +144,12 @@ def publish_build(
     if not byte_modules.exists():
         raise SuiMiisingBuildFolder(f"No bytecode_modules folder found for {path_to_package}/build")
 
-    module_readers: list[ModuleReader] = _modules_bytes(byte_modules)
+    # Construct initial package
+    cpackage = _build_dep_info(build_subdir[0].path)
     # Get module bytes as base64 strings
-    module_results: list[SuiString] = [
-        SuiString(base64.b64encode(mr.reader.getvalue()).decode()) for mr in module_readers
-    ]
-    dep_ids = _dependency_object_ids(module_readers)
-    return module_results, dep_ids
+    module_readers: list[ModuleReader] = _modules_bytes(byte_modules)
+    cpackage.compiled_modules = [SuiString(base64.b64encode(mr.reader.getvalue()).decode()) for mr in module_readers]
+    return cpackage
 
 
 # Conversion utilities

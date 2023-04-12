@@ -28,6 +28,10 @@ class GenericRef(DataClassJsonMixin):
     version: int
     digest: str
 
+    def __post_init__(self):
+        """Post init processing."""
+        self.version = int(self.version)
+
 
 @dataclass
 class CoinRef(GenericRef):

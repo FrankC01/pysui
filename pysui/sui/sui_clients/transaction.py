@@ -15,23 +15,38 @@
 """Sui high level Transaction Builder supports generation of TransactionKind and TransactionData."""
 
 import base64
+import binascii
+import os
+import hashlib
+from pathlib import Path
 from typing import Any, Optional, Union
+import base58
 from pysui.sui.sui_builders.exec_builders import InspectTransaction
 from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetMultipleObjects
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_clients.transaction_builder as tx_builder
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
-from pysui.sui.sui_txresults.single_tx import AddressOwner, ObjectRead, SharedOwner, StakedSui, SuiCoinObject
+from pysui.sui.sui_txresults.single_tx import (
+    AddressOwner,
+    ObjectNotExist,
+    ObjectRead,
+    SharedOwner,
+    StakedSui,
+    SuiCoinObject,
+)
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiString, SuiTxBytes, SuiU64
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiString, SuiTxBytes, SuiU64, SuiU8
+from pysui.sui.sui_utils import publish_build
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
 _STAKE_REQUEST_TARGET: str = "0x3::sui_system::request_add_stake_mul_coin"
 _UNSTAKE_REQUEST_TARGET: str = "0x3::sui_system::request_withdraw_stake"
+
+_UPGRADE_CAP_TYPE: str = "0x2::package::UpgradeCap"
 
 
 class SuiTransaction:
@@ -209,7 +224,7 @@ class SuiTransaction:
         gas_object = bcs.GasData(
             [
                 bcs.ObjectReference(
-                    bcs.Address.from_str(gas.coin_object_id), gas.version, bcs.Digest.from_str(gas.digest)
+                    bcs.Address.from_str(gas.coin_object_id), int(gas.version), bcs.Digest.from_str(gas.digest)
                 )
             ],
             bcs.Address.from_str(gas.owner),
@@ -308,10 +323,10 @@ class SuiTransaction:
                 case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
                     items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
                 # Pure conversion Types
-                case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress":
+                case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
                     items[index] = tx_builder.PureInput.as_input(items[index])
-                case "OptionalU64":
-                    items[index] = tx_builder.PureInput.as_input(items[index])
+                case "Digest":
+                    items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
                 # Need to get objects to generics
                 case "ObjectID":
                     objref_indexes.append(index)
@@ -345,8 +360,6 @@ class SuiTransaction:
                     b_obj_arg = bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref))
                 elif isinstance(item.owner, SharedOwner):
                     b_obj_arg = bcs.ObjectArg("SharedObject", bcs.SharedObjectReference.from_object_read(item))
-
-                # FIXME: Not handling shared objects yet
                 items[tindex] = (
                     bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
                     b_obj_arg,
@@ -495,38 +508,126 @@ class SuiTransaction:
     def publish(
         self,
         *,
-        modules: list[str, SuiString],
-        dependencies: list[str, ObjectID],
+        project_path: str,
+        with_unpublished_dependencies: bool = False,
+        skip_fetch_latest_git_deps: bool = False,
         recipient: Optional[SuiAddress] = None,
     ) -> bcs.Argument:
-        """."""
-        assert isinstance(modules, list), "modules requires a list"
-        assert isinstance(dependencies, list), "dependencies requires a list"
-        modules = list(map(self._to_bytes_from_str, modules))
-        dependencies = [bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in dependencies]
+        """publish Creates a publish command.
+
+        :param project_path: path to project folder
+        :type project_path: str
+        :param with_unpublished_dependencies: Flag indicating inclusion of adding unpublished dependencies
+            of package, defaults to False
+        :type with_unpublished_dependencies: bool, optional
+        :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
+            package dependencies, defaults to False
+        :type skip_fetch_latest_git_deps: bool, optional
+        :param recipient: Address of who owns the published package. If None, active-address is used, defaults to None
+        :type recipient: Optional[SuiAddress], optional
+        :return: A command result that can used in subsequent commands
+        :rtype: bcs.Argument
+        """
+        src_path = Path(os.path.expanduser(project_path))
+        compiled_package = publish_build(src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps)
+        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
+        dependencies = [
+            bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in compiled_package.dependencies
+        ]
         if recipient:
             recipient = tx_builder.PureInput.as_input(recipient)
         else:
             recipient = tx_builder.PureInput.as_input(SuiAddress(self._sender))
         return self.builder.publish(modules, dependencies, recipient)
 
-    # def publish_immutable(
-    #     self,
-    #     *,
-    #     modules: list[str, SuiString],
-    #     dependencies: list[str, ObjectID],
-    #     recipient: Optional[SuiAddress] = None,
-    # ) -> bcs.Argument:
-    #     """."""
-    #     assert isinstance(modules, list), "modules requires a list"
-    #     assert isinstance(dependencies, list), "dependencies requires a list"
-    #     modules = list(map(self._to_bytes_from_str, modules))
-    #     dependencies = [bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in dependencies]
-    #     if recipient:
-    #         recipient = tx_builder.PureInput.as_input(recipient)
-    #     else:
-    #         recipient = tx_builder.PureInput.as_input(SuiAddress(self._sender))
-    #     return self.builder.publish_immutable(modules, dependencies, recipient)
+    def _verify_upgrade_cap(self, upgrade_cap: str) -> ObjectRead:
+        """."""
+        resp = self.client.get_object(upgrade_cap)
+        if resp.is_ok() and not isinstance(resp.result_data, ObjectNotExist):
+            upcap: ObjectRead = resp.result_data
+            assert upcap.object_type == _UPGRADE_CAP_TYPE, f"Invalid upgrade_cap object {upcap}"
+            return upcap
+
+        raise ValueError(f"Error in finding UpgradeCap on {upgrade_cap}")
+
+    def publish_upgrade(
+        self,
+        *,
+        project_path: str,
+        upgrade_cap: Union[str, ObjectID, ObjectRead],
+        with_unpublished_dependencies: bool = False,
+        skip_fetch_latest_git_deps: bool = False,
+        recipient: Optional[SuiAddress] = None,
+    ) -> bcs.Argument:
+        """publish_upgrade Publish upgrade of package command.
+
+        :param project_path: path to project folder
+        :type project_path: str
+        :param upgrade_cap: The upgrade capability object
+        :type upgrade_cap: Union[str, ObjectID, ObjectRead]
+        :param with_unpublished_dependencies: Flag indicating inclusion of adding unpublished dependencies
+            of package, defaults to False
+        :type with_unpublished_dependencies: bool, optional
+        :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
+            package dependencies, defaults to False
+        :type skip_fetch_latest_git_deps: bool, optional
+        :param recipient: Address of who owns the published package. If None, active-address is used, defaults to None
+        :type recipient: Optional[SuiAddress], optional
+        :return: _description_
+        :rtype: bcs.Argument
+        """
+        # There are three primary move calls
+        # The first is to get authorized - DONE
+        #
+        # Then do the upgrade
+        # let upgrade_receipt = builder.upgrade(package_id, upgrade_ticket, dep_ids, modules);
+        #
+        # THen finalize
+        # builder.programmable_move_call(
+        #     SUI_FRAMEWORK_OBJECT_ID,
+        #     ident_str!("package").to_owned(),
+        #     ident_str!("commit_upgrade").to_owned(),
+        #     vec![],
+        #     vec![Argument::Input(0), upgrade_receipt],
+        # );
+
+        #
+        assert isinstance(upgrade_cap, (str, ObjectID, ObjectRead))
+        # Compile the new package
+        src_path = Path(os.path.expanduser(project_path))
+        compiled_package = publish_build(src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps)
+        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
+        dependencies = [
+            bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in compiled_package.dependencies
+        ]
+        # Verify get/upgrade cap details
+        if not isinstance(upgrade_cap, ObjectRead):
+            upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
+            upgrade_cap = self._verify_upgrade_cap(upgrade_cap)
+        else:
+            assert upgrade_cap.object_type == _UPGRADE_CAP_TYPE, f"Invalid upgrade_cap object {upgrade_cap}"
+
+        all_bytes: list = []
+        for mod_bytes in modules:
+            all_bytes.append(bytearray(mod_bytes))
+        for dep_str in compiled_package.dependencies:
+            all_bytes.append(binascii.unhexlify(dep_str[2:]))
+
+        all_bytes.sort()
+        hasher = hashlib.blake2b(digest_size=32)
+        for bblock in all_bytes:
+            hasher.update(bblock)
+        digest = base58.b58encode(hasher.digest())
+        capability_arg = self._resolve_arguments(
+            [upgrade_cap, SuiU8(upgrade_cap.content.fields["policy"]), bcs.Digest.from_str(digest)]
+        )
+        # authorize
+        auth_cmd = self.builder.authorize_upgrade(*capability_arg)
+        package_id = bcs.Address.from_str("0x8367399561207dd06f2668982fced759e8c925bb6c6ce3cbd6ac06f5289a8017")
+        # Upgrade
+        receipt = self.builder.publish_upgrade(modules, dependencies, package_id, auth_cmd)
+        # Commit
+        return self.builder.commit_upgrade(capability_arg[0], receipt)
 
     # TODO: Verify results expectation
     def stake_coin(

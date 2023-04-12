@@ -80,7 +80,7 @@ def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
             print("-", end="")
         print()
         for gas_object in gas_objects.data:
-            balance = gas_object.balance
+            balance = int(gas_object.balance)
             total += balance
             print(f"{gas_object.coin_object_id:^66s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:.8f}")
         print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
@@ -314,9 +314,10 @@ def publish(client: SuiClient, args: argparse.Namespace) -> None:
     # print(args)
     args.sender = args.sender if args.sender else client.config.active_address
     try:
-        module_b64, dep_oids = publish_build(args.compiled_modules)
-        args.compiled_modules = module_b64
-        args.dependencies = dep_oids
+        compiled_package = publish_build(args.compiled_modules)
+        # module_b64, dep_oids = publish_build(args.compiled_modules)
+        args.compiled_modules = compiled_package.compiled_modules
+        args.dependencies = compiled_package.dependencies
         var_args = vars(args)
         var_args.pop("version")
         result = client.publish_package_txn(**var_args)

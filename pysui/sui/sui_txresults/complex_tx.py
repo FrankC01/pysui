@@ -144,14 +144,14 @@ class Event(SuiTxReturnType, DataClassJsonMixin):
     """Result of various get and result API."""
 
     bcs: str
-    package_id: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     parsed_json: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     sender: str
     transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     event_type: str = field(metadata=config(field_name="type"))
-    event_id: int = field(metadata=config(field_name="id"))
+    event_id: dict = field(metadata=config(field_name="id"))
     # timestamp_ms: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
-    timestamp_ms: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default=0)
+    timestamp_ms: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default="")
 
 
 @dataclass
@@ -295,6 +295,9 @@ class DryRunTxResult(SuiTxReturnType, DataClassJsonMixin):
 
     effects: Effects
     events: list[Event]
+    input: dict
+    object_changes: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    balance_changes: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
     def __post_init__(self):
         """Post init processing.
@@ -358,11 +361,12 @@ class Checkpoint(DataClassJsonMixin):
 
     checkpoint_commitments: list[ECMHLiveObjectSetDigest] = field(metadata=config(letter_case=LetterCase.CAMEL))
     digest: str
-    epoch: int
+    epoch: str
     epoch_rolling_gas_cost_summary: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
-    network_total_transactions: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sequence_number: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    timestamp_ms: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    validator_signature: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    network_total_transactions: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    sequence_number: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    timestamp_ms: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     previous_digest: str = field(default_factory=str, metadata=config(letter_case=LetterCase.CAMEL))
     end_of_epoch_data: Optional[dict] = field(default_factory=dict)
     transactions: list[int] = field(default_factory=list)
@@ -385,7 +389,7 @@ class Checkpoints(DataClassJsonMixin):
 
     data: list[Checkpoint]
     has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
-    next_cursor: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_cursor: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass

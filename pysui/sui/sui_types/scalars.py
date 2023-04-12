@@ -14,6 +14,7 @@
 """Sui Scalar Types."""
 
 import math
+from typing import Union
 from pysui.abstracts import SuiScalarType
 
 
@@ -193,6 +194,11 @@ class SuiString(SuiScalarType):
 
     @property
     def transaction_digest(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
+    @property
+    def gas_budget(self) -> str:
         """Alias for transactions."""
         return self.value
 
@@ -457,10 +463,10 @@ class SuiU8(SuiIntegerType):
     _BYTE_COUNT: int = 1
     _TYPE_TAG_NAME: str = "U8"
 
-    def __init__(self, val: int):
+    def __init__(self, val: Union[int, str]):
         """."""
-        assert val <= self._MAX_VAL
-        self.value = val
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
 
 
 class SuiU16(SuiIntegerType):
@@ -470,10 +476,10 @@ class SuiU16(SuiIntegerType):
     _BYTE_COUNT: int = 2
     _TYPE_TAG_NAME: str = "U16"
 
-    def __init__(self, val: int):
+    def __init__(self, val: Union[int, str]):
         """."""
-        assert val <= self._MAX_VAL
-        self.value = val
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
 
 
 class SuiU32(SuiIntegerType):
@@ -483,10 +489,10 @@ class SuiU32(SuiIntegerType):
     _BYTE_COUNT: int = 4
     _TYPE_TAG_NAME: str = "U32"
 
-    def __init__(self, val: int):
+    def __init__(self, val: Union[int, str]):
         """."""
-        assert val <= self._MAX_VAL
-        self.value = val
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
 
 
 class SuiU64(SuiIntegerType):
@@ -496,10 +502,10 @@ class SuiU64(SuiIntegerType):
     _BYTE_COUNT: int = 8
     _TYPE_TAG_NAME: str = "U64"
 
-    def __init__(self, val: int):
+    def __init__(self, val: Union[int, str]):
         """."""
-        assert val <= self._MAX_VAL
-        self.value = val
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
 
 
 class SuiU128(SuiIntegerType):
@@ -509,10 +515,10 @@ class SuiU128(SuiIntegerType):
     _BYTE_COUNT: int = 16
     _TYPE_TAG_NAME: str = "U128"
 
-    def __init__(self, val: int):
+    def __init__(self, val: Union[int, str]):
         """."""
-        assert val <= self._MAX_VAL
-        self.value = val
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
 
 
 class SuiU256(SuiIntegerType):
@@ -522,10 +528,10 @@ class SuiU256(SuiIntegerType):
     _BYTE_COUNT: int = 32
     _TYPE_TAG_NAME: str = "U256"
 
-    def __init__(self, val: int):
+    def __init__(self, val: Union[int, str]):
         """."""
-        assert val <= self._MAX_VAL
-        self.value = val
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
 
 
 if __name__ == "__main__":
