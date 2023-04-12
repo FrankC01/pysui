@@ -308,7 +308,7 @@ class ProgrammableTransactionBuilder:
         """."""
         return self.command(bcs.Command("Upgrade", bcs.Upgrade(modules, dep_ids, package_id, upgrade_ticket)))
 
-    def commit_upgrade(self, upgrade_cap: tuple[bcs.BuilderArg, bcs.ObjectArg], receipt: bcs.Argument) -> bcs.Argument:
+    def commit_upgrade(self, upgrade_cap: bcs.Argument, receipt: bcs.Argument) -> bcs.Argument:
         """."""
         return self.command(
             bcs.Command(
@@ -318,7 +318,7 @@ class ProgrammableTransactionBuilder:
                     _SUI_PACKAGE_MODULE,
                     _SUI_PACAKGE_COMMIt_UPGRADE,
                     [],
-                    [self.input_obj(*upgrade_cap), receipt],
+                    [upgrade_cap, receipt],
                 ),
             )
         )

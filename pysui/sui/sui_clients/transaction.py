@@ -567,13 +567,15 @@ class SuiTransaction:
         capability_arg = self._resolve_arguments(
             [upgrade_cap, SuiU8(upgrade_cap.content.fields["policy"]), bcs.Digest.from_str(digest)]
         )
+        # Trap the number of input_obj len:
+        cap_arg = len(self.builder.inputs)
         # authorize
         auth_cmd = self.builder.authorize_upgrade(*capability_arg)
-        package_id = bcs.Address.from_str("0x8367399561207dd06f2668982fced759e8c925bb6c6ce3cbd6ac06f5289a8017")
+        package_id = bcs.Address.from_str("0x76e0aeeb8b02e489a7f601c97651b15e3ebe1ed48a6495a76a3c77d8fe4083aa")
         # Upgrade
         receipt = self.builder.publish_upgrade(modules, dependencies, package_id, auth_cmd)
         # Commit
-        return self.builder.commit_upgrade(capability_arg[0], receipt)
+        return self.builder.commit_upgrade(bcs.Argument("Input", cap_arg), receipt)
 
     # TODO: Verify results expectation
     def stake_coin(
