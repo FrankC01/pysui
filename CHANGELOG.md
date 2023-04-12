@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.16.0 Unpublished]
+## [Unreleased]
+
+### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.16.0] 2023-04-13
 
 ### Added
 
@@ -27,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - _**Most, if not all, integer values as arguments to RPC methods have been changes in Sui 0.31.0 to strings
   to support bigger integers for platforms without arbitrarily large numbers (ALN). This has resulted in
   changes to many `pysui` Builder and result types.**_
+- Gas requirements for transactions have increased 1000x on devnet. Use `GetReferenceGasPrice` and `DryRunTransaction` often until you get used to the [changes](https://docs.sui.io/devnet/build/sui-gas-charges).
 - Increased default RPC timeout from 30 to 120 seconds on synch and asynch SuiClients.
 
 ### Removed

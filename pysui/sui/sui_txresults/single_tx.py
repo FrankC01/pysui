@@ -663,12 +663,12 @@ class StakedSui(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
     staked_sui_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    stake_active_epoch: int = field(metadata=config(letter_case=LetterCase.CAMEL))
-    principal: int
+    stake_active_epoch: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    principal: str
     # token_lock: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
     status: str
-    stage_request_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
-    estimated_reward: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
+    stage_request_epoch: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=str)
+    estimated_reward: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=str)
 
 
 @dataclass

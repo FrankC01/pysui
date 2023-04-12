@@ -96,7 +96,7 @@ class ObjectReference(canoser.Struct):
         :rtype: SharedObjectReference
         """
         if isinstance(indata, GenericRef):
-            return cls(Address.from_str(indata.object_id), indata.version, Digest.from_str(indata.digest))
+            return cls(Address.from_str(indata.object_id), int(indata.version), Digest.from_str(indata.digest))
         raise ValueError(f"{indata} is not valid")
 
 
@@ -119,7 +119,7 @@ class SharedObjectReference(canoser.Struct):
         :rtype: SharedObjectReference
         """
         # return cls(Address.from_str(indata.object_id), indata.version, True)
-        return cls(Address.from_str(indata.object_id), indata.owner.initial_shared_version, True)
+        return cls(Address.from_str(indata.object_id), int(indata.owner.initial_shared_version), True)
 
 
 class OptionalU64(canoser.RustOptional):

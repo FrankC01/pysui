@@ -167,7 +167,7 @@ class SuiTransaction:
         """Used internally to select a gas object to use in transaction."""
         if owner == self._sender:
             for gobj in self._gasses:
-                if gobj.balance > budget and gobj.coin_object_id not in self.builder.objects_registry:
+                if int(gobj.balance) > budget and gobj.coin_object_id not in self.builder.objects_registry:
                     return gobj
         else:
             coin_objs = self._reset_gas(owner)
@@ -269,46 +269,6 @@ class SuiTransaction:
     # TODO: Add method for MultiSig signing and execution
 
     # Commands and helpers
-    # TODO: Remove the asserts at some point
-    # TODO: This is way too much code, refactor when stable
-
-    def _resolve_reference(
-        self, item: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
-    ) -> Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]:
-        """Resolve an input item to either a pure Argument type or an object reference tuple."""
-        assert item, "None type found for item"
-        assert isinstance(item, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "Type not valid for item"
-        # bcs.Arguments fall through as it is ready to go
-        match item.__class__.__name__:
-            # Resolve the object on chain then convert to a tuple BuilderArg,ObjectArg
-            # FIXME: Not handling shared objects yet
-            case "str" | "ObjectID":
-                result = self.client.get_object(item)
-                item = item if isinstance(item, str) else item.value
-                if result.is_ok():
-                    obj_data = result.result_data
-                    obj_ref = GenericRef(obj_data.object_id, obj_data.version, obj_data.digest)
-                    item = (
-                        bcs.BuilderArg("Object", bcs.Address.from_str(obj_data.object_id)),
-                        bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref)),
-                    )
-                else:
-                    raise ValueError(f"Error attempting to get {item} from chain")
-            # FIXME: Not handling shared objects yet
-            # convert to a tuple BuilderArg,ObjectArg
-            case "ObjectRead" | "SuiCoinObject":
-                obj_ref = GenericRef(item.object_id, item.version, item.digest)
-                item = (
-                    bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
-                    bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref)),
-                )
-        return item
-
-    def _resolve_references(
-        self, items: list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]]
-    ) -> list[bcs.Argument]:
-        """Resolve a list of items to it's respect pure or object reference tuples."""
-        return [self._resolve_reference(x) for x in items]
 
     def _resolve_arguments(self, items: list) -> list:
         """Process list intended as 'params' in move call."""
@@ -322,16 +282,18 @@ class SuiTransaction:
                 # Pure conversion Types
                 case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
                     items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
-                # Pure conversion Types
                 case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
                     items[index] = tx_builder.PureInput.as_input(items[index])
                 case "Digest":
                     items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
-                # Need to get objects to generics
+                # Need to fetch objects
                 case "ObjectID":
                     objref_indexes.append(index)
-                # Need to extract generics
-                case "ObjectRead" | "SuiCoinObject":
+                case "SuiCoinObject":
+                    items[index] = ObjectID(item.object_id)
+                    objref_indexes.append(index)
+                # Tuple all ready to be set
+                case "ObjectRead":
                     objtup_indexes.append(index)
                 # Direct passthroughs
                 case "Argument" | "BuilderArg" | "tuple":
@@ -576,22 +538,6 @@ class SuiTransaction:
         :return: _description_
         :rtype: bcs.Argument
         """
-        # There are three primary move calls
-        # The first is to get authorized - DONE
-        #
-        # Then do the upgrade
-        # let upgrade_receipt = builder.upgrade(package_id, upgrade_ticket, dep_ids, modules);
-        #
-        # THen finalize
-        # builder.programmable_move_call(
-        #     SUI_FRAMEWORK_OBJECT_ID,
-        #     ident_str!("package").to_owned(),
-        #     ident_str!("commit_upgrade").to_owned(),
-        #     vec![],
-        #     vec![Argument::Input(0), upgrade_receipt],
-        # );
-
-        #
         assert isinstance(upgrade_cap, (str, ObjectID, ObjectRead))
         # Compile the new package
         src_path = Path(os.path.expanduser(project_path))
@@ -757,16 +703,17 @@ class SuiTransaction:
         assert isinstance(
             merge_to, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
         ), "Unsupported type for merge_to"
-        assert isinstance(merge_from, (list, SuiArray)), "Unsupported merge_from collection type"
+        merge_to = self._resolve_arguments([merge_to if not isinstance(merge_to, str) else ObjectID(merge_to)])[0]
         # Depper from_coin type verification
+        assert isinstance(merge_from, (list, SuiArray)), "Unsupported merge_from collection type"
+        parm_list: list = []
         merge_from = merge_from if isinstance(merge_from, list) else merge_from.coins
         for fcoin in merge_from:
             assert isinstance(
                 fcoin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
             ), "Unsupported entry in merge_from"
-        merge_to = self._resolve_reference(merge_to)
-        merge_from = self._resolve_references(merge_from)
-        return self.builder.merge_coins(merge_to, merge_from)
+            parm_list.append(fcoin if not isinstance(fcoin, str) else ObjectID(fcoin))
+        return self.builder.merge_coins(merge_to, self._resolve_arguments(parm_list))
 
     def transfer_objects(
         self,
@@ -786,18 +733,23 @@ class SuiTransaction:
         assert isinstance(transfers, (list, SuiArray)), "Unsupported trasfers collection type"
         assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
         transfers = transfers if isinstance(transfers, list) else transfers.array
+        coerced_transfers: list = []
         for txfer in transfers:
             assert isinstance(
                 txfer, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
             ), "Unsupported entry in transfers"
-        transfers = self._resolve_references(transfers)
+            if isinstance(txfer, str):
+                coerced_transfers.append(ObjectID(txfer))
+            else:
+                coerced_transfers.append(txfer)
+        transfers = self._resolve_arguments(coerced_transfers)
         return self.builder.transfer_objects(tx_builder.PureInput.as_input(recipient), transfers)
 
     def transfer_sui(
         self,
         *,
         recipient: Union[ObjectID, SuiAddress],
-        from_coin: Union[str, ObjectID, ObjectRead, SuiCoinObject],
+        from_coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
         amount: Optional[Union[int, SuiInteger]] = None,
     ) -> bcs.Argument:
         """transfer_sui Transfers a Sui coin object to a recipient.
@@ -819,21 +771,12 @@ class SuiTransaction:
             amount = amount if isinstance(amount, int) else amount.value
             amount = tx_builder.PureInput.as_input(bcs.U64.encode(amount))
         if from_coin:
-            if not isinstance(from_coin, (ObjectRead, SuiCoinObject)):
-                result = self.client.get_object(from_coin)
-                if result.is_ok():
-                    from_coin = result.result_data
-                else:
-                    raise ValueError(f"Fetching object {from_coin.object_id} failed")
-            elif isinstance(from_coin, SuiCoinObject):
-                from_coin = GenericRef(from_coin.object_id, from_coin.version, from_coin.digest)
-            from_coin_ref = (
-                bcs.BuilderArg("Object", bcs.Address.from_str(from_coin.object_id)),
-                bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(from_coin)),
-            )
+            if isinstance(from_coin, str):
+                from_coin = ObjectID(from_coin)
+            from_coin = self._resolve_arguments([from_coin])
         else:
             raise ValueError(f"Invalid 'from_coin' {from_coin}")
-        return self.builder.transfer_sui(tx_builder.PureInput.as_input(recipient), from_coin_ref, amount)
+        return self.builder.transfer_sui(tx_builder.PureInput.as_input(recipient), *from_coin, amount)
 
 
 if __name__ == "__main__":
