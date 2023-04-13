@@ -205,15 +205,16 @@ class ObjectRead(DataClassJsonMixin):
     content: Optional[dict] = field(default_factory=dict)
     bcs: Optional[dict] = field(default_factory=dict)
     digest: Optional[str] = field(default_factory=str)
-    display: Optional[DisplayFields] = field(default_factory=dict)
+    display: Optional[dict] = field(default_factory=dict)
     owner: Optional[Any] = field(default_factory=str)
-
     # reference: GenericRef
 
     def __post_init__(self):
         """Post init processing for parameters."""
         # Check if pure raw pacakge
 
+        if self.display:
+            self.display = DisplayFields.from_dict(self.display)
         if self.content and self.content["dataType"] == "package":
             self.bcs = self.content = SuiPackage.from_dict(self.content)
         elif self.bcs and self.bcs["dataType"] == "package":
@@ -321,7 +322,8 @@ class ObjectRead(DataClassJsonMixin):
                 case _:
                     result = None
         elif "data" in indata:
-            result = ObjectRead.from_dict(indata["data"])
+            target = indata["data"]
+            result = ObjectRead.from_dict(target)
         else:
             indata = indata["error"]
             match indata["code"]:

@@ -21,14 +21,12 @@ from typing import Optional, Set, Union
 from functools import singledispatchmethod
 
 from pysui.sui.sui_types import bcs
-from pysui.sui.sui_txresults.single_tx import ObjectRead
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
 
 # Well known aliases
 _SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
 _SUI_PACKAGE_MODULE: str = "package"
-_SUI_PACKAGE_MAKE_IMMUTABLE: str = "make_immutable"
 _SUI_PACAKGE_AUTHORIZE_UPGRADE: str = "authorize_upgrade"
 _SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 
@@ -36,7 +34,7 @@ _SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 
 
 class PureInput:
-    """."""
+    """Pure inputs processing."""
 
     @singledispatchmethod
     @classmethod
@@ -92,7 +90,7 @@ class PureInput:
     @pure.register
     @classmethod
     def _(cls, arg: bcs.OptionalU64) -> list:
-        """Convert SuiAddress to list of bytes."""
+        """Convert OptionalU64 to list of bytes."""
         return list(arg.serialize())
 
     @pure.register
@@ -116,7 +114,7 @@ class ProgrammableTransactionBuilder:
         self.commands: list[bcs.Command] = []
         self.objects_registry: Set[str] = set()
 
-    def finish(self) -> bcs.ProgrammableTransaction:
+    def _finish(self) -> bcs.ProgrammableTransaction:
         """finish returns ProgrammableTransaction structure.
 
         :return: The resulting ProgrammableTransaction structure
@@ -133,7 +131,7 @@ class ProgrammableTransactionBuilder:
         :return: The resulting TransactionKind structure
         :rtype: bcs.TransactionKind
         """
-        return bcs.TransactionKind("ProgrammableTransaction", self.finish())
+        return bcs.TransactionKind("ProgrammableTransaction", self._finish())
 
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
         """."""
@@ -166,7 +164,13 @@ class ProgrammableTransactionBuilder:
     #                 pass
 
     def command(self, command_obj: bcs.Command) -> bcs.Argument:
-        """."""
+        """command adds a new command to the list of commands.
+
+        :param command_obj: The Command type
+        :type command_obj: bcs.Command
+        :return: A result argument to be potentially used in other commands
+        :rtype: bcs.Argument
+        """
         out_index = len(self.commands)
         self.commands.append(command_obj)
         return bcs.Argument("Result", out_index)
@@ -199,14 +203,14 @@ class ProgrammableTransactionBuilder:
         module: str,
         function: str,
     ) -> bcs.Argument:
-        """."""
+        """Setup a MoveCall command and return it's result Argument."""
         argrefs: list[bcs.Argument] = []
         for arg in arguments:
             if isinstance(arg, bcs.BuilderArg):
                 argrefs.append(self.input_pure(arg))
             elif isinstance(arg, tuple):
                 argrefs.append(self.input_obj(*arg))
-            elif isinstance(arg, bcs.Argument) or isinstance(arg, bcs.OptionalU64):
+            elif isinstance(arg, (bcs.Argument, bcs.OptionalU64)):
                 argrefs.append(arg)
             else:
                 raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
@@ -222,7 +226,7 @@ class ProgrammableTransactionBuilder:
         from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
         amount: bcs.BuilderArg,
     ) -> bcs.Argument:
-        """."""
+        """Setup a SplitCoin command and return it's result Argument."""
         amount_arg = self.input_pure(amount)
         if isinstance(from_coin, bcs.Argument):
             coin_arg = from_coin
@@ -240,7 +244,7 @@ class ProgrammableTransactionBuilder:
         to_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
         from_coins: list[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
     ) -> bcs.Argument:
-        """."""
+        """Setup a MergeCoins command and return it's result Argument."""
         to_coin = to_coin if isinstance(to_coin, bcs.Argument) else self.input_obj(*to_coin)
         from_args: list[bcs.Argument] = []
         for fcoin in from_coins:
@@ -250,14 +254,16 @@ class ProgrammableTransactionBuilder:
     def transfer_objects(
         self,
         recipient: bcs.BuilderArg,
-        object_ref: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
+        object_ref: Union[bcs.Argument, list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]]],
     ) -> bcs.Argument:
-        """."""
+        """Setup a TransferObjects command and return it's result Argument."""
         receiver_arg = self.input_pure(recipient)
-        # object_ref = object_ref if isinstance(object_ref, bcs.Argument) else self.input_obj(*object_ref)
         from_args: list[bcs.Argument] = []
-        for fcoin in object_ref:
-            from_args.append(fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin))
+        if isinstance(object_ref, list):
+            for fcoin in object_ref:
+                from_args.append(fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin))
+        else:
+            from_args.append(object_ref)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects(from_args, receiver_arg)))
 
     def transfer_sui(
@@ -266,7 +272,10 @@ class ProgrammableTransactionBuilder:
         from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
         amount: Optional[bcs.BuilderArg] = None,
     ) -> bcs.Argument:
-        """."""
+        """Setup a TransferObjects for Sui Coins.
+
+        First uses the SplitCoins result, then returns the TransferObjects result Argument.
+        """
         reciever_arg = self.input_pure(recipient)
         if amount:
             coin_arg = self.split_coin(from_coin=from_coin, amount=amount)
@@ -277,14 +286,14 @@ class ProgrammableTransactionBuilder:
     def publish(
         self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address], recipient: bcs.BuilderArg
     ) -> bcs.Argument:
-        """."""
+        """Setup a Publish command and return it's result Argument."""
         # result = self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
         return self.transfer_objects(recipient, [self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))])
 
     def authorize_upgrade(
         self, upgrade_cap: tuple[bcs.BuilderArg, bcs.ObjectArg], policy: bcs.BuilderArg, digest: bcs.BuilderArg
     ) -> bcs.Argument:
-        """."""
+        """Setup a Authorize Upgrade MoveCall and return it's result Argument."""
         return self.command(
             bcs.Command(
                 "MoveCall",
@@ -305,11 +314,11 @@ class ProgrammableTransactionBuilder:
         package_id: bcs.Address,
         upgrade_ticket: bcs.Argument,
     ) -> bcs.Argument:
-        """."""
+        """Setup a Upgrade Command and return it's result Argument."""
         return self.command(bcs.Command("Upgrade", bcs.Upgrade(modules, dep_ids, package_id, upgrade_ticket)))
 
     def commit_upgrade(self, upgrade_cap: bcs.Argument, receipt: bcs.Argument) -> bcs.Argument:
-        """."""
+        """Setup a Commit Upgrade MoveCall and return it's result Argument."""
         return self.command(
             bcs.Command(
                 "MoveCall",
@@ -322,19 +331,6 @@ class ProgrammableTransactionBuilder:
                 ),
             )
         )
-
-    # def publish_immutable(
-    #     self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address], recipient: bcs.BuilderArg
-    # ) -> bcs.Argument:
-    #     """."""
-    #     cap = self.publish(modules, dep_ids)
-    #     self.transfer_objects(recipient, [cap])
-    #     return self.command(
-    #         bcs.Command(
-    #             "MoveCall",
-    #             bcs.ProgrammableMoveCall(_SUI_PACKAGE_ID, _SUI_PACKAGE_MODULE, _SUI_PACKAGE_MAKE_IMMUTABLE, [], [cap]),
-    #         )
-    #     )
 
 
 if __name__ == "__main__":

@@ -39,13 +39,12 @@ from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiString, SuiTxBytes, SuiU64, SuiU8
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiString, SuiTxBytes, SuiU8
 from pysui.sui.sui_utils import publish_build
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
 _STAKE_REQUEST_TARGET: str = "0x3::sui_system::request_add_stake_mul_coin"
 _UNSTAKE_REQUEST_TARGET: str = "0x3::sui_system::request_withdraw_stake"
-
 _UPGRADE_CAP_TYPE: str = "0x2::package::UpgradeCap"
 
 
@@ -181,7 +180,7 @@ class SuiTransaction:
         *,
         signer: Union[str, SuiAddress],
         gas: Optional[Union[str, ObjectID]] = None,
-        gas_budget: Union[int, SuiInteger],
+        gas_budget: Union[str, SuiString],
     ) -> tuple[str, SuiCoinObject, bcs.TransactionData]:
         """build_for_execute Generates the TransactionData object.
 
@@ -207,8 +206,8 @@ class SuiTransaction:
         signer = signer if isinstance(signer, str) else signer.address
         max_cost, _, _ = self.inspect_for_cost(signer)
 
-        gas_budget = gas_budget if isinstance(gas_budget, int) else gas_budget.value
-        gas_budget = max(max_cost, gas_budget)
+        gas_budget = gas_budget if isinstance(gas_budget, str) else gas_budget.value
+        gas_budget = max(max_cost, int(gas_budget))
         # FIXME Clean this up
         if signer == self._sender:
             if not gas:
@@ -247,7 +246,7 @@ class SuiTransaction:
         *,
         signer: Union[str, SuiAddress],
         gas: Optional[Union[str, ObjectID]] = None,
-        gas_budget: Union[int, SuiInteger],
+        gas_budget: Union[str, SuiString],
     ) -> SuiRpcResult:
         """execute Finalizes transaction and submits for execution on the chain.
 
@@ -464,7 +463,7 @@ class SuiTransaction:
         )
 
     def _to_bytes_from_str(self, inbound: Union[str, SuiString]) -> list[int]:
-        """."""
+        """Utility to convert base64 string to bytes then as list of u8."""
         return list(base64.b64decode(inbound if isinstance(inbound, str) else inbound.value))
 
     def publish(
@@ -516,6 +515,7 @@ class SuiTransaction:
         self,
         *,
         project_path: str,
+        package_id: Union[str, ObjectID],
         upgrade_cap: Union[str, ObjectID, ObjectRead],
         with_unpublished_dependencies: bool = False,
         skip_fetch_latest_git_deps: bool = False,
@@ -535,10 +535,11 @@ class SuiTransaction:
         :type skip_fetch_latest_git_deps: bool, optional
         :param recipient: Address of who owns the published package. If None, active-address is used, defaults to None
         :type recipient: Optional[SuiAddress], optional
-        :return: _description_
+        :return: The Result Argument
         :rtype: bcs.Argument
         """
         assert isinstance(upgrade_cap, (str, ObjectID, ObjectRead))
+        assert isinstance(package_id, (str, ObjectID))
         # Compile the new package
         src_path = Path(os.path.expanduser(project_path))
         compiled_package = publish_build(src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps)
@@ -571,13 +572,12 @@ class SuiTransaction:
         cap_arg = len(self.builder.inputs)
         # authorize
         auth_cmd = self.builder.authorize_upgrade(*capability_arg)
-        package_id = bcs.Address.from_str("0x76e0aeeb8b02e489a7f601c97651b15e3ebe1ed48a6495a76a3c77d8fe4083aa")
+        package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
         # Upgrade
         receipt = self.builder.publish_upgrade(modules, dependencies, package_id, auth_cmd)
         # Commit
         return self.builder.commit_upgrade(bcs.Argument("Input", cap_arg), receipt)
 
-    # TODO: Verify results expectation
     def stake_coin(
         self,
         *,
@@ -608,7 +608,14 @@ class SuiTransaction:
         return self._move_call(target=_STAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params))
 
     def unstake_coin(self, *, staked_coin: Union[str, ObjectID, StakedSui]) -> bcs.Argument:
-        """."""
+        """unstake_coin Unstakes a Staked Sui Coin.
+
+        :param staked_coin: The coin being unstaked
+        :type staked_coin: Union[str, ObjectID, StakedSui]
+        :raises ValueError: If the staked coin is still in 'pending' state
+        :return: The Result argument
+        :rtype: bcs.Argument
+        """
         params: list = []
         params.append(_SYSTEMSTATE_OBJECT)
         if isinstance(staked_coin, str):
@@ -651,42 +658,6 @@ class SuiTransaction:
         )
         return self.builder.split_coin(coin_ref, tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
 
-    # TODO: Verify results expectation
-    def split_coin_equally(
-        self, *, coin: Union[str, ObjectID, ObjectRead], parts: Union[int, SuiInteger]
-    ) -> bcs.Argument:
-        """split_coin_equally takes coin and breaks it up into n parts returning vector of coin result.
-
-        :param coin: The coin targeted to split
-        :type coin: Union[str, ObjectID, ObjectRead]
-        :param parts: The number of equal parts to split into
-        :type parts: Union[int, SuiInteger]
-        :raises ValueError: If parts is less than two
-        :raises ValueError: If the coin can not be validated
-        :return: The result object.
-        :rtype: bcs.Argument
-        """
-        assert isinstance(coin, (str, ObjectID, ObjectRead)), "invalid coin object type"
-        assert isinstance(parts, (int, SuiInteger)), "invalid parts type"
-        parts = parts if isinstance(parts, int) else parts.value
-        if parts < 2:
-            raise ValueError(f"Parts must be at least 2, found {parts}")
-        if not isinstance(coin, ObjectRead):
-            result = self.client.get_object(coin)
-            if result.is_ok():
-                coin = result.result_data
-                coin = GenericRef(coin.object_id, coin.version, coin.digest)
-            else:
-                raise ValueError(f"Fetching object {coin.object_id} failed")
-        coin_ref = (
-            bcs.BuilderArg("Object", bcs.Address.from_str(coin.object_id)),
-            bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(coin)),
-        )
-        type_arguments = [bcs.TypeTag.type_tag_from("0x2::sui::SUI")]
-        return self._move_call(
-            target="0x2::coin::divide_into_n", type_arguments=type_arguments, arguments=[coin_ref, SuiU64(parts)]
-        )
-
     def merge_coins(
         self,
         *,
@@ -720,7 +691,7 @@ class SuiTransaction:
     def transfer_objects(
         self,
         *,
-        transfers: Union[list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray],
+        transfers: Union[bcs.Argument, list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray],
         recipient: Union[ObjectID, SuiAddress],
     ) -> bcs.Argument:
         """transfer_objects Transfers one or more objects to a recipient.
@@ -732,19 +703,20 @@ class SuiTransaction:
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        assert isinstance(transfers, (list, SuiArray)), "Unsupported trasfers collection type"
+        assert isinstance(transfers, (list, SuiArray, bcs.Argument)), "Unsupported trasfers collection type"
         assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
-        transfers = transfers if isinstance(transfers, list) else transfers.array
-        coerced_transfers: list = []
-        for txfer in transfers:
-            assert isinstance(
-                txfer, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
-            ), "Unsupported entry in transfers"
-            if isinstance(txfer, str):
-                coerced_transfers.append(ObjectID(txfer))
-            else:
-                coerced_transfers.append(txfer)
-        transfers = self._resolve_arguments(coerced_transfers)
+        if isinstance(transfers, (list, SuiArray)):
+            transfers = transfers if isinstance(transfers, list) else transfers.array
+            coerced_transfers: list = []
+            for txfer in transfers:
+                assert isinstance(
+                    txfer, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+                ), "Unsupported entry in transfers"
+                if isinstance(txfer, str):
+                    coerced_transfers.append(ObjectID(txfer))
+                else:
+                    coerced_transfers.append(txfer)
+            transfers = self._resolve_arguments(coerced_transfers)
         return self.builder.transfer_objects(tx_builder.PureInput.as_input(recipient), transfers)
 
     def transfer_sui(

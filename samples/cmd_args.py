@@ -40,7 +40,7 @@ def _build_read_cmds(subparser) -> None:
     # Object
     subp = subparser.add_parser("object", help="Show object by id")
     subp.add_argument("-i", "--id", required=True, action=ValidateObjectID)
-    subp.add_argument("-v", "--version", required=False, type=check_positive)
+    subp.add_argument("-v", "--version", required=False, type=str)
     # subp.add_argument("-j", "--json", required=False, help="Display output as json", action="store_true")
     subp.set_defaults(subcommand="object")
     # Objects
@@ -59,7 +59,7 @@ def _build_read_cmds(subparser) -> None:
         "--epoch",
         required=False,
         help="The epoch of interest. If None, default to the latest epoch",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="committee")
     # Faucet usage
@@ -104,7 +104,7 @@ def _build_transfer_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify 'transfer-object' transaction budget amount in mists (e.g. 1000)",
-        type=check_positive,
+        type=str,
     )
     subp.add_argument(
         "-s",
@@ -121,7 +121,7 @@ def _build_transfer_cmds(subparser) -> None:
         "--amount",
         required=True,
         help="Specify amount of MISTs to transfer.",
-        type=check_positive,
+        type=str,
     )
     subp.add_argument(
         "-o",
@@ -142,7 +142,7 @@ def _build_transfer_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify 'transfer-sui' transaction budget amount in Mist (e.g. 1000)",
-        type=check_positive,
+        type=str,
     )
     subp.add_argument(
         "-s",
@@ -179,7 +179,7 @@ def _build_pay_cmds(subparser) -> None:
         required=True,
         nargs="+",
         help="Specify amounts of MIST for each <INPUT-COINS> provided.",
-        type=check_positive,
+        type=str,
     )
     subp.add_argument(
         "-r",
@@ -195,7 +195,7 @@ def _build_pay_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify 'pay' transaction budget",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="pay")
     # PaySui
@@ -221,7 +221,7 @@ def _build_pay_cmds(subparser) -> None:
         required=True,
         nargs="+",
         help="Specify amounts of MIST for each <INPUT-COINS> provided.",
-        type=check_positive,
+        type=str,
     )
     subp.add_argument(
         "-r",
@@ -236,7 +236,7 @@ def _build_pay_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify 'pay' transaction budget",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="paysui")
     # PayAllSui
@@ -268,7 +268,7 @@ def _build_pay_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify 'pay' transaction budget",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="payallsui")
 
@@ -303,7 +303,7 @@ def _build_package_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify transaction budget",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="publish")
     # Move call
@@ -360,7 +360,7 @@ def _build_package_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify transaction budget",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="call")
 
@@ -398,7 +398,7 @@ def _build_coin_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify 'merge-coin' transaction budget",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="merge-coin")
     # Split coin
@@ -423,7 +423,7 @@ def _build_coin_cmds(subparser) -> None:
         required=True,
         nargs="+",
         help="Specify amounts to split the coin into.",
-        type=check_positive,
+        type=str,
     )
     subp.add_argument(
         "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
@@ -433,7 +433,7 @@ def _build_coin_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify 'split-coin' transaction budget",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="split-coin")
     # Split coin
@@ -457,7 +457,7 @@ def _build_coin_cmds(subparser) -> None:
         "--split_count",
         required=True,
         help="Specify count of coins to split the coin_object_id into.",
-        type=check_positive,
+        type=str,
     )
     subp.add_argument(
         "-o", "--gas", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
@@ -467,7 +467,7 @@ def _build_coin_cmds(subparser) -> None:
         "--gas-budget",
         required=True,
         help="Specify transaction budget",
-        type=check_positive,
+        type=str,
     )
     subp.set_defaults(subcommand="split-coin-equally")
 

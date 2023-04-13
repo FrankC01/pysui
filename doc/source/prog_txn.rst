@@ -70,12 +70,9 @@ Commands available
 
 Basic commands:
     * transfer_objects, transfer_sui
-    * split_coin, split_coin_equally
+    * split_coin
     * make_move_vector
-    * publish
+    * publish, publish_upgrade
 
 Extended commands (provided as convenience):
     * stake_coin, unstake_coin
-
-Coming soon:
-    * publish_upgrade

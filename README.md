@@ -11,7 +11,7 @@ Python Client SDK for Sui blockchain
 This `pysui` release introduces **MultiSig** (multiple keyt signing) for extra security governance! A section in the online
 documentation has been added to describe the basics.
 
-This `pysui` release introduces **Programmable Transactions** See `pysui/sui/sui_client/transaction.py` It is still being worked and contains too much code, asserts,TODO and FIXME. Note\_ that the legacy Builders and ease of use API on SuiClient are still available.
+This `pysui` release introduces **Programmable Transactions** See `pysui/sui/sui_client/transaction.py` It is still being worked. _Note_: The legacy Builders and ease of use API on SuiClient are still available.
 
 We would appreciate any issues being reported in the [github issue log](https://github.com/FrankC01/pysui/issues)
 
@@ -22,9 +22,9 @@ The amount of changes have eviscerated the pytest implementations and should not
 Sui release 0.29.x and 0.31.0 brings **_significant_** breaking changes. Please read the CHANGLOG first as many builders and data models have changed or even been removed. Refer to the [Changes](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md) log for recent additions, changes, constraints, fixes and removals...
 
 - 100% coverage (builders, return types, etc.) for parity with _SUI 0.31.0 API_ on devnet/testnet
-  - Programmable Transactions not yet fully supported. We are working on a TransactionBuilder and should have this available soon.
+  - The fully flexibility of Programmable Transactions are still being worked. Expect changes soon...
 
-**PyPi for 0.15.0**
+**PyPi for 0.16.0**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
