@@ -21,6 +21,7 @@ from pysui.abstracts import SuiBaseType
 from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
 from pysui.sui.sui_excepts import SuiInvalidAddress
+from deprecated.sphinx import deprecated, versionadded, versionchanged
 
 __partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{64}")
 __fullstring_pattern: re.Pattern = re.compile(r"0[xX][0-9a-fA-F]{64}")
@@ -91,6 +92,7 @@ class SuiAddress(SuiBaseType):
         return self.address
 
     @classmethod
+    @deprecated(version="0.16.1", reason="Constructor does same.")
     def from_hex_string(cls, instr: Union[str, SuiString]) -> "SuiAddress":
         """Instantiate instance of SuiAddress from hex string."""
         instr = instr if isinstance(instr, str) else str(instr)

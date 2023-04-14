@@ -16,28 +16,44 @@
 
 SUI_COIN_DENOMINATOR: int = 1000000000
 
+# Runtime environment keys
+PYSUI_EXEC_ENV: str = "SUI_EXEC"
+"""Holds the fully qualified path to the active sui binary."""
+PYSUI_CLIENT_CONFIG_ENV: str = "SUI_CLIENT_CONFIG"
+"""Holds the fully qualified path to the active client.yaml."""
+
+# sui-base configuration and execution constants
+SUI_BASE_ACTIVE: str = "~/sui-base/workdirs/active"
+"""sui-base symbolic link to what configuration is active."""
+SUI_BASE_EXEC_PATH: str = "target/debug/sui"
+"""sui-base binary location relative to the active configuration workdir."""
+
+# sui binary default
+DEFAULT_SUI_BINARY_PATH: str = "~/.cargo/bin/sui"
+"""The default fully qualified sui binary path."""
+
 # Config file constants
+
 DEFAULT_DEVNET_PATH_STRING: str = "~/.sui/sui_config/client.yaml"
+
 """Devnet client configuration default."""
 DEVNET_ENVIRONMENT_KEY: str = "devnet"
 """Devnet client configuration environment alias."""
+LOCALNET_ENVIRONMENT_KEY: str = "localnet"
+"""Localnet client configuration environment alias."""
+TESTNET_ENVIRONMENT_KEY: str = "testnet"
+"""Testnet client configuration environment alias."""
+
 DEVNET_FAUCET_URL: str = "https://faucet.devnet.sui.io/gas"
 """Devnet client faucet url."""
 DEVNET_SOCKET_URL: str = "wss://fullnode.devnet.sui.io:443"
 """Devnet socket url."""
 
-LOCALNET_ENVIRONMENT_KEY: str = "localnet"
-"""Localnet client configuration environment alias."""
 LOCALNET_FAUCET_URL: str = "http://127.0.0.1:5003/gas"
 """Localnet client faucet url."""
 LOCALNET_SOCKET_URL: str = "ws://127.0.0.1:9000"
 """Localnet socket url."""
 
-
-TESTNET_ENVIRONMENT_KEY: str = "testnet"
-"""Testnet client configuration environment alias."""
-TESTNET_PATH_STRING: str = "~/.sui/sui_config/client.yaml"
-"""Testnet client configuration default."""
 TESTNET_FAUCET_URL: str = "http://faucet.testnet.sui.io/gas"
 """Testnet client faucet url."""
 TESTNET_SOCKET_URL: str = "wss://fullnode.testnet.sui.io:443"

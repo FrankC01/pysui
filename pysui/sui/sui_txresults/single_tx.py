@@ -286,7 +286,7 @@ class ObjectRead(DataClassJsonMixin):
         :return: owner
         :rtype: SuiAddress
         """
-        return SuiAddress.from_hex_string(self.owner)
+        return SuiAddress(self.owner)
 
     @classmethod
     def differentiate(cls, indata: dict) -> Union["ObjectRead", ObjectNotExist, ObjectDeleted]:

@@ -21,8 +21,12 @@ from io import TextIOWrapper
 from pathlib import Path
 import json
 import yaml
+from deprecated.sphinx import deprecated, versionadded
 from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
+    PYSUI_EXEC_ENV,
+    PYSUI_CLIENT_CONFIG_ENV,
+    DEFAULT_SUI_BINARY_PATH,
     DEFAULT_DEVNET_PATH_STRING,
     DEVNET_FAUCET_URL,
     DEVNET_SOCKET_URL,
@@ -33,20 +37,35 @@ from pysui.sui.sui_constants import (
     TESTNET_FAUCET_URL,
     TESTNET_SOCKET_URL,
 )
-from pysui.sui.sui_crypto import SuiAddress, keypair_from_keystring, create_new_address
+from pysui.sui.sui_crypto import SuiAddress, create_new_address, load_keys_and_addresses
 from pysui.sui.sui_excepts import (
     SuiConfigFileError,
     SuiFileNotFound,
-    SuiNoKeyPairs,
-    SuiKeystoreFileError,
-    SuiKeystoreAddressError,
 )
+from pysui.sui.sui_utils import sui_base_get_config
 
-# pylint:disable=too-many-instance-attributes
+
+@versionadded(version="0.16.1", reason="Support for sui-base as well as sharing with signing and publishing")
+def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
+    """_set_env_vars Sets runtime paths to environment variables.
+
+    The most important will be the binary execution for compiling move packages and
+    performing MultiSig signing.
+
+    :param client_config_path: _description_
+    :type client_config_path: Path
+    :param sui_exec_path: _description_
+    :type sui_exec_path: Path
+    """
+    os.environ[PYSUI_CLIENT_CONFIG_ENV] = str(client_config_path)
+    os.environ[PYSUI_EXEC_ENV] = str(sui_exec_path)
+
+
+# pylint:disable=too-many-instance-attributes,attribute-defined-outside-init,too-many-arguments,unnecessary-dunder-call
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
-    def __init__(self, config_path: str, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
+    def _old_init(self, config_path: str, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
         """__init__ SuiConfig initialization.
 
         :param config_path: Fully qualified path to client.yaml configuration to use.
@@ -66,9 +85,11 @@ class SuiConfig(ClientConfiguration):
         :raises SuiFileNotFound: If path to keystore file does not exist
         """
         super().__init__(config_path, keystore_file)
-        self._active_address = SuiAddress.from_hex_string(active_address)
+        self._active_address = SuiAddress(active_address)
         self._current_url = current_url
         self._current_env = env
+        # Add for foward capability
+        _set_env_vars(config_path, Path(os.path.expanduser(DEFAULT_SUI_BINARY_PATH)))
         if env == LOCALNET_ENVIRONMENT_KEY:
             self._faucet_url = LOCALNET_FAUCET_URL
             self._socket_url = LOCALNET_SOCKET_URL
@@ -81,30 +102,30 @@ class SuiConfig(ClientConfiguration):
             self._faucet_url = DEVNET_FAUCET_URL
             self._socket_url = DEVNET_SOCKET_URL
             self._local_running = False
-        if os.path.exists(keystore_file):
-            self._keypairs = {}
-            self._addresses = {}
-            self._address_keypair = {}
-            try:
-                with open(keystore_file, encoding="utf8") as keyfile:
-                    self._keystrings = json.load(keyfile)
-                    if len(self._keystrings) > 0:
+        self._keypairs, self._addresses, self._address_keypair = load_keys_and_addresses(keystore_file)
 
-                        for keystr in self._keystrings:
-                            kpair = keypair_from_keystring(keystr)
-                            self._keypairs[keystr] = kpair
-                            addy = SuiAddress.from_keypair_string(kpair.to_b64())
-                            self._addresses[addy.address] = addy
-                            self._address_keypair[addy.address] = kpair
-                            # print(f"Address: {addy.address} keystr: {keystr} Keypair: {kpair}")
-                    else:
-                        raise SuiNoKeyPairs()
-            except IOError as exc:
-                raise SuiKeystoreFileError(exc) from exc
-            except json.JSONDecodeError as exc:
-                raise SuiKeystoreAddressError(exc) from exc
-        else:
-            raise SuiFileNotFound(str(keystore_file))
+    def _initiate(self, active_address: str, rpc_url: str, environment: str) -> None:
+        """."""
+        self._active_address = SuiAddress(active_address)
+        self._current_url = rpc_url
+        self._current_env = environment
+        match self._current_env:
+            case "devnet":
+                self._faucet_url = DEVNET_FAUCET_URL
+                self._socket_url = DEVNET_SOCKET_URL
+            case "testnet":
+                self._faucet_url = TESTNET_FAUCET_URL
+                self._socket_url = TESTNET_SOCKET_URL
+            case "localnet":
+                self._faucet_url = LOCALNET_FAUCET_URL
+                self._socket_url = LOCALNET_SOCKET_URL
+            case "mainnet":
+                raise NotImplementedError("mainnet not deployed for Sui network yet.")
+        self._keypairs, self._addresses, self._address_keypair = load_keys_and_addresses(self.keystore_file)
+
+    @deprecated(version="0.16.1", reason="To support more robust configurations such as sui-base")
+    def _d_init__(self, config_path: str, env: str, active_address: str, keystore_file: str, current_url: str) -> None:
+        """_d_init__ old init function."""
 
     def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:
         """Register the keypair and write out to keystore file."""
@@ -167,6 +188,7 @@ class SuiConfig(ClientConfiguration):
         return (str(fpath), active_env, active_address, keystore_file, current_url)
 
     @classmethod
+    @deprecated(version="0.16.0", reason="Accomodate more flexible setup use default_config or sui_base instead.")
     def default(cls) -> "SuiConfig":
         """default Looks for and loads client.yaml from ~/.sui/sui_config.
 
@@ -177,11 +199,14 @@ class SuiConfig(ClientConfiguration):
         expanded_path = os.path.expanduser(DEFAULT_DEVNET_PATH_STRING)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:
-                return cls(*cls._parse_config(Path(expanded_path), core_file))
+                config = super(ClientConfiguration, cls).__new__(cls)
+                config._old_init(*cls._parse_config(Path(expanded_path), core_file))
+                return config
         else:
             raise SuiFileNotFound(f"{expanded_path} not found.")
 
     @classmethod
+    @deprecated(version="0.16.1", reason="Removing in favor of default or sui_base")
     def from_config_file(cls, infile: str) -> "SuiConfig":
         """from_config_file Load a SuiConfig from a fully qualified path to client.yaml.
 
@@ -194,11 +219,59 @@ class SuiConfig(ClientConfiguration):
         expanded_path = os.path.expanduser(infile)
         if os.path.exists(expanded_path):
             with open(expanded_path, encoding="utf8") as core_file:
-                return cls(*cls._parse_config(Path(expanded_path), core_file))
+                config = super(ClientConfiguration, cls).__new__(cls)
+                config._old_init(*cls._parse_config(Path(expanded_path), core_file))
+                return config
         else:
             raise SuiFileNotFound(f"{expanded_path} not found.")
 
     @classmethod
+    def _new_parse_config(cls, sui_config: str) -> tuple[str, str, str]:
+        """New Config Parser."""
+        active_address = sui_config["active_address"] if "active_address" in sui_config else None
+        keystore_file = Path(sui_config["keystore"]["File"]) if "keystore" in sui_config else None
+        # active_env is new (0.15.0) and identifies the alias in use in the 'envs' map list
+        active_env = sui_config["active_env"] if "active_env" in sui_config else None
+        if not active_address or not keystore_file or not active_env:
+            raise SuiConfigFileError("Not a valid SUI configuration file.")
+        current_url = None
+        if "envs" in sui_config:
+            for envmap in sui_config["envs"]:
+                if active_env == envmap["alias"]:
+                    current_url = envmap["rpc"]
+                    break
+        else:
+            raise SuiConfigFileError("'envs' not found in configuration file.")
+        return active_address, current_url, active_env
+
+    @classmethod
+    @versionadded(version="0.16.1", reason="More flexible configuration.")
+    def _create_config(cls, expanded_path: Path, expanded_binary: Path) -> "SuiConfig":
+        """."""
+        client_yaml = yaml.safe_load(expanded_path.read_text(encoding="utf8"))
+        config = super(ClientConfiguration, cls).__new__(cls)
+        config.__init__(str(expanded_path), client_yaml["keystore"]["File"])
+        _set_env_vars(expanded_path, expanded_binary)
+        config._initiate(*cls._new_parse_config(client_yaml))
+        return config
+
+    @classmethod
+    @versionadded(version="0.16.1", reason="New loading of default configuration.")
+    def default_config(cls) -> "SuiConfig":
+        """."""
+        expanded_path = Path(os.path.expanduser(DEFAULT_DEVNET_PATH_STRING))
+        if expanded_path.exists():
+            return cls._create_config(expanded_path, Path(os.path.expanduser(DEFAULT_SUI_BINARY_PATH)))
+        raise SuiFileNotFound(f"{expanded_path} not found.")
+
+    @classmethod
+    @versionadded(version="0.16.1", reason="Supporting more flexible non-default configurations")
+    def sui_base_config(cls) -> "SuiConfig":
+        """."""
+        return cls._create_config(*sui_base_get_config())
+
+    @classmethod
+    @deprecated(version="0.16.1", reason="Never implemented. Will be removed in next version.")
     def _generate_configuration(cls) -> "ClientConfiguration":
         """Generate a default configuration."""
         raise NotImplementedError("SuiConfig.generate_configuration not implemented yet.")
