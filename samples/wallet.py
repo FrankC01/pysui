@@ -28,6 +28,7 @@ sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui.sui.sui_constants import PYSUI_CLIENT_CONFIG_ENV
 
 from samples.cmd_args import build_parser
 from samples.cmds import SUI_CMD_DISPATCH
@@ -36,22 +37,22 @@ from samples.cmds import SUI_CMD_DISPATCH
 def main():
     """Entry point for demonstration."""
     arg_line = sys.argv[1:].copy()
-    cfg_file = None
+    cfg_local: bool = False
     # Handle a different client.yaml than default
     if arg_line and arg_line[0] == "--local":
-        cfg_file = arg_line[1:2]
-        arg_line = arg_line[2:]
+        cfg_local = True
+        arg_line = arg_line[1:]
     parsed = build_parser(arg_line)
     cmd_call = SUI_CMD_DISPATCH.get(parsed.subcommand, None)
     if cmd_call:
         var_args = vars(parsed)
         var_args.pop("subcommand")
         parsed = argparse.Namespace(**var_args)
-        if cfg_file:
-            cfg = SuiConfig.from_config_file(cfg_file[0])
+        if cfg_local:
+            cfg = SuiConfig.sui_base_config()
         else:
-            cfg = SuiConfig.default()
-        print(f"Using configuration from {cfg.configuration_path}")
+            cfg = SuiConfig.default_config()
+        print(f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}")
         cmd_call(SuiClient(cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")

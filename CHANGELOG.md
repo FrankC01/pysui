@@ -7,11 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+We've started to 'deprecate' various functions, classes and methods to provide early warnings where
+your usage of `pysui` should consider changing.
+
 ### Added
+
+- `split_coin_equal` to SuiTransaction (a.k.a. Transaction Builder)
+- Support for running locally using [sui-base](https://github.com/sui-base/sui-base). The advantages are
+  the availabbility of highly configurable local nodes, management of different versions of Sui and consistent
+  wallet addresses across configuration.
 
 ### Fixed
 
 ### Changed
+
+- Changed methods for loading a configuration. Choices are now:
+  1. `SuiClient.default_config()` (default configuration loading)
+  2. `SuiClient.sui_base_config()` (if running sui-base locally)
 
 ### Removed
 

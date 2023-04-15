@@ -109,6 +109,7 @@ class SuiConfig(ClientConfiguration):
         self._active_address = SuiAddress(active_address)
         self._current_url = rpc_url
         self._current_env = environment
+        self._local_running = False
         match self._current_env:
             case "devnet":
                 self._faucet_url = DEVNET_FAUCET_URL
@@ -119,6 +120,7 @@ class SuiConfig(ClientConfiguration):
             case "localnet":
                 self._faucet_url = LOCALNET_FAUCET_URL
                 self._socket_url = LOCALNET_SOCKET_URL
+                self._local_running = True
             case "mainnet":
                 raise NotImplementedError("mainnet not deployed for Sui network yet.")
         self._keypairs, self._addresses, self._address_keypair = load_keys_and_addresses(self.keystore_file)

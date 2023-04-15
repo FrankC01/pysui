@@ -44,6 +44,7 @@ from pysui.sui.sui_excepts import (
     SuiNoKeyPairs,
 )
 from pysui.sui.sui_constants import (
+    PYSUI_EXEC_ENV,
     SCHEME_PRIVATE_KEY_BYTE_LEN,
     SUI_KEYPAIR_LEN,
     ED25519_DEFAULT_KEYPATH,
@@ -63,7 +64,7 @@ from pysui.sui.sui_constants import (
 from pysui.sui.sui_types import SuiSignature, SuiAddress
 from pysui.sui.sui_types.scalars import SuiTxBytes
 
-_SUI_MS_SIGN_CMD: list[str] = ["sui", "keytool", "multi-sig-combine-partial-sig"]
+_SUI_MS_SIGN_CMD: list[str] = ["keytool", "multi-sig-combine-partial-sig"]
 """Use sui binary keytool for MultiSig signing."""
 
 
@@ -314,7 +315,6 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
         return self._signing_key.ecdsa_serialize_compact(self._signing_key.ecdsa_sign(data))
 
 
-# TODO: Change to use the ecdsa library
 class SuiKeyPairSECP256K1(SuiKeyPair):
     """A SuiKey Pair."""
 
@@ -459,6 +459,7 @@ class MultiSig:
             sig_args.extend([self._keys[x].new_sign_secure(tx_bytes).value for x in key_indx])
             # Build command line
             invoke_args = _SUI_MS_SIGN_CMD.copy()
+            invoke_args.insert(0, os.environ[PYSUI_EXEC_ENV])
             invoke_args.extend(pk_args)
             invoke_args.extend(weight_args)
             invoke_args.extend(threshold_args)

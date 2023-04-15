@@ -207,6 +207,11 @@ class SuiString(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def split_count(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
 
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""

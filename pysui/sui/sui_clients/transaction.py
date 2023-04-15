@@ -21,6 +21,7 @@ import hashlib
 from pathlib import Path
 from typing import Any, Optional, Union
 import base58
+from deprecated.sphinx import versionadded
 from pysui.sui.sui_builders.exec_builders import InspectTransaction
 from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetMultipleObjects
 from pysui.sui.sui_clients.common import SuiRpcResult
@@ -629,34 +630,62 @@ class SuiTransaction:
             params.append(staked_coin)
         return self._move_call(target=_UNSTAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params))
 
-    def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
+    def split_coin(
+        self, *, coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument], amount: Union[int, SuiInteger]
+    ) -> bcs.Argument:
         """split_coin Creates a new coin with the defined amount, split from the provided coin.
 
         Note: Returns the coin so that it can be used in subsequent commands.
 
         :param coin: The coin address (object id) to split from.
-        :type coin: Union[str, ObjectID, ObjectRead]
+        :type coin: Union[str, ObjectID, ObjectRead,SuiCoinObject, bcs.Argument]
         :param amount: The amount to split out from coin
         :type amount: Union[int, SuiInteger]
         :raises ValueError: if the coin object can not be found on the chain.
         :return: The result that can be used in subsequent commands.
         :rtype: bcs.Argument
         """
-        assert isinstance(coin, (str, ObjectID, ObjectRead)), "invalid coin object type"
+        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
         assert isinstance(amount, (int, SuiInteger)), "invalid amount type"
         amount = amount if isinstance(amount, int) else amount.value
-        if not isinstance(coin, ObjectRead):
-            result = self.client.get_object(coin)
-            if result.is_ok():
-                coin = result.result_data
-                coin = GenericRef(coin.object_id, coin.version, coin.digest)
-            else:
-                raise ValueError(f"Fetching object {coin.object_id} failed")
-        coin_ref = (
-            bcs.BuilderArg("Object", bcs.Address.from_str(coin.object_id)),
-            bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(coin)),
+        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
+        resolved = self._resolve_arguments([coin])
+        return self.builder.split_coin(resolved[0], tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
+        """
+        :return: The result of the command.
+        :rtype: bcs.Argument
+        """
+
+    @versionadded(version="0.16.1", reason="Expand Transaction builder ease of use capability.")
+    def split_coin_equal(
+        self,
+        *,
+        coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        split_count: Union[int, SuiInteger],
+        coin_type: Optional[str] = "0x2::sui::SUI",
+    ) -> bcs.Argument:
+        """split_coin_equal Splits a Sui coin into equal parts.
+
+        :param coin: The coin to split
+        :type coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+        :param split_count: The number of parts to split coin into
+        :type split_count: Union[int, SuiInteger]
+        :param coin_type: The coin type, defaults to a Sui coin type
+        :type coin_type: Optional[str], optional
+        :return: _description_
+        :rtype: bcs.Argument
+        """
+        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
+        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
+        split_count = split_count if isinstance(split_count, int) else split_count.value
+        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
+        resolved = self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
+
+        return self._move_call(
+            target="0x2::pay::divide_and_keep",
+            arguments=resolved,
+            type_arguments=[bcs.TypeTag.type_tag_from(coin_type)],
         )
-        return self.builder.split_coin(coin_ref, tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
 
     def merge_coins(
         self,

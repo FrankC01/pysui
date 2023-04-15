@@ -15,7 +15,7 @@ This `pysui` release introduces **Programmable Transactions** See `pysui/sui/sui
 
 We would appreciate any issues being reported in the [github issue log](https://github.com/FrankC01/pysui/issues)
 
-This is a _**beta**_ release. The degree of changes from 0.27.1 to 0.29.1 and again to 0.31.0 are such that we have not completed thorough testing. We wanted to get something out there for users who have moved to 0.31.x devnet or testinet.
+This is a _**beta**_ release. The degree of changes from 0.27.1 to 0.29.1 and again to 0.31.x are such that we have not completed thorough testing. We wanted to get something out there for users who have moved to 0.31.x devnet or testinet.
 
 The amount of changes have eviscerated the pytest implementations and should not be trusted at this time.
 

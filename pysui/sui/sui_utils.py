@@ -27,6 +27,7 @@ import yaml
 from dataclasses_json import DataClassJsonMixin
 from pysui.sui.sui_constants import (
     DEFAULT_DEVNET_PATH_STRING,
+    PYSUI_EXEC_ENV,
     SUI_BASE_ACTIVE,
     SUI_BASE_EXEC_PATH,
     DEFAULT_SUI_BINARY_PATH,
@@ -56,8 +57,10 @@ from pysui.sui.sui_excepts import (
 from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectReadData
 
 
-_SUI_BUILD: list[str] = ["sui", "move", "build", "-p"]
-_SUI_BUILD_SKIP_GIT: list[str] = ["sui", "move", "build", "--skip-fetch-latest-git-deps", "-p"]
+# _SUI_BUILD: list[str] = ["sui", "move", "build", "-p"]
+# _SUI_BUILD_SKIP_GIT: list[str] = ["sui", "move", "build", "--skip-fetch-latest-git-deps", "-p"]
+_SUI_BUILD: list[str] = ["move", "build", "-p"]
+_SUI_BUILD_SKIP_GIT: list[str] = ["move", "build", "--skip-fetch-latest-git-deps", "-p"]
 _UNPUBLISHED: str = "0000000000000000000000000000000000000000000000000000000000000000"
 
 
@@ -91,6 +94,7 @@ def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Unio
         args = _SUI_BUILD_SKIP_GIT.copy()
     else:
         args = _SUI_BUILD.copy()
+    args.insert(0, os.environ[PYSUI_EXEC_ENV])
     args.append(str(path_to_package))
     result = subprocess.run(args, capture_output=True, text=True)
     if result.returncode == 0:

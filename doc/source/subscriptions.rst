@@ -66,6 +66,7 @@ Example of Event subscription
    :linenos:
 
     import asyncio
+    from pysui.sui.sui_config import SuiConfig
     from pysui.sui.sui_clients.subscribe import SuiClient as async_subscriber
     from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, EventEnvelope
     from pysui.sui.sui_builders.subscription_builders import *
@@ -82,7 +83,7 @@ Example of Event subscription
     # Asynchronous subscriber
     # use default clienti yaml at ~/.sui/sui_config/client.yaml
 
-    client = async_subscriber(SuiConfig.default())
+    client = async_subscriber(SuiConfig.default_config())
 
     # Use the explicit Event subscription service passing the
     # handler function and an optional name. A subscription proxy will be created

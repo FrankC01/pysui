@@ -38,8 +38,11 @@ write similar for asynchronous SuiAsynchClient
 
 ### Run sample wallet app for help
 
-- pysui 0.15.x from repo: `python -m samples.wallet`
-- pysui 0.15.x from pypi: `wallet`
+Depending on how you installed pysui:
+
+- `python -m samples.wallet` (from cloned repo)
+- `python samples/wallet.py` (from cloned repo)
+- `wallet` (from PyPi install)
 
 #### Output
 
@@ -138,19 +141,47 @@ subcommand:
 
 ## Run Local
 
-To run locally, especially useful when devnet is down, below are the steps to follow:
+We've changed the abbility to operate with a local running node to rely on [sui-base](https://github.com/sui-base/sui-base).
 
-### Setup local (example from home directory)
+After you've cloned and installed `sui-base` you can add the `--local` flag as shown below
 
-1. `mkdir sui_local` from your home directory
-2. `sui genesis --working-dir sui_local/`
-3. `sui start --network.config sui_local/network.yaml`
-4. Open another terminal
-5. If you haven't already, setup your `pysui` environment as shown [above](#setup-environment)
-6. Prefix `pysui` commands with `--local ~/sui_local/client.yaml`
+Note that this is different if you are swiitching between `envs` using the standard sui configuration.
+
+### Running with `sui-base`
+
+1. Change to your home folder `cd ~/`
+2. `git clone git@github.com:sui-base/sui-base.git`
+3. `cd sui-base`
+4. `./install`
+5. `localnet start` <= This will download sui source code and start a local node
+6. Finally, add the `--local` switch to the command line `pysui` wallet or other samples
 
 Example:
 
 ```bash
-wallet --local ~/sui_local/client.yaml gas
+wallet --local gas
+```
+
+Or (if running pysui from repo clone):
+
+```bash
+python samples/wallet.py --local gas
+```
+
+### Running with standard sui configuration
+
+If your standard configuration has `envs` that include `localnet`
+
+1. `sui client switch --env localnet
+
+Example:
+
+```bash
+wallet gas
+```
+
+Or (if running pysui from repo clone):
+
+```bash
+python samples/wallet.py gas
 ```

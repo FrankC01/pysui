@@ -13,17 +13,10 @@ The role of Sui Binaries
 
 
 -
-    | When creating a Client it relies on the presence of the ``client.yaml`` the binaries created.
-    | For example, if SuiConfig is created with :meth:`pysui.sui.sui_config.SuiConfig.default` it looks for:
+    | When creating a Client it relies on the presence of the ``client.yaml`` the Sui binaries created.
+    | For example, if SuiConfig is created with :meth:`pysui.sui.sui_config.SuiConfig.default_config` it looks for:
     | ``.sui/sui_config/client.yaml``
 
-
-| *Why roughly?*
-| If you won't be using ``pysui publish`` and you won't be using the ``sui ...`` command line
-| then an alternative would be to generate your own ``client.yaml``. You can place the generated
-| file in either ~/.sui/sui_config folder and load it with :meth:`pysui.sui.sui_config.SuiConfig.default`
-| or put it in your location of choice and point to the full path to ``client.yaml`` using
-| :meth:`pysui.sui.sui_config.SuiConfig.from_config_file`
 
 The Client
 ----------
@@ -51,16 +44,16 @@ are examples of doing just that as well as allocating a subscription client:
     from pysui.sui.sui_clients.subscribe import SuiClient as async_subscriber
 
     # Synchronous client
-    client = sync_client(SuiConfig.default())  # or
-    client = sync_client(SuiConfig.from_config_file(...))
+    client = sync_client(SuiConfig.default_config())  # or
+    client = sync_client(SuiConfig.sui_base_config(...))
 
     # Asynchronous client
-    client = async_client(SuiConfig.default())  # or
-    client = async_client(SuiConfig.from_config_file(...))
+    client = async_client(SuiConfig.default_config())  # or
+    client = async_client(SuiConfig.sui_base_config(...))
 
     # Asynchronous subscriber
-    client = async_subscriber(SuiConfig.default())  # or
-    client = async_subscriber(SuiConfig.from_config_file(...))
+    client = async_subscriber(SuiConfig.default_config())  # or
+    client = async_subscriber(SuiConfig.sui_base_config(...))
 
 The raw workhorse for submitting transactions is :py:meth:`pysui.sui.sui_clients.sync_client.SuiClient.execute` which takes a
 **Builder** object. Builders describe the RPC call, any parameters and how to format sucessful results.

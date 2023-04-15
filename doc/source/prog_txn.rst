@@ -38,12 +38,13 @@ This requires providing at least an instantiated SuiClient. At the moment it onl
 
     from pysui.sui.sui_clients.sync_client import SuiClient
     from pysui.sui.sui_clients.transaction import SuiTransaction
+    from pysui.sui.sui_config import SuiConfig
 
     def foo():
         """Demonstrate ."""
 
         # Get the Transaction/Transaction Builder
-        txn = SuiTransaction(SuiClient(SuiConfig.default()))
+        txn = SuiTransaction(SuiClient(SuiConfig.default_config()))
 
         # Get a few objects to use as command arguments
         coin_to_split = ... # Retrieved somehow
@@ -70,7 +71,7 @@ Commands available
 
 Basic commands:
     * transfer_objects, transfer_sui
-    * split_coin
+    * split_coin,split_coin_equal
     * make_move_vector
     * publish, publish_upgrade
 

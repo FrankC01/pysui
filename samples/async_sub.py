@@ -83,17 +83,11 @@ async def main_run(sub_manager: subscriber):
 def main():
     """Setup asynch loop and run."""
     arg_line = sys.argv[1:].copy()
-    cfg_file = None
     # Handle a different client.yaml than default
     if arg_line and arg_line[0] == "--local":
-        cfg_file = arg_line[1:2]
-        arg_line = arg_line[2:]
-        if cfg_file:
-            cfg = SuiConfig.from_config_file(cfg_file[0])
-        else:
-            cfg = SuiConfig.default()
+        cfg = SuiConfig.sui_base_config()
     else:
-        cfg = SuiConfig.default()
+        cfg = SuiConfig.default_config()
     asyncio.run(main_run(subscriber(cfg)))
     print("Done")
 
