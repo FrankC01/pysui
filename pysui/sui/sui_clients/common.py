@@ -98,8 +98,8 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: int = 29
-    _RPC_REQUIRED_VERSION: str = "0.29.1"
+    _RPC_MINIMAL_VERSION: int = 31
+    _RPC_REQUIRED_VERSION: str = "0.31.0"
     _SIGNATURE_ERROR: set[str] = {
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",
@@ -166,7 +166,7 @@ class _ClientMixin(Provider):
     @property
     def current_gas_price(self) -> int:
         """Returns session gas price."""
-        return self._gas_price
+        return int(self._gas_price)
 
     @property
     def rpc_version(self) -> str:
