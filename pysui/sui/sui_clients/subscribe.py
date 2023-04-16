@@ -98,7 +98,7 @@ class SuiClient(Provider):
             payload_msg["params"] = [parm_arg.filter]
         else:
             return SuiRpcResult(False, f"{parm_arg} not an accepted type")
-
+        print(json.dumps(payload_msg))
         await websock.send(json.dumps(payload_msg))
         # First we get a subscription ID
         response = json.loads(await websock.recv())

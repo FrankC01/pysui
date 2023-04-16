@@ -14,9 +14,10 @@
 
 """Sui Synchronous RPC Client module."""
 
-from typing import Any, Union
+from typing import Any, Optional, Union
 from json import JSONDecodeError
 import httpx
+from deprecated.sphinx import versionchanged
 from pysui.sui.sui_clients.common import _ClientMixin, PreExecutionResult, SuiRpcResult
 from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiSignature, SuiTxBytes, SuiString
@@ -112,8 +113,13 @@ class SuiClient(_ClientMixin):
             return result
         return SuiRpcResult(False, "execute_no_sign is used only with transaction types")
 
+    @versionchanged(version="0.16.1", reason="Support sponsored transaction signing.")
     def execute_with_multisig(
-        self, builder: SuiBaseBuilder, multi_sig: MultiSig, pub_keys: list[SuiPublicKey]
+        self,
+        builder: SuiBaseBuilder,
+        multi_sig: MultiSig,
+        pub_keys: list[SuiPublicKey],
+        signers: Optional[SuiArray[SuiAddress]] = None,
     ) -> Union[SuiRpcResult, Exception]:
         """execute_with_multisig Executes a transaction, signing with MultiSig."""
         if builder.txn_required:
@@ -122,9 +128,12 @@ class SuiClient(_ClientMixin):
                 tx_bytes = result.result_data.tx_bytes
                 new_sig = multi_sig.sign(tx_bytes, pub_keys)
                 if isinstance(new_sig, SuiSignature):
+                    sig_array = [new_sig]
+                    if signers:
+                        sig_array.extend([kpair.new_sign_secure(tx_bytes) for kpair in signers.array])
                     exec_tx = ExecuteTransaction(
                         tx_bytes=tx_bytes,
-                        signatures=SuiArray([new_sig]),
+                        signatures=SuiArray(sig_array),
                         request_type=SuiRequestType.WAITFORLOCALEXECUTION,
                     )
                     return self.execute(exec_tx)

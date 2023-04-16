@@ -22,10 +22,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import NoneType
 from typing import Any, Union
-import binascii
 import base58
 import yaml
 from dataclasses_json import DataClassJsonMixin
+from pysui.sui.sui_constants import (
+    DEFAULT_DEVNET_PATH_STRING,
+    PYSUI_EXEC_ENV,
+    SUI_BASE_ACTIVE,
+    SUI_BASE_EXEC_PATH,
+    DEFAULT_SUI_BINARY_PATH,
+)
 
 import pysui.sui_move.module.deserialize as deser
 from pysui.sui_move.bin_reader.module_reader import ModuleReader
@@ -51,15 +57,16 @@ from pysui.sui.sui_excepts import (
 from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectReadData
 
 
-_SUI_BUILD: list[str] = ["sui", "move", "build", "-p"]
-_SUI_BUILD_SKIP_GIT: list[str] = ["sui", "move", "build", "--skip-fetch-latest-git-deps", "-p"]
-_IGNORE_DEPENDENCY: set[str] = {"Sui", "MoveStdlib"}
+# _SUI_BUILD: list[str] = ["sui", "move", "build", "-p"]
+# _SUI_BUILD_SKIP_GIT: list[str] = ["sui", "move", "build", "--skip-fetch-latest-git-deps", "-p"]
+_SUI_BUILD: list[str] = ["move", "build", "-p"]
+_SUI_BUILD_SKIP_GIT: list[str] = ["move", "build", "--skip-fetch-latest-git-deps", "-p"]
 _UNPUBLISHED: str = "0000000000000000000000000000000000000000000000000000000000000000"
 
 
 @dataclass
 class CompiledPackage:
-    """."""
+    """Ease of compilation information dataclass."""
 
     project_name: str
     project_id: str
@@ -87,6 +94,7 @@ def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Unio
         args = _SUI_BUILD_SKIP_GIT.copy()
     else:
         args = _SUI_BUILD.copy()
+    args.insert(0, os.environ[PYSUI_EXEC_ENV])
     args.append(str(path_to_package))
     result = subprocess.run(args, capture_output=True, text=True)
     if result.returncode == 0:
@@ -150,6 +158,40 @@ def publish_build(
     module_readers: list[ModuleReader] = _modules_bytes(byte_modules)
     cpackage.compiled_modules = [SuiString(base64.b64encode(mr.reader.getvalue()).decode()) for mr in module_readers]
     return cpackage
+
+
+def sui_base_get_config() -> tuple[Path, Path]:
+    """sui_base_get_config Load a sui-base configuration.
+
+    :raises ValueError: client.yaml not found
+    :raises ValueError: sui binary not found
+    :return: Fully qualified paths to client.yaml and sui binary
+    :rtype: tuple[Path, Path]
+    """
+    # Have the system expand path and resolve symlinks
+    active_path = Path(os.readlink(os.path.expanduser(SUI_BASE_ACTIVE)))
+    print(active_path)
+    astem = active_path.stem
+    match astem:
+        case "localnet" | "devnet" | "testnet":
+            # client yaml
+            local_cfg = Path(os.readlink(active_path.joinpath("config"))).joinpath("client.yaml")
+            if not local_cfg.exists():
+                raise ValueError(f"client.yaml not found {local_cfg}")
+            # Sui binary
+            sui_exec_path = Path(os.readlink(active_path.joinpath("sui-repo"))).joinpath(SUI_BASE_EXEC_PATH)
+            if not sui_exec_path.exists():
+                raise ValueError(f"sui binary not found {sui_exec_path}")
+        case _:
+            # default client yaml
+            local_cfg = Path(os.path.expanduser(DEFAULT_DEVNET_PATH_STRING))
+            if not local_cfg.exists():
+                raise ValueError(f"client.yaml not found {local_cfg}")
+            # Default Sui binary
+            sui_exec_path = Path(os.path.expanduser(DEFAULT_SUI_BINARY_PATH))
+            if not sui_exec_path.exists():
+                raise ValueError(f"sui binary not found {sui_exec_path}")
+    return local_cfg, sui_exec_path
 
 
 # Conversion utilities

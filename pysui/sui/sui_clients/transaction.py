@@ -21,10 +21,13 @@ import hashlib
 from pathlib import Path
 from typing import Any, Optional, Union
 import base58
-from pysui.sui.sui_builders.exec_builders import InspectTransaction
+from deprecated.sphinx import versionadded, versionchanged
+from pysui.sui.sui_builders.base_builder import SuiRequestType
+from pysui.sui.sui_builders.exec_builders import ExecuteTransaction, InspectTransaction
 from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetMultipleObjects
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_clients.transaction_builder as tx_builder
+from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
 from pysui.sui.sui_txresults.single_tx import (
@@ -39,7 +42,7 @@ from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiString, SuiTxBytes, SuiU8
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiSignature, SuiString, SuiTxBytes, SuiU8
 from pysui.sui.sui_utils import publish_build
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
@@ -127,13 +130,14 @@ class SuiTransaction:
         """
         return base64.b64encode(self.raw_kind().serialize()).decode()
 
-    def inspect_all(self, for_sender: Union[str, SuiAddress] = None) -> Union[TxInspectionResult, None]:
+    @versionchanged(version="0.16.1", reason="Added returning SuiRpcResult if inspect transaction failed.")
+    def inspect_all(self, for_sender: Union[str, SuiAddress] = None) -> Union[TxInspectionResult, SuiRpcResult]:
         """inspect_all Returns results of sui_devInspectTransactionBlock on the current Transaction.
 
         :param for_sender: Used for inspection. If not supplied, uses current Transaction sender, defaults to None
         :type for_sender: Union[str, SuiAddress], optional
-        :return: The successful result or None if inspect transaction failed.
-        :rtype: Union[TxInspectionResult, None]
+        :return: The successful result or the SuiRpcResult if inspect transaction failed.
+        :rtype: Union[TxInspectionResult, SuiRpcResult]
         """
         tx_bytes = self.build_for_inspection()
         if for_sender:
@@ -143,25 +147,27 @@ class SuiTransaction:
         result = self.client.execute(InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes))
         if result.is_ok():
             return result.result_data
-        return None
+        return result
 
-    def inspect_for_cost(self, for_sender: Union[str, SuiAddress] = None) -> Union[tuple[int, int, str], None]:
+    @versionchanged(version="0.16.1", reason="Added returning SuiRpcResult if inspect transaction failed.")
+    def inspect_for_cost(self, for_sender: Union[str, SuiAddress] = None) -> Union[tuple[int, int, str], SuiRpcResult]:
         """inspect_for_cost Runs inspect transaction for cost summary.
 
         :param for_sender: Use for inspection. If not supplied, uses current Transaction sender, defaults to None
         :type for_sender: Union[str, SuiAddress], optional
         :return: If inspect did not fail, a tuple of gas_max, gas_min, gas object_id otherwise None
-        :rtype: Union[tuple[int, int, str], None]
+        :rtype: Union[tuple[int, int, str], SuiRpcResult]
         """
         ispec = self.inspect_all(for_sender)
-        if ispec:
+        if ispec and isinstance(ispec, TxInspectionResult):
             gas_used = ispec.effects.gas_used
             gas_max = gas_used.total
             gas_min = gas_used.total_after_rebate
             return gas_max, gas_min, ispec.effects.gas_object.reference.object_id
-        return None
+        return SuiRpcResult
 
     # FIXME: Not complete, used for testing WIP
+    # Fix would be to potentially 'join' available gas to reach budget requirements
     def _gas_for_budget(self, owner: str, budget: int) -> SuiCoinObject:
         """Used internally to select a gas object to use in transaction."""
         if owner == self._sender:
@@ -171,7 +177,7 @@ class SuiTransaction:
         else:
             coin_objs = self._reset_gas(owner)
             for gobj in coin_objs:
-                if gobj.balance > budget and gobj.coin_object_id not in self.builder.objects_registry:
+                if int(gobj.balance) > budget and gobj.coin_object_id not in self.builder.objects_registry:
                     return gobj
         return None
 
@@ -205,19 +211,11 @@ class SuiTransaction:
         signer = signer if signer else self._sender
         signer = signer if isinstance(signer, str) else signer.address
         max_cost, _, _ = self.inspect_for_cost(signer)
-
         gas_budget = gas_budget if isinstance(gas_budget, str) else gas_budget.value
         gas_budget = max(max_cost, int(gas_budget))
-        # FIXME Clean this up
-        if signer == self._sender:
-            if not gas:
-                gas: SuiCoinObject = self._gas_for_budget(signer, gas_budget)
-            else:
-                for gasobj in self._gasses:
-                    if gasobj.balance > gas_budget and gasobj.coin_object_id not in self.builder.objects_registry:
-                        gas: SuiCoinObject = gasobj
-                        break
-        else:
+
+        # If a coin is not passed, we fetch one
+        if not gas:
             gas: SuiCoinObject = self._gas_for_budget(signer, gas_budget)
         assert gas
         gas_object = bcs.GasData(
@@ -241,12 +239,14 @@ class SuiTransaction:
             ),
         )
 
+    @versionchanged(version="0.16.1", reason="Added 'additional_signers' optional argument")
     def execute(
         self,
         *,
         signer: Union[str, SuiAddress],
         gas: Optional[Union[str, ObjectID]] = None,
         gas_budget: Union[str, SuiString],
+        additional_signers: Optional[list[Union[str, SuiAddress]]] = None,
     ) -> SuiRpcResult:
         """execute Finalizes transaction and submits for execution on the chain.
 
@@ -257,15 +257,64 @@ class SuiTransaction:
         :type gas_budget: Union[int, SuiInteger]
         :param gas: An gas coin object id. If not provided, one of the signers gas object will be used, defaults to None
         :type gas: Optional[Union[str, ObjectID]], optional
-        :return: The result of signing and executing the transaction
+        :param additional_signers: When additional signatures are needed. Sponsor for example, defaults to None
+        :type additional_signers: Optional[list[Union[str, SuiAddress]]], optional
+        :return: Result of executing instruction
         :rtype: SuiRpcResult
         """
+        additional_signers = additional_signers if additional_signers else []
+        additional_signers = [x if isinstance(x, SuiAddress) else SuiAddress(x) for x in additional_signers]
         signer, _, tx_data = self.build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
         tx_b64 = base64.b64encode(tx_data.serialize()).decode()
-        iresult = self.client.sign_and_submit(SuiAddress(signer), SuiTxBytes(tx_b64), SuiArray([]))
+        iresult = self.client.sign_and_submit(SuiAddress(signer), SuiTxBytes(tx_b64), SuiArray(additional_signers))
         return iresult
 
-    # TODO: Add method for MultiSig signing and execution
+    @versionadded(version="0.16.1", reason="Support MultiSig transaction signing")
+    def execute_with_multi_sig(
+        self,
+        *,
+        signer: MultiSig,
+        pub_keys: list[SuiPublicKey],
+        gas: Optional[Union[str, ObjectID]] = None,
+        gas_budget: Union[str, SuiString],
+        additional_signers: Optional[list[Union[str, SuiAddress]]] = None,
+    ) -> SuiRpcResult:
+        """execute_with_multi_sig Finalizes transaction and submits for execution on the chain.
+
+        :param signer: The MultiSig object to use as the signer of a transaction.
+        :type signer: MultiSig
+        :param pub_keys: The subset (or all) of the keys from the multi-sig
+        :type pub_keys: Union[str, SuiString]
+        :param gas_budget: The gas budget to use. An introspection of the transaciton is performed
+            and this method will use the larger of the two.
+        :type gas_budget: Union[int, SuiInteger]
+        :param gas: An gas coin object id. If not provided, one of the signers gas object will be used, defaults to None
+        :type gas: Optional[Union[str, ObjectID]], optional
+        :param additional_signers: When additional signatures are needed. Sponsor for example, defaults to None
+        :type additional_signers: Optional[list[Union[str, SuiAddress]]], optional
+        :return: Result of executing instruction
+        :rtype: SuiRpcResult
+        """
+        assert isinstance(signer, MultiSig), "Requires a MultiSig signer argument."
+        for pkey in pub_keys:
+            assert isinstance(pkey, SuiPublicKey)
+        additional_signers = additional_signers if additional_signers else []
+        additional_signers = [x if isinstance(x, SuiAddress) else SuiAddress(x) for x in additional_signers]
+        _, _, tx_data = self.build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
+        tx_b64 = base64.b64encode(tx_data.serialize()).decode()
+        # Get the multi-sig signature
+        new_sig = signer.sign(tx_b64, pub_keys)
+        if isinstance(new_sig, SuiSignature):
+            sig_array = [new_sig]
+            # Get any additional signatures
+            if additional_signers:
+                sig_array.extend([kpair.new_sign_secure(tx_b64) for kpair in additional_signers])
+            exec_tx = ExecuteTransaction(
+                tx_bytes=tx_b64,
+                signatures=SuiArray(sig_array),
+                request_type=SuiRequestType.WAITFORLOCALEXECUTION,
+            )
+            return self.client.execute(exec_tx)
 
     # Commands and helpers
 
@@ -629,34 +678,62 @@ class SuiTransaction:
             params.append(staked_coin)
         return self._move_call(target=_UNSTAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params))
 
-    def split_coin(self, *, coin: Union[str, ObjectID, ObjectRead], amount: Union[int, SuiInteger]) -> bcs.Argument:
+    def split_coin(
+        self, *, coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument], amount: Union[int, SuiInteger]
+    ) -> bcs.Argument:
         """split_coin Creates a new coin with the defined amount, split from the provided coin.
 
         Note: Returns the coin so that it can be used in subsequent commands.
 
         :param coin: The coin address (object id) to split from.
-        :type coin: Union[str, ObjectID, ObjectRead]
+        :type coin: Union[str, ObjectID, ObjectRead,SuiCoinObject, bcs.Argument]
         :param amount: The amount to split out from coin
         :type amount: Union[int, SuiInteger]
         :raises ValueError: if the coin object can not be found on the chain.
         :return: The result that can be used in subsequent commands.
         :rtype: bcs.Argument
         """
-        assert isinstance(coin, (str, ObjectID, ObjectRead)), "invalid coin object type"
+        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
         assert isinstance(amount, (int, SuiInteger)), "invalid amount type"
         amount = amount if isinstance(amount, int) else amount.value
-        if not isinstance(coin, ObjectRead):
-            result = self.client.get_object(coin)
-            if result.is_ok():
-                coin = result.result_data
-                coin = GenericRef(coin.object_id, coin.version, coin.digest)
-            else:
-                raise ValueError(f"Fetching object {coin.object_id} failed")
-        coin_ref = (
-            bcs.BuilderArg("Object", bcs.Address.from_str(coin.object_id)),
-            bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(coin)),
+        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
+        resolved = self._resolve_arguments([coin])
+        return self.builder.split_coin(resolved[0], tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
+        """
+        :return: The result of the command.
+        :rtype: bcs.Argument
+        """
+
+    @versionadded(version="0.16.1", reason="Expand Transaction builder ease of use capability.")
+    def split_coin_equal(
+        self,
+        *,
+        coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        split_count: Union[int, SuiInteger],
+        coin_type: Optional[str] = "0x2::sui::SUI",
+    ) -> bcs.Argument:
+        """split_coin_equal Splits a Sui coin into equal parts.
+
+        :param coin: The coin to split
+        :type coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+        :param split_count: The number of parts to split coin into
+        :type split_count: Union[int, SuiInteger]
+        :param coin_type: The coin type, defaults to a Sui coin type
+        :type coin_type: Optional[str], optional
+        :return: _description_
+        :rtype: bcs.Argument
+        """
+        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
+        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
+        split_count = split_count if isinstance(split_count, int) else split_count.value
+        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
+        resolved = self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
+
+        return self._move_call(
+            target="0x2::pay::divide_and_keep",
+            arguments=resolved,
+            type_arguments=[bcs.TypeTag.type_tag_from(coin_type)],
         )
-        return self.builder.split_coin(coin_ref, tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
 
     def merge_coins(
         self,

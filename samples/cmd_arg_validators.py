@@ -41,9 +41,9 @@ class ValidateAddress(argparse.Action):
         """Validate."""
         try:
             if isinstance(values, list):
-                values = [SuiAddress.from_hex_string(v) for v in values]
+                values = [SuiAddress(v) for v in values]
             else:
-                values = SuiAddress.from_hex_string(values)
+                values = SuiAddress(values)
         except ValueError:
             parser.error(f"'{values}' is not valid address.")
             sys.exit(-1)

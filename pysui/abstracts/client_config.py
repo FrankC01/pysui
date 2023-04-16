@@ -12,6 +12,7 @@
 
 """Client Configuration Abstraction."""
 from abc import ABC, abstractmethod
+from deprecated.sphinx import deprecated
 from .client_types import AbstractType
 from .client_keypair import KeyPair
 
@@ -29,9 +30,9 @@ class ClientConfiguration(ABC):
         """
         self._current_keystore_file = keystore_file
         self._configuration_path = config_path
-        self._keypairs = {}
-        self._addresses = {}
-        self._address_keypair = {}
+        self._keypairs: dict[str, KeyPair] = {}
+        self._addresses: dict[str, AbstractType] = {}
+        self._address_keypair: dict[str, KeyPair] = {}
 
     @property
     @abstractmethod
@@ -44,6 +45,10 @@ class ClientConfiguration(ABC):
         """Return the active address from the client configuration."""
 
     @property
+    @deprecated(
+        version="0.16.1",
+        reason="This is being deprecated in favor of using the os.environ[PYSUI_CLIENT_CONFIG_ENV] variable.",
+    )
     def configuration_path(self) -> str:
         """configuration_path Returns the configuration path that defined configuraiton instance.
 

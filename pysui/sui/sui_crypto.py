@@ -14,12 +14,15 @@
 
 """Sui Crpto Keys and Keypairs."""
 
+import os
 import ast
 import base64
 import binascii
 import hashlib
 import subprocess
+import json
 from typing import Union
+from deprecated.sphinx import versionadded, versionchanged
 
 import secp256k1
 import bip_utils
@@ -32,8 +35,16 @@ from nacl.encoding import Base64Encoder, RawEncoder
 
 
 from pysui.abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
-from pysui.sui.sui_excepts import SuiInvalidKeyPair, SuiInvalidKeystringLength
+from pysui.sui.sui_excepts import (
+    SuiFileNotFound,
+    SuiInvalidKeyPair,
+    SuiInvalidKeystringLength,
+    SuiKeystoreAddressError,
+    SuiKeystoreFileError,
+    SuiNoKeyPairs,
+)
 from pysui.sui.sui_constants import (
+    PYSUI_EXEC_ENV,
     SCHEME_PRIVATE_KEY_BYTE_LEN,
     SUI_KEYPAIR_LEN,
     ED25519_DEFAULT_KEYPATH,
@@ -53,7 +64,7 @@ from pysui.sui.sui_constants import (
 from pysui.sui.sui_types import SuiSignature, SuiAddress
 from pysui.sui.sui_types.scalars import SuiTxBytes
 
-_SUI_MS_SIGN_CMD: list[str] = ["sui", "keytool", "multi-sig-combine-partial-sig"]
+_SUI_MS_SIGN_CMD: list[str] = ["keytool", "multi-sig-combine-partial-sig"]
 """Use sui binary keytool for MultiSig signing."""
 
 
@@ -304,7 +315,6 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
         return self._signing_key.ecdsa_serialize_compact(self._signing_key.ecdsa_sign(data))
 
 
-# TODO: Change to use the ecdsa library
 class SuiKeyPairSECP256K1(SuiKeyPair):
     """A SuiKey Pair."""
 
@@ -390,8 +400,15 @@ class MultiSig:
         return self._SIGNATURE_SCHEME
 
     @property
-    def address(self) -> SuiAddress:
-        """Return the address generated from the initial keys."""
+    @versionchanged(version="0.16.1", reason="Return add as str to align with non MultiSig SuiAddress behavior")
+    def address(self) -> str:
+        """Return the address string generated from the initial keys."""
+        return self._address.address
+
+    @property
+    @versionadded(version="0.16.1", reason="Provide ability to get MultiSig as SuiAddress")
+    def as_sui_address(self) -> SuiAddress:
+        """Return the address as SuiAddress."""
         return self._address
 
     @property
@@ -449,6 +466,7 @@ class MultiSig:
             sig_args.extend([self._keys[x].new_sign_secure(tx_bytes).value for x in key_indx])
             # Build command line
             invoke_args = _SUI_MS_SIGN_CMD.copy()
+            invoke_args.insert(0, os.environ[PYSUI_EXEC_ENV])
             invoke_args.extend(pk_args)
             invoke_args.extend(weight_args)
             invoke_args.extend(threshold_args)
@@ -458,8 +476,7 @@ class MultiSig:
             if result.returncode == 0:
                 sargs = ast.literal_eval(result.stdout.split()[-1])
                 return SuiSignature(sargs)
-            else:
-                return result.returncode
+            return result.returncode
         raise ValueError("Invalid signer pub_keys")
 
     def serialize(self) -> str:
@@ -720,6 +737,46 @@ def recover_key_and_address(
     """
     mnem, new_kp = create_new_keypair(keytype, mnemonics, derv_path)
     return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
+
+
+@versionadded(version="0.16.1", reason="Localize key management")
+def load_keys_and_addresses(
+    keystore_file: str,
+) -> Union[tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]], Exception]:
+    """load_keys_and_addresses Load keys and addresses.
+
+    :param keystore_file: The current in use keystore file path
+    :type keystore_file: str
+    :raises SuiNoKeyPairs: If empty
+    :raises SuiKeystoreFileError: If error reading file
+    :raises SuiKeystoreAddressError: JSON error loading keyfile
+    :raises SuiFileNotFound: If the file does not exists
+    :return: Cross reference maps
+    :rtype: Union[tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]], Exception]
+    """
+    if os.path.exists(keystore_file):
+        try:
+            with open(keystore_file, encoding="utf8") as keyfile:
+                _keystrings = json.load(keyfile)
+                _keypairs: dict[str, KeyPair] = {}
+                _addresses: dict[str, SuiAddress] = {}
+                _address_keypair: dict[str, KeyPair] = {}
+                if len(_keystrings) > 0:
+                    for keystr in _keystrings:
+                        kpair = keypair_from_keystring(keystr)
+                        _keypairs[keystr] = kpair
+                        addy = SuiAddress.from_keypair_string(kpair.to_b64())
+                        _addresses[addy.address] = addy
+                        _address_keypair[addy.address] = kpair
+                    return _keypairs, _addresses, _address_keypair
+                else:
+                    raise SuiNoKeyPairs()
+        except IOError as exc:
+            raise SuiKeystoreFileError(exc) from exc
+        except json.JSONDecodeError as exc:
+            raise SuiKeystoreAddressError(exc) from exc
+    else:
+        raise SuiFileNotFound(str(keystore_file))
 
 
 # pylint:disable=line-too-long,invalid-name

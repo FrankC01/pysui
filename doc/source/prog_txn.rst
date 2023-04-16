@@ -22,7 +22,7 @@ The ``pysui`` Implementation
 A ``pysui`` SuiTransaciton commands are similar to `Sui TS SDK <https://docs.sui.io/devnet/build/prog-trans-ts-sdk>`_ but do have
 differences:
 
-    * Encapsulates additional high level commands, such as `stake_coin`, `unstake_coin` and `publish_upgrade`
+    * Encapsulates additional high level commands, such as `stake_coin`, `unstake_coin`, `split_coin_equal` and `publish_upgrade`
     * Transaction methods have a high degree of flexibility in providing arguments
 
 Gettinig Started
@@ -38,12 +38,13 @@ This requires providing at least an instantiated SuiClient. At the moment it onl
 
     from pysui.sui.sui_clients.sync_client import SuiClient
     from pysui.sui.sui_clients.transaction import SuiTransaction
+    from pysui.sui.sui_config import SuiConfig
 
     def foo():
         """Demonstrate ."""
 
         # Get the Transaction/Transaction Builder
-        txn = SuiTransaction(SuiClient(SuiConfig.default()))
+        txn = SuiTransaction(SuiClient(SuiConfig.default_config()))
 
         # Get a few objects to use as command arguments
         coin_to_split = ... # Retrieved somehow
@@ -70,9 +71,20 @@ Commands available
 
 Basic commands:
     * transfer_objects, transfer_sui
-    * split_coin
+    * split_coin,split_coin_equal
     * make_move_vector
     * publish, publish_upgrade
-
-Extended commands (provided as convenience):
     * stake_coin, unstake_coin
+
+Inspection
+~~~~~~~~~~
+
+You can verify (inspect) a SuiTransaction as you are building out your transactions. See: :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.inspect_all`
+
+Execution
+~~~~~~~~~
+
+You can execute the transaction with single signer, single signer and sponsor signer as well as MultiSig signer and sponsored signer:
+
+#. :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.execute`
+#. :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.execute_with_multi_sig`
