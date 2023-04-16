@@ -6,7 +6,7 @@ Python Client SDK for Sui blockchain
 
 ## **NOTICE: README FIRST**
 
-**Release-0.16.0**
+**Release-0.16.1**
 
 This `pysui` release introduces **MultiSig** (multiple keyt signing) for extra security governance! A section in the online
 documentation has been added to describe the basics.
@@ -24,7 +24,7 @@ Sui release 0.29.x and 0.31.0 brings **_significant_** breaking changes. Please 
 - 100% coverage (builders, return types, etc.) for parity with _SUI 0.31.0 API_ on devnet/testnet
   - The fully flexibility of Programmable Transactions are still being worked. Expect changes soon...
 
-**PyPi for 0.16.0**
+**PyPi for 0.16.1**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 

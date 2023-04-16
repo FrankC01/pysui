@@ -22,7 +22,7 @@ The ``pysui`` Implementation
 A ``pysui`` SuiTransaciton commands are similar to `Sui TS SDK <https://docs.sui.io/devnet/build/prog-trans-ts-sdk>`_ but do have
 differences:
 
-    * Encapsulates additional high level commands, such as `stake_coin`, `unstake_coin` and `publish_upgrade`
+    * Encapsulates additional high level commands, such as `stake_coin`, `unstake_coin`, `split_coin_equal` and `publish_upgrade`
     * Transaction methods have a high degree of flexibility in providing arguments
 
 Gettinig Started
@@ -74,6 +74,17 @@ Basic commands:
     * split_coin,split_coin_equal
     * make_move_vector
     * publish, publish_upgrade
-
-Extended commands (provided as convenience):
     * stake_coin, unstake_coin
+
+Inspection
+~~~~~~~~~~
+
+You can verify (inspect) a SuiTransaction as you are building out your transactions. See: :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.inspect_all`
+
+Execution
+~~~~~~~~~
+
+You can execute the transaction with single signer, single signer and sponsor signer as well as MultiSig signer and sponsored signer:
+
+#. :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.execute`
+#. :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.execute_with_multi_sig`
