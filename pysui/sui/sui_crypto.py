@@ -22,7 +22,7 @@ import hashlib
 import subprocess
 import json
 from typing import Union
-from deprecated.sphinx import versionadded
+from deprecated.sphinx import versionadded, versionchanged
 
 import secp256k1
 import bip_utils
@@ -400,8 +400,15 @@ class MultiSig:
         return self._SIGNATURE_SCHEME
 
     @property
-    def address(self) -> SuiAddress:
-        """Return the address generated from the initial keys."""
+    @versionchanged(version="0.16.1", reason="Return add as str to align with non MultiSig SuiAddress behavior")
+    def address(self) -> str:
+        """Return the address string generated from the initial keys."""
+        return self._address.address
+
+    @property
+    @versionadded(version="0.16.1", reason="Provide ability to get MultiSig as SuiAddress")
+    def as_sui_address(self) -> SuiAddress:
+        """Return the address as SuiAddress."""
         return self._address
 
     @property

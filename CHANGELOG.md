@@ -13,9 +13,11 @@ your usage of `pysui` should consider changing.
 ### Added
 
 - `split_coin_equal` to SuiTransaction (a.k.a. Transaction Builder)
+- Support for signing with MultiSig in SuiTransaction
 - Support for running locally using [sui-base](https://github.com/sui-base/sui-base). The advantages are
   the availabbility of highly configurable local nodes, management of different versions of Sui and consistent
   wallet addresses across configuration.
+- New pytests leveraging `sui-base`
 
 ### Fixed
 
