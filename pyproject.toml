@@ -1,7 +1,8 @@
 # pyproject.toml
 [tool.pytest.ini_options]
 testpaths = [
-    "tests/unit_sync",
+    "tests",
+    "tests/sync_tests",
     "tests/integration_sync",
 ]
 pythonpath = ["pysui", "abstracts", "sui","sui/sui_types"]

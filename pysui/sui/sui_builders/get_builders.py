@@ -15,6 +15,7 @@
 """Sui Builders: Simple sui_getXXX calls."""
 
 from typing import Final, Optional
+from deprecated.sphinx import versionadded
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
 from pysui.sui.sui_types.event_filter import _EventFilterType, AllFilter
 from pysui.sui.sui_types.scalars import SuiNullType, SuiString, SuiInteger, ObjectID, SuiBoolean
@@ -37,6 +38,7 @@ from pysui.sui.sui_txresults.complex_tx import (
     Checkpoints,
     EventBlock,
     EventQueryEnvelope,
+    NameServices,
     TransactionQueryEnvelope,
     TxResponse,
     TxResponseArray,
@@ -396,9 +398,7 @@ class GetPackage(_NativeTransactionBuilder):
         :param package: ObjectID of package to query, defaults to None
         :type package: ObjectID, optional
         """
-        super().__init__(
-            "sui_getNormalizedMoveModulesByPackage", handler_cls=SuiMovePackage, handler_func="ingest_data"
-        )
+        super().__init__("sui_getNormalizedMoveModulesByPackage", handler_cls=SuiMovePackage, handler_func="factory")
 
 
 class GetModule(_NativeTransactionBuilder):
@@ -416,7 +416,7 @@ class GetModule(_NativeTransactionBuilder):
         :param module_name: Name of module from package to fetch
         :type module_name: SuiString
         """
-        super().__init__("sui_getNormalizedMoveModule", handler_cls=SuiMoveModule, handler_func="ingest_data")
+        super().__init__("sui_getNormalizedMoveModule", handler_cls=SuiMoveModule, handler_func="factory")
 
 
 class GetFunction(_NativeTransactionBuilder):
@@ -436,7 +436,7 @@ class GetFunction(_NativeTransactionBuilder):
         :param function_name: Name of module from package to fetch
         :type function_name: SuiString
         """
-        super().__init__("sui_getNormalizedMoveFunction", handler_cls=SuiMoveFunction, handler_func="ingest_data")
+        super().__init__("sui_getNormalizedMoveFunction", handler_cls=SuiMoveFunction, handler_func="factory")
 
 
 class GetFunctionArgs(_NativeTransactionBuilder):
@@ -454,7 +454,7 @@ class GetFunctionArgs(_NativeTransactionBuilder):
         :type function: SuiString
         """
         super().__init__(
-            "sui_getMoveFunctionArgTypes", handler_cls=SuiMoveFunctionArgumentTypes, handler_func="ingest_data"
+            "sui_getMoveFunctionArgTypes", handler_cls=SuiMoveFunctionArgumentTypes, handler_func="factory"
         )
 
 
@@ -472,7 +472,7 @@ class GetStructure(_NativeTransactionBuilder):
         :param structure_name: Name of structure from structure to fetch
         :type structure_name: SuiString
         """
-        super().__init__("sui_getNormalizedMoveStruct", handler_cls=SuiMoveStruct, handler_func="ingest_data")
+        super().__init__("sui_getNormalizedMoveStruct", handler_cls=SuiMoveStruct, handler_func="factory")
 
 
 class GetRpcAPI(_NativeTransactionBuilder):
@@ -671,10 +671,10 @@ class GetCheckpoints(_NativeTransactionBuilder):
         self,
         *,
         cursor: Optional[SuiString] = None,
-        limit: Optional[SuiString] = None,
+        limit: Optional[SuiInteger] = None,
         descending_order: Optional[SuiBoolean] = False,
     ):
-        """."""
+        """Builder initializer."""
         super().__init__("sui_getCheckpoints", handler_cls=Checkpoints, handler_func="from_dict")
 
 
@@ -685,3 +685,23 @@ class GetReferenceGasPrice(_NativeTransactionBuilder):
     def __init__(self):
         """Builder initializer."""
         super().__init__("suix_getReferenceGasPrice")
+
+
+@versionadded(version="0.17.0", reason="Support Sui 0.32.0 RPC API")
+class NameServiceAddress(_NativeTransactionBuilder):
+    """Return the resolved address given resolver and name."""
+
+    @sui_builder()
+    def __init__(self, *, name: SuiString):
+        """Builder initializer."""
+        super().__init__("suix_resolveNameServiceAddress")
+
+
+@versionadded(version="0.17.0", reason="Support Sui 0.32.0 RPC API")
+class NameServiceNames(_NativeTransactionBuilder):
+    """Return the resolved names given address, if multiple names are resolved, the first one is the primary name."""
+
+    @sui_builder()
+    def __init__(self, *, address: SuiAddress, cursor: Optional[ObjectID] = None, limit: Optional[SuiInteger] = None):
+        """Builder initializer."""
+        super().__init__("suix_resolveNameServiceNames", handler_cls=NameServices, handler_func="from_dict")

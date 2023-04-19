@@ -15,12 +15,9 @@
 """Sui high level Transaction Builder supports generation of TransactionKind and TransactionData."""
 
 import base64
-import binascii
 import os
-import hashlib
 from pathlib import Path
 from typing import Any, Optional, Union
-import base58
 from deprecated.sphinx import versionadded, versionchanged
 from pysui.sui.sui_builders.base_builder import SuiRequestType
 from pysui.sui.sui_builders.exec_builders import ExecuteTransaction, InspectTransaction
@@ -32,6 +29,7 @@ from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
 from pysui.sui.sui_txresults.single_tx import (
     AddressOwner,
+    ImmutableOwner,
     ObjectNotExist,
     ObjectRead,
     SharedOwner,
@@ -49,18 +47,24 @@ _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
 _STAKE_REQUEST_TARGET: str = "0x3::sui_system::request_add_stake_mul_coin"
 _UNSTAKE_REQUEST_TARGET: str = "0x3::sui_system::request_withdraw_stake"
 _UPGRADE_CAP_TYPE: str = "0x2::package::UpgradeCap"
+_SPLIT_AND_KEEP: str = "0x2::pay::divide_and_keep"
+_SPLIT_AND_RETURN: str = "0x2::coin::divide_into_n"
 
 
 class SuiTransaction:
     """High level transaction builder."""
 
-    def __init__(self, client: SuiClient, sender: Union[str, SuiAddress] = None) -> None:
+    def __init__(
+        self, client: SuiClient, sender: Union[str, SuiAddress] = None, merge_gas_budget: bool = False
+    ) -> None:
         """Transaction initializer."""
         self.builder = tx_builder.ProgrammableTransactionBuilder()
         self.client = client
         self._sender: str = ""
         self._set_sender(sender)
         self._gasses: list[SuiCoinObject] = self._reset_gas(self._sender)
+        self._merge_gas = merge_gas_budget
+        self._executed = False
         self._current_gas_price = self._gas_price()
 
     def _set_sender(self, sender: Union[str, SuiAddress]) -> bool:
@@ -96,6 +100,11 @@ class SuiTransaction:
         if result.is_ok():
             return int(result.result_data)
         raise ValueError(f"Failed calling chain for gas price {result.result_string}")
+
+    @property
+    def merge_gas_budget(self) -> bool:
+        """Returns the flag indicating whether execute will merge available coins to satisfy budget."""
+        return self._merge_gas
 
     @property
     def gas_price(self) -> int:
@@ -262,6 +271,8 @@ class SuiTransaction:
         :return: Result of executing instruction
         :rtype: SuiRpcResult
         """
+        assert not self._executed, "Transaction already executed"
+        self._executed = True
         additional_signers = additional_signers if additional_signers else []
         additional_signers = [x if isinstance(x, SuiAddress) else SuiAddress(x) for x in additional_signers]
         signer, _, tx_data = self.build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
@@ -270,6 +281,7 @@ class SuiTransaction:
         return iresult
 
     @versionadded(version="0.16.1", reason="Support MultiSig transaction signing")
+    @versionchanged(version="0.17.0", reason="Added ValueError exception code if signature is invalid type.")
     def execute_with_multi_sig(
         self,
         *,
@@ -278,7 +290,7 @@ class SuiTransaction:
         gas: Optional[Union[str, ObjectID]] = None,
         gas_budget: Union[str, SuiString],
         additional_signers: Optional[list[Union[str, SuiAddress]]] = None,
-    ) -> SuiRpcResult:
+    ) -> Union[SuiRpcResult, Exception]:
         """execute_with_multi_sig Finalizes transaction and submits for execution on the chain.
 
         :param signer: The MultiSig object to use as the signer of a transaction.
@@ -292,9 +304,10 @@ class SuiTransaction:
         :type gas: Optional[Union[str, ObjectID]], optional
         :param additional_signers: When additional signatures are needed. Sponsor for example, defaults to None
         :type additional_signers: Optional[list[Union[str, SuiAddress]]], optional
-        :return: Result of executing instruction
-        :rtype: SuiRpcResult
+        :return: Result of executing instruction or ValueError
+        :rtype: Union[SuiRpcResult, Exception]
         """
+        assert not self._executed, "Transaction already executed"
         assert isinstance(signer, MultiSig), "Requires a MultiSig signer argument."
         for pkey in pub_keys:
             assert isinstance(pkey, SuiPublicKey)
@@ -314,7 +327,9 @@ class SuiTransaction:
                 signatures=SuiArray(sig_array),
                 request_type=SuiRequestType.WAITFORLOCALEXECUTION,
             )
+            self._executed = True
             return self.client.execute(exec_tx)
+        raise ValueError("Not a valid signature")
 
     # Commands and helpers
 
@@ -365,7 +380,7 @@ class SuiTransaction:
         if objtup_indexes:
             for tindex in objtup_indexes:
                 item: ObjectRead = items[tindex]
-                if isinstance(item.owner, AddressOwner):
+                if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
                     obj_ref = GenericRef(item.object_id, item.version, item.digest)
                     b_obj_arg = bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref))
                 elif isinstance(item.owner, SharedOwner):
@@ -447,6 +462,7 @@ class SuiTransaction:
             move method being called.
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         target_id = None
         module_id = None
         function_id = None
@@ -538,6 +554,7 @@ class SuiTransaction:
         :return: A command result that can used in subsequent commands
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         src_path = Path(os.path.expanduser(project_path))
         compiled_package = publish_build(src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps)
         modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
@@ -551,7 +568,7 @@ class SuiTransaction:
         return self.builder.publish(modules, dependencies, recipient)
 
     def _verify_upgrade_cap(self, upgrade_cap: str) -> ObjectRead:
-        """."""
+        """Verify that the upgrade cap is valid."""
         resp = self.client.get_object(upgrade_cap)
         if resp.is_ok() and not isinstance(resp.result_data, ObjectNotExist):
             upcap: ObjectRead = resp.result_data
@@ -587,6 +604,7 @@ class SuiTransaction:
         :return: The Result Argument
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         assert isinstance(upgrade_cap, (str, ObjectID, ObjectRead))
         assert isinstance(package_id, (str, ObjectID))
         # Compile the new package
@@ -603,20 +621,14 @@ class SuiTransaction:
         else:
             assert upgrade_cap.object_type == _UPGRADE_CAP_TYPE, f"Invalid upgrade_cap object {upgrade_cap}"
 
-        all_bytes: list = []
-        for mod_bytes in modules:
-            all_bytes.append(bytearray(mod_bytes))
-        for dep_str in compiled_package.dependencies:
-            all_bytes.append(binascii.unhexlify(dep_str[2:]))
-
-        all_bytes.sort()
-        hasher = hashlib.blake2b(digest_size=32)
-        for bblock in all_bytes:
-            hasher.update(bblock)
-        digest = base58.b58encode(hasher.digest())
         capability_arg = self._resolve_arguments(
-            [upgrade_cap, SuiU8(upgrade_cap.content.fields["policy"]), bcs.Digest.from_str(digest)]
+            [
+                upgrade_cap,
+                SuiU8(upgrade_cap.content.fields["policy"]),
+                bcs.Digest.from_bytes(compiled_package.package_digest),
+            ]
         )
+
         # Trap the number of input_obj len:
         cap_arg = len(self.builder.inputs)
         # authorize
@@ -645,6 +657,7 @@ class SuiTransaction:
         :return: The command result.
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         params: list = []
         params.append(_SYSTEMSTATE_OBJECT)
         params.append(self.make_move_vector(coins))
@@ -665,6 +678,7 @@ class SuiTransaction:
         :return: The Result argument
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         params: list = []
         params.append(_SYSTEMSTATE_OBJECT)
         if isinstance(staked_coin, str):
@@ -678,31 +692,46 @@ class SuiTransaction:
             params.append(staked_coin)
         return self._move_call(target=_UNSTAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params))
 
+    @versionchanged(version="0.17.0", reason="Made 'amount' 'amounts' with list argument.")
     def split_coin(
-        self, *, coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument], amount: Union[int, SuiInteger]
-    ) -> bcs.Argument:
-        """split_coin Creates a new coin with the defined amount, split from the provided coin.
+        self,
+        *,
+        coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        amounts: list[Union[int, SuiInteger]],
+    ) -> Union[bcs.Argument, list[bcs.Argument]]:
+        """split_coin Creates a new coin(s) with the defined amount(s), split from the provided coin.
 
-        Note: Returns the coin so that it can be used in subsequent commands.
+        Note: Returns the result that it can be used in subsequent commands. If only one amount
+        is provided, a standard Result can be used as a singular argument to another command.
+        But if more than 1 amount. For example  you can index to get a singular value or use the whole
+        list.
+
+        .. code-block:: python
+
+            # Transfer all coins to one recipient
+            txer = SuiTransaction(client)
+            scres = txer.split_coin(coin=primary_coin, amounts=[1000000000, 1000000000])
+            txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+
+            # OR only transfer less than all
+            txer.transfer_objects(transfers=[scres[0]],recipient=client.config.active_address)
 
         :param coin: The coin address (object id) to split from.
         :type coin: Union[str, ObjectID, ObjectRead,SuiCoinObject, bcs.Argument]
-        :param amount: The amount to split out from coin
-        :type amount: Union[int, SuiInteger]
-        :raises ValueError: if the coin object can not be found on the chain.
-        :return: The result that can be used in subsequent commands.
-        :rtype: bcs.Argument
+        :param amounts: The amount or list of amounts to split the coin out to
+        :type amounts: list[Union[int, SuiInteger]]
+        :return: A result or list of results types to use in subsequent commands
+        :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
+        assert not self._executed, "Transaction already executed"
         assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
-        assert isinstance(amount, (int, SuiInteger)), "invalid amount type"
-        amount = amount if isinstance(amount, int) else amount.value
+        amounts = amounts if isinstance(amounts, list) else [amounts]
+        for amount in amounts:
+            assert isinstance(amount, (int, SuiInteger))
+        amounts = [tx_builder.PureInput.as_input(bcs.U64.encode(x)) if isinstance(x, int) else x.value for x in amounts]
         coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
         resolved = self._resolve_arguments([coin])
-        return self.builder.split_coin(resolved[0], tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
-        """
-        :return: The result of the command.
-        :rtype: bcs.Argument
-        """
+        return self.builder.split_coin(resolved[0], amounts)
 
     @versionadded(version="0.16.1", reason="Expand Transaction builder ease of use capability.")
     def split_coin_equal(
@@ -712,7 +741,7 @@ class SuiTransaction:
         split_count: Union[int, SuiInteger],
         coin_type: Optional[str] = "0x2::sui::SUI",
     ) -> bcs.Argument:
-        """split_coin_equal Splits a Sui coin into equal parts.
+        """split_coin_equal Splits a Sui coin into equal parts and transfers to transaction signer.
 
         :param coin: The coin to split
         :type coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
@@ -720,9 +749,11 @@ class SuiTransaction:
         :type split_count: Union[int, SuiInteger]
         :param coin_type: The coin type, defaults to a Sui coin type
         :type coin_type: Optional[str], optional
-        :return: _description_
+        :return: The command result. Because all splits are automagically transferred to
+            signer, the result is not usable as input to subseqent commands.
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
         assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
         split_count = split_count if isinstance(split_count, int) else split_count.value
@@ -730,7 +761,29 @@ class SuiTransaction:
         resolved = self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
 
         return self._move_call(
-            target="0x2::pay::divide_and_keep",
+            target=_SPLIT_AND_KEEP,
+            arguments=resolved,
+            type_arguments=[bcs.TypeTag.type_tag_from(coin_type)],
+        )
+
+    @versionadded(version="0.17.0", reason="Expand Transaction builder ease of use capability.")
+    def split_coins_into(
+        self,
+        *,
+        coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        split_count: Union[int, SuiInteger],
+        coin_type: Optional[str] = "0x2::sui::SUI",
+    ) -> bcs.Argument:
+        """split_coin_equal Splits a Sui coin into equal parts and transfers to transaction signer."""
+        assert not self._executed, "Transaction already executed"
+        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
+        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
+        split_count = split_count if isinstance(split_count, int) else split_count.value
+        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
+        resolved = self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
+
+        return self._move_call(
+            target=_SPLIT_AND_RETURN,
             arguments=resolved,
             type_arguments=[bcs.TypeTag.type_tag_from(coin_type)],
         )
@@ -750,6 +803,7 @@ class SuiTransaction:
         :return: The command result. Can be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         assert isinstance(
             merge_to, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
         ), "Unsupported type for merge_to"
@@ -780,6 +834,7 @@ class SuiTransaction:
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         assert isinstance(transfers, (list, SuiArray, bcs.Argument)), "Unsupported trasfers collection type"
         assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
         if isinstance(transfers, (list, SuiArray)):
@@ -816,6 +871,7 @@ class SuiTransaction:
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
+        assert not self._executed, "Transaction already executed"
         assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
         if amount:
             assert isinstance(amount, (int, SuiInteger))

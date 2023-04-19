@@ -16,6 +16,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
+from deprecated.sphinx import versionadded
 from pysui.sui.sui_txresults.common import GenericOwnerRef, GenericRef, SuiTxReturnType
 from pysui.sui.sui_types.collections import EventID
 
@@ -210,7 +211,9 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     gas_used: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
     transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     gas_object: GenericOwnerRef = field(metadata=config(letter_case=LetterCase.CAMEL))
-    modified_at_versions: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    modified_at_versions: Optional[list[dict]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
+    )
     dependencies: list[str] = field(default_factory=list)
     mutated: Optional[list[GenericOwnerRef]] = field(default_factory=list)
     created: Optional[list[GenericOwnerRef]] = field(default_factory=list)
@@ -369,7 +372,7 @@ class Checkpoint(DataClassJsonMixin):
     timestamp_ms: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     previous_digest: str = field(default_factory=str, metadata=config(letter_case=LetterCase.CAMEL))
     end_of_epoch_data: Optional[dict] = field(default_factory=dict)
-    transactions: list[int] = field(default_factory=list)
+    transactions: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         """Post init processing.
@@ -388,6 +391,16 @@ class Checkpoints(DataClassJsonMixin):
     """From sui_getCheckpoints."""
 
     data: list[Checkpoint]
+    has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_cursor: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+@versionadded(version="0.17.0", reason="Support Sui 0.32.0 RPC API return type.")
+class NameServices(DataClassJsonMixin):
+    """From suix_resolveNameServiceNames."""
+
+    data: list[str]
     has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
     next_cursor: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
 

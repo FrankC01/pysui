@@ -20,21 +20,22 @@ from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_config import SuiConfig
 
 LOCALNET_PROC_REGEN: str = ["bash", "localnet", "regen"]
+LOCALNET_PROC_SET_ACTIVE: str = ["bash", "localnet", "set-active"]
 LOCALNET_PROC_STOP: str = ["bash", "localnet", "stop"]
 
 
-# @pytest.fixture(scope="session")
 def sui_base_localnet_start() -> bool:
-    """."""
+    """Regenerate (start sui-base localnet) and set localnet active."""
     result = subprocess.run(LOCALNET_PROC_REGEN, capture_output=True, text=True)
     if result.returncode == 0:
-        return True
+        result = subprocess.run(LOCALNET_PROC_SET_ACTIVE, capture_output=True, text=True)
+        if result.returncode == 0:
+            return True
     raise ValueError(f"Result of localnet regen {result.stderr}")
 
 
-# @pytest.fixture(scope="session")
 def sui_base_localnet_stop() -> bool:
-    """."""
+    """With normal teardown and/or exception stop the localnet."""
     result = subprocess.run(LOCALNET_PROC_STOP, capture_output=True, text=True)
     if result.returncode == 0:
         return True
@@ -43,8 +44,9 @@ def sui_base_localnet_stop() -> bool:
 
 @pytest.fixture(scope="session")
 def sui_client() -> SuiClient:
-    """."""
+    """Fixture to create a test session wide client pointed to sui-base localnet."""
     sui_base_localnet_start()
     client = SuiClient(SuiConfig.sui_base_config())
+    # Turn this fixture into a generator
     yield client
     sui_base_localnet_stop()

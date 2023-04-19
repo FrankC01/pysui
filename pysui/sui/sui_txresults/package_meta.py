@@ -16,6 +16,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Union
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
+from deprecated.sphinx import versionchanged
 
 # Sui Normalized Data Types
 
@@ -55,11 +56,12 @@ class SuiMoveType:
 
 
 @dataclass
+@versionchanged(version="0.17.0", reason="Added int as type result.")
 class SuiMoveField(DataClassJsonMixin):
     """From getNormalized."""
 
     name: str
-    field_type: Union[str, dict] = field(metadata=config(field_name="type"))
+    field_type: Union[str, int, dict] = field(metadata=config(field_name="type"))
 
     def __post_init__(self):
         """Post init processing for field_type."""
@@ -169,13 +171,14 @@ class SuiMoveScalarArgument(DataClassJsonMixin):
 
 
 @dataclass
+@versionchanged(version="0.17.0", reason="Changed ingest_data to factory.")
 class SuiMoveFunctionArgumentTypes(DataClassJsonMixin):
     """From getNormalized."""
 
     arg_list: list[Union[str, dict[str, str]]]
 
     @classmethod
-    def ingest_data(cls, indata: list) -> "SuiMoveFunctionArgumentTypes":
+    def factory(cls, indata: list) -> "SuiMoveFunctionArgumentTypes":
         """ingest_data Ingest results of calling `sui_getMoveFunctionArgTypes`.
 
         :param indata: list containing function argument types
@@ -187,6 +190,7 @@ class SuiMoveFunctionArgumentTypes(DataClassJsonMixin):
 
 
 @dataclass
+@versionchanged(version="0.17.0", reason="Changed ingest_data to factory.")
 class SuiMoveFunction(DataClassJsonMixin):
     """From getNormalized."""
 
@@ -218,7 +222,7 @@ class SuiMoveFunction(DataClassJsonMixin):
         self.returns = new_rets
 
     @classmethod
-    def ingest_data(cls, indata: dict) -> "SuiMoveFunction":
+    def factory(cls, indata: dict) -> "SuiMoveFunction":
         """ingest_data Ingest results of calling `sui_getNormalizedMoveFunction`.
 
         :param indata: Dictionary containing function defintion
@@ -242,6 +246,7 @@ class SuiMoveModuleId(DataClassJsonMixin):
 
 
 @dataclass
+@versionchanged(version="0.17.0", reason="Changed ingest_data to factory.")
 class SuiMoveModule(DataClassJsonMixin):
     """From getNormalized."""
 
@@ -256,7 +261,7 @@ class SuiMoveModule(DataClassJsonMixin):
         """Post init processing for parameters."""
 
     @classmethod
-    def ingest_data(cls, indata: dict) -> "SuiMoveModule":
+    def factory(cls, indata: dict) -> "SuiMoveModule":
         """ingest_data Ingest results of calling `sui_getNormalizedMoveModule`.
 
         :param indata: Dictionary containing module defintion
@@ -268,6 +273,7 @@ class SuiMoveModule(DataClassJsonMixin):
 
 
 @dataclass
+@versionchanged(version="0.17.0", reason="Changed ingest_data to factory.")
 class SuiMovePackage(DataClassJsonMixin):
     """From getNormalized."""
 
@@ -278,7 +284,7 @@ class SuiMovePackage(DataClassJsonMixin):
         self.modules = {x: SuiMoveModule.from_dict(y) for x, y in self.modules.items()}
 
     @classmethod
-    def ingest_data(cls, indata: dict) -> "SuiMovePackage":
+    def factory(cls, indata: dict) -> "SuiMovePackage":
         """Ingest from external call."""
         # print(indata)
         new_mods = {}

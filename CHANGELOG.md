@@ -15,6 +15,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.17.0] - 2023-04-20
+
+### Added
+
+- Implemented NameServiceAddress and NameServiceNames builders and results for supporing `suix_resolveNameServiceAddress` and
+  `suix_resolveNameServiceNames` respectivly.
+- Assertion on SuiTransaction that will fail operations on it if it's been executed already
+
+### Fixed
+
+- Field declaration in Effects result.
+- Bug in SuiTransaction builder argument resolution method.
+
+### Changed
+
+- Extended CompiledPackage to hold blake2b digest to match chain digest calculation. Used in package upgrades in SuiTransaction.
+- SuiTransaction `split_coin` now takes list of amounts and returns list of results.
+
+### Removed
+
 ## [0.16.1] 2023-04-16
 
 We've started to 'deprecate' various functions, classes and methods to provide early warnings where

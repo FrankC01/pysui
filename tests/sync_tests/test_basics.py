@@ -13,9 +13,10 @@
 
 """Testing basic client capabilities (no transactions)."""
 
-
+# pylint:disable=unused-wildcard-import,wildcard-import
 from pysui.sui.sui_builders.get_builders import *
 from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui.sui.sui_txresults.complex_tx import Checkpoint
 from pysui.sui.sui_types.scalars import SuiString
 
 
@@ -63,5 +64,20 @@ def test_gets(sui_client: SuiClient) -> None:
     assert sui_client.execute(GetTotalTxCount()).is_ok()
     assert sui_client.execute(GetDelegatedStakes(sui_client.config.active_address)).is_ok()
     assert sui_client.execute(GetLatestCheckpointSequence()).is_ok()
-    assert sui_client.execute(GetCheckpoints()).is_ok()
     assert sui_client.execute(GetReferenceGasPrice()).is_ok()
+
+    # Deeper on checkpoints
+    checkp = sui_client.execute(GetCheckpoints())
+    assert checkp.is_ok()
+    checkp: list[Checkpoint] = checkp.result_data.data
+    assert len(checkp) > 0
+    checki = checkp[0]
+    assert sui_client.execute(GetCheckpointBySequence(checki.sequence_number)).is_ok()
+    assert sui_client.execute(GetCheckpointByDigest(checki.digest)).is_ok()
+
+    # Deeper Transactions
+    assert len(checki.transactions) > 0
+    txi = sui_client.execute(GetTx(digest=checki.transactions[0]))
+    assert txi.is_ok()
+    txi = txi.result_data
+    assert txi.checkpoint == checki.sequence_number

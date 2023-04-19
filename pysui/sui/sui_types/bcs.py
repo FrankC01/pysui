@@ -16,6 +16,7 @@
 import binascii
 from typing import Any, Union
 import canoser
+from deprecated.sphinx import versionadded
 from pysui.sui.sui_txresults.single_tx import ObjectRead
 
 from pysui.sui.sui_types.address import SuiAddress
@@ -61,8 +62,14 @@ class Digest(canoser.Struct):
 
     @classmethod
     def from_str(cls, indata: str) -> "Digest":
-        """."""
+        """Digest from base58 string."""
         return cls(b58str_to_list(indata))
+
+    @classmethod
+    @versionadded(version="0.17.0", reason="Direct from bytes construction")
+    def from_bytes(cls, indata: bytes) -> "Digest":
+        """Digest from bytes."""
+        return cls(list(indata))
 
 
 class BuilderArg(canoser.RustEnum):

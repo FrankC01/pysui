@@ -246,12 +246,12 @@ class ObjectRead(DataClassJsonMixin):
             match vlist[0][0]:
                 case "AddressOwner":
                     sdict = {}
-                    sdict["owner"] = vlist[0][1]
+                    sdict["address_owner"] = vlist[0][1]
                     sdict["owner_type"] = "AddressOwner"
                     self.owner = AddressOwner.from_dict(sdict)
                 case "ObjectOwner":
                     sdict = {}
-                    sdict["owner"] = vlist[0][1]
+                    sdict["object_owner"] = vlist[0][1]
                     sdict["owner_type"] = "ObjectOwner"
                     self.owner = ObjectOwner.from_dict(sdict)
                 case "Shared":
