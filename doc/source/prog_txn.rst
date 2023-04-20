@@ -53,7 +53,7 @@ This requires providing at least an instantiated SuiClient. At the moment it onl
         # Command that first splits a coin for some amount and uses
         # the results to pass to some recipient
         txn.transfer_objects(
-            transfers=[txn.split_coin(coin=coin_to_split, amount=10000)],
+            transfers=[txn.split_coin(coin=coin_to_split, amounts=[1000000])],
             recipient=some_recipient,
         )
 
@@ -70,6 +70,7 @@ Commands available
 ~~~~~~~~~~~~~~~~~~
 
 Basic commands:
+    * move_call
     * transfer_objects, transfer_sui
     * split_coin,split_coin_equal
     * make_move_vector
@@ -88,3 +89,5 @@ You can execute the transaction with single signer, single signer and sponsor si
 
 #. :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.execute`
 #. :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.execute_with_multi_sig`
+
+Note that once you execute a transaction it is unusable.

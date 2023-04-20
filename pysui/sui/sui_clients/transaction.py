@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Optional, Union
 from deprecated.sphinx import versionadded, versionchanged
 from pysui.sui.sui_builders.base_builder import SuiRequestType
-from pysui.sui.sui_builders.exec_builders import ExecuteTransaction, InspectTransaction
-from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetMultipleObjects
+from pysui.sui.sui_builders.exec_builders import ExecuteTransaction, InspectTransaction, PayAllSui
+from pysui.sui.sui_builders.get_builders import GetFunction, GetReferenceGasPrice, GetMultipleObjects
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_clients.transaction_builder as tx_builder
 from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
@@ -40,7 +40,7 @@ from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiSignature, SuiString, SuiTxBytes, SuiU8
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiString, SuiTxBytes, SuiU8
 from pysui.sui.sui_utils import publish_build
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
@@ -48,11 +48,13 @@ _STAKE_REQUEST_TARGET: str = "0x3::sui_system::request_add_stake_mul_coin"
 _UNSTAKE_REQUEST_TARGET: str = "0x3::sui_system::request_withdraw_stake"
 _UPGRADE_CAP_TYPE: str = "0x2::package::UpgradeCap"
 _SPLIT_AND_KEEP: str = "0x2::pay::divide_and_keep"
-_SPLIT_AND_RETURN: str = "0x2::coin::divide_into_n"
+_PAY_GAS: int = 4000000
 
 
 class SuiTransaction:
     """High level transaction builder."""
+
+    _MC_RESULT_CACHE: dict = {}
 
     def __init__(
         self, client: SuiClient, sender: Union[str, SuiAddress] = None, merge_gas_budget: bool = False
@@ -102,19 +104,9 @@ class SuiTransaction:
         raise ValueError(f"Failed calling chain for gas price {result.result_string}")
 
     @property
-    def merge_gas_budget(self) -> bool:
-        """Returns the flag indicating whether execute will merge available coins to satisfy budget."""
-        return self._merge_gas
-
-    @property
     def gas_price(self) -> int:
         """Returns the current gas price for the chain."""
         return self._current_gas_price
-
-    @property
-    def gasses(self) -> list:
-        """Returns the list of gas (coin objects) of current sender."""
-        return self._gasses
 
     def set_sender(self, sender: Union[str, SuiAddress]) -> None:
         """Set the Transaction Sender.
@@ -175,22 +167,45 @@ class SuiTransaction:
             return gas_max, gas_min, ispec.effects.gas_object.reference.object_id
         return SuiRpcResult
 
-    # FIXME: Not complete, used for testing WIP
-    # Fix would be to potentially 'join' available gas to reach budget requirements
-    def _gas_for_budget(self, owner: str, budget: int) -> SuiCoinObject:
+    def _gas_for_budget(self, sponsor: str, budget: int) -> SuiCoinObject:
         """Used internally to select a gas object to use in transaction."""
-        if owner == self._sender:
-            for gobj in self._gasses:
-                if int(gobj.balance) > budget and gobj.coin_object_id not in self.builder.objects_registry:
-                    return gobj
+        balance_low_list: list = []
+        balance_threshold: int = 0
+        if sponsor != self._sender:
+            use_gasses = self._reset_gas(sponsor)
         else:
-            coin_objs = self._reset_gas(owner)
-            for gobj in coin_objs:
-                if int(gobj.balance) > budget and gobj.coin_object_id not in self.builder.objects_registry:
-                    return gobj
-        return None
+            sponsor = self._sender
+            use_gasses = self._gasses
+        # If we only have one coin and it is being used in commands, fail
+        if len(use_gasses) == 1 and use_gasses[0].coin_object_id in self.builder.objects_registry:
+            raise ValueError(
+                f"{sponsor} only has 1 gas object and it is being used in transaction. Consider splitting coin."
+            )
+        for gobj in use_gasses:
+            if int(gobj.balance) > budget and gobj.coin_object_id not in self.builder.objects_registry:
+                return gobj
+            if gobj.coin_object_id not in self.builder.objects_registry and self._merge_gas:
+                balance_low_list.append(ObjectID(gobj.coin_object_id))
+                balance_threshold += int(gobj.balance)
+                if balance_threshold > budget:
+                    break
+        # Here if can't find single coin to satisfy so if balance_threshold met, merge the coins
+        if balance_threshold > budget + _PAY_GAS:
+            result = self.client.execute(
+                PayAllSui(
+                    signer=sponsor,
+                    input_coins=SuiArray(balance_low_list),
+                    recipient=sponsor,
+                    gas_budget=str(_PAY_GAS),
+                )
+            )
+            if result.is_ok():
+                return balance_low_list[0]
+        raise ValueError(f"Available gas for {sponsor} does not satisfy budget of {budget}")
 
-    def build_for_execute(
+    # FIXME: Doesn't account for sponsor
+    @versionchanged(version="0.17.0", reason="Only used internally.")
+    def _build_for_execute(
         self,
         *,
         signer: Union[str, SuiAddress],
@@ -272,16 +287,15 @@ class SuiTransaction:
         :rtype: SuiRpcResult
         """
         assert not self._executed, "Transaction already executed"
-        self._executed = True
         additional_signers = additional_signers if additional_signers else []
         additional_signers = [x if isinstance(x, SuiAddress) else SuiAddress(x) for x in additional_signers]
-        signer, _, tx_data = self.build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
+        signer, _, tx_data = self._build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
         tx_b64 = base64.b64encode(tx_data.serialize()).decode()
         iresult = self.client.sign_and_submit(SuiAddress(signer), SuiTxBytes(tx_b64), SuiArray(additional_signers))
+        self._executed = True
         return iresult
 
     @versionadded(version="0.16.1", reason="Support MultiSig transaction signing")
-    @versionchanged(version="0.17.0", reason="Added ValueError exception code if signature is invalid type.")
     def execute_with_multi_sig(
         self,
         *,
@@ -313,23 +327,22 @@ class SuiTransaction:
             assert isinstance(pkey, SuiPublicKey)
         additional_signers = additional_signers if additional_signers else []
         additional_signers = [x if isinstance(x, SuiAddress) else SuiAddress(x) for x in additional_signers]
-        _, _, tx_data = self.build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
+        _, _, tx_data = self._build_for_execute(signer=signer, gas=gas, gas_budget=gas_budget)
         tx_b64 = base64.b64encode(tx_data.serialize()).decode()
         # Get the multi-sig signature
         new_sig = signer.sign(tx_b64, pub_keys)
-        if isinstance(new_sig, SuiSignature):
-            sig_array = [new_sig]
-            # Get any additional signatures
-            if additional_signers:
-                sig_array.extend([kpair.new_sign_secure(tx_b64) for kpair in additional_signers])
-            exec_tx = ExecuteTransaction(
-                tx_bytes=tx_b64,
-                signatures=SuiArray(sig_array),
-                request_type=SuiRequestType.WAITFORLOCALEXECUTION,
-            )
-            self._executed = True
-            return self.client.execute(exec_tx)
-        raise ValueError("Not a valid signature")
+
+        sig_array = [new_sig]
+        # Get any additional signatures
+        if additional_signers:
+            sig_array.extend([kpair.new_sign_secure(tx_b64) for kpair in additional_signers])
+        exec_tx = ExecuteTransaction(
+            tx_bytes=tx_b64,
+            signatures=SuiArray(sig_array),
+            request_type=SuiRequestType.WAITFORLOCALEXECUTION,
+        )
+        self._executed = True
+        return self.client.execute(exec_tx)
 
     # Commands and helpers
 
@@ -430,31 +443,37 @@ class SuiTransaction:
             return self.builder.make_move_vector(type_tag, self._resolve_arguments(items))
         raise ValueError("make_vector requires a non-empty list")
 
+    def _mc_target_resolve(self, target: str) -> tuple[bcs.Address, str, str, int]:
+        """."""
+        if target in self._MC_RESULT_CACHE:
+            return self._MC_RESULT_CACHE[target]
+        package_id, module_id, function_id = target.split("::")
+        result = self.client.execute(GetFunction(package=package_id, module_name=module_id, function_name=function_id))
+        if result.is_ok():
+            res_tup = (bcs.Address.from_str(package_id), module_id, function_id, len(result.result_data.returns))
+            # res_cnt: int = len(result.result_data.returns)
+            # package_id = bcs.Address.from_str(package_id)
+            self._MC_RESULT_CACHE[target] = res_tup
+            return res_tup
+        raise ValueError(f"Unable to find target: {target}")
+
+    @versionchanged(version="0.17.0", reason="Target uses 'package_id::module::function' only")
     def move_call(
         self,
         *,
-        target: Union[str, SuiString, ObjectID],
+        target: Union[str, SuiString],
         arguments: Union[list, SuiArray],
         type_arguments: Optional[Union[list, SuiArray]] = None,
-        module: Optional[Union[str, SuiString]] = None,
-        function: Optional[Union[str, SuiString]] = None,
         skip_arg_resolve: Optional[bool] = False,
     ) -> bcs.Argument:
         """move_call Creates a command to invoke a move contract call. May or may not return results.
 
-        :param target: Target move call signature.
-            Can be just the package id or in str form 'package_id::module::function'.
+        :param target: Target move call signature. Must be in form 'package_id::module::function'.
         :type target: Union[str, SuiString, ObjectID]
         :param arguments: Parameters that are passed to the move function
         :type arguments: Union[list, SuiArray]
         :param type_arguments: Optional list of type arguments for move function generics, defaults to None
         :type type_arguments: Optional[Union[list, SuiArray]], optional
-        :param module: Module name, defaults to None.
-            If not used, target is expected to be in form 'package_id::module::function'.
-        :type module: Optional[Union[str, SuiString]], optional
-        :param function: Function name, defaults to None
-            If not used, target is expected to be in form 'package_id::module::function'.
-        :type function: Optional[Union[str, SuiString]], optional
         :param skip_arg_resolve: Used internally, defaults to False
         :type skip_arg_resolve: Optional[bool], optional
         :raises ValueError: If ommitting module and function but target is not compound.
@@ -463,20 +482,13 @@ class SuiTransaction:
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
+        assert isinstance(target, (str, SuiString))
+        target = target if isinstance(target, str) else target.value
         target_id = None
         module_id = None
         function_id = None
         # Standardize the input parameters
-        if isinstance(target, ObjectID) and (module is None or function is None):
-            raise ValueError("If target is only ObjectID, you must fill in both 'module' and 'function' fields")
-        if isinstance(target, (str, SuiString)):
-            target = target if isinstance(target, str) else target.value
-            target_id, module_id, function_id = target.split("::")
-            target_id = bcs.Address.from_str(target_id)
-        elif isinstance(target, ObjectID):
-            target_id = target_id = bcs.Address.from_str(target.value)
-            module_id = module if isinstance(module, str) else module.value
-            function_id = function if isinstance(function, str) else function.value
+        target_id, module_id, function_id, res_count = self._mc_target_resolve(target)
         # Standardize the arguments to list
         if arguments and not skip_arg_resolve:
             arguments = arguments if isinstance(arguments, list) else arguments.array
@@ -493,7 +505,12 @@ class SuiTransaction:
             type_arguments = []
 
         return self.builder.move_call(
-            target=target_id, arguments=arguments, type_arguments=type_arguments, module=module_id, function=function_id
+            target=target_id,
+            arguments=arguments,
+            type_arguments=type_arguments,
+            module=module_id,
+            function=function_id,
+            res_count=res_count,
         )
 
     def _move_call(
@@ -511,20 +528,22 @@ class SuiTransaction:
         :type arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]]
         :param type_arguments: List of resolved type tags, defaults to None
         :type type_arguments: Optional[list[bcs.TypeTag]], optional
-        :raises ValueError: if not well formed target
         :return: _description_
         :rtype: bcs.Argument
         """
-        type_arguments = type_arguments if isinstance(type_arguments, list) else []
+        assert isinstance(target, (str, SuiString))
         # Standardize the input parameters
-        if isinstance(target, (str, SuiString)):
-            target = target if isinstance(target, str) else target.value
-            target_id, module_id, function_id = target.split("::")
-            target_id = bcs.Address.from_str(target_id)
-        else:
-            raise ValueError(f"Expected target 'package_id::module::function' found {target.__class__.__name__}")
+        target = target if isinstance(target, str) else target.value
+        target_id, module_id, function_id, res_count = self._mc_target_resolve(target)
+
+        type_arguments = type_arguments if isinstance(type_arguments, list) else []
         return self.builder.move_call(
-            target=target_id, arguments=arguments, type_arguments=type_arguments, module=module_id, function=function_id
+            target=target_id,
+            arguments=arguments,
+            type_arguments=type_arguments,
+            module=module_id,
+            function=function_id,
+            res_count=res_count,
         )
 
     def _to_bytes_from_str(self, inbound: Union[str, SuiString]) -> list[int]:
@@ -762,28 +781,6 @@ class SuiTransaction:
 
         return self._move_call(
             target=_SPLIT_AND_KEEP,
-            arguments=resolved,
-            type_arguments=[bcs.TypeTag.type_tag_from(coin_type)],
-        )
-
-    @versionadded(version="0.17.0", reason="Expand Transaction builder ease of use capability.")
-    def split_coins_into(
-        self,
-        *,
-        coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
-        split_count: Union[int, SuiInteger],
-        coin_type: Optional[str] = "0x2::sui::SUI",
-    ) -> bcs.Argument:
-        """split_coin_equal Splits a Sui coin into equal parts and transfers to transaction signer."""
-        assert not self._executed, "Transaction already executed"
-        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
-        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
-        split_count = split_count if isinstance(split_count, int) else split_count.value
-        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
-        resolved = self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
-
-        return self._move_call(
-            target=_SPLIT_AND_RETURN,
             arguments=resolved,
             type_arguments=[bcs.TypeTag.type_tag_from(coin_type)],
         )

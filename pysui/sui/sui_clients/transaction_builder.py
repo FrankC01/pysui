@@ -190,6 +190,7 @@ class ProgrammableTransactionBuilder:
                 raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
         return self.command(bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs)))
 
+    @versionchanged(version="0.17.0", reason="Add result count for correct arg return.")
     def move_call(
         self,
         *,
@@ -198,7 +199,8 @@ class ProgrammableTransactionBuilder:
         type_arguments: list[bcs.TypeTag],
         module: str,
         function: str,
-    ) -> bcs.Argument:
+        res_count: int = 1,
+    ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """Setup a MoveCall command and return it's result Argument."""
         argrefs: list[bcs.Argument] = []
         for arg in arguments:
@@ -214,7 +216,8 @@ class ProgrammableTransactionBuilder:
             bcs.Command(
                 "MoveCall",
                 bcs.ProgrammableMoveCall(target, module, function, type_arguments, argrefs),
-            )
+            ),
+            res_count,
         )
 
     @versionchanged(version="0.17.0", reason="Extend to take list of amounts")

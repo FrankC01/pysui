@@ -10,6 +10,8 @@ We are hardening and finalizing code in preperation of Sui going live on mainnet
 a _production ready candidate_. We don't expect further `pysui` breaking changes with the caveat that if MystenLabs makes a
 breaking change we may not be able to address with existing code.
 
+See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
+
 We would appreciate any issues being reported in the [github issue log](https://github.com/FrankC01/pysui/issues)
 
 We also have a channel in the [sui-base](https://github.com/sui-base/sui-base) Discord server [click here](https://discord.com/invite/Erb6SwsVbH):
@@ -26,11 +28,9 @@ We also have a channel in the [sui-base](https://github.com/sui-base/sui-base) D
 
 ## Additions
 
-There is a companion package called [pysui-gadgets](https://github.com/FrankC01/pysui_gadgets) with a few utilities and ge-gaws that
-you may find interesting. It is a separate package also on on PyPi.
+There is a companion package called [pysui-gadgets](https://github.com/FrankC01/pysui_gadgets) with a few utilities and ge-gaws that you may find interesting. It is a separate package also on on PyPi.
 
-We've start leveraging [sui-base](https://github.com/sui-base/sui-base) in our testing and we've modified SuiConfig initialization
-to include an option for interacting directly with local nodes created by `sui-base`
+We've started leveraging [sui-base](https://github.com/sui-base/sui-base) in our testing and we've modified SuiConfig initialization to include an option for interacting directly with local nodes created by `sui-base`
 
 ## Ready to run
 

@@ -17,11 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.17.0] - 2023-04-20
 
+Breaking Changes
+
 ### Added
 
-- Implemented NameServiceAddress and NameServiceNames builders and results for supporing `suix_resolveNameServiceAddress` and
-  `suix_resolveNameServiceNames` respectivly.
-- Assertion on SuiTransaction that will fail operations on it if it's been executed already
+- Breaking: Assertion on SuiTransaction that will fail operations on it if it's been executed already
+- Implemented NameServiceAddress and NameServiceNames builders and results for supporing `suix_resolveNameServiceAddress` and `suix_resolveNameServiceNames` respectivly.
+- `merge_gas_budget` to SuiTransaction constructor. When attempting to find available gas coin for transaction, this flag if true,
+  allows a merge of coins to meet budget demand. Defaults to False
 
 ### Fixed
 
@@ -31,9 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Extended CompiledPackage to hold blake2b digest to match chain digest calculation. Used in package upgrades in SuiTransaction.
-- SuiTransaction `split_coin` now takes list of amounts and returns list of results.
+- Breaking: SuiTransaction `split_coin` now takes list of amounts and returns list of results.
+- Breaking: SuiTransaction `move_call` now takes target string in form: `"package_id::module_name::function_name"`
+- Breaking: `build_for_execute` method made private on SuiTransaction
 
 ### Removed
+
+- Breaking: `gasses` property from SuiTransaction
 
 ## [0.16.1] 2023-04-16
 
