@@ -20,6 +20,8 @@ from math import ceil
 from typing import Optional, Set, Union
 from functools import singledispatchmethod
 
+from deprecated.sphinx import versionchanged
+
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
@@ -33,6 +35,7 @@ _SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 # Command aliases
 
 
+@versionchanged(version="0.17.0", reason="Support bool arguments")
 class PureInput:
     """Pure inputs processing."""
 
@@ -48,6 +51,12 @@ class PureInput:
         """Convert int to minimal list of bytes."""
         ccount = ceil(arg.bit_length() / 8.0)
         return list(int.to_bytes(arg, ccount, "little"))
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bool) -> list:
+        """."""
+        return list(int(arg is True).to_bytes(1, "little"))
 
     @pure.register
     @classmethod
@@ -133,8 +142,16 @@ class ProgrammableTransactionBuilder:
         """
         return bcs.TransactionKind("ProgrammableTransaction", self._finish())
 
+    # TODO: Check for duplicates to return the same input index
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
-        """."""
+        """input_pure registers a pure input argument in the inputs collection.
+
+        :param key: Becomes the 'key' in the inputs dictionary cotaining the input index
+        :type key: bcs.BuilderArg
+        :raises ValueError: If the key arg BuilderArg is not "Pure" variant
+        :return: The input Argument encapsulating it's input index
+        :rtype: bcs.Argument
+        """
         out_index = len(self.inputs)
         if key.enum_name == "Pure":  # _key = hash(input)
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
@@ -142,6 +159,7 @@ class ProgrammableTransactionBuilder:
             raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
         return bcs.Argument("Input", out_index)
 
+    # TODO: Rationalize SharedObject nuances
     def input_obj(self, key: bcs.BuilderArg, object_arg: bcs.ObjectArg) -> bcs.Argument:
         """."""
         out_index = len(self.inputs)
@@ -152,18 +170,7 @@ class ProgrammableTransactionBuilder:
         self.objects_registry.add(key.value.to_address_str())
         return bcs.Argument("Input", out_index)
 
-    # def obj(self, obj_arg: bcs.ObjectArg) -> bcs.Argument:
-    #     """."""
-    #     for index, (key, value) in enumerate(self.inputs.values()):
-    #         # Check callarg (value) content with inbound
-    #         carg_val = value.value
-    #         # If collected is ObjectArg and we have equal values
-    #         if value.index == 1 and carg_val == obj_arg:
-    #             # If both are SharedObject
-    #             if carg_val.index == 1 and obj_arg.index == 1:
-    #                 pass
-
-    def command(self, command_obj: bcs.Command) -> bcs.Argument:
+    def command(self, command_obj: bcs.Command, nresults: int = 1) -> Union[bcs.Argument, list[bcs.Argument]]:
         """command adds a new command to the list of commands.
 
         :param command_obj: The Command type
@@ -173,6 +180,11 @@ class ProgrammableTransactionBuilder:
         """
         out_index = len(self.commands)
         self.commands.append(command_obj)
+        if nresults > 1:
+            nreslist: list[bcs.Argument] = []
+            for nrindex in range(nresults):
+                nreslist.append(bcs.Argument("NestedResult", (out_index, nrindex)))
+            return nreslist
         return bcs.Argument("Result", out_index)
 
     def make_move_vector(
@@ -194,6 +206,7 @@ class ProgrammableTransactionBuilder:
                 raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
         return self.command(bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs)))
 
+    @versionchanged(version="0.17.0", reason="Add result count for correct arg return.")
     def move_call(
         self,
         *,
@@ -202,7 +215,8 @@ class ProgrammableTransactionBuilder:
         type_arguments: list[bcs.TypeTag],
         module: str,
         function: str,
-    ) -> bcs.Argument:
+        res_count: int = 1,
+    ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """Setup a MoveCall command and return it's result Argument."""
         argrefs: list[bcs.Argument] = []
         for arg in arguments:
@@ -218,26 +232,23 @@ class ProgrammableTransactionBuilder:
             bcs.Command(
                 "MoveCall",
                 bcs.ProgrammableMoveCall(target, module, function, type_arguments, argrefs),
-            )
+            ),
+            res_count,
         )
 
+    @versionchanged(version="0.17.0", reason="Extend to take list of amounts")
     def split_coin(
         self,
         from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
-        amount: bcs.BuilderArg,
+        amounts: list[bcs.BuilderArg],
     ) -> bcs.Argument:
         """Setup a SplitCoin command and return it's result Argument."""
-        amount_arg = self.input_pure(amount)
+        amounts_arg = [self.input_pure(x) for x in amounts]
         if isinstance(from_coin, bcs.Argument):
             coin_arg = from_coin
         else:
             coin_arg = self.input_obj(*from_coin)
-        return self.command(
-            bcs.Command(
-                "SplitCoin",
-                bcs.SplitCoin(coin_arg, [amount_arg]),
-            )
-        )
+        return self.command(bcs.Command("SplitCoin", bcs.SplitCoin(coin_arg, amounts_arg)), len(amounts_arg))
 
     def merge_coins(
         self,
@@ -278,7 +289,7 @@ class ProgrammableTransactionBuilder:
         """
         reciever_arg = self.input_pure(recipient)
         if amount:
-            coin_arg = self.split_coin(from_coin=from_coin, amount=amount)
+            coin_arg = self.split_coin(from_coin=from_coin, amounts=amount)
         else:
             coin_arg = self.input_obj(*from_coin)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([coin_arg], reciever_arg)))

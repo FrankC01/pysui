@@ -246,12 +246,12 @@ class ObjectRead(DataClassJsonMixin):
             match vlist[0][0]:
                 case "AddressOwner":
                     sdict = {}
-                    sdict["owner"] = vlist[0][1]
+                    sdict["address_owner"] = vlist[0][1]
                     sdict["owner_type"] = "AddressOwner"
                     self.owner = AddressOwner.from_dict(sdict)
                 case "ObjectOwner":
                     sdict = {}
-                    sdict["owner"] = vlist[0][1]
+                    sdict["object_owner"] = vlist[0][1]
                     sdict["owner_type"] = "ObjectOwner"
                     self.owner = ObjectOwner.from_dict(sdict)
                 case "Shared":
@@ -755,6 +755,21 @@ class SuiCoinObject(DataClassJsonMixin):
     def object_id(self) -> str:
         """Get as object_id."""
         return self.coin_object_id
+
+    @classmethod
+    def from_read_object(cls, inbound: ObjectRead) -> "SuiCoinObject":
+        """Create SuiCoinObject from generic coin ObjectRead."""
+        coin = cls(
+            inbound.object_type,
+            inbound.object_id,
+            inbound.version,
+            inbound.digest,
+            inbound.content.fields["balance"],
+            inbound.previous_transaction,
+            "",
+        )
+        setattr(coin, "owner", inbound.owner.address_owner)
+        return coin
 
 
 @dataclass

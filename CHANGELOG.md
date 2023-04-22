@@ -15,6 +15,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.17.0] - 2023-04-22
+
+Breaking Changes
+
+### Added
+
+- Breaking: Assertion on SuiTransaction that will fail operations on it if it's been executed already
+- Implemented NameServiceAddress and NameServiceNames builders and results for supporing `suix_resolveNameServiceAddress` and `suix_resolveNameServiceNames` respectivly.
+- `merge_gas_budget` to SuiTransaction constructor. When attempting to find available gas coin for transaction, this flag if true,
+  allows a merge of coins to meet budget demand. Defaults to False
+
+### Fixed
+
+- Field declaration in Effects result.
+- Bug in SuiTransaction builder argument resolution method.
+
+### Changed
+
+- Extended CompiledPackage to hold blake2b digest to match chain digest calculation. Used in package upgrades in SuiTransaction.
+- Introspection on SuiTransaction `move_call` target function to better return reusuable command results
+- Breaking: SuiTransaction constructor and execute methods simplified while making signing more powerful
+- Breaking: SuiTransaction `split_coin` now takes list of amounts and returns list of results.
+- Breaking: SuiTransaction `move_call` now takes target string in form: `"package_id::module_name::function_name"`
+- Breaking: `build_for_execute` method made private on SuiTransaction
+
+### Removed
+
+- Breaking: `gasses` property from SuiTransaction
+
 ## [0.16.1] 2023-04-16
 
 We've started to 'deprecate' various functions, classes and methods to provide early warnings where
