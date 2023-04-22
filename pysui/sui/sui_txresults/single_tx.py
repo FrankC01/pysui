@@ -756,6 +756,21 @@ class SuiCoinObject(DataClassJsonMixin):
         """Get as object_id."""
         return self.coin_object_id
 
+    @classmethod
+    def from_read_object(cls, inbound: ObjectRead) -> "SuiCoinObject":
+        """Create SuiCoinObject from generic coin ObjectRead."""
+        coin = cls(
+            inbound.object_type,
+            inbound.object_id,
+            inbound.version,
+            inbound.digest,
+            inbound.content.fields["balance"],
+            inbound.previous_transaction,
+            "",
+        )
+        setattr(coin, "owner", inbound.owner.address_owner)
+        return coin
+
 
 @dataclass
 class SuiCoinObjects(DataClassJsonMixin):

@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.17.0] - 2023-04-20
+## [0.17.0] - 2023-04-22
 
 Breaking Changes
 
@@ -34,6 +34,8 @@ Breaking Changes
 ### Changed
 
 - Extended CompiledPackage to hold blake2b digest to match chain digest calculation. Used in package upgrades in SuiTransaction.
+- Introspection on SuiTransaction `move_call` target function to better return reusuable command results
+- Breaking: SuiTransaction constructor and execute methods simplified while making signing more powerful
 - Breaking: SuiTransaction `split_coin` now takes list of amounts and returns list of results.
 - Breaking: SuiTransaction `move_call` now takes target string in form: `"package_id::module_name::function_name"`
 - Breaking: `build_for_execute` method made private on SuiTransaction
