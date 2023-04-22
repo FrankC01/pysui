@@ -22,8 +22,8 @@ Breaking Changes
 
 ### Removed
 
-- Additional signatures, other than sender and sponsor, are not supported by the tx processor in Sui. Removed
-  the additional signatures property of `SignerBlock`
+- `additional_signature`, other than sender and sponsor, are not supported by the tx processor in Sui. Removed
+  the property in `SignerBlock`
 
 ## [0.17.0] - 2023-04-22
 
