@@ -24,6 +24,7 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
     DelegatedStakes,
     DynamicFields,
+    LoadedChildObjectsResponse,
     ObjectReadPage,
     SuiCoinBalance,
     SuiCoinMetadata,
@@ -705,3 +706,13 @@ class NameServiceNames(_NativeTransactionBuilder):
     def __init__(self, *, address: SuiAddress, cursor: Optional[ObjectID] = None, limit: Optional[SuiInteger] = None):
         """Builder initializer."""
         super().__init__("suix_resolveNameServiceNames", handler_cls=NameServices, handler_func="from_dict")
+
+
+@versionadded(version="0.18.0", reason="New Sui RPC API method.")
+class GetLoadedChildObjects(_NativeTransactionBuilder):
+    """Returns the child object versions loaded by the object runtime particularly dynamic fields."""
+
+    @sui_builder()
+    def __init__(self, *, digest: SuiString):
+        """Builder initializer."""
+        super().__init__("sui_getLoadedChildObjects", handler_cls=LoadedChildObjectsResponse, handler_func="from_dict")
