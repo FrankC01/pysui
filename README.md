@@ -7,7 +7,7 @@ Python Client SDK for Sui blockchain
 **Release-0.17.0**
 
 We are hardening and finalizing code in preperation of Sui going live on mainnet. We anticipate that this release is
-a _production ready candidate_. We don't expect further `pysui` breaking changes with the caveat that if MystenLabs makes a
+a _production ready candidate_. We don't expect further `pysui` _**breaking**_ changes with the caveat that if MystenLabs makes a
 breaking change we may not be able to address with existing code.
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
