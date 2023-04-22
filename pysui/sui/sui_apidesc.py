@@ -15,7 +15,8 @@
 
 from abc import ABC
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 from dataclasses_json import dataclass_json, DataClassJsonMixin
 from pysui.sui.sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
 
@@ -124,8 +125,9 @@ class SuiApiResult:
     """Sui API Result Data Class."""
 
     name: str
-    required: bool
+
     schema: dict | SuiJsonType
+    required: Optional[bool] = field(default=False)
 
 
 @dataclass(frozen=True)
