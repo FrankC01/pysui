@@ -35,6 +35,7 @@ _SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 # Command aliases
 
 
+@versionchanged(version="0.17.0", reason="Support bool arguments")
 class PureInput:
     """Pure inputs processing."""
 
@@ -50,6 +51,12 @@ class PureInput:
         """Convert int to minimal list of bytes."""
         ccount = ceil(arg.bit_length() / 8.0)
         return list(int.to_bytes(arg, ccount, "little"))
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bool) -> list:
+        """."""
+        return list(int(arg is True).to_bytes(1, "little"))
 
     @pure.register
     @classmethod
@@ -135,8 +142,16 @@ class ProgrammableTransactionBuilder:
         """
         return bcs.TransactionKind("ProgrammableTransaction", self._finish())
 
+    # TODO: Check for duplicates to return the same input index
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
-        """."""
+        """input_pure registers a pure input argument in the inputs collection.
+
+        :param key: Becomes the 'key' in the inputs dictionary cotaining the input index
+        :type key: bcs.BuilderArg
+        :raises ValueError: If the key arg BuilderArg is not "Pure" variant
+        :return: The input Argument encapsulating it's input index
+        :rtype: bcs.Argument
+        """
         out_index = len(self.inputs)
         if key.enum_name == "Pure":  # _key = hash(input)
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
@@ -144,6 +159,7 @@ class ProgrammableTransactionBuilder:
             raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
         return bcs.Argument("Input", out_index)
 
+    # TODO: Rationalize SharedObject nuances
     def input_obj(self, key: bcs.BuilderArg, object_arg: bcs.ObjectArg) -> bcs.Argument:
         """."""
         out_index = len(self.inputs)

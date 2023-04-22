@@ -79,45 +79,46 @@ class SignerBlock:
 
     @property
     def sender(self) -> Union[SuiAddress, SigningMultiSig]:
-        """."""
+        """Return the current sender used in signing."""
         return self._sender
 
     @sender.setter
     def sender(self, new_sender: Union[SuiAddress, SigningMultiSig]):
+        """Set the sender to use in signing the transaction."""
         assert isinstance(new_sender, (SuiAddress, SigningMultiSig))
         self._sender = new_sender
 
     @property
     def sponsor(self) -> Union[SuiAddress, SigningMultiSig]:
-        """."""
+        """Return the current sponsor (may be None) used as payer of transaction."""
         return self._sponsor
 
     @sponsor.setter
     def sponser(self, new_sponsor: Union[SuiAddress, SigningMultiSig]):
-        """."""
+        """Set the sponsor to used to pay for transaction. This also signs the transaction."""
         assert isinstance(new_sponsor, (SuiAddress, SigningMultiSig))
         self._sponsor = new_sponsor
 
     @property
     def additional_signers(self) -> list[Union[SuiAddress, SigningMultiSig]]:
-        """."""
+        """Gets the list of additional signers although Sui doesn't seem to support at the moment."""
         return self._additional_signers
 
     @additional_signers.setter
     def additional_signers(self, new_additional_signers: list[Union[SuiAddress, SigningMultiSig]]):
-        """."""
+        """sets the list of additional signers although Sui doesn't seem to support at the moment."""
         new_additional_signers = new_additional_signers if new_additional_signers else []
         for additional_signer in new_additional_signers:
             assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
         self._additional_signers = new_additional_signers
 
     def add_additioinal_signer(self, additional_signer: Union[SuiAddress, SigningMultiSig]):
-        """."""
+        """Add another signer to the additional_signers list."""
         assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
         self._additional_signers.append(additional_signer)
 
     def _get_potential_signatures(self) -> list[Union[SuiAddress, SigningMultiSig]]:
-        """."""
+        """Internal flattening of signers."""
         result_list = []
         if self.sender:
             result_list.append(self.sender)
@@ -127,7 +128,7 @@ class SignerBlock:
         return result_list
 
     def get_signatures(self, *, client: SuiClient, tx_bytes: str) -> SuiArray[SuiSignature]:
-        """."""
+        """Get all the signatures needed for the transaction."""
         sig_list: list[SuiSignature] = []
         for signer in self._get_potential_signatures():
             if isinstance(signer, SuiAddress):
@@ -207,7 +208,7 @@ class SuiTransaction:
         """Transaction initializer."""
         self.builder = tx_builder.ProgrammableTransactionBuilder()
         self.client = client
-        self._sig_block = SignerBlock()
+        self._sig_block = SignerBlock(sender=client.config.active_address)
         self._merge_gas = merge_gas_budget
         self._executed = False
         self._current_gas_price = self._gas_price()
@@ -315,9 +316,6 @@ class SuiTransaction:
         # Get the transaction body
         tx_kind = self.raw_kind()
         # We already have gas price
-        # Manage the signer and if it is our own
-        # signer = signer if signer else self._sender
-        # signer = signer if isinstance(signer, str) else signer.address
         max_cost, _, _ = self.inspect_for_cost()
         gas_budget = gas_budget if isinstance(gas_budget, str) else gas_budget.value
         gas_budget = max(max_cost, int(gas_budget))
@@ -343,6 +341,11 @@ class SuiTransaction:
                 bcs.TransactionExpiration("None"),
             ),
         )
+
+    @versionadded(version="0.17.0", reason="Convenience for serializing and dry-running.")
+    def get_transaction_data(self, *, gas_budget) -> bcs.TransactionData:
+        """."""
+        return self._build_for_execute(gas_budget)
 
     @versionchanged(version="0.16.1", reason="Added 'additional_signers' optional argument")
     @versionchanged(version="0.17.0", reason="Revamped for all signature potentials and types.")
@@ -378,6 +381,8 @@ class SuiTransaction:
             # TODO: Can simplify with sets
             match clz_name:
                 # Pure conversion Types
+                case "bool":
+                    items[index] = tx_builder.PureInput.as_input(items[index])
                 case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
                     items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
                 case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
@@ -465,8 +470,13 @@ class SuiTransaction:
             return self.builder.make_move_vector(type_tag, self._resolve_arguments(items))
         raise ValueError("make_vector requires a non-empty list")
 
-    def _mc_target_resolve(self, target: str) -> tuple[bcs.Address, str, str, int]:
-        """."""
+    # TODO: Investigate functools LRU
+    def _move_call_target_cache(self, target: str) -> tuple[bcs.Address, str, str, int]:
+        """Used to resolve information regarding a move call target.
+
+        This caches the result of a GetFunction meta-data information essention to setting up
+        the proper command return types.
+        """
         if target in self._MC_RESULT_CACHE:
             return self._MC_RESULT_CACHE[target]
         package_id, module_id, function_id = target.split("::")
@@ -479,29 +489,25 @@ class SuiTransaction:
             return res_tup
         raise ValueError(f"Unable to find target: {target}")
 
-    @versionchanged(version="0.17.0", reason="Target uses 'package_id::module::function' only")
+    @versionchanged(version="0.17.0", reason="Target uses 'package_id::module::function' construct only")
     def move_call(
         self,
         *,
         target: Union[str, SuiString],
         arguments: Union[list, SuiArray],
         type_arguments: Optional[Union[list, SuiArray]] = None,
-        skip_arg_resolve: Optional[bool] = False,
-    ) -> bcs.Argument:
+    ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """move_call Creates a command to invoke a move contract call. May or may not return results.
 
-        :param target: Target move call signature. Must be in form 'package_id::module::function'.
-        :type target: Union[str, SuiString, ObjectID]
+        :param target: String triple in form "package_object_id::module_name::function_name"
+        :type target: Union[str, SuiString]
         :param arguments: Parameters that are passed to the move function
         :type arguments: Union[list, SuiArray]
         :param type_arguments: Optional list of type arguments for move function generics, defaults to None
         :type type_arguments: Optional[Union[list, SuiArray]], optional
-        :param skip_arg_resolve: Used internally, defaults to False
-        :type skip_arg_resolve: Optional[bool], optional
-        :raises ValueError: If ommitting module and function but target is not compound.
         :return: The result which may or may not be used in subequent commands depending on the
             move method being called.
-        :rtype: bcs.Argument
+        :rtype: Union[bcs.Argument, list[bcs.Argument]]
         """
         assert not self._executed, "Transaction already executed"
         assert isinstance(target, (str, SuiString))
@@ -510,13 +516,11 @@ class SuiTransaction:
         module_id = None
         function_id = None
         # Standardize the input parameters
-        target_id, module_id, function_id, res_count = self._mc_target_resolve(target)
+        target_id, module_id, function_id, res_count = self._move_call_target_cache(target)
         # Standardize the arguments to list
-        if arguments and not skip_arg_resolve:
+        if arguments:
             arguments = arguments if isinstance(arguments, list) else arguments.array
             arguments = self._resolve_arguments(arguments)
-        elif arguments and skip_arg_resolve:
-            pass
         else:
             arguments = []
         # Standardize the type_arguments to list
@@ -541,7 +545,7 @@ class SuiTransaction:
         target: Union[str, SuiString],
         arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
         type_arguments: Optional[list[bcs.TypeTag]] = None,
-    ) -> bcs.Argument:
+    ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """_move_call Internal move call when arguments and type_arguments already prepared.
 
         :param target: String triple in form "package_object_id::module_name::function_name"
@@ -550,13 +554,14 @@ class SuiTransaction:
         :type arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]]
         :param type_arguments: List of resolved type tags, defaults to None
         :type type_arguments: Optional[list[bcs.TypeTag]], optional
-        :return: _description_
-        :rtype: bcs.Argument
+        :return: The result which may or may not be used in subequent commands depending on the
+            move method being called.
+        :rtype: Union[bcs.Argument, list[bcs.Argument]]
         """
         assert isinstance(target, (str, SuiString))
         # Standardize the input parameters
         target = target if isinstance(target, str) else target.value
-        target_id, module_id, function_id, res_count = self._mc_target_resolve(target)
+        target_id, module_id, function_id, res_count = self._move_call_target_cache(target)
 
         type_arguments = type_arguments if isinstance(type_arguments, list) else []
         return self.builder.move_call(
@@ -605,7 +610,7 @@ class SuiTransaction:
         if recipient:
             recipient = tx_builder.PureInput.as_input(recipient)
         else:
-            recipient = tx_builder.PureInput.as_input(SuiAddress(self.signer_block.sender))
+            recipient = tx_builder.PureInput.as_input(self.signer_block.sender)
         return self.builder.publish(modules, dependencies, recipient)
 
     def _verify_upgrade_cap(self, upgrade_cap: str) -> ObjectRead:
@@ -615,9 +620,9 @@ class SuiTransaction:
             upcap: ObjectRead = resp.result_data
             assert upcap.object_type == _UPGRADE_CAP_TYPE, f"Invalid upgrade_cap object {upcap}"
             return upcap
-
         raise ValueError(f"Error in finding UpgradeCap on {upgrade_cap}")
 
+    @versionchanged(version="0.17.0", reason="Dropped recipient as the resulting UpgradeCap goes to main signer.")
     def publish_upgrade(
         self,
         *,
@@ -626,7 +631,6 @@ class SuiTransaction:
         upgrade_cap: Union[str, ObjectID, ObjectRead],
         with_unpublished_dependencies: bool = False,
         skip_fetch_latest_git_deps: bool = False,
-        recipient: Optional[SuiAddress] = None,
     ) -> bcs.Argument:
         """publish_upgrade Publish upgrade of package command.
 
@@ -640,8 +644,6 @@ class SuiTransaction:
         :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
             package dependencies, defaults to False
         :type skip_fetch_latest_git_deps: bool, optional
-        :param recipient: Address of who owns the published package. If None, active-address is used, defaults to None
-        :type recipient: Optional[SuiAddress], optional
         :return: The Result Argument
         :rtype: bcs.Argument
         """
