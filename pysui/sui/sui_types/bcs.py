@@ -15,8 +15,9 @@
 
 import binascii
 from typing import Any, Union
+from functools import reduce
 import canoser
-from deprecated.sphinx import versionadded
+from deprecated.sphinx import versionadded, versionchanged
 from pysui.sui.sui_txresults.single_tx import ObjectRead
 
 from pysui.sui.sui_types.address import SuiAddress
@@ -223,6 +224,7 @@ class TypeTag(canoser.RustEnum):
         cls._enums[index] = (cls._enums[index][0], value)
 
 
+@versionchanged(version="0.17.1", reason="Fixed nested types.")
 class StructTag(canoser.Struct):
     """StructTag represents a type value (e.g. 0x2::sui::SUI) in BCS when used in MoveCall."""
 
@@ -237,19 +239,22 @@ class StructTag(canoser.Struct):
         :return: Instance of StructTag
         :rtype: StructTag
         """
-        if type_str.count("::") >= 2:
-            tail_tag = []
-            split_type = type_str.split("::")
-            if len(split_type) > 3:
-                inner_split = split_type[2].split("<")
-                split_type[2] = inner_split[0]
-                tail_tag = [
-                    TypeTag(
-                        "Struct", cls(Address.from_str(inner_split[1]), split_type[3], split_type[4][:-1], tail_tag)
-                    )
-                ]
-            return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], tail_tag)
-        raise ValueError(f"Ill formed type_argument {type_str}")
+
+        def _reducer(accum: TypeTag, item: str) -> TypeTag:
+            """Accumulate nested type tags."""
+            new_s = item.split("::")
+            if not accum:
+                return TypeTag("Struct", cls(Address.from_str(new_s[0]), new_s[1], new_s[2], []))
+            return TypeTag("Struct", cls(Address.from_str(new_s[0]), new_s[1], new_s[2], [accum]))
+
+        inner_count = type_str.count("<")
+        if inner_count:
+            multi_struct = type_str.split("<")
+            last_pos = len(multi_struct) - 1
+            multi_struct[last_pos] = multi_struct[last_pos][:-inner_count]
+            return reduce(_reducer, multi_struct[::-1], None).value
+        split_type = type_str.split("::")
+        return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
 
 
 # Overcome forward reference at init time with these injections

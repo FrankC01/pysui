@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - On testnet code has changes in `rpc.discover` making a field optional.
+- Nested types [bug](https://github.com/FrankC01/pysui/issues/90)
 
 ### Changed
 
