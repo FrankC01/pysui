@@ -237,9 +237,18 @@ class StructTag(canoser.Struct):
         :return: Instance of StructTag
         :rtype: StructTag
         """
-        if type_str.count("::") == 2:
+        if type_str.count("::") >= 2:
+            tail_tag = []
             split_type = type_str.split("::")
-            return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
+            if len(split_type) > 3:
+                inner_split = split_type[2].split("<")
+                split_type[2] = inner_split[0]
+                tail_tag = [
+                    TypeTag(
+                        "Struct", cls(Address.from_str(inner_split[1]), split_type[3], split_type[4][:-1], tail_tag)
+                    )
+                ]
+            return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], tail_tag)
         raise ValueError(f"Ill formed type_argument {type_str}")
 
 
