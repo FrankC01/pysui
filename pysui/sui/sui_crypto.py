@@ -217,8 +217,8 @@ class SuiKeyPairSECP256R1(SuiKeyPair):
             raise SuiInvalidKeyPair(f"Expect str len of {SUI_KEYPAIR_LEN}")
         base_decode = base64.b64decode(indata)
         if base_decode[0] == SignatureScheme.SECP256R1:
-            return SuiKeyPairED25519.from_bytes(base_decode[1:])
-        raise SuiInvalidKeyPair("Scheme not ED25519")
+            return SuiKeyPairSECP256R1.from_bytes(base_decode[1:])
+        raise SuiInvalidKeyPair("Scheme not SECP256R1")
 
     @classmethod
     def from_bytes(cls, indata: bytes) -> KeyPair:
@@ -286,8 +286,6 @@ class SuiKeyPairED25519(SuiKeyPair):
 
 # Secp256
 # TODO: Change to use the ecdsa library and drop the secp256k1 library requirement
-
-
 class SuiPublicKeySECP256K1(SuiPublicKey):
     """A SECP256K1 Public Key."""
 
