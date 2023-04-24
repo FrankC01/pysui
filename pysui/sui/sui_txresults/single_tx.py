@@ -20,7 +20,7 @@ from dataclasses_json import DataClassJsonMixin, config, LetterCase
 from pysui.sui.sui_types import ObjectID, SuiAddress
 from pysui.sui.sui_txresults.common import GenericRef
 
-
+# pylint:disable=too-many-instance-attributes
 # Faucet results
 
 
@@ -543,7 +543,6 @@ class StakingPool(DataClassJsonMixin):
         self.rewards_pool = self.rewards_pool["value"]
 
 
-# pylint: disable=too-many-instance-attributes
 @dataclass
 class ValidatorMetaData(DataClassJsonMixin):
     """From sui_getSuiSystemState."""

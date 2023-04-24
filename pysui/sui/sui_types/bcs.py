@@ -27,6 +27,9 @@ from pysui.sui.sui_txresults.common import GenericRef
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
 
+_TYPETAG_STRUCT_DEPTH_MAX: int = 16
+_TYPETAG_VECTOR_DEPTH_MAX: int = 16
+
 
 class Address(canoser.Struct):
     """Address Represents a Sui Address or ObjectID as list of ints."""
@@ -205,6 +208,10 @@ class TypeTag(canoser.RustEnum):
         # Vector types
         vcount = value.count("vector")
         if vcount:
+            if vcount > _TYPETAG_VECTOR_DEPTH_MAX:
+                raise ValueError(
+                    f"vector is constrained to max {_TYPETAG_VECTOR_DEPTH_MAX} depth. Found {vcount} for {value}"
+                )
             # Get the most inner type tag
             inner_type_tag = cls.type_tag_from(value[value.rfind("<") + 1 : value.index(">")])
             for _ in range(vcount):
@@ -249,6 +256,10 @@ class StructTag(canoser.Struct):
 
         inner_count = type_str.count("<")
         if inner_count:
+            if inner_count > _TYPETAG_STRUCT_DEPTH_MAX:
+                raise ValueError(
+                    f"type is constrained to max {_TYPETAG_STRUCT_DEPTH_MAX} depth. Found {inner_count} for {type_str}"
+                )
             multi_struct = type_str.split("<")
             last_pos = len(multi_struct) - 1
             multi_struct[last_pos] = multi_struct[last_pos][:-inner_count]
