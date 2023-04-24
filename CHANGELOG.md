@@ -11,6 +11,7 @@ Breaking Changes
 
 ### Added
 
+- More documentation on SuiTransaction (programmable transactions)
 - GetLoadedChildObjects builder and reponse supporting Sui RPC API `sui_getLoadedChildObjects` in 0.33.0
 
 ### Fixed
