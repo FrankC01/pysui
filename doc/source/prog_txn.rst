@@ -134,3 +134,59 @@ Sponsored Transaction example
             print(exec_result.result_data.to_json(indent=2))
         else:
             print(exec_result.result_string)
+
+Command Inputs and Arguments
+############################
+
+Command Inputs
+~~~~~~~~~~~~~~
+
+``pysui`` encapsulate the inputs to commands from their lower level treatment and detail. For the most part, all of the input
+variations on what 'type' of Pythoon or ``pysui`` the command will accept can be seen for each Command
+method in :py:class:`pysui.sui.sui_clients.transaction.SuiTransaction` reference.
+
+Move Call Arguments
+~~~~~~~~~~~~~~~~~~~
+
+However; the `arguments` to a Move Call command require special treatment to aid in disambiguating whether it is an object
+reference or just a pure value. Here is a snippet of a move call where arguments are wrapped in ``pysui`` types. Below the
+example is a coercion table describing the effect of resolving in `move_call` arguments.
+
+.. code-block:: Python
+
+    txer.move_call(
+        target="0x0cce956e2b82b3844178b502e3a705dead7d2f766bfbe35626a0bbed06a42e9e::marketplace::buy_and_take",
+        arguments=[
+            ObjectID("0xb468f361f620ac05de721e487e0bdc9291c073a7d4aa7595862aeeba1d99d79e"),
+            ObjectID("0xfd542ebc0f6743962077861cfa5ca9f1f19de8de63c3b09a6d9d0053d0104908"),
+            ObjectID("0x97db1bba294cb30ce116cb94117714c64107eabf9a4843b155e90e0ae862ade5"),
+            SuiAddress(coin_object_id),
+            ObjectID(coin_object_id),
+            SuiU64(1350000000),
+        ],
+        type_arguments=[
+            "0x3dcfc5338d8358450b145629c985a9d6cb20f9c0ab6667e328e152cdfd8022cd::suifrens::SuiFren<0x3dcfc5338d8358450b145629c985a9d6cb20f9c0ab6667e328e152cdfd8022cd::capy::Capy>",
+            "0x2::sui::SUI",
+        ],
+    )
+
+
++----------------------------------------------------------+----------------------------+
+|     Types                                                |       Converts to          |
++==========================================================+============================+
+| bool, str, int, bytes, SuiBoolean, SuiString, SuiInteger | Passed by value            |
++----------------------------------------------------------+----------------------------+
+| SuiU8, SuiU16, SuiU32, SuiU64, SuiU128, SuiU256          | Passed by value  [#f1]_    |
++----------------------------------------------------------+----------------------------+
+| SuiAddress, OptionalU64                                  | Passed by value            |
++----------------------------------------------------------+----------------------------+
+| ObjectID, SuiCoinObject, ObjectRead                      | Passed by reference [#f2]_ |
++----------------------------------------------------------+----------------------------+
+| Result of previous command [#f3]_                        | Command Result index       |
++----------------------------------------------------------+----------------------------+
+
+.. rubric:: Footnotes
+
+.. [#f1] Explicit unsigned integer bit size types
+.. [#f2] Will determine if Shared object or not before transaction execution
+.. [#f3] Result may be a list, so understanding which commands return a single or multiple is important

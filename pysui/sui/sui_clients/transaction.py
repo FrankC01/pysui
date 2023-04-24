@@ -383,6 +383,8 @@ class SuiTransaction:
                 # Pure conversion Types
                 case "bool":
                     items[index] = tx_builder.PureInput.as_input(items[index])
+                case "SuiBoolean":
+                    items[index] = tx_builder.PureInput.as_input(items[index].value)
                 case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
                     items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
                 case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
