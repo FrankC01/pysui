@@ -125,7 +125,6 @@ class SuiApiResult:
     """Sui API Result Data Class."""
 
     name: str
-
     schema: dict | SuiJsonType
     required: Optional[bool] = field(default=False)
 

@@ -12,6 +12,7 @@ Breaking Changes
 ### Added
 
 - More documentation on SuiTransaction (programmable transactions)
+- GetLoadedChildObjects builder and reponse supporting Sui RPC API `sui_getLoadedChildObjects` in 0.33.0
 
 ### Fixed
 
@@ -21,6 +22,9 @@ Breaking Changes
 ### Changed
 
 ### Removed
+
+- `additional_signature`, other than sender and sponsor, are not supported by the tx processor in Sui. Removed
+  the property in `SignerBlock`
 
 ## [0.17.0] - 2023-04-22
 

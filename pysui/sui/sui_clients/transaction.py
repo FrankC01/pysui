@@ -62,6 +62,7 @@ class SigningMultiSig:
 
 
 @versionadded(version="0.17.0", reason="Standardize on signing permutations")
+@versionchanged(version="0.18.0", reason="Removed additional_signers as not supported by Sui at the moment.")
 class SignerBlock:
     """Manages the potential signers and resolving the gas object for paying."""
 
@@ -70,12 +71,12 @@ class SignerBlock:
         *,
         sender: Optional[Union[SuiAddress, SigningMultiSig]] = None,
         sponsor: Optional[Union[SuiAddress, SigningMultiSig]] = None,
-        additional_signers: Optional[list[Union[SuiAddress, SigningMultiSig]]] = None,
+        # additional_signers: Optional[list[Union[SuiAddress, SigningMultiSig]]] = None,
     ):
         """."""
         self._sender = sender
         self._sponsor = sponsor
-        self._additional_signers = additional_signers if additional_signers else []
+        # self._additional_signers = additional_signers if additional_signers else []
 
     @property
     def sender(self) -> Union[SuiAddress, SigningMultiSig]:
@@ -99,23 +100,23 @@ class SignerBlock:
         assert isinstance(new_sponsor, (SuiAddress, SigningMultiSig))
         self._sponsor = new_sponsor
 
-    @property
-    def additional_signers(self) -> list[Union[SuiAddress, SigningMultiSig]]:
-        """Gets the list of additional signers although Sui doesn't seem to support at the moment."""
-        return self._additional_signers
+    # @property
+    # def additional_signers(self) -> list[Union[SuiAddress, SigningMultiSig]]:
+    #     """Gets the list of additional signers although Sui doesn't seem to support at the moment."""
+    #     return self._additional_signers
 
-    @additional_signers.setter
-    def additional_signers(self, new_additional_signers: list[Union[SuiAddress, SigningMultiSig]]):
-        """sets the list of additional signers although Sui doesn't seem to support at the moment."""
-        new_additional_signers = new_additional_signers if new_additional_signers else []
-        for additional_signer in new_additional_signers:
-            assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
-        self._additional_signers = new_additional_signers
+    # @additional_signers.setter
+    # def additional_signers(self, new_additional_signers: list[Union[SuiAddress, SigningMultiSig]]):
+    #     """sets the list of additional signers although Sui doesn't seem to support at the moment."""
+    #     new_additional_signers = new_additional_signers if new_additional_signers else []
+    #     for additional_signer in new_additional_signers:
+    #         assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
+    #     self._additional_signers = new_additional_signers
 
-    def add_additioinal_signer(self, additional_signer: Union[SuiAddress, SigningMultiSig]):
-        """Add another signer to the additional_signers list."""
-        assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
-        self._additional_signers.append(additional_signer)
+    # def add_additioinal_signer(self, additional_signer: Union[SuiAddress, SigningMultiSig]):
+    #     """Add another signer to the additional_signers list."""
+    #     assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
+    #     self._additional_signers.append(additional_signer)
 
     def _get_potential_signatures(self) -> list[Union[SuiAddress, SigningMultiSig]]:
         """Internal flattening of signers."""
@@ -124,8 +125,9 @@ class SignerBlock:
             result_list.append(self.sender)
         if self.sponsor:
             result_list.append(self._sponsor)
-        result_list.extend(self.additional_signers)
         return result_list
+        # result_list.extend(self.additional_signers)
+        # return result_list
 
     def get_signatures(self, *, client: SuiClient, tx_bytes: str) -> SuiArray[SuiSignature]:
         """Get all the signatures needed for the transaction."""
@@ -443,35 +445,7 @@ class SuiTransaction:
         # Separate the index based on conversion types
         for index in range(len(items)):
             self._resolve_item(index, items, objref_indexes, objtup_indexes)
-        # for index, item in enumerate(items):
-        #     clz_name = item.__class__.__name__
-        #     # TODO: Can simplify with sets
-        #     match clz_name:
-        #         # Pure conversion Types
-        #         case "bool":
-        #             items[index] = tx_builder.PureInput.as_input(items[index])
-        #         case "SuiBoolean":
-        #             items[index] = tx_builder.PureInput.as_input(items[index].value)
-        #         case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
-        #             items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
-        #         case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
-        #             items[index] = tx_builder.PureInput.as_input(items[index])
-        #         case "Digest":
-        #             items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
-        #         # Need to fetch objects
-        #         case "ObjectID":
-        #             objref_indexes.append(index)
-        #         case "SuiCoinObject":
-        #             items[index] = ObjectID(item.object_id)
-        #             objref_indexes.append(index)
-        #         # Tuple all ready to be set
-        #         case "ObjectRead":
-        #             objtup_indexes.append(index)
-        #         # Direct passthroughs
-        #         case "Argument" | "BuilderArg" | "tuple":
-        #             pass
-        #         case _:
-        #             raise ValueError(f"Uknown class type handler {clz_name}")
+
         # Result object ID to tuple candidate
         if objref_indexes:
             res = self.client.execute(GetMultipleObjects(object_ids=[items[x] for x in objref_indexes]))
