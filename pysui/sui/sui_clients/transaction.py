@@ -203,6 +203,25 @@ class SuiTransaction:
     """High level transaction builder."""
 
     _MC_RESULT_CACHE: dict = {}
+    _PURE_CANDIDATES: set[str] = {
+        "bool",
+        "SuiBoolean",
+        "SuiU8",
+        "SuiU16",
+        "SuiU32",
+        "SuiU64",
+        "SuiU128",
+        "SuiU256",
+        "int",
+        "SuiInteger",
+        "str",
+        "SuiString",
+        "SuiAddress",
+        "bytes",
+        "OptionalU64",
+        "Digest",
+        "Address",
+    }
 
     def __init__(self, client: SuiClient, merge_gas_budget: bool = False) -> None:
         """Transaction initializer."""
@@ -371,40 +390,88 @@ class SuiTransaction:
 
     # Commands and helpers
 
+    def _resolve_item(self, index: int, items: list, refs: list, tuples: list):
+        """."""
+        item = items[index]
+        clz_name = item.__class__.__name__
+        match clz_name:
+            case "bool" | "SuiBoolean":
+                bitem = item if isinstance(item, bool) else item.value
+                items[index] = tx_builder.PureInput.as_input(bitem)
+            case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
+                items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
+            case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
+                items[index] = tx_builder.PureInput.as_input(items[index])
+            case "Digest" | "Address":
+                items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
+            case "list" | "SuiArray":
+                # Normalize to list
+                litem = item if isinstance(item, list) else item.array
+                inner_item = litem[0]
+                # Not handling nested yet
+                if isinstance(inner_item, (list, SuiArray)):
+                    raise ValueError("Nested lists not accepted yet.")
+                # Pass throughs
+                if isinstance(inner_item, (bcs.Argument, bcs.BuilderArg, tuple)):
+                    pass
+                # Pures
+                elif inner_item.__class__.__name__ in self._PURE_CANDIDATES:
+                    for i_index in range(len(litem)):
+                        self._resolve_item(i_index, litem, refs, tuples)
+                    items[index] = litem
+                else:
+                    raise ValueError(f"Not handling {inner_item.__class__.__name__} yet.")
+            # Need to fetch objects
+            case "ObjectID":
+                refs.append(index)
+            case "SuiCoinObject":
+                items[index] = ObjectID(item.object_id)
+                refs.append(index)
+            # Tuple all ready to be set
+            case "ObjectRead":
+                tuples.append(index)
+            # Direct passthroughs
+            case "Argument" | "BuilderArg" | "tuple":
+                pass
+            case _:
+                raise ValueError(f"Uknown class type handler {clz_name}")
+
     def _resolve_arguments(self, items: list) -> list:
         """Process list intended as 'params' in move call."""
         objref_indexes: list[int] = []
         objtup_indexes: list[int] = []
         # Separate the index based on conversion types
-        for index, item in enumerate(items):
-            clz_name = item.__class__.__name__
-            # TODO: Can simplify with sets
-            match clz_name:
-                # Pure conversion Types
-                case "bool":
-                    items[index] = tx_builder.PureInput.as_input(items[index])
-                case "SuiBoolean":
-                    items[index] = tx_builder.PureInput.as_input(items[index].value)
-                case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
-                    items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
-                case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
-                    items[index] = tx_builder.PureInput.as_input(items[index])
-                case "Digest":
-                    items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
-                # Need to fetch objects
-                case "ObjectID":
-                    objref_indexes.append(index)
-                case "SuiCoinObject":
-                    items[index] = ObjectID(item.object_id)
-                    objref_indexes.append(index)
-                # Tuple all ready to be set
-                case "ObjectRead":
-                    objtup_indexes.append(index)
-                # Direct passthroughs
-                case "Argument" | "BuilderArg" | "tuple":
-                    pass
-                case _:
-                    raise ValueError(f"Uknown class type handler {clz_name}")
+        for index in range(len(items)):
+            self._resolve_item(index, items, objref_indexes, objtup_indexes)
+        # for index, item in enumerate(items):
+        #     clz_name = item.__class__.__name__
+        #     # TODO: Can simplify with sets
+        #     match clz_name:
+        #         # Pure conversion Types
+        #         case "bool":
+        #             items[index] = tx_builder.PureInput.as_input(items[index])
+        #         case "SuiBoolean":
+        #             items[index] = tx_builder.PureInput.as_input(items[index].value)
+        #         case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
+        #             items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
+        #         case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
+        #             items[index] = tx_builder.PureInput.as_input(items[index])
+        #         case "Digest":
+        #             items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
+        #         # Need to fetch objects
+        #         case "ObjectID":
+        #             objref_indexes.append(index)
+        #         case "SuiCoinObject":
+        #             items[index] = ObjectID(item.object_id)
+        #             objref_indexes.append(index)
+        #         # Tuple all ready to be set
+        #         case "ObjectRead":
+        #             objtup_indexes.append(index)
+        #         # Direct passthroughs
+        #         case "Argument" | "BuilderArg" | "tuple":
+        #             pass
+        #         case _:
+        #             raise ValueError(f"Uknown class type handler {clz_name}")
         # Result object ID to tuple candidate
         if objref_indexes:
             res = self.client.execute(GetMultipleObjects(object_ids=[items[x] for x in objref_indexes]))

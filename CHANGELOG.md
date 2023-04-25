@@ -11,7 +11,7 @@ Breaking Changes
 
 ### Added
 
-- Mor documentation on SuiTransaction (programmable transactions)
+- More documentation on SuiTransaction (programmable transactions)
 
 ### Fixed
 
