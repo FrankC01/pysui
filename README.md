@@ -4,7 +4,7 @@
 
 Python Client SDK for Sui blockchain
 
-**Release-0.17.0**
+**Release-0.18.0**
 
 We are hardening and finalizing code in preperation of Sui going live on mainnet. We anticipate that this release is
 a _production ready candidate_. We don't expect further `pysui` _**breaking**_ changes with the caveat that if MystenLabs makes a
@@ -16,9 +16,9 @@ We would appreciate any issues being reported in the [github issue log](https://
 
 We also have a channel in the [sui-base](https://github.com/sui-base/sui-base) Discord server [click here](https://discord.com/invite/Erb6SwsVbH):
 
-- 100% coverage (builders, return types, etc.) for parity with _SUI 0.32.0 API_ on devnet/testnet
+- 100% coverage (builders, return types, etc.) for parity with _SUI 0.33.0 API_ on devnet/testnet
 
-**PyPi for 0.17.0**
+**PyPi for 0.18.0**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 

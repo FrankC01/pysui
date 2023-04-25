@@ -390,39 +390,76 @@ class SuiTransaction:
         self._executed = True
         return iresult
 
-    # Commands and helpers
+    # Argument resolution to lower level types
+    @versionadded(version="0.18.0", reason="Reuse for argument nested list recursion.")
+    def _resolve_objects(self, items: list, objref_indexes: list, objtup_indexes: list):
+        """Finalizes object ref types."""
+        if objref_indexes:
+            res = self.client.execute(GetMultipleObjects(object_ids=[items[x] for x in objref_indexes]))
+            if res.is_ok():
+                res_list = res.result_data
+                if len(res_list) != len(objref_indexes):
+                    raise ValueError(f"Unable to find object in set {[items[x] for x in objref_indexes]}")
+                # Update items list and register tuple conversion
+                for index, result in enumerate(res_list):
+                    items[objref_indexes[index]] = result
+                    objtup_indexes.append(objref_indexes[index])
+            else:
+                raise ValueError(f"{res.result_string}")
+        if objtup_indexes:
+            for tindex in objtup_indexes:
+                item: ObjectRead = items[tindex]
+                if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
+                    obj_ref = GenericRef(item.object_id, item.version, item.digest)
+                    b_obj_arg = bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref))
+                elif isinstance(item.owner, SharedOwner):
+                    b_obj_arg = bcs.ObjectArg("SharedObject", bcs.SharedObjectReference.from_object_read(item))
+                items[tindex] = (
+                    bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
+                    b_obj_arg,
+                )
 
-    def _resolve_item(self, index: int, items: list, refs: list, tuples: list):
-        """."""
+    @versionadded(version="0.18.0", reason="Reuse for argument nested list recursion.")
+    def _resolve_item(self, index: int, items: list, refs: list, tuples: list, nest_depth: int = 0):
+        """Resolve the appropriate bcs type for argument item."""
         item = items[index]
         clz_name = item.__class__.__name__
         match clz_name:
-            case "bool" | "SuiBoolean":
-                bitem = item if isinstance(item, bool) else item.value
-                items[index] = tx_builder.PureInput.as_input(bitem)
+            # Unisgned ints supported in Sui
             case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
-                items[index] = tx_builder.PureInput.as_input(items[index].to_bytes())
-            case "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
+                items[index] = tx_builder.PureInput.as_input(items[index])
+            case "bool" | "SuiBoolean" | "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
                 items[index] = tx_builder.PureInput.as_input(items[index])
             case "Digest" | "Address":
-                items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
+                items[index] = tx_builder.PureInput.as_input(items[index])
+                # items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
             case "list" | "SuiArray":
-                # Normalize to list
-                litem = item if isinstance(item, list) else item.array
-                inner_item = litem[0]
-                # Not handling nested yet
-                if isinstance(inner_item, (list, SuiArray)):
-                    raise ValueError("Nested lists not accepted yet.")
-                # Pass throughs
-                if isinstance(inner_item, (bcs.Argument, bcs.BuilderArg, tuple)):
-                    pass
-                # Pures
-                elif inner_item.__class__.__name__ in self._PURE_CANDIDATES:
-                    for i_index in range(len(litem)):
-                        self._resolve_item(i_index, litem, refs, tuples)
-                    items[index] = litem
+                # Have exceeded limit/constraint
+                if nest_depth >= bcs.TYPETAG_VECTOR_DEPTH_MAX:
+                    raise ValueError(
+                        f"vector is constrained to max {bcs.TYPETAG_VECTOR_DEPTH_MAX} depth. Found {nest_depth}."
+                    )
+
+                # Generalize to list
+                litems = item if isinstance(item, list) else item.array
+                objref_indexes: list[int] = []
+                objtup_indexes: list[int] = []
+                # Keep drilling if next is list
+                if litems and isinstance(litems[0], (list, SuiArray)):
+                    self._resolve_item(0, litems, objref_indexes, objtup_indexes, nest_depth + 1)
+                    items[index] = litems
+                # Else check for type consistency and convert to LCD
                 else:
-                    raise ValueError(f"Not handling {inner_item.__class__.__name__} yet.")
+                    item_clz_name = litems[0].__class__.__name__
+                    res_items: list = []
+                    for i_item in litems:
+                        inner_clz_name = i_item.__class__.__name__
+                        assert inner_clz_name == item_clz_name, f"Expected {item_clz_name} found {inner_clz_name}"
+                        assert (
+                            inner_clz_name in self._PURE_CANDIDATES
+                        ), f"Nested argument lists must be of type {self._PURE_CANDIDATES}"
+                        res_items.append(i_item)
+                    items[index] = res_items
             # Need to fetch objects
             case "ObjectID":
                 refs.append(index)
@@ -438,6 +475,7 @@ class SuiTransaction:
             case _:
                 raise ValueError(f"Uknown class type handler {clz_name}")
 
+    @versionchanged(version="0.18.0", reason="Handle argument nested list recursion.")
     def _resolve_arguments(self, items: list) -> list:
         """Process list intended as 'params' in move call."""
         objref_indexes: list[int] = []
@@ -445,34 +483,7 @@ class SuiTransaction:
         # Separate the index based on conversion types
         for index in range(len(items)):
             self._resolve_item(index, items, objref_indexes, objtup_indexes)
-
-        # Result object ID to tuple candidate
-        if objref_indexes:
-            res = self.client.execute(GetMultipleObjects(object_ids=[items[x] for x in objref_indexes]))
-            if res.is_ok():
-                res_list = res.result_data
-                if len(res_list) != len(objref_indexes):
-                    raise ValueError(f"Unable to find object in set {[items[x] for x in objref_indexes]}")
-                # Update items list and register tuple conversion
-                for index, result in enumerate(res_list):
-                    items[objref_indexes[index]] = result
-                    objtup_indexes.append(objref_indexes[index])
-            else:
-                raise ValueError(f"{res.result_string}")
-        # Convert tuple candidates to tuples
-        if objtup_indexes:
-            for tindex in objtup_indexes:
-                item: ObjectRead = items[tindex]
-                if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
-                    obj_ref = GenericRef(item.object_id, item.version, item.digest)
-                    b_obj_arg = bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref))
-                elif isinstance(item.owner, SharedOwner):
-                    b_obj_arg = bcs.ObjectArg("SharedObject", bcs.SharedObjectReference.from_object_read(item))
-                items[tindex] = (
-                    bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
-                    b_obj_arg,
-                )
-
+        self._resolve_objects(items, objref_indexes, objtup_indexes)
         return items
 
     def make_move_vector(self, items: list[Any]) -> bcs.Argument:

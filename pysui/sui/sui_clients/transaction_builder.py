@@ -24,7 +24,18 @@ from deprecated.sphinx import versionchanged
 
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
+from pysui.sui.sui_types.scalars import (
+    ObjectID,
+    SuiBoolean,
+    SuiInteger,
+    SuiString,
+    SuiU128,
+    SuiU16,
+    SuiU256,
+    SuiU32,
+    SuiU64,
+    SuiU8,
+)
 
 # Well known aliases
 _SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
@@ -36,6 +47,7 @@ _SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 
 
 @versionchanged(version="0.17.0", reason="Support bool arguments")
+@versionchanged(version="0.18.0", reason="Support for lists and unsigned ints")
 class PureInput:
     """Pure inputs processing."""
 
@@ -47,6 +59,18 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: bool) -> list:
+        """."""
+        return list(int(arg is True).to_bytes(1, "little"))
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiBoolean) -> list:
+        """."""
+        return cls.pure(arg.value)
+
+    @pure.register
+    @classmethod
     def _(cls, arg: int) -> list:
         """Convert int to minimal list of bytes."""
         ccount = ceil(arg.bit_length() / 8.0)
@@ -54,15 +78,45 @@ class PureInput:
 
     @pure.register
     @classmethod
-    def _(cls, arg: bool) -> list:
-        """."""
-        return list(int(arg is True).to_bytes(1, "little"))
-
-    @pure.register
-    @classmethod
     def _(cls, arg: SuiInteger) -> list:
         """Convert int to minimal list of bytes."""
         return cls.pure(arg.value)
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU8) -> list:
+        """Convert unsigned int to bytes."""
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU16) -> list:
+        """Convert unsigned int to bytes."""
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU32) -> list:
+        """Convert unsigned int to bytes."""
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU64) -> list:
+        """Convert unsigned int to bytes."""
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU128) -> list:
+        """Convert unsigned int to bytes."""
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU256) -> list:
+        """Convert unsigned int to bytes."""
+        return list(arg.to_bytes())
 
     @pure.register
     @classmethod
@@ -98,6 +152,18 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: bcs.Address) -> list:
+        """Convert bcs.Address to list of bytes."""
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.Digest) -> list:
+        """Convert bcs,Digest to list of bytes."""
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
     def _(cls, arg: bcs.OptionalU64) -> list:
         """Convert OptionalU64 to list of bytes."""
         return list(arg.serialize())
@@ -106,7 +172,11 @@ class PureInput:
     @classmethod
     def _(cls, arg: list) -> list:
         """."""
-        raise NotImplementedError("PureInput for lists")
+        stage_list = [PureInput.pure(x) for x in arg]
+        res_list = [len(stage_list)]
+        for stage_pure in stage_list:
+            res_list.extend(stage_pure)
+        return res_list
 
     @classmethod
     def as_input(cls, args) -> bcs.BuilderArg:
@@ -226,6 +296,8 @@ class ProgrammableTransactionBuilder:
                 argrefs.append(self.input_obj(*arg))
             elif isinstance(arg, (bcs.Argument, bcs.OptionalU64)):
                 argrefs.append(arg)
+            elif isinstance(arg, list):
+                argrefs.append(self.input_pure(PureInput.as_input(arg)))
             else:
                 raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
         return self.command(

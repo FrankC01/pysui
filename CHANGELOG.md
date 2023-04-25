@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unpublished]
 
+### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+## [0.18.0] - 2023-04-25
+
 Breaking Changes
 
 ### Added
 
+- Handling move call argument nested lists/vectors
 - More documentation on SuiTransaction (programmable transactions)
 - GetLoadedChildObjects builder and reponse supporting Sui RPC API `sui_getLoadedChildObjects` in 0.33.0
 
@@ -23,7 +34,7 @@ Breaking Changes
 
 ### Removed
 
-- `additional_signature`, other than sender and sponsor, are not supported by the tx processor in Sui. Removed
+- **Breaking Change** `additional_signature`, other than sender and sponsor, are not supported by the tx processor in Sui. Removed
   the property in `SignerBlock`
 
 ## [0.17.0] - 2023-04-22
