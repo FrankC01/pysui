@@ -23,7 +23,7 @@ PYSUI_CLIENT_CONFIG_ENV: str = "SUI_CLIENT_CONFIG"
 """Holds the fully qualified path to the active client.yaml."""
 
 # sui-base configuration and execution constants
-SUI_BASE_ACTIVE: str = "~/sui-base/workdirs/active"
+SUI_BASE_ACTIVE: str = "~/suibase/workdirs/active"
 """sui-base symbolic link to what configuration is active."""
 SUI_BASE_EXEC_PATH: str = "target/debug/sui"
 """sui-base binary location relative to the active configuration workdir."""
