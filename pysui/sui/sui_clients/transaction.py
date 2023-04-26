@@ -214,13 +214,18 @@ class SuiTransaction:
         "SuiU64",
         "SuiU128",
         "SuiU256",
+        "OptionalU8",
+        "OptionalU16",
+        "OptionalU32",
+        "OptionalU64",
+        "OptionalU128",
+        "OptionalU256",
         "int",
         "SuiInteger",
         "str",
         "SuiString",
         "SuiAddress",
         "bytes",
-        "OptionalU64",
         "Digest",
         "Address",
     }
@@ -420,60 +425,56 @@ class SuiTransaction:
                 )
 
     @versionadded(version="0.18.0", reason="Reuse for argument nested list recursion.")
+    @versionadded(version="0.19.0", reason="Broaden types in _PURE_CANDIDATES with set of Optional<Ux> types")
     def _resolve_item(self, index: int, items: list, refs: list, tuples: list, nest_depth: int = 0):
         """Resolve the appropriate bcs type for argument item."""
         item = items[index]
         clz_name = item.__class__.__name__
-        match clz_name:
-            # Unisgned ints supported in Sui
-            case "SuiU8" | "SuiU16" | "SuiU32" | "SuiU64" | "SuiU128" | "SuiU256":
-                items[index] = tx_builder.PureInput.as_input(items[index])
-            case "bool" | "SuiBoolean" | "int" | "SuiInteger" | "str" | "SuiString" | "SuiAddress" | "bytes" | "OptionalU64":
-                items[index] = tx_builder.PureInput.as_input(items[index])
-            case "Digest" | "Address":
-                items[index] = tx_builder.PureInput.as_input(items[index])
-                # items[index] = bcs.BuilderArg("Pure", list(items[index].serialize()))
-            case "list" | "SuiArray":
-                # Have exceeded limit/constraint
-                if nest_depth >= bcs.TYPETAG_VECTOR_DEPTH_MAX:
-                    raise ValueError(
-                        f"vector is constrained to max {bcs.TYPETAG_VECTOR_DEPTH_MAX} depth. Found {nest_depth}."
-                    )
+        if clz_name in self._PURE_CANDIDATES:
+            items[index] = tx_builder.PureInput.as_input(items[index])
+        else:
+            match clz_name:
+                case "list" | "SuiArray":
+                    # Have exceeded limit/constraint
+                    if nest_depth >= bcs.TYPETAG_VECTOR_DEPTH_MAX:
+                        raise ValueError(
+                            f"vector is constrained to max {bcs.TYPETAG_VECTOR_DEPTH_MAX} depth. Found {nest_depth}."
+                        )
 
-                # Generalize to list
-                litems = item if isinstance(item, list) else item.array
-                objref_indexes: list[int] = []
-                objtup_indexes: list[int] = []
-                # Keep drilling if next is list
-                if litems and isinstance(litems[0], (list, SuiArray)):
-                    self._resolve_item(0, litems, objref_indexes, objtup_indexes, nest_depth + 1)
-                    items[index] = litems
-                # Else check for type consistency and convert to LCD
-                else:
-                    item_clz_name = litems[0].__class__.__name__
-                    res_items: list = []
-                    for i_item in litems:
-                        inner_clz_name = i_item.__class__.__name__
-                        assert inner_clz_name == item_clz_name, f"Expected {item_clz_name} found {inner_clz_name}"
-                        assert (
-                            inner_clz_name in self._PURE_CANDIDATES
-                        ), f"Nested argument lists must be of type {self._PURE_CANDIDATES}"
-                        res_items.append(i_item)
-                    items[index] = res_items
-            # Need to fetch objects
-            case "ObjectID":
-                refs.append(index)
-            case "SuiCoinObject":
-                items[index] = ObjectID(item.object_id)
-                refs.append(index)
-            # Tuple all ready to be set
-            case "ObjectRead":
-                tuples.append(index)
-            # Direct passthroughs
-            case "Argument" | "BuilderArg" | "tuple":
-                pass
-            case _:
-                raise ValueError(f"Uknown class type handler {clz_name}")
+                    # Generalize to list
+                    litems = item if isinstance(item, list) else item.array
+                    objref_indexes: list[int] = []
+                    objtup_indexes: list[int] = []
+                    # Keep drilling if next is list
+                    if litems and isinstance(litems[0], (list, SuiArray)):
+                        self._resolve_item(0, litems, objref_indexes, objtup_indexes, nest_depth + 1)
+                        items[index] = litems
+                    # Else check for type consistency and convert to LCD
+                    else:
+                        item_clz_name = litems[0].__class__.__name__
+                        res_items: list = []
+                        for i_item in litems:
+                            inner_clz_name = i_item.__class__.__name__
+                            assert inner_clz_name == item_clz_name, f"Expected {item_clz_name} found {inner_clz_name}"
+                            assert (
+                                inner_clz_name in self._PURE_CANDIDATES
+                            ), f"Nested argument lists must be of type {self._PURE_CANDIDATES}"
+                            res_items.append(i_item)
+                        items[index] = res_items
+                # Need to fetch objects
+                case "ObjectID":
+                    refs.append(index)
+                case "SuiCoinObject":
+                    items[index] = ObjectID(item.object_id)
+                    refs.append(index)
+                # Tuple all ready to be set
+                case "ObjectRead":
+                    tuples.append(index)
+                # Direct passthroughs
+                case "Argument" | "BuilderArg" | "tuple":
+                    pass
+                case _:
+                    raise ValueError(f"Uknown class type handler {clz_name}")
 
     @versionchanged(version="0.18.0", reason="Handle argument nested list recursion.")
     def _resolve_arguments(self, items: list) -> list:
@@ -486,8 +487,9 @@ class SuiTransaction:
         self._resolve_objects(items, objref_indexes, objtup_indexes)
         return items
 
+    @versionchanged(version="0.19.0", reason="Check that only type Objects are passed")
     def make_move_vector(self, items: list[Any]) -> bcs.Argument:
-        """Create a call to convert a list of items to a Sui 'vector' type."""
+        """Create a call to convert a list of objects to a Sui 'vector' type."""
         # Sample first for type
         def _first_non_argument_type(inner_list: list) -> Any:
             """."""
@@ -504,23 +506,14 @@ class SuiTransaction:
             if first_item:
                 # If not all arguments, ensure the remaining are consistent
                 first_class = first_item.__class__.__name__
+                if first_class != "Argument" and first_class in self._PURE_CANDIDATES:
+                    raise ValueError(f"make_move_vec is for Objects only. Found type {first_class}")
                 for item in items:
                     item_class = item.__class__.__name__
                     if item_class == "Argument":
                         pass
                     else:
                         assert item_class == first_class, f"Expected {first_class} found {item_class}"
-                match first_class:
-                    case "int":
-                        suit = SuiIntegerType.to_best_fit_integer_type(first_item)
-                        type_tag = bcs.OptionalTypeTag(bcs.TypeTag(suit.type_tag_name))
-                    case "str":
-                        type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from("u8"))
-                    case "SuiAddress":
-                        type_tag = bcs.OptionalTypeTag(bcs.TypeTag("Address"))
-                    # type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(first_item.address))
-                    case _:
-                        pass
             return self.builder.make_move_vector(type_tag, self._resolve_arguments(items))
         raise ValueError("make_vector requires a non-empty list")
 

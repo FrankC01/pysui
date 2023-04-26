@@ -141,14 +141,14 @@ Command Inputs and Arguments
 Command Inputs
 ~~~~~~~~~~~~~~
 
-``pysui`` encapsulate the inputs to commands from their lower level treatment and detail. For the most part, all of the input
-variations on what 'type' of Pythoon or ``pysui`` the command will accept can be seen for each Command
+``pysui`` encapsulate the the lower level details inputs to command parameters or move_call arguments. For the most part,
+all of the input variations on what 'type' of Pythoon or ``pysui`` the command will accept can be seen for each Command
 method in :py:class:`pysui.sui.sui_clients.transaction.SuiTransaction` reference.
 
 Move Call Arguments
 ~~~~~~~~~~~~~~~~~~~
 
-However; the `arguments` to a Move Call command require special treatment to aid in disambiguating whether it is an object
+However; the `arguments` to a Move Call command may require special treatment to aid in disambiguating whether it is an object
 reference or just a pure value. Here is a snippet of a move call where arguments are wrapped in ``pysui`` types. Below the
 example is a coercion table describing the effect of resolving in `move_call` arguments.
 
@@ -178,15 +178,21 @@ example is a coercion table describing the effect of resolving in `move_call` ar
 +----------------------------------------------------------+----------------------------+
 | SuiU8, SuiU16, SuiU32, SuiU64, SuiU128, SuiU256          | Passed by value  [#f1]_    |
 +----------------------------------------------------------+----------------------------+
-| SuiAddress, OptionalU64                                  | Passed by value            |
+| list, SuiArray [#f2]_                                    | Members passed by value    |
 +----------------------------------------------------------+----------------------------+
-| ObjectID, SuiCoinObject, ObjectRead                      | Passed by reference [#f2]_ |
+| OptionalU8, OptionalU16, OptionalU32,                    |                            |
+| OptionalU64, OptionalU128, OptionalU256                  | Passed by value            |
 +----------------------------------------------------------+----------------------------+
-| Result of previous command [#f3]_                        | Command Result index       |
+| SuiAddress, OptionalUx                                   | Passed by value            |
++----------------------------------------------------------+----------------------------+
+| ObjectID, SuiCoinObject, ObjectRead                      | Passed by reference [#f3]_ |
++----------------------------------------------------------+----------------------------+
+| Result of previous command [#f4]_                        | Command Result index       |
 +----------------------------------------------------------+----------------------------+
 
 .. rubric:: Footnotes
 
 .. [#f1] Explicit unsigned integer bit size types
-.. [#f2] Will determine if Shared object or not before transaction execution
-.. [#f3] Result may be a list, so understanding which commands return a single or multiple is important
+.. [#f2] Members must be scalars, SuiAddresses or results of previous commands. For Object vectors use :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.make_move_vector`
+.. [#f3] Will determine if Shared object or not before transaction execution
+.. [#f4] Result may be a list, so understanding which commands return a single or multiple is important

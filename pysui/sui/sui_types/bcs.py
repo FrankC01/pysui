@@ -133,12 +133,6 @@ class SharedObjectReference(canoser.Struct):
         return cls(Address.from_str(indata.object_id), int(indata.owner.initial_shared_version), True)
 
 
-class OptionalU64(canoser.RustOptional):
-    """OptionalU64 Optional assignment of unsigned 64 bit int."""
-
-    _type = canoser.Uint64
-
-
 class Uint256(canoser.int_type.IntType):
     """Uint256 represents a 256 bit ulong as hack as canoser doesn't support."""
 
@@ -165,6 +159,47 @@ U32 = canoser.Uint32
 U64 = canoser.Uint64
 U128 = canoser.Uint128
 U256 = Uint256
+
+
+@versionadded(version="0.19.0", reason="Added")
+class OptionalU8(canoser.RustOptional):
+    """OptionalU8 Optional assignment of unsigned 8 bit int."""
+
+    _type = U8
+
+
+@versionadded(version="0.19.0", reason="Added")
+class OptionalU16(canoser.RustOptional):
+    """OptionalU16 Optional assignment of unsigned 16 bit int."""
+
+    _type = U16
+
+
+@versionadded(version="0.19.0", reason="Added")
+class OptionalU32(canoser.RustOptional):
+    """OptionalU32 Optional assignment of unsigned 32 bit int."""
+
+    _type = U32
+
+
+class OptionalU64(canoser.RustOptional):
+    """OptionalU64 Optional assignment of unsigned 64 bit int."""
+
+    _type = U64
+
+
+@versionadded(version="0.19.0", reason="Added")
+class OptionalU128(canoser.RustOptional):
+    """OptionalU128 Optional assignment of unsigned 128 bit int."""
+
+    _type = U128
+
+
+@versionadded(version="0.19.0", reason="Added")
+class OptionalU256(canoser.RustOptional):
+    """OptionalU256 Optional assignment of unsigned 256 bit int."""
+
+    _type = U256
 
 
 class TypeTag(canoser.RustEnum):

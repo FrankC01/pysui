@@ -90,9 +90,21 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: bcs.OptionalU8) -> list:
+        """Convert OptionalU8 to list of bytes."""
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
     def _(cls, arg: SuiU16) -> list:
         """Convert unsigned int to bytes."""
         return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.OptionalU16) -> list:
+        """Convert OptionalU16 to list of bytes."""
+        return list(arg.serialize())
 
     @pure.register
     @classmethod
@@ -102,9 +114,21 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: bcs.OptionalU32) -> list:
+        """Convert OptionalU32 to list of bytes."""
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
     def _(cls, arg: SuiU64) -> list:
         """Convert unsigned int to bytes."""
         return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.OptionalU64) -> list:
+        """Convert OptionalU64 to list of bytes."""
+        return list(arg.serialize())
 
     @pure.register
     @classmethod
@@ -114,15 +138,28 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: bcs.OptionalU128) -> list:
+        """Convert OptionalU128 to list of bytes."""
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
     def _(cls, arg: SuiU256) -> list:
         """Convert unsigned int to bytes."""
         return list(arg.to_bytes())
 
     @pure.register
     @classmethod
+    def _(cls, arg: bcs.OptionalU256) -> list:
+        """Convert OptionalU256 to list of bytes."""
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
     def _(cls, arg: str) -> list:
         """Convert str to list of bytes."""
         base_list = list(bytearray(arg, encoding="utf-8"))
+        base_list.insert(0, len(base_list))
         return base_list
 
     @pure.register
@@ -160,12 +197,6 @@ class PureInput:
     @classmethod
     def _(cls, arg: bcs.Digest) -> list:
         """Convert bcs,Digest to list of bytes."""
-        return list(arg.serialize())
-
-    @pure.register
-    @classmethod
-    def _(cls, arg: bcs.OptionalU64) -> list:
-        """Convert OptionalU64 to list of bytes."""
         return list(arg.serialize())
 
     @pure.register
