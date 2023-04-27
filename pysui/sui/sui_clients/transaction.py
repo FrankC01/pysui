@@ -40,7 +40,7 @@ from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiIntegerType, SuiSignature, SuiString, SuiU8
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiSignature, SuiString, SuiU8
 from pysui.sui.sui_utils import publish_build
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
@@ -91,7 +91,7 @@ class SignerBlock:
 
     @property
     def sponsor(self) -> Union[SuiAddress, SigningMultiSig]:
-        """Return the current sponsor (may be None) used as payer of transaction."""
+        """Gets the sponsor (may be None) used as payer of transaction."""
         return self._sponsor
 
     @sponsor.setter
@@ -450,7 +450,7 @@ class SuiTransaction:
                         self._resolve_item(0, litems, objref_indexes, objtup_indexes, nest_depth + 1)
                         items[index] = litems
                     # Else check for type consistency and convert to LCD
-                    else:
+                    elif litems:
                         item_clz_name = litems[0].__class__.__name__
                         res_items: list = []
                         for i_item in litems:
@@ -461,6 +461,8 @@ class SuiTransaction:
                             ), f"Nested argument lists must be of type {self._PURE_CANDIDATES}"
                             res_items.append(i_item)
                         items[index] = res_items
+                    else:
+                        items[index] = litems
                 # Need to fetch objects
                 case "ObjectID":
                     refs.append(index)

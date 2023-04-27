@@ -19,12 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- [enhancement](https://github.com/FrankC01/pysui/issues/92)SuiTransaction builder supports Optional in move_call arguments for Sui unsigned integer types
+- [enhancement](https://github.com/FrankC01/pysui/issues/92) SuiTransaction builder supports Optional in move_call arguments for Sui unsigned integer types
 
 ### Fixed
 
 - Pure string encoding [bug](https://github.com/FrankC01/pysui/issues/91)
 - Exclude simple types from SuiTransaction `make_move_vec` [bug](https://github.com/FrankC01/pysui/issues/93)
+- Simple empty list as `arguments` was failing [bug](https://github.com/FrankC01/pysui/issues/94)
 
 ### Changed
 
