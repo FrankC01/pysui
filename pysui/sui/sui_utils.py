@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import NoneType
 from typing import Any, Union
+from deprecated.sphinx import versionchanged
 import base58
 import yaml
 from dataclasses_json import DataClassJsonMixin
@@ -222,7 +223,8 @@ def sui_base_get_config() -> tuple[Path, Path]:
 # Conversion utilities
 
 
-def hexstring_to_list(indata: str, default_length: int = 64) -> list[int]:
+@versionchanged(version="0.19.0", reason="Account for > 3 and < 66 size hex string")
+def hexstring_to_list(indata: str, default_fill_length: int = 64) -> list[int]:
     """hexstring_to_list convert a hexstr (e.g. 0x...) into a list of ints.
 
     :param indata: Data to conver to list of ints
@@ -230,9 +232,11 @@ def hexstring_to_list(indata: str, default_length: int = 64) -> list[int]:
     :return: converted indata to int list
     :rtype: list[int]
     """
-    if len(indata) == 3:
-        asplit = indata.split("x") if indata.count("x") == 1 else indata.split("X")
-        indata = f"0x{asplit[1].zfill(default_length)}"
+    if len(indata) < default_fill_length:
+        if indata.count("x") or indata.count("X"):
+            indata = indata[2:]
+        # asplit = indata.split("x") if indata.count("x") == 1 else indata.split("X")
+        indata = f"0x{indata.zfill(default_fill_length)}"
 
     return [int(x) for x in binascii.unhexlify(indata[2:])]
 
