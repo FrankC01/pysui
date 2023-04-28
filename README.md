@@ -39,9 +39,10 @@ Requires:
 - Linux or macos (x86_64 or M1)
 - python 3.10 or greater
 - pkg-config
-- sui binaries to support `publish` function
+- libtool
+- sui binaries to support `publish` and mutli-sig signing function
 
-You will need `sui-base` to interacting with local nodes, it is an indispensible addition to Sui developers tools!
+You will need `suibase` to interacting with local nodes, it is an indispensible addition to Sui developers tools!
 
 ### Setup environment
 

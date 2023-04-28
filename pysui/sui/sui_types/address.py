@@ -17,29 +17,33 @@ import base64
 import hashlib
 import re
 from typing import Union
+from deprecated.sphinx import deprecated, versionchanged
 from pysui.abstracts import SuiBaseType
 from pysui.sui.sui_types.scalars import SuiString
-from pysui.sui.sui_constants import SUI_ADDRESS_STRING_LEN, SUI_HEX_ADDRESS_STRING_LEN
+from pysui.sui.sui_constants import SUI_HEX_ADDRESS_STRING_LEN
 from pysui.sui.sui_excepts import SuiInvalidAddress
-from deprecated.sphinx import deprecated, versionadded, versionchanged
-
-__partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{64}")
-__fullstring_pattern: re.Pattern = re.compile(r"0[xX][0-9a-fA-F]{64}")
 
 
+__partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{1,64}")
+
+
+@versionchanged(version="0.19.0", reason="Addresses can be between 3 and 66 chars with prefix, 1 and 64 without.")
 def valid_sui_address(instr: str) -> bool:
     """Verify Sui address string."""
     inlen = len(instr)
+    if inlen > SUI_HEX_ADDRESS_STRING_LEN:
+        return False
     match instr:
-        case "0x2" | "Immutable":
+        case "Immutable":
             return True
         case _:
-            if inlen > SUI_HEX_ADDRESS_STRING_LEN or inlen < SUI_ADDRESS_STRING_LEN:
+            if inlen < 3 and (instr.count("x") or instr.count("X")):
                 return False
-            # _kp = keypair_from_keystring(instr)
-            if inlen == SUI_HEX_ADDRESS_STRING_LEN and __fullstring_pattern.findall(instr):
+            if instr.count("x") or instr.count("X"):
+                instr = instr[2:]
+            if __partstring_pattern.findall(instr):
                 return True
-            return __partstring_pattern.findall(instr)
+            return False
 
 
 class SuiAddress(SuiBaseType):
