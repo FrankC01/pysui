@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/92) SuiTransaction builder supports Optional in move_call arguments for Sui unsigned integer types
+- `libtool` in README dependencies list
 
 ### Fixed
 
@@ -29,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bcs.Address conversion of strings of varying lengths [bug](https://github.com/FrankC01/pysui/issues/95)
 
 ### Changed
+
+- `sui-base` to `suibase` in documentation
 
 ### Removed
 

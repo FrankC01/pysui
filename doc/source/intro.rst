@@ -61,14 +61,14 @@ creating a Builder for the caller, and then executing, all **Builders** are avai
 Running Locally
 ---------------
 
-Starting in version 0.16.1 of ``pysui``, we have aligned with `The sui-base utility <https://sui-base.io/>`_ which provides
+Starting in version 0.16.1 of ``pysui``, we have aligned with `The sui-base utility <https://suibase.io/>`_ which provides
 superior localnet configurability and repeatability. It is the framework for our ``pysui`` unit/integration testing and we've
 made usage easier to leverage in developing with ``pysui``.
 
 In the code block above, you will notice the use of `SuiConfig.default_config()` which is assuming connection with devnet or
 testnet.
 
-Whereas with `sui-base` it loads a present, configurable, Sui configuration along with 5 addresses of each keytype
+Whereas with `suibase` it loads a present, configurable, Sui configuration along with 5 addresses of each keytype
 and each address providing a copius amount of Sui coin.
 
 First ensure proper setup of `sui-base`:
@@ -77,17 +77,17 @@ First ensure proper setup of `sui-base`:
    :linenos:
 
     # From ~/
-    git clone git@github.com:sui-base/sui-base.git
+    git clone git@github.com:sui-base/suibase.git
 
     # Install sui-base scripts
-    cd sui-base
+    cd suibase
     ./install
 
     # Generate and start a local node
     # This will clone the Sui source and buid the sui binary and sui-faucet
     localnet start
 
-    # Ensure that localnet is set to active
+    # Ensure that active symlink is set to localnet
     localnet set-active
 
     # See below to having pysui leverage the running instance and binaries
