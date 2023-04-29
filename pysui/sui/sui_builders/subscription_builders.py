@@ -17,7 +17,7 @@ from pysui.abstracts.client_types import SuiBaseType
 from pysui.sui.sui_types.event_filter import _EventFilterType, _TransactionFilterType, AllFilter
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder
-from pysui.sui.sui_txresults.complex_tx import SubscribedEvent
+from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, SubscribedTransaction
 
 
 class SubscribeEvent(_NativeTransactionBuilder):
@@ -65,7 +65,7 @@ class SubscribeTransaction(_NativeTransactionBuilder):
         txn_filter: _TransactionFilterType,
     ) -> None:
         """."""
-        super().__init__("suix_subscribeTransaction")
+        super().__init__("suix_subscribeTransaction", handler_cls=SubscribedTransaction, handler_func="from_dict")
         if txn_filter:
             if isinstance(txn_filter, _TransactionFilterType):
                 self.filter = txn_filter

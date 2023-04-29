@@ -16,8 +16,9 @@
 import asyncio
 import ssl
 import json
-from typing import Any, Callable
+from typing import Any, Callable, Union
 import warnings
+from deprecated.sphinx import versionadded, versionchanged
 from websockets.client import connect as ws_connect
 from websockets.client import WebSocketClientProtocol
 
@@ -25,9 +26,9 @@ from pysui.abstracts import Provider
 from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_clients.common import SuiRpcResult
-from pysui.sui.sui_builders.subscription_builders import SubscribeEvent
+from pysui.sui.sui_builders.subscription_builders import SubscribeEvent, SubscribeTransaction
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_txresults.complex_tx import SubscribedEvent
+from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, SubscribedTransaction
 
 
 class EventData:
@@ -60,6 +61,7 @@ class SuiClient(Provider):
     _ADDITIONL_HEADER: str = {"Content-Type": "application/json"}
     _PAYLOAD_TEMPLATE: dict = {"jsonrpc": "2.0", "id": 1, "method": None, "params": []}
 
+    @versionchanged(version="0.20.0", reason="Added transaction subscription management.")
     def __init__(self, config: SuiConfig):
         """__init__ Client initializer.
 
@@ -68,25 +70,27 @@ class SuiClient(Provider):
         """
         super().__init__(config)
         self._event_subscriptions: dict[str, asyncio.Task] = {}
+        self._txn_subscriptions: dict[str, asyncio.Task] = {}
         self._in_shutdown = False
 
+    @versionchanged(version="0.20.0", reason="Added transaction subscription management.")
     async def _subscription_drive(
         self,
         payload_msg: dict,
-        builder: SubscribedEvent,
+        builder: Union[SubscribeEvent, SubscribeTransaction],
         websock: WebSocketClientProtocol,
-        handler: Callable[[SubscribedEvent, int, int], Any],
+        handler: Union[Callable[[SubscribedEvent, int, int], Any], Callable[[SubscribedTransaction, int, int], Any]],
     ) -> SuiRpcResult:
         """_subscription_drive Iterate receiving events and calling handler function.
 
         :parm payload_msg: A copy of a subscription template RPC call
         :type payload_msg: dict
         :param builder: The subscription builder submitted for creating subscription filters.
-        :type builder: SubscribedEvent
+        :type builder: Union[SubscribeEvent, SubscribeTransaction]
         :param websock: The live websocket connection
         :type websock: WebSocketClientProtocol
         :param handler: The function called for each received event.
-        :type handler: Callable[SubscribedEvent, int], Any]
+        :type handler: Union[Callable[[SubscribedEvent, int, int], Any], Callable[[SubscribedTransaction, int, int], Any]]
         :return: _description_
         :rtype: SuiRpcResult
         """
@@ -98,7 +102,7 @@ class SuiClient(Provider):
             payload_msg["params"] = [parm_arg.filter]
         else:
             return SuiRpcResult(False, f"{parm_arg} not an accepted type")
-        print(json.dumps(payload_msg))
+        # print(json.dumps(payload_msg))
         await websock.send(json.dumps(payload_msg))
         # First we get a subscription ID
         response = json.loads(await websock.recv())
@@ -126,10 +130,11 @@ class SuiClient(Provider):
             return SuiRpcResult(True, "Cancelled", result_data)
         return SuiRpcResult(True, None, result_data)
 
+    @versionchanged(version="0.20.0", reason="Added transaction subscription management.")
     async def _subscription_listener(
         self,
-        builder: SubscribeEvent,
-        handler: Callable[[SubscribedEvent, int, int], Any],
+        builder: Union[SubscribeEvent, SubscribeTransaction],
+        handler: Union[Callable[[SubscribedEvent, int, int], Any], Callable[[SubscribedTransaction, int, int], Any]],
     ) -> SuiRpcResult:
         """_subscription_listener Sets up websocket subscription and calls _subscription_drive.
 
@@ -187,6 +192,39 @@ class SuiClient(Provider):
                 )
                 _task_name = new_task.get_name()
                 self._event_subscriptions[_task_name] = new_task
+                _result_data[_task_name] = new_task
+                _sui_result = SuiRpcResult(True, None, _result_data)
+            else:
+                _result_data[task_name] = None
+                _sui_result = SuiRpcResult(False, "Not started: In shutdown mode", _result_data)
+        return _sui_result
+
+    @versionadded(version="0.20.0", reason="Transaction Effects Subscription")
+    async def new_transaction_subscription(
+        self,
+        sbuilder: SubscribeTransaction,
+        handler: Callable[[SubscribedTransaction, int, int], Any],
+        task_name: str = None,
+    ) -> SuiRpcResult:
+        """new_event_subscription Initiate and run a move event subscription feed.
+
+        :param sbuilder: The subscription builder submitted for creating the transaction subscription filter.
+        :type sbuilder: SubscribeTransaction
+        :param handler: The function called for each received transaction event.
+        :type handler: Callable[[SubscribedTransaction, int], Any]
+        :param task_name: A name to assign to the listener task, defaults to None
+        :type task_name: str, optional
+        :return: Result of subscribed transaction event handling
+        :rtype: SuiRpcResult
+        """
+        _result_data: dict[str, asyncio.Task] = {}
+        async with self._ACCESS_LOCK:
+            if not self._in_shutdown:
+                new_task: asyncio.Task = asyncio.create_task(
+                    self._subscription_listener(sbuilder, handler), name=task_name
+                )
+                _task_name = new_task.get_name()
+                self._txn_subscriptions[_task_name] = new_task
                 _result_data[_task_name] = new_task
                 _sui_result = SuiRpcResult(True, None, _result_data)
             else:
