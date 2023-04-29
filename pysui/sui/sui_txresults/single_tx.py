@@ -17,6 +17,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, config, LetterCase
+from deprecated.sphinx import versionchanged
 from pysui.sui.sui_types import ObjectID, SuiAddress
 from pysui.sui.sui_txresults.common import GenericRef
 
@@ -734,6 +735,7 @@ class CoinBalances(DataClassJsonMixin):
 
 
 @dataclass
+@versionchanged(version="0.20.0", reason="Removed 'locked_until_epoch")
 class SuiCoinObject(DataClassJsonMixin):
     """From sui_getCoins."""
 
@@ -743,7 +745,7 @@ class SuiCoinObject(DataClassJsonMixin):
     digest: str
     balance: str
     previous_transaction: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    locked_until_epoch: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    # locked_until_epoch: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=str)
 
     @property
     def identifier(self) -> ObjectID:
@@ -765,7 +767,6 @@ class SuiCoinObject(DataClassJsonMixin):
             inbound.digest,
             inbound.content.fields["balance"],
             inbound.previous_transaction,
-            "",
         )
         setattr(coin, "owner", inbound.owner.address_owner)
         return coin
