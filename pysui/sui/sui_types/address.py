@@ -31,7 +31,7 @@ __partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{1,64}")
 def valid_sui_address(instr: str) -> bool:
     """Verify Sui address string."""
     inlen = len(instr)
-    if inlen > SUI_HEX_ADDRESS_STRING_LEN:
+    if not instr or inlen > SUI_HEX_ADDRESS_STRING_LEN:
         return False
     match instr:
         case "Immutable":
@@ -41,8 +41,10 @@ def valid_sui_address(instr: str) -> bool:
                 return False
             if instr.count("x") or instr.count("X"):
                 instr = instr[2:]
-            if __partstring_pattern.findall(instr):
-                return True
+            re_res = __partstring_pattern.findall(instr)
+            if re_res:
+                if len("".join(re_res)) == len(instr):
+                    return True
             return False
 
 
