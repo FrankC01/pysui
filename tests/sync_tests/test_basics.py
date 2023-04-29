@@ -14,10 +14,11 @@
 """Testing basic client capabilities (no transactions)."""
 
 # pylint:disable=unused-wildcard-import,wildcard-import
+from pysui.sui.sui_types.address import SuiAddress, valid_sui_address
+from pysui.sui.sui_types.scalars import *
 from pysui.sui.sui_builders.get_builders import *
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_txresults.complex_tx import Checkpoint
-from pysui.sui.sui_types.scalars import SuiString
 
 
 def test_addresses(sui_client: SuiClient) -> None:
@@ -34,6 +35,25 @@ def test_base_info(sui_client: SuiClient) -> None:
     assert len(sui_client.rpc_api_names) > 0
     assert sui_client.rpc_version
     assert sui_client.api_exists("suix_getLatestSuiSystemState")
+
+
+def test_base_types(sui_client: SuiClient) -> None:
+    """General types testing."""
+    addy_strs1: list[str] = ["0x0", "0x1", "0x2", "0x3", "0x4", "0x5", "0x6"]
+    for addy1 in addy_strs1:
+        assert valid_sui_address(addy1)
+    addy_strs_var: list[str] = ["0xa", "0xaa", "0xaaa", "0xaaaa", "0xaaaaa", "0xaaaaaa", "0xaaaaaaaaaa"]
+    for addy1 in addy_strs_var:
+        assert valid_sui_address(addy1)
+    addy_strs_fail: list[str] = [
+        "",
+        "0x",
+        "zebra",
+        "0x0xaaaaaa",
+        "0x071351e7d15a3fee972b852ce1adbd4de39ee232ff9c372704bfb8f482bbe234333",
+    ]
+    for addy1 in addy_strs_fail:
+        assert not valid_sui_address(addy1)
 
 
 def test_gets(sui_client: SuiClient) -> None:
