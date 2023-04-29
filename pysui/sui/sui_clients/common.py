@@ -99,7 +99,7 @@ class _ClientMixin(Provider):
     """
 
     _RPC_MINIMAL_VERSION: int = 33
-    _RPC_REQUIRED_VERSION: str = "0.33.0"
+    _RPC_REQUIRED_VERSION: str = "1.0.0"
     _SIGNATURE_ERROR: set[str] = {
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",
@@ -205,7 +205,6 @@ class _ClientMixin(Provider):
         rpa = packaging.version.parse(self.rpc_version)
         mpa = packaging.version.parse(self._RPC_REQUIRED_VERSION)
         if rpa < mpa:
-            # if int(self._rpc_version.split(".")[1]) < self._RPC_MINIMAL_VERSION:
             raise RuntimeError(f"Requires minimum version '{self._RPC_REQUIRED_VERSION} found {self._rpc_version}")
 
     def version_at_least(self, majver: int, minver: int, bldver: int) -> bool:
