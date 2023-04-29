@@ -33,6 +33,7 @@ from pysui.sui.sui_txresults.single_tx import (
     SuiLatestSystemState,
     ObjectRead,
     CommitteeInfo,
+    ValidatorApys,
 )
 from pysui.sui.sui_txresults.complex_tx import (
     Checkpoint,
@@ -716,3 +717,13 @@ class GetLoadedChildObjects(_NativeTransactionBuilder):
     def __init__(self, *, digest: SuiString):
         """Builder initializer."""
         super().__init__("sui_getLoadedChildObjects", handler_cls=LoadedChildObjectsResponse, handler_func="from_dict")
+
+
+@versionadded(version="0.20.0", reason="New Sui RPC API method.")
+class GetValidatorsApy(_NativeTransactionBuilder):
+    """Return the validator APY."""
+
+    @sui_builder()
+    def __init__(self):
+        """Builder initializer."""
+        super().__init__("suix_getValidatorsApy", handler_cls=ValidatorApys, handler_func="from_dict")

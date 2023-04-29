@@ -14,14 +14,14 @@
 """Sui Builders: For subscriptions and filters."""
 
 from pysui.abstracts.client_types import SuiBaseType
-from pysui.sui.sui_types.event_filter import _EventFilterType, AllFilter
+from pysui.sui.sui_types.event_filter import _EventFilterType, _TransactionFilterType, AllFilter
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder
 from pysui.sui.sui_txresults.complex_tx import SubscribedEvent
 
 
 class SubscribeEvent(_NativeTransactionBuilder):
-    """Parameter argument for sui_subscribeEvent."""
+    """Parameter argument for suix_subscribeEvent."""
 
     def __init__(
         self,
@@ -50,6 +50,29 @@ class SubscribeEvent(_NativeTransactionBuilder):
         """Update the event filter."""
         self.filter = event_filter
         return self
+
+    def _collect_parameters(self) -> list[SuiBaseType]:
+        """Fetch parameters."""
+        return [self.filter]
+
+
+class SubscribeTransaction(_NativeTransactionBuilder):
+    """Parameter argument for suix_subscribeTransaction."""
+
+    def __init__(
+        self,
+        *,
+        txn_filter: _TransactionFilterType,
+    ) -> None:
+        """."""
+        super().__init__("suix_subscribeTransaction")
+        if txn_filter:
+            if isinstance(txn_filter, _TransactionFilterType):
+                self.filter = txn_filter
+            else:
+                raise AttributeError(f"Invalid argument {txn_filter}. Expected subclass of _TransactionFilterType")
+        else:
+            raise AttributeError("Expected 'txn_filter' not found")
 
     def _collect_parameters(self) -> list[SuiBaseType]:
         """Fetch parameters."""

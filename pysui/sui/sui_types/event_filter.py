@@ -13,10 +13,11 @@
 
 """Sui query and get event filter types."""
 
-
+from typing import Optional, Union
+from deprecated.sphinx import versionadded
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiMap
-from pysui.sui.sui_types.scalars import SuiInteger
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
 
 
 class _EventFilterType:
@@ -148,3 +149,89 @@ class AnyFilter(_EventFilterType, SuiMap):
         """
         filters = filters if filters else []
         super().__init__("Any", [x.filter for x in filters])
+
+
+@versionadded(version="0.20.0", reason="Added from Sui RPC API 1.0.0")
+class _TransactionFilterType:
+    """Base class for identifying valid transaction filters."""
+
+
+class CheckpointEvent(_TransactionFilterType, SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(self, checkpoint_id: str):
+        """Initialize query parameter."""
+        super().__init__("Checkpoint", checkpoint_id)
+
+
+class MoveFunctionEvent(_TransactionFilterType, SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(
+        self,
+        package_id: Union[str, ObjectID],
+        module_name: Optional[Union[str, SuiString]] = None,
+        function_name: Optional[Union[str, SuiString]] = None,
+    ):
+        """Initialize query parameter."""
+        package_id = package_id if isinstance(package_id, str) else package_id.value
+        module_name = module_name if isinstance(module_name, str) else module_name.value
+        function_name = function_name if isinstance(function_name, str) else function_name
+        sdict = {"package": package_id, "module": module_name, "function": function_name}
+        super().__init__("MoveFunction", sdict)
+
+
+class InputObjectEvent(_TransactionFilterType, SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(self, object_id: Union[str, ObjectID]):
+        """Initialize query parameter."""
+        object_id = object_id if isinstance(object_id.str) else object_id.vaule
+        super().__init__("InputObject", object_id)
+
+
+class ChangedObjectEvent(_TransactionFilterType, SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(self, object_id: Union[str, ObjectID]):
+        """Initialize query parameter."""
+        object_id = object_id if isinstance(object_id.str) else object_id.vaule
+        super().__init__("ChangedObject", object_id)
+
+
+class FromAddressEvent(_TransactionFilterType, SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(self, address_id: Union[str, SuiAddress]):
+        """Initialize query parameter."""
+        address_id = address_id if isinstance(address_id, str) else address_id.address
+        super().__init__("FromAddress", address_id)
+
+
+class ToAddressEvent(_TransactionFilterType, SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(self, address_id: Union[str, SuiAddress]):
+        """Initialize query parameter."""
+        address_id = address_id if isinstance(address_id, str) else address_id.address
+        super().__init__("ToAddress", address_id)
+
+
+class FromAndToAddressEvent(_TransactionFilterType, SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(self, from_address_id: Union[str, SuiAddress], to_address_id: Union[str, SuiAddress]):
+        """Initialize query parameter."""
+        from_address_id = from_address_id if isinstance(from_address_id, str) else from_address_id.address
+        to_address_id = to_address_id if isinstance(to_address_id, str) else to_address_id.address
+        sdict = {"from": from_address_id, "to": to_address_id}
+        super().__init__("FromAndToAddress", sdict)
+
+
+class TransactionKindEvent(_TransactionFilterType, SuiMap):
+    """Query events for Transaction."""
+
+    def __init__(self, transaction_kind: Union[str, SuiString]):
+        """Initialize query parameter."""
+        transaction_kind = transaction_kind if isinstance(transaction_kind, str) else transaction_kind.value
+        super().__init__("TransactionKindEvent", transaction_kind)

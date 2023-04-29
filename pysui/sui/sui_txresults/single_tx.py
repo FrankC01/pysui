@@ -815,3 +815,19 @@ class LoadedChildObjectsResponse(DataClassJsonMixin):
     """From sui_getLoadedChildObjects."""
 
     loaded_child_objects: list[LoadedChildObject] = field(metadata=config(letter_case=LetterCase.CAMEL))
+
+
+@dataclass
+class ValidatorApy(DataClassJsonMixin):
+    """From suix_getValidatorsApy."""
+
+    address: str
+    apy: float
+
+
+@dataclass
+class ValidatorApys(DataClassJsonMixin):
+    """From suix_getValidatorsApy."""
+
+    apys: list[ValidatorApy]
+    epoch: str
