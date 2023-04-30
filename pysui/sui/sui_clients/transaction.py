@@ -17,7 +17,7 @@
 import base64
 import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Callable
 from deprecated.sphinx import versionadded, versionchanged
 from pysui.sui.sui_builders.base_builder import SuiRequestType
 from pysui.sui.sui_builders.exec_builders import ExecuteTransaction, InspectTransaction, PayAllSui
@@ -730,6 +730,42 @@ class SuiTransaction:
         receipt = self.builder.publish_upgrade(modules, dependencies, package_id, auth_cmd)
         # Commit
         return self.builder.commit_upgrade(bcs.Argument("Input", cap_arg), receipt)
+
+    @versionadded(version="0.20.0", reason="Support Sui 1.0.0 custom upgrades")
+    def custom_upgrade(
+        self,
+        *,
+        project_path: str,
+        package_id: Union[str, ObjectID],
+        upgrade_cap: Union[str, ObjectID, ObjectRead],
+        authorize_upgrade_fn: Callable[["SuiTransaction", ObjectRead], bcs.Argument],
+        commit_upgrade_fn: Callable[["SuiTransaction", bcs.Argument, bcs.Argument], bcs.Argument],
+        with_unpublished_dependencies: bool = False,
+        skip_fetch_latest_git_deps: bool = False,
+    ) -> bcs.Argument:
+        """."""
+        assert authorize_upgrade_fn, "'authorize_upgrade_fn' is NoneType"
+        assert commit_upgrade_fn, "'commit_upgrade_fn' is NoneType"
+        # Compile the new package
+        src_path = Path(os.path.expanduser(project_path))
+        compiled_package = publish_build(src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps)
+        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
+        dependencies = [
+            bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in compiled_package.dependencies
+        ]
+        # Verify get/upgrade cap details
+        if not isinstance(upgrade_cap, ObjectRead):
+            upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
+            upgrade_cap = self._verify_upgrade_cap(upgrade_cap)
+        else:
+            assert upgrade_cap.object_type == _UPGRADE_CAP_TYPE, f"Invalid upgrade_cap object {upgrade_cap}"
+
+        auth_cmd = authorize_upgrade_fn(self, upgrade_cap)
+        # Extrack the auth_cmd cap input
+        package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
+        # Upgrade
+        receipt = self.builder.publish_upgrade(modules, dependencies, package_id, auth_cmd)
+        return commit_upgrade_fn(self, receipt)
 
     def stake_coin(
         self,
