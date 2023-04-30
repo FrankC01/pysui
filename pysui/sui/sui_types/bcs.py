@@ -130,7 +130,7 @@ class SharedObjectReference(canoser.Struct):
         :rtype: SharedObjectReference
         """
         # return cls(Address.from_str(indata.object_id), indata.version, True)
-        return cls(Address.from_str(indata.object_id), int(indata.owner.initial_shared_version), True)
+        return cls(Address.from_str(indata.object_id), int(indata.owner.initial_shared_version), indata.owner.mutable)
 
 
 class Uint256(canoser.int_type.IntType):

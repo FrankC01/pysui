@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Mutable flag on ObjectRead of ownertype Shared [bug](https://github.com/FrankC01/pysui/issues/97)
 - Pure string encoding [bug](https://github.com/FrankC01/pysui/issues/91)
 - Exclude simple types from SuiTransaction `make_move_vec` [bug](https://github.com/FrankC01/pysui/issues/93)
 - Simple empty list as `arguments` was failing [bug](https://github.com/FrankC01/pysui/issues/94)
