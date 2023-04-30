@@ -160,6 +160,7 @@ class SharedOwner(DataClassJsonMixin):
 
     owner_type: str
     initial_shared_version: str
+    mutable: Optional[bool] = field(default=True)
 
 
 @dataclass
