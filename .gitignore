@@ -16,6 +16,7 @@ sui.log*
 temp*.py
 temp_sub.py
 out*
+backup/
 
 
 # pytest cruft
