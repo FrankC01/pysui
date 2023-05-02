@@ -15,7 +15,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.19.0] - TBD
+## [0.20.0]
+
+Breaking Changes
+
+### Added
+
+- GetValidatorsApy builder and response supporting Sui RPC API `suix_getValidatorsApy` in 1.0.0
+- SubscribeTransaction builder supporting Sui RPC API `suix_subscribeTransaction` in 1.0.0
+- `asynch_sub_txn` demo for SubscribeTransaction
+- `custom_upgrade` method to SuiTransaction
+- `deprecated`, `version added` and `version changes` indicators at class and method levels in `pysu` documentation
+
+### Fixed
+
+- Duplicate inputs generated from SuiTransaction building [bug](https://github.com/FrankC01/pysui/issues/99)
+
+### Changed
+
+- **Breaking Change** SuiTransaction `publish` command now returns an UpgradeCap result. Up to author to transfer
+- `publish_build` utility that builds a move project for publishing now uses updated digest creation unless flag to use legacy set
+
+### Removed
+
+- **Breaking Change** `locked_in_epoch` field remmoved in SuiCoinObject result.
+
+## [0.19.0] - Repo Only
 
 ### Added
 
