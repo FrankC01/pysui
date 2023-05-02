@@ -11,6 +11,7 @@ Requires:
 - Linux or macos (x86_64 or M1)
 - python 3.10 or greater
 - pkg-config
+- libtool
 - git
 - sui binaries to support `publish` function
 

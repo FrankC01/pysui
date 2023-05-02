@@ -274,7 +274,6 @@ class ProgrammableTransactionBuilder:
             e_index = 0
             for _ekey, evalue in self.inputs.items():
                 if object_arg == evalue.value:
-                    print(f"{e_index} = {object_arg}")
                     return bcs.Argument("Input", e_index)
                 e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
@@ -404,7 +403,7 @@ class ProgrammableTransactionBuilder:
         """
         reciever_arg = self.input_pure(recipient)
         if amount:
-            coin_arg = self.split_coin(from_coin=from_coin, amounts=amount)
+            coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
         else:
             coin_arg = self.input_obj(*from_coin)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([coin_arg], reciever_arg)))

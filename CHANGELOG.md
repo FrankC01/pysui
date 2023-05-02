@@ -25,20 +25,23 @@ Breaking Changes
 - SubscribeTransaction builder supporting Sui RPC API `suix_subscribeTransaction` in 1.0.0
 - `asynch_sub_txn` demo for SubscribeTransaction
 - `custom_upgrade` method to SuiTransaction
-- `deprecated`, `version added` and `version changes` indicators at class and method levels in `pysu` documentation
 
 ### Fixed
 
+- Fixed argument error in low level builder for transfer using split which expected a list of amounts.
 - Duplicate inputs generated from SuiTransaction building [bug](https://github.com/FrankC01/pysui/issues/99)
 
 ### Changed
 
+- Bump version to 0.20.0
 - **Breaking Change** SuiTransaction `publish` command now returns an UpgradeCap result. Up to author to transfer
 - `publish_build` utility that builds a move project for publishing now uses updated digest creation unless flag to use legacy set
+- Updated documentation
 
 ### Removed
 
 - **Breaking Change** `locked_in_epoch` field remmoved in SuiCoinObject result.
+- Deprecated methods marked in 0.16.1
 
 ## [0.19.0] - Repo Only
 

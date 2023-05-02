@@ -98,15 +98,6 @@ class SuiAddress(SuiBaseType):
         return self.address
 
     @classmethod
-    @deprecated(version="0.16.1", reason="Constructor does same.")
-    def from_hex_string(cls, instr: Union[str, SuiString]) -> "SuiAddress":
-        """Instantiate instance of SuiAddress from hex string."""
-        instr = instr if isinstance(instr, str) else str(instr)
-        if valid_sui_address(instr):
-            return cls(instr)
-        raise SuiInvalidAddress(f"{instr} is not a valid address string.")
-
-    @classmethod
     def from_keypair_string(cls, keystring: str) -> "SuiAddress":
         """Address from base64 encoded keypair string with no validation."""
         return cls.from_bytes(base64.b64decode(keystring))
