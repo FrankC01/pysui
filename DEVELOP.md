@@ -15,7 +15,7 @@ Requires:
 - git
 - sui binaries to support `publish` function
 
-### Clone this repo
+### Clone the pysui repo
 
 `git clone git@github.com:FrankC01/pysui.git
 

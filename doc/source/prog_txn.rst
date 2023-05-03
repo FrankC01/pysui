@@ -76,7 +76,7 @@ Basic commands:
     * transfer_objects, transfer_sui
     * split_coin,split_coin_equal
     * make_move_vector
-    * publish, publish_upgrade, custom_upgrade
+    * publish, publish_upgrade, custom_upgrade (new)
     * stake_coin, unstake_coin
 
 Inspection

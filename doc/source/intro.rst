@@ -1,7 +1,7 @@
 Introducing pysui
 =================
 
-**pysui** is a SUI RPC API Client SDK for Python.
+**pysui** is the Python Sui RPC API Client SDK.
 
 The role of Sui Binaries
 ------------------------
@@ -17,6 +17,9 @@ The role of Sui Binaries
     | For example, if SuiConfig is created with :meth:`pysui.sui.sui_config.SuiConfig.default_config` it looks for:
     | ``.sui/sui_config/client.yaml``
 
+-
+    | For MultiSig signing it relies on ``sui keytool multi-sig-combine-partial-sig``. There are plans to
+    | remove this dependency
 
 The Client
 ----------
