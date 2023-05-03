@@ -81,7 +81,8 @@ class SuiConfig(ClientConfiguration):
                 self._socket_url = LOCALNET_SOCKET_URL
                 self._local_running = True
             case "mainnet":
-                raise NotImplementedError("mainnet not deployed for Sui network yet.")
+                self._faucet_url = None
+                self._socket_url = "wss://fullnode.mainnet.sui.io:443"
         self._keypairs, self._addresses, self._address_keypair = load_keys_and_addresses(self.keystore_file)
 
     def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:
