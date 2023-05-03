@@ -76,7 +76,7 @@ Basic commands:
     * transfer_objects, transfer_sui
     * split_coin,split_coin_equal
     * make_move_vector
-    * publish, publish_upgrade
+    * publish, publish_upgrade, custom_upgrade (new)
     * stake_coin, unstake_coin
 
 Inspection
@@ -196,3 +196,234 @@ example is a coercion table describing the effect of resolving in `move_call` ar
 .. [#f2] Members must be scalars, SuiAddresses or results of previous commands. For Object vectors use :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.make_move_vector`
 .. [#f3] Will determine if Shared object or not before transaction execution
 .. [#f4] Result may be a list, so understanding which commands return a single or multiple is important
+
+Command Notes
+#############
+
+Publishing
+~~~~~~~~~~
+
+Common Results
+++++++++++++++
+
+Whether publishing or upgrading a package, knowledge of the published package ID and/or UpgradeCap is likely
+useful for the author to know. Here is a simple function that executes the transaction and returns both
+the package ID and UpgradeCap id (whether the cap is default or custom):
+
+.. code-block:: Python
+
+    def transaction_run(txb: SuiTransaction):
+        """Example of simple executing a SuiTransaction."""
+        # Set sender if not done already
+        if not txb.signer_block.sender:
+            txb.signer_block.sender = txb.client.config.active_address
+
+        # Execute the transaction
+        tx_result = txb.execute(gas_budget="100000")
+        if tx_result.is_ok():
+            if hasattr(tx_result.result_data, "to_json"):
+                print(tx_result.result_data.to_json(indent=2))
+            else:
+                print(tx_result.result_data)
+        else:
+            print(tx_result.result_string)
+
+
+    def publish_and_result(txb: SuiTransaction, print_json=True) -> tuple[str, str]:
+        """Example of running the publish commands in a SuiTransaction and retrieving important info."""
+        # Set the sender if not already sent.
+        # Not shown is optionally setting a sponsor as well
+        if not txb.signer_block.sender:
+            txb.signer_block.sender = txb.client.config.active_address
+
+        # Execute the transaction
+        tx_result = txb.execute(gas_budget="100000")
+        package_id: str = None
+        upgrade_cap_id: str = None
+
+        if tx_result.is_ok():
+            if hasattr(tx_result.result_data, "to_json"):
+                # Get the result data and iterate through object changes
+                tx_response: TxResponse = tx_result.result_data
+                for object_change in tx_response.object_changes:
+                    match object_change["type"]:
+                        # Found our newly published package_id
+                        case "published":
+                            package_id = object_change["packageId"]
+                        case "created":
+                            # Found our newly created UpgradeCap
+                            if object_change["objectType"].endswith("UpgradeCap"):
+                                upgrade_cap_id = object_change["objectId"]
+                        case "mutated":
+                            # On upgrades, UpgradeCap is mutated
+                            if object_change["objectType"].endswith("UpgradeCap"):
+                                upgrade_cap_id = object_change["objectId"]
+                        case _:
+                            pass
+                if print_json:
+                    print(tx_response.to_json(indent=2))
+            else:
+                print(f"Non-standard result found {tx_result.result_data}")
+        else:
+            print(f"Error encoundered {tx_result.result_string}")
+        return (package_id, upgrade_cap_id)
+
+
+
+Publish Method
+++++++++++++++
+
+SuiTransaction provides :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.publish`. Note that the
+result of the command is the UpgradeCap and it can then be transfered to an owner.
+
+.. code-block:: Python
+
+    def publish_package(client: SuiClient = None):
+        """Sample straight up publish of move contract."""
+        client = client if client else SuiClient(SuiConfig.default_config())
+
+        # Initiate a new transaction
+        txer = SuiTransaction(client)
+
+        # Create a publish command
+        upgrade_cap = txer.publish(project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_PACKAGE_PROJECT>")
+
+        # Transfer the upgrade cap to my address
+        txer.transfer_objects(transfers=[upgrade_cap], recipient=client.config.active_address)
+
+        # Convenience method to sign and execute transaction and fetch useful information
+        package_id, cap_id = publish_and_result(txer, False)
+        print(f"Package ID: {package_id}")
+        print(f"UpgradeCap ID: {cap_id}")
+
+Publish Upgrade Method
+++++++++++++++++++++++
+
+SuiTransaction provides :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.publish_upgrade`. This will perform
+standard authorize, publish and commit steps. See custom upgrade below if you have specialized policies.
+
+Example assumes you've taken necessary steps to prepare the package source for upgrading.
+
+.. code-block:: Python
+
+    def upgrade_package(client: SuiClient = None):
+        """Sample batteries included package upgrade."""
+        client = client if client else SuiClient(SuiConfig.default_config())
+
+        # Initiate a new transaction
+        txer = SuiTransaction(client)
+
+        txer.publish_upgrade(
+            project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_PACKAGE_PROJECT>",
+            package_id=package_id, # See above Publish example for published package_id
+            upgrade_cap=cap_id,    # See above Publish example for created UpgradeCap
+        )
+        package_id, cap_id = publish_and_result(txer, False)
+        print(f"Upgraded Package ID: {package_id}")
+        print(f"Versioned UpgradeCap ID: {cap_id}")
+
+
+
+Custom Upgrade Method
+++++++++++++++++++++++
+
+SuiTransaction provides :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.custom_upgrade`. This is a
+high order function (HOF) that calls the authors *custom authorization*, then performs the publish and then again
+calls an authors *custom commit* function.
+
+In general, custom upgrades involve:
+
+    * Having a custom upgrade policy package separate from the packages governed by it
+    * Publishing an initial version of a move package that will be governed by the custom policy package
+    * Using the custom policy package, generate an authorized upgrade ticket if governance rules allow
+    * Publishing the authorized upgrade and creating a receipt
+    * Commiting the upgraded move package using it's upgraded receipt and finalizing using the custom policy controls
+
+
+The example function below follows the `Sui custom upgrade policies example  <https://docs.sui.io/devnet/build/custom-upgrade-policy/>`_
+
+.. code-block:: Python
+
+    # First publish the policy package
+    def publish_policy(client: SuiClient = None):
+        """Publish a customized policy and make it's upgrade cap immutable."""
+        client = client if client else SuiClient(SuiConfig.default_config())
+
+        txer = SuiTransaction(client)
+
+        # Publish policy command
+        upgrade_cap = txer.publish(project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_CUSTOM_POLICY_PACKAGE>")
+
+        # Transfer the upgrade cap to my address
+        txer.transfer_objects(transfers=[upgrade_cap], recipient=client.config.active_address)
+
+        policy_package_id, policy_cap_id = publish_and_result(txer, False)
+        print(f"Policy Package ID: {policy_package_id}")
+        print(f"Policy UpgradeCap ID: {policy_cap_id}")
+
+        # New transaction
+        txer = SuiTransaction(client)
+
+        # Make cap immutable
+        txer.move_call(
+            target="0x2::package::make_immutable",
+            arguments=[ObjectID(policy_cap_id)],
+        )
+        transaction_run(txer)
+
+    # Next publish an initial package version
+    def publish_example(client: SuiClient = None):
+        """Publish the example for which upgrades will have custom governance."""
+        client = client if client else SuiClient(SuiConfig.default_config())
+
+        # New transaction
+        txer = SuiTransaction(client)
+
+        # Publish the example
+        ex_upgrade_cap = txer.publish(project_path="~/frankc01/example")
+
+        # Transition the newly created default upgrade cap to our custom policy type
+        # Restricting upgrades to Tuesdays (day 1 of week)
+        mon_policy_cap = txer.move_call(
+            target=policy_cap_id + "::day_of_week::new_policy",
+            arguments=[ex_upgrade_cap, SuiU8(1)],
+        )
+        # Transfer to sender
+        txer.transfer_objects(transfers=[mon_policy_cap], recipient=client.config.active_address)
+
+        example_package_id, example_cap_id = publish_and_result(txer, False)
+        print(f"Example's Package ID: {example_package_id}")
+        print(f"Example's UpgradeCap ID: {example_cap_id}")
+
+    # CUSTOM UPGRADE!!!
+    # Assuming the example package has had source changes
+
+    def custom_authorize(txer: SuiTransaction, upgrade_cap: ObjectRead, digest: bcs.Digest) -> bcs.Argument:
+        """Call the Custom Policy package to authorize an upgrade and get an upgrade ticket."""
+        target = policy_package_id + "::day_of_week::authorize_upgrade"
+
+        # Return the result which is the upgrade ticket
+        return txer.move_call(target=target, arguments=[upgrade_cap, SuiU8(0), digest])
+
+
+    def custom_commit(txer: SuiTransaction, upgrade_cap: ObjectRead, receipt: bcs.Argument) -> bcs.Argument:
+        """With the receipt from the package upgrade, commit the upgrade."""
+        target = policy_package_id + "::day_of_week::commit_upgrade"
+        return txer.move_call(target=target, arguments=[upgrade_cap, receipt])
+
+
+    def custom_upgrade(client: SuiClient = None):
+        """Call SuiTransaction HOF for custom upgrades."""
+        client = client if client else SuiClient(SuiConfig.default_config())
+        txer = SuiTransaction(client)
+        txer.custom_upgrade(
+            project_path="~/frankc01/example",
+            package_id=example_package_id,
+            upgrade_cap=example_cap_id,
+            authorize_upgrade_fn=custom_authorize,
+            commit_upgrade_fn=custom_commit,
+        )
+
+        example_package_id, example_cap_id = publish_and_result(txer, False)
+        print(f"Example's Upgraded Package ID: {example_package_id}")
+        print(f"Example's UpgradeCap ID: {example_cap_id}")

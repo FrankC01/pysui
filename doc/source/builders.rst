@@ -5,6 +5,9 @@ Builders
 General
 -------
 
+With ``pysui`` 0.20.0, the SuiTransaction builder was introduced that offers a more powerful transaction compilation
+capability. However; for backwords compatibility ``pysui`` will continue operating just fine using Builders.
+
 The Builder Package :py:mod:`pysui.sui.sui_builders` contains builders for
 every SUI RPC API call.
 

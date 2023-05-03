@@ -11,10 +11,11 @@ Requires:
 - Linux or macos (x86_64 or M1)
 - python 3.10 or greater
 - pkg-config
+- libtool
 - git
 - sui binaries to support `publish` function
 
-### Clone this repo
+### Clone the pysui repo
 
 `git clone git@github.com:FrankC01/pysui.git
 

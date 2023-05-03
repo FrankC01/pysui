@@ -243,7 +243,7 @@ class ProgrammableTransactionBuilder:
         """
         return bcs.TransactionKind("ProgrammableTransaction", self._finish())
 
-    # TODO: Check for duplicates to return the same input index
+    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
         """input_pure registers a pure input argument in the inputs collection.
 
@@ -254,17 +254,28 @@ class ProgrammableTransactionBuilder:
         :rtype: bcs.Argument
         """
         out_index = len(self.inputs)
-        if key.enum_name == "Pure":  # _key = hash(input)
+        if key.enum_name == "Pure":
+            e_index = 0
+            for _ekey, evalue in self.inputs.items():
+                if evalue.enum_name == "Pure" and key.value == evalue.value:
+                    return bcs.Argument("Input", e_index)
+                e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
         else:
             raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
         return bcs.Argument("Input", out_index)
 
     # TODO: Rationalize SharedObject nuances
+    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
     def input_obj(self, key: bcs.BuilderArg, object_arg: bcs.ObjectArg) -> bcs.Argument:
         """."""
         out_index = len(self.inputs)
         if key.enum_name == "Object" and isinstance(object_arg, bcs.ObjectArg):  # _key = hash(input)
+            e_index = 0
+            for _ekey, evalue in self.inputs.items():
+                if object_arg == evalue.value:
+                    return bcs.Argument("Input", e_index)
+                e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
         else:
             raise ValueError(f"Expected Object builder arg and ObjectArg, found {key.enum_name} and {type(object_arg)}")
@@ -392,17 +403,16 @@ class ProgrammableTransactionBuilder:
         """
         reciever_arg = self.input_pure(recipient)
         if amount:
-            coin_arg = self.split_coin(from_coin=from_coin, amounts=amount)
+            coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
         else:
             coin_arg = self.input_obj(*from_coin)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([coin_arg], reciever_arg)))
 
-    def publish(
-        self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address], recipient: bcs.BuilderArg
-    ) -> bcs.Argument:
+    @versionchanged(version="0.20.0", reason="Removed UpgradeCap auto transfer as per Sui best practices.")
+    def publish(self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address]) -> bcs.Argument:
         """Setup a Publish command and return it's result Argument."""
         # result = self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
-        return self.transfer_objects(recipient, [self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))])
+        return self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
 
     def authorize_upgrade(
         self, upgrade_cap: tuple[bcs.BuilderArg, bcs.ObjectArg], policy: bcs.BuilderArg, digest: bcs.BuilderArg

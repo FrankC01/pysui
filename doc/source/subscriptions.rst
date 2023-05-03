@@ -4,10 +4,10 @@ Subscriptions
 
 General
 -------
-**Sui** supports subscriptions to listen for Sui Events via web-sockets.
+**Sui** supports subscriptions to listen for Sui Events and Sui Transactions via web-sockets.
 
-* The Sui Events type listeners support a plethora of logical filtering capabilities that can further narrow results to exect events types.
-* Interestingly enough, MystenLabs dropped support for subscribing to transactions.
+* The Sui Events type listeners support a plethora of logical filtering capabilities that can further narrow results to exact events types.
+* The Sui Transaction type listeners support a number of simple filter options to focus on specific effect context.
 
 SuiClient and subscription Builders
 -----------------------------------
@@ -15,7 +15,7 @@ SuiClient and subscription Builders
 In ``pysui`` there are *two* core modules specifically defined for subscriptions:
 
 #. :py:mod:`pysui.sui.sui_clients.subscribe` - This module contains the subscription SuiClient and a data collector class.
-#. :py:mod:`pysui.sui.sui_builders.subscription_builders` - This module contains the ``Builders`` for event subscription types.
+#. :py:mod:`pysui.sui.sui_builders.subscription_builders` - This module contains the ``Builders`` for event and transation subscription types.
 
 Event Filters
 ~~~~~~~~~~~~~
@@ -35,13 +35,24 @@ nest filters. For example (some details omitted):
     builder = SubscribeEvent()
 
     # Events from sender address
-    builder = SubscribeEvent(
-                    SenderFilter("0x3bcadcc8a78ec44b8765ed8a8517b82a9ee310ad"))
+    builder = SubscribeEvent(event_filter=SenderFilter("0x3bcadcc8a78ec44b8765ed8a8517b82a9ee310ad"))
 
     # Publish events from specific sender
-    builder = SubscribeEvent(
-                    AndFilter(SenderFilter(...), EventTypeFilter("Publish"))
-    )
+    builder = SubscribeEvent(event_filter=AndFilter(SenderFilter(...), EventTypeFilter("Publish")))
+
+Transaction Filters
+~~~~~~~~~~~~~~~~~~~
+
+When using the :py:class:`~pysui.sui.sui_builders.subscription_builders.SubscribeTransaction` bulder, you must provide a ``transaction_filter``.
+
+Filters are those with the suffix ``Filter`` in :ref:`subscription-filters`. For example (some details omitted):
+
+
+.. code-block:: Python
+
+    # Effects included are those when a SuiAddress is the sender
+    builder = SubscribeTransaction(txn_filter=FromAddressEvent("0xf0f14d5806df6071b8147319705bcf6e90b9b40963ab22d72e517ab613f40c80"))
+
 
 Subscription Handlers
 ~~~~~~~~~~~~~~~~~~~~~
@@ -60,72 +71,9 @@ Where argument position:
 The handler can return anything, however; if `False` is returned, the subscription proxy will exit.
 Anything else will be stored in a data collector and returned to the subscription caller.
 
-Example of Event subscription
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: Python
-   :linenos:
+Examples of subscription
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-    import asyncio
-    from pysui.sui.sui_config import SuiConfig
-    from pysui.sui.sui_clients.subscribe import SuiClient as async_subscriber
-    from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, EventEnvelope
-    from pysui.sui.sui_builders.subscription_builders import *
-
-    def event_handler(
-        indata: SubscribedEvent,
-        subscription_id: int,
-        event_counter: int
-    ) -> EventEnvelope:
-        """Handler captures the move event type for each received."""
-        event_parms: SubscribedEventParms = indata.params
-        return EventEnvelope = event_parms.result
-
-    # Asynchronous subscriber
-    # use default clienti yaml at ~/.sui/sui_config/client.yaml
-
-    client = async_subscriber(SuiConfig.default_config())
-
-    # Use the explicit Event subscription service passing the
-    # handler function and an optional name. A subscription proxy will be created
-    # that manages listening on the websocket and delivering a value payload
-    # to the handler function
-
-    # Publish events from specific sender
-    builder = SubscribeEvent(
-                    AndFilter(
-                        SenderFilter("0x3bcadcc8a78ec44b8765ed8a8517b82a9ee310ad"),
-                        EventTypeFilter("Publish"))
-    )
-
-    subscription_result = await client.new_event_subscription(
-        builder,
-        event_handler, "event_handler")
-
-    if subscription_result.is_ok():
-        await asyncio.sleep(60.00)
-
-        # Returns a tuple of results from any transaction
-        # subscriptions and Sui event subscriptions that
-        # were initiated.
-
-        tx_subs_result, ev_subs_result = await client.kill_shutdown()
-
-        if ev_subs_result:
-            print("Transaction event listener results")
-            for event in ev_subs_result:
-                match event.result_string:
-
-                    # Cancelled events maintain the data collected to the
-                    # point of cancellation
-
-                    case "Cancelled" | None:
-                        for ev_event in event.result_data.collected
-                            print(ev_event.to_json(indent=2))
-
-                    case "General Exception":
-                        print(f"Exception {event}")
-
-                    case _:
-                        print("ERROR")
-    else:
-        print(f"Error: {subscription_result.result_string}")
+Source code in ``samples/`` folder include:
+    * **0** - `async_sub`       # Subscribes to move events
+    * **1** - `async_sub_txn`   # Subscribes to transaction events

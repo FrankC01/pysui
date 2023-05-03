@@ -416,11 +416,30 @@ class SubscribedEventParms(SuiTxReturnType, DataClassJsonMixin):
 
 @dataclass
 class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
-    """From sui_subscribeEvents."""
+    """From suix_subscribeEvents."""
 
     jsonrpc: str
     method: str
     params: SubscribedEventParms
+
+
+@dataclass
+@versionadded(version="0.20.0", reason="Sui RPC API 1.0.0 reintroduced subscribe to transactions.")
+class SubscribedTransactionParms(SuiTxReturnType, DataClassJsonMixin):
+    """From suix_subscribeTransaction."""
+
+    subscription: int
+    result: Effects
+
+
+@dataclass
+@versionadded(version="0.20.0", reason="Sui RPC API 1.0.0 reintroduced subscribe to transactions.")
+class SubscribedTransaction(SuiTxReturnType, DataClassJsonMixin):
+    """From suix_subscribeTransactions."""
+
+    jsonrpc: str
+    method: str
+    params: SubscribedTransactionParms
 
 
 @dataclass

@@ -32,5 +32,6 @@ Setup
     included in the ``pysui`` distribution. From the command line:
 
     * ``async-gas`` This will display Sui gas for each address found in the SUI configuration
-    * ``async-sub`` This runs both event subscriptions
+    * ``async-sub`` This runs a sample event subscription
+    * ``async-sub-txn`` This runs a sample transaction subscription
     * ``wallet`` This emulates the ``sui client ...`` operations

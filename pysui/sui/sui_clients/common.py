@@ -98,8 +98,8 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: int = 33
-    _RPC_REQUIRED_VERSION: str = "0.33.0"
+    _RPC_MINIMAL_VERSION: str = "0.33.0"
+    _RPC_REQUIRED_VERSION: str = "1.0.0"
     _SIGNATURE_ERROR: set[str] = {
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",
@@ -200,13 +200,17 @@ class _ClientMixin(Provider):
     def rpc_version_support(self) -> None:
         """rpc_version_support Validates minimal version supported.
 
-        :raises RuntimeError: If RPC API version less than provided
+        :raises RuntimeError: If RPC API version less than minimal support
         """
         rpa = packaging.version.parse(self.rpc_version)
-        mpa = packaging.version.parse(self._RPC_REQUIRED_VERSION)
-        if rpa < mpa:
-            # if int(self._rpc_version.split(".")[1]) < self._RPC_MINIMAL_VERSION:
-            raise RuntimeError(f"Requires minimum version '{self._RPC_REQUIRED_VERSION} found {self._rpc_version}")
+        mpa = packaging.version.parse(self._RPC_MINIMAL_VERSION)
+        ipa = packaging.version.parse(self._RPC_REQUIRED_VERSION)
+        if rpa == ipa:
+            pass
+        elif rpa < mpa:
+            raise RuntimeError(f"Requires minimum version '{self._RPC_MINIMAL_VERSION} found {self._rpc_version}")
+        elif rpa == mpa:
+            print(f"Host RPC version is back level {rpa}. May experience issues with lastest code built for {ipa}.")
 
     def version_at_least(self, majver: int, minver: int, bldver: int) -> bool:
         """Check if minor version is greater than or equal to."""
@@ -219,7 +223,18 @@ class _ClientMixin(Provider):
     def sign_for_execution(
         self, tx_bytes: SuiTxBytes, builder: _MoveCallTransactionBuilder, signers: Optional[SuiArray[SuiAddress]] = None
     ) -> Union[ExecuteTransaction, SuiException, ValueError]:
-        """."""
+        """sign_for_execution Sets up a TransactioBlock Execution builder.
+
+        :param tx_bytes: Transaction bytes from transaction method submission.
+        :type tx_bytes: SuiTxBytes
+        :param builder: The builder reflecting the transaction method called.
+        :type builder: _MoveCallTransactionBuilder
+        :param signers: Additional signers, defaults to None
+        :type signers: Optional[SuiArray[SuiAddress]], optional
+        :raises SuiNotComplexTransaction: If builder is simple type
+        :return: An ExecuteTransaction builder
+        :rtype: Union[ExecuteTransaction, SuiException, ValueError]
+        """
         if not builder.txn_required:
             raise SuiNotComplexTransaction(builder.__class__.__name__)
         # Gather keypairs for signing
@@ -236,7 +251,6 @@ class _ClientMixin(Provider):
             signatures=total_signed,
             request_type=self.request_type,
         )
-        # signers_list.append()
 
 
 def pysui_default_handler(result: SuiRpcResult) -> Any:
