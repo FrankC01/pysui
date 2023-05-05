@@ -522,7 +522,8 @@ class SuiTransaction:
         raise ValueError("make_vector requires a non-empty list")
 
     # TODO: Investigate functools LRU
-    def _move_call_target_cache(self, target: str) -> tuple[bcs.Address, str, str, int]:
+    @versionchanged(version="0.20.2", reason="Capture function argument meta data as well")
+    def _move_call_target_cache(self, target: str) -> tuple[bcs.Address, str, str, list, int]:
         """Used to resolve information regarding a move call target.
 
         This caches the result of a GetFunction meta-data information essention to setting up
@@ -533,7 +534,13 @@ class SuiTransaction:
         package_id, module_id, function_id = target.split("::")
         result = self.client.execute(GetFunction(package=package_id, module_name=module_id, function_name=function_id))
         if result.is_ok():
-            res_tup = (bcs.Address.from_str(package_id), module_id, function_id, len(result.result_data.returns))
+            res_tup = (
+                bcs.Address.from_str(package_id),
+                module_id,
+                function_id,
+                result.result_data.parameters,
+                len(result.result_data.returns),
+            )
             # res_cnt: int = len(result.result_data.returns)
             # package_id = bcs.Address.from_str(package_id)
             self._MC_RESULT_CACHE[target] = res_tup
@@ -541,6 +548,7 @@ class SuiTransaction:
         raise ValueError(f"Unable to find target: {target}")
 
     @versionchanged(version="0.17.0", reason="Target uses 'package_id::module::function' construct only")
+    @versionchanged(version="0.20.2", reason="Fixed #107")
     def move_call(
         self,
         *,
@@ -567,11 +575,16 @@ class SuiTransaction:
         module_id = None
         function_id = None
         # Standardize the input parameters
-        target_id, module_id, function_id, res_count = self._move_call_target_cache(target)
+        target_id, module_id, function_id, parameters, res_count = self._move_call_target_cache(target)
         # Standardize the arguments to list
         if arguments:
             arguments = arguments if isinstance(arguments, list) else arguments.array
             arguments = self._resolve_arguments(arguments)
+            for index, arg in enumerate(arguments):
+                parm = parameters[index]
+                if hasattr(parm, "is_mutable") and parm.is_mutable and isinstance(arg, tuple):
+                    r_arg: bcs.ObjectArg = arg[1]
+                    r_arg.value.Mutable = True
         else:
             arguments = []
         # Standardize the type_arguments to list
@@ -612,7 +625,7 @@ class SuiTransaction:
         assert isinstance(target, (str, SuiString))
         # Standardize the input parameters
         target = target if isinstance(target, str) else target.value
-        target_id, module_id, function_id, res_count = self._move_call_target_cache(target)
+        target_id, module_id, function_id, _parameters, res_count = self._move_call_target_cache(target)
 
         type_arguments = type_arguments if isinstance(type_arguments, list) else []
         return self.builder.move_call(
