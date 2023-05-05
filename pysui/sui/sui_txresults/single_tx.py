@@ -161,7 +161,7 @@ class SharedOwner(DataClassJsonMixin):
 
     owner_type: str
     initial_shared_version: str
-    mutable: Optional[bool] = field(default=True)
+    mutable: Optional[bool] = None
 
 
 @dataclass
@@ -259,6 +259,10 @@ class ObjectRead(DataClassJsonMixin):
                 case "Shared":
                     sdict = vlist[0][1]
                     sdict["owner_type"] = "Shared"
+                    if self.content and self.content.has_public_transfer:
+                        sdict["mutable"] = True
+                    else:
+                        sdict["mutable"] = False
                     self.owner = SharedOwner.from_dict(sdict)
                 case "Immutable":
                     self.owner = ImmutableOwner.from_dict({})
