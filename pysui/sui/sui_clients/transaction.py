@@ -18,7 +18,6 @@ import base64
 import os
 from pathlib import Path
 from typing import Any, Optional, Union, Callable
-import base58
 from deprecated.sphinx import versionadded, versionchanged
 from pysui.sui.sui_builders.base_builder import SuiRequestType
 from pysui.sui.sui_builders.exec_builders import ExecuteTransaction, InspectTransaction, PayAllSui
@@ -75,7 +74,13 @@ class SignerBlock:
         sponsor: Optional[Union[SuiAddress, SigningMultiSig]] = None,
         # additional_signers: Optional[list[Union[SuiAddress, SigningMultiSig]]] = None,
     ):
-        """."""
+        """__init__ Create a signer block.
+
+        :param sender: The primary sender/signer, defaults to None
+        :type sender: Optional[Union[SuiAddress, SigningMultiSig]], optional
+        :param sponsor: An optional sponsor for transaction, defaults to None
+        :type sponsor: Optional[Union[SuiAddress, SigningMultiSig]], optional
+        """
         self._sender = sender
         self._sponsor = sponsor
         # self._additional_signers = additional_signers if additional_signers else []
@@ -203,6 +208,8 @@ class SignerBlock:
         raise ValueError(f"{who_pays} has nothing to pay with.")
 
 
+# pylint:disable=too-many-public-methods
+@versionchanged(version="0.20.3", reason="Explicit support of tx.gas.")
 class SuiTransaction:
     """High level transaction builder."""
 
@@ -231,6 +238,8 @@ class SuiTransaction:
         "Digest",
         "Address",
     }
+
+    _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
 
     def __init__(self, client: SuiClient, merge_gas_budget: bool = False) -> None:
         """Transaction initializer."""
@@ -272,6 +281,12 @@ class SuiTransaction:
     def signer_block(self) -> SignerBlock:
         """Returns the signers block."""
         return self._sig_block
+
+    @property
+    @versionadded(version="0.20.3", reason="Simplify using a gas object to resolve at execution time.")
+    def gas(self) -> bcs.Argument:
+        """Enables use of gas reference as parameters in commands."""
+        return self._TRANSACTION_GAS_ARGUMENT
 
     def raw_kind(self) -> bcs.TransactionKind:
         """Returns the TransactionKind object hierarchy of inputs, returns and commands.
