@@ -3,8 +3,12 @@
   // "python.envFile": "${workspaceFolder}/pysui-dev.env",
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
-  "python.formatting.provider": "black",
-  "python.formatting.blackArgs": ["--check", "--line-length", "120"],
+  "python.formatting.provider": "none",
+  "python.formatting.blackArgs": [
+    "--check",
+    "--line-length",
+    "120"
+  ],
   "python.linting.pylintEnabled": true,
   "python.linting.pylintArgs": [
     "--max-line-length",
@@ -24,13 +28,20 @@
     "unused-argument"
   ],
   "python.linting.pydocstyleEnabled": true,
-  "python.linting.pydocstyleArgs": ["--ignore=D203,D213,D401,D403"],
+  "python.linting.pydocstyleArgs": [
+    "--ignore=D203,D213,D401,D403"
+  ],
   "editor.formatOnSave": true,
   "autoDocstring.docstringFormat": "sphinx",
   "autoDocstring.generateDocstringOnEnter": true,
   "autoDocstring.guessTypes": true,
   "autoDocstring.includeName": true,
-  "python.testing.pytestArgs": ["tests"]
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  }
   // "python.pythonPath": "pysuienv/bin/python",
   // "restructuredtext.confPath": "${workspaceFolder}/docs"
 }

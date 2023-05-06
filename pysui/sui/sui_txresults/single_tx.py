@@ -836,3 +836,13 @@ class ValidatorApys(DataClassJsonMixin):
 
     apys: list[ValidatorApy]
     epoch: str
+
+@dataclass
+class ProtocolConfig(DataClassJsonMixin):
+    """From sui_getProtocolConfig."""
+
+    max_supported_protocol_version:str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    min_supported_protocol_version:str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    protocol_version: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    feature_flags: dict = field(metadata=config(letter_case=LetterCase.CAMEL))
+    attributes: dict

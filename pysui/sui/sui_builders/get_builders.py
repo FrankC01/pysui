@@ -26,6 +26,7 @@ from pysui.sui.sui_txresults.single_tx import (
     DynamicFields,
     LoadedChildObjectsResponse,
     ObjectReadPage,
+    ProtocolConfig,
     SuiCoinBalance,
     SuiCoinMetadata,
     CoinBalances,
@@ -727,3 +728,15 @@ class GetValidatorsApy(_NativeTransactionBuilder):
     def __init__(self):
         """Builder initializer."""
         super().__init__("suix_getValidatorsApy", handler_cls=ValidatorApys, handler_func="from_dict")
+
+@versionadded(version="0.21.0", reason="New Sui (1.1.0) RPC API method.")
+class GetProtocolConfig(_NativeTransactionBuilder):
+    """Return the protocol config table for the given version number.
+
+    If the version number is not specified, the node uses the version of the latest epoch it has processed.
+    """
+
+    @sui_builder()
+    def __init__(self,*,version: Optional[SuiString] = None):
+        """Builder initializer."""
+        super().__init__("sui_getProtocolConfig", handler_cls=ProtocolConfig,handler_func="from_dict")
