@@ -22,7 +22,7 @@ import hashlib
 import subprocess
 import json
 from typing import Union
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged,deprecated
 import pyroaring
 import secp256k1
 import bip_utils
@@ -432,7 +432,8 @@ class MultiSig:
         """Return the threshold amount used in this MultiSig."""
         return self._threshold
 
-    def _validate_signers(self, pub_keys: list[SuiPublicKey]) -> list[int]:
+    @versionchanged(version="0.21.1", reason="Exposed as public for use by SuiTransaction")
+    def validate_signers(self, pub_keys: list[SuiPublicKey]) -> Union[list[int],ValueError]:
         """Validate pubkeys part of multisig and have enough weight."""
         # Must be subset of full ms list
         if len(pub_keys) <= len(self._public_keys):
@@ -441,9 +442,10 @@ class MultiSig:
             if len(hit_indexes) == len(pub_keys):
                 if sum([self._weights[x] for x in hit_indexes]) >= self._threshold:
                     return hit_indexes
-        return None
+        raise ValueError("Keys and weights for signing do not meet thresholds")
 
-    def sign(self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]) -> Union[int, SuiSignature]:
+    @deprecated(version="0.21.1",reason="New version performs signing without invoking binaries")
+    def _old_sign(self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]) -> Union[int, SuiSignature]:
         """sign Signs transaction bytes for operation that changes objects owned by MultiSig address.
 
         :param tx_bytes: Transaction bytes base64 string from 'unsafe...' result or Transaction BCS
@@ -455,7 +457,7 @@ class MultiSig:
         :rtype: SuiSignature
         """
         # Validate the pub_keys align to self._keys
-        key_indx = self._validate_signers(pub_keys)
+        key_indx = self.validate_signers(pub_keys)
         if key_indx:
             tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value
             # Build the command line for `sui keytool multi-sig-combine-partial-sig`
@@ -485,7 +487,7 @@ class MultiSig:
             return result.returncode
         raise ValueError("Invalid signer pub_keys")
 
-    def _test_validate_signers(self, pub_keys: list[SuiPublicKey]) -> list[int]:
+    def _validate_signers(self, pub_keys: list[SuiPublicKey]) -> list[int]:
         """Validate pubkeys part of multisig and have enough weight."""
         # Must be subset of full ms list
         assert len(pub_keys) <= len(self._public_keys), "More public keys than MultiSig"
@@ -496,8 +498,9 @@ class MultiSig:
         weights = [self._weights[x] for x in hit_indexes]
         return hit_indexes, list(zip(pub_keys, weights))
 
+    @versionadded(version="0.21.1",reason="Support for inline multisig signing")
     def _compressed_signatures(self, tx_bytes: str, key_indices: list[int]) -> list[MsCompressedSig]:
-        """."""
+        """Creates compressed signatures from each of the signing keys present."""
         compressed: list[MsCompressedSig] = []
         for index in key_indices:
             compressed.append(
@@ -511,20 +514,22 @@ class MultiSig:
             )
         return compressed
 
-    def test_sign(self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]) -> SuiSignature:
+    @versionadded(version="0.21.1", reason="Full signature creation without binaries.")
+    def sign(self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]) -> SuiSignature:
         """sign Signs transaction bytes for operation that changes objects owned by MultiSig address."""
         # Validate the pub_keys alignment with self._keys
-        key_indices, pk_map = self._test_validate_signers(pub_keys)
-        # Generate BCS compressed signatures
+        key_indices, pk_map = self._validate_signers(pub_keys)
+        # Generate BCS compressed signatures for the subset of keys
         tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value
         compressed_sigs: list[MsCompressedSig] = self._compressed_signatures(tx_bytes, key_indices)
         # Generate BCS Roaring bitmap
         serialized_rbm: MsRoaring = MsRoaring(list(pyroaring.BitMap(key_indices).serialize()))
-        # Generate BCS PublicKeys
+        # Generate BCS PublicKeys from the FULL compliment of original public keys
         pks: list[MsPublicKey] = []
-        for pk, wght in pk_map:
-            pk = base64.b64encode(pk.scheme_and_key()).decode().encode(encoding="utf8")
-            pks.append(MsPublicKey(list(pk), wght))
+        for index, kkeys in enumerate(self._keys):
+            pk = base64.b64encode(kkeys.public_key.scheme_and_key()).decode().encode(encoding="utf8")
+            pks.append(MsPublicKey(list(pk), self._weights[index]))
+
         # Build the BCS MultiSignature
         msig_signature = MultiSignature(self._schema, compressed_sigs, serialized_rbm, pks, self.threshold)
         return SuiSignature(base64.b64encode(msig_signature.serialize()).decode())

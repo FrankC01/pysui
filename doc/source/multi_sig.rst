@@ -72,7 +72,7 @@ Signing Transactions using a MultiSig
 You need to sign transactions that change any object owned by the MultiSig address. This is where the
 heightened security and governance aspect come into play.
 
-    * Note that ``pysui``, at this time, does not perform the actual signing but rather invokes the ``sui keytool multi-sig-combine-partial-sig ...`` command line. We are working on removing this dependency.
+With version '0.21.1' of ``pysui`` signing with MultiSig no longer relies on Sui binaries keytool
 
 In the following scenarios it is assumed that the admin does not participate in the signing. This example uses
 the first two keys that are in the MultiSig but in a real world scenario it is likely the

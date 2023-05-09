@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.1] - Unpublished
+
+### Added
+
+- Pure python multisig signing, reducing dependencies on Sui binaries [enhancement](https://github.com/FrankC01/pysui/issues/100)
+
+### Fixed
+
+- Use of multisigs in SuiTransaction [bug](https://github.com/FrankC01/pysui/issues/109)
+
+### Changed
+
+### Removed
+
 ## [0.21.0] - 2023-05-09
 
 ### Added

@@ -16,6 +16,7 @@
 
 import base64
 import os
+import hashlib
 from pathlib import Path
 from typing import Any, Optional, Union, Callable
 from deprecated.sphinx import versionadded, versionchanged
@@ -53,6 +54,7 @@ _PAY_GAS: int = 4000000
 
 
 @versionadded(version="0.17.0", reason="Standardize on signing permutations")
+@versionadded(version="0.21.1", reason="Support subset pubkey address generation")
 class SigningMultiSig:
     """Wraps the mutli-sig along with pubkeys to use in SuiTransaction."""
 
@@ -60,7 +62,14 @@ class SigningMultiSig:
         """."""
         self.multi_sig = msig
         self.pub_keys = pub_keys
+        self.indicies = msig.validate_signers(pub_keys)
+        self._address = self.multi_sig.address
 
+
+    @property
+    def signing_address(self) -> str:
+        """."""
+        return self._address
 
 @versionadded(version="0.17.0", reason="Standardize on signing permutations")
 @versionchanged(version="0.18.0", reason="Removed additional_signers as not supported by Sui at the moment.")
@@ -149,6 +158,7 @@ class SignerBlock:
                 # sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
         return SuiArray(sig_list)
 
+    @versionchanged(version="0.21.1", reason="Corrected when using multisig senders.")
     def get_gas_object(
         self, *, client: SuiClient, budget: int, objects_in_use: list, merge_coin: bool, gas_price: int
     ) -> bcs.GasData:
@@ -158,8 +168,14 @@ class SignerBlock:
         # If both not set, Fail
         if not who_pays:
             raise ValueError("Both SuiTransaction sponor and sender are null. Complete those before execute.")
-        who_pays = who_pays if isinstance(who_pays, SuiAddress) else who_pays.multi_sig.as_sui_address
-        owner_coins: list[SuiCoinObject] = handle_result(client.get_gas(who_pays)).data
+        if isinstance(who_pays,SuiAddress):
+            whose_gas = who_pays
+            who_pays = who_pays.address
+        else:
+            whose_gas = who_pays.signing_address # as_sui_address
+            who_pays = who_pays.signing_address
+        # who_pays = who_pays if isinstance(who_pays, SuiAddress) else who_pays.multi_sig.as_sui_address
+        owner_coins: list[SuiCoinObject] = handle_result(client.get_gas(whose_gas)).data
         # Get whatever gas objects below to whoever is paying
         # and filter those not in use
         use_coin: SuiCoinObject = None
@@ -204,7 +220,7 @@ class SignerBlock:
                         bcs.Digest.from_str(use_coin.digest),
                     )
                 ],
-                bcs.Address.from_str(who_pays.address),
+                bcs.Address.from_str(whose_gas),
                 gas_price,
                 budget,
             )
@@ -244,7 +260,8 @@ class SuiTransaction:
 
     _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
 
-    def __init__(self, client: SuiClient, merge_gas_budget: bool = False, initial_sender: SuiAddress = False) -> None:
+    @versionchanged(version="0.21.1", reason="Takes a 'initial_sender' as option.")
+    def __init__(self, client: SuiClient, merge_gas_budget: bool = False, initial_sender: Union[SuiAddress,SigningMultiSig] = False) -> None:
         """Transaction initializer."""
         self.builder = tx_builder.ProgrammableTransactionBuilder()
         self.client = client
@@ -346,6 +363,7 @@ class SuiTransaction:
 
     @versionchanged(version="0.17.0", reason="Only used internally.")
     @versionchanged(version="0.17.0", reason="Reworked using SignerBlock gas resolution.")
+    @versionchanged(version="0.21.1", reason="Corrected using multisig senders.")
     def _build_for_execute(
         self,
         gas_budget: Union[str, SuiString],
@@ -379,7 +397,7 @@ class SuiTransaction:
         if isinstance(self.signer_block.sender, SuiAddress):
             who_sends = self.signer_block.sender.address
         else:
-            who_sends = self.signer_block.sender.multi_sig.address
+            who_sends = self.signer_block.sender.signing_address
         return bcs.TransactionData(
             "V1",
             bcs.TransactionDataV1(
