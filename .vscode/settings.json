@@ -11,6 +11,7 @@
   ],
   "python.linting.pylintEnabled": true,
   "python.linting.pylintArgs": [
+    "----extension-pkg-whitelist=1xml",
     "--max-line-length",
     "120",
     "--disable",

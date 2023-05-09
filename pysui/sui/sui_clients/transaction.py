@@ -143,7 +143,10 @@ class SignerBlock:
             if isinstance(signer, SuiAddress):
                 sig_list.append(client.config.keypair_for_address(signer).new_sign_secure(tx_bytes))
             else:
-                sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
+                signature = signer.multi_sig.test_sign(tx_bytes, signer.pub_keys)
+                print(signature.value)
+                sig_list.append(signer.multi_sig.test_sign(tx_bytes, signer.pub_keys))
+                # sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
         return SuiArray(sig_list)
 
     def get_gas_object(
@@ -241,11 +244,11 @@ class SuiTransaction:
 
     _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
 
-    def __init__(self, client: SuiClient, merge_gas_budget: bool = False) -> None:
+    def __init__(self, client: SuiClient, merge_gas_budget: bool = False, initial_sender: SuiAddress = False) -> None:
         """Transaction initializer."""
         self.builder = tx_builder.ProgrammableTransactionBuilder()
         self.client = client
-        self._sig_block = SignerBlock(sender=client.config.active_address)
+        self._sig_block = SignerBlock(sender=initial_sender or client.config.active_address)
         self._merge_gas = merge_gas_budget
         self._executed = False
         self._current_gas_price = self._gas_price()
@@ -314,7 +317,9 @@ class SuiTransaction:
         """
         tx_bytes = self.build_for_inspection()
         if self.signer_block.sender:
-            for_sender = self.signer_block.sender
+            for_sender: Union[SuiAddress, SigningMultiSig] = self.signer_block.sender
+            if not isinstance(for_sender, SuiAddress):
+                for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
         result = self.client.execute(InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes))
@@ -403,6 +408,7 @@ class SuiTransaction:
         """
         assert not self._executed, "Transaction already executed"
         tx_b64 = base64.b64encode(self._build_for_execute(gas_budget).serialize()).decode()
+        print(tx_b64)
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
             signatures=self.signer_block.get_signatures(client=self.client, tx_bytes=tx_b64),

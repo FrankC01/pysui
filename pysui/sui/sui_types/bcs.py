@@ -14,6 +14,7 @@
 """Sui BCS Types."""
 
 import binascii
+import base64
 from typing import Any, Union
 from functools import reduce
 import canoser
@@ -501,3 +502,37 @@ class TransactionData(canoser.RustEnum):
     def from_bytes(cls, in_data: bytes) -> "TransactionData":
         """."""
         return cls.deserialize(in_data)
+
+
+@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
+class MsPublicKey(canoser.Struct):
+    """Represents signing PublicKeys for serialization."""
+
+    _fields = [("PublicKey", [U8]), ("Weight", U8)]
+
+
+@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
+class MsRoaring(canoser.Struct):
+    """Represents signing PublicKeys indexes for serialization."""
+
+    _fields = [("RoaringBitmap", [U8])]
+
+
+@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
+class MsCompressedSig(canoser.Struct):
+    """Represents compressed individual signed messages for serialization."""
+
+    _fields = [("Sig", [U8, 65, False])]
+
+
+@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
+class MultiSignature(canoser.Struct):
+    """BCS representation of a MultiSig signature for executions."""
+
+    _fields = [
+        ("Scheme", U8),
+        ("Sigs", [MsCompressedSig]),
+        ("RoaringBitMap", MsRoaring),
+        ("PkMap", [MsPublicKey]),
+        ("Threshold", U16),
+    ]

@@ -14,6 +14,7 @@
 """Sui Client common classes module."""
 
 import sys
+import json
 from dataclasses import dataclass
 from abc import abstractmethod
 from typing import Any, Optional, Union
