@@ -4,7 +4,7 @@
 
 Python Client SDK for Sui blockchain
 
-**Release-0.20.2**
+**Release-0.21.0**
 
 This release is the _Sui mainnet ready candidate_.
 
@@ -16,9 +16,9 @@ We would appreciate any issues being reported in the [github issue log](https://
 
 We also have a channel in the [sui-base](https://github.com/sui-base/sui-base) Discord server [click here](https://discord.com/invite/Erb6SwsVbH):
 
-- 100% coverage (builders, return types, etc.) for parity with _SUI 1.0.0 API_ on devnet/testnet/mainnet
+- 100% coverage (builders, return types, etc.) for parity with _SUI 1.1.0 API_ on devnet/testnet/mainnet
 
-**PyPi for 0.20.2**
+**PyPi for 0.21.0**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
