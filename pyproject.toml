@@ -40,7 +40,8 @@ dependencies = [
     "typing_utils==0.1.0",
     "canoser==0.8.2",
     "base58==2.1.1",
-    "Deprecated==1.2.13"
+    "Deprecated==1.2.13",
+    "pyroaring==0.4.2"
 ]
 dynamic = ["version","readme"]
 
