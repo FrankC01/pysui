@@ -10,12 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Pure python multisig signing, reducing dependencies on Sui binaries [enhancement](https://github.com/FrankC01/pysui/issues/100)
+- `pyroaring` added to requirements.txt and package build
 
 ### Fixed
 
 - Use of multisigs in SuiTransaction [bug](https://github.com/FrankC01/pysui/issues/109)
 
 ### Changed
+
+- SuiTransaction now takes an optional `item_type` argument that is a string triple of the
+  type of objects you are making a vector of
 
 ### Removed
 

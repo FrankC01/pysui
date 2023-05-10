@@ -404,6 +404,8 @@ class ProgrammableTransactionBuilder:
         reciever_arg = self.input_pure(recipient)
         if amount:
             coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
+        elif isinstance(from_coin,bcs.Argument):
+            coin_arg = from_coin
         else:
             coin_arg = self.input_obj(*from_coin)
         return self.command(bcs.Command("TransferObjects", bcs.TransferObjects([coin_arg], reciever_arg)))

@@ -234,11 +234,8 @@ class TypeTag(canoser.RustEnum):
         if value in cls._UCASE_SCALARS:
             return cls(cls._UCASE_SCALARS[cls._UCASE_SCALARS.index(value)])
         # Struct types
-        spliter = value.split("::")
-        if len(spliter) > 2:
-            return TypeTag.new_with_index_value(TypeTag.get_index("Struct"), StructTag.from_type_str(value))
         # Address types
-        if value.startswith("0x") or value.startswith("0X"):
+        if value.count("::") == 0 and (value.startswith("0x") or value.startswith("0X")):
             return cls("Address")
             # return cls("Address", Address.from_str(value))
         # Vector types
@@ -253,6 +250,9 @@ class TypeTag(canoser.RustEnum):
             for _ in range(vcount):
                 inner_type_tag = TypeTag.new_with_index_value(TypeTag.get_index("Vector"), [inner_type_tag])
             return inner_type_tag
+        spliter = value.split("::")
+        if len(spliter) > 2:
+            return TypeTag.new_with_index_value(TypeTag.get_index("Struct"), StructTag.from_type_str(value))
         raise ValueError(f"{value} not a recognized TypeTag")
 
     @classmethod

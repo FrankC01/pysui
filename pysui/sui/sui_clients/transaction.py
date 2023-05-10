@@ -169,7 +169,7 @@ class SignerBlock:
         if not who_pays:
             raise ValueError("Both SuiTransaction sponor and sender are null. Complete those before execute.")
         if isinstance(who_pays,SuiAddress):
-            whose_gas = who_pays
+            whose_gas = who_pays.address
             who_pays = who_pays.address
         else:
             whose_gas = who_pays.signing_address # as_sui_address
@@ -531,8 +531,9 @@ class SuiTransaction:
         return items
 
     @versionchanged(version="0.19.0", reason="Check that only type Objects are passed")
-    def make_move_vector(self, items: list[Any]) -> bcs.Argument:
-        """Create a call to convert a list of objects to a Sui 'vector' type."""
+    @versionchanged(version="0.21.1", reason="Added optional item_type argument")
+    def make_move_vector(self, items: list[Any],item_type:Optional[str]=None) -> bcs.Argument:
+        """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
         # Sample first for type
         def _first_non_argument_type(inner_list: list) -> Any:
             """."""
@@ -543,7 +544,10 @@ class SuiTransaction:
                     break
             return result
 
-        type_tag = bcs.OptionalTypeTag()
+        if item_type:
+            type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
+        else:
+            type_tag = bcs.OptionalTypeTag()
         if items:
             first_item = _first_non_argument_type(items)
             if first_item:
@@ -557,7 +561,9 @@ class SuiTransaction:
                         pass
                     else:
                         assert item_class == first_class, f"Expected {first_class} found {item_class}"
-            return self.builder.make_move_vector(type_tag, self._resolve_arguments(items))
+                return self.builder.make_move_vector(type_tag, self._resolve_arguments(items))
+            elif len(items) > 0:
+                return self.builder.make_move_vector(type_tag, items)
         raise ValueError("make_vector requires a non-empty list")
 
     # TODO: Investigate functools LRU
