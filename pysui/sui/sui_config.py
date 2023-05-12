@@ -21,7 +21,7 @@ from io import TextIOWrapper
 from pathlib import Path
 import json
 import yaml
-from deprecated.sphinx import versionadded
+from deprecated.sphinx import versionadded,versionchanged
 from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
     PYSUI_EXEC_ENV,
@@ -95,9 +95,10 @@ class SuiConfig(ClientConfiguration):
         else:
             raise SuiFileNotFound((filepath))
 
+    @versionchanged(version="0.21.2", reason="Corrected signature return values.")
     def create_new_keypair_and_address(
         self, scheme: SignatureScheme, mnemonics: str = None, derivation_path: str = None
-    ) -> tuple[str, KeyPair, SuiAddress]:
+    ) -> tuple[str, SuiAddress]:
         """create_new_keypair_and_address Create a new keypair and address identifier and writes to client.yaml.
 
         :param scheme: Identifies whether new key is ed25519 or secp256k1
@@ -108,16 +109,16 @@ class SuiConfig(ClientConfiguration):
             defaults to root path of scheme
         :type derivation_path: str, optional
         :raises NotImplementedError: When providing unregognized scheme
-        :return: The input or generated mnemonic string,a new KeyPair and associated SuiAddress
-        :rtype: tuple[str, KeyPair, SuiAddress]
+        :return: The input or generated mnemonic string and the new keypair associated SuiAddress
+        :rtype: tuple[str, SuiAddress]
         """
         match scheme:
             case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
-                mnen, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
+                mnem, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
                 self._addresses[address.address] = address
                 self._address_keypair[address.address] = keypair
                 self._write_keypair(keypair)
-                return mnen, address.identifier
+                return mnem, address
             case _:
                 raise NotImplementedError(f"{scheme}: Not recognized as valid keypair scheme.")
 
