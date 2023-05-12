@@ -145,6 +145,7 @@ class SignerBlock:
         # result_list.extend(self.additional_signers)
         # return result_list
 
+    @versionchanged(version="0.21.2",reason="Fix regression on MultiSig signing.")
     def get_signatures(self, *, client: SuiClient, tx_bytes: str) -> SuiArray[SuiSignature]:
         """Get all the signatures needed for the transaction."""
         sig_list: list[SuiSignature] = []
@@ -152,10 +153,7 @@ class SignerBlock:
             if isinstance(signer, SuiAddress):
                 sig_list.append(client.config.keypair_for_address(signer).new_sign_secure(tx_bytes))
             else:
-                signature = signer.multi_sig.test_sign(tx_bytes, signer.pub_keys)
-                print(signature.value)
-                sig_list.append(signer.multi_sig.test_sign(tx_bytes, signer.pub_keys))
-                # sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
+                sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
         return SuiArray(sig_list)
 
     @versionchanged(version="0.21.1", reason="Corrected when using multisig senders.")
@@ -426,7 +424,7 @@ class SuiTransaction:
         """
         assert not self._executed, "Transaction already executed"
         tx_b64 = base64.b64encode(self._build_for_execute(gas_budget).serialize()).decode()
-        print(tx_b64)
+        # print(tx_b64)
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
             signatures=self.signer_block.get_signatures(client=self.client, tx_bytes=tx_b64),
