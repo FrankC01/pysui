@@ -22,7 +22,7 @@ import hashlib
 import subprocess
 import json
 from typing import Union
-from deprecated.sphinx import versionadded, versionchanged,deprecated
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 import pyroaring
 import secp256k1
 import bip_utils
@@ -433,7 +433,7 @@ class MultiSig:
         return self._threshold
 
     @versionchanged(version="0.21.1", reason="Exposed as public for use by SuiTransaction")
-    def validate_signers(self, pub_keys: list[SuiPublicKey]) -> Union[list[int],ValueError]:
+    def validate_signers(self, pub_keys: list[SuiPublicKey]) -> Union[list[int], ValueError]:
         """Validate pubkeys part of multisig and have enough weight."""
         # Must be subset of full ms list
         if len(pub_keys) <= len(self._public_keys):
@@ -444,7 +444,7 @@ class MultiSig:
                     return hit_indexes
         raise ValueError("Keys and weights for signing do not meet thresholds")
 
-    @deprecated(version="0.21.1",reason="New version performs signing without invoking binaries")
+    @deprecated(version="0.21.1", reason="New version performs signing without invoking binaries")
     def _old_sign(self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]) -> Union[int, SuiSignature]:
         """sign Signs transaction bytes for operation that changes objects owned by MultiSig address.
 
@@ -498,7 +498,7 @@ class MultiSig:
         weights = [self._weights[x] for x in hit_indexes]
         return hit_indexes, list(zip(pub_keys, weights))
 
-    @versionadded(version="0.21.1",reason="Support for inline multisig signing")
+    @versionadded(version="0.21.1", reason="Support for inline multisig signing")
     def _compressed_signatures(self, tx_bytes: str, key_indices: list[int]) -> list[MsCompressedSig]:
         """Creates compressed signatures from each of the signing keys present."""
         compressed: list[MsCompressedSig] = []
@@ -606,107 +606,72 @@ def _valid_mnemonic(mnemonics: Union[str, list[str]] = "") -> str:
     return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_24).ToStr()
 
 
-def _valid_pubkey(key_valmethod: str, pub_key: bytes) -> Union[None, TypeError, ValueError]:
-    """_valid_pubkey Validate the public key.
+def create_new_keypair(
+    scheme: SignatureScheme = SignatureScheme.ED25519, mnemonics: Union[str, list[str]] = "", derv_path: str = None
+) -> tuple[str, SuiKeyPair]:
+    """create_new_keypair Generate a new keypair.
 
-    Public key bytes may be from secp256k1 or ed25519
-
-    :param key_valmethod: Validator for keytype string
-    :type key_valmethod: str
-    :param pub_key: Public key bytes
-    :type pub_key: bytes
-    :raises TypeError: Invalid public key
-    :raises ValueError: Invalid public key
-    :return: None for valid public key
-    :rtype: Union[None, TypeError, ValueError]
+    :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type, defaults to SignatureScheme.ED25519
+    :type keytype: SignatureScheme, optional
+    :param mnemonics: mnemonic words, defaults to None
+    :type mnemonics: Union[str, list[str]], optional
+    :param derv_path: derivation path coinciding with key type, defaults to None
+    :type derv_path: str, optional
+    :raises NotImplementedError: If invalid keytype is provided
+    :return: mnemonic words and new keypair
+    :rtype: tuple[str, KeyPair]
     """
+    mnemonic_phrase = _valid_mnemonic(mnemonics)
+    seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
+    validation_str: str = ""
+    key_clazz = None
+    vkey = None
+    pkey = None
+    match scheme:
+        case SignatureScheme.ED25519:
+            # 1. Private, or signer, key
+            bip32_ctx = bip_utils.Bip32Slip10Ed25519.FromSeedAndPath(seed_bytes, derv_path or ED25519_DEFAULT_KEYPATH)
+            ed_priv = SigningKey(base64.b64encode(bip32_ctx.PrivateKey().Raw().ToBytes()), encoder=Base64Encoder)
+            pkey = ed_priv.encode()
+            # 2. Public, or verifier, key
+            vkey = ed_priv.verify_key.encode()
+            key_clazz = SuiKeyPairED25519
+            validation_str = "ValidateAndGetEd25519Key"
+
+        case SignatureScheme.SECP256K1:
+            bip32_ctx = bip_utils.Bip32Slip10Secp256k1.FromSeedAndPath(
+                seed_bytes, derv_path or SECP256K1_DEFAULT_KEYPATH
+            )
+            # 1. Private, or signer, key
+            secp_priv = secp256k1.PrivateKey(bip32_ctx.PrivateKey().Raw().ToBytes(), raw=True)
+            pkey = secp_priv.private_key
+            # 2. Public, or verifier, key
+            vkey = secp_priv.pubkey.serialize(compressed=True)
+            key_clazz = SuiKeyPairSECP256K1
+            validation_str = "ValidateAndGetSecp256k1Key"
+
+        case SignatureScheme.SECP256R1:
+            bip32_ctx = bip_utils.Bip32Slip10Nist256p1.FromSeedAndPath(
+                seed_bytes, derv_path or SECP256R1_DEFAULT_KEYPATH
+            )
+            # 1. Private, or signer, key
+            secp_priv = ecdsa.SigningKey.from_string(bip32_ctx.PrivateKey().Raw().ToBytes(), curve=ecdsa.NIST256p)
+            pkey = secp_priv.to_string()
+            # 2. Public, or verifier, key
+            vkey = secp_priv.get_verifying_key().to_string("compressed")
+            key_clazz = SuiKeyPairSECP256R1
+            validation_str = "ValidateAndGetNist256p1Key"
+        case _:
+            raise ValueError(f"Unrecognized SignatureScheme {scheme}")
+
     try:
-        getattr(AddrKeyValidator, key_valmethod)(pub_key)
+        getattr(AddrKeyValidator, validation_str)(vkey)
     except TypeError as texc:
         raise texc
     except ValueError as vexc:
         raise vexc
 
-
-# TODO: Change to use the ecdsa library
-def _generate_secp256k1(
-    mnemonics: Union[str, list[str]] = "", derv_path: str = None
-) -> tuple[str, SuiKeyPairSECP256K1]:
-    """_generate_secp256k1 Create a mnemonic seed and use derivation path for secp256k1 keypair.
-
-    :param mnemonics: _description_, defaults to ""
-    :type mnemonics: Union[str, list[str]], optional
-    :param derv_path: _description_, defaults to None
-    :type derv_path: str, optional
-    :return: _description_
-    :rtype: KeyPair
-    """
-    mnemonic_phrase = _valid_mnemonic(mnemonics)
-    derv_path = derv_path or SECP256K1_DEFAULT_KEYPATH
-    # Generate seed from mnemonic phrase and optional password
-    seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
-    bip32_ctx = bip_utils.Bip32Slip10Secp256k1.FromSeedAndPath(seed_bytes, derv_path)
-    # Get private key bytes list
-    prv_key = bip32_ctx.PrivateKey().Raw().ToBytes()
-    # Instantiate secp256k1 library keypair
-    # 1. Private, or signer, key
-    secp_priv = secp256k1.PrivateKey(prv_key, raw=True)
-    # 2. Public, or verifier, key
-    _valid_pubkey("ValidateAndGetSecp256k1Key", secp_priv.pubkey.serialize(compressed=True))
-    return mnemonic_phrase, SuiKeyPairSECP256K1(secp_priv.private_key)
-
-
-def _generate_secp256r1(
-    mnemonics: Union[str, list[str]] = "", derv_path: str = None
-) -> tuple[str, SuiKeyPairSECP256R1]:
-    """_generate_secp256r1 Create a mnemonic seed and use derivation path for secp256r1 keypair.
-
-    :param mnemonics: _description_, defaults to ""
-    :type mnemonics: Union[str, list[str]], optional
-    :param derv_path: _description_, defaults to None
-    :type derv_path: str, optional
-    :return: _description_
-    :rtype: KeyPair
-    """
-    mnemonic_phrase = _valid_mnemonic(mnemonics)
-    derv_path = derv_path or SECP256R1_DEFAULT_KEYPATH
-    # Generate seed from mnemonic phrase and optional password
-    seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
-    bip32_ctx = bip_utils.Bip32Slip10Nist256p1.FromSeedAndPath(seed_bytes, derv_path)
-    # Get private key bytes list
-    prv_key = bip32_ctx.PrivateKey().Raw().ToBytes()
-    # Instantiate secp256k1 library keypair
-    # 1. Private, or signer, key
-    secp_priv = ecdsa.SigningKey.from_string(prv_key, curve=ecdsa.NIST256p)
-    # 2. Public, or verifier, key
-    _valid_pubkey("ValidateAndGetNist256p1Key", secp_priv.get_verifying_key().to_string("compressed"))
-    return mnemonic_phrase, SuiKeyPairSECP256R1(secp_priv.to_string())
-
-
-def _generate_ed25519(mnemonics: Union[str, list[str]] = "", derv_path: str = None) -> tuple[str, SuiKeyPairED25519]:
-    """_generate_secp256k1 Create a mnemonic seed and use derivation path for ed25519 keypair.
-
-    :param mnemonics: _description_, defaults to ""
-    :type mnemonics: Union[str, list[str]], optional
-    :param derv_path: _description_, defaults to None
-    :type derv_path: str, optional
-    :return: _description_
-    :rtype: KeyPair
-    """
-    mnemonic_phrase = _valid_mnemonic(mnemonics)
-    derv_path = derv_path or ED25519_DEFAULT_KEYPATH
-    # Generate seed from mnemonic phrase and optional password
-    seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
-    bip32_ctx = bip_utils.Bip32Slip10Ed25519.FromSeedAndPath(seed_bytes, derv_path)
-    # Get private key bytes list
-    prv_key = bip32_ctx.PrivateKey().Raw().ToBytes()
-    # Instantiate ed25519 library keypair
-    # Private, or signer, key
-    ed_priv = SigningKey(base64.b64encode(prv_key), encoder=Base64Encoder)
-    ed_enc_prv = ed_priv.encode()
-    # Public, or verifier, key
-    _valid_pubkey("ValidateAndGetEd25519Key", ed_priv.verify_key.encode())
-    return mnemonic_phrase, SuiKeyPairED25519(ed_enc_prv)
+    return mnemonic_phrase, key_clazz(pkey)
 
 
 def keypair_from_keystring(keystring: str) -> KeyPair:
@@ -730,32 +695,6 @@ def keypair_from_keystring(keystring: str) -> KeyPair:
         case SignatureScheme.SECP256R1:
             return SuiKeyPairSECP256R1.from_bytes(addy_bytes[1:])
     raise NotImplementedError
-
-
-def create_new_keypair(
-    keytype: SignatureScheme = SignatureScheme.ED25519, mnemonics: Union[str, list[str]] = None, derv_path: str = None
-) -> tuple[str, KeyPair]:
-    """create_new_keypair Generate a new keypair.
-
-    :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type, defaults to SignatureScheme.ED25519
-    :type keytype: SignatureScheme, optional
-    :param mnemonics: mnemonic words, defaults to None
-    :type mnemonics: Union[str, list[str]], optional
-    :param derv_path: derivation path coinciding with key type, defaults to None
-    :type derv_path: str, optional
-    :raises NotImplementedError: If invalid keytype is provided
-    :return: mnemonic words and new keypair
-    :rtype: tuple[str, KeyPair]
-    """
-    match keytype:
-        case SignatureScheme.ED25519:
-            return _generate_ed25519(mnemonics, derv_path)
-        case SignatureScheme.SECP256K1:
-            return _generate_secp256k1(mnemonics, derv_path)
-        case SignatureScheme.SECP256R1:
-            return _generate_secp256r1(mnemonics, derv_path)
-        case _:
-            raise NotImplementedError
 
 
 def create_new_address(
