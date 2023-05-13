@@ -3,7 +3,7 @@
   // "python.envFile": "${workspaceFolder}/pysui-dev.env",
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
-  "python.formatting.provider": "none",
+  "python.formatting.provider": "black",
   "python.formatting.blackArgs": [
     "--check",
     "--line-length",
@@ -41,7 +41,7 @@
     "tests"
   ],
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter"
+    "editor.defaultFormatter": null
   }
   // "python.pythonPath": "pysuienv/bin/python",
   // "restructuredtext.confPath": "${workspaceFolder}/docs"

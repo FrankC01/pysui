@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Refactored sui_crypto.create_new_keypair
+
 ### Removed
 
 ## [0.21.1] - 2023-05-10
