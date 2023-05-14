@@ -56,7 +56,7 @@ keys-to-0210 = "samples.keys_to_0210:main"
 [tool.setuptools.packages.find]
 # where = ["pysui","samples"]
 # include = ["*","abstracts*","sui*"]
-exclude = ["temp*","test*","tools*","build*","doc*","pysuienv*","images*"]
+exclude = ["out*","temp*","test*","tools*","build*","doc*","pysuienv*","images*"]
 
 
 [tool.setuptools.dynamic]

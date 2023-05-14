@@ -13,7 +13,7 @@ A few powerful advantages of this capability include:
 
     * A more expresive batch transaction
     * Both `public`` **and** `public entry` functions can be called on a Sui Move contract
-    * If one command produces a result (e.g. `split_coin`, that result may be used as an argument to one or more subsequent commands
+    * If one command produces a result (e.g. `split_coin`), that result may be used as an argument to one or more subsequent commands
     * And more...
 
 The ``pysui`` Implementation
@@ -73,8 +73,8 @@ Commands available
 
 Basic commands:
     * move_call
-    * transfer_objects, transfer_sui
-    * split_coin,split_coin_equal
+    * transfer_objects, transfer_sui, public_transfer_object
+    * split_coin,split_coin_equal,split_coin_and_return
     * make_move_vector
     * publish, publish_upgrade, custom_upgrade (new)
     * stake_coin, unstake_coin
@@ -99,7 +99,6 @@ Signing, Signers, etc.
 SuiTransactions have a property called `signature_block` that manages the potential signers of a transaction:
     * Sender - This can be an SuiAddress or a SigningMultiSig (wrapper over MultiSig address)
     * Sponsor - This can be an SuiAddress or a SigningMultiSig (wrapper over MultiSig address)
-    * Additional Signers - A list of SuiAddress and/or SigningMultSig
 
 Here is an example of a transaction that is sponsored:
 
@@ -195,7 +194,7 @@ example is a coercion table describing the effect of resolving in `move_call` ar
 .. [#f1] Explicit unsigned integer bit size types
 .. [#f2] Members must be scalars, SuiAddresses or results of previous commands. For Object vectors use :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.make_move_vector`
 .. [#f3] Will determine if Shared object or not before transaction execution
-.. [#f4] Result may be a list, so understanding which commands return a single or multiple is important
+.. [#f4] Result may be a list, so understanding which commands return a zero, 1 or multiple(list) is important
 
 Command Notes
 #############

@@ -41,7 +41,7 @@ from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiSignature, SuiString, SuiU8
+from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiSignature, SuiString, SuiU64, SuiU8
 from pysui.sui.sui_utils import publish_build
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
@@ -50,6 +50,13 @@ _UNSTAKE_REQUEST_TARGET: str = "0x3::sui_system::request_withdraw_stake"
 _STANDARD_UPGRADE_CAP_TYPE: str = "0x2::package::UpgradeCap"
 _UPGRADE_CAP_SUFFIX: str = "UpgradeCap"
 _SPLIT_AND_KEEP: str = "0x2::pay::divide_and_keep"
+_SPLIT_AND_RETURN: str = "0x2::coin::divide_into_n"
+_PUBLIC_TRANSFER: str = "0x2::transfer::public_transfer"
+_VECTOR_REVERSE: str = "0x1::vector::reverse"
+_VECTOR_POP_BACK: str = "0x1::vector::pop_back"
+_VECTOR_LENGTH: str = "0x1::vector::length"
+_VECTOR_REMOVE_INDEX: str = "0x1::vector::remove"
+_VECTOR_DESTROY_EMPTY: str = "0x1::vector::destroy_empty"
 _PAY_GAS: int = 4000000
 
 
@@ -65,11 +72,11 @@ class SigningMultiSig:
         self.indicies = msig.validate_signers(pub_keys)
         self._address = self.multi_sig.address
 
-
     @property
     def signing_address(self) -> str:
         """."""
         return self._address
+
 
 @versionadded(version="0.17.0", reason="Standardize on signing permutations")
 @versionchanged(version="0.18.0", reason="Removed additional_signers as not supported by Sui at the moment.")
@@ -92,7 +99,13 @@ class SignerBlock:
         """
         self._sender = sender
         self._sponsor = sponsor
+        self._merge_to_gas: bool = False
+        # self._merge_to_gas:list = []
         # self._additional_signers = additional_signers if additional_signers else []
+
+    def _merging_to_gas(self):
+        """."""
+        self._merge_to_gas = True
 
     @property
     def sender(self) -> Union[SuiAddress, SigningMultiSig]:
@@ -106,8 +119,8 @@ class SignerBlock:
         self._sender = new_sender
 
     @property
-    def sponsor(self) -> Union[SuiAddress, SigningMultiSig]:
-        """Gets the sponsor (may be None) used as payer of transaction."""
+    def sponsor(self) -> Union[None, Union[SuiAddress, SigningMultiSig]]:
+        """Get who, if any, may be acting as payer of transaction."""
         return self._sponsor
 
     @sponsor.setter
@@ -145,7 +158,7 @@ class SignerBlock:
         # result_list.extend(self.additional_signers)
         # return result_list
 
-    @versionchanged(version="0.21.2",reason="Fix regression on MultiSig signing.")
+    @versionchanged(version="0.21.2", reason="Fix regression on MultiSig signing.")
     def get_signatures(self, *, client: SuiClient, tx_bytes: str) -> SuiArray[SuiSignature]:
         """Get all the signatures needed for the transaction."""
         sig_list: list[SuiSignature] = []
@@ -166,20 +179,25 @@ class SignerBlock:
         # If both not set, Fail
         if not who_pays:
             raise ValueError("Both SuiTransaction sponor and sender are null. Complete those before execute.")
-        if isinstance(who_pays,SuiAddress):
+        if isinstance(who_pays, SuiAddress):
             whose_gas = who_pays.address
             who_pays = who_pays.address
         else:
-            whose_gas = who_pays.signing_address # as_sui_address
+            whose_gas = who_pays.signing_address  # as_sui_address
             who_pays = who_pays.signing_address
         # who_pays = who_pays if isinstance(who_pays, SuiAddress) else who_pays.multi_sig.as_sui_address
         owner_coins: list[SuiCoinObject] = handle_result(client.get_gas(whose_gas)).data
         # Get whatever gas objects below to whoever is paying
         # and filter those not in use
         use_coin: SuiCoinObject = None
-        owner_gas: list[SuiCoinObject] = [
-            x for x in owner_coins if x.coin_object_id not in objects_in_use and int(x.balance) >= budget
-        ]
+        if self._merge_to_gas:
+            owner_gas: list[SuiCoinObject] = [owner_coins[0]]
+        else:
+            owner_gas: list[SuiCoinObject] = [
+                x for x in owner_coins if x.coin_object_id not in objects_in_use and int(x.balance) >= budget
+            ]
+
+        # If there is no remaining gas but _merge_to_gas is found
         # Find that which satisfies budget
         # If we have a result of the main filter, use first
         if owner_gas:
@@ -259,7 +277,12 @@ class SuiTransaction:
     _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
 
     @versionchanged(version="0.21.1", reason="Takes a 'initial_sender' as option.")
-    def __init__(self, client: SuiClient, merge_gas_budget: bool = False, initial_sender: Union[SuiAddress,SigningMultiSig] = False) -> None:
+    def __init__(
+        self,
+        client: SuiClient,
+        merge_gas_budget: bool = False,
+        initial_sender: Union[SuiAddress, SigningMultiSig] = False,
+    ) -> None:
         """Transaction initializer."""
         self.builder = tx_builder.ProgrammableTransactionBuilder()
         self.client = client
@@ -530,7 +553,7 @@ class SuiTransaction:
 
     @versionchanged(version="0.19.0", reason="Check that only type Objects are passed")
     @versionchanged(version="0.21.1", reason="Added optional item_type argument")
-    def make_move_vector(self, items: list[Any],item_type:Optional[str]=None) -> bcs.Argument:
+    def make_move_vector(self, items: list[Any], item_type: Optional[str] = None) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
         # Sample first for type
         def _first_non_argument_type(inner_list: list) -> Any:
@@ -577,12 +600,15 @@ class SuiTransaction:
         package_id, module_id, function_id = target.split("::")
         result = self.client.execute(GetFunction(package=package_id, module_name=module_id, function_name=function_id))
         if result.is_ok():
+            reslen = len(result.result_data.returns)
+            if reslen:
+                pass
             res_tup = (
                 bcs.Address.from_str(package_id),
                 module_id,
                 function_id,
                 result.result_data.parameters,
-                len(result.result_data.returns),
+                reslen,
             )
             # res_cnt: int = len(result.result_data.returns)
             # package_id = bcs.Address.from_str(package_id)
@@ -987,6 +1013,88 @@ class SuiTransaction:
             type_arguments=[bcs.TypeTag.type_tag_from(coin_type)],
         )
 
+    def public_transfer_object(
+        self,
+        *,
+        object_to_send: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        recipient: SuiAddress,
+        object_type: str,
+    ) -> bcs.Argument:
+        """public_transfer_object Public transfer of any object.
+
+        :param object_to_send: Object being transferred
+        :type object_to_send: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+        :param recipient: Address for recipient of object_to_send
+        :type recipient: SuiAddress
+        :param object_type: Type arguments
+        :type object_type: str
+        :return: Result of command which is non-reusable
+        :rtype: bcs.Argument
+        """
+        assert not self._executed, "Transaction already executed"
+        assert isinstance(
+            object_to_send, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+        ), "invalid object type"
+        assert isinstance(recipient, SuiAddress), "Invalid recipient type"
+        obj_type_tag = bcs.TypeTag.type_tag_from(object_type)
+        resolved_args = self._resolve_arguments([object_to_send, recipient])
+        return self._move_call(
+            target=_PUBLIC_TRANSFER,
+            arguments=resolved_args,
+            type_arguments=[obj_type_tag],
+        )
+
+    def split_coin_and_return(
+        self,
+        *,
+        coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        split_count: Union[int, SuiInteger],
+        coin_type: Optional[str] = "0x2::sui::SUI",
+    ) -> bcs.Argument:
+        """split_coin_and_return Splits a Sui coin into equal parts and returns array of split_count-1 for user to transfer.
+
+        :param coin: The coin to split
+        :type coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+        :param split_count: The number of parts to split coin into
+        :type split_count: Union[int, SuiInteger]
+        :param coin_type: The coin type, defaults to a Sui coin type
+        :type coin_type: Optional[str], optional
+        :return: The command result which is a vector of coins split out and may be used in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        assert not self._executed, "Transaction already executed"
+        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
+        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
+        split_count = split_count if isinstance(split_count, int) else split_count.value
+        if split_count < 2:
+            raise ValueError(f"Split count {split_count} must be greater than 1")
+        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
+        resolved = self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
+
+        # Split 1 coin into split_count total [orig, new 1, new 2]
+        coin_type_tag = bcs.TypeTag.type_tag_from(coin_type)
+        result_vector = self._move_call(
+            target=_SPLIT_AND_RETURN,
+            arguments=resolved,
+            type_arguments=[coin_type_tag],
+        )
+        # Itemize the new coins
+        if coin_type.count("<") == 0:
+            coin_type_tag = bcs.TypeTag.type_tag_from(f"0x2::coin::Coin<{coin_type}>")
+
+        # We only want the new coins
+        nreslist: list[bcs.Argument] = []
+        for nrindex in range(split_count - 1):
+            nreslist.append(
+                self._move_call(
+                    target=_VECTOR_REMOVE_INDEX,
+                    arguments=[result_vector, tx_builder.PureInput.as_input(SuiU64(0))],
+                    type_arguments=[coin_type_tag],
+                )
+            )
+        self._move_call(target=_VECTOR_DESTROY_EMPTY, arguments=[result_vector], type_arguments=[coin_type_tag])
+        return nreslist
+
     def merge_coins(
         self,
         *,
@@ -999,13 +1107,15 @@ class SuiTransaction:
         :type merge_to: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
         :param merge_from: One or more coins to merge to primary 'merge_to' coin
         :type merge_from: Union[list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray]
-        :return: The command result. Can be used as input in subsequent commands.
+        :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
         assert isinstance(
             merge_to, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
         ), "Unsupported type for merge_to"
+        if isinstance(merge_to, bcs.Argument) and merge_to.enum_name == "GasCoin":
+            self.signer_block._merging_to_gas()
         merge_to = self._resolve_arguments([merge_to if not isinstance(merge_to, str) else ObjectID(merge_to)])[0]
         # Depper from_coin type verification
         assert isinstance(merge_from, (list, SuiArray)), "Unsupported merge_from collection type"
