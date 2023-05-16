@@ -47,9 +47,16 @@ class PackageEventQuery(_EventFilterType, SuiMap):
         """Initialize query parameter."""
         super().__init__("Package", package_id)
 
+class MoveEventModuleQuery(_EventFilterType, SuiMap):
+    """Query events with the given move event module name."""
+
+    def __init__(self, module: str, package_id: str):
+        """Initialize query parameter."""
+        sdict = {"module": module, "package": package_id}
+        super().__init__("MoveEventModule", sdict)
 
 class MoveModuleEventQuery(_EventFilterType, SuiMap):
-    """Query events for Move Module."""
+    """Query events emitted in a specified Move module."""
 
     def __init__(self, module: str, package: str) -> None:
         """Initialize query parameter."""
@@ -65,7 +72,7 @@ class MoveEventTypeQuery(_EventFilterType, SuiMap):
         super().__init__("MoveEventType", struct)
 
 
-class MoveEventField(_EventFilterType, SuiMap):
+class MoveEventFieldQuery(_EventFilterType, SuiMap):
     """Query events for Move Event fields."""
 
     def __init__(self, field_path: dict[str, str]):
