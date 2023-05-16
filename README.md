@@ -16,7 +16,7 @@ We would appreciate any issues being reported in the [github issue log](https://
 
 We also have a channel in the [sui-base](https://github.com/sui-base/sui-base) Discord server [click here](https://discord.com/invite/Erb6SwsVbH):
 
-- 100% coverage (builders, return types, etc.) for parity with _SUI 1.1.0 API_ on devnet/testnet/mainnet
+- 100% coverage (builders, return types, etc.) for parity with _SUI 1.2.0 API_ on devnet/testnet/mainnet
 
 **PyPi for 0.22.0**
 
