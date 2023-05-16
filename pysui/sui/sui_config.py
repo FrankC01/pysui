@@ -21,7 +21,7 @@ from io import TextIOWrapper
 from pathlib import Path
 import json
 import yaml
-from deprecated.sphinx import versionadded,versionchanged
+from deprecated.sphinx import versionadded, versionchanged
 from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
     PYSUI_EXEC_ENV,
@@ -101,7 +101,7 @@ class SuiConfig(ClientConfiguration):
     ) -> tuple[str, SuiAddress]:
         """create_new_keypair_and_address Create a new keypair and address identifier and writes to client.yaml.
 
-        :param scheme: Identifies whether new key is ed25519 or secp256k1
+        :param scheme: Identifies whether new key is ed25519, secp256k1 or secp256r1
         :type scheme: SignatureScheme
         :param mnemonics: string of phrases separated by spaces, defaults to None
         :type mnemonics: str, optional

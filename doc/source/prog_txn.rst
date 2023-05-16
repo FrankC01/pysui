@@ -74,7 +74,7 @@ Commands available
 Basic commands:
     * move_call
     * transfer_objects, transfer_sui, public_transfer_object
-    * split_coin,split_coin_equal,split_coin_and_return
+    * split_coin, split_coin_equal, split_coin_and_return
     * make_move_vector
     * publish, publish_upgrade, custom_upgrade (new)
     * stake_coin, unstake_coin
@@ -100,10 +100,81 @@ SuiTransactions have a property called `signature_block` that manages the potent
     * Sender - This can be an SuiAddress or a SigningMultiSig (wrapper over MultiSig address)
     * Sponsor - This can be an SuiAddress or a SigningMultiSig (wrapper over MultiSig address)
 
-Here is an example of a transaction that is sponsored:
+SigningMultiSig
+~~~~~~~~~~~~~~~
+
+To use MultiSig in transactions, a decorator class `SigningMultiSig` is used. It consists two parts:
+    * MultiSig - As described in previous topic
+    * SuiPublicKey - A list of one or more public keys associated to the MultiSig keypairs
+
+The transaction, by default, uses the active-address as the sender/signer. To use a SigningMultiSig you
+must set it as sender in transaction creation or prior to execution.
+
+The examples below demonstrate the approaches.
+
+.. code-block:: Python
+
+    def split_init_with_multi_sig():
+        """Initiate a transaction with a multisig SigningMultiSig decorator."""
+        cfg = SuiConfig.default_config()
+        client = SuiClient(cfg)
+
+        # Get a multi-sig
+        msig: MultiSig = ...
+        # Get subset of MultiSig SuiPublic keys
+        msig_pubkeys: list[SuiPublicKey] = ...
+
+        # Construct the transaction with the SigningMultiSig
+        txer = SuiTransaction(client,initial_sender=SigningMultiSig(msig, msig_pubkeys))
+
+        # Split and transfer
+        split_coin = txer.split_coin(coin=txer.gas,amounts=[10000000000])
+        txer.transfer_objects(transfers=[split_coin],recipient=msig.as_sui_address)
+
+        # Execute
+        result = txer.execute(gas_budget="2000000")
+
+        if result.is_ok():
+            print(f"Coin split to self {msig.address} success")
+            print(result.result_data.to_json(indent = 2))
+
+.. code-block:: Python
+
+    def split_with_multi_sig_pre_execution():
+        """Transaction sets sender of multisig SigningMultiSig decorator prior to execution."""
+        cfg = SuiConfig.default_config()
+        client = SuiClient(cfg)
+
+        # Get a multi-sig
+        msig: MultiSig = ...
+        # Get subset of MultiSig SuiPublic keys
+        msig_pubkeys: list[SuiPublicKey] = ...
+
+        # Construct the SigningMultiSig
+        sender_msig = SigningMultiSig(msig, msig_pubkeys)
+
+        # Construct the transaction with default sender
+        txer = SuiTransaction(client)
+
+        # Split and transfer
+        split_coin = txer.split_coin(coin=txer.gas,amounts=[10000000000])
+        txer.transfer_objects(transfers=[split_coin],recipient=msig.as_sui_address)
+
+        # Set the sender as multisig
+        txer.signer_block.sender = sender_msig
+
+        # Execute
+        result = txer.execute(gas_budget="2000000")
+
+        if result.is_ok():
+            print(f"Coin split to self {msig.address} success")
+            print(result.result_data.to_json(indent = 2))
 
 Sponsored Transaction example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Here is an example of a transaction that is sponsored. It, as well, may be set to a SigningMultiSig although
+this example uses a simple SuiAddress:
 
 .. code-block:: Python
 
@@ -111,7 +182,7 @@ Sponsored Transaction example
     from pysui.sui.sui_clients.transaction import SuiTransaction
     from pysui.sui.sui_config import SuiConfig
 
-    def foo():
+    def sponsored_split():
         """Demonstrates a simple sponsored SuiTransaction ."""
 
         # Get the Transaction/Transaction Builder

@@ -65,5 +65,5 @@ readme = {file = ["README.md"],content-type = "text/markdown"}
 
 [project.urls]
 "Bug Reports" = "https://github.com/FrankC01/pysui/issues"
-repository = "https://github.com/python-poetry/poetry"
+repository = "https://github.com/FrankC01/pysui"
 documentation = "https://pysui.readthedocs.io"
