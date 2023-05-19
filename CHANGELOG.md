@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Publish documentation emphasizing that UpgradeCap must be transferred as part of SuiTransaction
 - Minor documentation changes
 
 ### Removed
