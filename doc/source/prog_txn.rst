@@ -344,12 +344,12 @@ Publish Method
 ++++++++++++++
 
 SuiTransaction provides :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.publish`. Note that the
-result of the command is the UpgradeCap and it can then be transfered to an owner.
+result of the command is the UpgradeCap and it must be transfered to an owner.
 
 .. code-block:: Python
 
     def publish_package(client: SuiClient = None):
-        """Sample straight up publish of move contract."""
+        """Sample straight up publish of move contract returning UpgradeCap to current address."""
         client = client if client else SuiClient(SuiConfig.default_config())
 
         # Initiate a new transaction
