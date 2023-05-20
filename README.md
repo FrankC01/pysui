@@ -4,7 +4,7 @@
 
 Python Client SDK for Sui blockchain
 
-**Release-0.22.0**
+**Release-0.22.1**
 
 This release is the _Sui mainnet ready candidate_.
 
@@ -14,11 +14,13 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 We would appreciate any issues being reported in the [github issue log](https://github.com/FrankC01/pysui/issues)
 
-We also have a channel in the [sui-base](https://github.com/sui-base/sui-base) Discord server [click here](https://discord.com/invite/Erb6SwsVbH):
-
 - 100% coverage (builders, return types, etc.) for parity with _SUI 1.2.0 API_ on devnet/testnet/mainnet
 
-**PyPi for 0.22.0**
+**Discord**
+
+Discord server [click here](https://discord.gg/uCGYfY4Ph4):
+
+**PyPi for 0.22.1**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
@@ -30,7 +32,7 @@ We also have a channel in the [sui-base](https://github.com/sui-base/sui-base) D
 
 There is a companion package called [pysui-gadgets](https://github.com/FrankC01/pysui_gadgets) with a few utilities and ge-gaws that you may find interesting. It is a separate package also on on PyPi.
 
-We've started leveraging [sui-base](https://github.com/sui-base/sui-base) in our testing and we've modified SuiConfig initialization to include an option for interacting directly with local nodes created by `sui-base`
+We've started leveraging [suibase](https://github.com/ChainMovers/suibase) in our testing and we've modified SuiConfig initialization to include an option for interacting directly with local nodes created by `sui-base`
 
 ## Ready to run
 
@@ -60,7 +62,7 @@ or
 
 ### Install `pysui`
 
-`pip install --use-pep517 pysui`
+`pip install pysui`
 
 ## Samples
 

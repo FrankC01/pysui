@@ -24,7 +24,6 @@ import json
 from typing import Union
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 import pyroaring
-import secp256k1
 import bip_utils
 import ecdsa
 from bip_utils.addr.addr_key_validator import AddrKeyValidator
@@ -285,8 +284,7 @@ class SuiKeyPairED25519(SuiKeyPair):
         return SuiKeyPairED25519(indata)
 
 
-# Secp256
-# TODO: Change to use the ecdsa library and drop the secp256k1 library requirement
+@versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
 class SuiPublicKeySECP256K1(SuiPublicKey):
     """A SECP256K1 Public Key."""
 
@@ -295,10 +293,10 @@ class SuiPublicKeySECP256K1(SuiPublicKey):
         if len(indata) != SECP256K1_PUBLICKEY_BYTES_LEN:
             raise SuiInvalidKeyPair(f"Public Key expects {SECP256K1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}")
         super().__init__(SignatureScheme.SECP256K1, indata)
-        self._verify_key = secp256k1.PublicKey(indata, raw=True)
+        self._verify_key = ecdsa.VerifyingKey.from_string(indata, curve=ecdsa.SECP256k1)
 
 
-# TODO: Change to use the ecdsa library
+@versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
 class SuiPrivateKeySECP256K1(SuiPrivateKey):
     """A SECP256K1 Private Key."""
 
@@ -307,13 +305,14 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
         if len(indata) != SECP256K1_PRIVATEKEY_BYTES_LEN:
             raise SuiInvalidKeyPair(f"Private Key expects {SECP256K1_PRIVATEKEY_BYTES_LEN} bytes, found {len(indata)}")
         super().__init__(SignatureScheme.SECP256K1, indata)
-        self._signing_key = secp256k1.PrivateKey(indata, raw=True)
+        self._signing_key = ecdsa.SigningKey.from_string(indata, curve=ecdsa.SECP256k1, hashfunc=hashlib.sha256)
 
     def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """secp256k1 sign data bytes."""
-        return self._signing_key.ecdsa_serialize_compact(self._signing_key.ecdsa_sign(data))
+        return self._signing_key.sign_deterministic(data)
 
 
+@versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
 class SuiKeyPairSECP256K1(SuiKeyPair):
     """A SuiKey Pair."""
 
@@ -322,7 +321,7 @@ class SuiKeyPairSECP256K1(SuiKeyPair):
         super().__init__()
         self._scheme = SignatureScheme.SECP256K1
         self._private_key = SuiPrivateKeySECP256K1(secret_bytes)
-        pubkey_bytes = self._private_key._signing_key.pubkey.serialize(compressed=True)
+        pubkey_bytes = self._private_key._signing_key.get_verifying_key().to_string("compressed")
         self._public_key = SuiPublicKeySECP256K1(pubkey_bytes)
 
     @classmethod
@@ -344,7 +343,7 @@ class SuiKeyPairSECP256K1(SuiKeyPair):
 
 
 class MultiSig:
-    """."""
+    """Multi signature support."""
 
     _MIN_KEYS: int = 2
     _MAX_KEYS: int = 10
@@ -416,7 +415,6 @@ class MultiSig:
         """Return a copy of the list of SuiPublicKeys used in this MultiSig."""
         return self._public_keys.copy()
 
-    # TODO: Remove after testing
     @property
     def full_keys(self) -> list[SuiKeyPair]:
         """."""
@@ -642,11 +640,14 @@ def create_new_keypair(
             bip32_ctx = bip_utils.Bip32Slip10Secp256k1.FromSeedAndPath(
                 seed_bytes, derv_path or SECP256K1_DEFAULT_KEYPATH
             )
+            bip32_ctx = bip_utils.Bip32Slip10Secp256k1.FromSeedAndPath(
+                seed_bytes, derv_path or SECP256K1_DEFAULT_KEYPATH
+            )
             # 1. Private, or signer, key
-            secp_priv = secp256k1.PrivateKey(bip32_ctx.PrivateKey().Raw().ToBytes(), raw=True)
-            pkey = secp_priv.private_key
+            secp_priv = ecdsa.SigningKey.from_string(bip32_ctx.PrivateKey().Raw().ToBytes(), curve=ecdsa.SECP256k1)
+            pkey = secp_priv.to_string()
             # 2. Public, or verifier, key
-            vkey = secp_priv.pubkey.serialize(compressed=True)
+            vkey = secp_priv.get_verifying_key().to_string("compressed")
             key_clazz = SuiKeyPairSECP256K1
             validation_str = "ValidateAndGetSecp256k1Key"
 
@@ -773,6 +774,5 @@ def load_keys_and_addresses(
         raise SuiFileNotFound(str(keystore_file))
 
 
-# pylint:disable=line-too-long,invalid-name
 if __name__ == "__main__":
     pass
