@@ -1,9 +1,9 @@
 dataclasses_json==0.5.7
 pyyaml==6.0
-httpx==0.23.0
+httpx==0.24.1
 h2==4.1.0
 bip-utils==2.7.0
-websockets==10.4
+websockets==11.0.3
 typing_utils==0.1.0
 canoser==0.8.2
 base58==2.1.1
