@@ -99,8 +99,8 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: str = "1.00.0"
-    _RPC_REQUIRED_VERSION: str = "1.1.0"
+    _RPC_MINIMAL_VERSION: str = "1.1.0"
+    _RPC_REQUIRED_VERSION: str = "1.2.0"
     _SIGNATURE_ERROR: set[str] = {
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",
@@ -210,7 +210,7 @@ class _ClientMixin(Provider):
             pass
         elif rpa < mpa:
             raise RuntimeError(f"Requires minimum version '{self._RPC_MINIMAL_VERSION} found {self._rpc_version}")
-        elif rpa == mpa:
+        elif rpa < ipa:
             print(f"Host RPC version is back level {rpa}. May experience issues with lastest code built for {ipa}.")
 
     def version_at_least(self, majver: int, minver: int, bldver: int) -> bool:

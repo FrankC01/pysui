@@ -63,7 +63,7 @@ version = {attr = "pysui.version.__version__"}
 readme = {file = ["README.md"],content-type = "text/markdown"}
 
 [project.urls]
-repository = "https://github.com/FrankC01/pysui"
-documentation = "https://pysui.readthedocs.io"
 changelog = "https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md"
+repository = "https://github.com/FrankC01/pysui"
 issues = "https://github.com/FrankC01/pysui/issues"
+documentation = "https://pysui.readthedocs.io"
