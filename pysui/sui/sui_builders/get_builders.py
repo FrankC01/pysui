@@ -740,3 +740,12 @@ class GetProtocolConfig(_NativeTransactionBuilder):
     def __init__(self,*,version: Optional[SuiString] = None):
         """Builder initializer."""
         super().__init__("sui_getProtocolConfig", handler_cls=ProtocolConfig,handler_func="from_dict")
+
+@versionadded(version="0.23.0",reason="New Sui (1.2.0) RPC API method.")
+class GetChainID(_NativeTransactionBuilder):
+    """Return the chain's identifier."""
+
+    @sui_builder()
+    def __init__(self):
+        """Builder initializer."""
+        super().__init__("sui_getChainIdentifier")
