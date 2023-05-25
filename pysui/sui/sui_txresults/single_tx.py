@@ -171,6 +171,13 @@ class ImmutableOwner(DataClassJsonMixin):
     owner_type: str
 
 
+@dataclass
+class NotRequestedOwner(DataClassJsonMixin):
+    """From sui_getObject."""
+
+    owner_type: str
+
+
 # Object Raw Data
 
 
@@ -201,8 +208,8 @@ class ObjectRead(DataClassJsonMixin):
     version: str
     object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     # content: Optional[Union[dict, ObjectReadData, ObjectPackageReadData]]
-    object_type: Optional[str] = field(metadata=config(field_name="type"))
-    previous_transaction: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    previous_transaction: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=str)
+    object_type: Optional[str] = field(metadata=config(field_name="type"), default_factory=str)
     storage_rebate: Optional[str] = field(metadata=config(field_name="storageRebate"), default=0)
     content: Optional[dict] = field(default_factory=dict)
     bcs: Optional[dict] = field(default_factory=dict)
@@ -242,7 +249,8 @@ class ObjectRead(DataClassJsonMixin):
                 case "Immutable":
                     self.owner = ImmutableOwner.from_dict({"owner_type": "Immutable"})
                 case _:
-                    raise AttributeError(f"{self.owner} not handled")
+                    self.owner = NotRequestedOwner.from_dict({"owner_type": "Filter excluded"})
+                    # raise AttributeError(f"{self.owner} not handled")
         else:
             vlist = list(self.owner.items())
             match vlist[0][0]:
@@ -837,12 +845,13 @@ class ValidatorApys(DataClassJsonMixin):
     apys: list[ValidatorApy]
     epoch: str
 
+
 @dataclass
 class ProtocolConfig(DataClassJsonMixin):
     """From sui_getProtocolConfig."""
 
-    max_supported_protocol_version:str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    min_supported_protocol_version:str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    max_supported_protocol_version: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    min_supported_protocol_version: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     protocol_version: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     feature_flags: dict = field(metadata=config(letter_case=LetterCase.CAMEL))
     attributes: dict

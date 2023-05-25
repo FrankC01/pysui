@@ -17,6 +17,7 @@
 from pysui.sui.sui_types.address import SuiAddress, valid_sui_address
 from pysui.sui.sui_types.scalars import *
 from pysui.sui.sui_builders.get_builders import *
+from pysui.sui.sui_clients.common import handle_result
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_txresults.complex_tx import Checkpoint
 
@@ -101,3 +102,24 @@ def test_gets(sui_client: SuiClient) -> None:
     assert txi.is_ok()
     txi = txi.result_data
     assert txi.checkpoint == checki.sequence_number
+
+
+def test_object_gets(sui_client: SuiClient) -> None:
+    """Verify object get and options operations."""
+    # Get a gas object
+    faucet_gas: list = handle_result(sui_client.get_gas_from_faucet()).transferred_gas_objects
+    # Pluck one
+    target_gas = faucet_gas[0].object_id
+    options: dict = {
+        "showType": True,
+        "showOwner": True,
+        "showPreviousTransaction": True,
+        "showDisplay": True,
+        "showContent": True,
+        "showBcs": True,
+        "showStorageRebate": True,
+    }
+
+    entries = [dict([x]) for x in options.items()]
+    for entry in entries:
+        _ = handle_result(sui_client.execute(GetObject(object_id=target_gas, options=entry)))
