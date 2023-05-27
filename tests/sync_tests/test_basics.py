@@ -20,6 +20,7 @@ from pysui.sui.sui_builders.get_builders import *
 from pysui.sui.sui_clients.common import handle_result
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_txresults.complex_tx import Checkpoint
+from tests.test_utils import gas_not_in
 
 
 def test_addresses(sui_client: SuiClient) -> None:
@@ -123,3 +124,20 @@ def test_object_gets(sui_client: SuiClient) -> None:
     entries = [dict([x]) for x in options.items()]
     for entry in entries:
         _ = handle_result(sui_client.execute(GetObject(object_id=target_gas, options=entry)))
+
+
+def test_txn_gets(sui_client: SuiClient) -> None:
+    """Verify transaction get and options operations."""
+    options = {
+        "showEffects": True,
+        "showEvents": True,
+        "showBalanceChanges": True,
+        "showObjectChanges": True,
+        "showRawInput": True,
+        "showInput": True,
+    }
+    main_coin = gas_not_in(sui_client)
+    target = main_coin.previous_transaction
+    entries = [dict([x]) for x in options.items()]
+    for entry in entries:
+        _ = handle_result(sui_client.execute(GetTx(digest=target, options=entry)))
