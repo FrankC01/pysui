@@ -20,6 +20,7 @@ import functools
 from enum import IntEnum
 from typing import Type, Union, get_args
 import typing_utils
+from deprecated.sphinx import versionchanged
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_rpc import Builder
 from pysui.sui.sui_utils import COERCION_FROM_TO_SETS, COERCION_FN_MAP, COERCION_TO_FROM_SETS
@@ -113,18 +114,25 @@ class SuiBaseBuilder(Builder):
         self._handler_cls: Type[SuiBaseType] = handler_cls
         self._handler_func: str = handler_func
 
-    def _pull_vars(self) -> list[SuiBaseType]:
+    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
+    def _pull_vars(self) -> dict:
         """Filter out private/protected var elements."""
         var_map = vars(self)
-        return [val for key, val in var_map.items() if key[0] != "_"]
+        outparms = {}
+        for key, value in var_map.items():
+            if key[0] != "_":
+                outparms[key] = value
+        return outparms
 
-    def _collect_parameters(self) -> list[SuiBaseType]:
+    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
+    def _collect_parameters(self) -> dict:
         """Collect the call parameters."""
         # TODO: Merge with `params` method when refactored or just remove abstract decl
         return self._pull_vars()
 
+    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
     @property
-    def params(self) -> list[SuiBaseType]:
+    def params(self) -> dict:
         """Return parameters list."""
         return self._pull_vars()
 

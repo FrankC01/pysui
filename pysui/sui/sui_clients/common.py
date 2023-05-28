@@ -20,6 +20,7 @@ from abc import abstractmethod
 from typing import Any, Optional, Union
 from pkg_resources import packaging
 import httpx
+from deprecated.sphinx import versionchanged
 from pysui.abstracts import RpcResult, Provider
 from pysui.abstracts.client_keypair import KeyPair
 from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
@@ -149,11 +150,13 @@ class _ClientMixin(Provider):
         data_block["params"] = params
         return data_block
 
+    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
     def _validate_builder(self, builder: SuiBaseBuilder) -> Union[dict, SuiRpcApiNotAvailable]:
         """Validate SUI RPC API field alignment."""
         if not builder.method in self._rpc_api:
             raise SuiRpcApiNotAvailable(builder.method)
-        parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
+        parm_results = validate_api(self._rpc_api[builder.method], builder)
+        # parm_results = [y for x, y in validate_api(self._rpc_api[builder.method], builder)]
         jblock = self._generate_data_block(builder.data_dict, builder.method, parm_results)
         # print(f"{json.dumps(jblock, indent=2)}")
 

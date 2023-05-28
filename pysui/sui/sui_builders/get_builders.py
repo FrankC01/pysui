@@ -15,7 +15,7 @@
 """Sui Builders: Simple sui_getXXX calls."""
 
 from typing import Final, Optional
-from deprecated.sphinx import versionadded
+from deprecated.sphinx import versionadded, versionchanged
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
 from pysui.sui.sui_types.event_filter import _EventFilterType, AllFilter
 from pysui.sui.sui_types.scalars import SuiNullType, SuiString, SuiInteger, ObjectID, SuiBoolean
@@ -640,6 +640,7 @@ class GetLatestCheckpointSequence(_NativeTransactionBuilder):
         super().__init__("sui_getLatestCheckpointSequenceNumber")
 
 
+@versionchanged(version="0.24.0", reason="RPC expacts 'id' so correct during param fetch")
 class GetCheckpointByDigest(_NativeTransactionBuilder):
     """GetCheckpointByDigest return a checkpoint for cp_id."""
 
@@ -652,7 +653,14 @@ class GetCheckpointByDigest(_NativeTransactionBuilder):
         """
         super().__init__("sui_getCheckpoint", handler_cls=Checkpoint, handler_func="from_dict")
 
+    @property
+    def params(self) -> dict:
+        """."""
+        res = super().params
+        return {"id": res["cp_id"]}
 
+
+@versionchanged(version="0.24.0", reason="RPC expacts 'id' so correct during param fetch")
 class GetCheckpointBySequence(_NativeTransactionBuilder):
     """GetCheckpoint return a checkpoint for cp_id."""
 
@@ -660,10 +668,16 @@ class GetCheckpointBySequence(_NativeTransactionBuilder):
     def __init__(self, cp_seq: SuiString):
         """__init__ Builder initializer.
 
-        :param cp_id: Checkpoint sequence number
-        :type cp_id: SuiString
+        :param cp_seq: Checkpoint sequence number
+        :type cp_seq: SuiString
         """
         super().__init__("sui_getCheckpoint", handler_cls=Checkpoint, handler_func="from_dict")
+
+    @property
+    def params(self) -> dict:
+        """."""
+        res = super().params
+        return {"id": res["cp_seq"]}
 
 
 class GetCheckpoints(_NativeTransactionBuilder):
@@ -729,6 +743,7 @@ class GetValidatorsApy(_NativeTransactionBuilder):
         """Builder initializer."""
         super().__init__("suix_getValidatorsApy", handler_cls=ValidatorApys, handler_func="from_dict")
 
+
 @versionadded(version="0.21.0", reason="New Sui (1.1.0) RPC API method.")
 class GetProtocolConfig(_NativeTransactionBuilder):
     """Return the protocol config table for the given version number.
@@ -737,11 +752,12 @@ class GetProtocolConfig(_NativeTransactionBuilder):
     """
 
     @sui_builder()
-    def __init__(self,*,version: Optional[SuiString] = None):
+    def __init__(self, *, version: Optional[SuiString] = None):
         """Builder initializer."""
-        super().__init__("sui_getProtocolConfig", handler_cls=ProtocolConfig,handler_func="from_dict")
+        super().__init__("sui_getProtocolConfig", handler_cls=ProtocolConfig, handler_func="from_dict")
 
-@versionadded(version="0.23.0",reason="New Sui (1.2.0) RPC API method.")
+
+@versionadded(version="0.23.0", reason="New Sui (1.2.0) RPC API method.")
 class GetChainID(_NativeTransactionBuilder):
     """Return the chain's identifier."""
 

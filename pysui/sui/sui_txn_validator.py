@@ -16,6 +16,7 @@
 
 import re
 from typing import Any, Union
+from deprecated.sphinx import versionchanged
 from pysui.abstracts import Builder
 
 from pysui.sui.sui_excepts import SuiRpcApiInvalidParameter
@@ -56,11 +57,9 @@ def __parm_array_list(in_array: Any, api_parm_name: str) -> list[Any]:
     return out_array
 
 
-def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
+@versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
+def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[str, SuiRpcApiInvalidParameter]:
     """Validate the specific parameter."""
-    # from .sui_types import SuiArray
-
-    schema_name = type(build_parm).__name__
     att = getattr(build_parm, api_parm.name)
     match api_parm.schema.type:
         case "array":
@@ -71,25 +70,29 @@ def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[tuple[
     # print(f"att {api_parm.name} = {att}")
     if att is None and api_parm.required:
         raise SuiRpcApiInvalidParameter(f"builder {build_parm} does not have attribute {api_parm.name}")
-    return (schema_name, att)
+    return att
 
 
+@versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
 def _parameter_check(api_method: SuiApi, builder: Builder) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
     """Perform parameter validations."""
     # All calls take at least 1 parameter
-    parmlen = len(api_method.params)
     build_parms = builder.params
-    if len(build_parms) != parmlen:
+    if len(build_parms) != len(api_method.params):
         raise SuiRpcApiInvalidParameter(
-            f"API Expected {parmlen} parameters for {builder.method} but found {len(build_parms)}"
+            f"API Expected {len(api_method.params)} parameters for {builder.method} but found {len(build_parms)}"
         )
 
-    results = []
+    results = {}
     index = 0
-    while index < parmlen:
-        vres = __validate_parameter(build_parms[index], api_method.params[index])
-        results.append(vres)
-        index = index + 1
+    for bkey, bvalue in build_parms.items():
+        api_def = api_method.params[index]
+        if bkey == api_def.name:
+            vres = __validate_parameter(bvalue, api_def)
+            results[bkey] = vres
+            index += 1
+        else:
+            raise SuiRpcApiInvalidParameter(f"Expected {api_method.name} found {bkey}")
     return results
 
 
