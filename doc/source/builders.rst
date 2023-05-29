@@ -31,51 +31,47 @@ Module: base_builder - Sui Builders: Common types.
 Module: exec_builders - Sui Builders: Complex transaction.
 ----------------------------------------------------------
 
-+---------------------------------------------------------------------------------+-------+
-|                                       Name                                      | Notes |
-+=================================================================================+=======+
-| :py:class:`pysui.sui.sui_builders.exec_builders.ExecuteTransaction`             |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.ExecuteSerializedTransaction`   |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.DryRunTransaction`              |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.InspectTransaction`             |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.TransferObject`                 |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.TransferSui`                    |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.Pay`                            |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.PaySui`                         |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.PayAllSui`                      |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.MergeCoin`                      |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.SplitCoin`                      |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.SplitCoinEqually`               |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.BatchParameter`                 |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.TransferObjectParams`           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.MoveCallRequestParams`          |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.BatchTransaction`               |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.Publish`                        |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.MoveCall`                       |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.RequestAddDelegation`           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.RequestSwitchDelegation`        |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.exec_builders.RequestWithdrawDelegation`      |       |
-+---------------------------------------------------------------------------------+-------+
++--------------------------------------------------------------------------+-------+
+|                                   Name                                   | Notes |
++==========================================================================+=======+
+| :py:class:`pysui.sui.sui_builders.exec_builders.ExecuteTransaction`      |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.DryRunTransaction`       |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.InspectTransaction`      |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.TransferObject`          |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.TransferSui`             |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.Pay`                     |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.PaySui`                  |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.PayAllSui`               |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.MergeCoin`               |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.SplitCoin`               |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.SplitCoinEqually`        |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.BatchParameter`          |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.TransferObjectParams`    |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.MoveCallRequestParams`   |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.BatchTransaction`        |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.Publish`                 |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.MoveCall`                |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.RequestAddStake`         |       |
++--------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.exec_builders.RequestWithdrawStake`    |       |
++--------------------------------------------------------------------------+-------+
 
 .. _subscription-filters:
 
@@ -85,120 +81,90 @@ Module: subscription_builders - Sui Builders: For subscriptions and filters.
 +---------------------------------------------------------------------------------+-------+
 |                                       Name                                      | Notes |
 +=================================================================================+=======+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.SenderFilter`           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.PackageFilter`          |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.ModuleFilter`           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.MoveEventTypeFilter`    |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.MoveEventFieldFilter`   |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.EventTypeFilter`        |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.ObjectFilter`           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.AndFilter`              |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.OrFilter`               |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.AllFilter`              |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.AnyFilter`              |       |
-+---------------------------------------------------------------------------------+-------+
 | :py:class:`pysui.sui.sui_builders.subscription_builders.SubscribeEvent`         |       |
++---------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.subscription_builders.SubscribeTransaction`   |       |
 +---------------------------------------------------------------------------------+-------+
 
 Module: get_builders - Sui Builders: Simple sui_getXXX calls.
 -------------------------------------------------------------
 
-+---------------------------------------------------------------------------------+-------+
-|                                       Name                                      | Notes |
-+=================================================================================+=======+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetCoinMetaData`                 |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetAllCoinBalances`              |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetAllCoins`                     |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetCoinTypeBalance`              |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetCoins`                        |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetSuiSystemState`               |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetTotalSupply`                  |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetObjectsOwnedByAddress`        |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetObjectsOwnedByObject`         |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetDynamicFieldObject`           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetDynamicFields`                |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetObject`                       |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetPastObject`                   |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetPackage`                      |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetModule`                       |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetFunction`                     |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetFunctionArgs`                 |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetStructure`                    |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetRpcAPI`                       |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetCommittee`                    |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.TransactionEventQuery`           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.MoveModuleEventQuery`            |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.MoveEventQuery`                  |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.EventTypeQuery`                  |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.SenderEventQuery`                |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.RecipientEventQuery`             |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.ObjectEventQuery`                |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.TimeRangeEventQuery`             |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetEvents`                       |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetTotalTxCount`                 |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetTx`                           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetTxs`                          |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetTransactionsInRange`          |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetTxAuthSignatures`             |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetDelegatedStakes`              |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetValidators`                   |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetCheckpointContents`           |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetCheckpointContentsByDigest`   |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetCheckpointSummary`            |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetCheckpointSummaryByDigest`    |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetLatestCheckpointSequence`     |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.GetReferenceGasPrice`            |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.get_builders.SignRandomnessObject`            |       |
-+---------------------------------------------------------------------------------+-------+
++-------------------------------------------------------------------------------+-------+
+|                                      Name                                     | Notes |
++===============================================================================+=======+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetCoinMetaData`               |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetAllCoinBalances`            |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetAllCoins`                   |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetCoinTypeBalance`            |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetCoins`                      |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetLatestSuiSystemState`       |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetTotalSupply`                |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetDynamicFieldObject`         |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetDynamicFields`              |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetObject`                     |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetMultipleObjects`            |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetObjectsOwnedByAddress`      |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetPastObject`                 |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetMultiplePastObjects`        |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetPackage`                    |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetModule`                     |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetFunction`                   |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetFunctionArgs`               |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetStructure`                  |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetRpcAPI`                     |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetCommittee`                  |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.QueryEvents`                   |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.QueryTransactions`             |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetEvents`                     |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetTotalTxCount`               |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetTx`                         |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetDelegatedStakes`            |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetLatestCheckpointSequence`   |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetCheckpointByDigest`         |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetCheckpointBySequence`       |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetCheckpoints`                |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetReferenceGasPrice`          |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.NameServiceAddress`            |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.NameServiceNames`              |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetLoadedChildObjects`         |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetValidatorsApy`              |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetProtocolConfig`             |       |
++-------------------------------------------------------------------------------+-------+
+| :py:class:`pysui.sui.sui_builders.get_builders.GetChainID`                    |       |
++-------------------------------------------------------------------------------+-------+
