@@ -555,7 +555,7 @@ class SuiTransaction:
     @versionchanged(version="0.21.1", reason="Added optional item_type argument")
     def make_move_vector(self, items: list[Any], item_type: Optional[str] = None) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
-        # Sample first for type
+
         def _first_non_argument_type(inner_list: list) -> Any:
             """."""
             result = None
@@ -694,7 +694,13 @@ class SuiTransaction:
         assert isinstance(target, (str, SuiString))
         # Standardize the input parameters
         target = target if isinstance(target, str) else target.value
-        target_id, module_id, function_id, _parameters, res_count = self._move_call_target_cache(target)
+        target_id, module_id, function_id, parameters, res_count = self._move_call_target_cache(target)
+        if arguments:
+            for index, arg in enumerate(arguments):
+                parm = parameters[index]
+                if hasattr(parm, "is_mutable") and parm.is_mutable and isinstance(arg, tuple):
+                    r_arg: bcs.ObjectArg = arg[1]
+                    r_arg.value.Mutable = True
 
         type_arguments = type_arguments if isinstance(type_arguments, list) else []
         return self.builder.move_call(
