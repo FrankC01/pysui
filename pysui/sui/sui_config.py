@@ -35,7 +35,7 @@ from pysui.sui.sui_constants import (
     TESTNET_FAUCET_URL,
     TESTNET_SOCKET_URL,
 )
-from pysui.sui.sui_crypto import SuiAddress, create_new_address, load_keys_and_addresses
+from pysui.sui.sui_crypto import SuiAddress, create_new_address, load_keys_and_addresses, recover_key_and_address
 from pysui.sui.sui_excepts import (
     SuiConfigFileError,
     SuiFileNotFound,
@@ -119,6 +119,39 @@ class SuiConfig(ClientConfiguration):
                 self._address_keypair[address.address] = keypair
                 self._write_keypair(keypair)
                 return mnem, address
+            case _:
+                raise NotImplementedError(f"{scheme}: Not recognized as valid keypair scheme.")
+
+    @versionadded(version="0.24.0", reason="Added to recover keypairs")
+    def recover_keypair_and_address(
+        self, scheme: SignatureScheme, mnemonics: str, derivation_path: str, install: bool = False
+    ) -> tuple[str, SuiAddress]:
+        """recover_keypair_and_address Recover a keypair from mnemonic string.
+
+        :param scheme: Identifies whether new key is ed25519, secp256k1 or secp256r1
+        :type scheme: SignatureScheme
+        :param mnemonics: string of phrases separated by spaces
+        :type mnemonics: str
+        :param derivation_path: The derivation path for key, specific to Signature scheme
+        :type derivation_path: str
+        :param install: Flag indicating to write back to client.yaml, defaults to False
+        :type install: bool, optional
+        :raises NotImplementedError: When providing unregognized scheme
+        :raises ValueError: If recovered keypair/address already exists
+        :return: The input mnemonic string and the new keypair associated SuiAddress
+        :rtype: tuple[str, SuiAddress]
+        """
+        match scheme:
+            case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
+                mnem, keypair, address = recover_key_and_address(scheme, mnemonics, derivation_path)
+                if address.address in self._addresses:
+                    raise ValueError(f"Address {address.address} already exists.")
+                else:
+                    self._addresses[address.address] = address
+                    self._address_keypair[address.address] = keypair
+                    if install:
+                        self._write_keypair(keypair)
+                    return mnem, address
             case _:
                 raise NotImplementedError(f"{scheme}: Not recognized as valid keypair scheme.")
 
