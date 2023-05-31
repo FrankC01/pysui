@@ -209,7 +209,7 @@ class _ClientMixin(Provider):
         rpa = packaging.version.parse(self.rpc_version)
         mpa = packaging.version.parse(self._RPC_MINIMAL_VERSION)
         ipa = packaging.version.parse(self._RPC_REQUIRED_VERSION)
-        if rpa == ipa:
+        if rpa >= ipa:
             pass
         elif rpa < mpa:
             raise RuntimeError(f"Requires minimum version '{self._RPC_MINIMAL_VERSION} found {self._rpc_version}")
