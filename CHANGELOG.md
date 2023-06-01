@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2023-06-01
+
+### Added
+
+- SuiConfig method to recover key from mnemonics and derivation path [enhancement](https://github.com/FrankC01/pysui/issues/112)
+
+### Fixed
+
+- Object mutabilty in SuiTransaction [bug](https://github.com/FrankC01/pysui/issues/111)
+
+### Changed
+
+- RPC parameter changed to map from array [change](https://github.com/FrankC01/pysui/issues/80)
+- Refresh docs for Builder references
+
+### Removed
+
 ## [0.23.1] - Unpublished
 
 ### Added
