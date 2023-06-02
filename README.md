@@ -6,7 +6,7 @@ Python Client SDK for Sui blockchain
 
 **Release-0.24.0**
 
-- 100% parity with _SUI 1.2.0 RPP API_ on devnet
+- 100% parity with _SUI 1.3.0 RPP API_ on devnet
 - 100% parity with _SUI 1.2.1 RPP API_ on devnet
 - 100% parity with _SUI 1.2.1 RPP API_ on devnet
 
