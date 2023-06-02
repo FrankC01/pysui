@@ -15,6 +15,8 @@
 
 
 from typing import Final, Optional, Union
+from deprecated.sphinx import versionadded
+
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_types.scalars import ObjectID
@@ -113,6 +115,17 @@ class FromAndToAddressQuery(_TransactionFilterType, SuiMap):
         from_address = from_address if isinstance(from_address, str) else from_address.address
         to_address = to_address if isinstance(to_address, str) else to_address.address
         super().__init__("filter", {"FromAndToAddress": {"from": from_address, "to": to_address}})
+        self.map["options"] = _validate_options(options)
+
+
+@versionadded(version="0.24.1", reason="New filter supported in Sui RPC API 1.3.0")
+class FromOrToAddressQuery(_TransactionFilterType, SuiMap):
+    """Query by sender or recipient address."""
+
+    def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
+        """Initialize query parameter."""
+        address = address if isinstance(address, str) else address.address
+        super().__init__("filter", {"FromOrToAddress": {"addr": address}})
         self.map["options"] = _validate_options(options)
 
 

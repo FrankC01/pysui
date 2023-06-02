@@ -459,3 +459,50 @@ class EventQueryEnvelope(DataClassJsonMixin):
     data: list[Event]
     has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
     next_cursor: Union[None, EventID] = field(metadata=config(field_name="nextCursor"))
+
+
+@versionadded(version="0.24.1", reason="Added in Sui RPC API 1.3.0")
+@dataclass
+class AuxInputs(DataClassJsonMixin):
+    """From ZKP support."""
+
+    addr_seed: str
+    eph_public_key: list[str]
+    jwt_sha2_hash: list[str]
+    jwt_signature: str
+    key_claim_name: str
+    masked_content: list[int]
+    max_epoch: int
+    num_sha2_blocks: int
+    payload_len: int
+    payload_start_index: int
+
+
+@versionadded(version="0.24.1", reason="Added in Sui RPC API 1.3.0")
+@dataclass
+class PublicInputs(DataClassJsonMixin):
+    """From ZKP support."""
+
+    inputs: list[str]
+
+
+@versionadded(version="0.24.1", reason="Added in Sui RPC API 1.3.0")
+@dataclass
+class ZKLoginProof(DataClassJsonMixin):
+    """From ZKP support."""
+
+    pi_a: list[str]
+    pi_b: list[list[str]]
+    pi_c: list[str]
+    protocol: str
+
+
+@versionadded(version="0.24.1", reason="Added in Sui RPC API 1.3.0")
+@dataclass
+class ZkLoginAuthenticator(DataClassJsonMixin):
+    """From ZKP support."""
+
+    aux_inputs: AuxInputs
+    proof: ZKLoginProof
+    public_inputs: PublicInputs
+    user_signature: str
