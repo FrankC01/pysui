@@ -385,6 +385,7 @@ class SuiTransaction:
     @versionchanged(version="0.17.0", reason="Only used internally.")
     @versionchanged(version="0.17.0", reason="Reworked using SignerBlock gas resolution.")
     @versionchanged(version="0.21.1", reason="Corrected using multisig senders.")
+    @versionchanged(version="0.24.1", reason="Brought transaction cost inline, avoiding redundancy.")
     def _build_for_execute(
         self,
         gas_budget: Union[str, SuiString],
@@ -402,15 +403,24 @@ class SuiTransaction:
         """
         # Get the transaction body
         tx_kind = self.raw_kind()
-        # We already have gas price
-        max_cost, _, _ = self.inspect_for_cost()
-        gas_budget = gas_budget if isinstance(gas_budget, str) else gas_budget.value
-        gas_budget = max(max_cost, int(gas_budget))
+        # Get costs
+        tx_kind_b64 = base64.b64encode(tx_kind.serialize()).decode()
+        if self.signer_block.sender:
+            for_sender: Union[SuiAddress, SigningMultiSig] = self.signer_block.sender
+            if not isinstance(for_sender, SuiAddress):
+                for_sender = for_sender.multi_sig.as_sui_address
+        else:
+            for_sender = self.client.config.active_address
+        result = self.client.execute(InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64))
+        if result.is_ok():
+            ispec: TxInspectionResult = result.result_data
+            gas_budget = gas_budget if isinstance(gas_budget, str) else gas_budget.value
+            gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
 
         # Fetch the payment
         gas_object = self._sig_block.get_gas_object(
             client=self.client,
-            budget=max_cost,
+            budget=gas_budget,
             objects_in_use=self.builder.objects_registry,
             merge_coin=self._merge_gas,
             gas_price=self._current_gas_price,
