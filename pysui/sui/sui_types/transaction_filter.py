@@ -118,15 +118,15 @@ class FromAndToAddressQuery(_TransactionFilterType, SuiMap):
         self.map["options"] = _validate_options(options)
 
 
-@versionadded(version="0.24.1", reason="New filter supported in Sui RPC API 1.3.0")
-class FromOrToAddressQuery(_TransactionFilterType, SuiMap):
-    """Query by sender or recipient address."""
+# @versionadded(version="0.24.1", reason="New filter supported in Sui RPC API 1.3.0")
+# class FromOrToAddressQuery(_TransactionFilterType, SuiMap):
+#     """Query by sender or recipient address."""
 
-    def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
-        """Initialize query parameter."""
-        address = address if isinstance(address, str) else address.address
-        super().__init__("filter", {"FromOrToAddress": {"addr": address}})
-        self.map["options"] = _validate_options(options)
+#     def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
+#         """Initialize query parameter."""
+#         address = address if isinstance(address, str) else address.address
+#         super().__init__("filter", {"FromOrToAddress": {"addr": address}})
+#         self.map["options"] = _validate_options(options)
 
 
 class TransactionKindQuery(_TransactionFilterType, SuiMap):

@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- New query transaction filter added `FromOrToAddressQuery` as per Sui 1.3.0 RPC API.
-
 ### Fixed
+
+- README.md
 
 ### Changed
 
