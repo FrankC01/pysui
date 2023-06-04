@@ -19,18 +19,21 @@ import pytest
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_config import SuiConfig
 
-LOCALNET_PROC_REGEN: str = ["bash", "localnet", "regen"]
+LOCALNET_PROC_SET_REPO: str = ["bash", "localnet", "set-sui-repo"]
 LOCALNET_PROC_SET_ACTIVE: str = ["bash", "localnet", "set-active"]
+LOCALNET_PROC_REGEN: str = ["bash", "localnet", "regen"]
 LOCALNET_PROC_STOP: str = ["bash", "localnet", "stop"]
 
 
 def sui_base_localnet_start() -> bool:
     """Regenerate (start sui-base localnet) and set localnet active."""
-    result = subprocess.run(LOCALNET_PROC_REGEN, capture_output=True, text=True)
+    result = subprocess.run(LOCALNET_PROC_SET_REPO, capture_output=True, text=True)
     if result.returncode == 0:
         result = subprocess.run(LOCALNET_PROC_SET_ACTIVE, capture_output=True, text=True)
         if result.returncode == 0:
-            return True
+            result = subprocess.run(LOCALNET_PROC_REGEN, capture_output=True, text=True)
+            if result.returncode == 0:
+                return True
     raise ValueError(f"Result of localnet regen {result.stderr}")
 
 

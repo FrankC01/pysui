@@ -14,13 +14,12 @@
 """Testing more complex client capabilities (no transactions)."""
 
 from pysui.abstracts.client_keypair import SignatureScheme
+from pysui.sui.sui_clients.common import handle_result
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_builders.exec_builders import PayAllSui, SplitCoinEqually
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.scalars import ObjectID
-from tests.test_utils import first_addy_keypair_for, gas_not_in
-
-_STANDARD_BUDGET: str = "5500000"
+from tests.test_utils import first_addy_keypair_for, gas_not_in, STANDARD_BUDGET
 
 
 def test_split_equal(sui_client: SuiClient) -> None:
@@ -44,7 +43,7 @@ def test_split_equal(sui_client: SuiClient) -> None:
         coin_object_id=main_coin.coin_object_id,
         split_count="2",
         gas=gas_coin.coin_object_id,
-        gas_budget=_STANDARD_BUDGET,
+        gas_budget=STANDARD_BUDGET,
     )
     t_run = sui_client.execute(tfr_builder)
     assert t_run.is_ok()
@@ -59,20 +58,41 @@ def test_pay_all_keys(sui_client: SuiClient) -> None:
     ed_addy, _ = first_addy_keypair_for(cfg=sui_client.config, sigtype=SignatureScheme.ED25519)
     k1_addy, _ = first_addy_keypair_for(cfg=sui_client.config, sigtype=SignatureScheme.SECP256K1)
     r1_addy, _ = first_addy_keypair_for(cfg=sui_client.config, sigtype=SignatureScheme.SECP256R1)
-    addy_list: list[SuiAddress] = [ed_addy, k1_addy, r1_addy]
+
     main_coin = gas_not_in(sui_client, ed_addy)
-    for index, addy in enumerate(addy_list):
-        if index == 2:
-            recipient = addy_list[0]
-        else:
-            recipient = addy_list[index + 1]
-        tfr_builder = PayAllSui(
-            signer=addy,
-            input_coins=[ObjectID(main_coin.coin_object_id)],
-            recipient=recipient,
-            gas_budget=_STANDARD_BUDGET,
-        )
-        assert sui_client.execute(tfr_builder).is_ok()
-    fetch_obj = sui_client.get_object(ObjectID(main_coin.coin_object_id))
-    assert fetch_obj.is_ok()
-    assert ed_addy == fetch_obj.result_data.owner.address_owner
+    mc_id = ObjectID(main_coin.coin_object_id)
+    tfr_builder = PayAllSui(
+        signer=ed_addy,
+        input_coins=[mc_id],
+        recipient=k1_addy,
+        gas_budget=STANDARD_BUDGET,
+    )
+    assert sui_client.execute(tfr_builder).is_ok()
+    data = handle_result(sui_client.get_object(mc_id))
+    assert data.owner.address_owner == k1_addy
+
+    main_coin = gas_not_in(sui_client, k1_addy)
+    mc_id = ObjectID(main_coin.coin_object_id)
+
+    tfr_builder = PayAllSui(
+        signer=k1_addy,
+        input_coins=[mc_id],
+        recipient=r1_addy,
+        gas_budget=STANDARD_BUDGET,
+    )
+    assert sui_client.execute(tfr_builder).is_ok()
+    data = handle_result(sui_client.get_object(mc_id))
+    assert data.owner.address_owner == r1_addy
+
+    main_coin = gas_not_in(sui_client, r1_addy)
+    mc_id = ObjectID(main_coin.coin_object_id)
+
+    tfr_builder = PayAllSui(
+        signer=r1_addy,
+        input_coins=[mc_id],
+        recipient=ed_addy,
+        gas_budget=STANDARD_BUDGET,
+    )
+    assert sui_client.execute(tfr_builder).is_ok()
+    data = handle_result(sui_client.get_object(mc_id))
+    assert data.owner.address_owner == ed_addy

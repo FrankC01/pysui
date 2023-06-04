@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- MultiSig and Sponsor SuiTransaction test
+
 ### Fixed
 
 - README.md
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Improved SuiTransaction `execute` performance
+- Bump Deprecated library version
 
 ### Removed
 

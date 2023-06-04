@@ -20,6 +20,8 @@ from pysui.sui.sui_txresults.single_tx import SuiCoinObject
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
 
+STANDARD_BUDGET: str = "5500000"
+
 
 def first_addy_keypair_for(
     *, cfg: SuiConfig, sigtype: SignatureScheme = SignatureScheme.ED25519, not_in: list[str] = None
@@ -54,5 +56,4 @@ def gen_ms(config: SuiConfig) -> MultiSig:
     _, k1_key = first_addy_keypair_for(cfg=config, sigtype=SignatureScheme.SECP256K1)
     _, r1_key = first_addy_keypair_for(cfg=config, sigtype=SignatureScheme.SECP256R1)
     multi_sig = MultiSig([ed_key, k1_key, r1_key], [1, 2, 3], 3)
-    print(f"MultiSig address: {multi_sig.address}")
     return multi_sig
