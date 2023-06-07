@@ -631,6 +631,19 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
         super().__init__("suix_getStakes", handler_cls=DelegatedStakes, handler_func="factory")
 
 
+class GetStakesById(_NativeTransactionBuilder):
+    """GetStakesById return all [DelegatedStake] coins identified.If a Stake was withdrawn its status will be Unstaked."""
+
+    @sui_builder()
+    def __init__(self, staked_sui_ids: SuiArray[ObjectID]):
+        """__init__ Builder initializer.
+
+        :param staked_sui_ids: Array of delegated stake object ids.
+        :type staked_sui_ids: SuiArray[ObjectID]
+        """
+        super().__init__("suix_getStakesByIds", handler_cls=DelegatedStakes, handler_func="factory")
+
+
 class GetLatestCheckpointSequence(_NativeTransactionBuilder):
     """GetLatestCheckpointSequence return the sequence number of the latest checkpoint that has been executed."""
 

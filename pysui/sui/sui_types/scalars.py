@@ -303,6 +303,11 @@ class ObjectID(SuiString):
         return self.value
 
     @property
+    def staked_sui_ids(self) -> str:
+        """Alias over value."""
+        return self.value
+
+    @property
     def gas(self) -> str:
         """Alias over value."""
         return self.value

@@ -115,6 +115,11 @@ class SuiArray(SuiCollection, Generic[AT]):
         """Alias for transactions."""
         return self.array
 
+    @property
+    def staked_sui_ids(self) -> list[dict]:
+        """Alias for transactions."""
+        return self.array
+
 
 class SuiMap(SuiCollection):
     """Dictionary Type."""

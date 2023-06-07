@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- GetStakesById builder supporting Sui RPC API `suix_getStakesByIds`
 - MultiSig and Sponsor SuiTransaction test
 
 ### Fixed
