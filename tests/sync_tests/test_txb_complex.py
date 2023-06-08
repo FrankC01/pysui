@@ -50,3 +50,18 @@ def test_txb_sponsor(sui_client: SuiClient) -> None:
     txer.signer_block.sponser = SuiAddress(sponser_add)
     result = txer.execute(gas_budget=tutils.STANDARD_BUDGET)
     assert result.is_ok()
+
+
+def test_txb_publish(sui_client: SuiClient) -> None:
+    """."""
+    import os
+    from pathlib import Path
+
+    cwd = Path(os.getcwd())
+    cwd = cwd.joinpath("tests/sui-test")
+    assert cwd.exists()
+    txer = SuiTransaction(sui_client)
+    pcap = txer.publish(project_path=str(cwd), with_unpublished_dependencies=False, skip_fetch_latest_git_deps=True)
+    txer.transfer_objects(transfers=[pcap], recipient=sui_client.config.active_address)
+    result = txer.execute(gas_budget=tutils.STANDARD_BUDGET)
+    assert result.is_ok()

@@ -8,6 +8,7 @@ env
 
 # Compiled code
 __pycache__
+Move.lock
 
 # sui logs
 sui.log*
