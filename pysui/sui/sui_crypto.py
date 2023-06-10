@@ -774,5 +774,24 @@ def load_keys_and_addresses(
         raise SuiFileNotFound(str(keystore_file))
 
 
+@versionadded(version="0.25.0", reason="Ephemeral key and address setup.")
+def emphemeral_keys_and_addresses(
+    keystrings: list[str],
+) -> Union[tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]], Exception]:
+    """."""
+    _keystrings = keystrings
+    if _keystrings:
+        _keypairs: dict[str, KeyPair] = {}
+        _addresses: dict[str, SuiAddress] = {}
+        _address_keypair: dict[str, KeyPair] = {}
+        for keystr in _keystrings:
+            kpair = keypair_from_keystring(keystr)
+            _keypairs[keystr] = kpair
+            addy = SuiAddress.from_keypair_string(kpair.to_b64())
+            _addresses[addy.address] = addy
+            _address_keypair[addy.address] = kpair
+        return _keypairs, _addresses, _address_keypair
+
+
 if __name__ == "__main__":
     pass

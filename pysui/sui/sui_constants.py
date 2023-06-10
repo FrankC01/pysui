@@ -59,6 +59,12 @@ TESTNET_FAUCET_URL: str = "http://faucet.testnet.sui.io/gas"
 TESTNET_SOCKET_URL: str = "wss://fullnode.testnet.sui.io:443"
 """Testnet socket url."""
 
+EMPEHMERAL_PATH: str = "ephemeral"
+"""A user memory only configuration path"""
+
+EMPEHMERAL_USER: str = "user"
+"""A user memory only configuration"""
+
 # Address lengths
 SUI_HEX_ADDRESS_STRING_LEN: int = 66
 """Length of valid address string with '0x' prefix."""

@@ -20,10 +20,13 @@ from io import TextIOWrapper
 
 from pathlib import Path
 import json
+from typing import Optional
 import yaml
 from deprecated.sphinx import versionadded, versionchanged
 from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
+    EMPEHMERAL_PATH,
+    EMPEHMERAL_USER,
     PYSUI_EXEC_ENV,
     PYSUI_CLIENT_CONFIG_ENV,
     DEFAULT_SUI_BINARY_PATH,
@@ -35,7 +38,13 @@ from pysui.sui.sui_constants import (
     TESTNET_FAUCET_URL,
     TESTNET_SOCKET_URL,
 )
-from pysui.sui.sui_crypto import SuiAddress, create_new_address, load_keys_and_addresses, recover_key_and_address
+from pysui.sui.sui_crypto import (
+    SuiAddress,
+    create_new_address,
+    emphemeral_keys_and_addresses,
+    load_keys_and_addresses,
+    recover_key_and_address,
+)
 from pysui.sui.sui_excepts import (
     SuiConfigFileError,
     SuiFileNotFound,
@@ -223,6 +232,25 @@ class SuiConfig(ClientConfiguration):
     def sui_base_config(cls) -> "SuiConfig":
         """."""
         return cls._create_config(*sui_base_get_config())
+
+    @classmethod
+    @versionadded(version="0.25.0", reason="Removes reliance on client.yaml")
+    def user_config(cls, *, rpc_url: str, prv_keys: list[str], ws_url: Optional[str]) -> "SuiConfig":
+        """."""
+        assert rpc_url
+        assert prv_keys
+        config = super(ClientConfiguration, cls).__new__(cls)
+        config.__init__(EMPEHMERAL_PATH, EMPEHMERAL_PATH)
+        _set_env_vars(EMPEHMERAL_PATH, EMPEHMERAL_PATH)
+        config._current_env = EMPEHMERAL_USER
+        config._current_url = rpc_url
+        config._current_env = EMPEHMERAL_USER
+        config._faucet_url = EMPEHMERAL_USER
+        config._socket_url = ws_url or EMPEHMERAL_USER
+        config._local_running = False
+        config._keypairs, config._addresses, config._address_keypair = emphemeral_keys_and_addresses(prv_keys)
+        config._active_address = SuiAddress(config.addresses[0])
+        return config
 
     @property
     def rpc_url(self) -> str:

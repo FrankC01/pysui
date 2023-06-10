@@ -15,6 +15,7 @@ sui.log*
 
 # Sandboxing
 temp*.py
+temp*.json
 temp_sub.py
 out*
 backup/
