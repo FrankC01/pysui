@@ -105,6 +105,7 @@ class SuiConfig(ClientConfiguration):
             raise SuiFileNotFound((filepath))
 
     @versionchanged(version="0.21.2", reason="Corrected signature return values.")
+    @versionchanged(version="0.25.0", reason="Support emphemeral configuration.")
     def create_new_keypair_and_address(
         self, scheme: SignatureScheme, mnemonics: str = None, derivation_path: str = None
     ) -> tuple[str, SuiAddress]:
@@ -126,7 +127,8 @@ class SuiConfig(ClientConfiguration):
                 mnem, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
                 self._addresses[address.address] = address
                 self._address_keypair[address.address] = keypair
-                self._write_keypair(keypair)
+                if self._current_env != EMPEHMERAL_USER:
+                    self._write_keypair(keypair)
                 return mnem, address
             case _:
                 raise NotImplementedError(f"{scheme}: Not recognized as valid keypair scheme.")
