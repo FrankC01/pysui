@@ -52,9 +52,6 @@ _UPGRADE_CAP_SUFFIX: str = "UpgradeCap"
 _SPLIT_AND_KEEP: str = "0x2::pay::divide_and_keep"
 _SPLIT_AND_RETURN: str = "0x2::coin::divide_into_n"
 _PUBLIC_TRANSFER: str = "0x2::transfer::public_transfer"
-_VECTOR_REVERSE: str = "0x1::vector::reverse"
-_VECTOR_POP_BACK: str = "0x1::vector::pop_back"
-_VECTOR_LENGTH: str = "0x1::vector::length"
 _VECTOR_REMOVE_INDEX: str = "0x1::vector::remove"
 _VECTOR_DESTROY_EMPTY: str = "0x1::vector::destroy_empty"
 _PAY_GAS: int = 4000000
@@ -444,23 +441,41 @@ class SuiTransaction:
         """."""
         return self._build_for_execute(gas_budget)
 
-    @versionchanged(version="0.16.1", reason="Added 'additional_signers' optional argument")
-    @versionchanged(version="0.17.0", reason="Revamped for all signature potentials and types.")
-    def execute(self, *, gas_budget: Union[str, SuiString]) -> SuiRpcResult:
-        """execute Finalizes transaction and submits for execution on the chain.
+        """execute
 
         :param gas_budget: The gas budget to use. An introspection of the transaciton is performed
             and this method will use the larger of the two.
-        :type gas_budget: Union[int, SuiInteger]
+        :type gas_budget: Union[str, SuiString]
         :return: Result of executing instruction
         :rtype: SuiRpcResult
         """
+
+    @versionchanged(version="0.16.1", reason="Added 'additional_signers' optional argument")
+    @versionchanged(version="0.17.0", reason="Revamped for all signature potentials and types.")
+    @versionchanged(version="0.25.0", reason="Made gas_budget optiona, defaults to 1M mists.")
+    @versionchanged(version="0.25.0", reason="Added execution options.")
+    def execute(
+        self, *, gas_budget: Optional[Union[str, SuiString]] = "1000000", options: Optional[dict] = None
+    ) -> SuiRpcResult:
+        """execute Finalizes transaction and submits for execution on the chain.
+
+        :param gas_budget: The gas budget to use. An introspection of the transaciton is performed
+            and this method will use the larger of the two, defaults to 1000000
+        :type gas_budget: Optional[Union[str, SuiString]], optional
+        :param options: An options dictionary to pass to sui_executeTransactionBlock to control the
+            information results, defaults to None
+        :type options: Optional[dict], optional
+        :return: The result of running the transaction
+        :rtype: SuiRpcResult
+        """
         assert not self._executed, "Transaction already executed"
+        gas_budget = gas_budget if gas_budget else "1000000"
         tx_b64 = base64.b64encode(self._build_for_execute(gas_budget).serialize()).decode()
         # print(tx_b64)
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
             signatures=self.signer_block.get_signatures(client=self.client, tx_bytes=tx_b64),
+            options=options,
             request_type=SuiRequestType.WAITFORLOCALEXECUTION,
         )
         iresult = self.client.execute(exec_tx)

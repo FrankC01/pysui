@@ -238,7 +238,20 @@ class SuiConfig(ClientConfiguration):
     @classmethod
     @versionadded(version="0.25.0", reason="Removes reliance on client.yaml")
     def user_config(cls, *, rpc_url: str, prv_keys: list[str], ws_url: Optional[str]) -> "SuiConfig":
-        """."""
+        """user_config Load a user defined configuraiton.
+
+        Note: New address/keypairs added in this session are not persisted.
+        Note: publish is not available in this option.
+
+        :param rpc_url: The RPC url for RPC API interaction
+        :type rpc_url: str
+        :param prv_keys: List of keystrings (Sui format)
+        :type prv_keys: list[str]
+        :param ws_url: Optional wss url for subscriptions
+        :type ws_url: Optional[str]
+        :return: An instance of SuiConfig
+        :rtype: SuiConfig
+        """
         assert rpc_url
         assert prv_keys
         config = super(ClientConfiguration, cls).__new__(cls)

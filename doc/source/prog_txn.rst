@@ -76,7 +76,7 @@ Basic commands:
     * transfer_objects, transfer_sui, public_transfer_object
     * split_coin, split_coin_equal, split_coin_and_return
     * make_move_vector
-    * publish, publish_upgrade, custom_upgrade (new)
+    * publish, publish_upgrade, custom_upgrade
     * stake_coin, unstake_coin
 
 Inspection
@@ -272,6 +272,8 @@ Command Notes
 
 Publishing
 ~~~~~~~~~~
+
+Not available if using :py:meth:`pysui.sui.sui_config.SuiConfig.user_config`
 
 Common Results
 ++++++++++++++

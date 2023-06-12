@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2023-06-12
+
+### Added
+
+- New 'binary-free' SuiConfig load option `SuiConfig.user_config`. See documentation
+
+### Fixed
+
+### Changed
+
+- Publish utiilty now throws a ValueError if attempting while using `SuiConfig.user_config`
+- SuiTransaction `execute` argument `gas_budget` is now optional, defaults to 1M Mists
+- Extended SuiTransaction `execute` to include options to provide to `sui_executeTransactionBlock`
+
+### Removed
+
 ## [0.24.1] - Unpublished
 
 ### Added

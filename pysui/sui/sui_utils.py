@@ -30,6 +30,7 @@ from dataclasses_json import DataClassJsonMixin
 from deprecated.sphinx import versionchanged, versionadded
 from pysui.sui.sui_constants import (
     DEFAULT_DEVNET_PATH_STRING,
+    EMPEHMERAL_PATH,
     PYSUI_EXEC_ENV,
     SUI_BASE_ACTIVE,
     SUI_BASE_EXEC_PATH,
@@ -190,6 +191,8 @@ def publish_build(
     legacy_digest: bool = False,
 ) -> Union[CompiledPackage, Exception]:
     """Build and collect module base64 strings and dependencies ObjectIDs."""
+    if os.environ[PYSUI_EXEC_ENV] == EMPEHMERAL_PATH:
+        raise ValueError(f"Configuration does not support publishing")
     # Compile the package
     path_to_package = _compile_project(path_to_package, skip_git_dependencie)
     # Find the build folder
