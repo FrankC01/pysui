@@ -124,9 +124,14 @@ def main():
         cfg = SuiConfig.sui_base_config()
     else:
         cfg = SuiConfig.default_config()
-
     arpc = SuiClient(cfg)
-    asyncio.get_event_loop().run_until_complete(main_run(arpc))
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(main_run(arpc))
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":

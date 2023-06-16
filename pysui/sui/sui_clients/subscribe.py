@@ -95,7 +95,7 @@ class SuiClient(Provider):
         :rtype: SuiRpcResult
         """
         payload_msg["method"] = builder.method
-        parm_arg = builder.params[0]
+        parm_arg = builder.params["filter"]
         if isinstance(parm_arg, SuiString):
             payload_msg["params"] = [parm_arg.value]
         elif isinstance(parm_arg, SuiMap):

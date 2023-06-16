@@ -4,11 +4,12 @@
 
 Python Client SDK for Sui blockchain
 
-**Release-0.25.0**
+**Release-0.26.0**
 
-- 100% parity with _SUI 1.3.0 RPP API_ on devnet
-- 100% parity with _SUI 1.3.0 RPP API_ on testnet
-- 100% parity with _SUI 1.2.1 RPP API_ on mainnet (should also work when mainnet goes to 1.3.0)
+- Runs with or without Sui binaries installed
+- 100% parity with _SUI 1.4.0 RPC API_ on devnet
+- 100% parity with _SUI 1.3.0 RPC API_ on testnet
+- 100% parity with _SUI 1.3.0 RPC API_ on mainnet
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
@@ -44,7 +45,7 @@ Requires:
 - libtool
 - sui binaries to support `publish` and mutli-sig signing function
 
-You will need `suibase` to interacting with local nodes, it is an indispensible addition to Sui developers tools!
+You will need `suibase` for interacting with local nodes, it is an indispensible addition to Sui developers tools!
 
 ### Setup environment
 
