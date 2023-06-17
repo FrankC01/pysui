@@ -14,6 +14,7 @@ A few powerful advantages of this capability include:
     * A more expresive batch transaction
     * Both `public`` **and** `public entry` functions can be called on a Sui Move contract
     * If one command produces a result (e.g. `split_coin`), that result may be used as an argument to one or more subsequent commands
+    * Asych options added in 0.26.0
     * And more...
 
 The ``pysui`` Implementation
@@ -29,6 +30,11 @@ Gettinig Started
 ################
 SuiTransactions encapsulate a SuiClient, transaction signers and gas objects, inspection and execution methods as well as
 the ability to add one or more commands.
+
+For asynchronous transactions, SuiTransactionAsync encapsulates a asynch SuiClient and is in parity with their
+sycnronous counterpart. Basically, all methods on the asynch family are called with ``await``.
+
+All examples that follow use the synchronous SuiClient and SuiTransaction.
 
 Quick example
 ~~~~~~~~~~~~~

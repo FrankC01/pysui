@@ -18,7 +18,7 @@ import base64
 import os
 import asyncio
 from pathlib import Path
-from typing import Any, Optional, Union, Callable
+from typing import Any, Awaitable, Optional, Union, Callable
 from abc import abstractmethod
 from deprecated.sphinx import versionadded, versionchanged
 from pysui.sui.sui_builders.base_builder import SuiRequestType
@@ -473,6 +473,25 @@ class _SuiTransactionBase:
         """Utility to convert base64 string to bytes then as list of u8."""
         return list(base64.b64decode(inbound if isinstance(inbound, str) else inbound.value))
 
+    def _compile_source(
+        self,
+        project_path: str,
+        with_unpublished_dependencies: bool,
+        skip_fetch_latest_git_deps: bool,
+        legacy_digest: bool,
+    ) -> tuple[list[str], list[str], bcs.Digest]:
+        """."""
+        src_path = Path(os.path.expanduser(project_path))
+        compiled_package = publish_build(
+            src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+        )
+        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
+        dependencies = [
+            bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in compiled_package.dependencies
+        ]
+        digest = bcs.Digest.from_bytes(compiled_package.package_digest)
+        return modules, dependencies, digest
+
 
 class SuiTransactionAsync(_SuiTransactionBase):
     """."""
@@ -484,6 +503,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         initial_sender: Union[SuiAddress, SigningMultiSig] = False,
     ) -> None:
         """Transaction initializer."""
+        assert client.is_synchronous is False, "Requires asynch SuiClient"
         super().__init__(client, merge_gas_budget, initial_sender)
         s_client = SyncClient(client.config)
         self._current_gas_price = handle_result(s_client.execute(GetReferenceGasPrice()))
@@ -524,12 +544,13 @@ class SuiTransactionAsync(_SuiTransactionBase):
             gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
 
         # Fetch the payment
-        gas_object = self._sig_block.get_gas_object(
+
+        gas_object = await self._sig_block.get_gas_object_async(
             client=self.client,
             budget=gas_budget,
             objects_in_use=self.builder.objects_registry,
             merge_coin=self._merge_gas,
-            gas_price=self._current_gas_price,
+            gas_price=int(self._current_gas_price),
         )
         if isinstance(self.signer_block.sender, SuiAddress):
             who_sends = self.signer_block.sender.address
@@ -570,7 +591,8 @@ class SuiTransactionAsync(_SuiTransactionBase):
         """
         assert not self._executed, "Transaction already executed"
         gas_budget = gas_budget if gas_budget else "1000000"
-        tx_b64 = base64.b64encode(await self._build_for_execute(gas_budget).serialize()).decode()
+        tx_data = await self._build_for_execute(gas_budget)
+        tx_b64 = base64.b64encode(tx_data.serialize()).decode()
         # print(tx_b64)
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
@@ -806,6 +828,168 @@ class SuiTransactionAsync(_SuiTransactionBase):
             res_count=res_count,
         )
 
+    @versionchanged(
+        version="0.20.0", reason="Removed recipient. Transfer of UpgradeCap up to user as per Sui best practice."
+    )
+    async def publish(
+        self,
+        *,
+        project_path: str,
+        with_unpublished_dependencies: bool = False,
+        skip_fetch_latest_git_deps: bool = False,
+        legacy_digest: bool = False,
+    ) -> bcs.Argument:
+        """publish Creates a publish command.
+
+        :param project_path: path to project folder
+        :type project_path: str
+        :param with_unpublished_dependencies: Flag indicating inclusion of adding unpublished dependencies
+            of package, defaults to False
+        :type with_unpublished_dependencies: bool, optional
+        :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
+            package dependencies, defaults to False
+        :type skip_fetch_latest_git_deps: bool, optional
+        :param recipient: Address of who owns the published package. If None, active-address is used, defaults to None
+        :type recipient: Optional[SuiAddress], optional
+        :return: A command result that can used in subsequent commands
+        :rtype: bcs.Argument
+        """
+        assert not self._executed, "Transaction already executed"
+        modules, dependencies, _ = self._compile_source(
+            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+        )
+        return self.builder.publish(modules, dependencies)
+
+    async def _verify_upgrade_cap(self, upgrade_cap: str) -> ObjectRead:
+        """Verify that the upgrade cap is valid."""
+        resp = await self.client.get_object(upgrade_cap)
+        if resp.is_ok() and not isinstance(resp.result_data, ObjectNotExist):
+            upcap: ObjectRead = resp.result_data
+            if not (upcap.object_type == _STANDARD_UPGRADE_CAP_TYPE or upcap.object_type.endswith(_UPGRADE_CAP_SUFFIX)):
+                raise ValueError(f"{upcap.object_type} not recognized as UpgradeCap")
+            return upcap
+        raise ValueError(f"Error in finding UpgradeCap on {upgrade_cap}")
+
+    @versionchanged(version="0.17.0", reason="Dropped recipient as the resulting UpgradeCap goes to main signer.")
+    @versionchanged(version="0.20.0", reason="Added package compiled digest control as per Sui 1.0.0.")
+    async def publish_upgrade(
+        self,
+        *,
+        project_path: str,
+        package_id: Union[str, ObjectID],
+        upgrade_cap: Union[str, ObjectID, ObjectRead],
+        with_unpublished_dependencies: bool = False,
+        skip_fetch_latest_git_deps: bool = False,
+        legacy_digest: bool = False,
+    ) -> bcs.Argument:
+        """publish_upgrade Authorize, publish and commit upgrade of package.
+
+        :param project_path: path to project folder
+        :type project_path: str
+        :param package_id: The current package id that is being upgraded
+        :type package_id: Union[str, ObjectID]
+        :param upgrade_cap: The upgrade capability object
+        :type upgrade_cap: Union[str, ObjectID, ObjectRead]
+        :param with_unpublished_dependencies: Flag indicating inclusion of adding unpublished dependencies
+            of package, defaults to False
+        :type with_unpublished_dependencies: bool, optional
+        :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
+            package dependencies, defaults to False
+        :type skip_fetch_latest_git_deps: bool, optional
+        :param legacy_digest: Flag indicating to create a digest the old way
+        :type legacy_digest: bool, optional
+        :return: The Result Argument
+        :rtype: bcs.Argument
+        """
+        assert not self._executed, "Transaction already executed"
+        assert isinstance(upgrade_cap, (str, ObjectID, ObjectRead))
+        assert isinstance(package_id, (str, ObjectID))
+        # Compile the new package
+        modules, dependencies, digest = self._compile_source(
+            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+        )
+        # Verify get/upgrade cap details
+        if not isinstance(upgrade_cap, ObjectRead):
+            upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
+            upgrade_cap = await self._verify_upgrade_cap(upgrade_cap)
+        else:
+            upgrade_cap = await self._verify_upgrade_cap(upgrade_cap.object_id)
+
+        capability_arg = await self._resolve_arguments(
+            [
+                upgrade_cap,
+                SuiU8(upgrade_cap.content.fields["policy"]),
+                digest
+                # bcs.Digest.from_bytes(compiled_package.package_digest),
+            ]
+        )
+
+        # Trap the number of input_obj len:
+        cap_arg = len(self.builder.inputs)
+        # authorize
+        auth_cmd = self.builder.authorize_upgrade(*capability_arg)
+        package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
+        # Upgrade
+        receipt = self.builder.publish_upgrade(modules, dependencies, package_id, auth_cmd)
+        # Commit
+        return self.builder.commit_upgrade(bcs.Argument("Input", cap_arg), receipt)
+
+    @versionadded(version="0.20.0", reason="Support Sui 1.0.0 custom upgrades")
+    async def custom_upgrade(
+        self,
+        *,
+        project_path: str,
+        package_id: Union[str, ObjectID],
+        upgrade_cap: Union[str, ObjectID, ObjectRead],
+        authorize_upgrade_fn: Callable[["SuiTransactionAsync", ObjectRead, bcs.Digest], Awaitable[bcs.Argument]],
+        commit_upgrade_fn: Callable[["SuiTransactionAsync", ObjectRead, bcs.Argument], Awaitable[bcs.Argument]],
+        with_unpublished_dependencies: bool = False,
+        skip_fetch_latest_git_deps: bool = False,
+        legacy_digest: bool = False,
+    ) -> bcs.Argument:
+        """custom_upgrade Support for custom authorization and commitments.
+
+        :param project_path: path to project folder
+        :type project_path: str
+        :param package_id: The current package id that is being upgraded
+        :type package_id: Union[str, ObjectID]
+        :param upgrade_cap: The upgrade capability object
+        :type upgrade_cap: Union[str, ObjectID, ObjectRead]
+        :param authorize_upgrade_fn: Function to be called that generates custom authorization 'move_call'
+        :type authorize_upgrade_fn: Callable[[&quot;SuiTransaction&quot;, ObjectRead, bcs.Digest], bcs.Argument]
+        :param commit_upgrade_fn: Function to be called that generates custom commitment 'move_call'
+        :type commit_upgrade_fn: Callable[[&quot;SuiTransaction&quot;, ObjectRead, bcs.Argument], bcs.Argument]
+        :param with_unpublished_dependencies: Flag indicating inclusion of adding unpublished dependencies
+            of package, defaults to False
+        :type with_unpublished_dependencies: bool, optional
+        :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
+            package dependencies, defaults to False
+        :type skip_fetch_latest_git_deps: bool, optional
+        :param legacy_digest: Flag indicating to create a digest the old way
+        :type legacy_digest: bool, optional
+        :return: The Result Argument
+        :rtype: bcs.Argument
+        """
+        assert authorize_upgrade_fn, "'authorize_upgrade_fn' is NoneType"
+        assert commit_upgrade_fn, "'commit_upgrade_fn' is NoneType"
+        # Compile the new package
+        modules, dependencies, digest = self._compile_source(
+            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+        )
+        # Verify get/upgrade cap details
+        if not isinstance(upgrade_cap, ObjectRead):
+            upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
+            upgrade_cap = await self._verify_upgrade_cap(upgrade_cap)
+        else:
+            upgrade_cap = await self._verify_upgrade_cap(upgrade_cap.object_id)
+
+        upgrade_ticket = await authorize_upgrade_fn(self, upgrade_cap, digest)
+        # Extrack the auth_cmd cap input
+        package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
+        # Upgrade
+        receipt = self.builder.publish_upgrade(modules, dependencies, package_id, upgrade_ticket)
+        return await commit_upgrade_fn(self, upgrade_cap, receipt)
+
     async def stake_coin(
         self,
         *,
@@ -834,7 +1018,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         else:
             params.append(bcs.OptionalU64())
         params.append(validator_address if isinstance(validator_address, SuiAddress) else SuiAddress(validator_address))
-        return self._move_call(target=_STAKE_REQUEST_TARGET, arguments=await self._resolve_arguments(params))
+        return await self._move_call(target=_STAKE_REQUEST_TARGET, arguments=await self._resolve_arguments(params))
 
     async def unstake_coin(self, *, staked_coin: Union[str, ObjectID, StakedSui]) -> bcs.Argument:
         """unstake_coin Unstakes a Staked Sui Coin.
@@ -857,7 +1041,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 raise ValueError(f"Can not unstake non-activated staked coin {staked_coin}")
         else:
             params.append(staked_coin)
-        return self._move_call(target=_UNSTAKE_REQUEST_TARGET, arguments=await self._resolve_arguments(params))
+        return await self._move_call(target=_UNSTAKE_REQUEST_TARGET, arguments=await self._resolve_arguments(params))
 
     @versionchanged(version="0.17.0", reason="Made 'amount' 'amounts' with list argument.")
     async def split_coin(
@@ -927,7 +1111,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
         resolved = await self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
 
-        return self._move_call(
+        return await self._move_call(
             target=_SPLIT_AND_KEEP,
             arguments=resolved,
             type_arguments=[bcs.TypeTag.type_tag_from(coin_type)],
@@ -981,7 +1165,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
                     type_arguments=[coin_type_tag],
                 )
             )
-        self._move_call(target=_VECTOR_DESTROY_EMPTY, arguments=[result_vector], type_arguments=[coin_type_tag])
+        await self._move_call(target=_VECTOR_DESTROY_EMPTY, arguments=[result_vector], type_arguments=[coin_type_tag])
         return nreslist
 
     async def merge_coins(
@@ -1504,14 +1688,9 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        src_path = Path(os.path.expanduser(project_path))
-        compiled_package = publish_build(
-            src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+        modules, dependencies, _digest = self._compile_source(
+            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
         )
-        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
-        dependencies = [
-            bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in compiled_package.dependencies
-        ]
         return self.builder.publish(modules, dependencies)
 
     def _verify_upgrade_cap(self, upgrade_cap: str) -> ObjectRead:
@@ -1559,14 +1738,9 @@ class SuiTransaction(_SuiTransactionBase):
         assert isinstance(upgrade_cap, (str, ObjectID, ObjectRead))
         assert isinstance(package_id, (str, ObjectID))
         # Compile the new package
-        src_path = Path(os.path.expanduser(project_path))
-        compiled_package = publish_build(
-            src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+        modules, dependencies, digest = self._compile_source(
+            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
         )
-        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
-        dependencies = [
-            bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in compiled_package.dependencies
-        ]
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
             upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
@@ -1578,7 +1752,7 @@ class SuiTransaction(_SuiTransactionBase):
             [
                 upgrade_cap,
                 SuiU8(upgrade_cap.content.fields["policy"]),
-                bcs.Digest.from_bytes(compiled_package.package_digest),
+                digest,
             ]
         )
 
@@ -1631,14 +1805,9 @@ class SuiTransaction(_SuiTransactionBase):
         assert authorize_upgrade_fn, "'authorize_upgrade_fn' is NoneType"
         assert commit_upgrade_fn, "'commit_upgrade_fn' is NoneType"
         # Compile the new package
-        src_path = Path(os.path.expanduser(project_path))
-        compiled_package = publish_build(
-            src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+        modules, dependencies, digest = self._compile_source(
+            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
         )
-        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
-        dependencies = [
-            bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in compiled_package.dependencies
-        ]
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
             upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
@@ -1646,7 +1815,7 @@ class SuiTransaction(_SuiTransactionBase):
         else:
             upgrade_cap = self._verify_upgrade_cap(upgrade_cap.object_id)
 
-        upgrade_ticket = authorize_upgrade_fn(self, upgrade_cap, bcs.Digest.from_bytes(compiled_package.package_digest))
+        upgrade_ticket = authorize_upgrade_fn(self, upgrade_cap, digest)
         # Extrack the auth_cmd cap input
         package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
         # Upgrade
