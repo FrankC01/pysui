@@ -27,17 +27,20 @@ from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
     EMPEHMERAL_PATH,
     EMPEHMERAL_USER,
+    LOCALNET_SUI_URL,
     MAINNET_SOCKET_URL,
     PYSUI_EXEC_ENV,
     PYSUI_CLIENT_CONFIG_ENV,
     DEFAULT_SUI_BINARY_PATH,
     DEFAULT_DEVNET_PATH_STRING,
+    DEVNET_SUI_URL,
     DEVNET_FAUCET_URL,
     DEVNET_SOCKET_URL,
     LOCALNET_FAUCET_URL,
     LOCALNET_SOCKET_URL,
     TESTNET_FAUCET_URL,
     TESTNET_SOCKET_URL,
+    TESTNET_SUI_URL,
 )
 from pysui.sui.sui_crypto import (
     SuiAddress,
@@ -53,7 +56,10 @@ from pysui.sui.sui_excepts import (
 from pysui.sui.sui_utils import sui_base_get_config
 
 
-@versionadded(version="0.16.1", reason="Support for sui-base as well as sharing with signing and publishing")
+@versionadded(
+    version="0.16.1",
+    reason="Support for sui-base as well as sharing with signing and publishing",
+)
 def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
     """_set_env_vars Sets runtime paths to environment variables.
 
@@ -73,7 +79,9 @@ def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
-    def _initiate(self, active_address: str, rpc_url: str, environment: str) -> None:
+    def _initiate(
+        self, active_address: str, rpc_url: str, environment: str
+    ) -> None:
         """."""
         self._active_address = SuiAddress(active_address)
         self._current_url = rpc_url
@@ -93,7 +101,11 @@ class SuiConfig(ClientConfiguration):
             case "mainnet":
                 self._faucet_url = None
                 self._socket_url = MAINNET_SOCKET_URL
-        self._keypairs, self._addresses, self._address_keypair = load_keys_and_addresses(self.keystore_file)
+        (
+            self._keypairs,
+            self._addresses,
+            self._address_keypair,
+        ) = load_keys_and_addresses(self.keystore_file)
 
     def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:
         """Register the keypair and write out to keystore file."""
@@ -105,10 +117,17 @@ class SuiConfig(ClientConfiguration):
         else:
             raise SuiFileNotFound((filepath))
 
-    @versionchanged(version="0.21.2", reason="Corrected signature return values.")
-    @versionchanged(version="0.25.0", reason="Support emphemeral configuration.")
+    @versionchanged(
+        version="0.21.2", reason="Corrected signature return values."
+    )
+    @versionchanged(
+        version="0.25.0", reason="Support emphemeral configuration."
+    )
     def create_new_keypair_and_address(
-        self, scheme: SignatureScheme, mnemonics: str = None, derivation_path: str = None
+        self,
+        scheme: SignatureScheme,
+        mnemonics: str = None,
+        derivation_path: str = None,
     ) -> tuple[str, SuiAddress]:
         """create_new_keypair_and_address Create a new keypair and address identifier and writes to client.yaml.
 
@@ -125,18 +144,29 @@ class SuiConfig(ClientConfiguration):
         """
         match scheme:
             case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
-                mnem, keypair, address = create_new_address(scheme, mnemonics, derivation_path)
+                mnem, keypair, address = create_new_address(
+                    scheme, mnemonics, derivation_path
+                )
                 self._addresses[address.address] = address
                 self._address_keypair[address.address] = keypair
                 if self._current_env != EMPEHMERAL_USER:
                     self._write_keypair(keypair)
+                else:
+                    if not self.active_address:
+                        self._active_address = address
                 return mnem, address
             case _:
-                raise NotImplementedError(f"{scheme}: Not recognized as valid keypair scheme.")
+                raise NotImplementedError(
+                    f"{scheme}: Not recognized as valid keypair scheme."
+                )
 
     @versionadded(version="0.24.0", reason="Added to recover keypairs")
     def recover_keypair_and_address(
-        self, scheme: SignatureScheme, mnemonics: str, derivation_path: str, install: bool = False
+        self,
+        scheme: SignatureScheme,
+        mnemonics: str,
+        derivation_path: str,
+        install: bool = False,
     ) -> tuple[str, SuiAddress]:
         """recover_keypair_and_address Recover a keypair from mnemonic string.
 
@@ -155,9 +185,13 @@ class SuiConfig(ClientConfiguration):
         """
         match scheme:
             case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
-                mnem, keypair, address = recover_key_and_address(scheme, mnemonics, derivation_path)
+                mnem, keypair, address = recover_key_and_address(
+                    scheme, mnemonics, derivation_path
+                )
                 if address.address in self._addresses:
-                    raise ValueError(f"Address {address.address} already exists.")
+                    raise ValueError(
+                        f"Address {address.address} already exists."
+                    )
                 else:
                     self._addresses[address.address] = address
                     self._address_keypair[address.address] = keypair
@@ -165,19 +199,35 @@ class SuiConfig(ClientConfiguration):
                         self._write_keypair(keypair)
                     return mnem, address
             case _:
-                raise NotImplementedError(f"{scheme}: Not recognized as valid keypair scheme.")
+                raise NotImplementedError(
+                    f"{scheme}: Not recognized as valid keypair scheme."
+                )
 
     @classmethod
-    def _parse_config(cls, fpath: Path, config_file: TextIOWrapper) -> tuple[str, str, str, str, str]:
+    def _parse_config(
+        cls, fpath: Path, config_file: TextIOWrapper
+    ) -> tuple[str, str, str, str, str]:
         """Open configuration file and generalize for ingestion."""
         kfpath = fpath.parent
         sui_config = yaml.safe_load(config_file)
-        active_address = sui_config["active_address"] if "active_address" in sui_config else None
-        keystore_file = Path(sui_config["keystore"]["File"]) if "keystore" in sui_config else None
+        active_address = (
+            sui_config["active_address"]
+            if "active_address" in sui_config
+            else None
+        )
+        keystore_file = (
+            Path(sui_config["keystore"]["File"])
+            if "keystore" in sui_config
+            else None
+        )
         # active_env is new (0.15.0) and identifies the alias in use in the 'envs' map list
-        active_env = sui_config["active_env"] if "active_env" in sui_config else None
+        active_env = (
+            sui_config["active_env"] if "active_env" in sui_config else None
+        )
         if not active_address or not keystore_file or not active_env:
-            raise SuiConfigFileError(f"{fpath} is not a valid SUI configuration file.")
+            raise SuiConfigFileError(
+                f"{fpath} is not a valid SUI configuration file."
+            )
         current_url = None
         # Envs is new (0.15.0), it is a list of maps, where the environment
         # contains RPC url identifed by 'aliases' (i.e. devnet, localnet)
@@ -189,15 +239,31 @@ class SuiConfig(ClientConfiguration):
         else:
             raise SuiConfigFileError("'envs' not found in configuration file.")
         keystore_file = str(kfpath.joinpath(keystore_file.name).absolute())
-        return (str(fpath), active_env, active_address, keystore_file, current_url)
+        return (
+            str(fpath),
+            active_env,
+            active_address,
+            keystore_file,
+            current_url,
+        )
 
     @classmethod
     def _new_parse_config(cls, sui_config: str) -> tuple[str, str, str]:
         """New Config Parser."""
-        active_address = sui_config["active_address"] if "active_address" in sui_config else None
-        keystore_file = Path(sui_config["keystore"]["File"]) if "keystore" in sui_config else None
+        active_address = (
+            sui_config["active_address"]
+            if "active_address" in sui_config
+            else None
+        )
+        keystore_file = (
+            Path(sui_config["keystore"]["File"])
+            if "keystore" in sui_config
+            else None
+        )
         # active_env is new (0.15.0) and identifies the alias in use in the 'envs' map list
-        active_env = sui_config["active_env"] if "active_env" in sui_config else None
+        active_env = (
+            sui_config["active_env"] if "active_env" in sui_config else None
+        )
         if not active_address or not keystore_file or not active_env:
             raise SuiConfigFileError("Not a valid SUI configuration file.")
         current_url = None
@@ -212,7 +278,9 @@ class SuiConfig(ClientConfiguration):
 
     @classmethod
     @versionadded(version="0.16.1", reason="More flexible configuration.")
-    def _create_config(cls, expanded_path: Path, expanded_binary: Path) -> "SuiConfig":
+    def _create_config(
+        cls, expanded_path: Path, expanded_binary: Path
+    ) -> "SuiConfig":
         """."""
         client_yaml = yaml.safe_load(expanded_path.read_text(encoding="utf8"))
         config = super(ClientConfiguration, cls).__new__(cls)
@@ -222,50 +290,85 @@ class SuiConfig(ClientConfiguration):
         return config
 
     @classmethod
-    @versionadded(version="0.16.1", reason="New loading of default configuration.")
+    @versionadded(
+        version="0.16.1", reason="New loading of default configuration."
+    )
     def default_config(cls) -> "SuiConfig":
         """."""
         expanded_path = Path(os.path.expanduser(DEFAULT_DEVNET_PATH_STRING))
         if expanded_path.exists():
-            return cls._create_config(expanded_path, Path(os.path.expanduser(DEFAULT_SUI_BINARY_PATH)))
+            return cls._create_config(
+                expanded_path,
+                Path(os.path.expanduser(DEFAULT_SUI_BINARY_PATH)),
+            )
         raise SuiFileNotFound(f"{expanded_path} not found.")
 
     @classmethod
-    @versionadded(version="0.16.1", reason="Supporting more flexible non-default configurations")
+    @versionadded(
+        version="0.16.1",
+        reason="Supporting more flexible non-default configurations",
+    )
     def sui_base_config(cls) -> "SuiConfig":
         """."""
         return cls._create_config(*sui_base_get_config())
 
     @classmethod
     @versionadded(version="0.25.0", reason="Removes reliance on client.yaml")
-    def user_config(cls, *, rpc_url: str, prv_keys: list[str], ws_url: Optional[str]) -> "SuiConfig":
+    @versionchanged(
+        version="0.26.0",
+        reason="Relax initialization requirements of prv_keys",
+    )
+    def user_config(
+        cls,
+        *,
+        rpc_url: str,
+        prv_keys: Optional[list[str]] = None,
+        ws_url: Optional[str] = None,
+    ) -> "SuiConfig":
         """user_config Load a user defined configuraiton.
 
         Note: New address/keypairs added in this session are not persisted.
         Note: publish is not available in this option.
 
-        :param rpc_url: The RPC url for RPC API interaction
+        :param rpc_url: he RPC url for RPC API interaction
         :type rpc_url: str
-        :param prv_keys: List of keystrings (Sui format)
-        :type prv_keys: list[str]
-        :param ws_url: Optional wss url for subscriptions
-        :type ws_url: Optional[str]
-        :return: An instance of SuiConfig
+        :param prv_keys: Optional list of keystrings (Sui format), defaults to None
+        :type prv_keys: Optional[list[str]], optional
+        :param ws_url: Optional wss url for subscriptions, defaults to None
+        :type ws_url: Optional[str], optional
+        :return: An instance of SuiConfig that can be used to initialize a SuiClient
         :rtype: SuiConfig
         """
         assert rpc_url
-        assert prv_keys
+        prv_keys = prv_keys or []
         config = super(ClientConfiguration, cls).__new__(cls)
         config.__init__(EMPEHMERAL_PATH, EMPEHMERAL_PATH)
         _set_env_vars(EMPEHMERAL_PATH, EMPEHMERAL_PATH)
         config._current_env = EMPEHMERAL_USER
         config._current_url = rpc_url
         config._current_env = EMPEHMERAL_USER
-        config._faucet_url = EMPEHMERAL_USER
-        config._socket_url = ws_url or EMPEHMERAL_USER
+        if rpc_url == DEVNET_SUI_URL:
+            config._faucet_url = DEVNET_FAUCET_URL
+            config._socket_url = ws_url or DEVNET_SOCKET_URL
+        elif rpc_url == TESTNET_SUI_URL:
+            config._faucet_url = TESTNET_FAUCET_URL
+            config._socket_url = ws_url or TESTNET_SOCKET_URL
+        elif rpc_url == LOCALNET_SUI_URL:
+            config._faucet_url = LOCALNET_FAUCET_URL
+            config._socket_url = ws_url or LOCALNET_SOCKET_URL
+        else:
+            config._faucet_url = EMPEHMERAL_USER
+            config._socket_url = ws_url or EMPEHMERAL_USER
         config._local_running = False
-        config._keypairs, config._addresses, config._address_keypair = emphemeral_keys_and_addresses(prv_keys)
-        config._active_address = SuiAddress(config.addresses[0])
+        if prv_keys:
+            (
+                config._keypairs,
+                config._addresses,
+                config._address_keypair,
+            ) = emphemeral_keys_and_addresses(prv_keys)
+            config._active_address = SuiAddress(config.addresses[0])
+        else:
+            config._active_address = None
         return config
 
     @property

@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- README.md (typos)
+- README.md
 - MultiSig signing simplified [change](https://github.com/FrankC01/pysui/issues/118)
+- Relaxed user configuration initialization, initial private keystring no longer required
 
 ### Removed
 
