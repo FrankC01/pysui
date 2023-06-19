@@ -5,7 +5,7 @@ Introducing pysui
 
 The role of Sui Binaries
 ------------------------
-**pysui** roughly relies on Sui Binaries for two core reasons
+**pysui** roughly relies on Sui Binaries for one core reason
 
 -
     | If using the Publish builder, it relies on the presence of the binaries during the publish
@@ -160,5 +160,5 @@ Caveats
 With user configuraiton, as it does not assume the installation of Sui binaries, the following are
 considerations:
 
-1. You can not publish or upgrade Sui move contracts, attempting with through ValueError
+1. You can not publish or upgrade Sui move contracts, attempting to do so will thow a ValueError exception
 2. Any new address/keypair creations will not be persisted as `user_config` is emphemeral
