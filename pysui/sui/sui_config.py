@@ -27,6 +27,7 @@ from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
     EMPEHMERAL_PATH,
     EMPEHMERAL_USER,
+    MAINNET_SOCKET_URL,
     PYSUI_EXEC_ENV,
     PYSUI_CLIENT_CONFIG_ENV,
     DEFAULT_SUI_BINARY_PATH,
@@ -91,7 +92,7 @@ class SuiConfig(ClientConfiguration):
                 self._local_running = True
             case "mainnet":
                 self._faucet_url = None
-                self._socket_url = "wss://fullnode.mainnet.sui.io:443"
+                self._socket_url = MAINNET_SOCKET_URL
         self._keypairs, self._addresses, self._address_keypair = load_keys_and_addresses(self.keystore_file)
 
     def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:

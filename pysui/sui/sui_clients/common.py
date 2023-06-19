@@ -13,6 +13,7 @@
 
 """Sui Client common classes module."""
 
+import os
 import sys
 import json
 from dataclasses import dataclass
@@ -28,6 +29,7 @@ from pysui.sui.sui_builders.exec_builders import _MoveCallTransactionBuilder, Ex
 from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetRpcAPI
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_apidesc import build_api_descriptors
+from pysui.sui.sui_constants import PYSUI_RPC_VERSION
 from pysui.sui.sui_txn_validator import validate_api
 from pysui.sui.sui_excepts import SuiException, SuiRpcApiNotAvailable, SuiNotComplexTransaction
 from pysui.sui.sui_txresults.complex_tx import TransactionBytes
@@ -143,6 +145,7 @@ class _ClientMixin(Provider):
             self._gas_price = rpc_gas_result.json()["result"]
         self._rpc_version, self._rpc_api, self._schema_dict = build_api_descriptors(rpc_api_result.json())
         self.rpc_version_support()
+        os.environ[PYSUI_RPC_VERSION] = self._rpc_version
 
     def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
         """Build the json data block for Rpc."""

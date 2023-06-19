@@ -5,13 +5,13 @@
   "python.formatting.blackArgs": [
     "--check",
     "--line-length",
-    "120"
+    "79"
   ],
   "python.linting.pylintEnabled": true,
   "python.linting.pylintArgs": [
     "----extension-pkg-whitelist=1xml",
     "--max-line-length",
-    "120",
+    "80",
     "--disable",
     "wrong-import-position",
     "--disable",

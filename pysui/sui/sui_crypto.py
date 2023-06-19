@@ -15,11 +15,10 @@
 """Sui Crpto Keys and Keypairs."""
 
 import os
-import ast
+import packaging.version as package
 import base64
 import binascii
 import hashlib
-import subprocess
 import json
 from typing import Union
 from deprecated.sphinx import versionadded, versionchanged, deprecated
@@ -44,6 +43,7 @@ from pysui.sui.sui_excepts import (
 )
 from pysui.sui.sui_constants import (
     PYSUI_EXEC_ENV,
+    PYSUI_RPC_VERSION,
     SCHEME_PRIVATE_KEY_BYTE_LEN,
     SUI_KEYPAIR_LEN,
     ED25519_DEFAULT_KEYPATH,
@@ -61,7 +61,14 @@ from pysui.sui.sui_constants import (
 )
 
 from pysui.sui.sui_types import SuiSignature, SuiAddress
-from pysui.sui.sui_types.bcs import MsCompressedSig, MsPublicKey, MsRoaring, MultiSignature
+from pysui.sui.sui_types.bcs import (
+    MsBitmap,
+    MsCompressedSig,
+    MsPublicKey,
+    MsRoaring,
+    MultiSignature,
+    MultiSignatureLegacy,
+)
 from pysui.sui.sui_types.scalars import SuiTxBytes
 
 _SUI_MS_SIGN_CMD: list[str] = ["keytool", "multi-sig-combine-partial-sig"]
@@ -80,7 +87,9 @@ class SuiPublicKey(PublicKey):
 class SuiPrivateKey(PrivateKey):
     """SuiPrivateKey Sui Basic private/signing key."""
 
-    def sign_secure(self, public_key: SuiPublicKey, tx_data: str, recovery_id: int = 0) -> bytes:
+    def sign_secure(
+        self, public_key: SuiPublicKey, tx_data: str, recovery_id: int = 0
+    ) -> bytes:
         """sign_secure Sign transaction intent.
 
         :param public_key: PublicKey from signer/private key
@@ -95,7 +104,9 @@ class SuiPrivateKey(PrivateKey):
         # Sign hash of transaction intent
         indata = bytearray([0, 0, 0])
         indata.extend(base64.b64decode(tx_data))
-        sig_bytes = self.sign(hashlib.blake2b(indata, digest_size=32).digest(), recovery_id)
+        sig_bytes = self.sign(
+            hashlib.blake2b(indata, digest_size=32).digest(), recovery_id
+        )
         # Embelish results
         # flag | sig | public_key
         compound = bytearray([self.scheme])
@@ -140,7 +151,9 @@ class SuiKeyPair(KeyPair):
         :return: a base64 encoded string of schema and private key bytes
         :rtype: str
         """
-        all_bytes = self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
+        all_bytes = (
+            self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
+        )
         return base64.b64encode(all_bytes).decode()
 
     def serialize_to_bytes(self) -> bytes:
@@ -153,7 +166,11 @@ class SuiKeyPair(KeyPair):
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
-        all_bytes = self.scheme.to_bytes(1, "little") + self.public_key.key_bytes + self.private_key.key_bytes
+        all_bytes = (
+            self.scheme.to_bytes(1, "little")
+            + self.public_key.key_bytes
+            + self.private_key.key_bytes
+        )
         return all_bytes
 
     def __repr__(self) -> str:
@@ -170,9 +187,13 @@ class SuiPublicKeySECP256R1(SuiPublicKey):
     def __init__(self, indata: bytes) -> None:
         """Initialize public key."""
         if len(indata) != SECP256R1_PUBLICKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Public Key expects {SECP256R1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}")
+            raise SuiInvalidKeyPair(
+                f"Public Key expects {SECP256R1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}"
+            )
         super().__init__(SignatureScheme.SECP256R1, indata)
-        self._verify_key = ecdsa.VerifyingKey.from_string(indata, curve=ecdsa.NIST256p, hashfunc=hashlib.sha256)
+        self._verify_key = ecdsa.VerifyingKey.from_string(
+            indata, curve=ecdsa.NIST256p, hashfunc=hashlib.sha256
+        )
 
 
 class SuiPrivateKeySECP256R1(SuiPrivateKey):
@@ -182,9 +203,13 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
         """Initialize private key."""
         dlen = len(indata)
         if dlen != SECP256R1_PRIVATEKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
+            raise SuiInvalidKeyPair(
+                f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}"
+            )
         super().__init__(SignatureScheme.SECP256R1, indata)
-        self._signing_key = ecdsa.SigningKey.from_string(indata, ecdsa.NIST256p, hashfunc=hashlib.sha256)
+        self._signing_key = ecdsa.SigningKey.from_string(
+            indata, ecdsa.NIST256p, hashfunc=hashlib.sha256
+        )
 
     def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
         """SECP256R1 signing bytes."""
@@ -196,7 +221,9 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
                 s_int = _s_max - s_int
             return ecdsa.util.sigencode_string(r_int, s_int, order)
 
-        return self._signing_key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=_sigencode_string)
+        return self._signing_key.sign_deterministic(
+            data, hashfunc=hashlib.sha256, sigencode=_sigencode_string
+        )
 
 
 class SuiKeyPairSECP256R1(SuiKeyPair):
@@ -207,7 +234,11 @@ class SuiKeyPairSECP256R1(SuiKeyPair):
         super().__init__()
         self._scheme = SignatureScheme.SECP256R1
         self._private_key = SuiPrivateKeySECP256R1(secret_bytes)
-        pub_bytes = self._private_key._signing_key.get_verifying_key().to_string(encoding="compressed")
+        pub_bytes = (
+            self._private_key._signing_key.get_verifying_key().to_string(
+                encoding="compressed"
+            )
+        )
         self._public_key = SuiPublicKeySECP256R1(pub_bytes)
 
     @classmethod
@@ -224,7 +255,9 @@ class SuiKeyPairSECP256R1(SuiKeyPair):
     def from_bytes(cls, indata: bytes) -> KeyPair:
         """Convert bytes to keypair."""
         if len(indata) != SECP256R1_KEYPAIR_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Expect bytes len of {SECP256R1_KEYPAIR_BYTES_LEN}")
+            raise SuiInvalidKeyPair(
+                f"Expect bytes len of {SECP256R1_KEYPAIR_BYTES_LEN}"
+            )
         return SuiKeyPairSECP256R1(indata)
 
 
@@ -234,7 +267,9 @@ class SuiPublicKeyED25519(SuiPublicKey):
     def __init__(self, indata: bytes) -> None:
         """Initialize public key."""
         if len(indata) != ED25519_PUBLICKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Public Key expects {ED25519_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}")
+            raise SuiInvalidKeyPair(
+                f"Public Key expects {ED25519_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}"
+            )
         super().__init__(SignatureScheme.ED25519, indata)
         self._verify_key = VerifyKey(self.to_b64(), encoder=Base64Encoder)
 
@@ -246,7 +281,9 @@ class SuiPrivateKeyED25519(SuiPrivateKey):
         """Initialize private key."""
         dlen = len(indata)
         if dlen != ED25519_PRIVATEKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Private Key expects {ED25519_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}")
+            raise SuiInvalidKeyPair(
+                f"Private Key expects {ED25519_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}"
+            )
         super().__init__(SignatureScheme.ED25519, indata)
         self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
 
@@ -280,7 +317,9 @@ class SuiKeyPairED25519(SuiKeyPair):
     def from_bytes(cls, indata: bytes) -> KeyPair:
         """Convert bytes to keypair."""
         if len(indata) != ED25519_KEYPAIR_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Expect bytes len of {ED25519_KEYPAIR_BYTES_LEN}")
+            raise SuiInvalidKeyPair(
+                f"Expect bytes len of {ED25519_KEYPAIR_BYTES_LEN}"
+            )
         return SuiKeyPairED25519(indata)
 
 
@@ -291,9 +330,13 @@ class SuiPublicKeySECP256K1(SuiPublicKey):
     def __init__(self, indata: bytes) -> None:
         """Initialize public key."""
         if len(indata) != SECP256K1_PUBLICKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Public Key expects {SECP256K1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}")
+            raise SuiInvalidKeyPair(
+                f"Public Key expects {SECP256K1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}"
+            )
         super().__init__(SignatureScheme.SECP256K1, indata)
-        self._verify_key = ecdsa.VerifyingKey.from_string(indata, curve=ecdsa.SECP256k1)
+        self._verify_key = ecdsa.VerifyingKey.from_string(
+            indata, curve=ecdsa.SECP256k1
+        )
 
 
 @versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
@@ -303,9 +346,13 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
     def __init__(self, indata: bytes) -> None:
         """Initialize private key."""
         if len(indata) != SECP256K1_PRIVATEKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(f"Private Key expects {SECP256K1_PRIVATEKEY_BYTES_LEN} bytes, found {len(indata)}")
+            raise SuiInvalidKeyPair(
+                f"Private Key expects {SECP256K1_PRIVATEKEY_BYTES_LEN} bytes, found {len(indata)}"
+            )
         super().__init__(SignatureScheme.SECP256K1, indata)
-        self._signing_key = ecdsa.SigningKey.from_string(indata, curve=ecdsa.SECP256k1, hashfunc=hashlib.sha256)
+        self._signing_key = ecdsa.SigningKey.from_string(
+            indata, curve=ecdsa.SECP256k1, hashfunc=hashlib.sha256
+        )
 
     def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """secp256k1 sign data bytes."""
@@ -321,7 +368,11 @@ class SuiKeyPairSECP256K1(SuiKeyPair):
         super().__init__()
         self._scheme = SignatureScheme.SECP256K1
         self._private_key = SuiPrivateKeySECP256K1(secret_bytes)
-        pubkey_bytes = self._private_key._signing_key.get_verifying_key().to_string("compressed")
+        pubkey_bytes = (
+            self._private_key._signing_key.get_verifying_key().to_string(
+                "compressed"
+            )
+        )
         self._public_key = SuiPublicKeySECP256K1(pubkey_bytes)
 
     @classmethod
@@ -352,7 +403,9 @@ class MultiSig:
     _COMPRESSED_SIG_LEN: int = 65
     _SIGNATURE_SCHEME: SignatureScheme = SignatureScheme.MULTISIG
 
-    def __init__(self, suikeys: list[SuiKeyPair], weights: list[int], threshold: int):
+    def __init__(
+        self, suikeys: list[SuiKeyPair], weights: list[int], threshold: int
+    ):
         """__init__ Initiate a MultiSig object.
 
         Note that Sui multi-sig accepts up to a maximum of ten (10) individual signer keys.
@@ -375,7 +428,9 @@ class MultiSig:
             self._threshold: int = threshold
             self._schema: SignatureScheme = SignatureScheme.MULTISIG
             self._address: SuiAddress = self._multi_sig_address()
-            self._public_keys: list[SuiPublicKey] = [x.public_key for x in self._keys]
+            self._public_keys: list[SuiPublicKey] = [
+                x.public_key for x in self._keys
+            ]
         else:
             raise ValueError("Invalid arguments provided to constructor")
 
@@ -399,13 +454,19 @@ class MultiSig:
         return self._SIGNATURE_SCHEME
 
     @property
-    @versionchanged(version="0.16.1", reason="Return add as str to align with non MultiSig SuiAddress behavior")
+    @versionchanged(
+        version="0.16.1",
+        reason="Return add as str to align with non MultiSig SuiAddress behavior",
+    )
     def address(self) -> str:
         """Return the address string generated from the initial keys."""
         return self._address.address
 
     @property
-    @versionadded(version="0.16.1", reason="Provide ability to get MultiSig as SuiAddress")
+    @versionadded(
+        version="0.16.1",
+        reason="Provide ability to get MultiSig as SuiAddress",
+    )
     def as_sui_address(self) -> SuiAddress:
         """Return the address as SuiAddress."""
         return self._address
@@ -430,107 +491,121 @@ class MultiSig:
         """Return the threshold amount used in this MultiSig."""
         return self._threshold
 
-    @versionchanged(version="0.21.1", reason="Exposed as public for use by SuiTransaction")
-    def validate_signers(self, pub_keys: list[SuiPublicKey]) -> Union[list[int], ValueError]:
+    @versionchanged(
+        version="0.21.1", reason="Exposed as public for use by SuiTransaction"
+    )
+    def validate_signers(
+        self, pub_keys: list[SuiPublicKey]
+    ) -> Union[list[int], ValueError]:
         """Validate pubkeys part of multisig and have enough weight."""
         # Must be subset of full ms list
         if len(pub_keys) <= len(self._public_keys):
-            hit_indexes = [i for i, j in enumerate(pub_keys) if j in self._public_keys]
+            hit_indexes = [self._public_keys.index(i) for i in pub_keys]
+            # hit_indexes = [i for i, j in enumerate(pub_keys) if j in self._public_keys]
             # If all inbound pubkeys have reference to item in ms list
             if len(hit_indexes) == len(pub_keys):
-                if sum([self._weights[x] for x in hit_indexes]) >= self._threshold:
+                if (
+                    sum([self._weights[x] for x in hit_indexes])
+                    >= self._threshold
+                ):
                     return hit_indexes
         raise ValueError("Keys and weights for signing do not meet thresholds")
-
-    @deprecated(version="0.21.1", reason="New version performs signing without invoking binaries")
-    def _old_sign(self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]) -> Union[int, SuiSignature]:
-        """sign Signs transaction bytes for operation that changes objects owned by MultiSig address.
-
-        :param tx_bytes: Transaction bytes base64 string from 'unsafe...' result or Transaction BCS
-        :type tx_bytes: Union[str, SuiTxBytes]
-        :param pub_keys: List of SuiPublicKeys to sign the transaction bytes
-        :type pub_keys: list[SuiPublicKey]
-        :raises ValueError: If pubkeys fail verification as member of MultiSig or threshold constraint
-        :return: The new signature produced from MultiSig
-        :rtype: SuiSignature
-        """
-        # Validate the pub_keys align to self._keys
-        key_indx = self.validate_signers(pub_keys)
-        if key_indx:
-            tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value
-            # Build the command line for `sui keytool multi-sig-combine-partial-sig`
-            # Public keys of all keys
-            pk_args = ["--pks"]
-            pk_args.extend([base64.b64encode(x.public_key.scheme_and_key()).decode() for x in self._keys])
-            # all weights
-            weight_args = ["--weights"]
-            weight_args.extend([str(x) for x in self._weights])
-            # all threshold
-            threshold_args = ["--threshold", str(self._threshold)]
-            # Get the signatures
-            sig_args = ["--sigs"]
-            sig_args.extend([self._keys[x].new_sign_secure(tx_bytes).value for x in key_indx])
-            # Build command line
-            invoke_args = _SUI_MS_SIGN_CMD.copy()
-            invoke_args.insert(0, os.environ[PYSUI_EXEC_ENV])
-            invoke_args.extend(pk_args)
-            invoke_args.extend(weight_args)
-            invoke_args.extend(threshold_args)
-            invoke_args.extend(sig_args)
-            # Invoke signing
-            result = subprocess.run(invoke_args, capture_output=True, text=True)
-            if result.returncode == 0:
-                sargs = ast.literal_eval(result.stdout.split()[-1])
-                return SuiSignature(sargs)
-            return result.returncode
-        raise ValueError("Invalid signer pub_keys")
 
     def _validate_signers(self, pub_keys: list[SuiPublicKey]) -> list[int]:
         """Validate pubkeys part of multisig and have enough weight."""
         # Must be subset of full ms list
-        assert len(pub_keys) <= len(self._public_keys), "More public keys than MultiSig"
-        hit_indexes = [i for i, j in enumerate(pub_keys) if j in self._public_keys]
-
+        assert len(pub_keys) <= len(
+            self._public_keys
+        ), "More public keys than MultiSig"
+        # hit_indexes = [i for i, j in enumerate(pub_keys) if j in self._public_keys]
+        hit_indexes = [self._public_keys.index(i) for i in pub_keys]
         # If all inbound pubkeys have reference to item in ms list
-        assert len(hit_indexes) == len(pub_keys), "Public key not part of MultiSig keys"
+        assert len(hit_indexes) == len(
+            pub_keys
+        ), "Public key not part of MultiSig keys"
         weights = [self._weights[x] for x in hit_indexes]
         return hit_indexes, list(zip(pub_keys, weights))
 
-    @versionadded(version="0.21.1", reason="Support for inline multisig signing")
-    def _compressed_signatures(self, tx_bytes: str, key_indices: list[int]) -> list[MsCompressedSig]:
+    @versionadded(
+        version="0.21.1", reason="Support for inline multisig signing"
+    )
+    def _compressed_signatures(
+        self, tx_bytes: str, key_indices: list[int]
+    ) -> list[MsCompressedSig]:
         """Creates compressed signatures from each of the signing keys present."""
         compressed: list[MsCompressedSig] = []
         for index in key_indices:
             compressed.append(
                 MsCompressedSig(
                     list(
-                        base64.b64decode(self._keys[index].new_sign_secure(tx_bytes).value)[
-                            0 : self._COMPRESSED_SIG_LEN
-                        ]
+                        base64.b64decode(
+                            self._keys[index].new_sign_secure(tx_bytes).value
+                        )[0 : self._COMPRESSED_SIG_LEN]
                     )
                 )
             )
         return compressed
 
-    @versionadded(version="0.21.1", reason="Full signature creation without binaries.")
-    def sign(self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]) -> SuiSignature:
+    @versionadded(
+        version="0.21.1", reason="Full signature creation without binaries."
+    )
+    def sign(
+        self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]
+    ) -> SuiSignature:
         """sign Signs transaction bytes for operation that changes objects owned by MultiSig address."""
         # Validate the pub_keys alignment with self._keys
         key_indices, pk_map = self._validate_signers(pub_keys)
         # Generate BCS compressed signatures for the subset of keys
         tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value
-        compressed_sigs: list[MsCompressedSig] = self._compressed_signatures(tx_bytes, key_indices)
-        # Generate BCS Roaring bitmap
-        serialized_rbm: MsRoaring = MsRoaring(list(pyroaring.BitMap(key_indices).serialize()))
+        compressed_sigs: list[MsCompressedSig] = self._compressed_signatures(
+            tx_bytes, key_indices
+        )
         # Generate BCS PublicKeys from the FULL compliment of original public keys
         pks: list[MsPublicKey] = []
         for index, kkeys in enumerate(self._keys):
-            pk = base64.b64encode(kkeys.public_key.scheme_and_key()).decode().encode(encoding="utf8")
+            pk = (
+                base64.b64encode(kkeys.public_key.scheme_and_key())
+                .decode()
+                .encode(encoding="utf8")
+            )
             pks.append(MsPublicKey(list(pk), self._weights[index]))
+        # Generate the public keys used position bitmap
+        # then build the signature
+        rpc_version = package.parse(os.environ[PYSUI_RPC_VERSION])
+        if rpc_version.major == 1:
+            # RPC <= 1.4.0 uses roaring bitmap
+            if rpc_version.minor <= 4:
+                serialized_rbm: MsRoaring = MsRoaring(
+                    list(pyroaring.BitMap(key_indices).serialize())
+                )
+                msig_signature = MultiSignatureLegacy(
+                    self._schema,
+                    compressed_sigs,
+                    serialized_rbm,
+                    pks,
+                    self.threshold,
+                )
+            # RPC >= 1.50 uses simple bitmap
+            elif rpc_version.minor >= 5:
+                bm_pks: int = 0
+                for index in key_indices:
+                    bm_pks |= 1 << (index + 1)
+                serialized_rbm: MsBitmap = MsBitmap(bm_pks)
+                msig_signature = MultiSignature(
+                    self._schema,
+                    compressed_sigs,
+                    serialized_rbm,
+                    pks,
+                    self.threshold,
+                )
+            else:
+                raise ValueError(
+                    f"Version exception {os.environ[PYSUI_RPC_VERSION]}"
+                )
 
-        # Build the BCS MultiSignature
-        msig_signature = MultiSignature(self._schema, compressed_sigs, serialized_rbm, pks, self.threshold)
-        return SuiSignature(base64.b64encode(msig_signature.serialize()).decode())
+        return SuiSignature(
+            base64.b64encode(msig_signature.serialize()).decode()
+        )
 
     def serialize(self) -> str:
         """serialize Serializes the MultiSig object to base64 string.
@@ -539,7 +614,9 @@ class MultiSig:
         :rtype: str
         """
         # Build from scheme and counts,keystrings,weights and threshold
-        all_bytes = self.scheme.to_bytes(1, "little") + len(self._keys).to_bytes(1, "little")
+        all_bytes = self.scheme.to_bytes(1, "little") + len(
+            self._keys
+        ).to_bytes(1, "little")
         for key in self._keys:
             all_bytes += key.serialize_to_bytes()
         for assoc_weight in self._weights:
@@ -569,14 +646,20 @@ class MultiSig:
                 start = kes_index + (idex * SCHEME_PRIVATE_KEY_BYTE_LEN)
                 key_block.append(
                     keypair_from_keystring(
-                        base64.b64encode(ms_bytes[start : start + SCHEME_PRIVATE_KEY_BYTE_LEN]).decode()
+                        base64.b64encode(
+                            ms_bytes[
+                                start : start + SCHEME_PRIVATE_KEY_BYTE_LEN
+                            ]
+                        ).decode()
                     )
                 )
             # Get the weights
             weight_block: list[int] = []
             for idex in range(count):
                 start = wei_index + (idex * 2)
-                weight_block.append(int.from_bytes(ms_bytes[start : start + 2], "little"))
+                weight_block.append(
+                    int.from_bytes(ms_bytes[start : start + 2], "little")
+                )
             # Get the threshold
             threshold = int.from_bytes(ms_bytes[-2:], "little")
             return MultiSig(key_block, weight_block, threshold)
@@ -601,11 +684,17 @@ def _valid_mnemonic(mnemonics: Union[str, list[str]] = "") -> str:
         if MnemonicValidator(Bip39MnemonicDecoder()).IsValid(mnemonics):
             return mnemonics
         raise ValueError(f"{mnemonics} is not a valid mnemonic phrase.")
-    return bip_utils.Bip39MnemonicGenerator().FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_24).ToStr()
+    return (
+        bip_utils.Bip39MnemonicGenerator()
+        .FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_24)
+        .ToStr()
+    )
 
 
 def create_new_keypair(
-    scheme: SignatureScheme = SignatureScheme.ED25519, mnemonics: Union[str, list[str]] = "", derv_path: str = None
+    scheme: SignatureScheme = SignatureScheme.ED25519,
+    mnemonics: Union[str, list[str]] = "",
+    derv_path: str = None,
 ) -> tuple[str, SuiKeyPair]:
     """create_new_keypair Generate a new keypair.
 
@@ -628,8 +717,13 @@ def create_new_keypair(
     match scheme:
         case SignatureScheme.ED25519:
             # 1. Private, or signer, key
-            bip32_ctx = bip_utils.Bip32Slip10Ed25519.FromSeedAndPath(seed_bytes, derv_path or ED25519_DEFAULT_KEYPATH)
-            ed_priv = SigningKey(base64.b64encode(bip32_ctx.PrivateKey().Raw().ToBytes()), encoder=Base64Encoder)
+            bip32_ctx = bip_utils.Bip32Slip10Ed25519.FromSeedAndPath(
+                seed_bytes, derv_path or ED25519_DEFAULT_KEYPATH
+            )
+            ed_priv = SigningKey(
+                base64.b64encode(bip32_ctx.PrivateKey().Raw().ToBytes()),
+                encoder=Base64Encoder,
+            )
             pkey = ed_priv.encode()
             # 2. Public, or verifier, key
             vkey = ed_priv.verify_key.encode()
@@ -644,7 +738,9 @@ def create_new_keypair(
                 seed_bytes, derv_path or SECP256K1_DEFAULT_KEYPATH
             )
             # 1. Private, or signer, key
-            secp_priv = ecdsa.SigningKey.from_string(bip32_ctx.PrivateKey().Raw().ToBytes(), curve=ecdsa.SECP256k1)
+            secp_priv = ecdsa.SigningKey.from_string(
+                bip32_ctx.PrivateKey().Raw().ToBytes(), curve=ecdsa.SECP256k1
+            )
             pkey = secp_priv.to_string()
             # 2. Public, or verifier, key
             vkey = secp_priv.get_verifying_key().to_string("compressed")
@@ -656,7 +752,9 @@ def create_new_keypair(
                 seed_bytes, derv_path or SECP256R1_DEFAULT_KEYPATH
             )
             # 1. Private, or signer, key
-            secp_priv = ecdsa.SigningKey.from_string(bip32_ctx.PrivateKey().Raw().ToBytes(), curve=ecdsa.NIST256p)
+            secp_priv = ecdsa.SigningKey.from_string(
+                bip32_ctx.PrivateKey().Raw().ToBytes(), curve=ecdsa.NIST256p
+            )
             pkey = secp_priv.to_string()
             # 2. Public, or verifier, key
             vkey = secp_priv.get_verifying_key().to_string("compressed")
@@ -699,7 +797,9 @@ def keypair_from_keystring(keystring: str) -> KeyPair:
 
 
 def create_new_address(
-    keytype: SignatureScheme, mnemonics: Union[str, list[str]] = None, derv_path: str = None
+    keytype: SignatureScheme,
+    mnemonics: Union[str, list[str]] = None,
+    derv_path: str = None,
 ) -> tuple[str, KeyPair, SuiAddress]:
     """create_new_address Create a new keypair and address for a key type.
 
@@ -737,7 +837,10 @@ def recover_key_and_address(
 @versionadded(version="0.16.1", reason="Localize key management")
 def load_keys_and_addresses(
     keystore_file: str,
-) -> Union[tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]], Exception]:
+) -> Union[
+    tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]],
+    Exception,
+]:
     """load_keys_and_addresses Load keys and addresses.
 
     :param keystore_file: The current in use keystore file path
@@ -777,7 +880,10 @@ def load_keys_and_addresses(
 @versionadded(version="0.25.0", reason="Ephemeral key and address setup.")
 def emphemeral_keys_and_addresses(
     keystrings: list[str],
-) -> Union[tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]], Exception]:
+) -> Union[
+    tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]],
+    Exception,
+]:
     """."""
     _keystrings = keystrings
     if _keystrings:

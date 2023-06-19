@@ -21,6 +21,8 @@ PYSUI_EXEC_ENV: str = "SUI_EXEC"
 """Holds the fully qualified path to the active sui binary."""
 PYSUI_CLIENT_CONFIG_ENV: str = "SUI_CLIENT_CONFIG"
 """Holds the fully qualified path to the active client.yaml."""
+PYSUI_RPC_VERSION: str = "SUI_RPC_VERSION"
+"""Holds the RPC version detected at runtime."""
 
 # sui-base configuration and execution constants
 SUI_BASE_ACTIVE: str = "~/suibase/workdirs/active"
@@ -57,6 +59,11 @@ LOCALNET_SOCKET_URL: str = "ws://127.0.0.1:9000"
 TESTNET_FAUCET_URL: str = "http://faucet.testnet.sui.io/gas"
 """Testnet client faucet url."""
 TESTNET_SOCKET_URL: str = "wss://fullnode.testnet.sui.io:443"
+"""Testnet socket url."""
+
+MAINNET_FAUCET_URL: str = ""
+"""Mainnet client faucet url."""
+MAINNET_SOCKET_URL: str = "wss://fullnode.mainnet.sui.io:443"
 """Testnet socket url."""
 
 EMPEHMERAL_PATH: str = "ephemeral"

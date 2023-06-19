@@ -18,7 +18,7 @@ import base64
 from typing import Any, Union
 from functools import reduce
 import canoser
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.sui.sui_txresults.single_tx import ObjectRead
 
 from pysui.sui.sui_types.address import SuiAddress
@@ -518,6 +518,13 @@ class MsRoaring(canoser.Struct):
     _fields = [("RoaringBitmap", [U8])]
 
 
+@versionadded(version="0.26.0", reason="Added to support new MultiSig bitmap in Sui v1.5.0.")
+class MsBitmap(canoser.Struct):
+    """Represents signing PublicKeys indexes for serialization."""
+
+    _fields = [("Bitmap", U16)]
+
+
 @versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
 class MsCompressedSig(canoser.Struct):
     """Represents compressed individual signed messages for serialization."""
@@ -526,13 +533,27 @@ class MsCompressedSig(canoser.Struct):
 
 
 @versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
-class MultiSignature(canoser.Struct):
+@deprecated(version="0.26.0", reason="Sui converting from roaring bitmap to simple bitmap in 1.5.0")
+class MultiSignatureLegacy(canoser.Struct):
     """BCS representation of a MultiSig signature for executions."""
 
     _fields = [
         ("Scheme", U8),
         ("Sigs", [MsCompressedSig]),
         ("RoaringBitMap", MsRoaring),
+        ("PkMap", [MsPublicKey]),
+        ("Threshold", U16),
+    ]
+
+
+@versionadded(version="0.26.0", reason="Sui converting from roaring bitmap to simple bitmap in 1.5.0")
+class MultiSignature(canoser.Struct):
+    """BCS representation of a MultiSig signature for executions."""
+
+    _fields = [
+        ("Scheme", U8),
+        ("Sigs", [MsCompressedSig]),
+        ("BitMap", MsBitmap),
         ("PkMap", [MsPublicKey]),
         ("Threshold", U16),
     ]
