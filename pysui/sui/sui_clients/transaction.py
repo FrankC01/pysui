@@ -258,8 +258,8 @@ class SignerBlock(_SignerBlockBase):
                     )
                 ],
                 bcs.Address.from_str(whose_gas),
-                gas_price,
-                budget,
+                int(gas_price),
+                int(budget),
             )
         raise ValueError(f"{who_pays} has nothing to pay with.")
 
