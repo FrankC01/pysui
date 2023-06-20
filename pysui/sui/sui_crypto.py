@@ -69,7 +69,7 @@ from pysui.sui.sui_types.bcs import (
     MultiSignature,
     MultiSignatureLegacy,
 )
-from pysui.sui.sui_types.scalars import SuiTxBytes
+from pysui.sui.sui_types.scalars import SuiTxBytes, SuiU16
 
 _SUI_MS_SIGN_CMD: list[str] = ["keytool", "multi-sig-combine-partial-sig"]
 """Use sui binary keytool for MultiSig signing."""
@@ -585,11 +585,12 @@ class MultiSig:
                     pks,
                     self.threshold,
                 )
-            # RPC >= 1.50 uses simple bitmap
+            # TODO: RPC >= 1.50 use simple bitmap
             elif rpc_version.minor >= 5:
                 bm_pks: int = 0
                 for index in key_indices:
-                    bm_pks |= 1 << (index + 1)
+                    bm_pks |= 1 << index
+                # s16 = SuiU16(bm_pks).to_bytes()
                 serialized_rbm: MsBitmap = MsBitmap(bm_pks)
                 msig_signature = MultiSignature(
                     self._schema,
@@ -602,7 +603,7 @@ class MultiSig:
                 raise ValueError(
                     f"Version exception {os.environ[PYSUI_RPC_VERSION]}"
                 )
-
+        print(msig_signature.to_json(indent=2))
         return SuiSignature(
             base64.b64encode(msig_signature.serialize()).decode()
         )

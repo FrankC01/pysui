@@ -18,7 +18,10 @@ import json
 from dataclasses import dataclass, field
 from typing import Optional
 from dataclasses_json import dataclass_json, DataClassJsonMixin
-from pysui.sui.sui_excepts import SuiApiDefinitionInvalid, SuiParamSchemaInvalid
+from pysui.sui.sui_excepts import (
+    SuiApiDefinitionInvalid,
+    SuiParamSchemaInvalid,
+)
 
 # T = TypeVar("T", str, float, int, list)
 
@@ -139,7 +142,9 @@ class SuiApi(DataClassJsonMixin):
     description: str = ""
 
 
-def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJsonType:
+def _resolve_param_type(
+    schema_dict: dict, indata: dict, tpath: list
+) -> SuiJsonType:
     """Find the sui type base."""
     if "type" in indata:
         ptype = indata.get("type")
@@ -158,14 +163,18 @@ def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJson
             case "array":
                 apath = []
                 if isinstance(dcp["items"], dict):
-                    dcp["items"] = _resolve_param_type(schema_dict, dcp.get("items"), apath)
+                    dcp["items"] = _resolve_param_type(
+                        schema_dict, dcp.get("items"), apath
+                    )
                     return SuiJsonArray.from_dict(dcp)
                 elif isinstance(dcp["items"], list):
                     dcp["type"] = "tuple"
                     vitems = []
                     for item in dcp["items"]:
                         ipath = []
-                        vitems.append(_resolve_param_type(schema_dict, item, ipath))
+                        vitems.append(
+                            _resolve_param_type(schema_dict, item, ipath)
+                        )
                     dcp["items"] = vitems
                     dcp["type_path"] = ["tuple"]
                     return SuiJsonTuple.from_dict(dcp)
@@ -232,9 +241,13 @@ def build_api_descriptors(indata: dict) -> tuple[str, dict, dict]:
         for _api_name, api_def in mdict.items():
             for inparams in api_def.params:
                 tpath: list = []
-                inparams.schema = _resolve_param_type(schema_dict, inparams.schema, tpath)
+                inparams.schema = _resolve_param_type(
+                    schema_dict, inparams.schema, tpath
+                )
             tpath: list = []
-            api_def.result.schema = _resolve_param_type(schema_dict, api_def.result.schema, tpath)
+            api_def.result.schema = _resolve_param_type(
+                schema_dict, api_def.result.schema, tpath
+            )
 
         return (rpc_version, mdict, schema_dict)
     raise SuiApiDefinitionInvalid(indata)

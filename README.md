@@ -10,9 +10,9 @@ Python Client SDK for Sui blockchain
 - Runs without Sui binaries installed: `SuiConfig.user_config(...)`
 - Runs localnode with [suibase](#local-node-support) `SuiConfig.sui_base_config()`
 - Syncrhnoous and Asynchronous clients (provider) and transaction builders
-- 100% parity with _SUI 1.5.0 RPC API_ on devnet
-- 100% parity with _SUI 1.3.0 RPC API_ on testnet
-- 100% parity with _SUI 1.3.0 RPC API_ on mainnet
+- Supports _SUI 1.4.0 RPC API_ on devnet
+- Supports _SUI 1.3.1 RPC API_ on testnet
+- Supports _SUI 1.3.0 RPC API_ on mainnet
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
@@ -22,7 +22,7 @@ We would appreciate any issues being reported in the [github issue log](https://
 
 Discord server [click here](https://discord.gg/uCGYfY4Ph4):
 
-**PyPi for 0.25.0**
+**PyPi for 0.26.0**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
@@ -42,7 +42,7 @@ We've started leveraging [suibase](https://github.com/ChainMovers/suibase) in ou
 
 Requires:
 
-- Linux or macos (x86_64 or M1)
+- Linux or macos (x86_64 or Mx)
 - python 3.10 or greater
 - pkg-config
 - libtool
