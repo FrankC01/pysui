@@ -64,12 +64,22 @@ from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectReadData
 # _SUI_BUILD: list[str] = ["sui", "move", "build", "-p"]
 # _SUI_BUILD_SKIP_GIT: list[str] = ["sui", "move", "build", "--skip-fetch-latest-git-deps", "-p"]
 _SUI_BUILD: list[str] = ["move", "build", "-p"]
-_SUI_BUILD_SKIP_GIT: list[str] = ["move", "build", "--skip-fetch-latest-git-deps", "-p"]
-_UNPUBLISHED: str = "0000000000000000000000000000000000000000000000000000000000000000"
+_SUI_BUILD_SKIP_GIT: list[str] = [
+    "move",
+    "build",
+    "--skip-fetch-latest-git-deps",
+    "-p",
+]
+_UNPUBLISHED: str = (
+    "0000000000000000000000000000000000000000000000000000000000000000"
+)
 
 
 @dataclass
-@versionchanged(version="0.17.0", reason="Added the package digest that matches chain digest.")
+@versionchanged(
+    version="0.17.0",
+    reason="Added the package digest that matches chain digest.",
+)
 class CompiledPackage:
     """Ease of compilation information dataclass."""
 
@@ -81,7 +91,9 @@ class CompiledPackage:
     package_digest: bytes = None
 
 
-def _compile_project(path_to_package: Path, skip_git_dependencies: bool) -> Union[Path, SuiException]:
+def _compile_project(
+    path_to_package: Path, skip_git_dependencies: bool
+) -> Union[Path, SuiException]:
     """_compile_project Compiles a sui move project.
 
     This can be called prior to using the Publish builder to ensure
@@ -113,13 +125,17 @@ def _module_bytes(module: Path) -> Union[ModuleReader, OSError]:
     return deser.reader_from_file(str(module))
 
 
-def _modules_bytes(module_path: Path) -> Union[list[ModuleReader], SuiMiisingModuleByteCode, OSError]:
+def _modules_bytes(
+    module_path: Path,
+) -> Union[list[ModuleReader], SuiMiisingModuleByteCode, OSError]:
     """."""
     mod_list = list(module_path.glob("*.mv"))
     if not mod_list:
         raise SuiMiisingModuleByteCode(f"{module_path} is empty")
     # Open and get the bytes representation of same
-    result_list: list[ModuleReader] = [_module_bytes(module) for module in mod_list]
+    result_list: list[ModuleReader] = [
+        _module_bytes(module) for module in mod_list
+    ]
     return result_list
 
 
@@ -127,7 +143,9 @@ def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
     """Fetch details about build."""
     build_info = Path(build_path).joinpath("BuildInfo.yaml")
     if build_info.exists():
-        build_info_dict = yaml.safe_load(build_info.read_text(encoding="utf-8"))["compiled_package_info"]
+        build_info_dict = yaml.safe_load(
+            build_info.read_text(encoding="utf-8")
+        )["compiled_package_info"]
         pname = build_info_dict["package_name"].lower()
         inner_dep = build_info_dict["address_alias_instantiation"]
         pindent = f"0x{inner_dep[pname]}"
@@ -135,12 +153,22 @@ def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
         for key, value in inner_dep.items():
             if key != pname:
                 dep_ids.append(f"0x{value}")
-        return CompiledPackage(pname, pindent, binascii.unhexlify(build_info_dict["source_digest"]), dep_ids)
+        return CompiledPackage(
+            pname,
+            pindent,
+            binascii.unhexlify(build_info_dict["source_digest"]),
+            dep_ids,
+        )
     raise ValueError("Corrupt publish build information")
 
 
-@versionadded(version="0.17.0", reason="Added true package hash (digest) to CompiledPacakge.")
-def _package_digest(package: CompiledPackage, readers: list[ModuleReader]) -> None:
+@versionadded(
+    version="0.17.0",
+    reason="Added true package hash (digest) to CompiledPacakge.",
+)
+def _package_digest(
+    package: CompiledPackage, readers: list[ModuleReader]
+) -> None:
     """Converts compiled module bytes for publishing and digest calculation."""
     mod_strs: list = []
     all_bytes: list = []
@@ -160,8 +188,13 @@ def _package_digest(package: CompiledPackage, readers: list[ModuleReader]) -> No
     package.compiled_modules = mod_strs
 
 
-@versionadded(version="0.20.0", reason="Sui move build introduced hashing the modules first.")
-def _new_package_digest(package: CompiledPackage, readers: list[ModuleReader]) -> None:
+@versionadded(
+    version="0.20.0",
+    reason="Sui move build introduced hashing the modules first.",
+)
+def _new_package_digest(
+    package: CompiledPackage, readers: list[ModuleReader]
+) -> None:
     """Converts compiled module bytes for publishing and digest calculation."""
     mod_strs: list = []
     all_bytes: list = []
@@ -183,7 +216,10 @@ def _new_package_digest(package: CompiledPackage, readers: list[ModuleReader]) -
     package.compiled_modules = mod_strs
 
 
-@versionchanged(version="0.17.0", reason="Added the package digest that matches chain digest.")
+@versionchanged(
+    version="0.17.0",
+    reason="Added the package digest that matches chain digest.",
+)
 def publish_build(
     path_to_package: Path,
     include_unpublished: bool = False,
@@ -198,15 +234,21 @@ def publish_build(
     # Find the build folder
     build_path = path_to_package.joinpath("build")
     if not build_path.exists():
-        raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
+        raise SuiMiisingBuildFolder(
+            f"No build folder found in {path_to_package}"
+        )
     # Get the project folder
     build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
     if len(build_subdir) > 1:
-        raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
+        raise SuiMiisingBuildFolder(
+            f"No build folder found in {path_to_package}"
+        )
     # Finally, get the module(s) bytecode folder
     byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
     if not byte_modules.exists():
-        raise SuiMiisingBuildFolder(f"No bytecode_modules folder found for {path_to_package}/build")
+        raise SuiMiisingBuildFolder(
+            f"No bytecode_modules folder found for {path_to_package}/build"
+        )
 
     # Construct initial package
     cpackage = _build_dep_info(build_subdir[0].path)
@@ -228,16 +270,19 @@ def sui_base_get_config() -> tuple[Path, Path]:
     """
     # Have the system expand path and resolve symlinks
     active_path = Path(os.readlink(os.path.expanduser(SUI_BASE_ACTIVE)))
-    print(active_path)
     astem = active_path.stem
     match astem:
         case "localnet" | "devnet" | "testnet":
             # client yaml
-            local_cfg = Path(os.readlink(active_path.joinpath("config"))).joinpath("client.yaml")
+            local_cfg = Path(
+                os.readlink(active_path.joinpath("config"))
+            ).joinpath("client.yaml")
             if not local_cfg.exists():
                 raise ValueError(f"client.yaml not found {local_cfg}")
             # Sui binary
-            sui_exec_path = Path(os.readlink(active_path.joinpath("sui-repo"))).joinpath(SUI_BASE_EXEC_PATH)
+            sui_exec_path = Path(
+                os.readlink(active_path.joinpath("sui-repo"))
+            ).joinpath(SUI_BASE_EXEC_PATH)
             if not sui_exec_path.exists():
                 raise ValueError(f"sui binary not found {sui_exec_path}")
         case _:
@@ -255,7 +300,9 @@ def sui_base_get_config() -> tuple[Path, Path]:
 # Conversion utilities
 
 
-@versionchanged(version="0.19.0", reason="Account for > 3 and < 66 size hex string")
+@versionchanged(
+    version="0.19.0", reason="Account for > 3 and < 66 size hex string"
+)
 def hexstring_to_list(indata: str, default_fill_length: int = 64) -> list[int]:
     """hexstring_to_list convert a hexstr (e.g. 0x...) into a list of ints.
 
@@ -315,7 +362,9 @@ def int_to_listu8(byte_count: int, in_el: int) -> list[int]:
     byte_res = math.ceil(in_el.bit_length() / 8)
     if byte_res == byte_count:
         return list(in_el.to_bytes(byte_res, "little"))
-    raise ValueError(f"Expected byte count {byte_count} found byte count {byte_res}")
+    raise ValueError(
+        f"Expected byte count {byte_count} found byte count {byte_res}"
+    )
 
 
 # Coercion utilities
@@ -337,14 +386,18 @@ def as_sui_address(in_data: Any) -> Union[SuiAddress, ValueError]:
         if valid_sui_address(in_data.value):
             result = SuiAddress(in_data.value)
         else:
-            raise ValueError(f"Type {in_data.__class__.__name__}: {in_data.value} is not a valid SuiAddress form.")
+            raise ValueError(
+                f"Type {in_data.__class__.__name__}: {in_data.value} is not a valid SuiAddress form."
+            )
     elif isinstance(in_data, str):
         if valid_sui_address(in_data):
             result = SuiAddress(in_data)
         else:
             raise ValueError(f"str {in_data} is not a valid SuiAddress form.")
     if not result:
-        raise ValueError(f"Can not get SuiInteger from {in_data} with type {type(in_data)}")
+        raise ValueError(
+            f"Can not get SuiInteger from {in_data} with type {type(in_data)}"
+        )
     return result
 
 
@@ -376,7 +429,9 @@ def as_object_id(in_data: Any) -> Union[ObjectID, ValueError]:
             if isinstance(result, str):
                 result = ObjectID(result)
     if not result:
-        raise ValueError(f"Can not get ObjectID from {in_data} with type {type(in_data)}")
+        raise ValueError(
+            f"Can not get ObjectID from {in_data} with type {type(in_data)}"
+        )
     return result
 
 
@@ -400,7 +455,9 @@ def as_sui_string(in_data: Any) -> Union[SuiString, ValueError]:
     elif isinstance(in_data, SuiNullType):
         result = in_data
     if not result:
-        raise ValueError(f"Can not get SuiString from {in_data} with type {type(in_data)}")
+        raise ValueError(
+            f"Can not get SuiString from {in_data} with type {type(in_data)}"
+        )
     return result
 
 
@@ -422,7 +479,9 @@ def as_sui_integer(in_data: Any) -> Union[SuiInteger, ValueError]:
         int_only = in_data.split(".")[0]
         result = SuiInteger(int(int_only))
     if not result:
-        raise ValueError(f"Can not get SuiInteger from {in_data} with type {type(in_data)}")
+        raise ValueError(
+            f"Can not get SuiInteger from {in_data} with type {type(in_data)}"
+        )
     return result
 
 
@@ -442,7 +501,9 @@ def as_sui_array(in_data: Any) -> Union[SuiArray, ValueError]:
     elif isinstance(in_data, tuple):
         result = SuiArray(list(in_data))
     if not result:
-        raise ValueError(f"Can not get SuiArray from {in_data} with type {type(in_data)}")
+        raise ValueError(
+            f"Can not get SuiArray from {in_data} with type {type(in_data)}"
+        )
     return result
 
 
@@ -465,7 +526,9 @@ def as_sui_map(in_data: Any) -> Union[SuiMap, ValueError]:
         result = SuiMap("", "")
         result.map = {}
     if not result:
-        raise ValueError(f"Can not get SuiMap from {in_data} with type {type(in_data)}")
+        raise ValueError(
+            f"Can not get SuiMap from {in_data} with type {type(in_data)}"
+        )
     return result
 
 
@@ -487,7 +550,9 @@ def as_sui_boolean(in_data: Any) -> Union[SuiBoolean, ValueError]:
     else:
         result = SuiBoolean(True) if in_data else SuiBoolean(False)
     if not result:
-        raise ValueError(f"Can not get SuiBoolean from {in_data} with type {type(in_data)}")
+        raise ValueError(
+            f"Can not get SuiBoolean from {in_data} with type {type(in_data)}"
+        )
     return result
 
 
@@ -529,10 +594,16 @@ def to_base_64(in_data: Any, clz: Any) -> Union[Any, ValueError]:
     elif is_base_64(in_data):
         result = clz(in_data)
     elif isinstance(in_data, (str, bytes, bytearray)):
-        in_data = in_data if not isinstance(in_data, str) else bytes(in_data, "utf-16")
+        in_data = (
+            in_data
+            if not isinstance(in_data, str)
+            else bytes(in_data, "utf-16")
+        )
         result = clz(base64.b64encode(in_data))
     if not result:
-        raise ValueError(f"Can not get {clz.__class__.__name__} from {in_data} with type {type(clz)}")
+        raise ValueError(
+            f"Can not get {clz.__class__.__name__} from {in_data} with type {type(clz)}"
+        )
     return result
 
 
@@ -576,7 +647,9 @@ def as_sui_txdigest(in_data: Any) -> Union[SuiTransactionDigest, ValueError]:
     elif isinstance(in_data, str):
         result = SuiTransactionDigest(in_data)
     if not result:
-        raise ValueError(f"Can not get SuiTransactionDigest from {in_data} with type {type(in_data)}")
+        raise ValueError(
+            f"Can not get SuiTransactionDigest from {in_data} with type {type(in_data)}"
+        )
     return result
 
 
@@ -595,7 +668,16 @@ COERCION_TO_FROM_SETS = {
 }
 #: Keys are the inbound types that can be represented in SUI types in the value (set).
 COERCION_FROM_TO_SETS = {
-    str: {SuiAddress, ObjectID, SuiString, SuiInteger, SuiBoolean, SuiTxBytes, SuiSignature, SuiTransactionDigest},
+    str: {
+        SuiAddress,
+        ObjectID,
+        SuiString,
+        SuiInteger,
+        SuiBoolean,
+        SuiTxBytes,
+        SuiSignature,
+        SuiTransactionDigest,
+    },
     int: {SuiInteger, SuiString, SuiBoolean},
     bytes: {SuiTxBytes, SuiSignature},
     bytearray: {SuiTxBytes, SuiSignature},
@@ -638,4 +720,3 @@ COERCION_FN_MAP = {
 if __name__ == "__main__":
     ppath = Path(os.path.expanduser("~/frankc01/sui-track"))
     stuff = publish_build(ppath)
-    print("Yo")

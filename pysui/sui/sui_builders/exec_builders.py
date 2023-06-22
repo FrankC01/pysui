@@ -16,6 +16,7 @@
 
 from abc import abstractmethod
 from typing import Final, Optional
+from deprecated.sphinx import deprecated
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.sui.sui_builders.base_builder import (
     _NativeTransactionBuilder,
@@ -24,10 +25,21 @@ from pysui.sui.sui_builders.base_builder import (
     SuiTransactionBuilderMode,
     sui_builder,
 )
-from pysui.sui.sui_types.scalars import SuiNullType, SuiTxBytes, SuiSignature, ObjectID, SuiString
+from pysui.sui.sui_types.scalars import (
+    SuiNullType,
+    SuiTxBytes,
+    SuiSignature,
+    ObjectID,
+    SuiString,
+)
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_txresults.complex_tx import DryRunTxResult, TransactionBytes, TxResponse, TxInspectionResult
+from pysui.sui.sui_txresults.complex_tx import (
+    DryRunTxResult,
+    TransactionBytes,
+    TxResponse,
+    TxInspectionResult,
+)
 
 from pysui.sui import sui_utils
 
@@ -64,9 +76,15 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         :param request_type: The request type
         :type request_type: SuiRequestType
         """
-        super().__init__("sui_executeTransactionBlock", handler_cls=TxResponse, handler_func="from_dict")
+        super().__init__(
+            "sui_executeTransactionBlock",
+            handler_cls=TxResponse,
+            handler_func="from_dict",
+        )
         if options is None or isinstance(options, SuiNullType):
-            self.options = sui_utils.as_sui_map(self._DEFAULT_EXECUTE_TX_OPTIONS.copy())
+            self.options = sui_utils.as_sui_map(
+                self._DEFAULT_EXECUTE_TX_OPTIONS.copy()
+            )
         else:
             self.options = sui_utils.as_sui_map(options)
 
@@ -81,7 +99,11 @@ class DryRunTransaction(_NativeTransactionBuilder):
         tx_bytes: SuiTxBytes,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_dryRunTransactionBlock", handler_cls=DryRunTxResult, handler_func="from_dict")
+        super().__init__(
+            "sui_dryRunTransactionBlock",
+            handler_cls=DryRunTxResult,
+            handler_func="from_dict",
+        )
 
 
 class InspectTransaction(_NativeTransactionBuilder):
@@ -110,7 +132,11 @@ class InspectTransaction(_NativeTransactionBuilder):
         :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
         :type epoch: Optional[SuiString]
         """
-        super().__init__("sui_devInspectTransactionBlock", handler_cls=TxInspectionResult, handler_func="factory")
+        super().__init__(
+            "sui_devInspectTransactionBlock",
+            handler_cls=TxInspectionResult,
+            handler_func="factory",
+        )
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):
@@ -118,7 +144,12 @@ class _MoveCallTransactionBuilder(SuiBaseBuilder):
 
     def __init__(self, method: str) -> None:
         """Initialize builder."""
-        super().__init__(method, True, handler_cls=TransactionBytes, handler_func="from_dict")
+        super().__init__(
+            method,
+            True,
+            handler_cls=TransactionBytes,
+            handler_func="from_dict",
+        )
 
     @property
     def authority(self) -> SuiAddress:
@@ -131,9 +162,15 @@ class _MoveCallTransactionBuilder(SuiBaseBuilder):
             return getattr(self, "sender")
         if hasattr(self, "sender_address"):
             return getattr(self, "sender_address")
-        raise ValueError(f"Object {self.__class__.__name__} has no authority property set")
+        raise ValueError(
+            f"Object {self.__class__.__name__} has no authority property set"
+        )
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class TransferObject(_MoveCallTransactionBuilder):
     """TransferObject When executed, transfer an object from one address to another.
 
@@ -166,6 +203,10 @@ class TransferObject(_MoveCallTransactionBuilder):
         super().__init__("unsafe_transferObject")
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class TransferSui(_MoveCallTransactionBuilder):
     """TransferSui When executud, send SUI coin object to a Sui address.
 
@@ -198,6 +239,10 @@ class TransferSui(_MoveCallTransactionBuilder):
         super().__init__("unsafe_transferSui")
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class Pay(_MoveCallTransactionBuilder):
     """Pay When executed, send Coin<T> to a list of addresses.
 
@@ -236,6 +281,10 @@ class Pay(_MoveCallTransactionBuilder):
         super().__init__("unsafe_pay")
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class PaySui(_MoveCallTransactionBuilder):
     """PaySui When executed, sends SUI coins to a list of addresses, following a list of amounts.
 
@@ -311,6 +360,10 @@ class PayAllSui(_MoveCallTransactionBuilder):
         super().__init__("unsafe_payAllSui")
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class MergeCoin(_MoveCallTransactionBuilder):
     """MergeCoin When executed, merge multiple coins into one coin."""
 
@@ -341,6 +394,10 @@ class MergeCoin(_MoveCallTransactionBuilder):
         super().__init__("unsafe_mergeCoins")
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class SplitCoin(_MoveCallTransactionBuilder):
     """SplitCoin When executed, split a coin object into multiple coins."""
 
@@ -370,6 +427,10 @@ class SplitCoin(_MoveCallTransactionBuilder):
         super().__init__("unsafe_splitCoin")
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class SplitCoinEqually(_MoveCallTransactionBuilder):
     """SplitCoinEqually When executed, splits a coin object into multiple equal-size coins."""
 
@@ -413,7 +474,9 @@ class BatchParameter(SuiMap):
 class TransferObjectParams(BatchParameter):
     """For submitting transfer in a batch transaction."""
 
-    def __init__(self, *, receiver: SuiAddress, transfer_object: ObjectID) -> None:
+    def __init__(
+        self, *, receiver: SuiAddress, transfer_object: ObjectID
+    ) -> None:
         """Initialize transfer properties."""
         self.receiver: SuiAddress = receiver
         self.transfer_object: ObjectID = transfer_object
@@ -440,11 +503,17 @@ class MoveCallRequestParams(BatchParameter):
         arguments: SuiArray[SuiString],
     ):
         """__init__ Initialize parameters."""
-        self.package_object_id: ObjectID = sui_utils.as_object_id(package_object)
+        self.package_object_id: ObjectID = sui_utils.as_object_id(
+            package_object
+        )
         self.module: SuiString = module_str
         self.function: SuiString = function_str
-        self.type_arguments: SuiArray[str] = SuiArray([x.value for x in type_arguments.array])
-        self.arguments: SuiArray[str] = SuiArray([x.value for x in arguments.array])
+        self.type_arguments: SuiArray[str] = SuiArray(
+            [x.value for x in type_arguments.array]
+        )
+        self.arguments: SuiArray[str] = SuiArray(
+            [x.value for x in arguments.array]
+        )
         super().__init__("moveCallRequestParams", {})
 
     def realize_parameters(self) -> dict:
@@ -459,6 +528,10 @@ class MoveCallRequestParams(BatchParameter):
 
 
 # pylint: disable=too-many-arguments
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class BatchTransaction(_MoveCallTransactionBuilder):
     """BatchTransaction When executed, runs transactions included in the batch."""
 
@@ -507,6 +580,10 @@ class BatchTransaction(_MoveCallTransactionBuilder):
 # Publish and call
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class Publish(_MoveCallTransactionBuilder):
     """Publish When executed, Publish a Move package to the SUI blockchain."""
 
@@ -534,6 +611,10 @@ class Publish(_MoveCallTransactionBuilder):
         super().__init__("unsafe_publish")
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class MoveCall(_MoveCallTransactionBuilder):
     """MoveCall When executed, executes a Move call on the network.
 
@@ -552,7 +633,9 @@ class MoveCall(_MoveCallTransactionBuilder):
         arguments: SuiArray[SuiString],
         gas: ObjectID,
         gas_budget: SuiString,
-        execution_mode: Optional[SuiTransactionBuilderMode] = SuiTransactionBuilderMode.COMMIT,
+        execution_mode: Optional[
+            SuiTransactionBuilderMode
+        ] = SuiTransactionBuilderMode.COMMIT,
     ) -> None:
         """__init__ MoveCall Builder initializer.
 
@@ -582,6 +665,10 @@ class MoveCall(_MoveCallTransactionBuilder):
 # Stake and Delegation
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class RequestAddStake(_MoveCallTransactionBuilder):
     """RequestAddStake add delegated stake to a validator's staking pool using multiple coins and amount."""
 
@@ -614,6 +701,10 @@ class RequestAddStake(_MoveCallTransactionBuilder):
         super().__init__("unsafe_requestAddStake")
 
 
+@deprecated(
+    version="0.26.1",
+    reason="Favor SuiTransaction builder. Will be removed in 0.28.0",
+)
 class RequestWithdrawStake(_MoveCallTransactionBuilder):
     """RequestWithdrawStake Withdraw some portion of a stake from a validator's staking pool."""
 

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.1] - Unpublished
+
+### Added
+
+### Fixed
+
+- Bug in secp256k1 signing, indirectly also impacted MultiSig
+
+### Changed
+
+- Support for new MultiSig format (1.4.x+) and maintaining backlevel support (1.3.x) [change](https://github.com/FrankC01/pysui/issues/118)
+- Atomic Builders marked for deprecation, use equivalent SuiTransaction/SuiTransactionAsync methods instead:
+  - BatchTransaction
+  - Publish
+  - MoveCall
+  - RequestAddStake
+  - RequestWithdrawStake
+  - SplitCoinEqually
+  - SplitCoin
+  - MergeCoin
+  - PaySui
+  - Pay
+  - TransferSui
+  - TransferObject
+
+### Removed
+
+
 ## [0.26.0] - 2023-06-20
 
 ### Added

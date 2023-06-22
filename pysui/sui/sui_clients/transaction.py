@@ -22,8 +22,16 @@ from typing import Any, Awaitable, Optional, Union, Callable
 from abc import abstractmethod
 from deprecated.sphinx import versionadded, versionchanged
 from pysui.sui.sui_builders.base_builder import SuiRequestType
-from pysui.sui.sui_builders.exec_builders import ExecuteTransaction, InspectTransaction, PayAllSui
-from pysui.sui.sui_builders.get_builders import GetFunction, GetReferenceGasPrice, GetMultipleObjects
+from pysui.sui.sui_builders.exec_builders import (
+    ExecuteTransaction,
+    InspectTransaction,
+    PayAllSui,
+)
+from pysui.sui.sui_builders.get_builders import (
+    GetFunction,
+    GetReferenceGasPrice,
+    GetMultipleObjects,
+)
 from pysui.sui.sui_clients.common import SuiRpcResult, handle_result
 import pysui.sui.sui_clients.transaction_builder as tx_builder
 from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
@@ -43,7 +51,14 @@ from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient
 from pysui.sui.sui_clients.async_client import SuiClient as AsyncClient
 from pysui.sui.sui_types.collections import SuiArray
-from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiSignature, SuiString, SuiU64, SuiU8
+from pysui.sui.sui_types.scalars import (
+    ObjectID,
+    SuiInteger,
+    SuiSignature,
+    SuiString,
+    SuiU64,
+    SuiU8,
+)
 from pysui.sui.sui_utils import publish_build
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
@@ -60,7 +75,9 @@ _PAY_GAS: int = 4000000
 
 
 @versionadded(version="0.17.0", reason="Standardize on signing permutations")
-@versionadded(version="0.21.1", reason="Support subset pubkey address generation")
+@versionadded(
+    version="0.21.1", reason="Support subset pubkey address generation"
+)
 class SigningMultiSig:
     """Wraps the mutli-sig along with pubkeys to use in SuiTransaction."""
 
@@ -145,7 +162,9 @@ class _SignerBlockBase:
     #     assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
     #     self._additional_signers.append(additional_signer)
 
-    def _get_potential_signatures(self) -> list[Union[SuiAddress, SigningMultiSig]]:
+    def _get_potential_signatures(
+        self,
+    ) -> list[Union[SuiAddress, SigningMultiSig]]:
         """Internal flattening of signers."""
         result_list = []
         if self.sender:
@@ -156,20 +175,33 @@ class _SignerBlockBase:
         # result_list.extend(self.additional_signers)
         # return result_list
 
-    @versionchanged(version="0.21.2", reason="Fix regression on MultiSig signing.")
-    def get_signatures(self, *, client: SyncClient, tx_bytes: str) -> SuiArray[SuiSignature]:
+    @versionchanged(
+        version="0.21.2", reason="Fix regression on MultiSig signing."
+    )
+    def get_signatures(
+        self, *, client: SyncClient, tx_bytes: str
+    ) -> SuiArray[SuiSignature]:
         """Get all the signatures needed for the transaction."""
         sig_list: list[SuiSignature] = []
         for signer in self._get_potential_signatures():
             if isinstance(signer, SuiAddress):
-                sig_list.append(client.config.keypair_for_address(signer).new_sign_secure(tx_bytes))
+                sig_list.append(
+                    client.config.keypair_for_address(signer).new_sign_secure(
+                        tx_bytes
+                    )
+                )
             else:
-                sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
+                sig_list.append(
+                    signer.multi_sig.sign(tx_bytes, signer.pub_keys)
+                )
         return SuiArray(sig_list)
 
 
 @versionadded(version="0.17.0", reason="Standardize on signing permutations")
-@versionchanged(version="0.18.0", reason="Removed additional_signers as not supported by Sui at the moment.")
+@versionchanged(
+    version="0.18.0",
+    reason="Removed additional_signers as not supported by Sui at the moment.",
+)
 @versionchanged(version="0.26.0", reason="Refactor to support Async.")
 class SignerBlock(_SignerBlockBase):
     """Manages the potential signers and resolving the gas object for paying."""
@@ -190,16 +222,26 @@ class SignerBlock(_SignerBlockBase):
         """
         super().__init__(sender=sender, sponsor=sponsor)
 
-    @versionchanged(version="0.21.1", reason="Corrected when using multisig senders.")
+    @versionchanged(
+        version="0.21.1", reason="Corrected when using multisig senders."
+    )
     def get_gas_object(
-        self, *, client: SyncClient, budget: int, objects_in_use: list, merge_coin: bool, gas_price: int
+        self,
+        *,
+        client: SyncClient,
+        budget: int,
+        objects_in_use: list,
+        merge_coin: bool,
+        gas_price: int,
     ) -> bcs.GasData:
         """Produce a gas object from either the sponsor or the sender."""
         # Either a sponsor (priority) or sender will pay for this
         who_pays = self._sponsor if self._sponsor else self._sender
         # If both not set, Fail
         if not who_pays:
-            raise ValueError("Both SuiTransaction sponor and sender are null. Complete those before execute.")
+            raise ValueError(
+                "Both SuiTransaction sponor and sender are null. Complete those before execute."
+            )
         if isinstance(who_pays, SuiAddress):
             whose_gas = who_pays.address
             who_pays = who_pays.address
@@ -207,7 +249,9 @@ class SignerBlock(_SignerBlockBase):
             whose_gas = who_pays.signing_address  # as_sui_address
             who_pays = who_pays.signing_address
         # who_pays = who_pays if isinstance(who_pays, SuiAddress) else who_pays.multi_sig.as_sui_address
-        owner_coins: list[SuiCoinObject] = handle_result(client.get_gas(whose_gas)).data
+        owner_coins: list[SuiCoinObject] = handle_result(
+            client.get_gas(whose_gas)
+        ).data
         # Get whatever gas objects below to whoever is paying
         # and filter those not in use
         use_coin: SuiCoinObject = None
@@ -215,7 +259,10 @@ class SignerBlock(_SignerBlockBase):
             owner_gas: list[SuiCoinObject] = [owner_coins[0]]
         else:
             owner_gas: list[SuiCoinObject] = [
-                x for x in owner_coins if x.coin_object_id not in objects_in_use and int(x.balance) >= budget
+                x
+                for x in owner_coins
+                if x.coin_object_id not in objects_in_use
+                and int(x.balance) >= budget
             ]
 
         # If there is no remaining gas but _merge_to_gas is found
@@ -225,7 +272,11 @@ class SignerBlock(_SignerBlockBase):
             use_coin = owner_gas[0]
         # Otherwise if we can merge
         elif merge_coin:
-            alt_gas: list[SuiCoinObject] = [x for x in owner_coins if x.coin_object_id not in objects_in_use]
+            alt_gas: list[SuiCoinObject] = [
+                x
+                for x in owner_coins
+                if x.coin_object_id not in objects_in_use
+            ]
             if alt_gas:
                 enh_budget = budget + _PAY_GAS
                 to_pay: list[str] = []
@@ -240,7 +291,12 @@ class SignerBlock(_SignerBlockBase):
                         client.execute(
                             PayAllSui(
                                 signer=who_pays,
-                                input_coins=SuiAddress([ObjectID(x.coin_object_id) for x in to_pay]),
+                                input_coins=SuiAddress(
+                                    [
+                                        ObjectID(x.coin_object_id)
+                                        for x in to_pay
+                                    ]
+                                ),
                                 recipient=who_pays,
                                 gas_budget=str(_PAY_GAS),
                             )
@@ -265,14 +321,22 @@ class SignerBlock(_SignerBlockBase):
 
     @versionadded(version="0.26.0", reason="Added to support async operations")
     async def get_gas_object_async(
-        self, *, client: AsyncClient, budget: int, objects_in_use: list, merge_coin: bool, gas_price: int
+        self,
+        *,
+        client: AsyncClient,
+        budget: int,
+        objects_in_use: list,
+        merge_coin: bool,
+        gas_price: int,
     ) -> bcs.GasData:
         """Produce a gas object from either the sponsor or the sender."""
         # Either a sponsor (priority) or sender will pay for this
         who_pays = self._sponsor if self._sponsor else self._sender
         # If both not set, Fail
         if not who_pays:
-            raise ValueError("Both SuiTransaction sponor and sender are null. Complete those before execute.")
+            raise ValueError(
+                "Both SuiTransaction sponor and sender are null. Complete those before execute."
+            )
         if isinstance(who_pays, SuiAddress):
             whose_gas = who_pays.address
             who_pays = who_pays.address
@@ -280,7 +344,9 @@ class SignerBlock(_SignerBlockBase):
             whose_gas = who_pays.signing_address  # as_sui_address
             who_pays = who_pays.signing_address
         # who_pays = who_pays if isinstance(who_pays, SuiAddress) else who_pays.multi_sig.as_sui_address
-        owner_coins: list[SuiCoinObject] = handle_result(await client.get_gas(whose_gas)).data
+        owner_coins: list[SuiCoinObject] = handle_result(
+            await client.get_gas(whose_gas)
+        ).data
         # Get whatever gas objects below to whoever is paying
         # and filter those not in use
         use_coin: SuiCoinObject = None
@@ -288,7 +354,10 @@ class SignerBlock(_SignerBlockBase):
             owner_gas: list[SuiCoinObject] = [owner_coins[0]]
         else:
             owner_gas: list[SuiCoinObject] = [
-                x for x in owner_coins if x.coin_object_id not in objects_in_use and int(x.balance) >= budget
+                x
+                for x in owner_coins
+                if x.coin_object_id not in objects_in_use
+                and int(x.balance) >= budget
             ]
 
         # If there is no remaining gas but _merge_to_gas is found
@@ -298,7 +367,11 @@ class SignerBlock(_SignerBlockBase):
             use_coin = owner_gas[0]
         # Otherwise if we can merge
         elif merge_coin:
-            alt_gas: list[SuiCoinObject] = [x for x in owner_coins if x.coin_object_id not in objects_in_use]
+            alt_gas: list[SuiCoinObject] = [
+                x
+                for x in owner_coins
+                if x.coin_object_id not in objects_in_use
+            ]
             if alt_gas:
                 enh_budget = budget + _PAY_GAS
                 to_pay: list[str] = []
@@ -313,7 +386,12 @@ class SignerBlock(_SignerBlockBase):
                         await client.execute(
                             PayAllSui(
                                 signer=who_pays,
-                                input_coins=SuiAddress([ObjectID(x.coin_object_id) for x in to_pay]),
+                                input_coins=SuiAddress(
+                                    [
+                                        ObjectID(x.coin_object_id)
+                                        for x in to_pay
+                                    ]
+                                ),
                                 recipient=who_pays,
                                 gas_budget=str(_PAY_GAS),
                             )
@@ -370,12 +448,17 @@ class _SuiTransactionBase:
     _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
 
     def __init__(
-        self, client, merge_gas_budget: bool = False, initial_sender: Union[SuiAddress, SigningMultiSig] = False
+        self,
+        client,
+        merge_gas_budget: bool = False,
+        initial_sender: Union[SuiAddress, SigningMultiSig] = False,
     ) -> None:
         """."""
         self.builder = tx_builder.ProgrammableTransactionBuilder()
         self.client = client
-        self._sig_block = SignerBlock(sender=initial_sender or client.config.active_address)
+        self._sig_block = SignerBlock(
+            sender=initial_sender or client.config.active_address
+        )
         self._merge_gas = merge_gas_budget
         self._executed = False
 
@@ -395,7 +478,10 @@ class _SuiTransactionBase:
         return self._sig_block
 
     @property
-    @versionadded(version="0.20.3", reason="Simplify using a gas object to resolve at execution time.")
+    @versionadded(
+        version="0.20.3",
+        reason="Simplify using a gas object to resolve at execution time.",
+    )
     def gas(self) -> bcs.Argument:
         """Enables use of gas reference as parameters in commands."""
         return self._TRANSACTION_GAS_ARGUMENT
@@ -415,9 +501,21 @@ class _SuiTransactionBase:
         """
         return base64.b64encode(self.raw_kind().serialize()).decode()
 
-    @versionadded(version="0.18.0", reason="Reuse for argument nested list recursion.")
-    @versionadded(version="0.19.0", reason="Broaden types in _PURE_CANDIDATES with set of Optional<Ux> types")
-    def _resolve_item(self, index: int, items: list, refs: list, tuples: list, nest_depth: int = 0):
+    @versionadded(
+        version="0.18.0", reason="Reuse for argument nested list recursion."
+    )
+    @versionadded(
+        version="0.19.0",
+        reason="Broaden types in _PURE_CANDIDATES with set of Optional<Ux> types",
+    )
+    def _resolve_item(
+        self,
+        index: int,
+        items: list,
+        refs: list,
+        tuples: list,
+        nest_depth: int = 0,
+    ):
         """Resolve the appropriate bcs type for argument item."""
         item = items[index]
         clz_name = item.__class__.__name__
@@ -438,7 +536,13 @@ class _SuiTransactionBase:
                     objtup_indexes: list[int] = []
                     # Keep drilling if next is list
                     if litems and isinstance(litems[0], (list, SuiArray)):
-                        self._resolve_item(0, litems, objref_indexes, objtup_indexes, nest_depth + 1)
+                        self._resolve_item(
+                            0,
+                            litems,
+                            objref_indexes,
+                            objtup_indexes,
+                            nest_depth + 1,
+                        )
                         items[index] = litems
                     # Else check for type consistency and convert to LCD
                     elif litems:
@@ -446,7 +550,9 @@ class _SuiTransactionBase:
                         res_items: list = []
                         for i_item in litems:
                             inner_clz_name = i_item.__class__.__name__
-                            assert inner_clz_name == item_clz_name, f"Expected {item_clz_name} found {inner_clz_name}"
+                            assert (
+                                inner_clz_name == item_clz_name
+                            ), f"Expected {item_clz_name} found {inner_clz_name}"
                             assert (
                                 inner_clz_name in self._PURE_CANDIDATES
                             ), f"Nested argument lists must be of type {self._PURE_CANDIDATES}"
@@ -471,7 +577,11 @@ class _SuiTransactionBase:
 
     def _to_bytes_from_str(self, inbound: Union[str, SuiString]) -> list[int]:
         """Utility to convert base64 string to bytes then as list of u8."""
-        return list(base64.b64decode(inbound if isinstance(inbound, str) else inbound.value))
+        return list(
+            base64.b64decode(
+                inbound if isinstance(inbound, str) else inbound.value
+            )
+        )
 
     def _compile_source(
         self,
@@ -483,11 +593,17 @@ class _SuiTransactionBase:
         """."""
         src_path = Path(os.path.expanduser(project_path))
         compiled_package = publish_build(
-            src_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+            src_path,
+            with_unpublished_dependencies,
+            skip_fetch_latest_git_deps,
+            legacy_digest,
         )
-        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
+        modules = list(
+            map(self._to_bytes_from_str, compiled_package.compiled_modules)
+        )
         dependencies = [
-            bcs.Address.from_str(x if isinstance(x, str) else x.value) for x in compiled_package.dependencies
+            bcs.Address.from_str(x if isinstance(x, str) else x.value)
+            for x in compiled_package.dependencies
         ]
         digest = bcs.Digest.from_bytes(compiled_package.package_digest)
         return modules, dependencies, digest
@@ -506,12 +622,21 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert client.is_synchronous is False, "Requires asynch SuiClient"
         super().__init__(client, merge_gas_budget, initial_sender)
         s_client = SyncClient(client.config)
-        self._current_gas_price = handle_result(s_client.execute(GetReferenceGasPrice()))
+        self._current_gas_price = handle_result(
+            s_client.execute(GetReferenceGasPrice())
+        )
 
     @versionchanged(version="0.17.0", reason="Only used internally.")
-    @versionchanged(version="0.17.0", reason="Reworked using SignerBlock gas resolution.")
-    @versionchanged(version="0.21.1", reason="Corrected using multisig senders.")
-    @versionchanged(version="0.24.1", reason="Brought transaction cost inline, avoiding redundancy.")
+    @versionchanged(
+        version="0.17.0", reason="Reworked using SignerBlock gas resolution."
+    )
+    @versionchanged(
+        version="0.21.1", reason="Corrected using multisig senders."
+    )
+    @versionchanged(
+        version="0.24.1",
+        reason="Brought transaction cost inline, avoiding redundancy.",
+    )
     async def _build_for_execute(
         self,
         gas_budget: Union[str, SuiString],
@@ -532,15 +657,21 @@ class SuiTransactionAsync(_SuiTransactionBase):
         # Get costs
         tx_kind_b64 = base64.b64encode(tx_kind.serialize()).decode()
         if self.signer_block.sender:
-            for_sender: Union[SuiAddress, SigningMultiSig] = self.signer_block.sender
+            for_sender: Union[
+                SuiAddress, SigningMultiSig
+            ] = self.signer_block.sender
             if not isinstance(for_sender, SuiAddress):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
-        result = await self.client.execute(InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64))
+        result = await self.client.execute(
+            InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64)
+        )
         if result.is_ok():
             ispec: TxInspectionResult = result.result_data
-            gas_budget = gas_budget if isinstance(gas_budget, str) else gas_budget.value
+            gas_budget = (
+                gas_budget if isinstance(gas_budget, str) else gas_budget.value
+            )
             gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
 
         # Fetch the payment
@@ -566,17 +697,30 @@ class SuiTransactionAsync(_SuiTransactionBase):
             ),
         )
 
-    @versionadded(version="0.17.0", reason="Convenience for serializing and dry-running.")
+    @versionadded(
+        version="0.17.0", reason="Convenience for serializing and dry-running."
+    )
     async def get_transaction_data(self, *, gas_budget) -> bcs.TransactionData:
         """."""
         return await self._build_for_execute(gas_budget)
 
-    @versionchanged(version="0.16.1", reason="Added 'additional_signers' optional argument")
-    @versionchanged(version="0.17.0", reason="Revamped for all signature potentials and types.")
-    @versionchanged(version="0.25.0", reason="Made gas_budget optiona, defaults to 1M mists.")
+    @versionchanged(
+        version="0.16.1", reason="Added 'additional_signers' optional argument"
+    )
+    @versionchanged(
+        version="0.17.0",
+        reason="Revamped for all signature potentials and types.",
+    )
+    @versionchanged(
+        version="0.25.0",
+        reason="Made gas_budget optiona, defaults to 1M mists.",
+    )
     @versionchanged(version="0.25.0", reason="Added execution options.")
     async def execute(
-        self, *, gas_budget: Optional[Union[str, SuiString]] = "1000000", options: Optional[dict] = None
+        self,
+        *,
+        gas_budget: Optional[Union[str, SuiString]] = "1000000",
+        options: Optional[dict] = None,
     ) -> SuiRpcResult:
         """execute Finalizes transaction and submits for execution on the chain.
 
@@ -593,10 +737,11 @@ class SuiTransactionAsync(_SuiTransactionBase):
         gas_budget = gas_budget if gas_budget else "1000000"
         tx_data = await self._build_for_execute(gas_budget)
         tx_b64 = base64.b64encode(tx_data.serialize()).decode()
-        # print(tx_b64)
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
-            signatures=self.signer_block.get_signatures(client=self.client, tx_bytes=tx_b64),
+            signatures=self.signer_block.get_signatures(
+                client=self.client, tx_bytes=tx_b64
+            ),
             options=options,
             request_type=SuiRequestType.WAITFORLOCALEXECUTION,
         )
@@ -604,7 +749,10 @@ class SuiTransactionAsync(_SuiTransactionBase):
         self._executed = True
         return iresult
 
-    @versionchanged(version="0.16.1", reason="Added returning SuiRpcResult if inspect transaction failed.")
+    @versionchanged(
+        version="0.16.1",
+        reason="Added returning SuiRpcResult if inspect transaction failed.",
+    )
     async def inspect_all(self) -> Union[TxInspectionResult, SuiRpcResult]:
         """inspect_all Returns results of sui_devInspectTransactionBlock on the current Transaction.
 
@@ -615,26 +763,40 @@ class SuiTransactionAsync(_SuiTransactionBase):
         """
         tx_bytes = self.build_for_inspection()
         if self.signer_block.sender:
-            for_sender: Union[SuiAddress, SigningMultiSig] = self.signer_block.sender
+            for_sender: Union[
+                SuiAddress, SigningMultiSig
+            ] = self.signer_block.sender
             if not isinstance(for_sender, SuiAddress):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
-        result = await self.client.execute(InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes))
+        result = await self.client.execute(
+            InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes)
+        )
         if result.is_ok():
             return result.result_data
         return result
 
     # Argument resolution to lower level types
-    @versionadded(version="0.18.0", reason="Reuse for argument nested list recursion.")
-    async def _resolve_objects(self, items: list, objref_indexes: list, objtup_indexes: list):
+    @versionadded(
+        version="0.18.0", reason="Reuse for argument nested list recursion."
+    )
+    async def _resolve_objects(
+        self, items: list, objref_indexes: list, objtup_indexes: list
+    ):
         """Finalizes object ref types."""
         if objref_indexes:
-            res = await self.client.execute(GetMultipleObjects(object_ids=[items[x] for x in objref_indexes]))
+            res = await self.client.execute(
+                GetMultipleObjects(
+                    object_ids=[items[x] for x in objref_indexes]
+                )
+            )
             if res.is_ok():
                 res_list = res.result_data
                 if len(res_list) != len(objref_indexes):
-                    raise ValueError(f"Unable to find object in set {[items[x] for x in objref_indexes]}")
+                    raise ValueError(
+                        f"Unable to find object in set {[items[x] for x in objref_indexes]}"
+                    )
                 # Update items list and register tuple conversion
                 for index, result in enumerate(res_list):
                     items[objref_indexes[index]] = result
@@ -645,16 +807,28 @@ class SuiTransactionAsync(_SuiTransactionBase):
             for tindex in objtup_indexes:
                 item: ObjectRead = items[tindex]
                 if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
-                    obj_ref = GenericRef(item.object_id, item.version, item.digest)
-                    b_obj_arg = bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref))
+                    obj_ref = GenericRef(
+                        item.object_id, item.version, item.digest
+                    )
+                    b_obj_arg = bcs.ObjectArg(
+                        "ImmOrOwnedObject",
+                        bcs.ObjectReference.from_generic_ref(obj_ref),
+                    )
                 elif isinstance(item.owner, SharedOwner):
-                    b_obj_arg = bcs.ObjectArg("SharedObject", bcs.SharedObjectReference.from_object_read(item))
+                    b_obj_arg = bcs.ObjectArg(
+                        "SharedObject",
+                        bcs.SharedObjectReference.from_object_read(item),
+                    )
                 items[tindex] = (
-                    bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
+                    bcs.BuilderArg(
+                        "Object", bcs.Address.from_str(item.object_id)
+                    ),
                     b_obj_arg,
                 )
 
-    @versionchanged(version="0.18.0", reason="Handle argument nested list recursion.")
+    @versionchanged(
+        version="0.18.0", reason="Handle argument nested list recursion."
+    )
     async def _resolve_arguments(self, items: list) -> list:
         """Process list intended as 'params' in move call."""
         objref_indexes: list[int] = []
@@ -666,8 +840,12 @@ class SuiTransactionAsync(_SuiTransactionBase):
         return items
 
     # TODO: Investigate functools LRU
-    @versionchanged(version="0.20.2", reason="Capture function argument meta data as well")
-    async def _move_call_target_cache(self, target: str) -> tuple[bcs.Address, str, str, list, int]:
+    @versionchanged(
+        version="0.20.2", reason="Capture function argument meta data as well"
+    )
+    async def _move_call_target_cache(
+        self, target: str
+    ) -> tuple[bcs.Address, str, str, list, int]:
         """Used to resolve information regarding a move call target.
 
         This caches the result of a GetFunction meta-data information essention to setting up
@@ -677,7 +855,11 @@ class SuiTransactionAsync(_SuiTransactionBase):
             return self._MC_RESULT_CACHE[target]
         package_id, module_id, function_id = target.split("::")
         result = await self.client.execute(
-            GetFunction(package=package_id, module_name=module_id, function_name=function_id)
+            GetFunction(
+                package=package_id,
+                module_name=module_id,
+                function_name=function_id,
+            )
         )
         if result.is_ok():
             reslen = len(result.result_data.returns)
@@ -696,9 +878,15 @@ class SuiTransactionAsync(_SuiTransactionBase):
             return res_tup
         raise ValueError(f"Unable to find target: {target}")
 
-    @versionchanged(version="0.19.0", reason="Check that only type Objects are passed")
-    @versionchanged(version="0.21.1", reason="Added optional item_type argument")
-    async def make_move_vector(self, items: list[Any], item_type: Optional[str] = None) -> bcs.Argument:
+    @versionchanged(
+        version="0.19.0", reason="Check that only type Objects are passed"
+    )
+    @versionchanged(
+        version="0.21.1", reason="Added optional item_type argument"
+    )
+    async def make_move_vector(
+        self, items: list[Any], item_type: Optional[str] = None
+    ) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
 
         def _first_non_argument_type(inner_list: list) -> Any:
@@ -711,7 +899,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
             return result
 
         if item_type:
-            type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
+            type_tag = bcs.OptionalTypeTag(
+                bcs.TypeTag.type_tag_from(item_type)
+            )
         else:
             type_tag = bcs.OptionalTypeTag()
         if items:
@@ -719,20 +909,32 @@ class SuiTransactionAsync(_SuiTransactionBase):
             if first_item:
                 # If not all arguments, ensure the remaining are consistent
                 first_class = first_item.__class__.__name__
-                if first_class != "Argument" and first_class in self._PURE_CANDIDATES:
-                    raise ValueError(f"make_move_vec is for Objects only. Found type {first_class}")
+                if (
+                    first_class != "Argument"
+                    and first_class in self._PURE_CANDIDATES
+                ):
+                    raise ValueError(
+                        f"make_move_vec is for Objects only. Found type {first_class}"
+                    )
                 for item in items:
                     item_class = item.__class__.__name__
                     if item_class == "Argument":
                         pass
                     else:
-                        assert item_class == first_class, f"Expected {first_class} found {item_class}"
-                return self.builder.make_move_vector(type_tag, await self._resolve_arguments(items))
+                        assert (
+                            item_class == first_class
+                        ), f"Expected {first_class} found {item_class}"
+                return self.builder.make_move_vector(
+                    type_tag, await self._resolve_arguments(items)
+                )
             elif len(items) > 0:
                 return self.builder.make_move_vector(type_tag, items)
         raise ValueError("make_vector requires a non-empty list")
 
-    @versionchanged(version="0.17.0", reason="Target uses 'package_id::module::function' construct only")
+    @versionchanged(
+        version="0.17.0",
+        reason="Target uses 'package_id::module::function' construct only",
+    )
     @versionchanged(version="0.20.2", reason="Fixed #107")
     async def move_call(
         self,
@@ -760,22 +962,40 @@ class SuiTransactionAsync(_SuiTransactionBase):
         module_id = None
         function_id = None
         # Standardize the input parameters
-        target_id, module_id, function_id, parameters, res_count = await self._move_call_target_cache(target)
+        (
+            target_id,
+            module_id,
+            function_id,
+            parameters,
+            res_count,
+        ) = await self._move_call_target_cache(target)
         # Standardize the arguments to list
         if arguments:
-            arguments = arguments if isinstance(arguments, list) else arguments.array
+            arguments = (
+                arguments if isinstance(arguments, list) else arguments.array
+            )
             arguments = await self._resolve_arguments(arguments)
             for index, arg in enumerate(arguments):
                 parm = parameters[index]
-                if hasattr(parm, "is_mutable") and parm.is_mutable and isinstance(arg, tuple):
+                if (
+                    hasattr(parm, "is_mutable")
+                    and parm.is_mutable
+                    and isinstance(arg, tuple)
+                ):
                     r_arg: bcs.ObjectArg = arg[1]
                     r_arg.value.Mutable = True
         else:
             arguments = []
         # Standardize the type_arguments to list
         if type_arguments:
-            type_arguments = type_arguments if isinstance(type_arguments, list) else type_arguments.array
-            type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
+            type_arguments = (
+                type_arguments
+                if isinstance(type_arguments, list)
+                else type_arguments.array
+            )
+            type_arguments = [
+                bcs.TypeTag.type_tag_from(x) for x in type_arguments
+            ]
         else:
             type_arguments = []
 
@@ -792,7 +1012,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
         self,
         *,
         target: Union[str, SuiString],
-        arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
+        arguments: list[
+            Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+        ],
         type_arguments: Optional[list[bcs.TypeTag]] = None,
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """_move_call Internal move call when arguments and type_arguments already prepared.
@@ -810,15 +1032,27 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert isinstance(target, (str, SuiString))
         # Standardize the input parameters
         target = target if isinstance(target, str) else target.value
-        target_id, module_id, function_id, parameters, res_count = await self._move_call_target_cache(target)
+        (
+            target_id,
+            module_id,
+            function_id,
+            parameters,
+            res_count,
+        ) = await self._move_call_target_cache(target)
         if arguments:
             for index, arg in enumerate(arguments):
                 parm = parameters[index]
-                if hasattr(parm, "is_mutable") and parm.is_mutable and isinstance(arg, tuple):
+                if (
+                    hasattr(parm, "is_mutable")
+                    and parm.is_mutable
+                    and isinstance(arg, tuple)
+                ):
                     r_arg: bcs.ObjectArg = arg[1]
                     r_arg.value.Mutable = True
 
-        type_arguments = type_arguments if isinstance(type_arguments, list) else []
+        type_arguments = (
+            type_arguments if isinstance(type_arguments, list) else []
+        )
         return self.builder.move_call(
             target=target_id,
             arguments=arguments,
@@ -829,7 +1063,8 @@ class SuiTransactionAsync(_SuiTransactionBase):
         )
 
     @versionchanged(
-        version="0.20.0", reason="Removed recipient. Transfer of UpgradeCap up to user as per Sui best practice."
+        version="0.20.0",
+        reason="Removed recipient. Transfer of UpgradeCap up to user as per Sui best practice.",
     )
     async def publish(
         self,
@@ -856,7 +1091,10 @@ class SuiTransactionAsync(_SuiTransactionBase):
         """
         assert not self._executed, "Transaction already executed"
         modules, dependencies, _ = self._compile_source(
-            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+            project_path,
+            with_unpublished_dependencies,
+            skip_fetch_latest_git_deps,
+            legacy_digest,
         )
         return self.builder.publish(modules, dependencies)
 
@@ -865,13 +1103,24 @@ class SuiTransactionAsync(_SuiTransactionBase):
         resp = await self.client.get_object(upgrade_cap)
         if resp.is_ok() and not isinstance(resp.result_data, ObjectNotExist):
             upcap: ObjectRead = resp.result_data
-            if not (upcap.object_type == _STANDARD_UPGRADE_CAP_TYPE or upcap.object_type.endswith(_UPGRADE_CAP_SUFFIX)):
-                raise ValueError(f"{upcap.object_type} not recognized as UpgradeCap")
+            if not (
+                upcap.object_type == _STANDARD_UPGRADE_CAP_TYPE
+                or upcap.object_type.endswith(_UPGRADE_CAP_SUFFIX)
+            ):
+                raise ValueError(
+                    f"{upcap.object_type} not recognized as UpgradeCap"
+                )
             return upcap
         raise ValueError(f"Error in finding UpgradeCap on {upgrade_cap}")
 
-    @versionchanged(version="0.17.0", reason="Dropped recipient as the resulting UpgradeCap goes to main signer.")
-    @versionchanged(version="0.20.0", reason="Added package compiled digest control as per Sui 1.0.0.")
+    @versionchanged(
+        version="0.17.0",
+        reason="Dropped recipient as the resulting UpgradeCap goes to main signer.",
+    )
+    @versionchanged(
+        version="0.20.0",
+        reason="Added package compiled digest control as per Sui 1.0.0.",
+    )
     async def publish_upgrade(
         self,
         *,
@@ -906,11 +1155,18 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert isinstance(package_id, (str, ObjectID))
         # Compile the new package
         modules, dependencies, digest = self._compile_source(
-            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+            project_path,
+            with_unpublished_dependencies,
+            skip_fetch_latest_git_deps,
+            legacy_digest,
         )
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
-            upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
+            upgrade_cap = (
+                upgrade_cap
+                if isinstance(upgrade_cap, str)
+                else upgrade_cap.value
+            )
             upgrade_cap = await self._verify_upgrade_cap(upgrade_cap)
         else:
             upgrade_cap = await self._verify_upgrade_cap(upgrade_cap.object_id)
@@ -928,11 +1184,17 @@ class SuiTransactionAsync(_SuiTransactionBase):
         cap_arg = len(self.builder.inputs)
         # authorize
         auth_cmd = self.builder.authorize_upgrade(*capability_arg)
-        package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
+        package_id = bcs.Address.from_str(
+            package_id if isinstance(package_id, str) else package_id.value
+        )
         # Upgrade
-        receipt = self.builder.publish_upgrade(modules, dependencies, package_id, auth_cmd)
+        receipt = self.builder.publish_upgrade(
+            modules, dependencies, package_id, auth_cmd
+        )
         # Commit
-        return self.builder.commit_upgrade(bcs.Argument("Input", cap_arg), receipt)
+        return self.builder.commit_upgrade(
+            bcs.Argument("Input", cap_arg), receipt
+        )
 
     @versionadded(version="0.20.0", reason="Support Sui 1.0.0 custom upgrades")
     async def custom_upgrade(
@@ -941,8 +1203,14 @@ class SuiTransactionAsync(_SuiTransactionBase):
         project_path: str,
         package_id: Union[str, ObjectID],
         upgrade_cap: Union[str, ObjectID, ObjectRead],
-        authorize_upgrade_fn: Callable[["SuiTransactionAsync", ObjectRead, bcs.Digest], Awaitable[bcs.Argument]],
-        commit_upgrade_fn: Callable[["SuiTransactionAsync", ObjectRead, bcs.Argument], Awaitable[bcs.Argument]],
+        authorize_upgrade_fn: Callable[
+            ["SuiTransactionAsync", ObjectRead, bcs.Digest],
+            Awaitable[bcs.Argument],
+        ],
+        commit_upgrade_fn: Callable[
+            ["SuiTransactionAsync", ObjectRead, bcs.Argument],
+            Awaitable[bcs.Argument],
+        ],
         with_unpublished_dependencies: bool = False,
         skip_fetch_latest_git_deps: bool = False,
         legacy_digest: bool = False,
@@ -974,20 +1242,31 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert commit_upgrade_fn, "'commit_upgrade_fn' is NoneType"
         # Compile the new package
         modules, dependencies, digest = self._compile_source(
-            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+            project_path,
+            with_unpublished_dependencies,
+            skip_fetch_latest_git_deps,
+            legacy_digest,
         )
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
-            upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
+            upgrade_cap = (
+                upgrade_cap
+                if isinstance(upgrade_cap, str)
+                else upgrade_cap.value
+            )
             upgrade_cap = await self._verify_upgrade_cap(upgrade_cap)
         else:
             upgrade_cap = await self._verify_upgrade_cap(upgrade_cap.object_id)
 
         upgrade_ticket = await authorize_upgrade_fn(self, upgrade_cap, digest)
         # Extrack the auth_cmd cap input
-        package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
+        package_id = bcs.Address.from_str(
+            package_id if isinstance(package_id, str) else package_id.value
+        )
         # Upgrade
-        receipt = self.builder.publish_upgrade(modules, dependencies, package_id, upgrade_ticket)
+        receipt = self.builder.publish_upgrade(
+            modules, dependencies, package_id, upgrade_ticket
+        )
         return await commit_upgrade_fn(self, upgrade_cap, receipt)
 
     async def stake_coin(
@@ -1017,10 +1296,19 @@ class SuiTransactionAsync(_SuiTransactionBase):
             params.append(bcs.OptionalU64(amount))
         else:
             params.append(bcs.OptionalU64())
-        params.append(validator_address if isinstance(validator_address, SuiAddress) else SuiAddress(validator_address))
-        return await self._move_call(target=_STAKE_REQUEST_TARGET, arguments=await self._resolve_arguments(params))
+        params.append(
+            validator_address
+            if isinstance(validator_address, SuiAddress)
+            else SuiAddress(validator_address)
+        )
+        return await self._move_call(
+            target=_STAKE_REQUEST_TARGET,
+            arguments=await self._resolve_arguments(params),
+        )
 
-    async def unstake_coin(self, *, staked_coin: Union[str, ObjectID, StakedSui]) -> bcs.Argument:
+    async def unstake_coin(
+        self, *, staked_coin: Union[str, ObjectID, StakedSui]
+    ) -> bcs.Argument:
         """unstake_coin Unstakes a Staked Sui Coin.
 
         :param staked_coin: The coin being unstaked
@@ -1038,12 +1326,19 @@ class SuiTransactionAsync(_SuiTransactionBase):
             if staked_coin.status != "Pending":
                 params.append(ObjectID(staked_coin.staked_sui_id))
             else:
-                raise ValueError(f"Can not unstake non-activated staked coin {staked_coin}")
+                raise ValueError(
+                    f"Can not unstake non-activated staked coin {staked_coin}"
+                )
         else:
             params.append(staked_coin)
-        return await self._move_call(target=_UNSTAKE_REQUEST_TARGET, arguments=await self._resolve_arguments(params))
+        return await self._move_call(
+            target=_UNSTAKE_REQUEST_TARGET,
+            arguments=await self._resolve_arguments(params),
+        )
 
-    @versionchanged(version="0.17.0", reason="Made 'amount' 'amounts' with list argument.")
+    @versionchanged(
+        version="0.17.0", reason="Made 'amount' 'amounts' with list argument."
+    )
     async def split_coin(
         self,
         *,
@@ -1075,16 +1370,32 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
+        assert isinstance(
+            coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+        ), "invalid coin object type"
         amounts = amounts if isinstance(amounts, list) else [amounts]
         for amount in amounts:
             assert isinstance(amount, (int, SuiInteger))
-        amounts = [tx_builder.PureInput.as_input(bcs.U64.encode(x)) if isinstance(x, int) else x.value for x in amounts]
-        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
+        amounts = [
+            tx_builder.PureInput.as_input(bcs.U64.encode(x))
+            if isinstance(x, int)
+            else x.value
+            for x in amounts
+        ]
+        coin = (
+            coin
+            if isinstance(
+                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            )
+            else ObjectID(coin)
+        )
         resolved = await self._resolve_arguments([coin])
         return self.builder.split_coin(resolved[0], amounts)
 
-    @versionadded(version="0.16.1", reason="Expand Transaction builder ease of use capability.")
+    @versionadded(
+        version="0.16.1",
+        reason="Expand Transaction builder ease of use capability.",
+    )
     async def split_coin_equal(
         self,
         *,
@@ -1105,11 +1416,25 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
-        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
-        split_count = split_count if isinstance(split_count, int) else split_count.value
-        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
-        resolved = await self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
+        assert isinstance(
+            coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+        ), "invalid coin object type"
+        assert isinstance(
+            split_count, (int, SuiInteger)
+        ), "invalid amount type"
+        split_count = (
+            split_count if isinstance(split_count, int) else split_count.value
+        )
+        coin = (
+            coin
+            if isinstance(
+                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            )
+            else ObjectID(coin)
+        )
+        resolved = await self._resolve_arguments(
+            [coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))]
+        )
 
         return await self._move_call(
             target=_SPLIT_AND_KEEP,
@@ -1136,13 +1461,29 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
-        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
-        split_count = split_count if isinstance(split_count, int) else split_count.value
+        assert isinstance(
+            coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+        ), "invalid coin object type"
+        assert isinstance(
+            split_count, (int, SuiInteger)
+        ), "invalid amount type"
+        split_count = (
+            split_count if isinstance(split_count, int) else split_count.value
+        )
         if split_count < 2:
-            raise ValueError(f"Split count {split_count} must be greater than 1")
-        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
-        resolved = await self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
+            raise ValueError(
+                f"Split count {split_count} must be greater than 1"
+            )
+        coin = (
+            coin
+            if isinstance(
+                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            )
+            else ObjectID(coin)
+        )
+        resolved = await self._resolve_arguments(
+            [coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))]
+        )
 
         # Split 1 coin into split_count total [orig, new 1, new 2]
         coin_type_tag = bcs.TypeTag.type_tag_from(coin_type)
@@ -1153,7 +1494,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
         )
         # Itemize the new coins
         if coin_type.count("<") == 0:
-            coin_type_tag = bcs.TypeTag.type_tag_from(f"0x2::coin::Coin<{coin_type}>")
+            coin_type_tag = bcs.TypeTag.type_tag_from(
+                f"0x2::coin::Coin<{coin_type}>"
+            )
 
         # We only want the new coins
         nreslist: list[bcs.Argument] = []
@@ -1161,18 +1504,32 @@ class SuiTransactionAsync(_SuiTransactionBase):
             nreslist.append(
                 await self._move_call(
                     target=_VECTOR_REMOVE_INDEX,
-                    arguments=[result_vector, tx_builder.PureInput.as_input(SuiU64(0))],
+                    arguments=[
+                        result_vector,
+                        tx_builder.PureInput.as_input(SuiU64(0)),
+                    ],
                     type_arguments=[coin_type_tag],
                 )
             )
-        await self._move_call(target=_VECTOR_DESTROY_EMPTY, arguments=[result_vector], type_arguments=[coin_type_tag])
+        await self._move_call(
+            target=_VECTOR_DESTROY_EMPTY,
+            arguments=[result_vector],
+            type_arguments=[coin_type_tag],
+        )
         return nreslist
 
     async def merge_coins(
         self,
         *,
-        merge_to: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
-        merge_from: Union[list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray],
+        merge_to: Union[
+            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
+        ],
+        merge_from: Union[
+            list[
+                Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+            ],
+            SuiArray,
+        ],
     ) -> bcs.Argument:
         """merge_coins Merges one or more coins to a primary coin.
 
@@ -1187,25 +1544,40 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert isinstance(
             merge_to, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
         ), "Unsupported type for merge_to"
-        if isinstance(merge_to, bcs.Argument) and merge_to.enum_name == "GasCoin":
+        if (
+            isinstance(merge_to, bcs.Argument)
+            and merge_to.enum_name == "GasCoin"
+        ):
             self.signer_block._merging_to_gas()
-        resolved = await self._resolve_arguments([merge_to if not isinstance(merge_to, str) else ObjectID(merge_to)])
+        resolved = await self._resolve_arguments(
+            [merge_to if not isinstance(merge_to, str) else ObjectID(merge_to)]
+        )
         merge_to = resolved[0]
         # Depper from_coin type verification
-        assert isinstance(merge_from, (list, SuiArray)), "Unsupported merge_from collection type"
+        assert isinstance(
+            merge_from, (list, SuiArray)
+        ), "Unsupported merge_from collection type"
         parm_list: list = []
-        merge_from = merge_from if isinstance(merge_from, list) else merge_from.coins
+        merge_from = (
+            merge_from if isinstance(merge_from, list) else merge_from.coins
+        )
         for fcoin in merge_from:
             assert isinstance(
                 fcoin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
             ), "Unsupported entry in merge_from"
-            parm_list.append(fcoin if not isinstance(fcoin, str) else ObjectID(fcoin))
-        return self.builder.merge_coins(merge_to, await self._resolve_arguments(parm_list))
+            parm_list.append(
+                fcoin if not isinstance(fcoin, str) else ObjectID(fcoin)
+            )
+        return self.builder.merge_coins(
+            merge_to, await self._resolve_arguments(parm_list)
+        )
 
     async def public_transfer_object(
         self,
         *,
-        object_to_send: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        object_to_send: Union[
+            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
+        ],
         recipient: SuiAddress,
         object_type: str,
     ) -> bcs.Argument:
@@ -1222,11 +1594,14 @@ class SuiTransactionAsync(_SuiTransactionBase):
         """
         assert not self._executed, "Transaction already executed"
         assert isinstance(
-            object_to_send, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            object_to_send,
+            (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument),
         ), "invalid object type"
         assert isinstance(recipient, SuiAddress), "Invalid recipient type"
         obj_type_tag = bcs.TypeTag.type_tag_from(object_type)
-        resolved_args = await self._resolve_arguments([object_to_send, recipient])
+        resolved_args = await self._resolve_arguments(
+            [object_to_send, recipient]
+        )
         return await self._move_call(
             target=_PUBLIC_TRANSFER,
             arguments=resolved_args,
@@ -1236,7 +1611,12 @@ class SuiTransactionAsync(_SuiTransactionBase):
     async def transfer_objects(
         self,
         *,
-        transfers: Union[list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray],
+        transfers: Union[
+            list[
+                Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+            ],
+            SuiArray,
+        ],
         recipient: Union[ObjectID, SuiAddress],
     ) -> bcs.Argument:
         """transfer_objects Transfers one or more objects to a recipient.
@@ -1249,27 +1629,38 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(transfers, (list, SuiArray, bcs.Argument)), "Unsupported trasfers collection type"
-        assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
+        assert isinstance(
+            transfers, (list, SuiArray, bcs.Argument)
+        ), "Unsupported trasfers collection type"
+        assert isinstance(
+            recipient, (ObjectID, SuiAddress)
+        ), "invalid recipient type"
         if isinstance(transfers, (list, SuiArray)):
-            transfers = transfers if isinstance(transfers, list) else transfers.array
+            transfers = (
+                transfers if isinstance(transfers, list) else transfers.array
+            )
             coerced_transfers: list = []
             for txfer in transfers:
                 assert isinstance(
-                    txfer, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+                    txfer,
+                    (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument),
                 ), "Unsupported entry in transfers"
                 if isinstance(txfer, str):
                     coerced_transfers.append(ObjectID(txfer))
                 else:
                     coerced_transfers.append(txfer)
             transfers = await self._resolve_arguments(coerced_transfers)
-        return self.builder.transfer_objects(tx_builder.PureInput.as_input(recipient), transfers)
+        return self.builder.transfer_objects(
+            tx_builder.PureInput.as_input(recipient), transfers
+        )
 
     async def transfer_sui(
         self,
         *,
         recipient: Union[ObjectID, SuiAddress],
-        from_coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        from_coin: Union[
+            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
+        ],
         amount: Optional[Union[int, SuiInteger]] = None,
     ) -> bcs.Argument:
         """transfer_sui Transfers a Sui coin object to a recipient.
@@ -1286,7 +1677,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
+        assert isinstance(
+            recipient, (ObjectID, SuiAddress)
+        ), "invalid recipient type"
         if amount:
             assert isinstance(amount, (int, SuiInteger))
             amount = amount if isinstance(amount, int) else amount.value
@@ -1297,14 +1690,18 @@ class SuiTransactionAsync(_SuiTransactionBase):
             from_coin = await self._resolve_arguments([from_coin])
         else:
             raise ValueError(f"Invalid 'from_coin' {from_coin}")
-        return self.builder.transfer_sui(tx_builder.PureInput.as_input(recipient), *from_coin, amount)
+        return self.builder.transfer_sui(
+            tx_builder.PureInput.as_input(recipient), *from_coin, amount
+        )
 
 
 @versionchanged(version="0.20.3", reason="Explicit support of tx.gas.")
 class SuiTransaction(_SuiTransactionBase):
     """High level transaction builder."""
 
-    @versionchanged(version="0.21.1", reason="Takes a 'initial_sender' as option.")
+    @versionchanged(
+        version="0.21.1", reason="Takes a 'initial_sender' as option."
+    )
     def __init__(
         self,
         client: SyncClient,
@@ -1313,7 +1710,9 @@ class SuiTransaction(_SuiTransactionBase):
     ) -> None:
         """Transaction initializer."""
         super().__init__(client, merge_gas_budget, initial_sender)
-        self._current_gas_price = handle_result(self.client.execute(GetReferenceGasPrice()))
+        self._current_gas_price = handle_result(
+            self.client.execute(GetReferenceGasPrice())
+        )
 
     # def _reset_gas(self, for_owner: Union[SuiAddress, MultiSig]) -> list:
     #     """_reset_gas Returns gas objects imbued with owners."""
@@ -1328,7 +1727,10 @@ class SuiTransaction(_SuiTransactionBase):
     #     """Retrieve the current gas price from the chain during initialization."""
     #     return handle_result(self.client.execute(GetReferenceGasPrice()))
 
-    @versionchanged(version="0.16.1", reason="Added returning SuiRpcResult if inspect transaction failed.")
+    @versionchanged(
+        version="0.16.1",
+        reason="Added returning SuiRpcResult if inspect transaction failed.",
+    )
     def inspect_all(self) -> Union[TxInspectionResult, SuiRpcResult]:
         """inspect_all Returns results of sui_devInspectTransactionBlock on the current Transaction.
 
@@ -1339,17 +1741,24 @@ class SuiTransaction(_SuiTransactionBase):
         """
         tx_bytes = self.build_for_inspection()
         if self.signer_block.sender:
-            for_sender: Union[SuiAddress, SigningMultiSig] = self.signer_block.sender
+            for_sender: Union[
+                SuiAddress, SigningMultiSig
+            ] = self.signer_block.sender
             if not isinstance(for_sender, SuiAddress):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
-        result = self.client.execute(InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes))
+        result = self.client.execute(
+            InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes)
+        )
         if result.is_ok():
             return result.result_data
         return result
 
-    @versionchanged(version="0.16.1", reason="Added returning SuiRpcResult if inspect transaction failed.")
+    @versionchanged(
+        version="0.16.1",
+        reason="Added returning SuiRpcResult if inspect transaction failed.",
+    )
     def inspect_for_cost(self) -> Union[tuple[int, int, str], SuiRpcResult]:
         """inspect_for_cost Runs inspect transaction for cost summary.
 
@@ -1363,13 +1772,24 @@ class SuiTransaction(_SuiTransactionBase):
             gas_used = ispec.effects.gas_used
             gas_max = gas_used.total
             gas_min = gas_used.total_after_rebate
-            return gas_max, gas_min, ispec.effects.gas_object.reference.object_id
+            return (
+                gas_max,
+                gas_min,
+                ispec.effects.gas_object.reference.object_id,
+            )
         return SuiRpcResult
 
     @versionchanged(version="0.17.0", reason="Only used internally.")
-    @versionchanged(version="0.17.0", reason="Reworked using SignerBlock gas resolution.")
-    @versionchanged(version="0.21.1", reason="Corrected using multisig senders.")
-    @versionchanged(version="0.24.1", reason="Brought transaction cost inline, avoiding redundancy.")
+    @versionchanged(
+        version="0.17.0", reason="Reworked using SignerBlock gas resolution."
+    )
+    @versionchanged(
+        version="0.21.1", reason="Corrected using multisig senders."
+    )
+    @versionchanged(
+        version="0.24.1",
+        reason="Brought transaction cost inline, avoiding redundancy.",
+    )
     def _build_for_execute(
         self,
         gas_budget: Union[str, SuiString],
@@ -1390,15 +1810,21 @@ class SuiTransaction(_SuiTransactionBase):
         # Get costs
         tx_kind_b64 = base64.b64encode(tx_kind.serialize()).decode()
         if self.signer_block.sender:
-            for_sender: Union[SuiAddress, SigningMultiSig] = self.signer_block.sender
+            for_sender: Union[
+                SuiAddress, SigningMultiSig
+            ] = self.signer_block.sender
             if not isinstance(for_sender, SuiAddress):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
-        result = self.client.execute(InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64))
+        result = self.client.execute(
+            InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64)
+        )
         if result.is_ok():
             ispec: TxInspectionResult = result.result_data
-            gas_budget = gas_budget if isinstance(gas_budget, str) else gas_budget.value
+            gas_budget = (
+                gas_budget if isinstance(gas_budget, str) else gas_budget.value
+            )
             gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
 
         # Fetch the payment
@@ -1423,17 +1849,30 @@ class SuiTransaction(_SuiTransactionBase):
             ),
         )
 
-    @versionadded(version="0.17.0", reason="Convenience for serializing and dry-running.")
+    @versionadded(
+        version="0.17.0", reason="Convenience for serializing and dry-running."
+    )
     def get_transaction_data(self, *, gas_budget) -> bcs.TransactionData:
         """."""
         return self._build_for_execute(gas_budget)
 
-    @versionchanged(version="0.16.1", reason="Added 'additional_signers' optional argument")
-    @versionchanged(version="0.17.0", reason="Revamped for all signature potentials and types.")
-    @versionchanged(version="0.25.0", reason="Made gas_budget optiona, defaults to 1M mists.")
+    @versionchanged(
+        version="0.16.1", reason="Added 'additional_signers' optional argument"
+    )
+    @versionchanged(
+        version="0.17.0",
+        reason="Revamped for all signature potentials and types.",
+    )
+    @versionchanged(
+        version="0.25.0",
+        reason="Made gas_budget optiona, defaults to 1M mists.",
+    )
     @versionchanged(version="0.25.0", reason="Added execution options.")
     def execute(
-        self, *, gas_budget: Optional[Union[str, SuiString]] = "1000000", options: Optional[dict] = None
+        self,
+        *,
+        gas_budget: Optional[Union[str, SuiString]] = "1000000",
+        options: Optional[dict] = None,
     ) -> SuiRpcResult:
         """execute Finalizes transaction and submits for execution on the chain.
 
@@ -1448,11 +1887,15 @@ class SuiTransaction(_SuiTransactionBase):
         """
         assert not self._executed, "Transaction already executed"
         gas_budget = gas_budget if gas_budget else "1000000"
-        tx_b64 = base64.b64encode(self._build_for_execute(gas_budget).serialize()).decode()
-        # print(tx_b64)
+        tx_b64 = base64.b64encode(
+            self._build_for_execute(gas_budget).serialize()
+        ).decode()
+
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
-            signatures=self.signer_block.get_signatures(client=self.client, tx_bytes=tx_b64),
+            signatures=self.signer_block.get_signatures(
+                client=self.client, tx_bytes=tx_b64
+            ),
             options=options,
             request_type=SuiRequestType.WAITFORLOCALEXECUTION,
         )
@@ -1461,15 +1904,25 @@ class SuiTransaction(_SuiTransactionBase):
         return iresult
 
     # Argument resolution to lower level types
-    @versionadded(version="0.18.0", reason="Reuse for argument nested list recursion.")
-    def _resolve_objects(self, items: list, objref_indexes: list, objtup_indexes: list):
+    @versionadded(
+        version="0.18.0", reason="Reuse for argument nested list recursion."
+    )
+    def _resolve_objects(
+        self, items: list, objref_indexes: list, objtup_indexes: list
+    ):
         """Finalizes object ref types."""
         if objref_indexes:
-            res = self.client.execute(GetMultipleObjects(object_ids=[items[x] for x in objref_indexes]))
+            res = self.client.execute(
+                GetMultipleObjects(
+                    object_ids=[items[x] for x in objref_indexes]
+                )
+            )
             if res.is_ok():
                 res_list = res.result_data
                 if len(res_list) != len(objref_indexes):
-                    raise ValueError(f"Unable to find object in set {[items[x] for x in objref_indexes]}")
+                    raise ValueError(
+                        f"Unable to find object in set {[items[x] for x in objref_indexes]}"
+                    )
                 # Update items list and register tuple conversion
                 for index, result in enumerate(res_list):
                     items[objref_indexes[index]] = result
@@ -1480,16 +1933,28 @@ class SuiTransaction(_SuiTransactionBase):
             for tindex in objtup_indexes:
                 item: ObjectRead = items[tindex]
                 if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
-                    obj_ref = GenericRef(item.object_id, item.version, item.digest)
-                    b_obj_arg = bcs.ObjectArg("ImmOrOwnedObject", bcs.ObjectReference.from_generic_ref(obj_ref))
+                    obj_ref = GenericRef(
+                        item.object_id, item.version, item.digest
+                    )
+                    b_obj_arg = bcs.ObjectArg(
+                        "ImmOrOwnedObject",
+                        bcs.ObjectReference.from_generic_ref(obj_ref),
+                    )
                 elif isinstance(item.owner, SharedOwner):
-                    b_obj_arg = bcs.ObjectArg("SharedObject", bcs.SharedObjectReference.from_object_read(item))
+                    b_obj_arg = bcs.ObjectArg(
+                        "SharedObject",
+                        bcs.SharedObjectReference.from_object_read(item),
+                    )
                 items[tindex] = (
-                    bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
+                    bcs.BuilderArg(
+                        "Object", bcs.Address.from_str(item.object_id)
+                    ),
                     b_obj_arg,
                 )
 
-    @versionchanged(version="0.18.0", reason="Handle argument nested list recursion.")
+    @versionchanged(
+        version="0.18.0", reason="Handle argument nested list recursion."
+    )
     def _resolve_arguments(self, items: list) -> list:
         """Process list intended as 'params' in move call."""
         objref_indexes: list[int] = []
@@ -1501,8 +1966,12 @@ class SuiTransaction(_SuiTransactionBase):
         return items
 
     # TODO: Investigate functools LRU
-    @versionchanged(version="0.20.2", reason="Capture function argument meta data as well")
-    def _move_call_target_cache(self, target: str) -> tuple[bcs.Address, str, str, list, int]:
+    @versionchanged(
+        version="0.20.2", reason="Capture function argument meta data as well"
+    )
+    def _move_call_target_cache(
+        self, target: str
+    ) -> tuple[bcs.Address, str, str, list, int]:
         """Used to resolve information regarding a move call target.
 
         This caches the result of a GetFunction meta-data information essention to setting up
@@ -1511,7 +1980,13 @@ class SuiTransaction(_SuiTransactionBase):
         if target in self._MC_RESULT_CACHE:
             return self._MC_RESULT_CACHE[target]
         package_id, module_id, function_id = target.split("::")
-        result = self.client.execute(GetFunction(package=package_id, module_name=module_id, function_name=function_id))
+        result = self.client.execute(
+            GetFunction(
+                package=package_id,
+                module_name=module_id,
+                function_name=function_id,
+            )
+        )
         if result.is_ok():
             reslen = len(result.result_data.returns)
             if reslen:
@@ -1529,9 +2004,15 @@ class SuiTransaction(_SuiTransactionBase):
             return res_tup
         raise ValueError(f"Unable to find target: {target}")
 
-    @versionchanged(version="0.19.0", reason="Check that only type Objects are passed")
-    @versionchanged(version="0.21.1", reason="Added optional item_type argument")
-    def make_move_vector(self, items: list[Any], item_type: Optional[str] = None) -> bcs.Argument:
+    @versionchanged(
+        version="0.19.0", reason="Check that only type Objects are passed"
+    )
+    @versionchanged(
+        version="0.21.1", reason="Added optional item_type argument"
+    )
+    def make_move_vector(
+        self, items: list[Any], item_type: Optional[str] = None
+    ) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
 
         def _first_non_argument_type(inner_list: list) -> Any:
@@ -1544,7 +2025,9 @@ class SuiTransaction(_SuiTransactionBase):
             return result
 
         if item_type:
-            type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
+            type_tag = bcs.OptionalTypeTag(
+                bcs.TypeTag.type_tag_from(item_type)
+            )
         else:
             type_tag = bcs.OptionalTypeTag()
         if items:
@@ -1552,20 +2035,32 @@ class SuiTransaction(_SuiTransactionBase):
             if first_item:
                 # If not all arguments, ensure the remaining are consistent
                 first_class = first_item.__class__.__name__
-                if first_class != "Argument" and first_class in self._PURE_CANDIDATES:
-                    raise ValueError(f"make_move_vec is for Objects only. Found type {first_class}")
+                if (
+                    first_class != "Argument"
+                    and first_class in self._PURE_CANDIDATES
+                ):
+                    raise ValueError(
+                        f"make_move_vec is for Objects only. Found type {first_class}"
+                    )
                 for item in items:
                     item_class = item.__class__.__name__
                     if item_class == "Argument":
                         pass
                     else:
-                        assert item_class == first_class, f"Expected {first_class} found {item_class}"
-                return self.builder.make_move_vector(type_tag, self._resolve_arguments(items))
+                        assert (
+                            item_class == first_class
+                        ), f"Expected {first_class} found {item_class}"
+                return self.builder.make_move_vector(
+                    type_tag, self._resolve_arguments(items)
+                )
             elif len(items) > 0:
                 return self.builder.make_move_vector(type_tag, items)
         raise ValueError("make_vector requires a non-empty list")
 
-    @versionchanged(version="0.17.0", reason="Target uses 'package_id::module::function' construct only")
+    @versionchanged(
+        version="0.17.0",
+        reason="Target uses 'package_id::module::function' construct only",
+    )
     @versionchanged(version="0.20.2", reason="Fixed #107")
     def move_call(
         self,
@@ -1593,22 +2088,40 @@ class SuiTransaction(_SuiTransactionBase):
         module_id = None
         function_id = None
         # Standardize the input parameters
-        target_id, module_id, function_id, parameters, res_count = self._move_call_target_cache(target)
+        (
+            target_id,
+            module_id,
+            function_id,
+            parameters,
+            res_count,
+        ) = self._move_call_target_cache(target)
         # Standardize the arguments to list
         if arguments:
-            arguments = arguments if isinstance(arguments, list) else arguments.array
+            arguments = (
+                arguments if isinstance(arguments, list) else arguments.array
+            )
             arguments = self._resolve_arguments(arguments)
             for index, arg in enumerate(arguments):
                 parm = parameters[index]
-                if hasattr(parm, "is_mutable") and parm.is_mutable and isinstance(arg, tuple):
+                if (
+                    hasattr(parm, "is_mutable")
+                    and parm.is_mutable
+                    and isinstance(arg, tuple)
+                ):
                     r_arg: bcs.ObjectArg = arg[1]
                     r_arg.value.Mutable = True
         else:
             arguments = []
         # Standardize the type_arguments to list
         if type_arguments:
-            type_arguments = type_arguments if isinstance(type_arguments, list) else type_arguments.array
-            type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
+            type_arguments = (
+                type_arguments
+                if isinstance(type_arguments, list)
+                else type_arguments.array
+            )
+            type_arguments = [
+                bcs.TypeTag.type_tag_from(x) for x in type_arguments
+            ]
         else:
             type_arguments = []
 
@@ -1625,7 +2138,9 @@ class SuiTransaction(_SuiTransactionBase):
         self,
         *,
         target: Union[str, SuiString],
-        arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
+        arguments: list[
+            Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+        ],
         type_arguments: Optional[list[bcs.TypeTag]] = None,
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """_move_call Internal move call when arguments and type_arguments already prepared.
@@ -1643,15 +2158,27 @@ class SuiTransaction(_SuiTransactionBase):
         assert isinstance(target, (str, SuiString))
         # Standardize the input parameters
         target = target if isinstance(target, str) else target.value
-        target_id, module_id, function_id, parameters, res_count = self._move_call_target_cache(target)
+        (
+            target_id,
+            module_id,
+            function_id,
+            parameters,
+            res_count,
+        ) = self._move_call_target_cache(target)
         if arguments:
             for index, arg in enumerate(arguments):
                 parm = parameters[index]
-                if hasattr(parm, "is_mutable") and parm.is_mutable and isinstance(arg, tuple):
+                if (
+                    hasattr(parm, "is_mutable")
+                    and parm.is_mutable
+                    and isinstance(arg, tuple)
+                ):
                     r_arg: bcs.ObjectArg = arg[1]
                     r_arg.value.Mutable = True
 
-        type_arguments = type_arguments if isinstance(type_arguments, list) else []
+        type_arguments = (
+            type_arguments if isinstance(type_arguments, list) else []
+        )
         return self.builder.move_call(
             target=target_id,
             arguments=arguments,
@@ -1662,7 +2189,8 @@ class SuiTransaction(_SuiTransactionBase):
         )
 
     @versionchanged(
-        version="0.20.0", reason="Removed recipient. Transfer of UpgradeCap up to user as per Sui best practice."
+        version="0.20.0",
+        reason="Removed recipient. Transfer of UpgradeCap up to user as per Sui best practice.",
     )
     def publish(
         self,
@@ -1689,7 +2217,10 @@ class SuiTransaction(_SuiTransactionBase):
         """
         assert not self._executed, "Transaction already executed"
         modules, dependencies, _digest = self._compile_source(
-            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+            project_path,
+            with_unpublished_dependencies,
+            skip_fetch_latest_git_deps,
+            legacy_digest,
         )
         return self.builder.publish(modules, dependencies)
 
@@ -1698,13 +2229,24 @@ class SuiTransaction(_SuiTransactionBase):
         resp = self.client.get_object(upgrade_cap)
         if resp.is_ok() and not isinstance(resp.result_data, ObjectNotExist):
             upcap: ObjectRead = resp.result_data
-            if not (upcap.object_type == _STANDARD_UPGRADE_CAP_TYPE or upcap.object_type.endswith(_UPGRADE_CAP_SUFFIX)):
-                raise ValueError(f"{upcap.object_type} not recognized as UpgradeCap")
+            if not (
+                upcap.object_type == _STANDARD_UPGRADE_CAP_TYPE
+                or upcap.object_type.endswith(_UPGRADE_CAP_SUFFIX)
+            ):
+                raise ValueError(
+                    f"{upcap.object_type} not recognized as UpgradeCap"
+                )
             return upcap
         raise ValueError(f"Error in finding UpgradeCap on {upgrade_cap}")
 
-    @versionchanged(version="0.17.0", reason="Dropped recipient as the resulting UpgradeCap goes to main signer.")
-    @versionchanged(version="0.20.0", reason="Added package compiled digest control as per Sui 1.0.0.")
+    @versionchanged(
+        version="0.17.0",
+        reason="Dropped recipient as the resulting UpgradeCap goes to main signer.",
+    )
+    @versionchanged(
+        version="0.20.0",
+        reason="Added package compiled digest control as per Sui 1.0.0.",
+    )
     def publish_upgrade(
         self,
         *,
@@ -1739,11 +2281,18 @@ class SuiTransaction(_SuiTransactionBase):
         assert isinstance(package_id, (str, ObjectID))
         # Compile the new package
         modules, dependencies, digest = self._compile_source(
-            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+            project_path,
+            with_unpublished_dependencies,
+            skip_fetch_latest_git_deps,
+            legacy_digest,
         )
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
-            upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
+            upgrade_cap = (
+                upgrade_cap
+                if isinstance(upgrade_cap, str)
+                else upgrade_cap.value
+            )
             upgrade_cap = self._verify_upgrade_cap(upgrade_cap)
         else:
             upgrade_cap = self._verify_upgrade_cap(upgrade_cap.object_id)
@@ -1760,11 +2309,17 @@ class SuiTransaction(_SuiTransactionBase):
         cap_arg = len(self.builder.inputs)
         # authorize
         auth_cmd = self.builder.authorize_upgrade(*capability_arg)
-        package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
+        package_id = bcs.Address.from_str(
+            package_id if isinstance(package_id, str) else package_id.value
+        )
         # Upgrade
-        receipt = self.builder.publish_upgrade(modules, dependencies, package_id, auth_cmd)
+        receipt = self.builder.publish_upgrade(
+            modules, dependencies, package_id, auth_cmd
+        )
         # Commit
-        return self.builder.commit_upgrade(bcs.Argument("Input", cap_arg), receipt)
+        return self.builder.commit_upgrade(
+            bcs.Argument("Input", cap_arg), receipt
+        )
 
     @versionadded(version="0.20.0", reason="Support Sui 1.0.0 custom upgrades")
     def custom_upgrade(
@@ -1773,8 +2328,12 @@ class SuiTransaction(_SuiTransactionBase):
         project_path: str,
         package_id: Union[str, ObjectID],
         upgrade_cap: Union[str, ObjectID, ObjectRead],
-        authorize_upgrade_fn: Callable[["SuiTransaction", ObjectRead, bcs.Digest], bcs.Argument],
-        commit_upgrade_fn: Callable[["SuiTransaction", ObjectRead, bcs.Argument], bcs.Argument],
+        authorize_upgrade_fn: Callable[
+            ["SuiTransaction", ObjectRead, bcs.Digest], bcs.Argument
+        ],
+        commit_upgrade_fn: Callable[
+            ["SuiTransaction", ObjectRead, bcs.Argument], bcs.Argument
+        ],
         with_unpublished_dependencies: bool = False,
         skip_fetch_latest_git_deps: bool = False,
         legacy_digest: bool = False,
@@ -1806,20 +2365,31 @@ class SuiTransaction(_SuiTransactionBase):
         assert commit_upgrade_fn, "'commit_upgrade_fn' is NoneType"
         # Compile the new package
         modules, dependencies, digest = self._compile_source(
-            project_path, with_unpublished_dependencies, skip_fetch_latest_git_deps, legacy_digest
+            project_path,
+            with_unpublished_dependencies,
+            skip_fetch_latest_git_deps,
+            legacy_digest,
         )
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
-            upgrade_cap = upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
+            upgrade_cap = (
+                upgrade_cap
+                if isinstance(upgrade_cap, str)
+                else upgrade_cap.value
+            )
             upgrade_cap = self._verify_upgrade_cap(upgrade_cap)
         else:
             upgrade_cap = self._verify_upgrade_cap(upgrade_cap.object_id)
 
         upgrade_ticket = authorize_upgrade_fn(self, upgrade_cap, digest)
         # Extrack the auth_cmd cap input
-        package_id = bcs.Address.from_str(package_id if isinstance(package_id, str) else package_id.value)
+        package_id = bcs.Address.from_str(
+            package_id if isinstance(package_id, str) else package_id.value
+        )
         # Upgrade
-        receipt = self.builder.publish_upgrade(modules, dependencies, package_id, upgrade_ticket)
+        receipt = self.builder.publish_upgrade(
+            modules, dependencies, package_id, upgrade_ticket
+        )
         return commit_upgrade_fn(self, upgrade_cap, receipt)
 
     def stake_coin(
@@ -1849,10 +2419,19 @@ class SuiTransaction(_SuiTransactionBase):
             params.append(bcs.OptionalU64(amount))
         else:
             params.append(bcs.OptionalU64())
-        params.append(validator_address if isinstance(validator_address, SuiAddress) else SuiAddress(validator_address))
-        return self._move_call(target=_STAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params))
+        params.append(
+            validator_address
+            if isinstance(validator_address, SuiAddress)
+            else SuiAddress(validator_address)
+        )
+        return self._move_call(
+            target=_STAKE_REQUEST_TARGET,
+            arguments=self._resolve_arguments(params),
+        )
 
-    def unstake_coin(self, *, staked_coin: Union[str, ObjectID, StakedSui]) -> bcs.Argument:
+    def unstake_coin(
+        self, *, staked_coin: Union[str, ObjectID, StakedSui]
+    ) -> bcs.Argument:
         """unstake_coin Unstakes a Staked Sui Coin.
 
         :param staked_coin: The coin being unstaked
@@ -1870,12 +2449,19 @@ class SuiTransaction(_SuiTransactionBase):
             if staked_coin.status != "Pending":
                 params.append(ObjectID(staked_coin.staked_sui_id))
             else:
-                raise ValueError(f"Can not unstake non-activated staked coin {staked_coin}")
+                raise ValueError(
+                    f"Can not unstake non-activated staked coin {staked_coin}"
+                )
         else:
             params.append(staked_coin)
-        return self._move_call(target=_UNSTAKE_REQUEST_TARGET, arguments=self._resolve_arguments(params))
+        return self._move_call(
+            target=_UNSTAKE_REQUEST_TARGET,
+            arguments=self._resolve_arguments(params),
+        )
 
-    @versionchanged(version="0.17.0", reason="Made 'amount' 'amounts' with list argument.")
+    @versionchanged(
+        version="0.17.0", reason="Made 'amount' 'amounts' with list argument."
+    )
     def split_coin(
         self,
         *,
@@ -1907,16 +2493,32 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
+        assert isinstance(
+            coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+        ), "invalid coin object type"
         amounts = amounts if isinstance(amounts, list) else [amounts]
         for amount in amounts:
             assert isinstance(amount, (int, SuiInteger))
-        amounts = [tx_builder.PureInput.as_input(bcs.U64.encode(x)) if isinstance(x, int) else x.value for x in amounts]
-        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
+        amounts = [
+            tx_builder.PureInput.as_input(bcs.U64.encode(x))
+            if isinstance(x, int)
+            else x.value
+            for x in amounts
+        ]
+        coin = (
+            coin
+            if isinstance(
+                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            )
+            else ObjectID(coin)
+        )
         resolved = self._resolve_arguments([coin])
         return self.builder.split_coin(resolved[0], amounts)
 
-    @versionadded(version="0.16.1", reason="Expand Transaction builder ease of use capability.")
+    @versionadded(
+        version="0.16.1",
+        reason="Expand Transaction builder ease of use capability.",
+    )
     def split_coin_equal(
         self,
         *,
@@ -1937,11 +2539,25 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
-        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
-        split_count = split_count if isinstance(split_count, int) else split_count.value
-        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
-        resolved = self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
+        assert isinstance(
+            coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+        ), "invalid coin object type"
+        assert isinstance(
+            split_count, (int, SuiInteger)
+        ), "invalid amount type"
+        split_count = (
+            split_count if isinstance(split_count, int) else split_count.value
+        )
+        coin = (
+            coin
+            if isinstance(
+                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            )
+            else ObjectID(coin)
+        )
+        resolved = self._resolve_arguments(
+            [coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))]
+        )
 
         return self._move_call(
             target=_SPLIT_AND_KEEP,
@@ -1968,13 +2584,29 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)), "invalid coin object type"
-        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
-        split_count = split_count if isinstance(split_count, int) else split_count.value
+        assert isinstance(
+            coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+        ), "invalid coin object type"
+        assert isinstance(
+            split_count, (int, SuiInteger)
+        ), "invalid amount type"
+        split_count = (
+            split_count if isinstance(split_count, int) else split_count.value
+        )
         if split_count < 2:
-            raise ValueError(f"Split count {split_count} must be greater than 1")
-        coin = coin if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)) else ObjectID(coin)
-        resolved = self._resolve_arguments([coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))])
+            raise ValueError(
+                f"Split count {split_count} must be greater than 1"
+            )
+        coin = (
+            coin
+            if isinstance(
+                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            )
+            else ObjectID(coin)
+        )
+        resolved = self._resolve_arguments(
+            [coin, tx_builder.PureInput.as_input(bcs.U64.encode(split_count))]
+        )
 
         # Split 1 coin into split_count total [orig, new 1, new 2]
         coin_type_tag = bcs.TypeTag.type_tag_from(coin_type)
@@ -1985,7 +2617,9 @@ class SuiTransaction(_SuiTransactionBase):
         )
         # Itemize the new coins
         if coin_type.count("<") == 0:
-            coin_type_tag = bcs.TypeTag.type_tag_from(f"0x2::coin::Coin<{coin_type}>")
+            coin_type_tag = bcs.TypeTag.type_tag_from(
+                f"0x2::coin::Coin<{coin_type}>"
+            )
 
         # We only want the new coins
         nreslist: list[bcs.Argument] = []
@@ -1993,18 +2627,32 @@ class SuiTransaction(_SuiTransactionBase):
             nreslist.append(
                 self._move_call(
                     target=_VECTOR_REMOVE_INDEX,
-                    arguments=[result_vector, tx_builder.PureInput.as_input(SuiU64(0))],
+                    arguments=[
+                        result_vector,
+                        tx_builder.PureInput.as_input(SuiU64(0)),
+                    ],
                     type_arguments=[coin_type_tag],
                 )
             )
-        self._move_call(target=_VECTOR_DESTROY_EMPTY, arguments=[result_vector], type_arguments=[coin_type_tag])
+        self._move_call(
+            target=_VECTOR_DESTROY_EMPTY,
+            arguments=[result_vector],
+            type_arguments=[coin_type_tag],
+        )
         return nreslist
 
     def merge_coins(
         self,
         *,
-        merge_to: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
-        merge_from: Union[list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray],
+        merge_to: Union[
+            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
+        ],
+        merge_from: Union[
+            list[
+                Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+            ],
+            SuiArray,
+        ],
     ) -> bcs.Argument:
         """merge_coins Merges one or more coins to a primary coin.
 
@@ -2019,24 +2667,39 @@ class SuiTransaction(_SuiTransactionBase):
         assert isinstance(
             merge_to, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
         ), "Unsupported type for merge_to"
-        if isinstance(merge_to, bcs.Argument) and merge_to.enum_name == "GasCoin":
+        if (
+            isinstance(merge_to, bcs.Argument)
+            and merge_to.enum_name == "GasCoin"
+        ):
             self.signer_block._merging_to_gas()
-        merge_to = self._resolve_arguments([merge_to if not isinstance(merge_to, str) else ObjectID(merge_to)])[0]
+        merge_to = self._resolve_arguments(
+            [merge_to if not isinstance(merge_to, str) else ObjectID(merge_to)]
+        )[0]
         # Depper from_coin type verification
-        assert isinstance(merge_from, (list, SuiArray)), "Unsupported merge_from collection type"
+        assert isinstance(
+            merge_from, (list, SuiArray)
+        ), "Unsupported merge_from collection type"
         parm_list: list = []
-        merge_from = merge_from if isinstance(merge_from, list) else merge_from.coins
+        merge_from = (
+            merge_from if isinstance(merge_from, list) else merge_from.coins
+        )
         for fcoin in merge_from:
             assert isinstance(
                 fcoin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
             ), "Unsupported entry in merge_from"
-            parm_list.append(fcoin if not isinstance(fcoin, str) else ObjectID(fcoin))
-        return self.builder.merge_coins(merge_to, self._resolve_arguments(parm_list))
+            parm_list.append(
+                fcoin if not isinstance(fcoin, str) else ObjectID(fcoin)
+            )
+        return self.builder.merge_coins(
+            merge_to, self._resolve_arguments(parm_list)
+        )
 
     def public_transfer_object(
         self,
         *,
-        object_to_send: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        object_to_send: Union[
+            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
+        ],
         recipient: SuiAddress,
         object_type: str,
     ) -> bcs.Argument:
@@ -2053,7 +2716,8 @@ class SuiTransaction(_SuiTransactionBase):
         """
         assert not self._executed, "Transaction already executed"
         assert isinstance(
-            object_to_send, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+            object_to_send,
+            (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument),
         ), "invalid object type"
         assert isinstance(recipient, SuiAddress), "Invalid recipient type"
         obj_type_tag = bcs.TypeTag.type_tag_from(object_type)
@@ -2067,7 +2731,12 @@ class SuiTransaction(_SuiTransactionBase):
     def transfer_objects(
         self,
         *,
-        transfers: Union[list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]], SuiArray],
+        transfers: Union[
+            list[
+                Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+            ],
+            SuiArray,
+        ],
         recipient: Union[ObjectID, SuiAddress],
     ) -> bcs.Argument:
         """transfer_objects Transfers one or more objects to a recipient.
@@ -2080,27 +2749,38 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(transfers, (list, SuiArray, bcs.Argument)), "Unsupported trasfers collection type"
-        assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
+        assert isinstance(
+            transfers, (list, SuiArray, bcs.Argument)
+        ), "Unsupported trasfers collection type"
+        assert isinstance(
+            recipient, (ObjectID, SuiAddress)
+        ), "invalid recipient type"
         if isinstance(transfers, (list, SuiArray)):
-            transfers = transfers if isinstance(transfers, list) else transfers.array
+            transfers = (
+                transfers if isinstance(transfers, list) else transfers.array
+            )
             coerced_transfers: list = []
             for txfer in transfers:
                 assert isinstance(
-                    txfer, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
+                    txfer,
+                    (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument),
                 ), "Unsupported entry in transfers"
                 if isinstance(txfer, str):
                     coerced_transfers.append(ObjectID(txfer))
                 else:
                     coerced_transfers.append(txfer)
             transfers = self._resolve_arguments(coerced_transfers)
-        return self.builder.transfer_objects(tx_builder.PureInput.as_input(recipient), transfers)
+        return self.builder.transfer_objects(
+            tx_builder.PureInput.as_input(recipient), transfers
+        )
 
     def transfer_sui(
         self,
         *,
         recipient: Union[ObjectID, SuiAddress],
-        from_coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
+        from_coin: Union[
+            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
+        ],
         amount: Optional[Union[int, SuiInteger]] = None,
     ) -> bcs.Argument:
         """transfer_sui Transfers a Sui coin object to a recipient.
@@ -2117,7 +2797,9 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
+        assert isinstance(
+            recipient, (ObjectID, SuiAddress)
+        ), "invalid recipient type"
         if amount:
             assert isinstance(amount, (int, SuiInteger))
             amount = amount if isinstance(amount, int) else amount.value
@@ -2128,7 +2810,9 @@ class SuiTransaction(_SuiTransactionBase):
             from_coin = self._resolve_arguments([from_coin])
         else:
             raise ValueError(f"Invalid 'from_coin' {from_coin}")
-        return self.builder.transfer_sui(tx_builder.PureInput.as_input(recipient), *from_coin, amount)
+        return self.builder.transfer_sui(
+            tx_builder.PureInput.as_input(recipient), *from_coin, amount
+        )
 
 
 if __name__ == "__main__":

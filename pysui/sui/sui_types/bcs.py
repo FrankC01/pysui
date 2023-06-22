@@ -35,7 +35,9 @@ TYPETAG_VECTOR_DEPTH_MAX: int = 16
 class Address(canoser.Struct):
     """Address Represents a Sui Address or ObjectID as list of ints."""
 
-    _fields = [("Address", canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH, False))]
+    _fields = [
+        ("Address", canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH, False))
+    ]
 
     def to_str(self) -> str:
         """."""
@@ -80,7 +82,11 @@ class Digest(canoser.Struct):
 class BuilderArg(canoser.RustEnum):
     """BuilderArg objects are generated in the TransactionBuilder."""
 
-    _enums = [("Object", Address), ("Pure", [canoser.Uint8]), ("ForcedNonUniquePure", None)]
+    _enums = [
+        ("Object", Address),
+        ("Pure", [canoser.Uint8]),
+        ("ForcedNonUniquePure", None),
+    ]
 
     def __hash__(self) -> int:
         """Override hash to use builder arg as key in dict."""
@@ -108,7 +114,11 @@ class ObjectReference(canoser.Struct):
         :rtype: SharedObjectReference
         """
         if isinstance(indata, GenericRef):
-            return cls(Address.from_str(indata.object_id), int(indata.version), Digest.from_str(indata.digest))
+            return cls(
+                Address.from_str(indata.object_id),
+                int(indata.version),
+                Digest.from_str(indata.digest),
+            )
         raise ValueError(f"{indata} is not valid")
 
 
@@ -116,7 +126,10 @@ class SharedObjectReference(canoser.Struct):
     """SharedObjectReference represents a shared object by it's objects reference fields."""
 
     _fields = [
-        ("ObjectID", Address),  # canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH)),
+        (
+            "ObjectID",
+            Address,
+        ),  # canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH)),
         ("SequenceNumber", canoser.Uint64),
         ("Mutable", bool),
     ]
@@ -131,7 +144,11 @@ class SharedObjectReference(canoser.Struct):
         :rtype: SharedObjectReference
         """
         # return cls(Address.from_str(indata.object_id), indata.version, True)
-        return cls(Address.from_str(indata.object_id), int(indata.owner.initial_shared_version), indata.owner.mutable)
+        return cls(
+            Address.from_str(indata.object_id),
+            int(indata.owner.initial_shared_version),
+            indata.owner.mutable,
+        )
 
 
 class Uint256(canoser.int_type.IntType):
@@ -206,8 +223,24 @@ class OptionalU256(canoser.RustOptional):
 class TypeTag(canoser.RustEnum):
     """TypeTag enum for move call type_arguments."""
 
-    _LCASE_SCALARS: list[str] = ["bool", "u8", "u16", "u32", "u64", "u128", "u256"]
-    _UCASE_SCALARS: list[str] = ["Bool", "U8", "U16", "U32", "U64", "uU28", "U256"]
+    _LCASE_SCALARS: list[str] = [
+        "bool",
+        "u8",
+        "u16",
+        "u32",
+        "u64",
+        "u128",
+        "u256",
+    ]
+    _UCASE_SCALARS: list[str] = [
+        "Bool",
+        "U8",
+        "U16",
+        "U32",
+        "U64",
+        "uU28",
+        "U256",
+    ]
 
     _enums = [
         ("Bool", None),
@@ -235,7 +268,9 @@ class TypeTag(canoser.RustEnum):
             return cls(cls._UCASE_SCALARS[cls._UCASE_SCALARS.index(value)])
         # Struct types
         # Address types
-        if value.count("::") == 0 and (value.startswith("0x") or value.startswith("0X")):
+        if value.count("::") == 0 and (
+            value.startswith("0x") or value.startswith("0X")
+        ):
             return cls("Address")
             # return cls("Address", Address.from_str(value))
         # Vector types
@@ -246,13 +281,19 @@ class TypeTag(canoser.RustEnum):
                     f"vector is constrained to max {TYPETAG_VECTOR_DEPTH_MAX} depth. Found {vcount} for {value}"
                 )
             # Get the most inner type tag
-            inner_type_tag = cls.type_tag_from(value[value.rfind("<") + 1 : value.index(">")])
+            inner_type_tag = cls.type_tag_from(
+                value[value.rfind("<") + 1 : value.index(">")]
+            )
             for _ in range(vcount):
-                inner_type_tag = TypeTag.new_with_index_value(TypeTag.get_index("Vector"), [inner_type_tag])
+                inner_type_tag = TypeTag.new_with_index_value(
+                    TypeTag.get_index("Vector"), [inner_type_tag]
+                )
             return inner_type_tag
         spliter = value.split("::")
         if len(spliter) > 2:
-            return TypeTag.new_with_index_value(TypeTag.get_index("Struct"), StructTag.from_type_str(value))
+            return TypeTag.new_with_index_value(
+                TypeTag.get_index("Struct"), StructTag.from_type_str(value)
+            )
         raise ValueError(f"{value} not a recognized TypeTag")
 
     @classmethod
@@ -271,7 +312,12 @@ class TypeTag(canoser.RustEnum):
 class StructTag(canoser.Struct):
     """StructTag represents a type value (e.g. 0x2::sui::SUI) in BCS when used in MoveCall."""
 
-    _fields = [("address", Address), ("module", str), ("name", str), ("type_parameters", [TypeTag])]
+    _fields = [
+        ("address", Address),
+        ("module", str),
+        ("name", str),
+        ("type_parameters", [TypeTag]),
+    ]
 
     @classmethod
     def from_type_str(cls, type_str: str) -> "StructTag":
@@ -287,8 +333,14 @@ class StructTag(canoser.Struct):
             """Accumulate nested type tags."""
             new_s = item.split("::")
             if not accum:
-                return TypeTag("Struct", cls(Address.from_str(new_s[0]), new_s[1], new_s[2], []))
-            return TypeTag("Struct", cls(Address.from_str(new_s[0]), new_s[1], new_s[2], [accum]))
+                return TypeTag(
+                    "Struct",
+                    cls(Address.from_str(new_s[0]), new_s[1], new_s[2], []),
+                )
+            return TypeTag(
+                "Struct",
+                cls(Address.from_str(new_s[0]), new_s[1], new_s[2], [accum]),
+            )
 
         inner_count = type_str.count("<")
         if inner_count:
@@ -301,7 +353,9 @@ class StructTag(canoser.Struct):
             multi_struct[last_pos] = multi_struct[last_pos][:-inner_count]
             return reduce(_reducer, multi_struct[::-1], None).value
         split_type = type_str.split("::")
-        return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
+        return cls(
+            Address.from_str(split_type[0]), split_type[1], split_type[2], []
+        )
 
 
 # Overcome forward reference at init time with these injections
@@ -312,7 +366,10 @@ TypeTag.update_value_at(7, StructTag)
 class ObjectArg(canoser.RustEnum):
     """ObjectArg enum for type of object and it's reference data when used in MoveCall."""
 
-    _enums = [("ImmOrOwnedObject", ObjectReference), ("SharedObject", SharedObjectReference)]
+    _enums = [
+        ("ImmOrOwnedObject", ObjectReference),
+        ("SharedObject", SharedObjectReference),
+    ]
 
 
 class CallArg(canoser.RustEnum):
@@ -485,7 +542,9 @@ class TransactionData(canoser.RustEnum):
     _enums = [("V1", TransactionDataV1)]
 
     @classmethod
-    def variant_for_index(cls, index: int) -> Union[tuple[str, canoser.RustEnum], IndexError]:
+    def variant_for_index(
+        cls, index: int
+    ) -> Union[tuple[str, canoser.RustEnum], IndexError]:
         """variant_for_index returns the enum name and reference tuple from specific index.
 
         :param index: The index into list of enum values
@@ -495,7 +554,9 @@ class TransactionData(canoser.RustEnum):
         :rtype: Union[tuple[str, canoser.RustEnum], ValueError]
         """
         if index > len(cls._enums):
-            raise IndexError(f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}")
+            raise IndexError(
+                f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}"
+            )
         return cls._enums[index]
 
     @classmethod
@@ -504,36 +565,78 @@ class TransactionData(canoser.RustEnum):
         return cls.deserialize(in_data)
 
 
-@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
+@versionadded(
+    version="0.20.4", reason="Added to support in-code MultiSig signing."
+)
 class MsPublicKey(canoser.Struct):
     """Represents signing PublicKeys for serialization."""
 
     _fields = [("PublicKey", [U8]), ("Weight", U8)]
 
 
-@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
+class MsEd25519PublicKey(canoser.Struct):
+    """."""
+
+    _fields = [("PublicKey", [U8, 32, False]), ("Weight", U8)]
+
+
+class MsSecp256k1PublicKey(canoser.Struct):
+    """."""
+
+    _fields = [("PublicKey", [U8, 33, False]), ("Weight", U8)]
+
+
+class MsSecp256r1PublicKey(canoser.Struct):
+    """."""
+
+    _fields = [("PublicKey", [U8, 33, False]), ("Weight", U8)]
+
+
+class MsNewPublicKey(canoser.RustEnum):
+    """Represents signing PublicKeys for serialization."""
+
+    _enums = [
+        ("Ed25519", MsEd25519PublicKey),
+        ("Secp256k1", MsSecp256k1PublicKey),
+        ("Secp256r1", MsSecp256r1PublicKey),
+    ]
+
+
+@versionadded(
+    version="0.20.4", reason="Added to support in-code MultiSig signing."
+)
 class MsRoaring(canoser.Struct):
     """Represents signing PublicKeys indexes for serialization."""
 
     _fields = [("RoaringBitmap", [U8])]
 
 
-@versionadded(version="0.26.0", reason="Added to support new MultiSig bitmap in Sui v1.5.0.")
+@versionadded(
+    version="0.26.0",
+    reason="Added to support new MultiSig bitmap in Sui v1.5.0.",
+)
 class MsBitmap(canoser.Struct):
     """Represents signing PublicKeys indexes for serialization."""
 
     _fields = [("Bitmap", U16)]
 
 
-@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
+@versionadded(
+    version="0.20.4", reason="Added to support in-code MultiSig signing."
+)
 class MsCompressedSig(canoser.Struct):
     """Represents compressed individual signed messages for serialization."""
 
     _fields = [("Sig", [U8, 65, False])]
 
 
-@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
-@deprecated(version="0.26.0", reason="Sui converting from roaring bitmap to simple bitmap in 1.5.0")
+@versionadded(
+    version="0.20.4", reason="Added to support in-code MultiSig signing."
+)
+@deprecated(
+    version="0.26.0",
+    reason="Sui converting from roaring bitmap to simple bitmap in 1.5.0",
+)
 class MultiSignatureLegacy(canoser.Struct):
     """BCS representation of a MultiSig signature for executions."""
 
@@ -546,7 +649,10 @@ class MultiSignatureLegacy(canoser.Struct):
     ]
 
 
-@versionadded(version="0.26.0", reason="Sui converting from roaring bitmap to simple bitmap in 1.5.0")
+@versionadded(
+    version="0.26.0",
+    reason="Sui converting from roaring bitmap to simple bitmap in 1.5.0",
+)
 class MultiSignature(canoser.Struct):
     """BCS representation of a MultiSig signature for executions."""
 
@@ -554,6 +660,6 @@ class MultiSignature(canoser.Struct):
         ("Scheme", U8),
         ("Sigs", [MsCompressedSig]),
         ("BitMap", MsBitmap),
-        ("PkMap", [MsPublicKey]),
+        ("PkMap", [MsNewPublicKey]),
         ("Threshold", U16),
     ]

@@ -64,8 +64,12 @@ from pysui.sui.sui_types import SuiSignature, SuiAddress
 from pysui.sui.sui_types.bcs import (
     MsBitmap,
     MsCompressedSig,
+    MsEd25519PublicKey,
+    MsNewPublicKey,
     MsPublicKey,
     MsRoaring,
+    MsSecp256k1PublicKey,
+    MsSecp256r1PublicKey,
     MultiSignature,
     MultiSignatureLegacy,
 )
@@ -356,7 +360,18 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
 
     def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
         """secp256k1 sign data bytes."""
-        return self._signing_key.sign_deterministic(data)
+
+        def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
+            """s adjustment to go small."""
+            _s_max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+            # _s_max = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+            if s_int > _s_max / 2:
+                s_int = _s_max - s_int
+            return ecdsa.util.sigencode_string(r_int, s_int, order)
+
+        return self._signing_key.sign_deterministic(
+            data, hashfunc=hashlib.sha256, sigencode=_sigencode_string
+        )
 
 
 @versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
@@ -526,6 +541,42 @@ class MultiSig:
         weights = [self._weights[x] for x in hit_indexes]
         return hit_indexes, list(zip(pub_keys, weights))
 
+    def _new_publickey(self) -> list[MsNewPublicKey]:
+        """."""
+        # Generate new BCS PublicKeys from the FULL compliment of original public keys
+        pks: list[MsNewPublicKey] = []
+        for index, kkeys in enumerate(self._keys):
+            pkb = kkeys.public_key.key_bytes
+            if kkeys.scheme == SignatureScheme.ED25519:
+                npk = MsNewPublicKey(
+                    "Ed25519",
+                    MsEd25519PublicKey(list(pkb), self._weights[index]),
+                )
+            elif kkeys.scheme == SignatureScheme.SECP256K1:
+                npk = MsNewPublicKey(
+                    "Secp256k1",
+                    MsSecp256k1PublicKey(list(pkb), self._weights[index]),
+                )
+            elif kkeys.scheme == SignatureScheme.SECP256R1:
+                npk = MsNewPublicKey(
+                    "Secp256r1",
+                    MsSecp256r1PublicKey(list(pkb), self._weights[index]),
+                )
+            pks.append(npk)
+        return pks
+
+    def _legacy_publickey(self) -> list[MsPublicKey]:
+        """."""
+        pks: list[MsPublicKey] = []
+        for index, kkeys in enumerate(self._keys):
+            pk = (
+                base64.b64encode(kkeys.public_key.scheme_and_key())
+                .decode()
+                .encode(encoding="utf8")
+            )
+            pks.append(MsPublicKey(list(pk), self._weights[index]))
+        return pks
+
     @versionadded(
         version="0.21.1", reason="Support for inline multisig signing"
     )
@@ -535,13 +586,10 @@ class MultiSig:
         """Creates compressed signatures from each of the signing keys present."""
         compressed: list[MsCompressedSig] = []
         for index in key_indices:
+            sig = self._keys[index].new_sign_secure(tx_bytes).value
             compressed.append(
                 MsCompressedSig(
-                    list(
-                        base64.b64decode(
-                            self._keys[index].new_sign_secure(tx_bytes).value
-                        )[0 : self._COMPRESSED_SIG_LEN]
-                    )
+                    list(base64.b64decode(sig)[0 : self._COMPRESSED_SIG_LEN])
                 )
             )
         return compressed
@@ -560,21 +608,13 @@ class MultiSig:
         compressed_sigs: list[MsCompressedSig] = self._compressed_signatures(
             tx_bytes, key_indices
         )
-        # Generate BCS PublicKeys from the FULL compliment of original public keys
-        pks: list[MsPublicKey] = []
-        for index, kkeys in enumerate(self._keys):
-            pk = (
-                base64.b64encode(kkeys.public_key.scheme_and_key())
-                .decode()
-                .encode(encoding="utf8")
-            )
-            pks.append(MsPublicKey(list(pk), self._weights[index]))
+
         # Generate the public keys used position bitmap
         # then build the signature
         rpc_version = package.parse(os.environ[PYSUI_RPC_VERSION])
         if rpc_version.major == 1:
             # RPC <= 1.4.0 uses roaring bitmap
-            if rpc_version.minor <= 4:
+            if rpc_version.minor <= 3:
                 serialized_rbm: MsRoaring = MsRoaring(
                     list(pyroaring.BitMap(key_indices).serialize())
                 )
@@ -582,28 +622,25 @@ class MultiSig:
                     self._schema,
                     compressed_sigs,
                     serialized_rbm,
-                    pks,
+                    self._legacy_publickey(),
                     self.threshold,
                 )
-            # TODO: RPC >= 1.50 use simple bitmap
-            elif rpc_version.minor >= 5:
+            elif rpc_version.minor >= 4:
                 bm_pks: int = 0
                 for index in key_indices:
                     bm_pks |= 1 << index
-                # s16 = SuiU16(bm_pks).to_bytes()
                 serialized_rbm: MsBitmap = MsBitmap(bm_pks)
                 msig_signature = MultiSignature(
                     self._schema,
                     compressed_sigs,
                     serialized_rbm,
-                    pks,
+                    self._new_publickey(),
                     self.threshold,
                 )
             else:
                 raise ValueError(
                     f"Version exception {os.environ[PYSUI_RPC_VERSION]}"
                 )
-        print(msig_signature.to_json(indent=2))
         return SuiSignature(
             base64.b64encode(msig_signature.serialize()).decode()
         )
@@ -732,9 +769,6 @@ def create_new_keypair(
             validation_str = "ValidateAndGetEd25519Key"
 
         case SignatureScheme.SECP256K1:
-            bip32_ctx = bip_utils.Bip32Slip10Secp256k1.FromSeedAndPath(
-                seed_bytes, derv_path or SECP256K1_DEFAULT_KEYPATH
-            )
             bip32_ctx = bip_utils.Bip32Slip10Secp256k1.FromSeedAndPath(
                 seed_bytes, derv_path or SECP256K1_DEFAULT_KEYPATH
             )
