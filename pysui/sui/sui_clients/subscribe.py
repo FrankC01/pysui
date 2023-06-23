@@ -14,9 +14,10 @@
 """Sui Asynchronous subscription module."""
 
 import asyncio
+import logging
 import ssl
 import json
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 import warnings
 from deprecated.sphinx import versionadded, versionchanged
 from websockets.client import connect as ws_connect
@@ -26,9 +27,15 @@ from pysui.abstracts import Provider
 from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_clients.common import SuiRpcResult
-from pysui.sui.sui_builders.subscription_builders import SubscribeEvent, SubscribeTransaction
+from pysui.sui.sui_builders.subscription_builders import (
+    SubscribeEvent,
+    SubscribeTransaction,
+)
 from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, SubscribedTransaction
+from pysui.sui.sui_txresults.complex_tx import (
+    SubscribedEvent,
+    SubscribedTransaction,
+)
 
 
 class EventData:
@@ -59,10 +66,19 @@ class SuiClient(Provider):
 
     _ACCESS_LOCK: asyncio.Lock = asyncio.Lock()
     _ADDITIONL_HEADER: str = {"Content-Type": "application/json"}
-    _PAYLOAD_TEMPLATE: dict = {"jsonrpc": "2.0", "id": 1, "method": None, "params": []}
+    _PAYLOAD_TEMPLATE: dict = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": None,
+        "params": [],
+    }
 
-    @versionchanged(version="0.20.0", reason="Added transaction subscription management.")
-    def __init__(self, config: SuiConfig):
+    @versionchanged(
+        version="0.20.0", reason="Added transaction subscription management."
+    )
+    def __init__(
+        self, config: SuiConfig, logging_config: Optional[dict] = None
+    ):
         """__init__ Client initializer.
 
         :param config: An instance of SuiConfig
@@ -72,14 +88,21 @@ class SuiClient(Provider):
         self._event_subscriptions: dict[str, asyncio.Task] = {}
         self._txn_subscriptions: dict[str, asyncio.Task] = {}
         self._in_shutdown = False
+        if logging_config:
+            logging.basicConfig(**logging_config)
 
-    @versionchanged(version="0.20.0", reason="Added transaction subscription management.")
+    @versionchanged(
+        version="0.20.0", reason="Added transaction subscription management."
+    )
     async def _subscription_drive(
         self,
         payload_msg: dict,
         builder: Union[SubscribeEvent, SubscribeTransaction],
         websock: WebSocketClientProtocol,
-        handler: Union[Callable[[SubscribedEvent, int, int], Any], Callable[[SubscribedTransaction, int, int], Any]],
+        handler: Union[
+            Callable[[SubscribedEvent, int, int], Any],
+            Callable[[SubscribedTransaction, int, int], Any],
+        ],
     ) -> SuiRpcResult:
         """_subscription_drive Iterate receiving events and calling handler function.
 
@@ -103,6 +126,7 @@ class SuiClient(Provider):
         else:
             return SuiRpcResult(False, f"{parm_arg} not an accepted type")
         # print(json.dumps(payload_msg))
+        logging.info("Starting listening event driver")
         await websock.send(json.dumps(payload_msg))
         # First we get a subscription ID
         response = json.loads(await websock.recv())
@@ -117,24 +141,41 @@ class SuiClient(Provider):
             while keep_running:
                 # Get an event
                 the_event = await websock.recv()
+                logging.debug("RECEIVED event")
                 try:
-                    keep_running = handler(builder.handle_return(json.loads(the_event)), subscription_id, event_counter)
+                    keep_running = await handler(
+                        builder.handle_return(json.loads(the_event)),
+                        subscription_id,
+                        event_counter,
+                    )
                 # Indicative of deserialization error
                 except KeyError as kex:
+                    logging.warning(
+                        f"KeyError occured for shutdown -> {self._in_shutdown}"
+                    )
                     return SuiRpcResult(False, f"KeyError on {kex}", the_event)
                 if keep_running:
                     if not isinstance(keep_running, bool):
                         result_data.add_entry(event_counter, keep_running)
                         event_counter += 1
         except asyncio.CancelledError:
+            logging.warning(
+                f"asyncio.CancelledError occured for shutdown -> {self._in_shutdown}"
+            )
             return SuiRpcResult(True, "Cancelled", result_data)
+        logging.info("Exiting listening. Closed by handler")
         return SuiRpcResult(True, None, result_data)
 
-    @versionchanged(version="0.20.0", reason="Added transaction subscription management.")
+    @versionchanged(
+        version="0.20.0", reason="Added transaction subscription management."
+    )
     async def _subscription_listener(
         self,
         builder: Union[SubscribeEvent, SubscribeTransaction],
-        handler: Union[Callable[[SubscribedEvent, int, int], Any], Callable[[SubscribedTransaction, int, int], Any]],
+        handler: Union[
+            Callable[[SubscribedEvent, int, int], Any],
+            Callable[[SubscribedTransaction, int, int], Any],
+        ],
     ) -> SuiRpcResult:
         """_subscription_listener Sets up websocket subscription and calls _subscription_drive.
 
@@ -151,20 +192,47 @@ class SuiClient(Provider):
                     self.config.socket_url,
                     extra_headers=self._ADDITIONL_HEADER,
                 ) as websock:
-                    return await self._subscription_drive(self._PAYLOAD_TEMPLATE.copy(), builder, websock, handler)
+                    res = await self._subscription_drive(
+                        self._PAYLOAD_TEMPLATE.copy(),
+                        builder,
+                        websock,
+                        handler,
+                    )
+                    logging.info(
+                        f"Listener returning in shutdown: {self._in_shutdown}"
+                    )
+                    await websock.close()
+                    return res
             else:
                 # Filter the warning about deprecated SSL context
                 warnings.simplefilter("ignore")
                 async with ws_connect(
                     self.config.socket_url,
+                    ping_interval=None,
                     extra_headers=self._ADDITIONL_HEADER,
                     ssl=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
                 ) as websock:
                     warnings.simplefilter("default")
-                    return await self._subscription_drive(self._PAYLOAD_TEMPLATE.copy(), builder, websock, handler)
+                    res = await self._subscription_drive(
+                        self._PAYLOAD_TEMPLATE.copy(),
+                        builder,
+                        websock,
+                        handler,
+                    )
+                    logging.info(
+                        f"Listener returning in shutdown: {self._in_shutdown}"
+                    )
+                    await websock.close()
+                    return res
         except AttributeError as axc:
+            logging.warning(
+                f"AttributeError occured for shutdown -> {self._in_shutdown}"
+            )
             return SuiRpcResult(False, "Attribute Error", axc)
         except Exception as axc:
+            logging.warning(
+                f"Exception occured for shutdown -> {self._in_shutdown}"
+            )
             return SuiRpcResult(False, "Exception", axc)
 
     async def new_event_subscription(
@@ -188,7 +256,8 @@ class SuiClient(Provider):
         async with self._ACCESS_LOCK:
             if not self._in_shutdown:
                 new_task: asyncio.Task = asyncio.create_task(
-                    self._subscription_listener(sbuilder, handler), name=task_name
+                    self._subscription_listener(sbuilder, handler),
+                    name=task_name,
                 )
                 _task_name = new_task.get_name()
                 self._event_subscriptions[_task_name] = new_task
@@ -196,7 +265,9 @@ class SuiClient(Provider):
                 _sui_result = SuiRpcResult(True, None, _result_data)
             else:
                 _result_data[task_name] = None
-                _sui_result = SuiRpcResult(False, "Not started: In shutdown mode", _result_data)
+                _sui_result = SuiRpcResult(
+                    False, "Not started: In shutdown mode", _result_data
+                )
         return _sui_result
 
     @versionadded(version="0.20.0", reason="Transaction Effects Subscription")
@@ -221,7 +292,8 @@ class SuiClient(Provider):
         async with self._ACCESS_LOCK:
             if not self._in_shutdown:
                 new_task: asyncio.Task = asyncio.create_task(
-                    self._subscription_listener(sbuilder, handler), name=task_name
+                    self._subscription_listener(sbuilder, handler),
+                    name=task_name,
                 )
                 _task_name = new_task.get_name()
                 self._txn_subscriptions[_task_name] = new_task
@@ -229,7 +301,9 @@ class SuiClient(Provider):
                 _sui_result = SuiRpcResult(True, None, _result_data)
             else:
                 _result_data[task_name] = None
-                _sui_result = SuiRpcResult(False, "Not started: In shutdown mode", _result_data)
+                _sui_result = SuiRpcResult(
+                    False, "Not started: In shutdown mode", _result_data
+                )
         return _sui_result
 
     async def wait_shutdown(self) -> list:
@@ -240,7 +314,9 @@ class SuiClient(Provider):
         """
         async with self._ACCESS_LOCK:
             self._in_shutdown = True
-            ev_sub_results = await asyncio.gather(*self._event_subscriptions.values(), return_exceptions=True)
+            ev_sub_results = await asyncio.gather(
+                *self._event_subscriptions.values(), return_exceptions=True
+            )
             self._in_shutdown = False
         return ev_sub_results
 
