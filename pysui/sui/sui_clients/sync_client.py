@@ -16,6 +16,7 @@
 
 from typing import Any, Optional, Union
 from json import JSONDecodeError
+import ssl
 import httpx
 from deprecated.sphinx import versionchanged, versionadded
 from pysui.sui.sui_clients.common import (
@@ -72,7 +73,11 @@ class SuiClient(_ClientMixin):
     ) -> None:
         """Client initializer."""
         super().__init__(config, request_type)
-        self._client = httpx.Client(http2=True, timeout=120.0)
+        self._client = httpx.Client(
+            http2=True,
+            timeout=120.0,
+            verify=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
+        )
         self._build_api_descriptors()
 
     @property

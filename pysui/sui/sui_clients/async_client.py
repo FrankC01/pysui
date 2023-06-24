@@ -14,6 +14,7 @@
 
 """Sui Asynchronous RPC Client module."""
 
+import ssl
 from typing import Any, Optional, Union
 from json import JSONDecodeError
 import httpx
@@ -72,7 +73,11 @@ class SuiClient(_ClientMixin):
     ) -> None:
         """Client initializer."""
         super().__init__(config, request_type)
-        self._client = httpx.AsyncClient(http2=True, timeout=120.0)
+        self._client = httpx.AsyncClient(
+            http2=True,
+            timeout=120.0,
+            verify=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
+        )
         self._rpc_api = {}
         self._schema_dict = {}
         self._build_api_descriptors()
