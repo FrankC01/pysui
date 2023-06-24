@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- subscriptions now support both sync/async handlers
+- async_sub.py -> Include a dump of data collected during handling subscription events
+
 ### Fixed
 
 - Bug in secp256k1 signing, indirectly also impacted MultiSig

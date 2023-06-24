@@ -17,6 +17,7 @@ import asyncio
 import logging
 import ssl
 import json
+import inspect
 from typing import Any, Callable, Optional, Union
 import warnings
 from deprecated.sphinx import versionadded, versionchanged
@@ -94,6 +95,10 @@ class SuiClient(Provider):
     @versionchanged(
         version="0.20.0", reason="Added transaction subscription management."
     )
+    @versionchanged(
+        version="0.26.1",
+        reason="Detect if handler is sync or async and invoke accordingly.",
+    )
     async def _subscription_drive(
         self,
         payload_msg: dict,
@@ -126,6 +131,8 @@ class SuiClient(Provider):
         else:
             return SuiRpcResult(False, f"{parm_arg} not an accepted type")
         # print(json.dumps(payload_msg))
+        _is_asynch_handler = inspect.iscoroutinefunction(handler)
+        logging.info(f"Handler is async -> {_is_asynch_handler}")
         logging.info("Starting listening event driver")
         await websock.send(json.dumps(payload_msg))
         # First we get a subscription ID
@@ -143,11 +150,18 @@ class SuiClient(Provider):
                 the_event = await websock.recv()
                 logging.debug("RECEIVED event")
                 try:
-                    keep_running = handler(
-                        builder.handle_return(json.loads(the_event)),
-                        subscription_id,
-                        event_counter,
-                    )
+                    if _is_asynch_handler:
+                        keep_running = await handler(
+                            builder.handle_return(json.loads(the_event)),
+                            subscription_id,
+                            event_counter,
+                        )
+                    else:
+                        keep_running = handler(
+                            builder.handle_return(json.loads(the_event)),
+                            subscription_id,
+                            event_counter,
+                        )
                 # Indicative of deserialization error
                 except KeyError as kex:
                     logging.warning(
