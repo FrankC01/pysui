@@ -143,7 +143,7 @@ class SuiClient(Provider):
                 the_event = await websock.recv()
                 logging.debug("RECEIVED event")
                 try:
-                    keep_running = await handler(
+                    keep_running = handler(
                         builder.handle_return(json.loads(the_event)),
                         subscription_id,
                         event_counter,
