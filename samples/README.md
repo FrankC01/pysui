@@ -5,7 +5,8 @@ Samples and utilities included in both the `pysui` repo as well as when installi
 ## Examples:
 
 - async-gas collects and prints all gas for all addresses found in configuration
-- async-sub Listens on generally broad events for Move events (Transaction events removed by Sui 0.27.0)
+- async-sub Listens on Sui Move events
+- async-sub-txn Listens on Sui Transactions
 - Sample [Wallet](#wallet) providing equivalent functionality as `sui client ...`
 
 **Note:** If running from cloned repo, examples are started with `python -m ....`
@@ -13,12 +14,14 @@ Samples and utilities included in both the `pysui` repo as well as when installi
 - `python -m samples.wallet`
 - `python -m samples.async_gas`
 - `python -m samples.async_sub`
+- `python -m samples.async_sub_txn`
 
 **Note:** If running from PyPi install, examples can be started directly
 
 - `wallet`
 - `async-gas`
 - `async-sub`
+- `async-sub-txn`
 
 ### Async Gas
 
@@ -141,19 +144,19 @@ subcommand:
 
 ## Run Local
 
-We've changed the abbility to operate with a local running node to rely on [sui-base](https://github.com/sui-base/sui-base).
+We've changed the abbility to operate with a local running node to rely on [sui-base](https://github.com/ChainMovers/suibase).
 
-After you've cloned and installed `sui-base` you can add the `--local` flag as shown below
+After you've cloned and installed `suibase` you can add the `--local` flag as shown below
 
 Note that this is different if you are swiitching between `envs` using the standard sui configuration.
 
 ### Running with `sui-base`
 
 1. Change to your home folder `cd ~/`
-2. `git clone git@github.com:sui-base/sui-base.git`
-3. `cd sui-base`
+2. `git clone git@github.com:ChainMovers/suibase.git`
+3. `cd suibase`
 4. `./install`
-5. `localnet start` <= This will download sui source code and start a local node
+5. `localnet start` <= This will download sui source code and start a local node (devnet level)
 6. Finally, add the `--local` switch to the command line `pysui` wallet or other samples
 
 Example:

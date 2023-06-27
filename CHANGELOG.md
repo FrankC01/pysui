@@ -5,10 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2023-06-27
+
+### Added
+
+- Added additional Exception handler in subscription._subscription_drive
+
+### Fixed
+
+### Changed
+
+- Renabled 'ping' on subscription
+- Any exception in subscription._subscription_drive now returns any accumulated handler data returns
+
+### Removed
+
 ## [0.26.1] - Unpublished
 
 ### Added
 
+- SSL context on sync and async SuiClients
 - subscriptions now support both sync/async handlers
 - async_sub.py -> Include a dump of data collected during handling subscription events
 

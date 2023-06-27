@@ -111,8 +111,8 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: str = "1.3.0"
-    _RPC_REQUIRED_VERSION: str = "1.4.0"
+    _RPC_MINIMAL_VERSION: str = "1.4.0"
+    _RPC_REQUIRED_VERSION: str = "1.5.0"
     _SIGNATURE_ERROR: set[str] = {
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",

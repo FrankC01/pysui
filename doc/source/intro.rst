@@ -141,15 +141,27 @@ With this option, you set the rpc_url, keystrings and optional web socket url. F
     # For synchronous RPC API interactions
     from pysui.sui.sui_clients.sync_client import SuiClient as sync_client
 
+    # Option-1: Setup configuration with one or more known keystrings
     cfg = SuiConfig.user_config(
         # Required
         rpc_url="https://fullnode.devnet.sui.io:443",
-        # Required. First entry becomes the 'active-address'
+        # Optional. First entry becomes the 'active-address'
         # Must be a valid Sui keystring (i.e. 'key_type_flag | private_key_seed' )
         prv_keys=["AOM6UAQrFe7r9nNDGRlWwj1o7m1cGK6mDZ3efRJJmvcG"],
         # Optional, only needed for subscribing
         ws_url="wss://fullnode.devnet.sui.io:443",
     )
+
+    # Option-2: Alternate setup configuration without keystrings
+    cfg = SuiConfig.user_config(
+        # Required
+        rpc_url="https://fullnode.devnet.sui.io:443",
+        # Optional, only needed for subscribing
+        ws_url="wss://fullnode.devnet.sui.io:443",
+    )
+    # One address (and keypair), at least, should be created
+    # First becomes the 'active-address'
+    _mnen, _address = cfg.create_new_keypair_and_address(SignatureScheme.ED25519)
 
     # Synchronous client
     client = sync_client(cfg)

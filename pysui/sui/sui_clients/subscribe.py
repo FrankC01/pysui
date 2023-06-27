@@ -163,21 +163,36 @@ class SuiClient(Provider):
                             event_counter,
                         )
                 # Indicative of deserialization error
+                # exit with result data
                 except KeyError as kex:
                     logging.warning(
                         f"KeyError occured for shutdown -> {self._in_shutdown}"
                     )
-                    return SuiRpcResult(False, f"KeyError on {kex}", the_event)
+                    return SuiRpcResult(
+                        False, f"KeyError on {kex}", result_data
+                    )
+                # Catch anyother error and exit with result data
+                except Exception as axc:
+                    logging.warning(
+                        f"Exception occured for shutdown -> {self._in_shutdown}"
+                    )
+                    return SuiRpcResult(
+                        False, f"Exception on {axc}", result_data
+                    )
+
                 if keep_running:
                     if not isinstance(keep_running, bool):
                         result_data.add_entry(event_counter, keep_running)
                         event_counter += 1
+                else:
+                    logging.warning(
+                        "Handler returned None, exiting subscription"
+                    )
         except asyncio.CancelledError:
             logging.warning(
                 f"asyncio.CancelledError occured for shutdown -> {self._in_shutdown}"
             )
             return SuiRpcResult(True, "Cancelled", result_data)
-        logging.info("Exiting listening. Closed by handler")
         return SuiRpcResult(True, None, result_data)
 
     @versionchanged(
@@ -222,7 +237,7 @@ class SuiClient(Provider):
                 warnings.simplefilter("ignore")
                 async with ws_connect(
                     self.config.socket_url,
-                    ping_interval=None,
+                    # ping_interval=None,
                     extra_headers=self._ADDITIONL_HEADER,
                     ssl=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
                 ) as websock:
@@ -239,14 +254,15 @@ class SuiClient(Provider):
                     await websock.close()
                     return res
         except AttributeError as axc:
-            logging.warning(
+            logging.error(
                 f"AttributeError occured for shutdown -> {self._in_shutdown}"
             )
             return SuiRpcResult(False, "Attribute Error", axc)
         except Exception as axc:
-            logging.warning(
+            logging.error(
                 f"Exception occured for shutdown -> {self._in_shutdown}"
             )
+            logging.error(f"Exception  -> {axc}")
             return SuiRpcResult(False, "Exception", axc)
 
     async def new_event_subscription(
