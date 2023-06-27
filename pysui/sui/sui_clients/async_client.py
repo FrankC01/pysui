@@ -461,9 +461,9 @@ class SuiClient(_ClientMixin):
         signer: SuiAddress,
         input_coins: SuiArray[ObjectID],
         recipients: SuiArray[SuiAddress],
-        amounts: SuiArray[SuiInteger],
+        amounts: SuiArray[SuiString],
         gas: ObjectID,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
     ) -> SuiRpcResult:
         """pay_txn From the input Coin<T> coins, pay receipients the amounts for each.
 
@@ -476,11 +476,11 @@ class SuiClient(_ClientMixin):
             The length of this array must be the same as amounts
         :type recipients: SuiArray[SuiAddress]
         :param amounts: **Required**: The amounts to be transferred to recipients, following the same order
-        :type amounts: SuiArray[SuiInteger]
+        :type amounts: SuiArray[SuiString]
         :param gas: **Required**: Gas object ObjectID to be used to pay for this transaction
         :type gas: ObjectID
         :param gas_budget: **Required**: Amount of gas to pay for transaction (taken from first of input coins)
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
@@ -494,8 +494,8 @@ class SuiClient(_ClientMixin):
         signer: SuiAddress,
         input_coins: SuiArray[ObjectID],
         recipients: SuiArray[SuiAddress],
-        amounts: SuiArray[SuiInteger],
-        gas_budget: SuiInteger,
+        amounts: SuiArray[SuiString],
+        gas_budget: SuiString,
     ) -> SuiRpcResult:
         """pay_sui_txn From the input Sui Gas coins, pay receipients the amounts for each.
 
@@ -508,9 +508,9 @@ class SuiClient(_ClientMixin):
             The length of this array must be the same as amounts
         :type recipients: SuiArray[SuiAddress]
         :param amounts: **Required**: The amounts to be transferred to recipients, following the same order
-        :type amounts: SuiArray[SuiInteger]
+        :type amounts: SuiArray[SuiString]
         :param gas_budget: **Required**: Amount of gas to pay for transaction (taken from first of input coins)
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
@@ -524,7 +524,7 @@ class SuiClient(_ClientMixin):
         signer: SuiAddress,
         input_coins: SuiArray[ObjectID],
         recipient: SuiAddress,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
     ) -> SuiRpcResult:
         """pay_allsui_txn Send all input coins to recipient.
 
@@ -535,7 +535,7 @@ class SuiClient(_ClientMixin):
         :param recipient: **Required**: Recipient address of coins being paid to
         :type recipient: SuiAddress
         :param gas_budget: **Required**: Amount of gas to pay for transaction (taken from first of input coins)
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
@@ -548,9 +548,9 @@ class SuiClient(_ClientMixin):
         *,
         signer: SuiAddress,
         sui_object_id: ObjectID,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
         recipient: SuiAddress,
-        amount: SuiInteger,
+        amount: SuiString,
     ) -> SuiRpcResult:
         """transfer_sui_txn invokes `sui_transferSui` API.
 
@@ -559,11 +559,11 @@ class SuiClient(_ClientMixin):
         :param sui_object_id: _description_
         :type sui_object_id: ObjectID
         :param gas_budget: _description_
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :param recipient: _description_
         :type recipient: SuiAddress
         :param amount: _description_
-        :type amount: SuiInteger
+        :type amount: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
@@ -577,7 +577,7 @@ class SuiClient(_ClientMixin):
         signer: SuiAddress,
         object_id: ObjectID,
         gas: ObjectID,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
         recipient: SuiAddress,
     ) -> SuiRpcResult:
         """transfer_object_txn invokes `sui_transferObject` API.
@@ -589,7 +589,7 @@ class SuiClient(_ClientMixin):
         :param gas: The gas ObjectID that transaction fees will come from
         :type gas: ObjectID
         :param gas_budget: The gas budget to use in validating transaction payment
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :param recipient: The receiving party SuiAddress
         :type recipient: SuiAddress
         :return: Result of the transaction
@@ -606,7 +606,7 @@ class SuiClient(_ClientMixin):
         primary_coin: ObjectID,
         coin_to_merge: ObjectID,
         gas: ObjectID,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
     ) -> SuiRpcResult:
         """merge_coin_txn invokes `sui_mergeCoin` API.
 
@@ -620,7 +620,7 @@ class SuiClient(_ClientMixin):
         :param gas: gas object to be used in this transaction
         :type gas: ObjectID
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
@@ -633,9 +633,9 @@ class SuiClient(_ClientMixin):
         *,
         signer: SuiAddress,
         coin_object_id: ObjectID,
-        split_amounts: SuiArray[SuiInteger],
+        split_amounts: SuiArray[SuiString],
         gas: ObjectID,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
     ) -> SuiRpcResult:
         """split_coin_txn invokes `sui_splitCoin` API.
 
@@ -644,11 +644,11 @@ class SuiClient(_ClientMixin):
         :param coin_object_id: the coin object to be spilt
         :type coin_object_id: ObjectID
         :param split_amounts: the amounts to split out from the coin
-        :type split_amounts: SuiArray[SuiInteger]
+        :type split_amounts: SuiArray[SuiString]
         :param gas: gas object to be used in this transaction
         :type gas: ObjectID
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
@@ -661,9 +661,9 @@ class SuiClient(_ClientMixin):
         *,
         signer: SuiAddress,
         coin_object_id: ObjectID,
-        split_count: SuiInteger,
+        split_count: SuiString,
         gas: ObjectID,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
     ) -> SuiRpcResult:
         """split_coin_equally_txn invokes `sui_splitCoinEqual` API.
 
@@ -672,11 +672,11 @@ class SuiClient(_ClientMixin):
         :param coin_object_id: the coin object to be spilt
         :type coin_object_id: ObjectID
         :param split_count: The count of coins to distribute evenly from coin_object_id
-        :type split_count: SuiInteger
+        :type split_count: SuiString
         :param gas: gas object to be used in this transaction
         :type gas: ObjectID
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
@@ -694,7 +694,7 @@ class SuiClient(_ClientMixin):
         type_arguments: SuiArray[SuiString],
         arguments: SuiArray[SuiString],
         gas: ObjectID,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
     ) -> SuiRpcResult:
         """move_call_txn invokes `sui_moveCall` API.
 
@@ -713,7 +713,7 @@ class SuiClient(_ClientMixin):
         :param gas: gas object to be used in this transaction
         :type gas: ObjectID
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
@@ -726,7 +726,7 @@ class SuiClient(_ClientMixin):
         sender: SuiAddress,
         compiled_modules: SuiArray[SuiString],
         gas: ObjectID,
-        gas_budget: SuiInteger,
+        gas_budget: SuiString,
     ) -> SuiRpcResult:
         """publish_package_txn invokes `sui_publish` API.
 
@@ -737,7 +737,7 @@ class SuiClient(_ClientMixin):
         :param gas: gas object to be used in this transaction
         :type gas: ObjectID
         :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
-        :type gas_budget: SuiInteger
+        :type gas_budget: SuiString
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
