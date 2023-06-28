@@ -198,6 +198,9 @@ class SuiClient(Provider):
     @versionchanged(
         version="0.20.0", reason="Added transaction subscription management."
     )
+    @versionchanged(
+        version="0.28.0", reason="Socket protocol drives SSL configuration."
+    )
     async def _subscription_listener(
         self,
         builder: Union[SubscribeEvent, SubscribeTransaction],
@@ -216,10 +219,14 @@ class SuiClient(Provider):
         :rtype: SuiRpcResult
         """
         try:
-            if self.config.local_config:
+            if self.config.socket_url.startswith("wss:"):
+                logging.info("Connecting with SSLContext")
+                warnings.simplefilter("ignore")
                 async with ws_connect(
                     self.config.socket_url,
+                    # ping_interval=None,
                     extra_headers=self._ADDITIONL_HEADER,
+                    ssl=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
                 ) as websock:
                     res = await self._subscription_drive(
                         self._PAYLOAD_TEMPLATE.copy(),
@@ -233,15 +240,11 @@ class SuiClient(Provider):
                     await websock.close()
                     return res
             else:
-                # Filter the warning about deprecated SSL context
-                warnings.simplefilter("ignore")
+                logging.info("Connecting without SSLContext")
                 async with ws_connect(
                     self.config.socket_url,
-                    # ping_interval=None,
                     extra_headers=self._ADDITIONL_HEADER,
-                    ssl=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
                 ) as websock:
-                    warnings.simplefilter("default")
                     res = await self._subscription_drive(
                         self._PAYLOAD_TEMPLATE.copy(),
                         builder,
@@ -253,6 +256,7 @@ class SuiClient(Provider):
                     )
                     await websock.close()
                     return res
+
         except AttributeError as axc:
             logging.error(
                 f"AttributeError occured for shutdown -> {self._in_shutdown}"
