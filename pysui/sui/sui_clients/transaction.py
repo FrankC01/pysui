@@ -637,9 +637,14 @@ class SuiTransactionAsync(_SuiTransactionBase):
         version="0.24.1",
         reason="Brought transaction cost inline, avoiding redundancy.",
     )
+    @versionchanged(
+        version="0.28.0",
+        reason="Added optional 'use_gas_object'.",
+    )
     async def _build_for_execute(
         self,
         gas_budget: Union[str, SuiString],
+        use_gas_object: Optional[Union[str, ObjectID]] = None,
     ) -> bcs.TransactionData:
         """build_for_execute Generates the TransactionData object.
 
@@ -649,6 +654,8 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :param gas_budget: The gas budget to use. An introspection of the transaciton is performed and
             and this method will use the larger of the two.
         :type gas_budget: Union[int, SuiInteger]
+        :param use_gas_object: Explicit gas object to use for payment, defaults to None
+        :type use_gas_object: Optional[Union[str, ObjectID]], optional
         :return: TransactionData object replete with all required fields for execution
         :rtype: bcs.TransactionData
         """
@@ -673,16 +680,42 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 gas_budget if isinstance(gas_budget, str) else gas_budget.value
             )
             gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
+        if use_gas_object:
+            test_gas_object = (
+                use_gas_object
+                if isinstance(use_gas_object, str)
+                else use_gas_object.value
+            )
+            if test_gas_object in self.builder.objects_registry:
+                raise ValueError(
+                    f"use_gas_object {test_gas_object} in use in transaction."
+                )
+            use_coin: ObjectRead = handle_result(
+                await self.client.get_object(test_gas_object)
+            )
+            gas_object = bcs.GasData(
+                [
+                    bcs.ObjectReference(
+                        bcs.Address.from_str(use_coin.object_id),
+                        int(use_coin.version),
+                        bcs.Digest.from_str(use_coin.digest),
+                    )
+                ],
+                bcs.Address.from_str(use_coin.owner.address_owner),
+                int(self._current_gas_price),
+                int(gas_budget),
+            )
 
-        # Fetch the payment
+        else:
+            # Fetch the payment
 
-        gas_object = await self._sig_block.get_gas_object_async(
-            client=self.client,
-            budget=gas_budget,
-            objects_in_use=self.builder.objects_registry,
-            merge_coin=self._merge_gas,
-            gas_price=int(self._current_gas_price),
-        )
+            gas_object = await self._sig_block.get_gas_object_async(
+                client=self.client,
+                budget=gas_budget,
+                objects_in_use=self.builder.objects_registry,
+                merge_coin=self._merge_gas,
+                gas_price=int(self._current_gas_price),
+            )
         if isinstance(self.signer_block.sender, SuiAddress):
             who_sends = self.signer_block.sender.address
         else:
@@ -716,11 +749,16 @@ class SuiTransactionAsync(_SuiTransactionBase):
         reason="Made gas_budget optiona, defaults to 1M mists.",
     )
     @versionchanged(version="0.25.0", reason="Added execution options.")
+    @versionchanged(
+        version="0.28.0",
+        reason="Added optional 'use_gas_object'.",
+    )
     async def execute(
         self,
         *,
         gas_budget: Optional[Union[str, SuiString]] = "1000000",
         options: Optional[dict] = None,
+        use_gas_object: Optional[Union[str, ObjectID]] = None,
     ) -> SuiRpcResult:
         """execute Finalizes transaction and submits for execution on the chain.
 
@@ -730,12 +768,15 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :param options: An options dictionary to pass to sui_executeTransactionBlock to control the
             information results, defaults to None
         :type options: Optional[dict], optional
+        :param use_gas_object: Explicit gas object to use for payment, defaults to None
+            Will fail if provided object is marked as 'in use' in commands
+        :type use_gas_object: Optional[Union[str, ObjectID]], optional
         :return: The result of running the transaction
         :rtype: SuiRpcResult
         """
         assert not self._executed, "Transaction already executed"
         gas_budget = gas_budget if gas_budget else "1000000"
-        tx_data = await self._build_for_execute(gas_budget)
+        tx_data = await self._build_for_execute(gas_budget, use_gas_object)
         tx_b64 = base64.b64encode(tx_data.serialize()).decode()
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
@@ -1790,9 +1831,14 @@ class SuiTransaction(_SuiTransactionBase):
         version="0.24.1",
         reason="Brought transaction cost inline, avoiding redundancy.",
     )
+    @versionchanged(
+        version="0.28.0",
+        reason="Added optional 'use_gas_object'.",
+    )
     def _build_for_execute(
         self,
         gas_budget: Union[str, SuiString],
+        use_gas_object: Optional[Union[str, ObjectID]] = None,
     ) -> bcs.TransactionData:
         """build_for_execute Generates the TransactionData object.
 
@@ -1802,6 +1848,8 @@ class SuiTransaction(_SuiTransactionBase):
         :param gas_budget: The gas budget to use. An introspection of the transaciton is performed and
             and this method will use the larger of the two.
         :type gas_budget: Union[int, SuiInteger]
+        :param use_gas_object: Explicit gas object to use for payment, defaults to None
+        :type use_gas_object: Optional[Union[str, ObjectID]], optional
         :return: TransactionData object replete with all required fields for execution
         :rtype: bcs.TransactionData
         """
@@ -1827,14 +1875,41 @@ class SuiTransaction(_SuiTransactionBase):
             )
             gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
 
-        # Fetch the payment
-        gas_object = self._sig_block.get_gas_object(
-            client=self.client,
-            budget=gas_budget,
-            objects_in_use=self.builder.objects_registry,
-            merge_coin=self._merge_gas,
-            gas_price=self._current_gas_price,
-        )
+        if use_gas_object:
+            test_gas_object = (
+                use_gas_object
+                if isinstance(use_gas_object, str)
+                else use_gas_object.value
+            )
+            if test_gas_object in self.builder.objects_registry:
+                raise ValueError(
+                    f"use_gas_object {test_gas_object} in use in transaction."
+                )
+            use_coin: ObjectRead = handle_result(
+                self.client.get_object(test_gas_object)
+            )
+            gas_object = bcs.GasData(
+                [
+                    bcs.ObjectReference(
+                        bcs.Address.from_str(use_coin.object_id),
+                        int(use_coin.version),
+                        bcs.Digest.from_str(use_coin.digest),
+                    )
+                ],
+                bcs.Address.from_str(use_coin.owner.address_owner),
+                int(self._current_gas_price),
+                int(gas_budget),
+            )
+
+        else:
+            # Fetch the payment
+            gas_object = self._sig_block.get_gas_object(
+                client=self.client,
+                budget=gas_budget,
+                objects_in_use=self.builder.objects_registry,
+                merge_coin=self._merge_gas,
+                gas_price=self._current_gas_price,
+            )
         if isinstance(self.signer_block.sender, SuiAddress):
             who_sends = self.signer_block.sender.address
         else:
@@ -1867,12 +1942,17 @@ class SuiTransaction(_SuiTransactionBase):
         version="0.25.0",
         reason="Made gas_budget optiona, defaults to 1M mists.",
     )
+    @versionchanged(
+        version="0.28.0",
+        reason="Added optional 'use_gas_object'.",
+    )
     @versionchanged(version="0.25.0", reason="Added execution options.")
     def execute(
         self,
         *,
         gas_budget: Optional[Union[str, SuiString]] = "1000000",
         options: Optional[dict] = None,
+        use_gas_object: Optional[Union[str, ObjectID]] = None,
     ) -> SuiRpcResult:
         """execute Finalizes transaction and submits for execution on the chain.
 
@@ -1882,13 +1962,16 @@ class SuiTransaction(_SuiTransactionBase):
         :param options: An options dictionary to pass to sui_executeTransactionBlock to control the
             information results, defaults to None
         :type options: Optional[dict], optional
+        :param use_gas_object: Explicit gas object to use for payment, defaults to None
+            Will fail if provided object is marked as 'in use' in commands
+        :type use_gas_object: Optional[Union[str, ObjectID]], optional
         :return: The result of running the transaction
         :rtype: SuiRpcResult
         """
         assert not self._executed, "Transaction already executed"
         gas_budget = gas_budget if gas_budget else "1000000"
         tx_b64 = base64.b64encode(
-            self._build_for_execute(gas_budget).serialize()
+            self._build_for_execute(gas_budget, use_gas_object).serialize()
         ).decode()
 
         exec_tx = ExecuteTransaction(
