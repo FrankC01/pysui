@@ -21,11 +21,11 @@ from pathlib import Path
 from typing import Any, Awaitable, Optional, Union, Callable
 from abc import abstractmethod
 from deprecated.sphinx import versionadded, versionchanged
-from pysui.sui.sui_builders.base_builder import SuiRequestType
+from pysui.sui.sui_builders.base_builder import SuiRequestType, sui_builder
 from pysui.sui.sui_builders.exec_builders import (
+    _MoveCallTransactionBuilder,
     ExecuteTransaction,
     InspectTransaction,
-    PayAllSui,
 )
 from pysui.sui.sui_builders.get_builders import (
     GetFunction,
@@ -72,6 +72,33 @@ _PUBLIC_TRANSFER: str = "0x2::transfer::public_transfer"
 _VECTOR_REMOVE_INDEX: str = "0x1::vector::remove"
 _VECTOR_DESTROY_EMPTY: str = "0x1::vector::destroy_empty"
 _PAY_GAS: int = 4000000
+
+
+@versionadded(version="0.28.0", reason="Deprecating PayAllSui builder.")
+class _ConsolidateSui(_MoveCallTransactionBuilder):
+    """_ConsolidateSui When executed, Send all SUI coins to one recipient."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        signer: SuiAddress,
+        input_coins: SuiArray[ObjectID],
+        recipient: SuiAddress,
+        gas_budget: SuiString,
+    ) -> None:
+        """__init__ PayAllSui Builder initializer.
+
+        :param signer: the transaction signer's Sui address
+        :type signer: SuiAddress
+        :param input_coins: the Sui coins to be used in this transaction, including the coin for gas payment.
+        :type input_coins: SuiArray[ObjectID]
+        :param recipient: the recipient Sui address
+        :type recipient: SuiAddress
+        :param gas_budget: the gas budget, the transaction will fail if the gas cost exceed the budget
+        :type gas_budget: SuiString
+        """
+        super().__init__("unsafe_payAllSui")
 
 
 @versionadded(version="0.17.0", reason="Standardize on signing permutations")
@@ -225,6 +252,9 @@ class SignerBlock(_SignerBlockBase):
     @versionchanged(
         version="0.21.1", reason="Corrected when using multisig senders."
     )
+    @versionchanged(
+        version="0.28.0", reason="Use _ConsolidateSui if coins needed for gas."
+    )
     def get_gas_object(
         self,
         *,
@@ -240,7 +270,7 @@ class SignerBlock(_SignerBlockBase):
         # If both not set, Fail
         if not who_pays:
             raise ValueError(
-                "Both SuiTransaction sponor and sender are null. Complete those before execute."
+                "Both SuiTransaction sponor and sender are null. Complete at least one before execute."
             )
         if isinstance(who_pays, SuiAddress):
             whose_gas = who_pays.address
@@ -289,7 +319,7 @@ class SignerBlock(_SignerBlockBase):
                 if accum_pay >= enh_budget:
                     handle_result(
                         client.execute(
-                            PayAllSui(
+                            _ConsolidateSui(
                                 signer=who_pays,
                                 input_coins=SuiAddress(
                                     [
@@ -320,6 +350,9 @@ class SignerBlock(_SignerBlockBase):
         raise ValueError(f"{who_pays} has nothing to pay with.")
 
     @versionadded(version="0.26.0", reason="Added to support async operations")
+    @versionchanged(
+        version="0.28.0", reason="Use _ConsolidateSui if coins needed for gas."
+    )
     async def get_gas_object_async(
         self,
         *,
@@ -384,7 +417,7 @@ class SignerBlock(_SignerBlockBase):
                 if accum_pay >= enh_budget:
                     handle_result(
                         await client.execute(
-                            PayAllSui(
+                            _ConsolidateSui(
                                 signer=who_pays,
                                 input_coins=SuiAddress(
                                     [
