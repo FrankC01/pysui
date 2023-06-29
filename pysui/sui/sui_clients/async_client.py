@@ -18,7 +18,7 @@ import ssl
 from typing import Any, Optional, Union
 from json import JSONDecodeError
 import httpx
-from deprecated.sphinx import versionchanged, versionadded
+from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_clients.common import (
     _ClientMixin,
     PreExecutionResult,
@@ -455,6 +455,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(GetEvents(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def pay_txn(
         self,
         *,
@@ -488,6 +489,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(Pay(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def pay_sui_txn(
         self,
         *,
@@ -518,6 +520,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(PaySui(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def pay_allsui_txn(
         self,
         *,
@@ -543,6 +546,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(PayAllSui(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def transfer_sui_txn(
         self,
         *,
@@ -571,6 +575,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(TransferSui(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def transfer_object_txn(
         self,
         *,
@@ -599,6 +604,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(TransferObject(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def merge_coin_txn(
         self,
         *,
@@ -628,6 +634,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(MergeCoin(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def split_coin_txn(
         self,
         *,
@@ -656,6 +663,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(SplitCoin(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def split_coin_equally_txn(
         self,
         *,
@@ -684,6 +692,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(SplitCoinEqually(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def move_call_txn(
         self,
         *,
@@ -721,6 +730,7 @@ class SuiClient(_ClientMixin):
         inargs.pop("self")
         return await self.execute(MoveCall(**inargs))
 
+    @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def publish_package_txn(
         self,
         sender: SuiAddress,
