@@ -16,16 +16,23 @@
 
 import base64
 import os
-import asyncio
+
+# import asyncio
 from pathlib import Path
 from typing import Any, Awaitable, Optional, Union, Callable
-from abc import abstractmethod
+import logging
+
+# from abc import abstractmethod
 from deprecated.sphinx import versionadded, versionchanged
-from pysui.sui.sui_builders.base_builder import SuiRequestType, sui_builder
+from pysui.sui.sui_builders.base_builder import (
+    _NativeTransactionBuilder,
+    SuiRequestType,
+    sui_builder,
+)
 from pysui.sui.sui_builders.exec_builders import (
     _MoveCallTransactionBuilder,
     ExecuteTransaction,
-    InspectTransaction,
+    # InspectTransaction,
 )
 from pysui.sui.sui_builders.get_builders import (
     GetFunction,
@@ -60,6 +67,41 @@ from pysui.sui.sui_types.scalars import (
     SuiU8,
 )
 from pysui.sui.sui_utils import publish_build
+
+logger = logging.getLogger(__name__)
+
+
+class _DebugInspectTransaction(_NativeTransactionBuilder):
+    """_DebugInspectTransaction added for malformed inspection results."""
+
+    @sui_builder()
+    def __init__(
+        self,
+        *,
+        sender_address: SuiAddress,
+        tx_bytes: SuiString,
+        gas_price: Optional[SuiString] = None,
+        epoch: Optional[SuiString] = None,
+    ) -> None:
+        """__init__ Initialize builder.
+
+        This is for Debugging only
+
+        :param sender_address: The sender/signer of transaction bytes
+        :type tx_bytes: SuiAddress
+        :param tx_bytes: BCS serialize base64 encoded string of TransactionKind
+        :type tx_bytes: SuiString
+        :param gas_price: Gas is not charged, but gas usage is still calculated. Default to use reference gas price
+        :type gas_price: Optional[SuiString]
+        :param epoch: The epoch to perform the call. Will be set from the system state object if not provided
+        :type epoch: Optional[SuiString]
+        """
+        super().__init__(
+            "sui_devInspectTransactionBlock",
+            # handler_cls=TxInspectionResult,
+            # handler_func="factory",
+        )
+
 
 _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
 _STAKE_REQUEST_TARGET: str = "0x3::sui_system::request_add_stake_mul_coin"
@@ -704,9 +746,27 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
-        result = await self.client.execute(
-            InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64)
-        )
+        try:
+            logging.debug(f"Inspecting {tx_kind_b64}")
+            result = await self.client.execute(
+                _DebugInspectTransaction(
+                    sender_address=for_sender, tx_bytes=tx_kind_b64
+                )
+            )
+            result = SuiRpcResult(
+                True, "", TxInspectionResult.factory(result.result_data)
+            )
+
+        except KeyError as kexcp:
+            logging.exception(
+                f"Malformed inspection results {result.result_data}"
+            )
+
+            raise ValueError(result.result_data)
+
+        # result = await self.client.execute(
+        #     InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64)
+        # )
         if result.is_ok():
             ispec: TxInspectionResult = result.result_data
             gas_budget = (
@@ -844,9 +904,26 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
-        result = await self.client.execute(
-            InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes)
-        )
+        try:
+            logging.debug(f"Inspecting {tx_bytes}")
+            result = await self.client.execute(
+                _DebugInspectTransaction(
+                    sender_address=for_sender, tx_bytes=tx_bytes
+                )
+            )
+            result = SuiRpcResult(
+                True, "", TxInspectionResult.factory(result.result_data)
+            )
+
+        except KeyError as kexcp:
+            logging.exception(
+                f"Malformed inspection results {result.result_data}"
+            )
+            raise ValueError(result.result_data)
+
+        # result = await self.client.execute(
+        #     InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes)
+        # )
         if result.is_ok():
             return result.result_data
         return result
@@ -1822,9 +1899,35 @@ class SuiTransaction(_SuiTransactionBase):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
-        result = self.client.execute(
-            InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes)
-        )
+        try:
+            logging.debug(f"Inspecting {tx_bytes}")
+            result = self.client.execute(
+                _DebugInspectTransaction(
+                    sender_address=for_sender, tx_bytes=tx_bytes
+                )
+            )
+            result = SuiRpcResult(
+                True, "", TxInspectionResult.factory(result.result_data)
+            )
+
+        except KeyError as kexcp:
+            logging.exception(
+                f"Malformed inspection results {result.result_data}"
+            )
+            raise ValueError(result.result_data)
+
+        # if debug_only:
+        #     result = self.client.execute(
+        #         _DebugInspectTransaction(
+        #             sender_address=for_sender, tx_bytes=tx_bytes
+        #         )
+        #     )
+        # else:
+        #     result = self.client.execute(
+        #         InspectTransaction(
+        #             sender_address=for_sender, tx_bytes=tx_bytes
+        #         )
+        #     )
         if result.is_ok():
             return result.result_data
         return result
@@ -1898,9 +2001,22 @@ class SuiTransaction(_SuiTransactionBase):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
             for_sender = self.client.config.active_address
-        result = self.client.execute(
-            InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64)
-        )
+        try:
+            logging.debug(f"Inspecting {tx_kind_b64}")
+            result = self.client.execute(
+                _DebugInspectTransaction(
+                    sender_address=for_sender, tx_bytes=tx_kind_b64
+                )
+            )
+            result = SuiRpcResult(
+                True, "", TxInspectionResult.factory(result.result_data)
+            )
+
+        except KeyError as kexcp:
+            logging.exception(
+                f"Malformed inspection results {result.result_data}"
+            )
+            raise ValueError(result.result_data)
         if result.is_ok():
             ispec: TxInspectionResult = result.result_data
             gas_budget = (
