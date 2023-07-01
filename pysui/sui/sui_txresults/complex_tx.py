@@ -16,8 +16,12 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
-from deprecated.sphinx import versionadded
-from pysui.sui.sui_txresults.common import GenericOwnerRef, GenericRef, SuiTxReturnType
+from deprecated.sphinx import versionadded, versionchanged
+from pysui.sui.sui_txresults.common import (
+    GenericOwnerRef,
+    GenericRef,
+    SuiTxReturnType,
+)
 from pysui.sui.sui_types.collections import EventID
 
 
@@ -92,9 +96,13 @@ class TransactionData(SuiTxReturnType, DataClassJsonMixin):
                 case "Genesis":
                     self.transaction = Genesis.from_dict(self.transaction)
                 case "ProgrammableTransaction":
-                    self.transaction = ProgrammableTransaction.from_dict(self.transaction)
+                    self.transaction = ProgrammableTransaction.from_dict(
+                        self.transaction
+                    )
                 case "ConsensusCommitPrologue":
-                    self.transaction = ConsensusCommitPrologue.from_dict(self.transaction)
+                    self.transaction = ConsensusCommitPrologue.from_dict(
+                        self.transaction
+                    )
                 case _:
                     raise ValueError(f"{tx_kind} unknown Transaction Kind")
 
@@ -124,7 +132,9 @@ class Transaction(SuiTxReturnType, DataClassJsonMixin):
     """Transaction encapsulates single and multi-sig signatures as well as specific transaction data."""
 
     data: TransactionData
-    tx_signatures: list[Union[str, dict]] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    tx_signatures: list[Union[str, dict]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
 
     def __post_init__(self):
         """Post process to reconcile signatures."""
@@ -148,11 +158,15 @@ class Event(SuiTxReturnType, DataClassJsonMixin):
     package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     parsed_json: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     sender: str
-    transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    transaction_module: str = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
     event_type: str = field(metadata=config(field_name="type"))
     event_id: dict = field(metadata=config(field_name="id"))
     # timestamp_ms: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
-    timestamp_ms: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default="")
+    timestamp_ms: Optional[str] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default=""
+    )
 
 
 @dataclass
@@ -171,14 +185,20 @@ class EventBlock(SuiTxReturnType, DataClassJsonMixin):
 class GasCostSummary(SuiTxReturnType, DataClassJsonMixin):
     """Gas used."""
 
-    computation_cost: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    computation_cost: int = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
     storage_cost: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     storage_rebate: int = field(metadata=config(letter_case=LetterCase.CAMEL))
 
     @property
     def total(self) -> int:
         """Totals all components of gas cost."""
-        return int(self.computation_cost) + int(self.storage_cost) + int(self.storage_rebate)
+        return (
+            int(self.computation_cost)
+            + int(self.storage_cost)
+            + int(self.storage_rebate)
+        )
 
     @property
     def total_after_rebate(self) -> int:
@@ -202,15 +222,25 @@ class Status(SuiTxReturnType, DataClassJsonMixin):
 # pylint: disable=too-many-instance-attributes
 
 
+@versionchanged(
+    version="0.28.0",
+    reason="unwrapped_then_deleted changed to GenericRef as per spec.",
+)
 @dataclass
 class Effects(SuiTxReturnType, DataClassJsonMixin):
     """Effects Certification."""
 
     status: Status
     message_version: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    gas_used: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
-    transaction_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    gas_object: GenericOwnerRef = field(metadata=config(letter_case=LetterCase.CAMEL))
+    gas_used: GasCostSummary = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
+    transaction_digest: str = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
+    gas_object: GenericOwnerRef = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
     modified_at_versions: Optional[list[dict]] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
     )
@@ -220,14 +250,18 @@ class Effects(SuiTxReturnType, DataClassJsonMixin):
     deleted: Optional[list[GenericRef]] = field(default_factory=list)
     wrapped: Optional[list[GenericRef]] = field(default_factory=list)
     unwrapped: Optional[list[GenericOwnerRef]] = field(default_factory=list)
-    unwrapped_then_deleted: Optional[list[GenericOwnerRef]] = field(
+    unwrapped_then_deleted: Optional[list[GenericRef]] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
     )
     shared_objects: Optional[list[GenericRef]] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
     )
-    executed_epoch: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
-    events_digest: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=int)
+    executed_epoch: Optional[int] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=int
+    )
+    events_digest: Optional[str] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=int
+    )
 
     def __post_init__(self):
         """Post init processing.
@@ -241,9 +275,15 @@ class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     """Transaction Result."""
 
     digest: str
-    raw_transaction: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=str)
-    balance_changes: Optional[list[dict]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
-    object_changes: Optional[list[dict]] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict)
+    raw_transaction: Optional[str] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=str
+    )
+    balance_changes: Optional[list[dict]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict
+    )
+    object_changes: Optional[list[dict]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=dict
+    )
     transaction: Optional[dict] = field(default_factory=dict)
     errors: Optional[list[str]] = field(default_factory=list)
     effects: Optional[dict] = field(default_factory=dict)
@@ -252,7 +292,9 @@ class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     confirmed_local_execution: Optional[bool] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=bool
     )
-    timestamp_ms: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL), default=0)
+    timestamp_ms: Optional[int] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default=0
+    )
 
     def __post_init__(self):
         """Post init processing.
@@ -299,8 +341,12 @@ class DryRunTxResult(SuiTxReturnType, DataClassJsonMixin):
     effects: Effects
     events: list[Event]
     input: dict
-    object_changes: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
-    balance_changes: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    object_changes: list[dict] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
+    balance_changes: list[dict] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
 
     def __post_init__(self):
         """Post init processing.
@@ -335,7 +381,9 @@ class TransactionBytes(DataClassJsonMixin):
     """From pre-signed execution (i.e. sui_moveCall, sui_pay, etc.)."""
 
     gas: list[GenericRef]
-    input_objects: list[dict] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    input_objects: list[dict] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
     tx_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
@@ -350,8 +398,12 @@ class ECMHLiveObjectSetDigest(DataClassJsonMixin):
 class EndOfEpoch(DataClassJsonMixin):
     """From sui_getCheckpoint."""
 
-    epoch_commitments: list[ECMHLiveObjectSetDigest] = field(metadata=config(letter_case=LetterCase.CAMEL))
-    next_epoch_protocol_version: int = field(metadata=config(letter_case=LetterCase.CAMEL))
+    epoch_commitments: list[ECMHLiveObjectSetDigest] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
+    next_epoch_protocol_version: int = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
     next_epoch_committee: Optional[list[int]] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
     )
@@ -362,15 +414,25 @@ class EndOfEpoch(DataClassJsonMixin):
 class Checkpoint(DataClassJsonMixin):
     """From sui_getCheckpoint."""
 
-    checkpoint_commitments: list[ECMHLiveObjectSetDigest] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    checkpoint_commitments: list[ECMHLiveObjectSetDigest] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
     digest: str
     epoch: str
-    epoch_rolling_gas_cost_summary: GasCostSummary = field(metadata=config(letter_case=LetterCase.CAMEL))
-    validator_signature: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    network_total_transactions: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    epoch_rolling_gas_cost_summary: GasCostSummary = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
+    validator_signature: str = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
+    network_total_transactions: str = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
     sequence_number: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     timestamp_ms: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    previous_digest: str = field(default_factory=str, metadata=config(letter_case=LetterCase.CAMEL))
+    previous_digest: str = field(
+        default_factory=str, metadata=config(letter_case=LetterCase.CAMEL)
+    )
     end_of_epoch_data: Optional[dict] = field(default_factory=dict)
     transactions: list[str] = field(default_factory=list)
 
@@ -380,7 +442,9 @@ class Checkpoint(DataClassJsonMixin):
         Post process end_of_epoch_data
         """
         if self.end_of_epoch_data:
-            self.end_of_epoch_data = EndOfEpoch.from_dict(self.end_of_epoch_data)
+            self.end_of_epoch_data = EndOfEpoch.from_dict(
+                self.end_of_epoch_data
+            )
 
 
 # pylint: enable=too-many-instance-attributes
@@ -392,17 +456,23 @@ class Checkpoints(DataClassJsonMixin):
 
     data: list[Checkpoint]
     has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
-    next_cursor: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_cursor: Optional[str] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
 
 
 @dataclass
-@versionadded(version="0.17.0", reason="Support Sui 0.32.0 RPC API return type.")
+@versionadded(
+    version="0.17.0", reason="Support Sui 0.32.0 RPC API return type."
+)
 class NameServices(DataClassJsonMixin):
     """From suix_resolveNameServiceNames."""
 
     data: list[str]
     has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
-    next_cursor: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL))
+    next_cursor: Optional[str] = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
 
 
 @dataclass
@@ -424,7 +494,10 @@ class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
-@versionadded(version="0.20.0", reason="Sui RPC API 1.0.0 reintroduced subscribe to transactions.")
+@versionadded(
+    version="0.20.0",
+    reason="Sui RPC API 1.0.0 reintroduced subscribe to transactions.",
+)
 class SubscribedTransactionParms(SuiTxReturnType, DataClassJsonMixin):
     """From suix_subscribeTransaction."""
 
@@ -433,7 +506,10 @@ class SubscribedTransactionParms(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
-@versionadded(version="0.20.0", reason="Sui RPC API 1.0.0 reintroduced subscribe to transactions.")
+@versionadded(
+    version="0.20.0",
+    reason="Sui RPC API 1.0.0 reintroduced subscribe to transactions.",
+)
 class SubscribedTransaction(SuiTxReturnType, DataClassJsonMixin):
     """From suix_subscribeTransactions."""
 
@@ -448,7 +524,9 @@ class TransactionQueryEnvelope(DataClassJsonMixin):
 
     data: list[TxResponse]
     has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
-    next_cursor: Union[None, str] = field(metadata=config(field_name="nextCursor"))
+    next_cursor: Union[None, str] = field(
+        metadata=config(field_name="nextCursor")
+    )
 
 
 @dataclass
@@ -458,7 +536,9 @@ class EventQueryEnvelope(DataClassJsonMixin):
     # data: list[EventEnvelope]
     data: list[Event]
     has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
-    next_cursor: Union[None, EventID] = field(metadata=config(field_name="nextCursor"))
+    next_cursor: Union[None, EventID] = field(
+        metadata=config(field_name="nextCursor")
+    )
 
 
 @versionadded(version="0.24.1", reason="Added in Sui RPC API 1.3.0")
