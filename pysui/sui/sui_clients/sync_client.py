@@ -85,6 +85,9 @@ class SuiClient(_ClientMixin):
         """Return whether client is syncrhonous (True) or not (False)."""
         return True
 
+    @versionchanged(
+        version="0.28.0", reason="Consolidated exception handling."
+    )
     def _execute(
         self, builder: SuiBaseBuilder
     ) -> Union[SuiRpcResult, Exception]:
@@ -105,8 +108,14 @@ class SuiClient(_ClientMixin):
             return SuiRpcResult(
                 False, f"JSON Decoder Error {jexc.msg}", vars(jexc)
             )
-        except httpx.ReadTimeout as hexc:
-            return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
+        except (
+            httpx.HTTPError,
+            httpx.InvalidURL,
+            httpx.CookieConflict,
+        ) as hexc:
+            return SuiRpcResult(
+                False, f"HTTPX error: {hexc.__class__.__name__}", vars(hexc)
+            )
 
     def execute(
         self,

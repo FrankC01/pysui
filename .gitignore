@@ -10,8 +10,8 @@ env
 __pycache__
 Move.lock
 
-# sui logs
-sui.log*
+# logs
+*.log*
 
 # Sandboxing
 temp*.py
