@@ -29,7 +29,11 @@ from pysui.sui.sui_builders.exec_builders import (
     _MoveCallTransactionBuilder,
     ExecuteTransaction,
 )
-from pysui.sui.sui_builders.get_builders import GetReferenceGasPrice, GetRpcAPI
+from pysui.sui.sui_builders.get_builders import (
+    GetProtocolConfig,
+    GetReferenceGasPrice,
+    GetRpcAPI,
+)
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_apidesc import build_api_descriptors
 from pysui.sui.sui_constants import PYSUI_RPC_VERSION
@@ -40,6 +44,7 @@ from pysui.sui.sui_excepts import (
     SuiNotComplexTransaction,
 )
 from pysui.sui.sui_txresults.complex_tx import TransactionBytes
+from pysui.sui.sui_txresults.single_tx import ProtocolConfig
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray
 from pysui.sui.sui_types.scalars import SuiTxBytes
@@ -104,6 +109,39 @@ class PreExecutionResult:
         return SuiTxBytes(self.pre_transaction_result.tx_bytes)
 
 
+def pysui_default_handler(result: SuiRpcResult) -> Any:
+    """pysui_default_handler Out of box SuiRpcResult error handler.
+
+    Exits the application!!!
+
+    :param result: The result from calling Sui RPC API
+    :type result: SuiRpcResult
+    :return: The data from call if valid
+    :rtype: Any
+    """
+    if result and result.is_ok():
+        return result.result_data
+    print(f"Error in result: {result.result_string}")
+    sys.exit(-1)
+
+
+def handle_result(
+    from_cmd: SuiRpcResult, handler=pysui_default_handler
+) -> Any:
+    """handle_result Returns value from invoking handler.
+
+    :param from_cmd: The result from calling Sui RPC API
+    :type from_cmd: SuiRpcResult
+    :param handler: The result handler function, defaults to pysui_default_handler
+    :type handler: Function, optional
+    :return: Result from handler
+    :rtype: Any
+    """
+    assert callable(handler), "Invalid 'handler' argument"
+    assert isinstance(from_cmd, SuiRpcResult), "Invalid 'from_command' return"
+    return handler(from_cmd)
+
+
 class _ClientMixin(Provider):
     """Abstract Mix-in.
 
@@ -122,6 +160,10 @@ class _ClientMixin(Provider):
         version="0.26.1",
         reason="Added bool flag indicating state of underlying transport",
     )
+    @versionchanged(
+        version="0.28.0",
+        reason="Added ProtcolConfig pre-fetch.",
+    )
     def __init__(
         self,
         config: SuiConfig,
@@ -136,16 +178,19 @@ class _ClientMixin(Provider):
         self._schema_dict: dict = {}
         self._rpc_version: str = None
         self._request_type: SuiRequestType = request_type
+        self._protocol: ProtocolConfig = None
 
-    def _build_api_descriptors(self) -> None:
+    @versionchanged(
+        version="0.28.0",
+        reason="Renamed for semantics added fetching current protocol",
+    )
+    def _fetch_common_descriptors(self) -> None:
         """Fetch RPC method descrptors."""
         builder_rpc_api = GetRpcAPI()
         builder_gas_price = GetReferenceGasPrice()
+        builder_protocol = GetProtocolConfig()
 
         with httpx.Client(http2=True) as client:
-            # jblock = self._generate_data_block(builder.data_dict, builder.method, [])
-            # print(f"{json.dumps(jblock, indent=2)}")
-
             rpc_api_result = client.post(
                 self.config.rpc_url,
                 headers=builder_rpc_api.header,
@@ -164,7 +209,20 @@ class _ClientMixin(Provider):
                     builder_gas_price.params,
                 ),
             )
+            rpc_protocol_result = client.post(
+                self.config.rpc_url,
+                headers=builder_protocol.header,
+                json=self._generate_data_block(
+                    builder_protocol.data_dict,
+                    builder_protocol.method,
+                    [],
+                ),
+            )
+            self._protocol = ProtocolConfig.from_dict(
+                rpc_protocol_result.json()["result"]
+            )
             self._gas_price = rpc_gas_result.json()["result"]
+
         (
             self._rpc_version,
             self._rpc_api,
@@ -325,35 +383,10 @@ class _ClientMixin(Provider):
             request_type=self.request_type,
         )
 
-
-def pysui_default_handler(result: SuiRpcResult) -> Any:
-    """pysui_default_handler Out of box SuiRpcResult error handler.
-
-    Exits the application!!!
-
-    :param result: The result from calling Sui RPC API
-    :type result: SuiRpcResult
-    :return: The data from call if valid
-    :rtype: Any
-    """
-    if result and result.is_ok():
-        return result.result_data
-    print(f"Error in result: {result.result_string}")
-    sys.exit(-1)
-
-
-def handle_result(
-    from_cmd: SuiRpcResult, handler=pysui_default_handler
-) -> Any:
-    """handle_result Returns value from invoking handler.
-
-    :param from_cmd: The result from calling Sui RPC API
-    :type from_cmd: SuiRpcResult
-    :param handler: The result handler function, defaults to pysui_default_handler
-    :type handler: Function, optional
-    :return: Result from handler
-    :rtype: Any
-    """
-    assert callable(handler), "Invalid 'handler' argument"
-    assert isinstance(from_cmd, SuiRpcResult), "Invalid 'from_command' return"
-    return handler(from_cmd)
+    @versionadded(
+        version="0.28.0", reason="Connection specific ProtcolConfig."
+    )
+    @property
+    def protocol(self) -> ProtocolConfig:
+        """Return the protocol config in place for the connection."""
+        return self._protocol

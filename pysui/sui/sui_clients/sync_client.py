@@ -78,7 +78,7 @@ class SuiClient(_ClientMixin):
             timeout=120.0,
             verify=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
         )
-        self._build_api_descriptors()
+        self._fetch_common_descriptors()
 
     @property
     def is_synchronous(self) -> bool:
