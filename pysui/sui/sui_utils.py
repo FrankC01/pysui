@@ -13,6 +13,7 @@
 
 """Utility functions."""
 
+import itertools
 import math
 import os
 import base64
@@ -22,7 +23,7 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from types import NoneType
-from typing import Any, Union
+from typing import Any, Iterable, Union
 from deprecated.sphinx import versionchanged
 import base58
 import yaml
@@ -295,6 +296,26 @@ def sui_base_get_config() -> tuple[Path, Path]:
             if not sui_exec_path.exists():
                 raise ValueError(f"sui binary not found {sui_exec_path}")
     return local_cfg, sui_exec_path
+
+
+# Iteration helpers - lists
+
+
+def partition(ilist: Iterable, chunk_size: int):
+    """Partition a list with max paritiion size.
+
+    Lazy generation of list partitions with size <= chunk_size
+
+    :param ilist: A flat list to partition
+    :type ilist: Iterable
+    :param chunk_size: Max elements per partition
+    :type chunk_size: int
+    :yield: a list of size N where N <= chunk_size
+    :rtype: list
+    """
+    it = iter(ilist)
+    while item := list(itertools.islice(it, chunk_size)):
+        yield item
 
 
 # Conversion utilities

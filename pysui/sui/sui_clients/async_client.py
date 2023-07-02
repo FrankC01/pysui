@@ -80,7 +80,7 @@ class SuiClient(_ClientMixin):
         )
         self._rpc_api = {}
         self._schema_dict = {}
-        self._build_api_descriptors()
+        self._fetch_common_descriptors()
 
     @property
     def is_synchronous(self) -> bool:
