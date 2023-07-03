@@ -408,7 +408,7 @@ class SplitCoin(_MoveCallTransactionBuilder):
         signer: SuiAddress,
         coin_object_id: ObjectID,
         split_amounts: SuiArray[SuiString],
-        gas_object: ObjectID,
+        gas: ObjectID,
         gas_budget: SuiString,
     ) -> None:
         """__init__ SplitCoin Builder initializer.
