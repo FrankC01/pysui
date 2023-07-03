@@ -751,7 +751,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         else:
             for_sender = self.client.config.active_address
         try:
-            logging.debug(f"Inspecting {tx_kind_b64}")
+            logger.debug(f"Inspecting {tx_kind_b64}")
             result = await self.client.execute(
                 _DebugInspectTransaction(
                     sender_address=for_sender, tx_bytes=tx_kind_b64
@@ -762,7 +762,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
             )
 
         except KeyError as kexcp:
-            logging.exception(
+            logger.exception(
                 f"Malformed inspection results {result.result_data}"
             )
 
@@ -909,7 +909,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         else:
             for_sender = self.client.config.active_address
         try:
-            logging.debug(f"Inspecting {tx_bytes}")
+            logger.debug(f"Inspecting {tx_bytes}")
             result = await self.client.execute(
                 _DebugInspectTransaction(
                     sender_address=for_sender, tx_bytes=tx_bytes
@@ -920,7 +920,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
             )
 
         except KeyError as kexcp:
-            logging.exception(
+            logger.exception(
                 f"Malformed inspection results {result.result_data}"
             )
             raise ValueError(result.result_data)
@@ -1904,7 +1904,7 @@ class SuiTransaction(_SuiTransactionBase):
         else:
             for_sender = self.client.config.active_address
         try:
-            logging.debug(f"Inspecting {tx_bytes}")
+            logger.debug(f"Inspecting {tx_bytes}")
             result = self.client.execute(
                 _DebugInspectTransaction(
                     sender_address=for_sender, tx_bytes=tx_bytes
@@ -1915,7 +1915,7 @@ class SuiTransaction(_SuiTransactionBase):
             )
 
         except KeyError as kexcp:
-            logging.exception(
+            logger.exception(
                 f"Malformed inspection results {result.result_data}"
             )
             raise ValueError(result.result_data)
@@ -2006,7 +2006,7 @@ class SuiTransaction(_SuiTransactionBase):
         else:
             for_sender = self.client.config.active_address
         try:
-            logging.debug(f"Inspecting {tx_kind_b64}")
+            logger.debug(f"Inspecting {tx_kind_b64}")
             result = self.client.execute(
                 _DebugInspectTransaction(
                     sender_address=for_sender, tx_bytes=tx_kind_b64
@@ -2017,7 +2017,7 @@ class SuiTransaction(_SuiTransactionBase):
             )
 
         except KeyError as kexcp:
-            logging.exception(
+            logger.exception(
                 f"Malformed inspection results {result.result_data}"
             )
             raise ValueError(result.result_data)
