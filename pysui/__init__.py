@@ -12,7 +12,14 @@
 # -*- coding: utf-8 -*-
 """pysui package."""
 import sys
+import logging
 from pysui.version import __version__
 
+logger = logging.getLogger("pysui")
+if not logging.getLogger().handlers:
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
+
+logger.info("Initializing pysui")
 if sys.version_info < (3, 10):
     raise EnvironmentError("Python 3.10 or above is required")

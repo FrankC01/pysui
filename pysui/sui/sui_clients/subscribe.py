@@ -38,6 +38,12 @@ from pysui.sui.sui_txresults.complex_tx import (
     SubscribedTransaction,
 )
 
+# Standard library logging setup
+logger = logging.getLogger("pysui.subscribe")
+if not logging.getLogger().handlers:
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
+
 
 class EventData:
     """Container for subscription data returned from subscription handler."""
@@ -77,9 +83,7 @@ class SuiClient(Provider):
     @versionchanged(
         version="0.20.0", reason="Added transaction subscription management."
     )
-    def __init__(
-        self, config: SuiConfig, logging_config: Optional[dict] = None
-    ):
+    def __init__(self, config: SuiConfig):
         """__init__ Client initializer.
 
         :param config: An instance of SuiConfig
@@ -89,8 +93,6 @@ class SuiClient(Provider):
         self._event_subscriptions: dict[str, asyncio.Task] = {}
         self._txn_subscriptions: dict[str, asyncio.Task] = {}
         self._in_shutdown = False
-        if logging_config:
-            logging.basicConfig(**logging_config)
 
     @versionchanged(
         version="0.20.0", reason="Added transaction subscription management."
@@ -132,8 +134,8 @@ class SuiClient(Provider):
             return SuiRpcResult(False, f"{parm_arg} not an accepted type")
         # print(json.dumps(payload_msg))
         _is_asynch_handler = inspect.iscoroutinefunction(handler)
-        logging.info(f"Handler is async -> {_is_asynch_handler}")
-        logging.info("Starting listening event driver")
+        logger.info(f"Handler is async -> {_is_asynch_handler}")
+        logger.info("Starting listening event driver")
         await websock.send(json.dumps(payload_msg))
         # First we get a subscription ID
         response = json.loads(await websock.recv())
@@ -148,7 +150,7 @@ class SuiClient(Provider):
             while keep_running:
                 # Get an event
                 the_event = await websock.recv()
-                logging.debug("RECEIVED event")
+                logger.debug("RECEIVED event")
                 try:
                     if _is_asynch_handler:
                         keep_running = await handler(
@@ -165,7 +167,7 @@ class SuiClient(Provider):
                 # Indicative of deserialization error
                 # exit with result data
                 except KeyError as kex:
-                    logging.warning(
+                    logger.warning(
                         f"KeyError occured for shutdown -> {self._in_shutdown}"
                     )
                     return SuiRpcResult(
@@ -173,7 +175,7 @@ class SuiClient(Provider):
                     )
                 # Catch anyother error and exit with result data
                 except Exception as axc:
-                    logging.warning(
+                    logger.warning(
                         f"Exception occured for shutdown -> {self._in_shutdown}"
                     )
                     return SuiRpcResult(
@@ -185,13 +187,16 @@ class SuiClient(Provider):
                         result_data.add_entry(event_counter, keep_running)
                         event_counter += 1
                 else:
-                    logging.warning(
-                        "Handler returned None, exiting subscription"
+                    logger.warning(
+                        "Handler rquested exit from subscription events."
                     )
         except asyncio.CancelledError:
-            logging.warning(
-                f"asyncio.CancelledError occured for shutdown -> {self._in_shutdown}"
-            )
+            if self._in_shutdown:
+                logger.warning("Subscription cancelled by application")
+            else:
+                logger.warning(
+                    f"asyncio.CancelledError occured for shutdown -> {self._in_shutdown}"
+                )
             return SuiRpcResult(True, "Cancelled", result_data)
         return SuiRpcResult(True, None, result_data)
 
@@ -220,7 +225,7 @@ class SuiClient(Provider):
         """
         try:
             if self.config.socket_url.startswith("wss:"):
-                logging.info("Connecting with SSLContext")
+                logger.info("Connecting with SSLContext")
                 warnings.simplefilter("ignore")
                 async with ws_connect(
                     self.config.socket_url,
@@ -234,13 +239,13 @@ class SuiClient(Provider):
                         websock,
                         handler,
                     )
-                    logging.info(
+                    logger.info(
                         f"Listener returning in shutdown: {self._in_shutdown}"
                     )
                     await websock.close()
                     return res
             else:
-                logging.info("Connecting without SSLContext")
+                logger.info("Connecting without SSLContext")
                 async with ws_connect(
                     self.config.socket_url,
                     extra_headers=self._ADDITIONL_HEADER,
@@ -251,22 +256,22 @@ class SuiClient(Provider):
                         websock,
                         handler,
                     )
-                    logging.info(
+                    logger.info(
                         f"Listener returning in shutdown: {self._in_shutdown}"
                     )
                     await websock.close()
                     return res
 
         except AttributeError as axc:
-            logging.error(
+            logger.error(
                 f"AttributeError occured for shutdown -> {self._in_shutdown}"
             )
             return SuiRpcResult(False, "Attribute Error", axc)
         except Exception as axc:
-            logging.error(
+            logger.error(
                 f"Exception occured for shutdown -> {self._in_shutdown}"
             )
-            logging.error(f"Exception  -> {axc}")
+            logger.error(f"Exception  -> {axc}")
             return SuiRpcResult(False, "Exception", axc)
 
     async def new_event_subscription(

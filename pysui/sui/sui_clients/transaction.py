@@ -68,7 +68,11 @@ from pysui.sui.sui_types.scalars import (
 )
 from pysui.sui.sui_utils import publish_build
 
-logger = logging.getLogger(__name__)
+# Standard library logging setup
+logger = logging.getLogger("pysui.transaction")
+if not logging.getLogger().handlers:
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
 
 
 class _DebugInspectTransaction(_NativeTransactionBuilder):
