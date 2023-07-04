@@ -17,6 +17,7 @@
 import ssl
 from typing import Any, Optional, Union
 from json import JSONDecodeError
+import logging
 import httpx
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_clients.common import (
@@ -62,10 +63,16 @@ from pysui.sui.sui_builders.exec_builders import (
     Publish,
 )
 
+logger = logging.getLogger("pysui.async_client")
+if not logging.getLogger().handlers:
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
+
 
 class SuiClient(_ClientMixin):
     """Sui Asyncrhonous Client."""
 
+    @versionchanged(version="0.28.0", reason="Added logging")
     def __init__(
         self,
         config: SuiConfig,
@@ -81,6 +88,7 @@ class SuiClient(_ClientMixin):
         self._rpc_api = {}
         self._schema_dict = {}
         self._fetch_common_descriptors()
+        logger.info(f"Initialized asynchronous client for {config.rpc_url}")
 
     @property
     def is_synchronous(self) -> bool:
@@ -494,6 +502,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: pay_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(Pay(**inargs))
@@ -525,6 +534,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: pay_sui_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(PaySui(**inargs))
@@ -551,6 +561,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: pay_allsui_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(PayAllSui(**inargs))
@@ -580,6 +591,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: transfer_sui_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(TransferSui(**inargs))
@@ -609,6 +621,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: transfer_object_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(TransferObject(**inargs))
@@ -639,6 +652,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: merge_coin_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(MergeCoin(**inargs))
@@ -668,6 +682,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: split_coin_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(SplitCoin(**inargs))
@@ -697,6 +712,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: split_coin_equally_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(SplitCoinEqually(**inargs))
@@ -735,6 +751,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: move_call_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(MoveCall(**inargs))
@@ -760,6 +777,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: publish_package_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return await self.execute(Publish(**inargs))

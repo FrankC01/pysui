@@ -14,6 +14,7 @@
 
 """Sui Synchronous RPC Client module."""
 
+import logging
 from typing import Any, Optional, Union
 from json import JSONDecodeError
 import ssl
@@ -62,10 +63,17 @@ from pysui.sui.sui_builders.exec_builders import (
     Publish,
 )
 
+# Standard library logging setup
+logger = logging.getLogger("pysui.sync_client")
+if not logging.getLogger().handlers:
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
+
 
 class SuiClient(_ClientMixin):
     """Sui Syncrhonous Client."""
 
+    @versionchanged(version="0.28.0", reason="Added logging")
     def __init__(
         self,
         config: SuiConfig,
@@ -79,6 +87,7 @@ class SuiClient(_ClientMixin):
             verify=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
         )
         self._fetch_common_descriptors()
+        logger.info(f"Initialized synchronous client for {config.rpc_url}")
 
     @property
     def is_synchronous(self) -> bool:
@@ -488,6 +497,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: pay_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(Pay(**inargs))
@@ -519,6 +529,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: pay_sui_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(PaySui(**inargs))
@@ -545,6 +556,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: pay_allsui_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(PayAllSui(**inargs))
@@ -574,6 +586,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: transfer_sui_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(TransferSui(**inargs))
@@ -603,6 +616,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: transfer_object_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(TransferObject(**inargs))
@@ -633,6 +647,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: merge_coin_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(MergeCoin(**inargs))
@@ -662,6 +677,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: split_coin_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(SplitCoin(**inargs))
@@ -691,6 +707,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: split_coin_equally_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(SplitCoinEqually(**inargs))
@@ -729,6 +746,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: move_call_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(MoveCall(**inargs))
@@ -755,6 +773,7 @@ class SuiClient(_ClientMixin):
         :return: Result of the transaction
         :rtype: SuiRpcResult
         """
+        logger.warning("using deprecated method: publish_package_txn")
         inargs: dict = locals().copy()
         inargs.pop("self")
         return self.execute(Publish(**inargs))

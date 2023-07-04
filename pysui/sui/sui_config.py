@@ -17,7 +17,7 @@
 
 import os
 from io import TextIOWrapper
-
+import logging
 from pathlib import Path
 import json
 from typing import Optional
@@ -55,6 +55,11 @@ from pysui.sui.sui_excepts import (
 )
 from pysui.sui.sui_utils import sui_base_get_config
 
+logger = logging.getLogger("pysui.config")
+if not logging.getLogger().handlers:
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
+
 
 @versionadded(
     version="0.16.1",
@@ -71,7 +76,11 @@ def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
     :param sui_exec_path: _description_
     :type sui_exec_path: Path
     """
+    logger.debug(
+        f"Setting environment {PYSUI_CLIENT_CONFIG_ENV} to {client_config_path}"
+    )
     os.environ[PYSUI_CLIENT_CONFIG_ENV] = str(client_config_path)
+    logger.debug(f"Setting environment {PYSUI_EXEC_ENV} to {sui_exec_path}")
     os.environ[PYSUI_EXEC_ENV] = str(sui_exec_path)
 
 
@@ -110,6 +119,7 @@ class SuiConfig(ClientConfiguration):
     def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:
         """Register the keypair and write out to keystore file."""
         filepath = file_path if file_path else self.keystore_file
+        logger.debug(f"Writing new keypair to {filepath}")
         if os.path.exists(filepath):
             self._keypairs[keypair.serialize()] = keypair
             with open(filepath, "w", encoding="utf8") as keystore:
@@ -142,6 +152,7 @@ class SuiConfig(ClientConfiguration):
         :return: The input or generated mnemonic string and the new keypair associated SuiAddress
         :rtype: tuple[str, SuiAddress]
         """
+        logger.debug(f"Creating new keypair for type {scheme.as_str}")
         match scheme:
             case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
                 mnem, keypair, address = create_new_address(
@@ -183,6 +194,7 @@ class SuiConfig(ClientConfiguration):
         :return: The input mnemonic string and the new keypair associated SuiAddress
         :rtype: tuple[str, SuiAddress]
         """
+        logger.debug(f"Recovering keypair of type {scheme.as_str}")
         match scheme:
             case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
                 mnem, keypair, address = recover_key_and_address(
@@ -295,6 +307,7 @@ class SuiConfig(ClientConfiguration):
     )
     def default_config(cls) -> "SuiConfig":
         """."""
+        logger.debug("Initializing default configuration from ~/.sui")
         expanded_path = Path(os.path.expanduser(DEFAULT_DEVNET_PATH_STRING))
         if expanded_path.exists():
             return cls._create_config(
@@ -310,6 +323,7 @@ class SuiConfig(ClientConfiguration):
     )
     def sui_base_config(cls) -> "SuiConfig":
         """."""
+        logger.debug("Initializing suibase local node configuration.")
         return cls._create_config(*sui_base_get_config())
 
     @classmethod
@@ -340,6 +354,7 @@ class SuiConfig(ClientConfiguration):
         :rtype: SuiConfig
         """
         assert rpc_url
+        logger.debug(f"Initializing user configuration for rpc url: {rpc_url}")
         prv_keys = prv_keys or []
         config = super(ClientConfiguration, cls).__new__(cls)
         config.__init__(EMPEHMERAL_PATH, EMPEHMERAL_PATH)

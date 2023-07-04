@@ -20,6 +20,7 @@ Welcome to pysui's documentation!
 
    getting_started
    intro
+   logging
    builders
    multi_sig
    prog_txn
