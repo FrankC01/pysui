@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2023-07-05
+
+### Added
+
+- Preliminary logging docs
+- [enhancement](https://github.com/FrankC01/pysui/issues/68)
+- [enhancement](https://github.com/FrankC01/pysui/issues/120)
+- [enhancement](https://github.com/FrankC01/pysui/issues/124)
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/125)
+- [bug](https://github.com/FrankC01/pysui/issues/126)
+- Contributed by Debjit Bhowal, thank you! [bug](https://github.com/FrankC01/pysui/issues/129)
+
+### Changed
+
+- synch and asynch SuiClient methods marked for deprecation, use
+  equivalent SuiTransaction/SuiTransactionAsync methods instead.
+  Will be removed from code in `pysui` v0.30.0:
+  - publish_package_txn
+  - move_call_txn
+  - split_coin_equally_txn
+  - split_coin_txn
+  - merge_coin_txn
+  - transfer_object_txn
+  - transfer_sui_txn
+  - pay_allsui_txn
+  - pay_sui_txn
+  - pay_txn
+
+### Removed
+
 ## [0.27.1] - 2023-06-28
 
 ### Added
@@ -47,7 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Support for new MultiSig format (1.4.x+) and maintaining backlevel support (1.3.x) [change](https://github.com/FrankC01/pysui/issues/118)
-- Atomic Builders marked for deprecation, use equivalent SuiTransaction/SuiTransactionAsync methods instead:
+- Atomic Builders marked for deprecation, use
+  equivalent SuiTransaction/SuiTransactionAsync methods instead.
+  Will be removed from code in `pysui` v0.30.0:
   - BatchTransaction
   - Publish
   - MoveCall

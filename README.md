@@ -4,11 +4,11 @@
 
 Python Client SDK for Sui blockchain
 
-**Release-0.27.1**
+**Release-0.28.0**
 
 - Supports _SUI 1.5.0 RPC API_ on devnet
-- Supports _SUI 1.4.1 RPC API_ on testnet
-- Supports _SUI 1.3.1 RPC API_ on mainnet
+- Supports _SUI 1.4.x/1.5.x RPC API_ on testnet
+- Supports _SUI 1.3.x/1.5.x RPC API_ on mainnet
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
@@ -18,7 +18,7 @@ We would appreciate any issues being reported in the [github issue log](https://
 
 Discord server [click here](https://discord.gg/uCGYfY4Ph4):
 
-**PyPi for 0.27.1**
+**PyPi for 0.28.0**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
