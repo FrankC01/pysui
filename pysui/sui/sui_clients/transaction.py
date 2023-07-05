@@ -759,9 +759,15 @@ class SuiTransactionAsync(_SuiTransactionBase):
                     sender_address=for_sender, tx_bytes=tx_kind_b64
                 )
             )
-            result = SuiRpcResult(
-                True, "", TxInspectionResult.factory(result.result_data)
-            )
+            if result.is_ok():
+                result = SuiRpcResult(
+                    True, "", TxInspectionResult.factory(result.result_data)
+                )
+            else:
+                logger.exception(
+                    f"Inspecting transaction failed with {result.result_string}"
+                )
+                raise ValueError(result.result_string)
 
         except KeyError as kexcp:
             logger.exception(
@@ -792,6 +798,12 @@ class SuiTransactionAsync(_SuiTransactionBase):
             use_coin: ObjectRead = handle_result(
                 await self.client.get_object(test_gas_object)
             )
+            if use_coin.balance < gas_budget:
+                logger.exception(
+                    f"Explicit use_gas_object {test_gas_object} with balance {use_coin.balance} insuffient for cost {gas_budget}"
+                )
+                raise ValueError(f"Insufficient gas")
+
             gas_object = bcs.GasData(
                 [
                     bcs.ObjectReference(
@@ -2019,9 +2031,15 @@ class SuiTransaction(_SuiTransactionBase):
                     sender_address=for_sender, tx_bytes=tx_kind_b64
                 )
             )
-            result = SuiRpcResult(
-                True, "", TxInspectionResult.factory(result.result_data)
-            )
+            if result.is_ok():
+                result = SuiRpcResult(
+                    True, "", TxInspectionResult.factory(result.result_data)
+                )
+            else:
+                logger.exception(
+                    f"Inspecting transaction failed with {result.result_string}"
+                )
+                raise ValueError(result.result_string)
 
         except KeyError as kexcp:
             logger.exception(
@@ -2048,6 +2066,12 @@ class SuiTransaction(_SuiTransactionBase):
             use_coin: ObjectRead = handle_result(
                 self.client.get_object(test_gas_object)
             )
+            if use_coin.balance < gas_budget:
+                logger.exception(
+                    f"Explicit use_gas_object {test_gas_object} with balance {use_coin.balance} insuffient for cost {gas_budget}"
+                )
+                raise ValueError(f"Insufficient gas")
+
             gas_object = bcs.GasData(
                 [
                     bcs.ObjectReference(
