@@ -37,7 +37,6 @@ from pysui.sui.sui_builders.exec_builders import (
 from pysui.sui.sui_builders.get_builders import (
     GetFunction,
     GetReferenceGasPrice,
-    GetMultipleObjects,
 )
 from pysui.sui.sui_clients.common import SuiRpcResult, handle_result
 import pysui.sui.sui_clients.transaction_builder as tx_builder
@@ -643,8 +642,11 @@ class _SuiTransactionBase:
                 case "ObjectID":
                     refs.append(index)
                 case "SuiCoinObject":
-                    items[index] = ObjectID(item.object_id)
-                    refs.append(index)
+                    if hasattr(item, "owner"):
+                        tuples.append(index)
+                    else:
+                        items[index] = ObjectID(item.object_id)
+                        refs.append(index)
                 # Tuple all ready to be set
                 case "ObjectRead":
                     tuples.append(index)
@@ -936,16 +938,21 @@ class SuiTransactionAsync(_SuiTransactionBase):
     @versionadded(
         version="0.18.0", reason="Reuse for argument nested list recursion."
     )
+    @versionchanged(version="0.29.0", reason="Handle scale of object fetch.")
     async def _resolve_objects(
         self, items: list, objref_indexes: list, objtup_indexes: list
     ):
         """Finalizes object ref types."""
         if objref_indexes:
-            res = await self.client.execute(
-                GetMultipleObjects(
-                    object_ids=[items[x] for x in objref_indexes]
-                )
+            res = await self.client.get_objects_for(
+                [items[x] for x in objref_indexes]
             )
+
+            # res = await self.client.execute(
+            #     GetMultipleObjects(
+            #         object_ids=[items[x] for x in objref_indexes]
+            #     )
+            # )
             if res.is_ok():
                 res_list = res.result_data
                 if len(res_list) != len(objref_indexes):
@@ -960,7 +967,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 raise ValueError(f"{res.result_string}")
         if objtup_indexes:
             for tindex in objtup_indexes:
-                item: ObjectRead = items[tindex]
+                item = items[tindex]
                 if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
                     obj_ref = GenericRef(
                         item.object_id, item.version, item.digest
@@ -2143,16 +2150,20 @@ class SuiTransaction(_SuiTransactionBase):
     @versionadded(
         version="0.18.0", reason="Reuse for argument nested list recursion."
     )
+    @versionchanged(version="0.29.0", reason="Handle scale of object fetch.")
     def _resolve_objects(
         self, items: list, objref_indexes: list, objtup_indexes: list
     ):
         """Finalizes object ref types."""
         if objref_indexes:
-            res = self.client.execute(
-                GetMultipleObjects(
-                    object_ids=[items[x] for x in objref_indexes]
-                )
+            res = self.client.get_objects_for(
+                [items[x] for x in objref_indexes]
             )
+            # res = self.client.execute(
+            #     GetMultipleObjects(
+            #         object_ids=[items[x] for x in objref_indexes]
+            #     )
+            # )
             if res.is_ok():
                 res_list = res.result_data
                 if len(res_list) != len(objref_indexes):
@@ -2167,7 +2178,7 @@ class SuiTransaction(_SuiTransactionBase):
                 raise ValueError(f"{res.result_string}")
         if objtup_indexes:
             for tindex in objtup_indexes:
-                item: ObjectRead = items[tindex]
+                item = items[tindex]
                 if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
                     obj_ref = GenericRef(
                         item.object_id, item.version, item.digest
