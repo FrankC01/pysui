@@ -14,6 +14,7 @@
 
 """Sui Asynchronous RPC Client module."""
 
+import asyncio
 import ssl
 from typing import Any, Optional, Union
 from json import JSONDecodeError
@@ -67,6 +68,7 @@ from pysui.sui.sui_builders.exec_builders import (
     MoveCall,
     Publish,
 )
+from pysui.sui.sui_utils import partition
 
 logger = logging.getLogger("pysui.async_client")
 if not logging.getLogger().handlers:
@@ -323,7 +325,7 @@ class SuiClient(_ClientMixin):
         if result.is_ok():
             limit: int = result.result_data.coin_object_count
             builder = GetCoins(owner=address, coin_type=coin_type)
-            if limit > 50 and fetch_all:
+            if limit > self._RPC_GET_LIMITS and fetch_all:
                 accumer: list = []
                 gasses = handle_result(await self.execute(builder))
                 accumer.extend(gasses.data)
@@ -497,6 +499,10 @@ class SuiClient(_ClientMixin):
             else GetPastObject(identifier, version)
         )
 
+    @versionchanged(
+        version="0.29.0",
+        reason="Handles large identifier list",
+    )
     async def get_objects_for(
         self, identifiers: list[ObjectID]
     ) -> Union[SuiRpcResult, Exception]:
@@ -510,7 +516,24 @@ class SuiClient(_ClientMixin):
         :rtype: SuiRpcResult
         """
         # Use new multi get
-        return await self.execute(GetMultipleObjects(object_ids=identifiers))
+        if len(identifiers) > self._RPC_GET_LIMITS:
+            accum: list = []
+            addy_list = [
+                self.execute(GetMultipleObjects(object_ids=x))
+                for x in list(partition(identifiers, self._RPC_GET_LIMITS))
+            ]
+            gresult = await asyncio.gather(*addy_list, return_exceptions=True)
+            for gres in gresult:
+                if gres.is_ok():
+                    accum.extend(gres.result_data)
+            result = SuiRpcResult(True, None, accum)
+        else:
+            result = await self.execute(
+                GetMultipleObjects(object_ids=identifiers)
+            )
+
+        return result
+        # return await self.execute(GetMultipleObjects(object_ids=identifiers))
 
     async def get_package(
         self, package_id: ObjectID

@@ -155,6 +155,7 @@ class _ClientMixin(Provider):
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",
     }
+    _RPC_GET_LIMITS: int = 50
 
     @versionchanged(
         version="0.26.1",

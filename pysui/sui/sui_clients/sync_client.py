@@ -67,6 +67,7 @@ from pysui.sui.sui_builders.exec_builders import (
     MoveCall,
     Publish,
 )
+from pysui.sui.sui_utils import partition
 
 # Standard library logging setup
 logger = logging.getLogger("pysui.sync_client")
@@ -320,7 +321,7 @@ class SuiClient(_ClientMixin):
         if result.is_ok():
             limit: int = result.result_data.coin_object_count
             builder = GetCoins(owner=address, coin_type=coin_type)
-            if limit > 50 and fetch_all:
+            if limit > self._RPC_GET_LIMITS and fetch_all:
                 accumer: list = []
                 gasses = handle_result(self.execute(builder))
                 accumer.extend(gasses.data)
@@ -492,6 +493,10 @@ class SuiClient(_ClientMixin):
                 result = SuiRpcResult(True, "", objread_page)
         return result
 
+    @versionchanged(
+        version="0.29.0",
+        reason="Handles large identifier list",
+    )
     def get_objects_for(
         self, identifiers: list[ObjectID]
     ) -> Union[SuiRpcResult, Exception]:
@@ -505,7 +510,19 @@ class SuiClient(_ClientMixin):
         :rtype: SuiRpcResult
         """
         # Revert to new multiOp
-        return self.execute(GetMultipleObjects(object_ids=identifiers))
+        builder = GetMultipleObjects(object_ids=[])
+        # Handle large list
+        if len(identifiers) > self._RPC_GET_LIMITS:
+            accum: list = []
+            for chunk in list(partition(identifiers, self._RPC_GET_LIMITS)):
+                builder.object_ids = chunk
+                accum.extend(handle_result(self.execute(builder)))
+            result = SuiRpcResult(True, None, accum)
+        else:
+            builder.object_ids = identifiers
+            result = self.execute(builder)
+
+        return result
 
     def get_package(
         self, package_id: ObjectID

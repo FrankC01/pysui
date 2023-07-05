@@ -42,7 +42,11 @@ sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_txresults.single_tx import ObjectReadPage, SuiCoinObjects, SuiGas
+from pysui.sui.sui_txresults.single_tx import (
+    ObjectReadPage,
+    SuiCoinObjects,
+    SuiGas,
+)
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_clients.async_client import SuiClient
 
@@ -90,7 +94,7 @@ async def get_all_gas(client: SuiClient) -> dict[SuiAddress, list[SuiGas]]:
     """
     config: SuiConfig = client.config
     addys = [SuiAddress(x) for x in config.addresses]
-    addy_list = [client.get_gas(x) for x in addys]
+    addy_list = [client.get_gas(x, True) for x in addys]
     gresult = await asyncio.gather(*addy_list, return_exceptions=True)
     return_map = {}
     for index, gres in enumerate(gresult):
@@ -112,7 +116,9 @@ async def main_run(client: SuiClient):
         print(f"\nGas objects for: {key.identifier}")
         grand_total += print_gas(value)
         print()
-    print(f"Grand Total gas {grand_total:12} -> {grand_total/SUI_COIN_DENOMINATOR:.8f}\n")
+    print(
+        f"Grand Total gas {grand_total:12} -> {grand_total/SUI_COIN_DENOMINATOR:.8f}\n"
+    )
     print("Exiting async pysui")
 
 

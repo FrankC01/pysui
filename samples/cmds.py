@@ -36,7 +36,11 @@ from pysui.sui.sui_builders.get_builders import (
 )
 
 from pysui.sui.sui_utils import publish_build
-from pysui.sui.sui_excepts import SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode
+from pysui.sui.sui_excepts import (
+    SuiMiisingBuildFolder,
+    SuiPackageBuildFail,
+    SuiMiisingModuleByteCode,
+)
 from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_txresults.single_tx import SuiCoinObjects
@@ -44,7 +48,9 @@ from pysui.sui.sui_txresults.single_tx import SuiCoinObjects
 
 def sdk_version(_client: SuiClient, _args: argparse.Namespace) -> None:
     """Dispay version(s)."""
-    print(f"pysui SDK version: {__version__} SUI RPC API version {_client.rpc_version}")
+    print(
+        f"pysui SDK version: {__version__} SUI RPC API version {_client.rpc_version}"
+    )
 
 
 def sui_active_address(client: SuiClient, _args: argparse.Namespace) -> None:
@@ -74,7 +80,9 @@ def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
         header_object_id = "Gas Object ID"
         header_mist = "Mist"
         header_sui = "SUI"
-        header_str = format(f"{header_object_id:^72s}{header_mist:^12s}{header_sui:^15s}")
+        header_str = format(
+            f"{header_object_id:^72s}{header_mist:^12s}{header_sui:^15s}"
+        )
         print(header_str)
         for _ in range(0, len(header_str)):
             print("-", end="")
@@ -82,12 +90,14 @@ def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
         for gas_object in gas_objects.data:
             balance = int(gas_object.balance)
             total += balance
-            print(f"{gas_object.coin_object_id:^66s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:.8f}")
+            print(
+                f"{gas_object.coin_object_id:^66s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:.8f}"
+            )
         print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
         print()
         return total
 
-    gas_result = client.get_gas(args.address)
+    gas_result = client.get_gas(args.address, True)
     if gas_result.is_ok():
         _detail_gas_objects(gas_result.result_data)
     else:
@@ -97,11 +107,17 @@ def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
 def sui_new_address(client: SuiClient, args: argparse.Namespace) -> None:
     """Generate a new SUI address."""
     if args.ed25519:
-        mnen, address = client.config.create_new_keypair_and_address(SignatureScheme.ED25519)
+        mnen, address = client.config.create_new_keypair_and_address(
+            SignatureScheme.ED25519
+        )
     elif args.secp256k1:
-        mnen, address = client.config.create_new_keypair_and_address(SignatureScheme.SECP256K1)
+        mnen, address = client.config.create_new_keypair_and_address(
+            SignatureScheme.SECP256K1
+        )
     elif args.secp256r1:
-        mnen, address = client.config.create_new_keypair_and_address(SignatureScheme.SECP256R1)
+        mnen, address = client.config.create_new_keypair_and_address(
+            SignatureScheme.SECP256R1
+        )
     else:
         raise ValueError(f"Unknown keytype {args}")
     print(f"Keep this passphrase '{mnen}'")
@@ -142,7 +158,9 @@ def _objects_header_print() -> None:
     header_version = "Version"
     header_digest = "Digest"
     header_obj_type = "Object Type"
-    header_str = format(f"{header_object_id:^70s}{header_version:^8s}{header_digest:^50s}{header_obj_type:^37}")
+    header_str = format(
+        f"{header_object_id:^70s}{header_version:^8s}{header_digest:^50s}{header_obj_type:^37}"
+    )
     print(header_str)
     for _ in range(0, len(header_str)):
         print("-", end="")
@@ -158,7 +176,9 @@ def sui_objects(client: SuiClient, args: argparse.Namespace) -> None:
         else:
             _objects_header_print()
             for desc in result.result_data.data:
-                print(f"{desc.identifier} |  {desc.version:^8} | {desc.digest} | {desc.object_type}")
+                print(
+                    f"{desc.identifier} |  {desc.version:^8} | {desc.digest} | {desc.object_type}"
+                )
     else:
         print(f"{result.result_string}")
 
@@ -176,10 +196,14 @@ def sui_api(client: SuiClient, args: argparse.Namespace) -> None:
             print(f"{namedef.name} - {namedef.description}")
             print("Parameters")
             for parm in namedef.params:
-                print(f"    {parm.name:<20} => required: {parm.required} type: {parm.schema}")
+                print(
+                    f"    {parm.name:<20} => required: {parm.required} type: {parm.schema}"
+                )
             print()
             print("Returns")
-            print(f"    {namedef.result.name:<20} => type: {namedef.result.schema}")
+            print(
+                f"    {namedef.result.name:<20} => type: {namedef.result.schema}"
+            )
         else:
             print(f"Sui RPC API does not contain {args.name}")
 
@@ -325,7 +349,11 @@ def publish(client: SuiClient, args: argparse.Namespace) -> None:
             print(result.result_data.to_json(indent=2))
         else:
             print(f"Error: {result.result_string}")
-    except (SuiMiisingBuildFolder, SuiPackageBuildFail, SuiMiisingModuleByteCode) as exc:
+    except (
+        SuiMiisingBuildFolder,
+        SuiPackageBuildFail,
+        SuiMiisingModuleByteCode,
+    ) as exc:
         print(exc.args, file=sys.stderr)
 
 
@@ -338,13 +366,17 @@ def committee(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def _convert_event_query(var_args: argparse.Namespace, query: Union[SuiString, SuiMap]) -> dict:
+def _convert_event_query(
+    var_args: argparse.Namespace, query: Union[SuiString, SuiMap]
+) -> dict:
     """Convert arguments to SuiTypes."""
     var_args.pop("version")
     var_args["query"] = query
     if isinstance(var_args["cursor"], str):
         curser_event_id = var_args["cursor"].split(":")
-        var_args["cursor"] = EventID(int(curser_event_id[0]), int(curser_event_id[1]))
+        var_args["cursor"] = EventID(
+            int(curser_event_id[0]), int(curser_event_id[1])
+        )
     var_args["descending_order"] = SuiBoolean(var_args["descending_order"])
     return var_args
 
@@ -352,7 +384,9 @@ def _convert_event_query(var_args: argparse.Namespace, query: Union[SuiString, S
 def events_all(client: SuiClient, args: argparse.Namespace) -> None:
     """Event info request handler for all events."""
     var_args = vars(args)
-    result = client.get_events(**_convert_event_query(var_args, SuiString("All")))
+    result = client.get_events(
+        **_convert_event_query(var_args, SuiString("All"))
+    )
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:
