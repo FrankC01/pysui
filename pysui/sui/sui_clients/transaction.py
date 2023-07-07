@@ -16,6 +16,7 @@
 
 import base64
 import os
+import time
 
 # import asyncio
 from pathlib import Path
@@ -692,6 +693,9 @@ class _SuiTransactionBase:
 class SuiTransactionAsync(_SuiTransactionBase):
     """."""
 
+    @versionchanged(
+        version="0.29.1", reason="Eliminated redundant gas price RPC call"
+    )
     def __init__(
         self,
         client: AsyncClient,
@@ -699,12 +703,8 @@ class SuiTransactionAsync(_SuiTransactionBase):
         initial_sender: Union[SuiAddress, SigningMultiSig] = False,
     ) -> None:
         """Transaction initializer."""
-        assert client.is_synchronous is False, "Requires asynch SuiClient"
         super().__init__(client, merge_gas_budget, initial_sender)
-        s_client = SyncClient(client.config)
-        self._current_gas_price = handle_result(
-            s_client.execute(GetReferenceGasPrice())
-        )
+        self._current_gas_price = client.current_gas_price
 
     @versionchanged(version="0.17.0", reason="Only used internally.")
     @versionchanged(
@@ -1875,6 +1875,9 @@ class SuiTransaction(_SuiTransactionBase):
     @versionchanged(
         version="0.21.1", reason="Takes a 'initial_sender' as option."
     )
+    @versionchanged(
+        version="0.29.1", reason="Eliminated redundant gas price RPC call"
+    )
     def __init__(
         self,
         client: SyncClient,
@@ -1883,22 +1886,7 @@ class SuiTransaction(_SuiTransactionBase):
     ) -> None:
         """Transaction initializer."""
         super().__init__(client, merge_gas_budget, initial_sender)
-        self._current_gas_price = handle_result(
-            self.client.execute(GetReferenceGasPrice())
-        )
-
-    # def _reset_gas(self, for_owner: Union[SuiAddress, MultiSig]) -> list:
-    #     """_reset_gas Returns gas objects imbued with owners."""
-    #     coin_objects = handle_result(self.client.get_gas(for_owner)).data
-    #     out_list = []
-    #     for coin_object in coin_objects:
-    #         setattr(coin_object, "owner", for_owner)
-    #         out_list.append(coin_object)
-    #     return out_list
-
-    # def _gas_price(self) -> int:
-    #     """Retrieve the current gas price from the chain during initialization."""
-    #     return handle_result(self.client.execute(GetReferenceGasPrice()))
+        self._current_gas_price = client.current_gas_price
 
     @versionchanged(
         version="0.16.1",
