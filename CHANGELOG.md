@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2023-07-07
+
+### Added
+
+- `continue_on_close` argument to subscription `new_event_subscription()` and `new_transaction_subscription()`
+- `client.get_gas()`, `client.get_coin()` and `client.get_objects()` now include a `fetch_all` option.
+- `client.get_objects_for()` now handles large lists
+- Common convenient imports in pysui.__init__.py
+
+### Fixed
+
+- `samples/async_gas.py` now returns **_all_** gas objects
+- `samples/wallet.py` "gas" command now returns **_all_** gas objects
+- SuiConfig now respects non-standard aliases in `client.yaml`
+- Cleaned up modules still logging to root
+
+### Changed
+
+- Refactored subscription connection handling
+
+### Removed
+
 ## [0.28.0] - 2023-07-05
 
 ### Added

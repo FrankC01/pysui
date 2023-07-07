@@ -22,17 +22,18 @@ from typing import Any, Callable, Optional, Union
 import warnings
 from deprecated.sphinx import versionadded, versionchanged
 from websockets.client import connect as ws_connect
+from websockets.exceptions import ConnectionClosed, ConnectionClosedError
 from websockets.client import WebSocketClientProtocol
+
+from pysui import SuiRpcResult, SuiConfig
 
 from pysui.abstracts import Provider
 from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_types.collections import SuiMap
-from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_builders.subscription_builders import (
     SubscribeEvent,
     SubscribeTransaction,
 )
-from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_txresults.complex_tx import (
     SubscribedEvent,
     SubscribedTransaction,
@@ -148,9 +149,11 @@ class SuiClient(Provider):
         result_data: EventData = EventData(asyncio.current_task().get_name())
         try:
             while keep_running:
+                await asyncio.sleep(0.001)
                 # Get an event
                 the_event = await websock.recv()
-                logger.debug("RECEIVED event")
+                logger.debug("Subscription driver RECEIVED event")
+
                 try:
                     if _is_asynch_handler:
                         keep_running = await handler(
@@ -168,7 +171,7 @@ class SuiClient(Provider):
                 # exit with result data
                 except KeyError as kex:
                     logger.warning(
-                        f"KeyError occured for shutdown -> {self._in_shutdown}"
+                        f"Subscription driver KeyError occured for shutdown -> {self._in_shutdown}"
                     )
                     return SuiRpcResult(
                         False, f"KeyError on {kex}", result_data
@@ -176,7 +179,7 @@ class SuiClient(Provider):
                 # Catch anyother error and exit with result data
                 except Exception as axc:
                     logger.warning(
-                        f"Exception occured for shutdown -> {self._in_shutdown}"
+                        f"Subscription driver Exception occured for shutdown -> {self._in_shutdown} {axc.args}"
                     )
                     return SuiRpcResult(
                         False, f"Exception on {axc}", result_data
@@ -188,7 +191,7 @@ class SuiClient(Provider):
                         event_counter += 1
                 else:
                     logger.warning(
-                        "Handler rquested exit from subscription events."
+                        "Subscription driver Handler rquested exit from subscription events."
                     )
         except asyncio.CancelledError:
             if self._in_shutdown:
@@ -206,6 +209,10 @@ class SuiClient(Provider):
     @versionchanged(
         version="0.28.0", reason="Socket protocol drives SSL configuration."
     )
+    @versionchanged(
+        version="0.29.0",
+        reason="Refactored and handle connection close continuation option.",
+    )
     async def _subscription_listener(
         self,
         builder: Union[SubscribeEvent, SubscribeTransaction],
@@ -213,6 +220,7 @@ class SuiClient(Provider):
             Callable[[SubscribedEvent, int, int], Any],
             Callable[[SubscribedTransaction, int, int], Any],
         ],
+        continue_on_close: Optional[bool] = False,
     ) -> SuiRpcResult:
         """_subscription_listener Sets up websocket subscription and calls _subscription_drive.
 
@@ -223,16 +231,15 @@ class SuiClient(Provider):
         :return: Result of subscription event handling.
         :rtype: SuiRpcResult
         """
-        try:
-            if self.config.socket_url.startswith("wss:"):
-                logger.info("Connecting with SSLContext")
-                warnings.simplefilter("ignore")
-                async with ws_connect(
-                    self.config.socket_url,
-                    # ping_interval=None,
-                    extra_headers=self._ADDITIONL_HEADER,
-                    ssl=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
-                ) as websock:
+        if self.config.socket_url.startswith("wss:"):
+            logger.info("Subscription listener Connecting with SSLContext")
+            warnings.simplefilter("ignore")
+            async for websock in ws_connect(
+                self.config.socket_url,
+                extra_headers=self._ADDITIONL_HEADER,
+                ssl=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
+            ):
+                try:
                     res = await self._subscription_drive(
                         self._PAYLOAD_TEMPLATE.copy(),
                         builder,
@@ -240,16 +247,34 @@ class SuiClient(Provider):
                         handler,
                     )
                     logger.info(
-                        f"Listener returning in shutdown: {self._in_shutdown}"
+                        f"Subscription listener returning in shutdown: {self._in_shutdown}"
                     )
                     await websock.close()
                     return res
-            else:
-                logger.info("Connecting without SSLContext")
-                async with ws_connect(
-                    self.config.socket_url,
-                    extra_headers=self._ADDITIONL_HEADER,
-                ) as websock:
+                except (ConnectionClosed, ConnectionClosedError) as ws_cc:
+                    ws_e_name = type(ws_cc).__name__
+                    if continue_on_close and not self._in_shutdown:
+                        logger.warning(
+                            f"Subscription listener {ws_e_name}... reconnecting"
+                        )
+                        continue
+                    else:
+                        logger.error(
+                            f"Subscription listener {ws_e_name} occured for shutdown -> {self._in_shutdown} {ws_cc.args}"
+                        )
+                        return SuiRpcResult(False, "ConnectionClosed", ws_cc)
+                except Exception as exc:
+                    e_name = type(exc).__name__
+                    logger.error(
+                        f"Subscription listener {e_name} occured in shutdown -> {self._in_shutdown} {exc.args}"
+                    )
+                    return SuiRpcResult(False, e_name, exc)
+        else:
+            logger.info("Subscription listener Connecting without SSLContext")
+            async for websock in ws_connect(
+                self.config.socket_url, extra_headers=self._ADDITIONL_HEADER
+            ):
+                try:
                     res = await self._subscription_drive(
                         self._PAYLOAD_TEMPLATE.copy(),
                         builder,
@@ -257,28 +282,34 @@ class SuiClient(Provider):
                         handler,
                     )
                     logger.info(
-                        f"Listener returning in shutdown: {self._in_shutdown}"
+                        f"Subscription listener returning in shutdown: {self._in_shutdown}"
                     )
                     await websock.close()
                     return res
-
-        except AttributeError as axc:
-            logger.error(
-                f"AttributeError occured for shutdown -> {self._in_shutdown}"
-            )
-            return SuiRpcResult(False, "Attribute Error", axc)
-        except Exception as axc:
-            logger.error(
-                f"Exception occured for shutdown -> {self._in_shutdown}"
-            )
-            logger.error(f"Exception  -> {axc}")
-            return SuiRpcResult(False, "Exception", axc)
+                except (ConnectionClosed, ConnectionClosedError) as ws_cc:
+                    if continue_on_close and not self._in_shutdown:
+                        logger.warning(
+                            "Subscription listener ConnectionClosed... reconnecting"
+                        )
+                        continue
+                    else:
+                        logger.error(
+                            f"Subscription listener ConnectionClosed occured for shutdown -> {self._in_shutdown} {ws_cc.args}"
+                        )
+                        return SuiRpcResult(False, "ConnectionClosed", ws_cc)
+                except Exception as exc:
+                    e_name = type(exc).__name__
+                    logger.error(
+                        f"Subscription listener {e_name} occured in shutdown -> {self._in_shutdown} {exc.args}"
+                    )
+                    return SuiRpcResult(False, e_name, exc)
 
     async def new_event_subscription(
         self,
         sbuilder: SubscribeEvent,
         handler: Callable[[SubscribedEvent, int, int], Any],
         task_name: str = None,
+        continue_on_close: Optional[bool] = False,
     ) -> SuiRpcResult:
         """new_event_subscription Initiate and run a move event subscription feed.
 
@@ -295,7 +326,9 @@ class SuiClient(Provider):
         async with self._ACCESS_LOCK:
             if not self._in_shutdown:
                 new_task: asyncio.Task = asyncio.create_task(
-                    self._subscription_listener(sbuilder, handler),
+                    self._subscription_listener(
+                        sbuilder, handler, continue_on_close
+                    ),
                     name=task_name,
                 )
                 _task_name = new_task.get_name()
@@ -315,6 +348,7 @@ class SuiClient(Provider):
         sbuilder: SubscribeTransaction,
         handler: Callable[[SubscribedTransaction, int, int], Any],
         task_name: str = None,
+        continue_on_close: Optional[bool] = False,
     ) -> SuiRpcResult:
         """new_event_subscription Initiate and run a move event subscription feed.
 
@@ -331,7 +365,9 @@ class SuiClient(Provider):
         async with self._ACCESS_LOCK:
             if not self._in_shutdown:
                 new_task: asyncio.Task = asyncio.create_task(
-                    self._subscription_listener(sbuilder, handler),
+                    self._subscription_listener(
+                        sbuilder, handler, continue_on_close
+                    ),
                     name=task_name,
                 )
                 _task_name = new_task.get_name()

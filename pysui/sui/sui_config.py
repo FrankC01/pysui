@@ -22,7 +22,7 @@ from pathlib import Path
 import json
 from typing import Optional
 import yaml
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
     EMPEHMERAL_PATH,
@@ -88,8 +88,13 @@ def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
+    @versionchanged(version="0.29.0", reason="Now accepts ws url.")
     def _initiate(
-        self, active_address: str, rpc_url: str, environment: str
+        self,
+        active_address: str,
+        rpc_url: str,
+        socket_url: str,
+        environment: str,
     ) -> None:
         """."""
         self._active_address = SuiAddress(active_address)
@@ -99,17 +104,27 @@ class SuiConfig(ClientConfiguration):
         match self._current_env:
             case "devnet":
                 self._faucet_url = DEVNET_FAUCET_URL
-                self._socket_url = DEVNET_SOCKET_URL
+                self._socket_url = (
+                    socket_url if socket_url else DEVNET_SOCKET_URL
+                )
             case "testnet":
                 self._faucet_url = TESTNET_FAUCET_URL
-                self._socket_url = TESTNET_SOCKET_URL
+                self._socket_url = (
+                    socket_url if socket_url else TESTNET_SOCKET_URL
+                )
             case "localnet":
                 self._faucet_url = LOCALNET_FAUCET_URL
-                self._socket_url = LOCALNET_SOCKET_URL
+                self._socket_url = (
+                    socket_url if socket_url else LOCALNET_SOCKET_URL
+                )
                 self._local_running = True
             case "mainnet":
                 self._faucet_url = None
-                self._socket_url = MAINNET_SOCKET_URL
+                self._socket_url = (
+                    socket_url if socket_url else MAINNET_SOCKET_URL
+                )
+            case _:
+                self._socket_url = socket_url
         (
             self._keypairs,
             self._addresses,
@@ -216,6 +231,7 @@ class SuiConfig(ClientConfiguration):
                 )
 
     @classmethod
+    @deprecated(version="0.29.0", reason="Use _new_parse_config")
     def _parse_config(
         cls, fpath: Path, config_file: TextIOWrapper
     ) -> tuple[str, str, str, str, str]:
@@ -260,7 +276,8 @@ class SuiConfig(ClientConfiguration):
         )
 
     @classmethod
-    def _new_parse_config(cls, sui_config: str) -> tuple[str, str, str]:
+    @versionchanged(version="0.29.0", reason="Now returns ws url.")
+    def _new_parse_config(cls, sui_config: str) -> tuple[str, str, str, str]:
         """New Config Parser."""
         active_address = (
             sui_config["active_address"]
@@ -279,14 +296,17 @@ class SuiConfig(ClientConfiguration):
         if not active_address or not keystore_file or not active_env:
             raise SuiConfigFileError("Not a valid SUI configuration file.")
         current_url = None
+        socket_url = None
         if "envs" in sui_config:
             for envmap in sui_config["envs"]:
                 if active_env == envmap["alias"]:
                     current_url = envmap["rpc"]
+                    if "ws" in envmap:
+                        socket_url = envmap["ws"]
                     break
         else:
             raise SuiConfigFileError("'envs' not found in configuration file.")
-        return active_address, current_url, active_env
+        return active_address, current_url, socket_url, active_env
 
     @classmethod
     @versionadded(version="0.16.1", reason="More flexible configuration.")

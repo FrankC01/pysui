@@ -20,28 +20,29 @@ from json import JSONDecodeError
 import ssl
 import httpx
 from deprecated.sphinx import versionchanged, versionadded, deprecated
-from pysui.sui.sui_clients.common import (
-    _ClientMixin,
+from pysui import (
     PreExecutionResult,
     SuiRpcResult,
     handle_result,
+    ObjectID,
+    SuiAddress,
+    SuiConfig,
 )
+from pysui.sui.sui_clients.common import _ClientMixin
+
 from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
 from pysui.sui.sui_types.scalars import (
-    ObjectID,
     SuiInteger,
     SuiSignature,
     SuiTxBytes,
     SuiString,
 )
-from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_txresults.single_tx import (
     FaucetGasRequest,
     ObjectReadPage,
     SuiCoinObjects,
 )
-from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_builders.base_builder import SuiBaseBuilder, SuiRequestType
 from pysui.sui.sui_builders.get_builders import (
     GetCoinTypeBalance,
@@ -321,7 +322,7 @@ class SuiClient(_ClientMixin):
         if result.is_ok():
             limit: int = result.result_data.coin_object_count
             builder = GetCoins(owner=address, coin_type=coin_type)
-            if limit > self._RPC_GET_LIMITS and fetch_all:
+            if limit > self.max_gets and fetch_all:
                 accumer: list = []
                 gasses = handle_result(self.execute(builder))
                 accumer.extend(gasses.data)
@@ -512,9 +513,9 @@ class SuiClient(_ClientMixin):
         # Revert to new multiOp
         builder = GetMultipleObjects(object_ids=[])
         # Handle large list
-        if len(identifiers) > self._RPC_GET_LIMITS:
+        if len(identifiers) > self.max_gets:
             accum: list = []
-            for chunk in list(partition(identifiers, self._RPC_GET_LIMITS)):
+            for chunk in list(partition(identifiers, self.max_gets)):
                 builder.object_ids = chunk
                 accum.extend(handle_result(self.execute(builder)))
             result = SuiRpcResult(True, None, accum)

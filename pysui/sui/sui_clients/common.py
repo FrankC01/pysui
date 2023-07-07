@@ -384,10 +384,89 @@ class _ClientMixin(Provider):
             request_type=self.request_type,
         )
 
+    # Protocol properties
     @versionadded(
         version="0.28.0", reason="Connection specific ProtcolConfig."
     )
     @property
     def protocol(self) -> ProtocolConfig:
-        """Return the protocol config in place for the connection."""
+        """Return the raw protocol config in place for the connection."""
         return self._protocol
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_gets(self) -> int:
+        """Return maximum getXXX values (either cursored types or multiget types)."""
+        return self._RPC_GET_LIMITS
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_arguments(self) -> int:
+        """Return maximum transaction arguments."""
+        return int(self._protocol.attributes["max_arguments"]["u32"])
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_input_objects(self) -> int:
+        """Return maximum transaction builder inputs."""
+        return int(self._protocol.attributes["max_input_objects"]["u64"])
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_num_transferred_move_object_ids(self) -> int:
+        """Return maximum transaction transfer objects."""
+        return int(
+            self._protocol.attributes["max_num_transferred_move_object_ids"][
+                "u64"
+            ]
+        )
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_programmable_tx_commands(self) -> int:
+        """Return maximum transaction commands."""
+        return int(
+            self._protocol.attributes["max_programmable_tx_commands"]["u32"]
+        )
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_pure_argument_size(self) -> int:
+        """Return maximum transaction commands."""
+        return int(self._protocol.attributes["max_pure_argument_size"]["u32"])
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_tx_size_bytes(self) -> int:
+        """Return maximum transaction commands."""
+        return int(self._protocol.attributes["max_tx_size_bytes"]["u64"])
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_type_argument_depth(self) -> int:
+        """Return maximum transaction commands."""
+        return int(self._protocol.attributes["max_type_argument_depth"]["u32"])
+
+    @versionadded(
+        version="0.29.0", reason="Added constraint for RPC sfetches."
+    )
+    @property
+    def max_type_arguments(self) -> int:
+        """Return maximum transaction commands."""
+        return int(self._protocol.attributes["max_type_arguments"]["u32"])
