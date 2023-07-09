@@ -27,8 +27,8 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
+from pysui import SuiConfig
 from pysui.sui.sui_clients.subscribe import SuiClient as subscriber
-from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_txresults.complex_tx import (
     SubscribedEvent,
     SubscribedEventParms,
@@ -39,7 +39,9 @@ from pysui.sui.sui_builders.subscription_builders import (
 )
 
 
-def test_event_handler(indata: SubscribedEvent, subscription_id: int, event_counter: int) -> Any:
+def test_event_handler(
+    indata: SubscribedEvent, subscription_id: int, event_counter: int
+) -> Any:
     """Handler captures the move event type for each received."""
     event_parms: SubscribedEventParms = indata.params
     result_class: Event = event_parms.result
@@ -56,7 +58,9 @@ async def main_run(sub_manager: subscriber):
     subscribe_event_for = SubscribeEvent()
     # Start listening
     print("Start event type listener")
-    thing = await sub_manager.new_event_subscription(subscribe_event_for, test_event_handler, "test_event_handler")
+    thing = await sub_manager.new_event_subscription(
+        subscribe_event_for, test_event_handler, "test_event_handler"
+    )
     if thing.is_ok():
         print("Sleeping for 10 seconds")
         await asyncio.sleep(10.00)
@@ -68,8 +72,12 @@ async def main_run(sub_manager: subscriber):
                 match event.result_string:
                     case "Cancelled" | None:
                         res_finish = event.result_string or "Normal Exit"
-                        print(f"    {event.result_data.name} task state: {res_finish}")
-                        print(f"    Processed events: {len(event.result_data.collected)}")
+                        print(
+                            f"    {event.result_data.name} task state: {res_finish}"
+                        )
+                        print(
+                            f"    Processed events: {len(event.result_data.collected)}"
+                        )
                     case "General Exception":
                         print(f"Exception {event}")
                     case _:

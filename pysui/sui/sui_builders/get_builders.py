@@ -16,9 +16,18 @@
 
 from typing import Final, Optional
 from deprecated.sphinx import versionadded, versionchanged
-from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder, sui_builder
+from pysui.sui.sui_builders.base_builder import (
+    _NativeTransactionBuilder,
+    sui_builder,
+)
 from pysui.sui.sui_types.event_filter import _EventFilterType, AllFilter
-from pysui.sui.sui_types.scalars import SuiNullType, SuiString, SuiInteger, ObjectID, SuiBoolean
+from pysui.sui.sui_types.scalars import (
+    SuiNullType,
+    SuiString,
+    SuiInteger,
+    ObjectID,
+    SuiBoolean,
+)
 from pysui.sui.sui_types.collections import SuiArray, SuiMap, EventID
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_txresults.single_tx import (
@@ -53,7 +62,10 @@ from pysui.sui.sui_txresults.package_meta import (
     SuiMoveStruct,
     SuiMoveFunctionArgumentTypes,
 )
-from pysui.sui.sui_types.transaction_filter import DEFAULT_GET_TX_OPTIONS, _TransactionFilterType
+from pysui.sui.sui_types.transaction_filter import (
+    DEFAULT_GET_TX_OPTIONS,
+    _TransactionFilterType,
+)
 import pysui.sui.sui_utils as sutils
 
 
@@ -61,13 +73,19 @@ class GetCoinMetaData(_NativeTransactionBuilder):
     """GetCoinMetaData returns meta data for a specific `coin_type`."""
 
     @sui_builder()
-    def __init__(self, *, coin_type: Optional[SuiString] = "0x2::sui::SUI") -> None:
+    def __init__(
+        self, *, coin_type: Optional[SuiString] = "0x2::sui::SUI"
+    ) -> None:
         """__init__ Initialize builder.
 
         :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
         :type coin_type: SuiString, optional
         """
-        super().__init__("suix_getCoinMetadata", handler_cls=SuiCoinMetadata, handler_func="from_dict")
+        super().__init__(
+            "suix_getCoinMetadata",
+            handler_cls=SuiCoinMetadata,
+            handler_func="from_dict",
+        )
 
 
 class GetAllCoinBalances(_NativeTransactionBuilder):
@@ -80,7 +98,11 @@ class GetAllCoinBalances(_NativeTransactionBuilder):
         :param owner: the owner's Sui address
         :type owner: SuiAddress
         """
-        super().__init__("suix_getAllBalances", handler_cls=CoinBalances, handler_func="ingest_data")
+        super().__init__(
+            "suix_getAllBalances",
+            handler_cls=CoinBalances,
+            handler_func="ingest_data",
+        )
 
 
 class GetAllCoins(_NativeTransactionBuilder):
@@ -103,14 +125,23 @@ class GetAllCoins(_NativeTransactionBuilder):
         :param limit: Optional SuiInteger maximum number of items per page, defaults to None
         :type limit: SuiInteger, optional
         """
-        super().__init__("suix_getAllCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
+        super().__init__(
+            "suix_getAllCoins",
+            handler_cls=SuiCoinObjects,
+            handler_func="from_dict",
+        )
 
 
 class GetCoinTypeBalance(_NativeTransactionBuilder):
     """GetCoinTypeBalance Return the total coin balance for a coin type."""
 
     @sui_builder()
-    def __init__(self, *, owner: SuiAddress, coin_type: Optional[SuiString] = "0x2::sui::SUI"):
+    def __init__(
+        self,
+        *,
+        owner: SuiAddress,
+        coin_type: Optional[SuiString] = "0x2::sui::SUI",
+    ):
         """__init__ Initialize builder.
 
         :param owner: The owner's Sui address
@@ -118,7 +149,11 @@ class GetCoinTypeBalance(_NativeTransactionBuilder):
         :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
         :type coin_type: SuiString, optional
         """
-        super().__init__("suix_getBalance", handler_cls=SuiCoinBalance, handler_func="from_dict")
+        super().__init__(
+            "suix_getBalance",
+            handler_cls=SuiCoinBalance,
+            handler_func="from_dict",
+        )
 
 
 class GetCoins(_NativeTransactionBuilder):
@@ -144,7 +179,11 @@ class GetCoins(_NativeTransactionBuilder):
         :param limit: maximum number of items per page, defaults to None
         :type limit: SuiInteger, optional
         """
-        super().__init__("suix_getCoins", handler_cls=SuiCoinObjects, handler_func="from_dict")
+        super().__init__(
+            "suix_getCoins",
+            handler_cls=SuiCoinObjects,
+            handler_func="from_dict",
+        )
 
 
 class GetLatestSuiSystemState(_NativeTransactionBuilder):
@@ -153,7 +192,11 @@ class GetLatestSuiSystemState(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self) -> None:
         """__init__ Initializes builder."""
-        super().__init__("suix_getLatestSuiSystemState", handler_cls=SuiLatestSystemState, handler_func="from_dict")
+        super().__init__(
+            "suix_getLatestSuiSystemState",
+            handler_cls=SuiLatestSystemState,
+            handler_func="from_dict",
+        )
 
 
 class GetTotalSupply(_NativeTransactionBuilder):
@@ -185,7 +228,11 @@ class GetDynamicFieldObject(_NativeTransactionBuilder):
         :param name: The Name of the dynamic field
         :type field_name: SuiString
         """
-        super().__init__("suix_getDynamicFieldObject", handler_cls=ObjectRead, handler_func="factory")
+        super().__init__(
+            "suix_getDynamicFieldObject",
+            handler_cls=ObjectRead,
+            handler_func="factory",
+        )
 
 
 class GetDynamicFields(_NativeTransactionBuilder):
@@ -193,7 +240,10 @@ class GetDynamicFields(_NativeTransactionBuilder):
 
     @sui_builder()
     def __init__(
-        self, parent_object_id: ObjectID, cursor: Optional[ObjectID] = None, limit: Optional[SuiInteger] = None
+        self,
+        parent_object_id: ObjectID,
+        cursor: Optional[ObjectID] = None,
+        limit: Optional[SuiInteger] = None,
     ) -> None:
         """__init__ Builder initializer.
 
@@ -204,7 +254,11 @@ class GetDynamicFields(_NativeTransactionBuilder):
         :param limit: Maximum item returned per page, default to [QUERY_MAX_RESULT_LIMIT] if not specified, defaults to None
         :type cursor: SuiInteger, optional
         """
-        super().__init__("suix_getDynamicFields", handler_cls=DynamicFields, handler_func="from_dict")
+        super().__init__(
+            "suix_getDynamicFields",
+            handler_cls=DynamicFields,
+            handler_func="from_dict",
+        )
 
 
 class GetObject(_NativeTransactionBuilder):
@@ -231,15 +285,21 @@ class GetObject(_NativeTransactionBuilder):
     }
 
     @sui_builder()
-    def __init__(self, *, object_id: ObjectID, options: Optional[SuiMap] = None) -> None:
+    def __init__(
+        self, *, object_id: ObjectID, options: Optional[SuiMap] = None
+    ) -> None:
         """__init__ Initializes builder.
 
         :param object_id: Object identifier to fetch from chain
         :type object_id: ObjectID
         """
-        super().__init__("sui_getObject", handler_cls=ObjectRead, handler_func="factory")
+        super().__init__(
+            "sui_getObject", handler_cls=ObjectRead, handler_func="factory"
+        )
         if options is None or isinstance(options, SuiNullType):
-            self.options = sutils.as_sui_map(self._DEFAULT_GET_OBJECT_OPTIONS.copy())
+            self.options = sutils.as_sui_map(
+                self._DEFAULT_GET_OBJECT_OPTIONS.copy()
+            )
         else:
             self.options = sutils.as_sui_map(options)
 
@@ -266,15 +326,26 @@ class GetMultipleObjects(_NativeTransactionBuilder):
     """GetMultipleObjects When executed, returns the objects detailed information for a list of object identifiers."""
 
     @sui_builder()
-    def __init__(self, *, object_ids: SuiArray[ObjectID], options: Optional[SuiMap] = None) -> None:
+    def __init__(
+        self,
+        *,
+        object_ids: SuiArray[ObjectID],
+        options: Optional[SuiMap] = None,
+    ) -> None:
         """__init__ Initializes builder.
 
         :param object_ids: SuiArray[ObjectID] of object identifiers to fetch from chain
         :type object_ids: SuiArray
         """
-        super().__init__("sui_multiGetObjects", handler_cls=ObjectRead, handler_func="factory")
+        super().__init__(
+            "sui_multiGetObjects",
+            handler_cls=ObjectRead,
+            handler_func="factory",
+        )
         if options is None or isinstance(options, SuiNullType):
-            self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
+            self.options = sutils.as_sui_map(
+                GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy()
+            )
         else:
             self.options = sutils.as_sui_map(options)
 
@@ -320,7 +391,10 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
         "showStorageRebate": True,
     }
 
-    _DEFAULT_GET_OWNED_OBJECT_QUERY: Final[dict] = {"filter": None, "options": _DEFAULT_GET_OWNED_OBJECT_OPTIONS}
+    _DEFAULT_GET_OWNED_OBJECT_QUERY: Final[dict] = {
+        "filter": None,
+        "options": _DEFAULT_GET_OWNED_OBJECT_OPTIONS,
+    }
 
     @sui_builder()
     def __init__(
@@ -335,10 +409,16 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
         :param address: The owner address to fetch list of ObjectInfo results
         :type address: SuiAddress
         """
-        super().__init__("suix_getOwnedObjects", handler_cls=ObjectReadPage, handler_func="from_dict")
+        super().__init__(
+            "suix_getOwnedObjects",
+            handler_cls=ObjectReadPage,
+            handler_func="from_dict",
+        )
         # super().__init__("sui_getOwnedObjects", handler_cls=ObjectInfo, handler_func="factory")
         if query is None or isinstance(query, SuiNullType):
-            self.query = sutils.as_sui_map(self._DEFAULT_GET_OWNED_OBJECT_QUERY.copy())
+            self.query = sutils.as_sui_map(
+                self._DEFAULT_GET_OWNED_OBJECT_QUERY.copy()
+            )
         else:
             self.query = sutils.as_sui_map(query)
 
@@ -352,7 +432,12 @@ class GetPastObject(_NativeTransactionBuilder):
     """
 
     @sui_builder()
-    def __init__(self, object_id: ObjectID, version: SuiInteger, options: Optional[SuiMap] = None) -> None:
+    def __init__(
+        self,
+        object_id: ObjectID,
+        version: SuiInteger,
+        options: Optional[SuiMap] = None,
+    ) -> None:
         """__init__ Initialize builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
@@ -360,9 +445,15 @@ class GetPastObject(_NativeTransactionBuilder):
         :param version: Specific version sequence number being requested, defaults to None
         :type version: SuiInteger, optional
         """
-        super().__init__("sui_tryGetPastObject", handler_cls=ObjectRead, handler_func="factory")
+        super().__init__(
+            "sui_tryGetPastObject",
+            handler_cls=ObjectRead,
+            handler_func="factory",
+        )
         if options is None or isinstance(options, SuiNullType):
-            self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
+            self.options = sutils.as_sui_map(
+                GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy()
+            )
         else:
             self.options = sutils.as_sui_map(options)
 
@@ -376,7 +467,9 @@ class GetMultiplePastObjects(_NativeTransactionBuilder):
     """
 
     @sui_builder()
-    def __init__(self, past_objects: SuiArray[SuiMap], options: Optional[SuiMap] = None) -> None:
+    def __init__(
+        self, past_objects: SuiArray[SuiMap], options: Optional[SuiMap] = None
+    ) -> None:
         """__init__ Initialize builder.
 
         :param sui_object: Object identifier to fetch from chain, defaults to None
@@ -384,9 +477,15 @@ class GetMultiplePastObjects(_NativeTransactionBuilder):
         :param version: Specific version sequence number being requested, defaults to None
         :type version: SuiInteger, optional
         """
-        super().__init__("sui_tryMultiGetPastObjects", handler_cls=ObjectRead, handler_func="factory")
+        super().__init__(
+            "sui_tryMultiGetPastObjects",
+            handler_cls=ObjectRead,
+            handler_func="factory",
+        )
         if options is None or isinstance(options, SuiNullType):
-            self.options = sutils.as_sui_map(GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy())
+            self.options = sutils.as_sui_map(
+                GetObject._DEFAULT_GET_OBJECT_OPTIONS.copy()
+            )
         else:
             self.options = sutils.as_sui_map(options)
 
@@ -401,7 +500,11 @@ class GetPackage(_NativeTransactionBuilder):
         :param package: ObjectID of package to query, defaults to None
         :type package: ObjectID, optional
         """
-        super().__init__("sui_getNormalizedMoveModulesByPackage", handler_cls=SuiMovePackage, handler_func="factory")
+        super().__init__(
+            "sui_getNormalizedMoveModulesByPackage",
+            handler_cls=SuiMovePackage,
+            handler_func="factory",
+        )
 
 
 class GetModule(_NativeTransactionBuilder):
@@ -419,7 +522,11 @@ class GetModule(_NativeTransactionBuilder):
         :param module_name: Name of module from package to fetch
         :type module_name: SuiString
         """
-        super().__init__("sui_getNormalizedMoveModule", handler_cls=SuiMoveModule, handler_func="factory")
+        super().__init__(
+            "sui_getNormalizedMoveModule",
+            handler_cls=SuiMoveModule,
+            handler_func="factory",
+        )
 
 
 class GetFunction(_NativeTransactionBuilder):
@@ -429,7 +536,13 @@ class GetFunction(_NativeTransactionBuilder):
     """
 
     @sui_builder()
-    def __init__(self, *, package: ObjectID, module_name: SuiString, function_name: SuiString) -> None:
+    def __init__(
+        self,
+        *,
+        package: ObjectID,
+        module_name: SuiString,
+        function_name: SuiString,
+    ) -> None:
         """__init__ Initialize GetModule object.
 
         :param package: ObjectID of package to query
@@ -439,14 +552,20 @@ class GetFunction(_NativeTransactionBuilder):
         :param function_name: Name of module from package to fetch
         :type function_name: SuiString
         """
-        super().__init__("sui_getNormalizedMoveFunction", handler_cls=SuiMoveFunction, handler_func="factory")
+        super().__init__(
+            "sui_getNormalizedMoveFunction",
+            handler_cls=SuiMoveFunction,
+            handler_func="factory",
+        )
 
 
 class GetFunctionArgs(_NativeTransactionBuilder):
     """GetFunction When executed, returns the argument types of a Move function."""
 
     @sui_builder()
-    def __init__(self, *, package: ObjectID, module: SuiString, function: SuiString) -> None:
+    def __init__(
+        self, *, package: ObjectID, module: SuiString, function: SuiString
+    ) -> None:
         """__init__ Initialize GetModule object.
 
         :param package: ObjectID of package to query
@@ -457,7 +576,9 @@ class GetFunctionArgs(_NativeTransactionBuilder):
         :type function: SuiString
         """
         super().__init__(
-            "sui_getMoveFunctionArgTypes", handler_cls=SuiMoveFunctionArgumentTypes, handler_func="factory"
+            "sui_getMoveFunctionArgTypes",
+            handler_cls=SuiMoveFunctionArgumentTypes,
+            handler_func="factory",
         )
 
 
@@ -465,7 +586,13 @@ class GetStructure(_NativeTransactionBuilder):
     """GetStructure When executed, returns a module's structure representation."""
 
     @sui_builder()
-    def __init__(self, *, package: ObjectID, module_name: SuiString, structure_name: SuiString) -> None:
+    def __init__(
+        self,
+        *,
+        package: ObjectID,
+        module_name: SuiString,
+        structure_name: SuiString,
+    ) -> None:
         """__init__ Initialize GetModule object.
 
         :param package: ObjectID of package to query
@@ -475,7 +602,11 @@ class GetStructure(_NativeTransactionBuilder):
         :param structure_name: Name of structure from structure to fetch
         :type structure_name: SuiString
         """
-        super().__init__("sui_getNormalizedMoveStruct", handler_cls=SuiMoveStruct, handler_func="factory")
+        super().__init__(
+            "sui_getNormalizedMoveStruct",
+            handler_cls=SuiMoveStruct,
+            handler_func="factory",
+        )
 
 
 class GetRpcAPI(_NativeTransactionBuilder):
@@ -497,7 +628,11 @@ class GetCommittee(_NativeTransactionBuilder):
         :param epoch: Epoch to return state of committee from, defaults to None
         :type epoch: SuiString, optional
         """
-        super().__init__("suix_getCommitteeInfo", handler_cls=CommitteeInfo, handler_func="factory")
+        super().__init__(
+            "suix_getCommitteeInfo",
+            handler_cls=CommitteeInfo,
+            handler_func="factory",
+        )
 
 
 # Event Query
@@ -517,13 +652,17 @@ class QueryEvents(_NativeTransactionBuilder):
     ) -> None:
         """Initialize builder."""
         super().__init__(
-            "suix_queryEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict"
+            "suix_queryEvents",
+            handler_cls=EventQueryEnvelope,
+            handler_func="from_dict",
         )  # , handler_cls=EventQueryEnvelope, handler_func="from_dict")
         if query:
             if isinstance(query, _EventFilterType):
                 self.query = query
             else:
-                raise AttributeError(f"Invalid argument {query}. Expected subclass of _EventFilterType")
+                raise AttributeError(
+                    f"Invalid argument {query}. Expected subclass of _EventFilterType"
+                )
         else:
             self.query = AllFilter(filters=[])
 
@@ -541,12 +680,18 @@ class QueryTransactions(_NativeTransactionBuilder):
         descending_order: Optional[SuiBoolean] = None,
     ) -> None:
         """."""
-        super().__init__("suix_queryTransactionBlocks", handler_cls=TransactionQueryEnvelope, handler_func="from_dict")
+        super().__init__(
+            "suix_queryTransactionBlocks",
+            handler_cls=TransactionQueryEnvelope,
+            handler_func="from_dict",
+        )
         if query:
             if isinstance(query, _TransactionFilterType):
                 self.query = query
             else:
-                raise AttributeError(f"Invalid argument {query}. Expected subclass of _TransactionFilterType")
+                raise AttributeError(
+                    f"Invalid argument {query}. Expected subclass of _TransactionFilterType"
+                )
         else:
             raise ValueError("Expected query for QueryTransaciton builder.")
 
@@ -561,7 +706,9 @@ class GetEvents(_NativeTransactionBuilder):
         transaction_digest: SuiString,
     ) -> None:
         """Initialize builder."""
-        super().__init__("sui_getEvents", handler_cls=EventBlock, handler_func="factory")
+        super().__init__(
+            "sui_getEvents", handler_cls=EventBlock, handler_func="factory"
+        )
         # super().__init__("sui_getEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
 
 
@@ -578,9 +725,15 @@ class GetTx(_NativeTransactionBuilder):
     """GetTx When executed, return the transaction response object."""
 
     @sui_builder()
-    def __init__(self, *, digest: SuiString, options: Optional[SuiMap] = None) -> None:
+    def __init__(
+        self, *, digest: SuiString, options: Optional[SuiMap] = None
+    ) -> None:
         """Initialize builder."""
-        super().__init__("sui_getTransactionBlock", handler_cls=TxResponse, handler_func="from_dict")
+        super().__init__(
+            "sui_getTransactionBlock",
+            handler_cls=TxResponse,
+            handler_func="from_dict",
+        )
         if options is None or isinstance(options, SuiNullType):
             self.options = sutils.as_sui_map(DEFAULT_GET_TX_OPTIONS.copy())
         else:
@@ -600,9 +753,15 @@ class GetMultipleTx(_NativeTransactionBuilder):
     """."""
 
     @sui_builder()
-    def __init__(self, *, digests: SuiArray, options: Optional[SuiMap] = None) -> None:
+    def __init__(
+        self, *, digests: SuiArray, options: Optional[SuiMap] = None
+    ) -> None:
         """Initialize builder."""
-        super().__init__("sui_multiGetTransactionBlocks", handler_cls=TxResponseArray, handler_func="factory")
+        super().__init__(
+            "sui_multiGetTransactionBlocks",
+            handler_cls=TxResponseArray,
+            handler_func="factory",
+        )
         if options is None or isinstance(options, SuiNullType):
             self.options = sutils.as_sui_map(DEFAULT_GET_TX_OPTIONS.copy())
         else:
@@ -628,7 +787,11 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
         :param owner: SuiAddress of staked coin owner
         :type owner: SuiAddress
         """
-        super().__init__("suix_getStakes", handler_cls=DelegatedStakes, handler_func="factory")
+        super().__init__(
+            "suix_getStakes",
+            handler_cls=DelegatedStakes,
+            handler_func="factory",
+        )
 
 
 class GetStakesById(_NativeTransactionBuilder):
@@ -641,7 +804,11 @@ class GetStakesById(_NativeTransactionBuilder):
         :param staked_sui_ids: Array of delegated stake object ids.
         :type staked_sui_ids: SuiArray[ObjectID]
         """
-        super().__init__("suix_getStakesByIds", handler_cls=DelegatedStakes, handler_func="factory")
+        super().__init__(
+            "suix_getStakesByIds",
+            handler_cls=DelegatedStakes,
+            handler_func="factory",
+        )
 
 
 class GetLatestCheckpointSequence(_NativeTransactionBuilder):
@@ -653,7 +820,9 @@ class GetLatestCheckpointSequence(_NativeTransactionBuilder):
         super().__init__("sui_getLatestCheckpointSequenceNumber")
 
 
-@versionchanged(version="0.24.0", reason="RPC expacts 'id' so correct during param fetch")
+@versionchanged(
+    version="0.24.0", reason="RPC expacts 'id' so correct during param fetch"
+)
 class GetCheckpointByDigest(_NativeTransactionBuilder):
     """GetCheckpointByDigest return a checkpoint for cp_id."""
 
@@ -664,7 +833,11 @@ class GetCheckpointByDigest(_NativeTransactionBuilder):
         :param cp_id: Checkpoint digest id
         :type cp_id: SuiString
         """
-        super().__init__("sui_getCheckpoint", handler_cls=Checkpoint, handler_func="from_dict")
+        super().__init__(
+            "sui_getCheckpoint",
+            handler_cls=Checkpoint,
+            handler_func="from_dict",
+        )
 
     @property
     def params(self) -> dict:
@@ -673,7 +846,9 @@ class GetCheckpointByDigest(_NativeTransactionBuilder):
         return {"id": res["cp_id"]}
 
 
-@versionchanged(version="0.24.0", reason="RPC expacts 'id' so correct during param fetch")
+@versionchanged(
+    version="0.24.0", reason="RPC expacts 'id' so correct during param fetch"
+)
 class GetCheckpointBySequence(_NativeTransactionBuilder):
     """GetCheckpoint return a checkpoint for cp_id."""
 
@@ -684,7 +859,11 @@ class GetCheckpointBySequence(_NativeTransactionBuilder):
         :param cp_seq: Checkpoint sequence number
         :type cp_seq: SuiString
         """
-        super().__init__("sui_getCheckpoint", handler_cls=Checkpoint, handler_func="from_dict")
+        super().__init__(
+            "sui_getCheckpoint",
+            handler_cls=Checkpoint,
+            handler_func="from_dict",
+        )
 
     @property
     def params(self) -> dict:
@@ -705,7 +884,11 @@ class GetCheckpoints(_NativeTransactionBuilder):
         descending_order: Optional[SuiBoolean] = False,
     ):
         """Builder initializer."""
-        super().__init__("sui_getCheckpoints", handler_cls=Checkpoints, handler_func="from_dict")
+        super().__init__(
+            "sui_getCheckpoints",
+            handler_cls=Checkpoints,
+            handler_func="from_dict",
+        )
 
 
 class GetReferenceGasPrice(_NativeTransactionBuilder):
@@ -732,9 +915,19 @@ class NameServiceNames(_NativeTransactionBuilder):
     """Return the resolved names given address, if multiple names are resolved, the first one is the primary name."""
 
     @sui_builder()
-    def __init__(self, *, address: SuiAddress, cursor: Optional[ObjectID] = None, limit: Optional[SuiInteger] = None):
+    def __init__(
+        self,
+        *,
+        address: SuiAddress,
+        cursor: Optional[ObjectID] = None,
+        limit: Optional[SuiInteger] = None,
+    ):
         """Builder initializer."""
-        super().__init__("suix_resolveNameServiceNames", handler_cls=NameServices, handler_func="from_dict")
+        super().__init__(
+            "suix_resolveNameServiceNames",
+            handler_cls=NameServices,
+            handler_func="from_dict",
+        )
 
 
 @versionadded(version="0.18.0", reason="New Sui RPC API method.")
@@ -744,7 +937,11 @@ class GetLoadedChildObjects(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self, *, digest: SuiString):
         """Builder initializer."""
-        super().__init__("sui_getLoadedChildObjects", handler_cls=LoadedChildObjectsResponse, handler_func="from_dict")
+        super().__init__(
+            "sui_getLoadedChildObjects",
+            handler_cls=LoadedChildObjectsResponse,
+            handler_func="from_dict",
+        )
 
 
 @versionadded(version="0.20.0", reason="New Sui RPC API method.")
@@ -754,10 +951,17 @@ class GetValidatorsApy(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self):
         """Builder initializer."""
-        super().__init__("suix_getValidatorsApy", handler_cls=ValidatorApys, handler_func="from_dict")
+        super().__init__(
+            "suix_getValidatorsApy",
+            handler_cls=ValidatorApys,
+            handler_func="from_dict",
+        )
 
 
 @versionadded(version="0.21.0", reason="New Sui (1.1.0) RPC API method.")
+@versionchanged(
+    version="0.30.0", reason="Generalizing Transaction constraints."
+)
 class GetProtocolConfig(_NativeTransactionBuilder):
     """Return the protocol config table for the given version number.
 
@@ -767,7 +971,11 @@ class GetProtocolConfig(_NativeTransactionBuilder):
     @sui_builder()
     def __init__(self, *, version: Optional[SuiString] = None):
         """Builder initializer."""
-        super().__init__("sui_getProtocolConfig", handler_cls=ProtocolConfig, handler_func="from_dict")
+        super().__init__(
+            "sui_getProtocolConfig",
+            handler_cls=ProtocolConfig,
+            handler_func="loader",
+        )
 
 
 @versionadded(version="0.23.0", reason="New Sui (1.2.0) RPC API method.")
