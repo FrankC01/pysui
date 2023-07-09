@@ -27,8 +27,8 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
+from pysui import SuiConfig
 from pysui.sui.sui_clients.subscribe import SuiClient as subscriber
-from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_txresults.complex_tx import (
     SubscribedTransaction,
     SubscribedEventParms,
@@ -41,7 +41,9 @@ from pysui.sui.sui_builders.subscription_builders import (
 )
 
 
-def test_txn_handler(indata: SubscribedTransaction, subscription_id: int, event_counter: int) -> Any:
+def test_txn_handler(
+    indata: SubscribedTransaction, subscription_id: int, event_counter: int
+) -> Any:
     """Handler captures the move event type for each received."""
     event_parms: SubscribedEventParms = indata.params
     result_class: Effects = event_parms.result
@@ -55,10 +57,14 @@ async def main_run(sub_manager: subscriber):
     # With Sui 0.28.0, the only events sent to listeners are those that are 'emitted' by
     # a module during some operations. The filters apply primarily to that context
     # This will get all transaction events
-    subscribe_event_for = SubscribeTransaction(txn_filter=FromAddressEvent(sub_manager.config.active_address))
+    subscribe_event_for = SubscribeTransaction(
+        txn_filter=FromAddressEvent(sub_manager.config.active_address)
+    )
     # Start listening
     print("Start event type listener")
-    thing = await sub_manager.new_event_subscription(subscribe_event_for, test_txn_handler, "test_txn_handler")
+    thing = await sub_manager.new_event_subscription(
+        subscribe_event_for, test_txn_handler, "test_txn_handler"
+    )
     if thing.is_ok():
         print("Sleeping for 60 seconds")
         await asyncio.sleep(60.00)
@@ -70,8 +76,12 @@ async def main_run(sub_manager: subscriber):
                 match event.result_string:
                     case "Cancelled" | None:
                         res_finish = event.result_string or "Normal Exit"
-                        print(f"    {event.result_data.name} task state: {res_finish}")
-                        print(f"    Processed events: {len(event.result_data.collected)}")
+                        print(
+                            f"    {event.result_data.name} task state: {res_finish}"
+                        )
+                        print(
+                            f"    Processed events: {len(event.result_data.collected)}"
+                        )
                     case "General Exception":
                         print(f"Exception {event}")
                     case _:

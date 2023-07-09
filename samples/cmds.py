@@ -16,7 +16,7 @@
 import argparse
 import sys
 from typing import Union
-from pysui import __version__
+from pysui import __version__, SyncClient, SuiRpcResult
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_types.event_filter import (
@@ -41,25 +41,23 @@ from pysui.sui.sui_excepts import (
     SuiPackageBuildFail,
     SuiMiisingModuleByteCode,
 )
-from pysui.sui.sui_clients.common import SuiRpcResult
-from pysui.sui.sui_clients.sync_client import SuiClient
 from pysui.sui.sui_txresults.single_tx import SuiCoinObjects
 
 
-def sdk_version(_client: SuiClient, _args: argparse.Namespace) -> None:
+def sdk_version(_client: SyncClient, _args: argparse.Namespace) -> None:
     """Dispay version(s)."""
     print(
         f"pysui SDK version: {__version__} SUI RPC API version {_client.rpc_version}"
     )
 
 
-def sui_active_address(client: SuiClient, _args: argparse.Namespace) -> None:
+def sui_active_address(client: SyncClient, _args: argparse.Namespace) -> None:
     """Print active address."""
     print()
     print(f"Active address = {client.config.active_address.identifier}")
 
 
-def sui_addresses(client: SuiClient, _args: argparse.Namespace) -> None:
+def sui_addresses(client: SyncClient, _args: argparse.Namespace) -> None:
     """Print all address."""
     print()
     print("Addresses")
@@ -71,7 +69,7 @@ def sui_addresses(client: SuiClient, _args: argparse.Namespace) -> None:
             print(addy)
 
 
-def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
+def sui_gas(client: SyncClient, args: argparse.Namespace) -> None:
     """Get gas for address."""
 
     def _detail_gas_objects(gas_objects: SuiCoinObjects) -> None:
@@ -104,7 +102,7 @@ def sui_gas(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {gas_result.result_string}")
 
 
-def sui_new_address(client: SuiClient, args: argparse.Namespace) -> None:
+def sui_new_address(client: SyncClient, args: argparse.Namespace) -> None:
     """Generate a new SUI address."""
     if args.ed25519:
         mnen, address = client.config.create_new_keypair_and_address(
@@ -124,7 +122,7 @@ def sui_new_address(client: SuiClient, args: argparse.Namespace) -> None:
     print(f"For new address {address}")
 
 
-def sui_package(client: SuiClient, args: argparse.Namespace) -> None:
+def sui_package(client: SyncClient, args: argparse.Namespace) -> None:
     """Get a package object."""
     result: SuiRpcResult = client.get_package(args.id)
     if result.is_ok():
@@ -134,7 +132,7 @@ def sui_package(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"{result.result_string}")
 
 
-def sui_object(client: SuiClient, args: argparse.Namespace) -> None:
+def sui_object(client: SyncClient, args: argparse.Namespace) -> None:
     """Show specific object."""
     # if args.version:
     #     sobject = client.execute(GetPastObject(args.id, args.version))
@@ -167,7 +165,7 @@ def _objects_header_print() -> None:
     print()
 
 
-def sui_objects(client: SuiClient, args: argparse.Namespace) -> None:
+def sui_objects(client: SyncClient, args: argparse.Namespace) -> None:
     """Show specific object."""
     result = client.get_objects(args.address)
     if result.is_ok():
@@ -183,7 +181,7 @@ def sui_objects(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"{result.result_string}")
 
 
-def sui_api(client: SuiClient, args: argparse.Namespace) -> None:
+def sui_api(client: SyncClient, args: argparse.Namespace) -> None:
     """Display information about Sui RPC API."""
     rpcapi = client.rpc_api
 
@@ -212,152 +210,152 @@ def sui_api(client: SuiClient, args: argparse.Namespace) -> None:
             print(api_name)
 
 
-def transfer_object(client: SuiClient, args: argparse.Namespace) -> None:
-    """transfer_object.
+# def transfer_object(client: SyncClient, args: argparse.Namespace) -> None:
+#     """transfer_object.
 
-    :param client: _description_
-    :type client: SuiClient
-    :param args: _description_
-    :type args: argparse.Namespace
-    """
-    args.signer = args.signer if args.signer else client.current_address
-    var_args = vars(args)
-    var_args.pop("version")
-    # print(f"transfer_object args {var_args}")
-    result = client.transfer_object_txn(**var_args)
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def transfer_sui(client: SuiClient, args: argparse.Namespace) -> None:
-    """Transfer gas object."""
-    args.signer = args.signer if args.signer else client.current_address
-    var_args = vars(args)
-    var_args.pop("version")
-    # print(f"transfer_sui args {var_args}")
-    result = client.transfer_sui_txn(**var_args)
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
+#     :param client: _description_
+#     :type client: SyncClient
+#     :param args: _description_
+#     :type args: argparse.Namespace
+#     """
+#     args.signer = args.signer if args.signer else client.current_address
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     # print(f"transfer_object args {var_args}")
+#     result = client.transfer_object_txn(**var_args)
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
 
 
-def merge_coin(client: SuiClient, args: argparse.Namespace) -> None:
-    """Merge two coins together."""
-    args.signer = args.signer if args.signer else client.current_address
-    # print(args)
-    var_args = vars(args)
-    var_args.pop("version")
-    result = client.merge_coin_txn(**var_args)
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
+# def transfer_sui(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Transfer gas object."""
+#     args.signer = args.signer if args.signer else client.current_address
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     # print(f"transfer_sui args {var_args}")
+#     result = client.transfer_sui_txn(**var_args)
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
 
 
-def split_coin(client: SuiClient, args: argparse.Namespace) -> None:
-    """Split coin into amounts."""
-    args.signer = args.signer if args.signer else client.current_address
-    # print(args)
-    var_args = vars(args)
-    var_args.pop("version")
-    result = client.split_coin_txn(**var_args)
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
+# def merge_coin(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Merge two coins together."""
+#     args.signer = args.signer if args.signer else client.current_address
+#     # print(args)
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     result = client.merge_coin_txn(**var_args)
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
 
 
-def split_coin_equally(client: SuiClient, args: argparse.Namespace) -> None:
-    """Split coin equally across counts."""
-    args.signer = args.signer if args.signer else client.current_address
-    # print(args)
-    var_args = vars(args)
-    var_args.pop("version")
-    result = client.split_coin_equally_txn(**var_args)
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
+# def split_coin(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Split coin into amounts."""
+#     args.signer = args.signer if args.signer else client.current_address
+#     # print(args)
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     result = client.split_coin_txn(**var_args)
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
 
 
-def sui_pay(client: SuiClient, args: argparse.Namespace) -> None:
-    """Payments for one or more recipients from one or more coins for one or more amounts."""
-    args.signer = args.signer if args.signer else client.current_address
-    var_args = vars(args)
-    var_args.pop("version")
-    result = client.pay_txn(**var_args)
-
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
-
-
-def sui_pay_sui(client: SuiClient, args: argparse.Namespace) -> None:
-    """Payments for one or more recipients from one or more coins for one or more amounts."""
-    args.signer = args.signer if args.signer else client.current_address
-    var_args = vars(args)
-    var_args.pop("version")
-    result = client.pay_sui_txn(**var_args)
-
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
+# def split_coin_equally(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Split coin equally across counts."""
+#     args.signer = args.signer if args.signer else client.current_address
+#     # print(args)
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     result = client.split_coin_equally_txn(**var_args)
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
 
 
-def sui_payall_sui(client: SuiClient, args: argparse.Namespace) -> None:
-    """Payment of all of a one whole SUI coin to a recipient."""
-    args.signer = args.signer if args.signer else client.current_address
-    var_args = vars(args)
-    var_args.pop("version")
-    result = client.pay_allsui_txn(**var_args)
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
+# def sui_pay(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Payments for one or more recipients from one or more coins for one or more amounts."""
+#     args.signer = args.signer if args.signer else client.current_address
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     result = client.pay_txn(**var_args)
+
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
 
 
-def move_call(client: SuiClient, args: argparse.Namespace) -> None:
-    """Invoke a Sui move smart contract function."""
-    args.signer = args.signer if args.signer else client.current_address
-    var_args = vars(args)
-    var_args.pop("version")
-    result = client.move_call_txn(**var_args)
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
-    else:
-        print(f"Error: {result.result_string}")
+# def sui_pay_sui(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Payments for one or more recipients from one or more coins for one or more amounts."""
+#     args.signer = args.signer if args.signer else client.current_address
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     result = client.pay_sui_txn(**var_args)
+
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
 
 
-def publish(client: SuiClient, args: argparse.Namespace) -> None:
-    """Publish a sui package."""
-    # print(args)
-    args.sender = args.sender if args.sender else client.config.active_address
-    try:
-        compiled_package = publish_build(args.compiled_modules)
-        # module_b64, dep_oids = publish_build(args.compiled_modules)
-        args.compiled_modules = compiled_package.compiled_modules
-        args.dependencies = compiled_package.dependencies
-        var_args = vars(args)
-        var_args.pop("version")
-        result = client.publish_package_txn(**var_args)
-        if result.is_ok():
-            print(result.result_data.to_json(indent=2))
-        else:
-            print(f"Error: {result.result_string}")
-    except (
-        SuiMiisingBuildFolder,
-        SuiPackageBuildFail,
-        SuiMiisingModuleByteCode,
-    ) as exc:
-        print(exc.args, file=sys.stderr)
+# def sui_payall_sui(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Payment of all of a one whole SUI coin to a recipient."""
+#     args.signer = args.signer if args.signer else client.current_address
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     result = client.pay_allsui_txn(**var_args)
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
 
 
-def committee(client: SuiClient, args: argparse.Namespace) -> None:
+# def move_call(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Invoke a Sui move smart contract function."""
+#     args.signer = args.signer if args.signer else client.current_address
+#     var_args = vars(args)
+#     var_args.pop("version")
+#     result = client.move_call_txn(**var_args)
+#     if result.is_ok():
+#         print(result.result_data.to_json(indent=2))
+#     else:
+#         print(f"Error: {result.result_string}")
+
+
+# def publish(client: SyncClient, args: argparse.Namespace) -> None:
+#     """Publish a sui package."""
+#     # print(args)
+#     args.sender = args.sender if args.sender else client.config.active_address
+#     try:
+#         compiled_package = publish_build(args.compiled_modules)
+#         # module_b64, dep_oids = publish_build(args.compiled_modules)
+#         args.compiled_modules = compiled_package.compiled_modules
+#         args.dependencies = compiled_package.dependencies
+#         var_args = vars(args)
+#         var_args.pop("version")
+#         result = client.publish_package_txn(**var_args)
+#         if result.is_ok():
+#             print(result.result_data.to_json(indent=2))
+#         else:
+#             print(f"Error: {result.result_string}")
+#     except (
+#         SuiMiisingBuildFolder,
+#         SuiPackageBuildFail,
+#         SuiMiisingModuleByteCode,
+#     ) as exc:
+#         print(exc.args, file=sys.stderr)
+
+
+def committee(client: SyncClient, args: argparse.Namespace) -> None:
     """Committee info request handler."""
     result = client.execute(GetCommittee(args.epoch))
     if result.is_ok():
@@ -381,7 +379,7 @@ def _convert_event_query(
     return var_args
 
 
-def events_all(client: SuiClient, args: argparse.Namespace) -> None:
+def events_all(client: SyncClient, args: argparse.Namespace) -> None:
     """Event info request handler for all events."""
     var_args = vars(args)
     result = client.get_events(
@@ -393,7 +391,7 @@ def events_all(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def events_module(client: SuiClient, args: argparse.Namespace) -> None:
+def events_module(client: SyncClient, args: argparse.Namespace) -> None:
     """Event info request handler for module events."""
     var_args = vars(args)
     query = MoveModuleEventQuery(args.module, args.package.value)
@@ -406,7 +404,7 @@ def events_module(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def events_struct(client: SuiClient, args: argparse.Namespace) -> None:
+def events_struct(client: SyncClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = MoveEventTypeQuery(args.struct_name)
@@ -418,7 +416,7 @@ def events_struct(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def events_sender(client: SuiClient, args: argparse.Namespace) -> None:
+def events_sender(client: SyncClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = SenderEventQuery(args.sender)
@@ -430,7 +428,7 @@ def events_sender(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def events_time(client: SuiClient, args: argparse.Namespace) -> None:
+def events_time(client: SyncClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = TimeRangeEventQuery(args.start_time, args.end_time)
@@ -443,7 +441,7 @@ def events_time(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def events_tx(client: SuiClient, args: argparse.Namespace) -> None:
+def events_tx(client: SyncClient, args: argparse.Namespace) -> None:
     """Event info request handler."""
     var_args = vars(args)
     query = TransactionEventQuery(args.digest)
@@ -455,7 +453,7 @@ def events_tx(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def txn_count(client: SuiClient, _args: argparse.Namespace) -> None:
+def txn_count(client: SyncClient, _args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = client.execute(GetTotalTxCount())
     if result.is_ok():
@@ -464,7 +462,7 @@ def txn_count(client: SuiClient, _args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def txn_txn(client: SuiClient, args: argparse.Namespace) -> None:
+def txn_txn(client: SyncClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = client.execute(GetTx(digest=args.digest))
     if result.is_ok():
@@ -473,7 +471,7 @@ def txn_txn(client: SuiClient, args: argparse.Namespace) -> None:
         print(f"Error: {result.result_string}")
 
 
-def sui_faucet(client: SuiClient, args: argparse.Namespace) -> None:
+def sui_faucet(client: SyncClient, args: argparse.Namespace) -> None:
     """Get more gas from SUI faucet."""
     result = client.get_gas_from_faucet(args.address)
     if result.is_ok():
@@ -499,16 +497,16 @@ SUI_CMD_DISPATCH = {
     "objects": sui_objects,
     "package": sui_package,
     "rpcapi": sui_api,
-    "transfer-object": transfer_object,
-    "transfer-sui": transfer_sui,
-    "pay": sui_pay,
-    "paysui": sui_pay_sui,
-    "payallsui": sui_payall_sui,
-    "merge-coin": merge_coin,
-    "split-coin": split_coin,
-    "split-coin-equally": split_coin_equally,
-    "call": move_call,
-    "publish": publish,
+    # "transfer-object": transfer_object,
+    # "transfer-sui": transfer_sui,
+    # "pay": sui_pay,
+    # "paysui": sui_pay_sui,
+    # "payallsui": sui_payall_sui,
+    # "merge-coin": merge_coin,
+    # "split-coin": split_coin,
+    # "split-coin-equally": split_coin_equally,
+    # "call": move_call,
+    # "publish": publish,
     "committee": committee,
     "version": sdk_version,
     "faucet": sui_faucet,
