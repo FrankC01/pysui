@@ -14,7 +14,12 @@
 
 """Argument parsing for samples/wallet."""
 import argparse
-from samples.cmd_arg_validators import ValidateObjectID, ValidateAddress, ValidatePackageDir, check_positive
+from samples.cmd_arg_validators import (
+    ValidateObjectID,
+    ValidateAddress,
+    ValidatePackageDir,
+    check_positive,
+)
 from pysui.sui.sui_types.scalars import SuiString, SuiNullType
 
 
@@ -27,15 +32,38 @@ def _build_read_cmds(subparser) -> None:
     subp = subparser.add_parser("addresses", help="Shows all addresses")
     subp.set_defaults(subcommand="addresses")
     # New address
-    subp = subparser.add_parser("new-address", help="Generate new address and keypair")
+    subp = subparser.add_parser(
+        "new-address", help="Generate new address and keypair"
+    )
     addy_arg_group = subp.add_mutually_exclusive_group(required=True)
-    addy_arg_group.add_argument("-e", "--ed25519", help="Generate using ed25519 scheme", action="store_true")
-    addy_arg_group.add_argument("-s", "--secp256k1", help="Generate using secp256k1 scheme", action="store_true")
-    addy_arg_group.add_argument("-r", "--secp256r1", help="Generate using secp256r1 scheme", action="store_true")
+    addy_arg_group.add_argument(
+        "-e",
+        "--ed25519",
+        help="Generate using ed25519 scheme",
+        action="store_true",
+    )
+    addy_arg_group.add_argument(
+        "-s",
+        "--secp256k1",
+        help="Generate using secp256k1 scheme",
+        action="store_true",
+    )
+    addy_arg_group.add_argument(
+        "-r",
+        "--secp256r1",
+        help="Generate using secp256r1 scheme",
+        action="store_true",
+    )
     subp.set_defaults(subcommand="new-address")
     # Gas
     subp = subparser.add_parser("gas", help="Shows gas objects and total mist")
-    subp.add_argument("-a", "--address", required=False, help="Gas for address", action=ValidateAddress)
+    subp.add_argument(
+        "-a",
+        "--address",
+        required=False,
+        help="Gas for address",
+        action=ValidateAddress,
+    )
     subp.set_defaults(subcommand="gas")
     # Object
     subp = subparser.add_parser("object", help="Show object by id")
@@ -45,15 +73,34 @@ def _build_read_cmds(subparser) -> None:
     subp.set_defaults(subcommand="object")
     # Objects
     subp = subparser.add_parser("objects", help="Show all objects")
-    subp.add_argument("-a", "--address", required=False, help="Objects for address", action=ValidateAddress)
-    subp.add_argument("-j", "--json", required=False, help="Display output as json", action="store_true")
+    subp.add_argument(
+        "-a",
+        "--address",
+        required=False,
+        help="Objects for address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "-j",
+        "--json",
+        required=False,
+        help="Display output as json",
+        action="store_true",
+    )
     subp.set_defaults(subcommand="objects")
     # RPC information
     subp = subparser.add_parser("rpcapi", help="Show Sui RPC API information")
-    subp.add_argument("-n", "--name", required=False, help="Display details for named Sui RPC API")
+    subp.add_argument(
+        "-n",
+        "--name",
+        required=False,
+        help="Display details for named Sui RPC API",
+    )
     subp.set_defaults(subcommand="rpcapi")
     # Committee info
-    subp = subparser.add_parser("committee", help="Show committee info for epoch")
+    subp = subparser.add_parser(
+        "committee", help="Show committee info for epoch"
+    )
     subp.add_argument(
         "-e",
         "--epoch",
@@ -63,7 +110,9 @@ def _build_read_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="committee")
     # Faucet usage
-    subp = subparser.add_parser("faucet", help="Get additional gas from SUI faucet")
+    subp = subparser.add_parser(
+        "faucet", help="Get additional gas from SUI faucet"
+    )
     subp.add_argument(
         "-a",
         "--address",
@@ -77,7 +126,10 @@ def _build_read_cmds(subparser) -> None:
 def _build_transfer_cmds(subparser) -> None:
     """Transfer commands."""
     # Transfer SUI
-    subp = subparser.add_parser("transfer-object", help="Transfer an object from one address to another")
+    subp = subparser.add_parser(
+        "transfer-object",
+        help="Transfer an object from one address to another",
+    )
     subp.add_argument(
         "-d",
         "--object-id",
@@ -87,7 +139,7 @@ def _build_transfer_cmds(subparser) -> None:
     )
     subp.add_argument(
         "-o",
-        "--gas",
+        "--gas-object",
         required=True,
         help="Specify sui gas object paying for the transaction",
         action=ValidateObjectID,
@@ -115,7 +167,9 @@ def _build_transfer_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="transfer-object")
     # Transfer SUI
-    subp = subparser.add_parser("transfer-sui", help="Transfer SUI 'mist(s)' to a Sui address")
+    subp = subparser.add_parser(
+        "transfer-sui", help="Transfer SUI 'mist(s)' to a Sui address"
+    )
     subp.add_argument(
         "-a",
         "--amount",
@@ -157,7 +211,9 @@ def _build_transfer_cmds(subparser) -> None:
 def _build_pay_cmds(subparser) -> None:
     """Pay commands."""
     # Pay
-    subp = subparser.add_parser("pay", help="Send coin of any type to recipient(s)")
+    subp = subparser.add_parser(
+        "pay", help="Send coin of any type to recipient(s)"
+    )
     subp.add_argument(
         "-s",
         "--signer",
@@ -189,7 +245,13 @@ def _build_pay_cmds(subparser) -> None:
         help="Specify recipient address for each <AMOUNTS>:<INPUT-COINS> to send to",
         action=ValidateAddress,
     )
-    subp.add_argument("-o", "--gas", required=True, help="Specify gas object to transfer from", action=ValidateObjectID)
+    subp.add_argument(
+        "-o",
+        "--gas-object",
+        required=True,
+        help="Specify gas object to transfer from",
+        action=ValidateObjectID,
+    )
     subp.add_argument(
         "-g",
         "--gas-budget",
@@ -199,7 +261,9 @@ def _build_pay_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="pay")
     # PaySui
-    subp = subparser.add_parser("paysui", help="Send SUI coins to a list of addresses.")
+    subp = subparser.add_parser(
+        "paysui", help="Send SUI coins to a list of addresses."
+    )
     subp.add_argument(
         "-s",
         "--signer",
@@ -240,7 +304,9 @@ def _build_pay_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="paysui")
     # PayAllSui
-    subp = subparser.add_parser("payallsui", help="Send all SUI coin(s) to recipient(s)")
+    subp = subparser.add_parser(
+        "payallsui", help="Send all SUI coin(s) to recipient(s)"
+    )
     subp.add_argument(
         "-s",
         "--signer",
@@ -276,8 +342,12 @@ def _build_pay_cmds(subparser) -> None:
 def _build_package_cmds(subparser) -> None:
     """Package commands."""
     # Normalized Package
-    subp = subparser.add_parser("package", help="Show normalized package information")
-    subp.add_argument("-i", "--id", required=True, help="package ID", action=ValidateObjectID)
+    subp = subparser.add_parser(
+        "package", help="Show normalized package information"
+    )
+    subp.add_argument(
+        "-i", "--id", required=True, help="package ID", action=ValidateObjectID
+    )
     subp.set_defaults(subcommand="package")
     # Publish package
     subp = subparser.add_parser("publish", help="Publish a SUI package")
@@ -296,7 +366,11 @@ def _build_package_cmds(subparser) -> None:
         action=ValidatePackageDir,
     )
     subp.add_argument(
-        "-o", "--gas", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+        "-o",
+        "--gas-object",
+        required=True,
+        help="Specify gas object to pay transaction from",
+        action=ValidateObjectID,
     )
     subp.add_argument(
         "-g",
@@ -353,7 +427,11 @@ def _build_package_cmds(subparser) -> None:
         type=SuiString,
     )
     subp.add_argument(
-        "-o", "--gas", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+        "-o",
+        "--gas-object",
+        required=True,
+        help="Specify gas object to pay transaction from",
+        action=ValidateObjectID,
     )
     subp.add_argument(
         "-g",
@@ -391,7 +469,11 @@ def _build_coin_cmds(subparser) -> None:
         action=ValidateObjectID,
     )
     subp.add_argument(
-        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+        "-o",
+        "--gas-object",
+        required=True,
+        help="Specify gas object to pay transaction from",
+        action=ValidateObjectID,
     )
     subp.add_argument(
         "-g",
@@ -402,7 +484,9 @@ def _build_coin_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="merge-coin")
     # Split coin
-    subp = subparser.add_parser("split-coin", help="Split coin into one or more coins by amount")
+    subp = subparser.add_parser(
+        "split-coin", help="Split coin into one or more coins by amount"
+    )
     subp.add_argument(
         "-s",
         "--signer",
@@ -426,7 +510,11 @@ def _build_coin_cmds(subparser) -> None:
         type=str,
     )
     subp.add_argument(
-        "-o", "--gas-object", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+        "-o",
+        "--gas-object",
+        required=True,
+        help="Specify gas object to pay transaction from",
+        action=ValidateObjectID,
     )
     subp.add_argument(
         "-g",
@@ -437,7 +525,9 @@ def _build_coin_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="split-coin")
     # Split coin
-    subp = subparser.add_parser("split-coin-equally", help="Split coin into one or more coins equally")
+    subp = subparser.add_parser(
+        "split-coin-equally", help="Split coin into one or more coins equally"
+    )
     subp.add_argument(
         "-s",
         "--signer",
@@ -460,7 +550,11 @@ def _build_coin_cmds(subparser) -> None:
         type=str,
     )
     subp.add_argument(
-        "-o", "--gas", required=True, help="Specify gas object to pay transaction from", action=ValidateObjectID
+        "-o",
+        "--gas-object",
+        required=True,
+        help="Specify gas object to pay transaction from",
+        action=ValidateObjectID,
     )
     subp.add_argument(
         "-g",
@@ -502,7 +596,9 @@ def _build_extended_read_commands(subparser) -> None:
 
     # Events
     subp = subparser.add_parser(
-        "events", help="Show events for types", usage="events subcommand [--subcommand_options]"
+        "events",
+        help="Show events for types",
+        usage="events subcommand [--subcommand_options]",
     )
     ecmds = subp.add_subparsers(title="subcommand", required=True)
     # All events
@@ -510,23 +606,47 @@ def _build_extended_read_commands(subparser) -> None:
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-all")
     # Module events
-    esubp = ecmds.add_parser("module", help="Return events emitted in a specified Move module")
-    esubp.add_argument("-p", "--package", required=True, help="the SUI package ID", action=ValidateObjectID)
-    esubp.add_argument("-m", "--module", required=True, help="the module name", type=str)
+    esubp = ecmds.add_parser(
+        "module", help="Return events emitted in a specified Move module"
+    )
+    esubp.add_argument(
+        "-p",
+        "--package",
+        required=True,
+        help="the SUI package ID",
+        action=ValidateObjectID,
+    )
+    esubp.add_argument(
+        "-m", "--module", required=True, help="the module name", type=str
+    )
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-module")
     # Structure events
-    esubp = ecmds.add_parser("struct", help="Return events with the given move structure name")
-    esubp.add_argument("-s", "--struct", required=True, dest="struct_name", type=str)
+    esubp = ecmds.add_parser(
+        "struct", help="Return events with the given move structure name"
+    )
+    esubp.add_argument(
+        "-s", "--struct", required=True, dest="struct_name", type=str
+    )
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-struct")
     # Sender events
-    esubp = ecmds.add_parser("sender", help="Return events associated with the given sender")
-    esubp.add_argument("-s", "--sender", required=True, help="the SUI address of sender", action=ValidateAddress)
+    esubp = ecmds.add_parser(
+        "sender", help="Return events associated with the given sender"
+    )
+    esubp.add_argument(
+        "-s",
+        "--sender",
+        required=True,
+        help="the SUI address of sender",
+        action=ValidateAddress,
+    )
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-sender")
     # Time events
-    esubp = ecmds.add_parser("time", help="Return events emitted in [start_time, end_time) interval")
+    esubp = ecmds.add_parser(
+        "time", help="Return events emitted in [start_time, end_time) interval"
+    )
     __common_event_opts(esubp)
     esubp.add_argument(
         "-s",
@@ -544,9 +664,16 @@ def _build_extended_read_commands(subparser) -> None:
     )
     esubp.set_defaults(subcommand="event-time")
     # Transaction events
-    esubp = ecmds.add_parser("transaction", help="Return events emitted by the given transaction")
+    esubp = ecmds.add_parser(
+        "transaction", help="Return events emitted by the given transaction"
+    )
     esubp.add_argument(
-        "-t", "--txn-digest", dest="digest", required=True, help="the transaction's base64 digest", type=str
+        "-t",
+        "--txn-digest",
+        dest="digest",
+        required=True,
+        help="the transaction's base64 digest",
+        type=str,
     )
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-tx")
@@ -557,9 +684,20 @@ def _build_tx_query_commands(subparser) -> None:
 
     def __common_txns_opts(eparser) -> None:
         eparser.add_argument(
-            "-t", "--transaction-id", dest="digest", required=True, help="transaction digest b64 string", type=str
+            "-t",
+            "--transaction-id",
+            dest="digest",
+            required=True,
+            help="transaction digest b64 string",
+            type=str,
         )
-        eparser.add_argument("-l", "--limit", required=True, help="limit results by page", type=check_positive)
+        eparser.add_argument(
+            "-l",
+            "--limit",
+            required=True,
+            help="limit results by page",
+            type=check_positive,
+        )
         eparser.add_argument(
             "-d",
             "--descending-order",
@@ -570,23 +708,33 @@ def _build_tx_query_commands(subparser) -> None:
 
     # Transaction
     subp = subparser.add_parser(
-        "txns", help="Show transaction information", usage="txns subcommand [--subcommand_options]"
+        "txns",
+        help="Show transaction information",
+        usage="txns subcommand [--subcommand_options]",
     )
     tcmds = subp.add_subparsers(title="subcommand", required=True)
     # Total count
-    esubp = tcmds.add_parser("count", help="Return total transaction count from server")
+    esubp = tcmds.add_parser(
+        "count", help="Return total transaction count from server"
+    )
     esubp.set_defaults(subcommand="txn-count")
     # Transaction
     esubp = tcmds.add_parser("txn", help="Return transaction information")
-    esubp.add_argument("-d", "--digest", required=True, help="the transaction's digest")
+    esubp.add_argument(
+        "-d", "--digest", required=True, help="the transaction's digest"
+    )
     esubp.set_defaults(subcommand="txn-txn")
 
 
 def build_parser(in_args: list) -> argparse.Namespace:
     """Build the argument parser structure."""
     # Base menu
-    parser = argparse.ArgumentParser(add_help=True, usage="%(prog)s [options] command [--command_options]")
-    parser.add_argument("-v", "--version", help="Show pysui SDK version", action="store_true")
+    parser = argparse.ArgumentParser(
+        add_help=True, usage="%(prog)s [options] command [--command_options]"
+    )
+    parser.add_argument(
+        "-v", "--version", help="Show pysui SDK version", action="store_true"
+    )
     parser.set_defaults(subcommand="version")
     subparser = parser.add_subparsers(title="commands")
     _build_read_cmds(subparser)

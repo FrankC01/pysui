@@ -16,7 +16,8 @@
 import argparse
 import sys
 from typing import Union
-from pysui import __version__, SyncClient, SuiRpcResult
+from pysui import __version__, SyncClient, SuiRpcResult, handle_result
+from pysui.sui.sui_txn import SyncTransaction
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_types.event_filter import (
@@ -210,149 +211,240 @@ def sui_api(client: SyncClient, args: argparse.Namespace) -> None:
             print(api_name)
 
 
-# def transfer_object(client: SyncClient, args: argparse.Namespace) -> None:
-#     """transfer_object.
+def transfer_object(client: SyncClient, args: argparse.Namespace) -> None:
+    """transfer_object.
 
-#     :param client: _description_
-#     :type client: SyncClient
-#     :param args: _description_
-#     :type args: argparse.Namespace
-#     """
-#     args.signer = args.signer if args.signer else client.current_address
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     # print(f"transfer_object args {var_args}")
-#     result = client.transfer_object_txn(**var_args)
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
+    :param client: _description_
+    :type client: SyncClient
+    :param args: _description_
+    :type args: argparse.Namespace
+    """
+    args.signer = args.signer if args.signer else client.current_address
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    txn.transfer_objects(transfers=[args.object_id], recipient=args.recipient)
 
-
-# def transfer_sui(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Transfer gas object."""
-#     args.signer = args.signer if args.signer else client.current_address
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     # print(f"transfer_sui args {var_args}")
-#     result = client.transfer_sui_txn(**var_args)
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
+    print(
+        handle_result(
+            txn.execute(
+                gas_budget=args.gas_budget, use_gas_object=args.gas_object
+            )
+        ).to_json(indent=2)
+    )
 
 
-# def merge_coin(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Merge two coins together."""
-#     args.signer = args.signer if args.signer else client.current_address
-#     # print(args)
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     result = client.merge_coin_txn(**var_args)
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
+def transfer_sui(client: SyncClient, args: argparse.Namespace) -> None:
+    """Transfer gas object."""
+    args.signer = args.signer if args.signer else client.current_address
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    txn.transfer_sui(
+        recipient=args.recipient,
+        from_coin=txn.gas,
+        amount=int(args.amount),
+    )
+    print(
+        handle_result(
+            txn.execute(
+                gas_budget=args.gas_budget, use_gas_object=args.sui_object_id
+            )
+        ).to_json(indent=2)
+    )
 
 
-# def split_coin(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Split coin into amounts."""
-#     args.signer = args.signer if args.signer else client.current_address
-#     # print(args)
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     result = client.split_coin_txn(**var_args)
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
+def merge_coin(client: SyncClient, args: argparse.Namespace) -> None:
+    """Merge two coins together."""
+    args.signer = args.signer if args.signer else client.current_address
+    # print(args)
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    txn.merge_coins(
+        merge_to=args.primary_coin, merge_from=[args.coin_to_merge]
+    )
+    print(
+        handle_result(
+            txn.execute(
+                gas_budget=args.gas_budget, use_gas_object=args.gas_object
+            )
+        ).to_json(indent=2)
+    )
 
 
-# def split_coin_equally(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Split coin equally across counts."""
-#     args.signer = args.signer if args.signer else client.current_address
-#     # print(args)
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     result = client.split_coin_equally_txn(**var_args)
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
+def split_coin(client: SyncClient, args: argparse.Namespace) -> None:
+    """Split coin into amounts."""
+    args.signer = args.signer if args.signer else client.current_address
+    # print(args)
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    coins = txn.split_coin(
+        coin=args.coin_object_id, amounts=[int(x) for x in args.split_amounts]
+    )
+    if not isinstance(coins, list):
+        txn.transfer_objects(transfers=[coins], recipient=args.signer)
+    else:
+        txn.transfer_objects(transfers=coins, recipient=args.signer)
+    print(
+        handle_result(
+            txn.execute(
+                gas_budget=args.gas_budget, use_gas_object=args.gas_object
+            )
+        ).to_json(indent=2)
+    )
 
 
-# def sui_pay(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Payments for one or more recipients from one or more coins for one or more amounts."""
-#     args.signer = args.signer if args.signer else client.current_address
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     result = client.pay_txn(**var_args)
-
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
-
-
-# def sui_pay_sui(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Payments for one or more recipients from one or more coins for one or more amounts."""
-#     args.signer = args.signer if args.signer else client.current_address
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     result = client.pay_sui_txn(**var_args)
-
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
+def split_coin_equally(client: SyncClient, args: argparse.Namespace) -> None:
+    """Split coin equally across counts."""
+    args.signer = args.signer if args.signer else client.current_address
+    # print(args)
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    txn.split_coin_equal(
+        coin=args.coin_object_id, split_count=int(args.split_count)
+    )
+    print(
+        handle_result(
+            txn.execute(
+                gas_budget=args.gas_budget, use_gas_object=args.gas_object
+            )
+        ).to_json(indent=2)
+    )
 
 
-# def sui_payall_sui(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Payment of all of a one whole SUI coin to a recipient."""
-#     args.signer = args.signer if args.signer else client.current_address
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     result = client.pay_allsui_txn(**var_args)
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
+def publish(client: SyncClient, args: argparse.Namespace) -> None:
+    """Publish a sui package."""
+    args.sender = args.sender if args.sender else client.config.active_address
+    # print(args)
+    try:
+        txn = SyncTransaction(client, initial_sender=args.sender)
+        upc = txn.publish(project_path=args.compiled_modules)
+        txn.transfer_objects(transfers=[upc], recipient=args.sender)
+        print(
+            handle_result(
+                txn.execute(
+                    gas_budget=args.gas_budget, use_gas_object=args.gas_object
+                )
+            ).to_json(indent=2)
+        )
+    except (
+        SuiMiisingBuildFolder,
+        SuiPackageBuildFail,
+        SuiMiisingModuleByteCode,
+    ) as exc:
+        print(exc.args, file=sys.stderr)
 
 
-# def move_call(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Invoke a Sui move smart contract function."""
-#     args.signer = args.signer if args.signer else client.current_address
-#     var_args = vars(args)
-#     var_args.pop("version")
-#     result = client.move_call_txn(**var_args)
-#     if result.is_ok():
-#         print(result.result_data.to_json(indent=2))
-#     else:
-#         print(f"Error: {result.result_string}")
+def move_call(client: SyncClient, args: argparse.Namespace) -> None:
+    """Invoke a Sui move smart contract function."""
+    args.signer = args.signer if args.signer else client.current_address
+    target = (
+        args.package_object_id.value
+        + "::"
+        + args.module.value
+        + "::"
+        + args.function.value
+    )
+    if args.arguments:
+        arguments = []
+        for arg in args.arguments:
+            if arg.value:
+                arguments.append(arg.value)
+    else:
+        arguments = []
+    if args.type_arguments:
+        type_arguments = [x.value for x in args.type_arguments if x.value]
+    else:
+        type_arguments = []
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    res = txn.move_call(
+        target=target, arguments=arguments, type_arguments=type_arguments
+    )
+    print(
+        handle_result(
+            txn.execute(
+                gas_budget=args.gas_budget, use_gas_object=args.gas_object
+            )
+        ).to_json(indent=2)
+    )
 
 
-# def publish(client: SyncClient, args: argparse.Namespace) -> None:
-#     """Publish a sui package."""
-#     # print(args)
-#     args.sender = args.sender if args.sender else client.config.active_address
-#     try:
-#         compiled_package = publish_build(args.compiled_modules)
-#         # module_b64, dep_oids = publish_build(args.compiled_modules)
-#         args.compiled_modules = compiled_package.compiled_modules
-#         args.dependencies = compiled_package.dependencies
-#         var_args = vars(args)
-#         var_args.pop("version")
-#         result = client.publish_package_txn(**var_args)
-#         if result.is_ok():
-#             print(result.result_data.to_json(indent=2))
-#         else:
-#             print(f"Error: {result.result_string}")
-#     except (
-#         SuiMiisingBuildFolder,
-#         SuiPackageBuildFail,
-#         SuiMiisingModuleByteCode,
-#     ) as exc:
-#         print(exc.args, file=sys.stderr)
+def sui_pay(client: SyncClient, args: argparse.Namespace) -> None:
+    """Payments for one or more recipients from one or more coins for one or more amounts."""
+    args.signer = args.signer if args.signer else client.current_address
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    if len(args.input_coins) == len(args.amounts) == len(args.recipients):
+        for x in range(len(args.input_coins)):
+            i_coin = txn.split_coin(
+                coin=args.input_coins[x], amounts=[int(args.amounts[x])]
+            )
+            txn.transfer_objects(
+                transfers=i_coin, recipient=args.recipients[x]
+            )
+    else:
+        print(
+            "Lengths of --input-coins, --amounts and --recipients must be equal."
+        )
+        return
+
+    print(
+        handle_result(
+            txn.execute(
+                gas_budget=args.gas_budget, use_gas_object=args.gas_object
+            )
+        ).to_json(indent=2)
+    )
+
+
+def sui_pay_sui(client: SyncClient, args: argparse.Namespace) -> None:
+    """Payments for one or more recipients from one or more coins for one or more amounts."""
+    args.signer = args.signer if args.signer else client.current_address
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    t_gas = None
+    if len(args.input_coins) == len(args.amounts) == len(args.recipients):
+        # Take the first as the gas coin
+        t_gas = args.input_coins.pop(0)
+        t_amt = args.amounts.pop(0)
+        t_rcp = args.recipients.pop(0)
+        # Accumulate the amounts from the other inputs
+        # and put in gas
+        for x in range(len(args.input_coins)):
+            i_coin = txn.split_coin(
+                coin=args.input_coins[x], amounts=[int(args.amounts[x])]
+            )
+            txn.merge_coins(merge_to=txn.gas, merge_from=[i_coin])
+        # Send some gas to recipient[0]
+        txn.transfer_sui(recipient=t_rcp, from_coin=txn.gas, amount=int(t_amt))
+        for x in range(len(args.recipients)):
+            txn.transfer_sui(
+                recipient=args.recipients[x],
+                from_coin=txn.gas,
+                amount=int(args.amounts[x]),
+            )
+    else:
+        print(
+            "Lengths of --input-coins, --amounts and --recipients must be equal."
+        )
+        return
+
+    print(
+        handle_result(
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=t_gas)
+        ).to_json(indent=2)
+    )
+
+
+def sui_payall_sui(client: SyncClient, args: argparse.Namespace) -> None:
+    """Payment of all of a one whole SUI coin to a recipient."""
+    args.signer = args.signer if args.signer else client.current_address
+    txn = SyncTransaction(client, initial_sender=args.signer)
+    t_gas = None
+    if len(args.input_coins) == 1:
+        t_gas = args.input_coins[0]
+    else:
+        t_gas = args.input_coins.pop(0)
+        txn.merge_coins(merge_to=txn.gas, merge_from=args.input_coins)
+
+    txn.transfer_objects(transfers=[txn.gas], recipient=args.recipient)
+    # print(txn.raw_kind().to_json(indent=2))
+    print(
+        handle_result(
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=t_gas)
+        ).to_json(indent=2)
+    )
 
 
 def committee(client: SyncClient, args: argparse.Namespace) -> None:
@@ -497,16 +589,16 @@ SUI_CMD_DISPATCH = {
     "objects": sui_objects,
     "package": sui_package,
     "rpcapi": sui_api,
-    # "transfer-object": transfer_object,
-    # "transfer-sui": transfer_sui,
-    # "pay": sui_pay,
-    # "paysui": sui_pay_sui,
-    # "payallsui": sui_payall_sui,
-    # "merge-coin": merge_coin,
-    # "split-coin": split_coin,
-    # "split-coin-equally": split_coin_equally,
-    # "call": move_call,
-    # "publish": publish,
+    "transfer-object": transfer_object,
+    "transfer-sui": transfer_sui,
+    "pay": sui_pay,
+    "paysui": sui_pay_sui,
+    "payallsui": sui_payall_sui,
+    "merge-coin": merge_coin,
+    "split-coin": split_coin,
+    "split-coin-equally": split_coin_equally,
+    "call": move_call,
+    "publish": publish,
     "committee": committee,
     "version": sdk_version,
     "faucet": sui_faucet,

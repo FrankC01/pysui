@@ -662,9 +662,7 @@ class SuiTransaction(_SuiTransactionBase):
         :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
             package dependencies, defaults to False
         :type skip_fetch_latest_git_deps: bool, optional
-        :param recipient: Address of who owns the published package. If None, active-address is used, defaults to None
-        :type recipient: Optional[SuiAddress], optional
-        :return: A command result that can used in subsequent commands
+        :return: A command result (UpgradeCap) that should used in a subsequent transfer commands
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"

@@ -26,8 +26,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui.sui.sui_config import SuiConfig
-from pysui.sui.sui_clients.sync_client import SuiClient
+from pysui import SuiConfig, SyncClient
 from pysui.sui.sui_constants import PYSUI_CLIENT_CONFIG_ENV
 
 from samples.cmd_args import build_parser
@@ -52,8 +51,10 @@ def main():
             cfg = SuiConfig.sui_base_config()
         else:
             cfg = SuiConfig.default_config()
-        print(f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}")
-        cmd_call(SuiClient(cfg), parsed)
+        print(
+            f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}"
+        )
+        cmd_call(SyncClient(cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")
 
