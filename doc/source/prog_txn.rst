@@ -24,7 +24,7 @@ The ``pysui`` SuiTransaction's commands are similar to `Sui TS SDK <https://docs
 differences:
 
     * Encapsulates additional high level commands, such as `stake_coin`, `unstake_coin`, `split_coin_equal` and `publish_upgrade`
-    * Transaction methods have a high degree of flexibility in providing arguments
+    * Transaction methods have a high degree of flexibility in providing different arguments types
 
 Gettinig Started
 ################
@@ -38,21 +38,20 @@ All examples that follow use the synchronous SuiClient and SuiTransaction.
 
 Quick example
 ~~~~~~~~~~~~~
-This requires providing at least an instantiated SuiClient. At the moment it only supports the synchronous client:
+This requires providing an instantiated SuiClient.
 
 .. code-block:: Python
 
-    from pysui.sui.sui_clients.sync_client import SuiClient
-    from pysui.sui.sui_clients.transaction import SuiTransaction
-    from pysui.sui.sui_config import SuiConfig
+    from pysui import SyncClient, SuiConfig, handle_result
+    from pysui.sui.sui_txn import SyncTransaction
 
     def foo():
         """Demonstrates a simple SuiTransaction ."""
 
         # Get the Transaction/Transaction Builder
-        # By default, this will assume that the 'active-address' is the sole signer of the transaction
-        # However; support for MultiSig signers and Sponsoring transactions is supported
-        txn = SuiTransaction(SuiClient(SuiConfig.default_config()))
+        # By default, this will assume that the 'active-address' is the sender and sole signer of the transaction
+        # However; support for MultiSig signers and Sponsoring transactions is also supported
+        txn = SyncTransaction(SyncClient(SuiConfig.default_config()))
 
         # Get a few objects to use as command arguments
         coin_to_split = ... # Retrieved somehow
@@ -68,11 +67,8 @@ This requires providing at least an instantiated SuiClient. At the moment it onl
         # Execute will use active-address to sign, pick a gas coin
         # that satisfies the budget. An inspection is done internally
         # and the budget will automatically adjust to the higher when compared
-        tx_result = txb.execute(gas_budget="1000000")
-        if tx_result.is_ok():
-            print(tx_result.result_data.to_json(indent=2))
-        else:
-            print(tx_result.result_string)
+        tx_result = handle_result(txb.execute(gas_budget="1000000"))
+        print(tx_result.to_json(indent=2))
 
 Commands available
 ##################
@@ -88,14 +84,14 @@ Basic commands:
 Inspection
 ##########
 
-You can verify (inspect) a SuiTransaction as you are building out your transactions. See: :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.inspect_all`
+You can verify (inspect) a SuiTransaction as you are building out your transactions. See: :py:meth:`pysui.sui.sui_txn.sync_transaction.SuiTransaction.inspect_all`
 
 Execution
 #########
 
 You can execute the transaction directly:
 
-#. :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.execute`
+#. :py:meth:`pysui.sui.sui_txn.sync_transaction.SuiTransaction.execute`
 
 Note that once you execute a transaction it is unusable.
 
@@ -123,7 +119,7 @@ The examples below demonstrate the approaches.
     def split_init_with_multi_sig():
         """Initiate a transaction with a multisig SigningMultiSig decorator."""
         cfg = SuiConfig.default_config()
-        client = SuiClient(cfg)
+        client = SyncClient(cfg)
 
         # Get a multi-sig
         msig: MultiSig = ...
@@ -131,25 +127,24 @@ The examples below demonstrate the approaches.
         msig_pubkeys: list[SuiPublicKey] = ...
 
         # Construct the transaction with the SigningMultiSig
-        txer = SuiTransaction(client,initial_sender=SigningMultiSig(msig, msig_pubkeys))
+        txer = SyncTransaction(client,initial_sender=SigningMultiSig(msig, msig_pubkeys))
 
         # Split and transfer
         split_coin = txer.split_coin(coin=txer.gas,amounts=[10000000000])
         txer.transfer_objects(transfers=[split_coin],recipient=msig.as_sui_address)
 
         # Execute
-        result = txer.execute(gas_budget="2000000")
+        result = handle_result(txer.execute(gas_budget="2000000"))
 
-        if result.is_ok():
-            print(f"Coin split to self {msig.address} success")
-            print(result.result_data.to_json(indent = 2))
+        print(f"Coin split to self {msig.address} success")
+        print(result.to_json(indent = 2))
 
 .. code-block:: Python
 
     def split_with_multi_sig_pre_execution():
         """Transaction sets sender of multisig SigningMultiSig decorator prior to execution."""
         cfg = SuiConfig.default_config()
-        client = SuiClient(cfg)
+        client = SyncClient(cfg)
 
         # Get a multi-sig
         msig: MultiSig = ...
@@ -160,7 +155,7 @@ The examples below demonstrate the approaches.
         sender_msig = SigningMultiSig(msig, msig_pubkeys)
 
         # Construct the transaction with default sender
-        txer = SuiTransaction(client)
+        txer = SyncTransaction(client)
 
         # Split and transfer
         split_coin = txer.split_coin(coin=txer.gas,amounts=[10000000000])
@@ -170,11 +165,10 @@ The examples below demonstrate the approaches.
         txer.signer_block.sender = sender_msig
 
         # Execute
-        result = txer.execute(gas_budget="2000000")
+        result = handle_result(txer.execute(gas_budget="2000000"))
 
-        if result.is_ok():
-            print(f"Coin split to self {msig.address} success")
-            print(result.result_data.to_json(indent = 2))
+        print(f"Coin split to self {msig.address} success")
+        print(result.to_json(indent = 2))
 
 Sponsored Transaction example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,9 +178,8 @@ this example uses a simple SuiAddress:
 
 .. code-block:: Python
 
-    from pysui.sui.sui_clients.sync_client import SuiClient
-    from pysui.sui.sui_clients.transaction import SuiTransaction
-    from pysui.sui.sui_config import SuiConfig
+    from pysui import SyncClient, SuiConfig, handle_result
+    from pysui.sui.sui_txn import SyncTransaction
 
     def sponsored_split():
         """Demonstrates a simple sponsored SuiTransaction ."""
@@ -194,7 +187,8 @@ this example uses a simple SuiAddress:
         # Get the Transaction/Transaction Builder
         # By default, this will assume that the 'active-address' is the sole signer of the transaction
         # But we want to sponsor the transaction from another address (who will pay for the transaction)
-        txer = SuiTransaction(SuiClient(SuiConfig.default_config()))
+
+        txer = SyncTransaction(SyncClient(SuiConfig.default_config()))
 
         # Get a coin for splitting from the active-address and create the command
         coin_to_split = ... # Retrieved somehow
@@ -205,11 +199,8 @@ this example uses a simple SuiAddress:
         some_sponsor = ... # Retrieve another address that will 'pay' for the transaction
         txer.signer_block.sponser = SuiAddress(some_sponsor)
 
-        exec_result = txer.execute(gas_budget="1000000")
-        if exec_result.is_ok():
-            print(exec_result.result_data.to_json(indent=2))
-        else:
-            print(exec_result.result_string)
+        exec_result = handle_result(txer.execute(gas_budget="1000000"))
+        print(exec_result.to_json(indent=2))
 
 Command Inputs and Arguments
 ############################
@@ -218,13 +209,13 @@ Command Inputs
 ~~~~~~~~~~~~~~
 
 ``pysui`` encapsulate the the lower level details inputs to command parameters or move_call arguments. For the most part,
-all of the input variations on what 'type' of Pythoon or ``pysui`` the command will accept can be seen for each Command
-method in :py:class:`pysui.sui.sui_clients.transaction.SuiTransaction` reference.
+all of the input variations on what 'type' of Pythoon or ``pysui`` type the command will accept can be seen for each Command
+method in :py:class:`pysui.sui.sui_txn.sync_transaction.SuiTransaction` reference.
 
 Move Call Arguments
 ~~~~~~~~~~~~~~~~~~~
 
-However; the `arguments` to a Move Call command may require special treatment to aid in disambiguating whether it is an object
+However; the `arguments` to a Move Call command **_may_** require special treatment to aid in disambiguating whether it is an object
 reference or just a pure value. Here is a snippet of a move call where arguments are wrapped in ``pysui`` types. Below the
 example is a coercion table describing the effect of resolving in `move_call` arguments.
 
@@ -290,7 +281,7 @@ the package ID and UpgradeCap id (whether the cap is default or custom):
 
 .. code-block:: Python
 
-    def transaction_run(txb: SuiTransaction):
+    def transaction_run(txb: SyncTransaction):
         """Example of simple executing a SuiTransaction."""
         # Set sender if not done already
         if not txb.signer_block.sender:
@@ -307,7 +298,7 @@ the package ID and UpgradeCap id (whether the cap is default or custom):
             print(tx_result.result_string)
 
 
-    def publish_and_result(txb: SuiTransaction, print_json=True) -> tuple[str, str]:
+    def publish_and_result(txb: SyncTransaction, print_json=True) -> tuple[str, str]:
         """Example of running the publish commands in a SuiTransaction and retrieving important info."""
         # Set the sender if not already sent.
         # Not shown is optionally setting a sponsor as well
@@ -351,17 +342,17 @@ the package ID and UpgradeCap id (whether the cap is default or custom):
 Publish Method
 ++++++++++++++
 
-SuiTransaction provides :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.publish`. Note that the
+SuiTransaction provides :py:meth:`pysui.sui.sui_txn.sync_transaction.SuiTransaction.publish`. Note that the
 result of the command is the UpgradeCap and it must be transfered to an owner.
 
 .. code-block:: Python
 
-    def publish_package(client: SuiClient = None):
+    def publish_package(client: SyncClient = None):
         """Sample straight up publish of move contract returning UpgradeCap to current address."""
-        client = client if client else SuiClient(SuiConfig.default_config())
+        client = client if client else SyncClient(SuiConfig.default_config())
 
         # Initiate a new transaction
-        txer = SuiTransaction(client)
+        txer = SyncTransaction(client)
 
         # Create a publish command
         upgrade_cap = txer.publish(project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_PACKAGE_PROJECT>")
@@ -377,19 +368,19 @@ result of the command is the UpgradeCap and it must be transfered to an owner.
 Publish Upgrade Method
 ++++++++++++++++++++++
 
-SuiTransaction provides :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.publish_upgrade`. This will perform
+SuiTransaction provides :py:meth:`pysui.sui.sui_txn.sync_transaction.SuiTransaction.publish_upgrade`. This will perform
 standard authorize, publish and commit steps. See custom upgrade below if you have specialized policies.
 
 Example assumes you've taken necessary steps to prepare the package source for upgrading.
 
 .. code-block:: Python
 
-    def upgrade_package(client: SuiClient = None):
+    def upgrade_package(client: SyncClient = None):
         """Sample batteries included package upgrade."""
-        client = client if client else SuiClient(SuiConfig.default_config())
+        client = client if client else SyncClient(SuiConfig.default_config())
 
         # Initiate a new transaction
-        txer = SuiTransaction(client)
+        txer = SyncTransaction(client)
 
         txer.publish_upgrade(
             project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_PACKAGE_PROJECT>",
@@ -405,7 +396,7 @@ Example assumes you've taken necessary steps to prepare the package source for u
 Custom Upgrade Method
 ++++++++++++++++++++++
 
-SuiTransaction provides :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.custom_upgrade`. This is a
+SuiTransaction provides :py:meth:`pysui.sui.sui_txn.sync_transaction.SuiTransaction.custom_upgrade`. This is a
 high order function (HOF) that calls the authors *custom authorization*, then performs the publish and then again
 calls an authors *custom commit* function.
 
@@ -423,11 +414,11 @@ The example function below follows the `Sui custom upgrade policies example  <ht
 .. code-block:: Python
 
     # First publish the policy package
-    def publish_policy(client: SuiClient = None):
+    def publish_policy(client: SyncClient = None):
         """Publish a customized policy and make it's upgrade cap immutable."""
-        client = client if client else SuiClient(SuiConfig.default_config())
+        client = client if client else SyncClient(SuiConfig.default_config())
 
-        txer = SuiTransaction(client)
+        txer = SyncTransaction(client)
 
         # Publish policy command
         upgrade_cap = txer.publish(project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_CUSTOM_POLICY_PACKAGE>")
@@ -440,7 +431,7 @@ The example function below follows the `Sui custom upgrade policies example  <ht
         print(f"Policy UpgradeCap ID: {policy_cap_id}")
 
         # New transaction
-        txer = SuiTransaction(client)
+        txer = SyncTransaction(client)
 
         # Make cap immutable
         txer.move_call(
@@ -450,15 +441,15 @@ The example function below follows the `Sui custom upgrade policies example  <ht
         transaction_run(txer)
 
     # Next publish an initial package version
-    def publish_example(client: SuiClient = None):
+    def publish_example(client: SyncClient = None):
         """Publish the example for which upgrades will have custom governance."""
-        client = client if client else SuiClient(SuiConfig.default_config())
+        client = client if client else SyncClient(SuiConfig.default_config())
 
         # New transaction
-        txer = SuiTransaction(client)
+        txer = SyncTransaction(client)
 
         # Publish the example
-        ex_upgrade_cap = txer.publish(project_path="~/frankc01/example")
+        ex_upgrade_cap = txer.publish(project_path="~/my_move_contracts/example")
 
         # Transition the newly created default upgrade cap to our custom policy type
         # Restricting upgrades to Tuesdays (day 1 of week)
@@ -476,7 +467,7 @@ The example function below follows the `Sui custom upgrade policies example  <ht
     # CUSTOM UPGRADE!!!
     # Assuming the example package has had source changes
 
-    def custom_authorize(txer: SuiTransaction, upgrade_cap: ObjectRead, digest: bcs.Digest) -> bcs.Argument:
+    def custom_authorize(txer: SyncTransaction, upgrade_cap: ObjectRead, digest: bcs.Digest) -> bcs.Argument:
         """Call the Custom Policy package to authorize an upgrade and get an upgrade ticket."""
         target = policy_package_id + "::day_of_week::authorize_upgrade"
 
@@ -484,16 +475,16 @@ The example function below follows the `Sui custom upgrade policies example  <ht
         return txer.move_call(target=target, arguments=[upgrade_cap, SuiU8(0), digest])
 
 
-    def custom_commit(txer: SuiTransaction, upgrade_cap: ObjectRead, receipt: bcs.Argument) -> bcs.Argument:
+    def custom_commit(txer: SyncTransaction, upgrade_cap: ObjectRead, receipt: bcs.Argument) -> bcs.Argument:
         """With the receipt from the package upgrade, commit the upgrade."""
         target = policy_package_id + "::day_of_week::commit_upgrade"
         return txer.move_call(target=target, arguments=[upgrade_cap, receipt])
 
 
-    def custom_upgrade(client: SuiClient = None):
+    def custom_upgrade(client: SyncClient = None):
         """Call SuiTransaction HOF for custom upgrades."""
-        client = client if client else SuiClient(SuiConfig.default_config())
-        txer = SuiTransaction(client)
+        client = client if client else SyncClient(SuiConfig.default_config())
+        txer = SyncTransaction(client)
         txer.custom_upgrade(
             project_path="~/frankc01/example",
             package_id=example_package_id,

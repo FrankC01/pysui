@@ -8,12 +8,12 @@ The role of Sui Binaries
 **pysui** roughly relies on Sui Binaries for one core reason
 
 -
-    | If using the Publish builder, it relies on the presence of the binaries during the publish
+    | If publishing or publishing upgrades, these functions rely on the presence of the binaries during the publish
     | call as it invokes: ``sui move build``
 
 
 -
-    | When not running with ``user configuration``, creating a Client it relies on the presence of the ``client.yaml`` the Sui binaries created.
+    | When not running with ``user configuration``, creating a Client relies on the presence of the ``client.yaml`` the Sui binaries created.
     | For example, if SuiConfig is created with :meth:`pysui.sui.sui_config.SuiConfig.default_config` it looks for:
     | ``.sui/sui_config/client.yaml``
 
@@ -34,43 +34,42 @@ are examples of doing just that as well as allocating a subscription client:
    :linenos:
 
     # The underlying configuration class
-    from pysui.sui.sui_config import SuiConfig
+    from pysui import SuiConfig
 
     # For synchronous RPC API interactions
-    from pysui.sui.sui_clients.sync_client import SuiClient as sync_client
+    from pysui import SyncClient
 
     # For asynchronous RPC API interactions
-    from pysui.sui.sui_clients.async_client import SuiClient as async_client
+    from pysui import AsyncClient
 
     # For asynchronous subscriptions interactions
-    from pysui.sui.sui_clients.subscribe import SuiClient as async_subscriber
+    from pysui import Subscribe
 
     # Synchronous client
-    client = sync_client(SuiConfig.default_config()) # Assumes devnet or testnet
+    client = SyncClient(SuiConfig.default_config())
 
     # Asynchronous client
-    client = async_client(SuiConfig.default_config()) # Assumes devnet or testnet
+    client = AsyncClient(SuiConfig.default_config())
 
     # Asynchronous subscriber
-    client = async_subscriber(SuiConfig.default_config()) # Assumes devnet or testnet
+    client = Subscribe(SuiConfig.default_config())
 
 The raw workhorse for submitting transactions is :py:meth:`pysui.sui.sui_clients.sync_client.SuiClient.execute` which takes a
 **Builder** object. Builders describe the RPC call, any parameters and how to format sucessful results.
 
-While many of the SuiClient convenience methods (i.e. :meth:`pysui.sui.sui_clients.sync_client.SuiClient.get_object`) take care of
+While some of the SuiClient convenience methods (e.g. :meth:`pysui.sui.sui_clients.sync_client.SuiClient.get_object`) take care of
 creating a Builder for the caller, and then executing, all **Builders** are available to setup outside of the SuiClient.
 
 Running With `suibase`
 ----------------------
 
-Starting in version 0.16.1 of ``pysui``, we have aligned with `The sui-base utility <https://suibase.io/>`_ which provides
+We have aligned with `The sui-base utility <https://suibase.io/>`_ which provides
 superior localnet configurability and repeatability. It is the framework for our ``pysui`` unit/integration testing and we've
 made usage easier to leverage in developing with ``pysui``.
 
-In the code block above, you will notice the use of `SuiConfig.default_config()` which is assuming connection with devnet,
-testnet or mainnet.
+In the code block above, you will notice the use of `SuiConfig.default_config()` which is driven by the standard `client.yaml`.
 
-Whereas with `suibase` it loads a persistant and configurable, Sui configuration along with 5 addresses of each keytype
+Whereas with `suibase` it loads a persistant, and configurable, Sui configuration along with 5 addresses of each keytype
 and providing a copius amount of Sui coin per address.
 
 First ensure proper setup of `sui-base`:
@@ -92,10 +91,6 @@ First ensure proper setup of `sui-base`:
     # Ensure that active symlink is set to localnet
     localnet set-active
 
-    # See below to having pysui leverage the running instance and binaries
-    # When you are done you should stop the localnode
-    localnet stop
-
 
 Having compleded that, the change you will notices is loading the right configuration into your SuiClient so all operations
 interact with the sui-base localnet node. All operations are the same whether you are interacting with `devnet`,
@@ -105,25 +100,35 @@ interact with the sui-base localnet node. All operations are the same whether yo
    :linenos:
 
     # The underlying configuration class
-    from pysui.sui.sui_config import SuiConfig
+    from pysui import SuiConfig
 
     # For synchronous RPC API interactions
-    from pysui.sui.sui_clients.sync_client import SuiClient as sync_client
+    from pysui import SyncClient
 
     # For asynchronous RPC API interactions
-    from pysui.sui.sui_clients.async_client import SuiClient as async_client
+    from pysui import AsyncClient
 
     # For asynchronous subscriptions interactions
-    from pysui.sui.sui_clients.subscribe import SuiClient as async_subscriber
+    from pysui import Subscribe
 
     # Synchronous client
-    client = sync_client(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
+    client = SyncClient(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
 
     # Asynchronous client
-    client = async_client(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
+    client = AsyncClient(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
 
     # Asynchronous subscriber
-    client = async_subscriber(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
+    client = Subscribe(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
+
+
+Remember to shutdown `suibase` when done:
+
+.. code-block:: bash
+   :linenos:
+
+    # When you are done you should stop the localnode
+    localnet stop
+
 
 Running With user configuration
 -------------------------------
@@ -136,35 +141,28 @@ With this option, you set the rpc_url, keystrings and optional web socket url. F
    :linenos:
 
     # The underlying configuration class
-    from pysui.sui.sui_config import SuiConfig
+    from pysui import SuiConfig, SyncClient
 
-    # For synchronous RPC API interactions
-    from pysui.sui.sui_clients.sync_client import SuiClient as sync_client
-
-    # Option-1: Setup configuration with one or more known keystrings
+    # Option-1: Setup configuration with one or more known keystrings and optional web services.
     cfg = SuiConfig.user_config(
         # Required
         rpc_url="https://fullnode.devnet.sui.io:443",
         # Optional. First entry becomes the 'active-address'
-        # Must be a valid Sui keystring (i.e. 'key_type_flag | private_key_seed' )
+        # Must be a valid Sui base64 keystring (i.e. 'key_type_flag | private_key_seed' )
         prv_keys=["AOM6UAQrFe7r9nNDGRlWwj1o7m1cGK6mDZ3efRJJmvcG"],
         # Optional, only needed for subscribing
         ws_url="wss://fullnode.devnet.sui.io:443",
     )
 
-    # Option-2: Alternate setup configuration without keystrings
-    cfg = SuiConfig.user_config(
-        # Required
-        rpc_url="https://fullnode.devnet.sui.io:443",
-        # Optional, only needed for subscribing
-        ws_url="wss://fullnode.devnet.sui.io:443",
-    )
+    # Option-2: Alternate setup configuration without keystrings or web sercices
+    cfg = SuiConfig.user_config(rpc_url="https://fullnode.devnet.sui.io:443")
+
     # One address (and keypair), at least, should be created
     # First becomes the 'active-address'
     _mnen, _address = cfg.create_new_keypair_and_address(SignatureScheme.ED25519)
 
     # Synchronous client
-    client = sync_client(cfg)
+    client = SyncClient(cfg)
 
 Caveats
 #######

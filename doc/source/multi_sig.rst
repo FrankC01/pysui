@@ -36,7 +36,7 @@ Example Construction Option 1
 
 .. code-block:: Python
 
-    from pysui.sui.sui_config import SuiConfig
+    from pysui import SuiConfig
     from pysui.sui.sui_crypto import MultiSig, SuiKeyPair
 
     def gen_ms(config: SuiConfig) -> MultiSig:
@@ -80,25 +80,30 @@ public keys to sign with are provided through some other mechanism.
 
 .. code-block:: Python
 
-    from pysui.sui.sui_clients.sync_client import SuiClient # Could also use pysui.sui.sui_clients.async_client
+    from pysui import SyncClient, SuiAddress, ObjectID, handle_result
+    from pysui.sui.sui_txn import SyncTransaction, SigningMultiSig
     from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
 
-    def sui_pay_ms(client: SuiClient, to_addy: SuiAddress, msig: MultiSig, amount: int) -> SuiRpcResult:
-        """Pay some balance from MultiSig address to some other address."""
-        pay_builder = Pay(
-            signer=msig.address,
-            input_coins=[ObjectID(...)],
-            recipients=[to_addy],
-            amounts=[SuiString(amount)],
-            gas=...,
-            gas_budget=2000,
+    def transfer_with_ms(
+        client: SyncClient,
+        to_addy: SuiAddress,
+        msig: MultiSig,
+        from_coin:ObjectID,
+        amount: int
+        ) -> SuiRpcResult:
+        """Transfer some balance from MultiSig address to some other address."""
+
+        # Initialize a transaction build
+        txer = SyncTransaction(
+             client, initial_sender=SigningMultiSig(msig, msig.public_keys[0:2])
         )
-        result = client.execute_with_multisig(pay_builder, msig, msig.public_keys[0:2])
-        if result.is_ok():
-            print(result.result_data.to_json(indent=2))
-        else:
-            print(result.result_string)
-        return result
+
+        # Split some coinage and transfer
+        coin = txer.split_coin(coin=from_coin, amounts=[amount])
+        txer.transfer_objects(transfers=[coin], recipient=to_addy)
+
+        result = handle_result(txer.execute())
+        print(result.to_json(indent=2))
 
 Final Note: MultiSig and MultiSig Address Persistence
 #####################################################
