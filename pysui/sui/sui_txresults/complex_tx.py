@@ -188,6 +188,9 @@ class GasCostSummary(SuiTxReturnType, DataClassJsonMixin):
     computation_cost: int = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
+    non_refundable_storage_fee: int = field(
+        metadata=config(letter_case=LetterCase.CAMEL)
+    )
     storage_cost: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     storage_rebate: int = field(metadata=config(letter_case=LetterCase.CAMEL))
 
@@ -196,8 +199,9 @@ class GasCostSummary(SuiTxReturnType, DataClassJsonMixin):
         """Totals all components of gas cost."""
         return (
             int(self.computation_cost)
+            + int(self.non_refundable_storage_fee)
             + int(self.storage_cost)
-            + int(self.storage_rebate)
+            # + int(self.storage_rebate)
         )
 
     @property
