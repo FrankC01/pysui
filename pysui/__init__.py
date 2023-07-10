@@ -36,3 +36,4 @@ from pysui.sui.sui_clients.common import (
 )
 from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient
 from pysui.sui.sui_clients.async_client import SuiClient as AsyncClient
+from pysui.sui.sui_clients.subscribe import SuiClient as Subscribe

@@ -14,7 +14,7 @@ Setup
 
     Specifically, the binaries are required if...
 
-    * You want to use the publish SUi package builder, or...
+    * You want to use the publish SUi package builder, and/or...
     * You want to use the Sui generated configuration
 
 
@@ -34,4 +34,4 @@ Setup
     * ``async-gas`` This will display Sui gas for each address found in the SUI configuration
     * ``async-sub`` This runs a sample event subscription
     * ``async-sub-txn`` This runs a sample transaction subscription
-    * ``wallet`` This emulates the ``sui client ...`` operations
+    * ``wallet`` This emulates a number of the ``sui client ...`` operations

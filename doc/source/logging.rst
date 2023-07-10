@@ -34,12 +34,11 @@ inclusion of ``pysui`` modules. For example:
         level=logging.DEBUG,
     )
 
-    from pysui.sui.sui_config import SuiConfig
-    from pysui.sui.sui_clients.sync_client import SuiClient
+    from pysui import SuiConfig, SyncClient
 
     def main():
         """Main entry point for application."""
-        client = SuiClient(SuiConfig.default_config())
+        client = SyncClient(SuiConfig.default_config())
 
         # etc.
 
@@ -53,16 +52,20 @@ Log Enabled Modules
 Not every module in ``pysui`` is log enabled and adding logging and logging messages is an ongoing effort. The
 following have been enabled and have various degrees of logging messages:
 
-+------------------------------------+
-|     Module                         |
-+====================================+
-| pysui.sui.sui_config               |
-+------------------------------------+
-| pysui.sui.sui_clients.sync_client  |
-+------------------------------------+
-| pysui.sui.sui_clients.async_client |
-+------------------------------------+
-| pysui.sui.sui_clients.subscribe    |
-+------------------------------------+
-| pysui.sui.sui_clients.transaction  |
-+------------------------------------+
++-----------------------------------------+
+|     Module                              |
++=========================================+
+| pysui.sui.sui_config                    |
++-----------------------------------------+
+| pysui.sui.sui_clients.sync_client       |
++-----------------------------------------+
+| pysui.sui.sui_clients.async_client      |
++-----------------------------------------+
+| pysui.sui.sui_clients.subscribe         |
++-----------------------------------------+
+| pysui.sui.sui_txn.sync_transaction      |
++-----------------------------------------+
+| pysui.sui.sui_txn.async_transaction     |
++-----------------------------------------+
+| pysui.sui.sui_txn.transaction_builder   |
++-----------------------------------------+
