@@ -96,11 +96,15 @@ class SuiTransactionAsync(_SuiTransactionBase):
         version="0.28.0",
         reason="Added optional 'use_gas_object'.",
     )
+    @versionchanged(
+        version="0.30.0",
+        reason="Raise ValueError if inspection or validating gas object fails",
+    )
     async def _build_for_execute(
         self,
         gas_budget: Union[str, SuiString],
         use_gas_object: Optional[Union[str, ObjectID]] = None,
-    ) -> bcs.TransactionData:
+    ) -> Union[bcs.TransactionData, ValueError]:
         """build_for_execute Generates the TransactionData object.
 
         Note: If wanting to execute, this structure needs to be serialized to a base64 string. See
@@ -141,24 +145,25 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 logger.exception(
                     f"Inspecting transaction failed with {result.result_string}"
                 )
-                raise ValueError(result.result_string)
+                raise ValueError(
+                    f"Inspecting transaction failed with {result.result_string}"
+                )
 
         except KeyError as kexcp:
             logger.exception(
                 f"Malformed inspection results {result.result_data}"
             )
 
-            raise ValueError(result.result_data)
-
-        # result = await self.client.execute(
-        #     InspectTransaction(sender_address=for_sender, tx_bytes=tx_kind_b64)
-        # )
-        if result.is_ok():
-            ispec: TxInspectionResult = result.result_data
-            gas_budget = (
-                gas_budget if isinstance(gas_budget, str) else gas_budget.value
+            raise ValueError(
+                f"Malformed inspection results {result.result_data}"
             )
-            gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
+
+        ispec: TxInspectionResult = result.result_data
+        gas_budget = (
+            gas_budget if isinstance(gas_budget, str) else gas_budget.value
+        )
+
+        gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
         if use_gas_object:
             test_gas_object = (
                 use_gas_object
@@ -169,14 +174,24 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 raise ValueError(
                     f"use_gas_object {test_gas_object} in use in transaction."
                 )
-            use_coin: ObjectRead = handle_result(
-                await self.client.get_object(test_gas_object)
-            )
+            res = await self.client.get_object(test_gas_object)
+            if res.is_ok():
+                use_coin: ObjectRead = res.result_data
+            else:
+                logger.exception(
+                    f"Unable to fetch gas object {test_gas_object}"
+                )
+                raise ValueError(
+                    f"Unable to fetch gas object {test_gas_object} error {res.result_string}"
+                )
+            # Ensure there is enough in user provided gas
             if use_coin.balance < gas_budget:
                 logger.exception(
                     f"Explicit use_gas_object {test_gas_object} with balance {use_coin.balance} insuffient for cost {gas_budget}"
                 )
-                raise ValueError(f"Insufficient gas")
+                raise ValueError(
+                    f"Explicit use_gas_object {test_gas_object} with balance {use_coin.balance} insuffient for cost {gas_budget}"
+                )
 
             gas_object = bcs.GasData(
                 [
@@ -244,7 +259,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         gas_budget: Optional[Union[str, SuiString]] = "1000000",
         options: Optional[dict] = None,
         use_gas_object: Optional[Union[str, ObjectID]] = None,
-    ) -> SuiRpcResult:
+    ) -> Union[SuiRpcResult, ValueError]:
         """execute Finalizes transaction and submits for execution on the chain.
 
         :param gas_budget: The gas budget to use. An introspection of the transaciton is performed

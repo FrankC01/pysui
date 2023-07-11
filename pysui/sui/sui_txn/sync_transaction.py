@@ -20,7 +20,7 @@ import logging
 import base64
 from deprecated.sphinx import versionadded, versionchanged
 
-from pysui import SyncClient, SuiAddress, SuiRpcResult, ObjectID, handle_result
+from pysui import SyncClient, SuiAddress, SuiRpcResult, ObjectID
 from pysui.sui.sui_builders.base_builder import (
     SuiRequestType,
 )
@@ -175,11 +175,15 @@ class SuiTransaction(_SuiTransactionBase):
         version="0.28.0",
         reason="Added optional 'use_gas_object'.",
     )
+    @versionchanged(
+        version="0.30.0",
+        reason="Raise ValueError if inspection or validating gas object fails",
+    )
     def _build_for_execute(
         self,
         gas_budget: Union[str, SuiString],
         use_gas_object: Optional[Union[str, ObjectID]] = None,
-    ) -> bcs.TransactionData:
+    ) -> Union[bcs.TransactionData, ValueError]:
         """build_for_execute Generates the TransactionData object.
 
         Note: If wanting to execute, this structure needs to be serialized to a base64 string. See
@@ -197,6 +201,7 @@ class SuiTransaction(_SuiTransactionBase):
         tx_kind = self.raw_kind()
         # Get costs
         tx_kind_b64 = base64.b64encode(tx_kind.serialize()).decode()
+        # Resolve sender address for inspect
         if self.signer_block.sender:
             for_sender: Union[
                 SuiAddress, SigningMultiSig
@@ -206,6 +211,7 @@ class SuiTransaction(_SuiTransactionBase):
         else:
             for_sender = self.client.config.active_address
         try:
+            # Do the inspection
             logger.debug(f"Inspecting {tx_kind_b64}")
             result = self.client.execute(
                 _DebugInspectTransaction(
@@ -216,24 +222,31 @@ class SuiTransaction(_SuiTransactionBase):
                 result = SuiRpcResult(
                     True, "", TxInspectionResult.factory(result.result_data)
                 )
+            # Bad result
             else:
                 logger.exception(
                     f"Inspecting transaction failed with {result.result_string}"
                 )
-                raise ValueError(result.result_string)
-
+                raise ValueError(
+                    f"Inspecting transaction failed with {result.result_string}"
+                )
+        # Malformed result
         except KeyError as kexcp:
             logger.exception(
                 f"Malformed inspection results {result.result_data}"
             )
-            raise ValueError(result.result_data)
-        if result.is_ok():
-            ispec: TxInspectionResult = result.result_data
-            gas_budget = (
-                gas_budget if isinstance(gas_budget, str) else gas_budget.value
+            raise ValueError(
+                f"Malformed inspection results {result.result_data}"
             )
-            gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
+        # if result.is_ok():
+        ispec: TxInspectionResult = result.result_data
+        gas_budget = (
+            gas_budget if isinstance(gas_budget, str) else gas_budget.value
+        )
+        # Total = computation_cost + non_refundable_storage_fee + storage_cost
+        gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
 
+        # If user provided
         if use_gas_object:
             test_gas_object = (
                 use_gas_object
@@ -244,9 +257,17 @@ class SuiTransaction(_SuiTransactionBase):
                 raise ValueError(
                     f"use_gas_object {test_gas_object} in use in transaction."
                 )
-            use_coin: ObjectRead = handle_result(
-                self.client.get_object(test_gas_object)
-            )
+            res = self.client.get_object(test_gas_object)
+            if res.is_ok():
+                use_coin: ObjectRead = res.result_data
+            else:
+                logger.exception(
+                    f"Unable to fetch gas object {test_gas_object}"
+                )
+                raise ValueError(
+                    f"Unable to fetch gas object {test_gas_object} error {res.result_string}"
+                )
+            # Ensure there is enough in user provided gas
             if use_coin.balance < gas_budget:
                 logger.exception(
                     f"Explicit use_gas_object {test_gas_object} with balance {use_coin.balance} insuffient for cost {gas_budget}"
@@ -318,7 +339,7 @@ class SuiTransaction(_SuiTransactionBase):
         gas_budget: Optional[Union[str, SuiString]] = "1000000",
         options: Optional[dict] = None,
         use_gas_object: Optional[Union[str, ObjectID]] = None,
-    ) -> SuiRpcResult:
+    ) -> Union[SuiRpcResult, ValueError]:
         """execute Finalizes transaction and submits for execution on the chain.
 
         :param gas_budget: The gas budget to use. An introspection of the transaciton is performed
@@ -364,11 +385,6 @@ class SuiTransaction(_SuiTransactionBase):
             res = self.client.get_objects_for(
                 [items[x] for x in objref_indexes]
             )
-            # res = self.client.execute(
-            #     GetMultipleObjects(
-            #         object_ids=[items[x] for x in objref_indexes]
-            #     )
-            # )
             if res.is_ok():
                 res_list = res.result_data
                 if len(res_list) != len(objref_indexes):

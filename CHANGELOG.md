@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - Unpublished
+
+**MAJOR BREAKING CHANGES**
+
+### Added
+
+- `non_refundable_storage_fee` to GasCostSummary as part of TxResult effects
+- CODE_OF_CONDUCT.md
+
+### Fixed
+
+### Changed
+
+- **BREAKING** [change](https://github.com/FrankC01/pysui/issues/132) Transaction package (sui_txn)
+- [change](https://github.com/FrankC01/pysui/issues/134) samples updated to accomodate breaking #132
+- Generalized raising Value error(s) during transaction execution **_prep_** whereas previously it would exit the application
+
+### Removed
+
+- **BREAKING** [change](https://github.com/FrankC01/pysui/issues/133) Builders removed use SuiTransaction:
+  - BatchTransaction
+  - Publish
+  - MoveCall
+  - RequestAddStake
+  - RequestWithdrawStake
+  - SplitCoinEqually
+  - SplitCoin
+  - MergeCoin
+  - PaySui
+  - Pay
+  - TransferSui
+  - TransferObject
+
+- **BREAKING** [change](https://github.com/FrankC01/pysui/issues/133) Client methods removed (both sync and async SuiClient)
+use SuiTransaction:
+  - publish_package_txn
+  - move_call_txn
+  - split_coin_equally_txn
+  - split_coin_txn
+  - merge_coin_txn
+  - transfer_object_txn
+  - transfer_sui_txn
+  - pay_allsui_txn
+  - pay_sui_txn
+  - pay_txn
+
+
+
 ## [0.29.1] - Unpublished
 
 ### Added

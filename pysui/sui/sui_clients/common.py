@@ -18,7 +18,7 @@ import sys
 import json
 from dataclasses import dataclass
 from abc import abstractmethod
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Callable
 from pkg_resources import packaging
 import httpx
 from deprecated.sphinx import versionchanged, versionadded
