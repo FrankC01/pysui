@@ -14,13 +14,15 @@
 
 """Sui low level Transaction Builder supports generation of TransactionKind."""
 
+from dataclasses import dataclass
 import logging
 import binascii
 from math import ceil
 from typing import Optional, Set, Union
 from functools import singledispatchmethod
 
-from deprecated.sphinx import versionchanged
+from deprecated.sphinx import versionchanged, versionadded
+from pysui.sui.sui_txresults.single_tx import TransactionConstraints
 
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.address import SuiAddress
@@ -67,6 +69,7 @@ class PureInput:
     @classmethod
     def _(cls, arg: bool) -> list:
         """."""
+        logger.debug(f"bool->pure {arg}")
         return list(int(arg is True).to_bytes(1, "little"))
 
     @pure.register
@@ -79,6 +82,7 @@ class PureInput:
     @classmethod
     def _(cls, arg: int) -> list:
         """Convert int to minimal list of bytes."""
+        logger.debug(f"int->pure {arg}")
         ccount = ceil(arg.bit_length() / 8.0)
         return list(int.to_bytes(arg, ccount, "little"))
 
@@ -92,78 +96,91 @@ class PureInput:
     @classmethod
     def _(cls, arg: SuiU8) -> list:
         """Convert unsigned int to bytes."""
+        logger.debug(f"u8->pure {arg.value}")
         return list(arg.to_bytes())
 
     @pure.register
     @classmethod
     def _(cls, arg: bcs.OptionalU8) -> list:
         """Convert OptionalU8 to list of bytes."""
+        logger.debug(f"Optional<u8> {arg}")
         return list(arg.serialize())
 
     @pure.register
     @classmethod
     def _(cls, arg: SuiU16) -> list:
         """Convert unsigned int to bytes."""
+        logger.debug(f"u16->pure {arg.value}")
         return list(arg.to_bytes())
 
     @pure.register
     @classmethod
     def _(cls, arg: bcs.OptionalU16) -> list:
         """Convert OptionalU16 to list of bytes."""
+        logger.debug(f"Optional<u16> {arg}")
         return list(arg.serialize())
 
     @pure.register
     @classmethod
     def _(cls, arg: SuiU32) -> list:
         """Convert unsigned int to bytes."""
+        logger.debug(f"u32->pure {arg.value}")
         return list(arg.to_bytes())
 
     @pure.register
     @classmethod
     def _(cls, arg: bcs.OptionalU32) -> list:
         """Convert OptionalU32 to list of bytes."""
+        logger.debug(f"Optional<u32> {arg}")
         return list(arg.serialize())
 
     @pure.register
     @classmethod
     def _(cls, arg: SuiU64) -> list:
         """Convert unsigned int to bytes."""
+        logger.debug(f"u64->pure {arg.value}")
         return list(arg.to_bytes())
 
     @pure.register
     @classmethod
     def _(cls, arg: bcs.OptionalU64) -> list:
         """Convert OptionalU64 to list of bytes."""
+        logger.debug(f"Optional<u64> {arg}")
         return list(arg.serialize())
 
     @pure.register
     @classmethod
     def _(cls, arg: SuiU128) -> list:
         """Convert unsigned int to bytes."""
+        logger.debug(f"u128->pure {arg.value}")
         return list(arg.to_bytes())
 
     @pure.register
     @classmethod
     def _(cls, arg: bcs.OptionalU128) -> list:
         """Convert OptionalU128 to list of bytes."""
+        logger.debug(f"Optional<u128> {arg}")
         return list(arg.serialize())
 
     @pure.register
     @classmethod
     def _(cls, arg: SuiU256) -> list:
         """Convert unsigned int to bytes."""
+        logger.debug(f"u256->pure {arg.value}")
         return list(arg.to_bytes())
 
     @pure.register
     @classmethod
     def _(cls, arg: bcs.OptionalU256) -> list:
         """Convert OptionalU256 to list of bytes."""
+        logger.debug(f"Optional<u256> {arg}")
         return list(arg.serialize())
 
     @pure.register
     @classmethod
     def _(cls, arg: str) -> list:
         """Convert str to list of bytes."""
+        logger.debug(f"str->pure {arg}")
         base_list = list(bytearray(arg, encoding="utf-8"))
         base_list.insert(0, len(base_list))
         return base_list
@@ -178,6 +195,7 @@ class PureInput:
     @classmethod
     def _(cls, arg: bytes) -> list:
         """Bytes to list."""
+        logger.debug(f"bytes->pure {arg}")
         base_list = list(arg)
         return base_list
 
@@ -185,30 +203,35 @@ class PureInput:
     @classmethod
     def _(cls, arg: ObjectID) -> list:
         """Convert ObjectID to list of bytes."""
+        logger.debug(f"ObjectID->pure {arg.value}")
         return cls.pure(binascii.unhexlify(arg.value[2:]))
 
     @pure.register
     @classmethod
     def _(cls, arg: SuiAddress) -> list:
         """Convert SuiAddress to list of bytes."""
+        logger.debug(f"SuiAddress->pure {arg.address}")
         return PureInput.pure(binascii.unhexlify(arg.address[2:]))
 
     @pure.register
     @classmethod
     def _(cls, arg: bcs.Address) -> list:
         """Convert bcs.Address to list of bytes."""
+        logger.debug(f"bcs.Address->pure {arg.to_json()}")
         return list(arg.serialize())
 
     @pure.register
     @classmethod
     def _(cls, arg: bcs.Digest) -> list:
         """Convert bcs,Digest to list of bytes."""
+        logger.debug(f"bcs.Digest->pure {arg.to_json()}")
         return list(arg.serialize())
 
     @pure.register
     @classmethod
     def _(cls, arg: list) -> list:
         """."""
+        logger.debug(f"list->pure {arg}")
         stage_list = [PureInput.pure(x) for x in arg]
         res_list = [len(stage_list)]
         for stage_pure in stage_list:
@@ -219,6 +242,11 @@ class PureInput:
     def as_input(cls, args) -> bcs.BuilderArg:
         """Convert scalars and ObjectIDs to a Pure BuilderArg."""
         return bcs.BuilderArg("Pure", cls.pure(args))
+
+
+@dataclass
+class ValidateErrors:
+    """."""
 
 
 class ProgrammableTransactionBuilder:
@@ -239,6 +267,49 @@ class ProgrammableTransactionBuilder:
         return bcs.ProgrammableTransaction(
             list(self.inputs.values()), self.commands.copy()
         )
+
+    @versionadded(
+        version="0.30.0", reason="Observing Sui ProtocolConfig constraints"
+    )
+    def verify_transaction(
+        self, constraints: TransactionConstraints
+    ) -> tuple[TransactionConstraints, TransactionConstraints]:
+        """Verify TransactionKind values against protocol constraints.
+
+        Returns both the current constraints and violations (if any)
+        """
+        # Check command and input counts
+
+        result_err = TransactionConstraints()
+
+        def _pull_vars(
+            results: TransactionConstraints,
+        ) -> Union[ValidateErrors, None]:
+            """Filter out private/protected var elements."""
+            var_map = vars(result_err)
+            hit = False
+            valerr = ValidateErrors()
+            for key, value in var_map.items():
+                if key[0] != "_" and value != 0:
+                    setattr(valerr, key, value)
+                    hit = True
+            return valerr if hit else None
+
+        # Check arguments
+        # Check input arguments
+        # Check max_num_transferred_move_object_ids
+        # Check max_programmable_tx_commands
+        if len(self.commands) > constraints.max_programmable_tx_commands:
+            result_err.max_programmable_tx_commands = len(self.commands)
+        # Check max_pure_argument_size
+        # Check max_type_argument_depth
+        # Check max_type_arguments
+        # Check size of transaction bytes
+        ser_kind = self._finish().serialize()
+        if len(ser_kind) > constraints.max_tx_size_bytes:
+            result_err.max_tx_size_bytes = len(ser_kind)
+
+        return self.constraints, _pull_vars(result_err)
 
     def finish_for_inspect(self) -> bcs.TransactionKind:
         """finish_for_inspect returns TransactionKind structure.

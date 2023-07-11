@@ -15,14 +15,9 @@
 
 import base64
 import os
-
-# import asyncio
 from pathlib import Path
 from typing import Optional, Union
 import logging
-
-from dataclasses import dataclass
-
 from deprecated.sphinx import versionadded
 
 from pysui import SuiAddress, ObjectID
@@ -82,12 +77,8 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
         )
 
 
-@dataclass
-class ValidateErrors:
-    """."""
-
-
 @versionadded(version="0.26.0", reason="Refactor to support Async")
+@versionadded(version="0.30.0", reason="Moved to transaction package.")
 class _SuiTransactionBase:
     """."""
 
@@ -180,6 +171,14 @@ class _SuiTransactionBase:
         """
         return self.builder.finish_for_inspect()
 
+    def build_for_inspection(self) -> str:
+        """build_for_inspection returns a base64 string that can be used in inspecting transaction.
+
+        :return: base64 string representation of underlying TransactionKind
+        :rtype: str
+        """
+        return base64.b64encode(self.raw_kind().serialize()).decode()
+
     @versionadded(
         version="0.30.0", reason="Observing Sui ProtocolConfig constraints"
     )
@@ -190,45 +189,7 @@ class _SuiTransactionBase:
 
         Returns both the current constraints and violations (if any)
         """
-        # Check command and input counts
-
-        tx_kind = self.raw_kind()
-        result_err = TransactionConstraints()
-
-        def _pull_vars(
-            results: TransactionConstraints,
-        ) -> Union[ValidateErrors, None]:
-            """Filter out private/protected var elements."""
-            var_map = vars(result_err)
-            hit = False
-            valerr = ValidateErrors()
-            for key, value in var_map.items():
-                if key[0] != "_" and value != 0:
-                    setattr(valerr, key, value)
-                    hit = True
-            return valerr if hit else None
-
-        # Check arguments
-        # Check input arguments
-        # Check max_num_transferred_move_object_ids
-        # Check max_programmable_tx_commands
-        # Check max_pure_argument_size
-        # Check max_type_argument_depth
-        # Check max_type_arguments
-        # Check size of transaction bytes
-        ser_kind = tx_kind.serialize()
-        if len(ser_kind) > self.constraints.max_tx_size_bytes:
-            result_err.max_tx_size_bytes = len(ser_kind)
-
-        return self.constraints, _pull_vars(result_err)
-
-    def build_for_inspection(self) -> str:
-        """build_for_inspection returns a base64 string that can be used in inspecting transaction.
-
-        :return: base64 string representation of underlying TransactionKind
-        :rtype: str
-        """
-        return base64.b64encode(self.raw_kind().serialize()).decode()
+        return self.builder.verify_transaction(self.constraints)
 
     @versionadded(
         version="0.18.0", reason="Reuse for argument nested list recursion."
