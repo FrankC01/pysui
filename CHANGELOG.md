@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `non_refundable_storage_fee` to GasCostSummary as part of TxResult effects
 - CODE_OF_CONDUCT.md
+- Extend debug logging in low level transaction builder
 
 ### Fixed
 
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** [change](https://github.com/FrankC01/pysui/issues/132) Transaction package (sui_txn)
 - [change](https://github.com/FrankC01/pysui/issues/134) samples updated to accomodate breaking #132
 - Generalized raising Value error(s) during transaction execution **_prep_** whereas previously it would exit the application
+- Document typo tweaks
 
 ### Removed
 

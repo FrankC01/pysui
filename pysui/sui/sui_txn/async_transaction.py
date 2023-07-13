@@ -105,18 +105,23 @@ class SuiTransactionAsync(_SuiTransactionBase):
         gas_budget: Union[str, SuiString],
         use_gas_object: Optional[Union[str, ObjectID]] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
-        """build_for_execute Generates the TransactionData object.
+        """_build_for_execute Generates the TransactionData object.
 
         Note: If wanting to execute, this structure needs to be serialized to a base64 string. See
         the execute method below
 
         :param gas_budget: The gas budget to use. An introspection of the transaciton is performed and
             and this method will use the larger of the two.
-        :type gas_budget: Union[int, SuiInteger]
+        :type gas_budget: Union[str, SuiString]
         :param use_gas_object: Explicit gas object to use for payment, defaults to None
         :type use_gas_object: Optional[Union[str, ObjectID]], optional
+        :raises ValueError: If the inspection of the transaction fails.
+        :raises ValueError: If malformed inspection result
+        :raises ValueError: If `use_gas_object` and it cannot resolve to Sui coin object
+        :raises ValueError: If `use_gas_object` id already used as argument or parameter for transaction
+        :raises ValueError: If insufficient gas of `use_gas_object`
         :return: TransactionData object replete with all required fields for execution
-        :rtype: bcs.TransactionData
+        :rtype: Union[bcs.TransactionData, ValueError]
         """
         # Get the transaction body
         tx_kind = self.raw_kind()
@@ -246,9 +251,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
     )
     @versionchanged(
         version="0.25.0",
-        reason="Made gas_budget optiona, defaults to 1M mists.",
+        reason="Made gas_budget optional, defaults to 1M mists."
+        "Added optional `use_gas_object`",
     )
-    @versionchanged(version="0.25.0", reason="Added execution options.")
     @versionchanged(
         version="0.28.0",
         reason="Added optional 'use_gas_object'.",
