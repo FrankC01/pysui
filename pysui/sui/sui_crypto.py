@@ -42,7 +42,6 @@ from pysui.sui.sui_excepts import (
     SuiNoKeyPairs,
 )
 from pysui.sui.sui_constants import (
-    PYSUI_EXEC_ENV,
     PYSUI_RPC_VERSION,
     SCHEME_PRIVATE_KEY_BYTE_LEN,
     SUI_KEYPAIR_LEN,

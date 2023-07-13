@@ -257,6 +257,7 @@ class ProgrammableTransactionBuilder:
         self.inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
         self.commands: list[bcs.Command] = []
         self.objects_registry: Set[str] = set()
+        logger.debug("TransactionBuilder initialized")
 
     def _finish(self) -> bcs.ProgrammableTransaction:
         """finish returns ProgrammableTransaction structure.
@@ -334,11 +335,15 @@ class ProgrammableTransactionBuilder:
         :return: The input Argument encapsulating it's input index
         :rtype: bcs.Argument
         """
+        logger.debug("Adding pure input")
         out_index = len(self.inputs)
         if key.enum_name == "Pure":
             e_index = 0
             for _ekey, evalue in self.inputs.items():
                 if evalue.enum_name == "Pure" and key.value == evalue.value:
+                    logger.debug(
+                        f"Duplicate pure input found at index {e_index}, reusing"
+                    )
                     return bcs.Argument("Input", e_index)
                 e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
@@ -346,6 +351,7 @@ class ProgrammableTransactionBuilder:
             raise ValueError(
                 f"Expected Pure builder arg, found {key.enum_name}"
             )
+        logger.debug(f"New pure input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
     # TODO: Rationalize SharedObject nuances
@@ -356,6 +362,7 @@ class ProgrammableTransactionBuilder:
         self, key: bcs.BuilderArg, object_arg: bcs.ObjectArg
     ) -> bcs.Argument:
         """."""
+        logger.debug("Adding object input")
         out_index = len(self.inputs)
         if key.enum_name == "Object" and isinstance(
             object_arg, bcs.ObjectArg
@@ -363,6 +370,9 @@ class ProgrammableTransactionBuilder:
             e_index = 0
             for _ekey, evalue in self.inputs.items():
                 if object_arg == evalue.value:
+                    logger.debug(
+                        f"Duplicate object input found at index {e_index}, reusing"
+                    )
                     return bcs.Argument("Input", e_index)
                 e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
@@ -371,6 +381,7 @@ class ProgrammableTransactionBuilder:
                 f"Expected Object builder arg and ObjectArg, found {key.enum_name} and {type(object_arg)}"
             )
         self.objects_registry.add(key.value.to_address_str())
+        logger.debug(f"New object input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
     def command(
@@ -384,14 +395,19 @@ class ProgrammableTransactionBuilder:
         :rtype: bcs.Argument
         """
         out_index = len(self.commands)
+        logger.debug(f"Adding command {out_index}")
         self.commands.append(command_obj)
         if nresults > 1:
+            logger.debug(
+                f"Creating nested result return for {nresults} elements"
+            )
             nreslist: list[bcs.Argument] = []
             for nrindex in range(nresults):
                 nreslist.append(
                     bcs.Argument("NestedResult", (out_index, nrindex))
                 )
             return nreslist
+        logger.debug("Creating single result return")
         return bcs.Argument("Result", out_index)
 
     def make_move_vector(
@@ -407,6 +423,7 @@ class ProgrammableTransactionBuilder:
     ) -> bcs.Argument:
         """Create a call to convert a list of items to a Sui 'vector' type."""
         # Sample first for type
+        logger.debug("Creating MakeMoveVec transaction")
         argrefs: list[bcs.Argument] = []
         for arg in items:
             if isinstance(arg, bcs.BuilderArg):
@@ -419,6 +436,7 @@ class ProgrammableTransactionBuilder:
                 raise ValueError(
                     f"Unknown arg in movecall {arg.__class__.__name__}"
                 )
+
         return self.command(
             bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs))
         )
@@ -439,6 +457,7 @@ class ProgrammableTransactionBuilder:
         res_count: int = 1,
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """Setup a MoveCall command and return it's result Argument."""
+        logger.debug("Creating MakeCall transaction")
         argrefs: list[bcs.Argument] = []
         for arg in arguments:
             if isinstance(arg, bcs.BuilderArg):
@@ -453,6 +472,7 @@ class ProgrammableTransactionBuilder:
                 raise ValueError(
                     f"Unknown arg in movecall {arg.__class__.__name__}"
                 )
+
         return self.command(
             bcs.Command(
                 "MoveCall",
@@ -470,6 +490,7 @@ class ProgrammableTransactionBuilder:
         amounts: list[bcs.BuilderArg],
     ) -> bcs.Argument:
         """Setup a SplitCoin command and return it's result Argument."""
+        logger.debug("Creating SplitCoin transaction")
         amounts_arg = [self.input_pure(x) for x in amounts]
         if isinstance(from_coin, bcs.Argument):
             coin_arg = from_coin
@@ -486,6 +507,7 @@ class ProgrammableTransactionBuilder:
         from_coins: list[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
     ) -> bcs.Argument:
         """Setup a MergeCoins command and return it's result Argument."""
+        logger.debug("Creating MergeCoins transaction")
         to_coin = (
             to_coin
             if isinstance(to_coin, bcs.Argument)
@@ -511,6 +533,7 @@ class ProgrammableTransactionBuilder:
         ],
     ) -> bcs.Argument:
         """Setup a TransferObjects command and return it's result Argument."""
+        logger.debug("Creating TransferObjects transaction")
         receiver_arg = self.input_pure(recipient)
         from_args: list[bcs.Argument] = []
         if isinstance(object_ref, list):
@@ -538,6 +561,7 @@ class ProgrammableTransactionBuilder:
 
         First uses the SplitCoins result, then returns the TransferObjects result Argument.
         """
+        logger.debug("Creating TransferSui transaction")
         reciever_arg = self.input_pure(recipient)
         if amount:
             coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
@@ -560,6 +584,7 @@ class ProgrammableTransactionBuilder:
         self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address]
     ) -> bcs.Argument:
         """Setup a Publish command and return it's result Argument."""
+        logger.debug("Creating Publish transaction")
         # result = self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
         return self.command(
             bcs.Command("Publish", bcs.Publish(modules, dep_ids))
@@ -572,6 +597,7 @@ class ProgrammableTransactionBuilder:
         digest: bcs.BuilderArg,
     ) -> bcs.Argument:
         """Setup a Authorize Upgrade MoveCall and return it's result Argument."""
+        logger.debug("Creating UpgradeAuthorization transaction")
         return self.command(
             bcs.Command(
                 "MoveCall",
@@ -597,6 +623,7 @@ class ProgrammableTransactionBuilder:
         upgrade_ticket: bcs.Argument,
     ) -> bcs.Argument:
         """Setup a Upgrade Command and return it's result Argument."""
+        logger.debug("Creating PublishUpgrade transaction")
         return self.command(
             bcs.Command(
                 "Upgrade",
@@ -608,6 +635,7 @@ class ProgrammableTransactionBuilder:
         self, upgrade_cap: bcs.Argument, receipt: bcs.Argument
     ) -> bcs.Argument:
         """Setup a Commit Upgrade MoveCall and return it's result Argument."""
+        logger.debug("Creating UpgradeCommit transaction")
         return self.command(
             bcs.Command(
                 "MoveCall",
