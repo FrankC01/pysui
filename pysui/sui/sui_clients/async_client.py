@@ -53,7 +53,7 @@ from pysui.sui.sui_builders.get_builders import (
     GetObjectsOwnedByAddress,
     GetObject,
     GetPackage,
-    GetEvents,
+    QueryEvents,
 )
 from pysui.sui.sui_builders.exec_builders import (
     DryRunTransaction,
@@ -569,7 +569,7 @@ class SuiClient(_ClientMixin):
         """
         inargs: dict = locals().copy()
         inargs.pop("self")
-        return await self.execute(GetEvents(**inargs))
+        return await self.execute(QueryEvents(query=query, cursor=cursor, limit=limit, descending_order=descending_order, **inargs))
 
     @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def pay_txn(
