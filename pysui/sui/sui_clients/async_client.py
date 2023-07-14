@@ -552,7 +552,12 @@ class SuiClient(_ClientMixin):
         return result
 
     async def get_events(
-        self, *, query: SuiMap, cursor: str, limit: int, descending_order: bool
+        self,
+        *,
+        query: SuiMap,
+        cursor: str = "",
+        limit: int = 50,
+        descending_order: bool = True,
     ) -> SuiRpcResult:
         """get_events `sui_getEvents` API.
 
@@ -569,7 +574,7 @@ class SuiClient(_ClientMixin):
         """
         inargs: dict = locals().copy()
         inargs.pop("self")
-        return await self.execute(QueryEvents(query=query, cursor=cursor, limit=limit, descending_order=descending_order, **inargs))
+        return self.execute(QueryEvents(**inargs))
 
     @deprecated(version="0.28.0", reason="Use SuiTransaction builder instead.")
     async def pay_txn(

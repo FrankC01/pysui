@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/135) - SuiClient `get_events`
+
 ### Changed
 
 - [change](https://github.com/FrankC01/pysui/issues/131) - improve SuiTransaction constructor performance
