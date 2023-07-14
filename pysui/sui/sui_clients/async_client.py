@@ -563,16 +563,4 @@ class SuiClient(_ClientMixin):
         """
         inargs: dict = locals().copy()
         inargs.pop("self")
-<<<<<<< HEAD
         return self.execute(QueryEvents(**inargs))
-=======
-        return self.execute(
-            QueryEvents(
-                query=query,
-                cursor=cursor,
-                limit=limit,
-                descending_order=descending_order,
-                **inargs,
-            )
-        )
->>>>>>> d961976 (Release 0.30.0)
