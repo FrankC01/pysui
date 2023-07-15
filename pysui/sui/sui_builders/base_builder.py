@@ -23,7 +23,12 @@ import typing_utils
 from deprecated.sphinx import versionchanged
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_rpc import Builder
-from pysui.sui.sui_utils import COERCION_FROM_TO_SETS, COERCION_FN_MAP, COERCION_TO_FROM_SETS
+from pysui.sui.sui_types.scalars import SuiNullType
+from pysui.sui.sui_utils import (
+    COERCION_FROM_TO_SETS,
+    COERCION_FN_MAP,
+    COERCION_TO_FROM_SETS,
+)
 
 
 class SuiRequestType(IntEnum):
@@ -94,7 +99,11 @@ class SuiBaseBuilder(Builder):
     """
 
     def __init__(
-        self, method: str, txn_required: bool, handler_cls: Type[SuiBaseType] = None, handler_func: str = None
+        self,
+        method: str,
+        txn_required: bool,
+        handler_cls: Type[SuiBaseType] = None,
+        handler_func: str = None,
     ) -> None:
         """__init__ Initialize builder.
 
@@ -114,7 +123,9 @@ class SuiBaseBuilder(Builder):
         self._handler_cls: Type[SuiBaseType] = handler_cls
         self._handler_func: str = handler_func
 
-    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
+    @versionchanged(
+        version="0.24.0", reason="Moved from list to dict for RPC params"
+    )
     def _pull_vars(self) -> dict:
         """Filter out private/protected var elements."""
         var_map = vars(self)
@@ -124,13 +135,17 @@ class SuiBaseBuilder(Builder):
                 outparms[key] = value
         return outparms
 
-    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
+    @versionchanged(
+        version="0.24.0", reason="Moved from list to dict for RPC params"
+    )
     def _collect_parameters(self) -> dict:
         """Collect the call parameters."""
         # TODO: Merge with `params` method when refactored or just remove abstract decl
         return self._pull_vars()
 
-    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
+    @versionchanged(
+        version="0.24.0", reason="Moved from list to dict for RPC params"
+    )
     @property
     def params(self) -> dict:
         """Return parameters list."""
@@ -162,8 +177,14 @@ class SuiBaseBuilder(Builder):
         return indata
 
     # EXPERIMENTAL
+    @versionchanged(
+        version="0.30.0",
+        reason="SuiNullType is now accepted as valid argument",
+    )
     @classmethod
-    def value_type_validator(cls, base_class_name: str, args: dict, builder_types: dict) -> Union[dict, TypeError]:
+    def value_type_validator(
+        cls, base_class_name: str, args: dict, builder_types: dict
+    ) -> Union[dict, TypeError]:
         """value_type_validator Aligns and or coerces expected arg type from input arg value.
 
         :param base_class_name: Class of type
@@ -184,24 +205,39 @@ class SuiBaseBuilder(Builder):
             # if hastype is equal to expected type (ctype_value)
             if has_type == ctype_value:
                 result_dict[ctype_key] = args[ctype_key]
+            elif has_type == SuiNullType:
+                result_dict[ctype_key] = args[ctype_key]
             elif args[ctype_key] and typing_utils.issubtype(
                 has_type, ctype_value
             ):  # issubclass(has_type, ctype_value):
                 result_dict[ctype_key] = args[ctype_key]
             # if intype has cross-reference, call the converter
-            elif has_type in COERCION_FROM_TO_SETS and ctype_value in COERCION_FROM_TO_SETS[has_type]:
-                result_dict[ctype_key] = COERCION_FN_MAP[ctype_value](args[ctype_key])
+            elif (
+                has_type in COERCION_FROM_TO_SETS
+                and ctype_value in COERCION_FROM_TO_SETS[has_type]
+            ):
+                result_dict[ctype_key] = COERCION_FN_MAP[ctype_value](
+                    args[ctype_key]
+                )
             # If no value in argument but type supports Optional
             elif not args[ctype_key]:
                 if has_type in COERCION_FN_MAP:
-                    result_dict[ctype_key] = COERCION_FN_MAP[has_type](ctype_key)
+                    result_dict[ctype_key] = COERCION_FN_MAP[has_type](
+                        ctype_key
+                    )
                 else:
-                    raise TypeError(f"{ctype_key} has no value and no coercion function. In {has_type}")
+                    raise TypeError(
+                        f"{ctype_key} has no value and no coercion function. In {has_type}"
+                    )
             elif has_type in COERCION_TO_FROM_SETS:
-                result_dict[ctype_key] = COERCION_FN_MAP[has_type](args[ctype_key])
+                result_dict[ctype_key] = COERCION_FN_MAP[has_type](
+                    args[ctype_key]
+                )
             else:
                 # We get here if we can't coerce type
-                raise ValueError(f"{ctype_key} expects {ctype_value} but args {ctype_key} is {type(args[ctype_key])}")
+                raise ValueError(
+                    f"{ctype_key} expects {ctype_value} but args {ctype_key} is {type(args[ctype_key])}"
+                )
         return result_dict
 
 
@@ -220,11 +256,15 @@ def sui_builder(*includes, **kwargs):
         """
         __host_class, __host_func = func.__qualname__.split(".")
         if __host_func != "__init__":
-            raise ValueError(f"@sui_builder is decorator for class __init__, but found {__host_func}")
+            raise ValueError(
+                f"@sui_builder is decorator for class __init__, but found {__host_func}"
+            )
         spec: inspect.FullArgSpec = inspect.getfullargspec(func)
         # handle varargs is an exception for builders
         if spec.varargs:
-            raise AttributeError(f"Builder initializers do not accept variable args {spec.varargs}")
+            raise AttributeError(
+                f"Builder initializers do not accept variable args {spec.varargs}"
+            )
 
         def sieve(attr: str) -> bool:
             """sieve Checks if attribute should be included in results.
@@ -248,7 +288,10 @@ def sui_builder(*includes, **kwargs):
             :return: True type as object
             :rtype: object
             """
-            if "_name" in anno.__dict__ and anno.__dict__["_name"] == "Optional":
+            if (
+                "_name" in anno.__dict__
+                and anno.__dict__["_name"] == "Optional"
+            ):
                 return get_args(anno)[0]
             return anno
 
@@ -277,16 +320,22 @@ def sui_builder(*includes, **kwargs):
             # handle default values
             if spec.defaults:
                 # if defaults:
-                for attr, val in zip(reversed(spec.args), reversed(spec.defaults)):
+                for attr, val in zip(
+                    reversed(spec.args), reversed(spec.defaults)
+                ):
                     if sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
+                        __var_type_map[attr] = sui_true_type(
+                            spec.annotations[attr]
+                        )
             # # handle positional arguments
             positional_attrs = spec.args[1:]
             for attr, val in zip(positional_attrs, args):
                 if sieve(attr):
                     __var_map[attr] = val
-                    __var_type_map[attr] = sui_true_type(spec.annotations[attr])
+                    __var_type_map[attr] = sui_true_type(
+                        spec.annotations[attr]
+                    )
                     # __var_type_map[attr] = spec.annotations[attr]
 
             # handle keyword args
@@ -294,7 +343,9 @@ def sui_builder(*includes, **kwargs):
                 for attr, val in kwargs.items():
                     if sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
+                        __var_type_map[attr] = sui_true_type(
+                            spec.annotations[attr]
+                        )
                         # __var_type_map[attr] = spec.annotations[attr]
 
             # handle keywords with defaults:
@@ -302,7 +353,9 @@ def sui_builder(*includes, **kwargs):
                 for attr, val in spec.kwonlydefaults.items():
                     if not __var_map[attr] and sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
+                        __var_type_map[attr] = sui_true_type(
+                            spec.annotations[attr]
+                        )
                         # __var_type_map[attr] = spec.annotations[attr]
 
             def my_set_lambda(name, coerce, self, val):
@@ -331,18 +384,23 @@ def sui_builder(*includes, **kwargs):
                 return self.__dict__[name]
 
             # Setup the initializing values
-            _instance_dict = self.value_type_validator(__host_class, __var_map, __var_type_map)
+            _instance_dict = self.value_type_validator(
+                __host_class, __var_map, __var_type_map
+            )
             for _new_key, _new_val in _instance_dict.items():
                 setattr(self, _new_key, _new_val)
             # Setup the properties (getter, setter)
             myclass = self.__class__
             for _new_key, _new_val in _instance_dict.items():
-                coercer = COERCION_FN_MAP.get(__var_type_map[_new_key], lambda x: x)
+                coercer = COERCION_FN_MAP.get(
+                    __var_type_map[_new_key], lambda x: x
+                )
                 setattr(
                     myclass,
                     _new_key,
                     property(
-                        functools.partial(my_get_lambda, _new_key), functools.partial(my_set_lambda, _new_key, coercer)
+                        functools.partial(my_get_lambda, _new_key),
+                        functools.partial(my_set_lambda, _new_key, coercer),
                     ),
                 )
 
@@ -357,6 +415,11 @@ def sui_builder(*includes, **kwargs):
 class _NativeTransactionBuilder(SuiBaseBuilder):
     """Builders for simple single parameter transactions."""
 
-    def __init__(self, method: str, handler_cls: Type[SuiBaseType] = None, handler_func: str = None) -> None:
+    def __init__(
+        self,
+        method: str,
+        handler_cls: Type[SuiBaseType] = None,
+        handler_func: str = None,
+    ) -> None:
         """Initialize builder."""
         super().__init__(method, False, handler_cls, handler_func)

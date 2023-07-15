@@ -582,7 +582,7 @@ def _build_extended_read_commands(subparser) -> None:
             "-c",
             "--cursor",
             required=False,
-            help="optional paging cursor, entered as n:n (e.g. 10:0)",
+            help="optional paging cursor, entered as event_seq:transaction_digest (e.g. 0:D7rqcbEBjRygRxsNQjLzvN14rKhnrpworQeZCwkUi7AR)",
             type=str,
             default=SuiNullType(),
         )

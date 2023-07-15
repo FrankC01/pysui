@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/137)
+
 ### Changed
 
 - **BREAKING** [change](https://github.com/FrankC01/pysui/issues/132) Transaction package (sui_txn)

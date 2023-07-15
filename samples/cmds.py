@@ -21,6 +21,7 @@ from pysui.sui.sui_txn import SyncTransaction
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_types.event_filter import (
+    AllFilter,
     MoveEventTypeQuery,
     MoveModuleEventQuery,
     SenderEventQuery,
@@ -464,9 +465,7 @@ def _convert_event_query(
     var_args["query"] = query
     if isinstance(var_args["cursor"], str):
         curser_event_id = var_args["cursor"].split(":")
-        var_args["cursor"] = EventID(
-            int(curser_event_id[0]), int(curser_event_id[1])
-        )
+        var_args["cursor"] = EventID(curser_event_id[0], curser_event_id[1])
     var_args["descending_order"] = SuiBoolean(var_args["descending_order"])
     return var_args
 
@@ -475,8 +474,9 @@ def events_all(client: SyncClient, args: argparse.Namespace) -> None:
     """Event info request handler for all events."""
     var_args = vars(args)
     result = client.get_events(
-        **_convert_event_query(var_args, SuiString("All"))
+        **_convert_event_query(var_args, AllFilter(filters=[]))
     )
+    # result = client.get_events(query=AllFilter(filters=[]))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
     else:

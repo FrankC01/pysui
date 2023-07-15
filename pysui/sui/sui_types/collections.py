@@ -15,6 +15,7 @@
 
 from abc import abstractmethod
 from typing import Any, Generic, TypeVar, Union
+from deprecated.sphinx import versionchanged
 from pysui.abstracts import SuiBaseType
 from pysui.sui.sui_types.scalars import ObjectID, SuiInteger, SuiString
 from pysui.sui.sui_types.address import SuiAddress
@@ -173,10 +174,13 @@ class BatchParameter(SuiMap):
         """Satisfied by subclasses."""
 
 
+@versionchanged(
+    version="0.30.0", reason="event_seq and tx_seq changed from int to string"
+)
 class EventID(SuiMap):
     """Event ID specifier."""
 
-    def __init__(self, event_seq: int, tx_seq: int):
+    def __init__(self, event_seq: str, tx_seq: str):
         """Initialize EventID."""
         super().__init__("eventSeq", event_seq)
-        self.map["txSeq"] = tx_seq
+        self.map["txDigest"] = tx_seq
