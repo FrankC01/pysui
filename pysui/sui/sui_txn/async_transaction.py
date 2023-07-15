@@ -78,7 +78,15 @@ class SuiTransactionAsync(_SuiTransactionBase):
         merge_gas_budget: bool = False,
         initial_sender: Union[SuiAddress, SigningMultiSig] = False,
     ) -> None:
-        """Transaction initializer."""
+        """__init__ Initialize the Transaction.
+
+        :param client: The asynchronous SuiClient
+        :type client: SyncClient
+        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
+        :type merge_gas_budget: bool, optional
+        :param initial_sender: The address of the sender of the transaction, defaults to False
+        :type initial_sender: Union[SuiAddress, SigningMultiSig], optional
+        """
         super().__init__(client, merge_gas_budget, initial_sender)
 
     @versionchanged(version="0.17.0", reason="Only used internally.")

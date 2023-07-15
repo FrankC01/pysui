@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING** [change](https://github.com/FrankC01/pysui/issues/132) Transaction package (sui_txn)
 - [change](https://github.com/FrankC01/pysui/issues/134) samples updated to accomodate breaking #132
+- [change](https://github.com/FrankC01/pysui/issues/139) change to gas payment strategy
 - Generalized raising Value error(s) during transaction execution **_prep_** whereas previously it would exit the application
 - Document typo tweaks
 

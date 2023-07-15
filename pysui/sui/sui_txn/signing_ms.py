@@ -211,6 +211,10 @@ class SignerBlock(_SignerBlockBase):
     @versionchanged(
         version="0.28.0", reason="Use _ConsolidateSui if coins needed for gas."
     )
+    @versionchanged(
+        version="0.30.0",
+        reason="Leverage multiple gas objects passed for paying in transaction.",
+    )
     def get_gas_object(
         self,
         *,
@@ -259,36 +263,48 @@ class SignerBlock(_SignerBlockBase):
         # Otherwise if we can merge
         elif merge_coin:
             alt_gas: list[SuiCoinObject] = [
-                x
+                bcs.ObjectReference(
+                    bcs.Address.from_str(x.object_id),
+                    int(x.version),
+                    bcs.Digest.from_str(x.digest),
+                )
                 for x in owner_coins
                 if x.coin_object_id not in objects_in_use
             ]
-            if alt_gas:
-                enh_budget = budget + _PAY_GAS
-                to_pay: list[str] = []
-                accum_pay: int = 0
-                for ogas in alt_gas:
-                    to_pay.append(ogas)
-                    accum_pay += int(ogas.balance)
-                    if accum_pay >= enh_budget:
-                        break
-                if accum_pay >= enh_budget:
-                    handle_result(
-                        client.execute(
-                            _ConsolidateSui(
-                                signer=who_pays,
-                                input_coins=SuiAddress(
-                                    [
-                                        ObjectID(x.coin_object_id)
-                                        for x in to_pay
-                                    ]
-                                ),
-                                recipient=who_pays,
-                                gas_budget=str(_PAY_GAS),
-                            )
-                        )
-                    )
-                    use_coin = to_pay[0]
+
+            return bcs.GasData(
+                alt_gas,
+                bcs.Address.from_str(whose_gas),
+                int(gas_price),
+                int(budget),
+            )
+
+            # if alt_gas:
+            #     enh_budget = budget + _PAY_GAS
+            #     to_pay: list[str] = []
+            #     accum_pay: int = 0
+            #     for ogas in alt_gas:
+            #         to_pay.append(ogas)
+            #         accum_pay += int(ogas.balance)
+            #         if accum_pay >= enh_budget:
+            #             break
+            #     if accum_pay >= enh_budget:
+            #         handle_result(
+            #             client.execute(
+            #                 _ConsolidateSui(
+            #                     signer=who_pays,
+            #                     input_coins=SuiArray(
+            #                         [
+            #                             ObjectID(x.coin_object_id)
+            #                             for x in to_pay
+            #                         ]
+            #                     ),
+            #                     recipient=who_pays,
+            #                     gas_budget=str(_PAY_GAS),
+            #                 )
+            #             )
+            #         )
+            #         use_coin = to_pay[0]
         # If we have a coin to use, return the GasDataObject
         if use_coin:
             return bcs.GasData(
@@ -308,6 +324,10 @@ class SignerBlock(_SignerBlockBase):
     @versionadded(version="0.26.0", reason="Added to support async operations")
     @versionchanged(
         version="0.28.0", reason="Use _ConsolidateSui if coins needed for gas."
+    )
+    @versionchanged(
+        version="0.30.0",
+        reason="Leverage multiple gas objects passed for paying in transaction.",
     )
     async def get_gas_object_async(
         self,
@@ -357,36 +377,52 @@ class SignerBlock(_SignerBlockBase):
         # Otherwise if we can merge
         elif merge_coin:
             alt_gas: list[SuiCoinObject] = [
-                x
+                bcs.ObjectReference(
+                    bcs.Address.from_str(x.object_id),
+                    int(x.version),
+                    bcs.Digest.from_str(x.digest),
+                )
                 for x in owner_coins
                 if x.coin_object_id not in objects_in_use
             ]
-            if alt_gas:
-                enh_budget = budget + _PAY_GAS
-                to_pay: list[str] = []
-                accum_pay: int = 0
-                for ogas in alt_gas:
-                    to_pay.append(ogas)
-                    accum_pay += int(ogas.balance)
-                    if accum_pay >= enh_budget:
-                        break
-                if accum_pay >= enh_budget:
-                    handle_result(
-                        await client.execute(
-                            _ConsolidateSui(
-                                signer=who_pays,
-                                input_coins=SuiAddress(
-                                    [
-                                        ObjectID(x.coin_object_id)
-                                        for x in to_pay
-                                    ]
-                                ),
-                                recipient=who_pays,
-                                gas_budget=str(_PAY_GAS),
-                            )
-                        )
-                    )
-                    use_coin = to_pay[0]
+
+            return bcs.GasData(
+                alt_gas,
+                bcs.Address.from_str(whose_gas),
+                int(gas_price),
+                int(budget),
+            )
+            # alt_gas: list[SuiCoinObject] = [
+            #     x
+            #     for x in owner_coins
+            #     if x.coin_object_id not in objects_in_use
+            # ]
+            # if alt_gas:
+            #     enh_budget = budget + _PAY_GAS
+            #     to_pay: list[str] = []
+            #     accum_pay: int = 0
+            #     for ogas in alt_gas:
+            #         to_pay.append(ogas)
+            #         accum_pay += int(ogas.balance)
+            #         if accum_pay >= enh_budget:
+            #             break
+            #     if accum_pay >= enh_budget:
+            #         handle_result(
+            #             await client.execute(
+            #                 _ConsolidateSui(
+            #                     signer=who_pays,
+            #                     input_coins=SuiAddress(
+            #                         [
+            #                             ObjectID(x.coin_object_id)
+            #                             for x in to_pay
+            #                         ]
+            #                     ),
+            #                     recipient=who_pays,
+            #                     gas_budget=str(_PAY_GAS),
+            #                 )
+            #             )
+            #         )
+            #         use_coin = to_pay[0]
         # If we have a coin to use, return the GasDataObject
         if use_coin:
             return bcs.GasData(
