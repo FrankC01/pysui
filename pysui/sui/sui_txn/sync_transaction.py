@@ -185,8 +185,8 @@ class SuiTransaction(_SuiTransactionBase):
         Note: If wanting to execute, this structure needs to be serialized to a base64 string. See
         the execute method below
 
-        :param gas_budget: The gas budget to use. An introspection of the transaciton is performed and
-            and this method will use the larger of the two.
+        :param gas_budget: The suggested gas budget to use. An introspection of the transaciton is performed and
+            and this budget will be set to larger of the two.
         :type gas_budget: Union[str, SuiString]
         :param use_gas_object: Explicit gas object to use for payment, defaults to None
         :type use_gas_object: Optional[Union[str, ObjectID]], optional
