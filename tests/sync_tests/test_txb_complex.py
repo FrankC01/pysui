@@ -15,6 +15,7 @@
 from pysui import SyncClient, SuiAddress
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_txn import SigningMultiSig, SyncTransaction
+from pysui.sui.sui_types import bcs
 import tests.test_utils as tutils
 
 
@@ -79,3 +80,41 @@ def test_txb_publish(sui_client: SyncClient) -> None:
     )
     result = txer.execute(gas_budget=tutils.STANDARD_BUDGET)
     assert result.is_ok()
+
+
+def test_txb_make_and_remove_zeros(sui_client: SyncClient) -> None:
+    """Clean up zero balance coins."""
+    # First make a bunch of zero balances
+    result = sui_client.get_gas()
+    assert result.is_ok()
+    all_coins = result.result_data.data
+    gasage = all_coins.pop()
+    tx = SyncTransaction(sui_client)
+    balances: list[bcs.Argument] = [
+        tx.split_coin(coin=x, amounts=[int(x.balance)]) for x in all_coins
+    ]
+    tx.merge_coins(merge_to=tx.gas, merge_from=balances)
+    result = tx.execute(use_gas_object=gasage.object_id)
+    assert result.is_ok()
+    # Verify the length of zero balance coins is equal to all_coins
+    result = sui_client.get_gas()
+    assert result.is_ok()
+    assert len(all_coins) == len(result.result_data.data) - 1
+    zero_coins = [x for x in result.result_data.data if int(x.balance) == 0]
+    assert len(zero_coins) == len(all_coins)
+    # Merge all the zeros to primary
+    tx = SyncTransaction(sui_client)
+    tx.merge_coins(merge_to=tx.gas, merge_from=zero_coins)
+    result = tx.execute(use_gas_object=gasage.object_id)
+    assert result.is_ok()
+    result = sui_client.get_gas()
+    assert result.is_ok()
+    assert len(result.result_data.data) == 1
+    # Split them back out
+    tx = SyncTransaction(sui_client)
+    tx.split_coin_equal(coin=tx.gas, split_count=len(all_coins) + 1)
+    result = tx.execute()
+    assert result.is_ok()
+    result = sui_client.get_gas()
+    assert result.is_ok()
+    assert len(result.result_data.data) == len(all_coins) + 1
