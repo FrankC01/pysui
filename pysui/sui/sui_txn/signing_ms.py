@@ -205,6 +205,100 @@ class SignerBlock(_SignerBlockBase):
         """
         super().__init__(sender=sender, sponsor=sponsor)
 
+    @versionadded(version="0.30.0", reason="Refactored from get_gas_object.")
+    def _get_payer(self) -> Union[str, ValueError]:
+        """Get the payer for the transaction."""
+        # Either a sponsor (priority) or sender will pay for this
+        who_pays = self._sponsor if self._sponsor else self._sender
+        # If both not set, Fail
+        if not who_pays:
+            raise ValueError(
+                "Both SuiTransaction sponor and sender are null. Complete at least one before execute."
+            )
+        if isinstance(who_pays, SuiAddress):
+            who_pays = who_pays.address
+        else:
+            who_pays = who_pays.signing_address
+
+        return who_pays
+
+    @versionadded(version="0.30.0", reason="Refactored from get_gas_object.")
+    def _get_gas_data(
+        self,
+        payer: str,
+        owner_coins: list[SuiCoinObject],
+        budget: int,
+        objects_in_use: list,
+        merge_coin: bool,
+        gas_price: int,
+    ) -> Union[bcs.GasData, ValueError]:
+        """Find the gas to pay for transaction."""
+        # Scan for a single coin not in use that satisfies budget
+        # but always accumulate and break if we meet threshold based on budget
+        have_single = None
+        owner_gas: list[SuiCoinObject] = []
+        threshold: int = 0
+        for o_gas in owner_coins:
+            # Eliminate any gas in use for commands
+            if o_gas.object_id not in objects_in_use:
+                # If the potential for one coin that satisfied budget exists
+                if int(o_gas.balance) >= budget and not have_single:
+                    have_single = o_gas
+                owner_gas.append(o_gas)
+                threshold += int(o_gas.balance)
+                # If we have enough coins to satisfy budget
+                if threshold >= budget:
+                    break
+
+        # If a merge_to_gas was part of transaction commands,
+        # use the first object
+        gas_data: list = None
+        if self._merge_to_gas:
+            use_coin = owner_coins[0]
+            gas_data = [
+                bcs.ObjectReference(
+                    bcs.Address.from_str(use_coin.coin_object_id),
+                    int(use_coin.version),
+                    bcs.Digest.from_str(use_coin.digest),
+                )
+            ]
+
+        # Otherwise, if we have one object that satisfies the budget
+        elif have_single:
+            gas_data = [
+                bcs.ObjectReference(
+                    bcs.Address.from_str(have_single.coin_object_id),
+                    int(have_single.version),
+                    bcs.Digest.from_str(have_single.digest),
+                )
+            ]
+        # Else check that we meet the threshold
+        elif threshold >= budget:
+            # If we do and merge_gas_budget was specified on the SuiTransaction
+            if merge_coin:
+                gas_data = [
+                    bcs.ObjectReference(
+                        bcs.Address.from_str(x.object_id),
+                        int(x.version),
+                        bcs.Digest.from_str(x.digest),
+                    )
+                    for x in owner_gas
+                ]
+            else:
+                raise ValueError(
+                    f"{payer} has enough gas but merge_gas_budget not set on transaction."
+                )
+
+        else:
+            raise ValueError(f"{payer} has nothing to pay with.")
+
+        return bcs.GasData(
+            gas_data,
+            bcs.Address.from_str(payer),
+            int(gas_price),
+            int(budget),
+        )
+
     @versionchanged(
         version="0.21.1", reason="Corrected when using multisig senders."
     )
@@ -223,103 +317,26 @@ class SignerBlock(_SignerBlockBase):
         objects_in_use: list,
         merge_coin: bool,
         gas_price: int,
-    ) -> bcs.GasData:
+    ) -> Union[bcs.GasData, ValueError]:
         """Produce a gas object from either the sponsor or the sender."""
         # Either a sponsor (priority) or sender will pay for this
-        who_pays = self._sponsor if self._sponsor else self._sender
-        # If both not set, Fail
-        if not who_pays:
+        who_pays = self._get_payer()
+        # Get current gas objects for payer
+        gas_result = client.get_gas(who_pays)
+        if gas_result.is_ok():
+            owner_coins: list[SuiCoinObject] = gas_result.result_data.data
+        else:
             raise ValueError(
-                "Both SuiTransaction sponor and sender are null. Complete at least one before execute."
+                f"Error {gas_result.result_string} attemepting to fetch gas objects for {who_pays}"
             )
-        if isinstance(who_pays, SuiAddress):
-            whose_gas = who_pays.address
-            who_pays = who_pays.address
-        else:
-            whose_gas = who_pays.signing_address  # as_sui_address
-            who_pays = who_pays.signing_address
-        # who_pays = who_pays if isinstance(who_pays, SuiAddress) else who_pays.multi_sig.as_sui_address
-        owner_coins: list[SuiCoinObject] = handle_result(
-            client.get_gas(whose_gas)
-        ).data
-        # Get whatever gas objects below to whoever is paying
-        # and filter those not in use
-        use_coin: SuiCoinObject = None
-        if self._merge_to_gas:
-            owner_gas: list[SuiCoinObject] = [owner_coins[0]]
-        else:
-            owner_gas: list[SuiCoinObject] = [
-                x
-                for x in owner_coins
-                if x.coin_object_id not in objects_in_use
-                and int(x.balance) >= budget
-            ]
-
-        # If there is no remaining gas but _merge_to_gas is found
-        # Find that which satisfies budget
-        # If we have a result of the main filter, use first
-        if owner_gas:
-            use_coin = owner_gas[0]
-        # Otherwise if we can merge
-        elif merge_coin:
-            alt_gas: list[SuiCoinObject] = [
-                bcs.ObjectReference(
-                    bcs.Address.from_str(x.object_id),
-                    int(x.version),
-                    bcs.Digest.from_str(x.digest),
-                )
-                for x in owner_coins
-                if x.coin_object_id not in objects_in_use
-            ]
-
-            return bcs.GasData(
-                alt_gas,
-                bcs.Address.from_str(whose_gas),
-                int(gas_price),
-                int(budget),
-            )
-
-            # if alt_gas:
-            #     enh_budget = budget + _PAY_GAS
-            #     to_pay: list[str] = []
-            #     accum_pay: int = 0
-            #     for ogas in alt_gas:
-            #         to_pay.append(ogas)
-            #         accum_pay += int(ogas.balance)
-            #         if accum_pay >= enh_budget:
-            #             break
-            #     if accum_pay >= enh_budget:
-            #         handle_result(
-            #             client.execute(
-            #                 _ConsolidateSui(
-            #                     signer=who_pays,
-            #                     input_coins=SuiArray(
-            #                         [
-            #                             ObjectID(x.coin_object_id)
-            #                             for x in to_pay
-            #                         ]
-            #                     ),
-            #                     recipient=who_pays,
-            #                     gas_budget=str(_PAY_GAS),
-            #                 )
-            #             )
-            #         )
-            #         use_coin = to_pay[0]
-        # If we have a coin to use, return the GasDataObject
-        if use_coin:
-            return bcs.GasData(
-                [
-                    bcs.ObjectReference(
-                        bcs.Address.from_str(use_coin.coin_object_id),
-                        int(use_coin.version),
-                        bcs.Digest.from_str(use_coin.digest),
-                    )
-                ],
-                bcs.Address.from_str(whose_gas),
-                int(gas_price),
-                int(budget),
-            )
-        raise ValueError(f"{who_pays} has nothing to pay with.")
+        return self._get_gas_data(
+            who_pays,
+            owner_coins,
+            budget,
+            objects_in_use,
+            merge_coin,
+            gas_price,
+        )
 
     @versionadded(version="0.26.0", reason="Added to support async operations")
     @versionchanged(
@@ -340,101 +357,20 @@ class SignerBlock(_SignerBlockBase):
     ) -> bcs.GasData:
         """Produce a gas object from either the sponsor or the sender."""
         # Either a sponsor (priority) or sender will pay for this
-        who_pays = self._sponsor if self._sponsor else self._sender
-        # If both not set, Fail
-        if not who_pays:
+        who_pays = self._get_payer()
+        # Get current gas objects for payer
+        gas_result = await client.get_gas(who_pays)
+        if gas_result.is_ok():
+            owner_coins: list[SuiCoinObject] = gas_result.result_data.data
+        else:
             raise ValueError(
-                "Both SuiTransaction sponor and sender are null. Complete those before execute."
+                f"Error {gas_result.result_string} attemepting to fetch gas objects for {who_pays}"
             )
-        if isinstance(who_pays, SuiAddress):
-            whose_gas = who_pays.address
-            who_pays = who_pays.address
-        else:
-            whose_gas = who_pays.signing_address  # as_sui_address
-            who_pays = who_pays.signing_address
-        # who_pays = who_pays if isinstance(who_pays, SuiAddress) else who_pays.multi_sig.as_sui_address
-        owner_coins: list[SuiCoinObject] = handle_result(
-            await client.get_gas(whose_gas)
-        ).data
-        # Get whatever gas objects below to whoever is paying
-        # and filter those not in use
-        use_coin: SuiCoinObject = None
-        if self._merge_to_gas:
-            owner_gas: list[SuiCoinObject] = [owner_coins[0]]
-        else:
-            owner_gas: list[SuiCoinObject] = [
-                x
-                for x in owner_coins
-                if x.coin_object_id not in objects_in_use
-                and int(x.balance) >= budget
-            ]
-
-        # If there is no remaining gas but _merge_to_gas is found
-        # Find that which satisfies budget
-        # If we have a result of the main filter, use first
-        if owner_gas:
-            use_coin = owner_gas[0]
-        # Otherwise if we can merge
-        elif merge_coin:
-            alt_gas: list[SuiCoinObject] = [
-                bcs.ObjectReference(
-                    bcs.Address.from_str(x.object_id),
-                    int(x.version),
-                    bcs.Digest.from_str(x.digest),
-                )
-                for x in owner_coins
-                if x.coin_object_id not in objects_in_use
-            ]
-
-            return bcs.GasData(
-                alt_gas,
-                bcs.Address.from_str(whose_gas),
-                int(gas_price),
-                int(budget),
-            )
-            # alt_gas: list[SuiCoinObject] = [
-            #     x
-            #     for x in owner_coins
-            #     if x.coin_object_id not in objects_in_use
-            # ]
-            # if alt_gas:
-            #     enh_budget = budget + _PAY_GAS
-            #     to_pay: list[str] = []
-            #     accum_pay: int = 0
-            #     for ogas in alt_gas:
-            #         to_pay.append(ogas)
-            #         accum_pay += int(ogas.balance)
-            #         if accum_pay >= enh_budget:
-            #             break
-            #     if accum_pay >= enh_budget:
-            #         handle_result(
-            #             await client.execute(
-            #                 _ConsolidateSui(
-            #                     signer=who_pays,
-            #                     input_coins=SuiAddress(
-            #                         [
-            #                             ObjectID(x.coin_object_id)
-            #                             for x in to_pay
-            #                         ]
-            #                     ),
-            #                     recipient=who_pays,
-            #                     gas_budget=str(_PAY_GAS),
-            #                 )
-            #             )
-            #         )
-            #         use_coin = to_pay[0]
-        # If we have a coin to use, return the GasDataObject
-        if use_coin:
-            return bcs.GasData(
-                [
-                    bcs.ObjectReference(
-                        bcs.Address.from_str(use_coin.coin_object_id),
-                        int(use_coin.version),
-                        bcs.Digest.from_str(use_coin.digest),
-                    )
-                ],
-                bcs.Address.from_str(whose_gas),
-                gas_price,
-                budget,
-            )
-        raise ValueError(f"{who_pays} has nothing to pay with.")
+        return self._get_gas_data(
+            who_pays,
+            owner_coins,
+            budget,
+            objects_in_use,
+            merge_coin,
+            gas_price,
+        )
