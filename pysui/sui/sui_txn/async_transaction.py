@@ -1128,9 +1128,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
         )
         merge_to = resolved[0]
         # Depper from_coin type verification
-        assert isinstance(
-            merge_from, (list, SuiArray)
-        ), "Unsupported merge_from collection type"
+        # assert isinstance(
+        #     merge_from, (list, SuiArray)
+        # ), "Unsupported merge_from collection type"
         parm_list: list = []
         merge_from = (
             merge_from if isinstance(merge_from, list) else merge_from.coins

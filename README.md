@@ -4,7 +4,7 @@
 
 Python Client SDK for Sui blockchain
 
-**Release-0.30.0**
+**Release-0.30.1**
 
 **BREAKING CHANGES** See CHANGELOG.md
 
@@ -27,7 +27,7 @@ We would appreciate any issues being reported in the [github issue log](https://
 
 Discord server [click here](https://discord.gg/uCGYfY4Ph4):
 
-**PyPi for 0.30.0**
+**PyPi for 0.30.1**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
