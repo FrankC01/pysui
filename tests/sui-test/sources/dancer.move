@@ -17,6 +17,7 @@ module pysuidance::dancer {
         accumulator: vector<u8>,
     }
 
+    #[allow(unused_function)]
     /// Initialize new deployment
     fun init(ctx: &mut TxContext) {
         let admin = tx_context::sender(ctx);
@@ -78,6 +79,7 @@ module pysuidance::dancer {
         vector::append<u8>(&mut self.accumulator, other);
     }
 
+    #[allow(unused_function)]
     /// Check accumulator contains value
     fun has_value(self: &Tracker, value: u8) : bool {
         vector::contains<u8>(&self.accumulator, &value)

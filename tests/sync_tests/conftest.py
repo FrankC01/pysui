@@ -50,7 +50,7 @@ def sui_base_localnet_stop() -> bool:
     raise ValueError(f"Result of localnet stop {result.stderr}")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def sui_client() -> SyncClient:
     """Fixture to create a test session wide client pointed to sui-base localnet."""
     sui_base_localnet_start()

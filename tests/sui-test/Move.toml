@@ -3,7 +3,7 @@ name = "pysuidance"
 version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "devnet" }
+Sui = { local = "../../../../suibase/workdirs/active/sui-repo/crates/sui-framework/packages/sui-framework"  }
 
 [addresses]
 pysuidance =  "0x0"
