@@ -8,7 +8,7 @@ Python Client SDK for Sui blockchain
 
 **BREAKING CHANGES** See CHANGELOG.md
 
-- Supports _SUI 1.5.x/1.6.x RPC API_ on devnet
+- Supports _SUI 1.6.x/TBD RPC API_ on devnet
 - Supports _SUI 1.5.x/1.6.x RPC API_ on testnet
 - Supports _SUI 1.4.x/1.5.x RPC API_ on mainnet
 

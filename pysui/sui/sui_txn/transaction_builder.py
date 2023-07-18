@@ -326,6 +326,9 @@ class ProgrammableTransactionBuilder:
     @versionchanged(
         version="0.20.0", reason="Check for duplication. See bug #99"
     )
+    @versionchanged(
+        version="0.30.2", reason="Remove reuse of identical pure inputs"
+    )
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
         """input_pure registers a pure input argument in the inputs collection.
 
@@ -338,14 +341,6 @@ class ProgrammableTransactionBuilder:
         logger.debug("Adding pure input")
         out_index = len(self.inputs)
         if key.enum_name == "Pure":
-            e_index = 0
-            for _ekey, evalue in self.inputs.items():
-                if evalue.enum_name == "Pure" and key.value == evalue.value:
-                    logger.debug(
-                        f"Duplicate pure input found at index {e_index}, reusing"
-                    )
-                    return bcs.Argument("Input", e_index)
-                e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
         else:
             raise ValueError(
