@@ -1,11 +1,11 @@
-dataclasses_json==0.5.7
-pyyaml==6.0
-httpx==0.24.1
-h2==4.1.0
-bip-utils==2.7.0
-websockets==11.0.3
-typing_utils==0.1.0
-canoser==0.8.2
-base58==2.1.1
-Deprecated==1.2.14
-pyroaring==0.4.2
+dataclasses_json < 0.6.0, >= 0.5.7
+pyyaml < 6.2, >= 6.0.1
+httpx < 0.25, >=0.24.*
+h2 < 4.2.0, >= 4.1.*
+bip-utils < 2.8.0, >=2.7.1
+websockets < 11.1.0, >=11.0.*
+typing_utils < 0.2.0, >=0.1.*
+canoser < 0.9.0, >=0.8.*
+base58 < 2.2.0, >=2.1.*
+Deprecated < 1.3.0, >=1.2.*
+pyroaring == 0.4.2
