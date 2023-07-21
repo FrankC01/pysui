@@ -222,6 +222,11 @@ class SignerBlock(_SignerBlockBase):
 
         return who_pays
 
+    @property
+    def payer_address(self) -> str:
+        """Fetch payer address."""
+        return self._get_payer()
+
     @versionadded(version="0.30.0", reason="Refactored from get_gas_object.")
     def _get_gas_data(
         self,

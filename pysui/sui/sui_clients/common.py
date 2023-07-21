@@ -150,7 +150,7 @@ class _ClientMixin(Provider):
     """
 
     _RPC_MINIMAL_VERSION: str = "1.4.0"
-    _RPC_REQUIRED_VERSION: str = "1.5.0"
+    _RPC_REQUIRED_VERSION: str = "1.6.0"
     _SIGNATURE_ERROR: set[str] = {
         'Invalid user signature: InvalidSignature { error: "signature error" }.',
         "signature error",

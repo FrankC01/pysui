@@ -14,11 +14,12 @@
 """Sui high level Transaction Builder supports generation of TransactionKind and TransactionData."""
 
 import base64
+from dataclasses import dataclass
 import os
 from pathlib import Path
 from typing import Optional, Union
 import logging
-from deprecated.sphinx import versionadded
+from deprecated.sphinx import versionadded, versionchanged
 
 from pysui import SuiAddress, ObjectID
 
@@ -75,6 +76,11 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
             # handler_cls=TxInspectionResult,
             # handler_func="factory",
         )
+
+
+@dataclass
+class ValidateErrors:
+    """."""
 
 
 @versionadded(version="0.26.0", reason="Refactor to support Async")
@@ -182,14 +188,118 @@ class _SuiTransactionBase:
     @versionadded(
         version="0.30.0", reason="Observing Sui ProtocolConfig constraints"
     )
+    @versionchanged(
+        version="0.31.0", reason="Validating against all PTB constraints"
+    )
     def verify_transaction(
         self,
-    ) -> tuple[TransactionConstraints, TransactionConstraints]:
-        """Verify TransactionKind values against protocol constraints.
+    ) -> tuple[TransactionConstraints, Union[ValidateErrors, None]]:
+        """verify_transaction Verify TransactionKind values against protocol constraints.
 
-        Returns both the current constraints and violations (if any)
+        :return: Returns both the current constraints and violations (if any)
+        :rtype: tuple[TransactionConstraints, Union[ValidateErrors, None]]
         """
-        return self.builder.verify_transaction(self.constraints)
+        # All set to 0
+        result_err = TransactionConstraints()
+
+        # Partition pure from objects
+        max_pure_inputs = 0
+        obj_inputs = []
+        for i_key in self.builder.inputs.keys():
+            if i_key.enum_name == "Pure":
+                ilen = len(i_key.value)
+                max_pure_inputs = (
+                    ilen if ilen > max_pure_inputs else max_pure_inputs
+                )
+            else:
+                obj_inputs.append(i_key)
+
+        # Validate max pure size
+        if max_pure_inputs > self.constraints.max_pure_argument_size:
+            result_err.max_pure_argument_size = max_pure_inputs
+
+        # Check input objects (objs + move calls)
+        obj_count = (
+            len(obj_inputs) + self.builder.command_frequency["MoveCall"]
+        )
+        if obj_count > self.constraints.max_input_objects:
+            result_err.max_input_objects = obj_count
+
+        # Check arguments
+        total_args = 0
+        for prog_txn in self.builder.commands:
+            args_one = 0
+            type_args_one = 0
+            match prog_txn.enum_name:
+                case "MoveCall":
+                    args_one = len(prog_txn.value.Arguments)
+                    type_args_one = len(prog_txn.value.Type_Arguments)
+                case "TransferObjects":
+                    args_one = len(prog_txn.value.Arguments)
+                case "MergeCoins":
+                    args_one = len(prog_txn.value.FromCoins)
+                case "SplitCoin":
+                    args_one = len(prog_txn.value.Amount)
+                case "MakeMoveVec":
+                    args_one = len(prog_txn.value.Vector)
+                case "Publish":
+                    args_one = len(prog_txn.value.Modules)
+                case "Upgrade":
+                    args_one = len(prog_txn.value.Modules)
+                case _:
+                    pass
+            if args_one > self.constraints.max_arguments:
+                result_err.max_arguments = args_one
+            if type_args_one > self.constraints.max_type_arguments:
+                result_err.max_type_arguments = type_args_one
+            total_args += args_one
+
+        # Check max_num_transferred_move_object_ids
+        if total_args > self.constraints.max_num_transferred_move_object_ids:
+            result_err.max_num_transferred_move_object_ids = total_args
+
+        # Check max_programmable_tx_commands
+        if (
+            len(self.builder.commands)
+            > self.constraints.max_programmable_tx_commands
+        ):
+            result_err.max_programmable_tx_commands = len(self.commands)
+
+        # Check size of transaction bytes
+        reuse_addy = bcs.Address.from_str(self._sig_block.payer_address)
+        ser_txdata = bcs.TransactionData(
+            "V1",
+            bcs.TransactionDataV1(
+                self.raw_kind(),
+                reuse_addy,
+                bcs.GasData(
+                    [
+                        bcs.ObjectReference(
+                            reuse_addy,
+                            int(0),
+                            bcs.Digest.from_str(
+                                "ByumsdYUAQWJfwYgowsme7hm5vE8d2mXik3rGaNC9R4W"
+                            ),
+                        )
+                    ],
+                    reuse_addy,
+                    int(self._current_gas_price),
+                    self._PAY_GAS,
+                ),
+                bcs.TransactionExpiration("None"),
+            ),
+        )
+        ser_kind = len(ser_txdata.serialize())
+        if ser_kind > self.constraints.max_tx_size_bytes:
+            result_err.max_tx_size_bytes = ser_kind
+
+        valerr = ValidateErrors()
+        var_map = vars(result_err)
+        for key, value in var_map.items():
+            if key[0] != "_" and value != 0:
+                setattr(valerr, key, value)
+
+        return self.constraints, valerr if len(vars(valerr)) else None
 
     @versionadded(
         version="0.18.0", reason="Reuse for argument nested list recursion."

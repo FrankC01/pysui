@@ -51,14 +51,17 @@ This requires providing an instantiated SuiClient.
         # Get the Transaction/Transaction Builder
         # By default, this will assume that the 'active-address' is the sender and sole signer of the transaction
         # However; support for MultiSig signers and Sponsoring transactions is also supported
+
         txn = SyncTransaction(SyncClient(SuiConfig.default_config()))
 
         # Get a few objects to use as command arguments
+
         coin_to_split = ... # Retrieved somehow
         some_recipient = ... # Retrieve non-active-address somehow
 
         # Command that first splits a coin for some amount and uses
         # the results to pass to some recipient
+
         txn.transfer_objects(
             transfers=[txn.split_coin(coin=coin_to_split, amounts=[1000000])],
             recipient=some_recipient,
@@ -67,6 +70,7 @@ This requires providing an instantiated SuiClient.
         # Execute will use active-address to sign, pick a gas coin
         # that satisfies the budget. An inspection is done internally
         # and the budget will automatically adjust to the higher when compared
+
         tx_result = handle_result(txb.execute(gas_budget="1000000"))
         print(tx_result.to_json(indent=2))
 
@@ -238,24 +242,28 @@ example is a coercion table describing the effect of resolving in `move_call` ar
     )
 
 
-+----------------------------------------------------------+----------------------------+
-|     Types                                                |       Converts to          |
-+==========================================================+============================+
-| bool, str, int, bytes, SuiBoolean, SuiString, SuiInteger | Passed by value            |
-+----------------------------------------------------------+----------------------------+
-| SuiU8, SuiU16, SuiU32, SuiU64, SuiU128, SuiU256          | Passed by value  [#f1]_    |
-+----------------------------------------------------------+----------------------------+
-| list, SuiArray [#f2]_                                    | Members passed by value    |
-+----------------------------------------------------------+----------------------------+
-| OptionalU8, OptionalU16, OptionalU32,                    |                            |
-| OptionalU64, OptionalU128, OptionalU256                  | Passed by value            |
-+----------------------------------------------------------+----------------------------+
-| SuiAddress, OptionalUx                                   | Passed by value            |
-+----------------------------------------------------------+----------------------------+
-| ObjectID, SuiCoinObject, ObjectRead                      | Passed by reference [#f3]_ |
-+----------------------------------------------------------+----------------------------+
-| Result of previous command [#f4]_                        | Command Result index       |
-+----------------------------------------------------------+----------------------------+
++----------------------------------------------------------+-----------------------------+
+|     Types                                                |       Converts to           |
++==========================================================+=============================+
+| str, SuiString                                           | Passed as vector<u8>        |
++----------------------------------------------------------+-----------------------------+
+| int, SuiInteger                                          | Passed as minimal bit value |
++----------------------------------------------------------+-----------------------------+
+| bool, bytes, SuiBoolean                                  | Passed as raw valu          |
++----------------------------------------------------------+-----------------------------+
+| SuiU8, SuiU16, SuiU32, SuiU64, SuiU128, SuiU256          | Passed as value  [#f1]_     |
++----------------------------------------------------------+-----------------------------+
+| list, SuiArray [#f2]_                                    | Members passed as values    |
++----------------------------------------------------------+-----------------------------+
+| OptionalU8, OptionalU16, OptionalU32,                    |                             |
+| OptionalU64, OptionalU128, OptionalU256                  | Passed as Optional<uX>      |
++----------------------------------------------------------+-----------------------------+
+| SuiAddress                                               | Passed as move address      |
++----------------------------------------------------------+-----------------------------+
+| ObjectID, SuiCoinObject, ObjectRead                      | Passed as reference [#f3]_  |
++----------------------------------------------------------+-----------------------------+
+| Result of previous command [#f4]_                        | Command Result index        |
++----------------------------------------------------------+-----------------------------+
 
 .. rubric:: Footnotes
 

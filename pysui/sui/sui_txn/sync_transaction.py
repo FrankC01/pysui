@@ -315,16 +315,9 @@ class SuiTransaction(_SuiTransactionBase):
         version="0.17.0", reason="Convenience for serializing and dry-running."
     )
     def get_transaction_data(self, *, gas_budget) -> bcs.TransactionData:
-        """."""
+        """Returns the BCS TransactionKind."""
         return self._build_for_execute(gas_budget)
 
-    @versionchanged(
-        version="0.16.1", reason="Added 'additional_signers' optional argument"
-    )
-    @versionchanged(
-        version="0.17.0",
-        reason="Revamped for all signature potentials and types.",
-    )
     @versionchanged(
         version="0.25.0",
         reason="Made gas_budget optional, defaults to 1M mists."
@@ -356,7 +349,7 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: SuiRpcResult
         """
         assert not self._executed, "Transaction already executed"
-        gas_budget = gas_budget if gas_budget else "1000000"
+        gas_budget = gas_budget or "1000000"
         tx_b64 = base64.b64encode(
             self._build_for_execute(gas_budget, use_gas_object).serialize()
         ).decode()

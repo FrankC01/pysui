@@ -14,7 +14,6 @@
 
 """Sui low level Transaction Builder supports generation of TransactionKind."""
 
-from dataclasses import dataclass
 import logging
 import binascii
 from math import ceil
@@ -244,11 +243,7 @@ class PureInput:
         return bcs.BuilderArg("Pure", cls.pure(args))
 
 
-@dataclass
-class ValidateErrors:
-    """."""
-
-
+@versionchanged(version="0.31.0", reason="Added command type frequency")
 class ProgrammableTransactionBuilder:
     """ProgrammableTransactionBuilder core transaction construction."""
 
@@ -257,6 +252,16 @@ class ProgrammableTransactionBuilder:
         self.inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
         self.commands: list[bcs.Command] = []
         self.objects_registry: Set[str] = set()
+
+        self.command_frequency = {
+            "MoveCall": 0,
+            "TransferObjects": 0,
+            "SplitCoin": 0,
+            "MergeCoins": 0,
+            "Publish": 0,
+            "MakeMoveVec": 0,
+            "Upgrade": 0,
+        }
         logger.debug("TransactionBuilder initialized")
 
     def _finish(self) -> bcs.ProgrammableTransaction:
@@ -268,49 +273,6 @@ class ProgrammableTransactionBuilder:
         return bcs.ProgrammableTransaction(
             list(self.inputs.values()), self.commands.copy()
         )
-
-    @versionadded(
-        version="0.30.0", reason="Observing Sui ProtocolConfig constraints"
-    )
-    def verify_transaction(
-        self, constraints: TransactionConstraints
-    ) -> tuple[TransactionConstraints, TransactionConstraints]:
-        """Verify TransactionKind values against protocol constraints.
-
-        Returns both the current constraints and violations (if any)
-        """
-        # Check command and input counts
-
-        result_err = TransactionConstraints()
-
-        def _pull_vars(
-            results: TransactionConstraints,
-        ) -> Union[ValidateErrors, None]:
-            """Filter out private/protected var elements."""
-            var_map = vars(result_err)
-            hit = False
-            valerr = ValidateErrors()
-            for key, value in var_map.items():
-                if key[0] != "_" and value != 0:
-                    setattr(valerr, key, value)
-                    hit = True
-            return valerr if hit else None
-
-        # Check arguments
-        # Check input arguments
-        # Check max_num_transferred_move_object_ids
-        # Check max_programmable_tx_commands
-        if len(self.commands) > constraints.max_programmable_tx_commands:
-            result_err.max_programmable_tx_commands = len(self.commands)
-        # Check max_pure_argument_size
-        # Check max_type_argument_depth
-        # Check max_type_arguments
-        # Check size of transaction bytes
-        ser_kind = self._finish().serialize()
-        if len(ser_kind) > constraints.max_tx_size_bytes:
-            result_err.max_tx_size_bytes = len(ser_kind)
-
-        return self.constraints, _pull_vars(result_err)
 
     def finish_for_inspect(self) -> bcs.TransactionKind:
         """finish_for_inspect returns TransactionKind structure.
@@ -389,6 +351,7 @@ class ProgrammableTransactionBuilder:
         :return: A result argument to be potentially used in other commands
         :rtype: bcs.Argument
         """
+        self.command_frequency[command_obj.enum_name] += 1
         out_index = len(self.commands)
         logger.debug(f"Adding command {out_index}")
         self.commands.append(command_obj)
