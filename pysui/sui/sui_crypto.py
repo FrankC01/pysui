@@ -596,6 +596,10 @@ class MultiSig:
     @versionadded(
         version="0.21.1", reason="Full signature creation without binaries."
     )
+    @deprecated(
+        version="0.31.0",
+        reason="Roaring bitmap no longer required in Sui 1.4.x and above.",
+    )
     def sign(
         self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]
     ) -> SuiSignature:
