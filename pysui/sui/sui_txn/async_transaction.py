@@ -14,7 +14,6 @@
 
 """Sui asynchronous Transaction for building Programmable Transactions."""
 
-from asyncio.format_helpers import _get_function_source
 import logging
 import base64
 from typing import Optional, Union, Any, Callable, Awaitable
@@ -25,7 +24,6 @@ from pysui import (
     ObjectID,
     SuiAddress,
     SuiRpcResult,
-    handle_result,
 )
 from pysui.sui.sui_builders.base_builder import SuiRequestType
 from pysui.sui.sui_builders.get_builders import GetFunction
@@ -257,7 +255,11 @@ class SuiTransactionAsync(_SuiTransactionBase):
     )
     @versionchanged(
         version="0.28.0",
-        reason="Added optional 'use_gas_object'.",
+        reason="Added optional 'use_gas_object' argument.",
+    )
+    @versionchanged(
+        version="0.31.0",
+        reason="Added optional 'run_verification' argument.",
     )
     async def execute(
         self,
@@ -265,6 +267,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         gas_budget: Optional[Union[str, SuiString]] = "1000000",
         options: Optional[dict] = None,
         use_gas_object: Optional[Union[str, ObjectID]] = None,
+        run_verification: Optional[bool] = False,
     ) -> Union[SuiRpcResult, ValueError]:
         """execute Finalizes transaction and submits for execution on the chain.
 
@@ -277,16 +280,26 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :param use_gas_object: Explicit gas object to use for payment, defaults to None
             Will fail if provided object is marked as 'in use' in commands
         :type use_gas_object: Optional[Union[str, ObjectID]], optional
-        :return: The result of running the transaction
+        :param run_verification: Will run validation on transaction using Sui ProtocolConfig constraints, defaults to False.
+            Will fail if validation errors (SuiRpcResult.is_err()).
+        :type run_verification: Optional[bool], optional
+        :return: The result of running the transaction or a failing verification
         :rtype: SuiRpcResult
         """
         assert not self._executed, "Transaction already executed"
         gas_budget = gas_budget or "1000000"
-        tx_b64 = base64.b64encode(
-            await self._build_for_execute(
-                gas_budget, use_gas_object
-            ).serialize()
-        ).decode()
+        txn_data = await self._build_for_execute(gas_budget, use_gas_object)
+        ser_data = txn_data.serialize()
+        if run_verification:
+            _, failed_verification = self.verify_transaction(ser_data)
+            if failed_verification:
+                return SuiRpcResult(
+                    False, "Failed validation", failed_verification
+                )
+
+        # To base64
+        tx_b64 = base64.b64encode(ser_data).decode()
+        # To execution
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
             signatures=self.signer_block.get_signatures(
@@ -295,9 +308,8 @@ class SuiTransactionAsync(_SuiTransactionBase):
             options=options,
             request_type=SuiRequestType.WAITFORLOCALEXECUTION,
         )
-        iresult = await self.client.execute(exec_tx)
         self._executed = True
-        return iresult
+        return await self.client.execute(exec_tx)
 
     @versionchanged(
         version="0.16.1",

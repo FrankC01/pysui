@@ -14,11 +14,12 @@
 """Sui high level Transaction Builder supports generation of TransactionKind and TransactionData."""
 
 import base64
-from dataclasses import dataclass
 import os
 from pathlib import Path
 from typing import Optional, Union
 import logging
+
+
 from deprecated.sphinx import versionadded, versionchanged
 
 from pysui import SuiAddress, ObjectID
@@ -76,11 +77,6 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
             # handler_cls=TxInspectionResult,
             # handler_func="factory",
         )
-
-
-@dataclass
-class ValidateErrors:
-    """."""
 
 
 @versionadded(version="0.26.0", reason="Refactor to support Async")
@@ -192,12 +188,12 @@ class _SuiTransactionBase:
         version="0.31.0", reason="Validating against all PTB constraints"
     )
     def verify_transaction(
-        self,
-    ) -> tuple[TransactionConstraints, Union[ValidateErrors, None]]:
+        self, ser_kind: Optional[bytes] = None
+    ) -> tuple[TransactionConstraints, Union[dict, None]]:
         """verify_transaction Verify TransactionKind values against protocol constraints.
 
-        :return: Returns both the current constraints and violations (if any)
-        :rtype: tuple[TransactionConstraints, Union[ValidateErrors, None]]
+        :return: Returns the current constraints thresholds and violation dictionary (if any)
+        :rtype: tuple[TransactionConstraints, Union[dict, None]]
         """
         # All set to 0
         result_err = TransactionConstraints()
@@ -215,7 +211,7 @@ class _SuiTransactionBase:
                 obj_inputs.append(i_key)
 
         # Validate max pure size
-        if max_pure_inputs > self.constraints.max_pure_argument_size:
+        if max_pure_inputs >= self.constraints.max_pure_argument_size:
             result_err.max_pure_argument_size = max_pure_inputs
 
         # Check input objects (objs + move calls)
@@ -266,40 +262,39 @@ class _SuiTransactionBase:
             result_err.max_programmable_tx_commands = len(self.commands)
 
         # Check size of transaction bytes
-        reuse_addy = bcs.Address.from_str(self._sig_block.payer_address)
-        ser_txdata = bcs.TransactionData(
-            "V1",
-            bcs.TransactionDataV1(
-                self.raw_kind(),
-                reuse_addy,
-                bcs.GasData(
-                    [
-                        bcs.ObjectReference(
-                            reuse_addy,
-                            int(0),
-                            bcs.Digest.from_str(
-                                "ByumsdYUAQWJfwYgowsme7hm5vE8d2mXik3rGaNC9R4W"
-                            ),
-                        )
-                    ],
+        # Build faux gas as needed
+        if not ser_kind:
+            reuse_addy = bcs.Address.from_str(self._sig_block.payer_address)
+            ser_txdata = bcs.TransactionData(
+                "V1",
+                bcs.TransactionDataV1(
+                    self.raw_kind(),
                     reuse_addy,
-                    int(self._current_gas_price),
-                    self._PAY_GAS,
+                    bcs.GasData(
+                        [
+                            bcs.ObjectReference(
+                                reuse_addy,
+                                int(0),
+                                bcs.Digest.from_str(
+                                    "ByumsdYUAQWJfwYgowsme7hm5vE8d2mXik3rGaNC9R4W"
+                                ),
+                            )
+                        ],
+                        reuse_addy,
+                        int(self._current_gas_price),
+                        self._PAY_GAS,
+                    ),
+                    bcs.TransactionExpiration("None"),
                 ),
-                bcs.TransactionExpiration("None"),
-            ),
-        )
-        ser_kind = len(ser_txdata.serialize())
-        if ser_kind > self.constraints.max_tx_size_bytes:
-            result_err.max_tx_size_bytes = ser_kind
+            )
+            ser_kind = ser_txdata.serialize()
 
-        valerr = ValidateErrors()
+        if len(ser_kind) > self.constraints.max_tx_size_bytes:
+            result_err.max_tx_size_bytes = len(ser_kind)
+
         var_map = vars(result_err)
-        for key, value in var_map.items():
-            if key[0] != "_" and value != 0:
-                setattr(valerr, key, value)
-
-        return self.constraints, valerr if len(vars(valerr)) else None
+        err_dict: dict = {x: y for (x, y) in var_map.items() if y != 0}
+        return self.constraints, err_dict
 
     @versionadded(
         version="0.18.0", reason="Reuse for argument nested list recursion."

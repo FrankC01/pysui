@@ -14,8 +14,7 @@
 
 """Sui synchronous Transaction for building Programmable Transactions."""
 
-from asyncio.format_helpers import _get_function_source
-from typing import Any, Awaitable, Optional, Union, Callable
+from typing import Any, Optional, Union, Callable
 import logging
 import base64
 from deprecated.sphinx import versionadded, versionchanged
@@ -325,7 +324,11 @@ class SuiTransaction(_SuiTransactionBase):
     )
     @versionchanged(
         version="0.28.0",
-        reason="Added optional 'use_gas_object'.",
+        reason="Added optional 'use_gas_object' argument.",
+    )
+    @versionchanged(
+        version="0.31.0",
+        reason="Added optional 'run_verification' argument.",
     )
     def execute(
         self,
@@ -333,6 +336,7 @@ class SuiTransaction(_SuiTransactionBase):
         gas_budget: Optional[Union[str, SuiString]] = "1000000",
         options: Optional[dict] = None,
         use_gas_object: Optional[Union[str, ObjectID]] = None,
+        run_verification: Optional[bool] = False,
     ) -> Union[SuiRpcResult, ValueError]:
         """execute Finalizes transaction and submits for execution on the chain.
 
@@ -342,17 +346,27 @@ class SuiTransaction(_SuiTransactionBase):
         :param options: An options dictionary to pass to sui_executeTransactionBlock to control the
             information results, defaults to None
         :type options: Optional[dict], optional
-        :param use_gas_object: Explicit gas object to use for payment, defaults to None
-            Will fail if provided object is marked as 'in use' in commands
+        :param use_gas_object: Explicit gas object to use for payment, defaults to None.
+            Will fail if provided object is marked as 'in use' in commands.
         :type use_gas_object: Optional[Union[str, ObjectID]], optional
-        :return: The result of running the transaction
+        :param run_verification: Will run validation on transaction using Sui ProtocolConfig constraints, defaults to False.
+            Will fail if validation errors (SuiRpcResult.is_err()).
+        :type run_verification: Optional[bool], optional
+        :return: The result of running the transaction or a failing verification
         :rtype: SuiRpcResult
         """
         assert not self._executed, "Transaction already executed"
         gas_budget = gas_budget or "1000000"
-        tx_b64 = base64.b64encode(
-            self._build_for_execute(gas_budget, use_gas_object).serialize()
-        ).decode()
+        txn_data = self._build_for_execute(gas_budget, use_gas_object)
+        ser_data = txn_data.serialize()
+        if run_verification:
+            _, failed_verification = self.verify_transaction(ser_data)
+            if failed_verification:
+                return SuiRpcResult(
+                    False, "Failed validation", failed_verification
+                )
+
+        tx_b64 = base64.b64encode(ser_data).decode()
 
         exec_tx = ExecuteTransaction(
             tx_bytes=tx_b64,
@@ -362,9 +376,8 @@ class SuiTransaction(_SuiTransactionBase):
             options=options,
             request_type=SuiRequestType.WAITFORLOCALEXECUTION,
         )
-        iresult = self.client.execute(exec_tx)
         self._executed = True
-        return iresult
+        return self.client.execute(exec_tx)
 
     # Argument resolution to lower level types
     @versionadded(
