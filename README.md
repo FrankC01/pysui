@@ -2,7 +2,7 @@
 
 # pysui
 
-## $\textcolor{red}{This repo will be moving to the Axiom:1 orginization in the next release}
+## $\textcolor{red}{This repo will be moving to the Axiom:1 orginization in the next release}$
 
 
 Python Client SDK for Sui blockchain
