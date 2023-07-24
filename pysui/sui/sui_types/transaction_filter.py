@@ -39,7 +39,9 @@ def _validate_options(options: dict) -> Union[dict, None]:
         inbound_set = set(options.keys())
         diff_set = inbound_set - standard_set
         if diff_set:
-            raise ValueError(f"Options are not valid for QueryTransaction {diff_set}")
+            raise ValueError(
+                f"Options are not valid for QueryTransaction {diff_set}"
+            )
     return options
 
 
@@ -59,18 +61,37 @@ class CheckpointQuery(_TransactionFilterType, SuiMap):
 class MoveFunctionQuery(_TransactionFilterType, SuiMap):
     """Query by move function."""
 
-    def __init__(self, package: str, module: str = None, function: str = None, options: Optional[dict] = None):
+    def __init__(
+        self,
+        package: str,
+        module: str = None,
+        function: str = None,
+        options: Optional[dict] = None,
+    ):
         """Initialize query parameter."""
-        super().__init__("filter", {"MoveFunction": {"module": module, "package": package, "function": function}})
+        super().__init__(
+            "filter",
+            {
+                "MoveFunction": {
+                    "module": module,
+                    "package": package,
+                    "function": function,
+                }
+            },
+        )
         self.map["options"] = _validate_options(options)
 
 
 class InputObjectQuery(_TransactionFilterType, SuiMap):
     """Query by input object."""
 
-    def __init__(self, object_id: Union[str, ObjectID], options: Optional[dict] = None):
+    def __init__(
+        self, object_id: Union[str, ObjectID], options: Optional[dict] = None
+    ):
         """Initialize query parameter."""
-        object_id = object_id if isinstance(object_id, str) else object_id.value
+        object_id = (
+            object_id if isinstance(object_id, str) else object_id.value
+        )
         super().__init__("filter", {"InputObject": object_id})
         self.map["options"] = _validate_options(options)
 
@@ -78,9 +99,13 @@ class InputObjectQuery(_TransactionFilterType, SuiMap):
 class ChangedObjectQuery(_TransactionFilterType, SuiMap):
     """Query by changed object, including created, mutated and unwrapped objects."""
 
-    def __init__(self, object_id: Union[str, ObjectID], options: Optional[dict] = None) -> None:
+    def __init__(
+        self, object_id: Union[str, ObjectID], options: Optional[dict] = None
+    ) -> None:
         """Initialize query parameter."""
-        object_id = object_id if isinstance(object_id, str) else object_id.value
+        object_id = (
+            object_id if isinstance(object_id, str) else object_id.value
+        )
         super().__init__("filter", {"ChangedObject": object_id})
         self.map["options"] = _validate_options(options)
 
@@ -88,7 +113,9 @@ class ChangedObjectQuery(_TransactionFilterType, SuiMap):
 class FromAddressQuery(_TransactionFilterType, SuiMap):
     """Query by sender address."""
 
-    def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
+    def __init__(
+        self, address: Union[str, SuiAddress], options: Optional[dict] = None
+    ):
         """Initialize query parameter."""
         address = address if isinstance(address, str) else address.address
         super().__init__("filter", {"FromAddress": address})
@@ -98,7 +125,9 @@ class FromAddressQuery(_TransactionFilterType, SuiMap):
 class ToAddressQuery(_TransactionFilterType, SuiMap):
     """Query by recipient address."""
 
-    def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
+    def __init__(
+        self, address: Union[str, SuiAddress], options: Optional[dict] = None
+    ):
         """Initialize query parameter."""
         address = address if isinstance(address, str) else address.address
         super().__init__("filter", {"ToAddress": address})
@@ -109,24 +138,40 @@ class FromAndToAddressQuery(_TransactionFilterType, SuiMap):
     """Query by sender and recipient address."""
 
     def __init__(
-        self, from_address: Union[str, SuiAddress], to_address: Union[str, SuiAddress], options: Optional[dict] = None
+        self,
+        from_address: Union[str, SuiAddress],
+        to_address: Union[str, SuiAddress],
+        options: Optional[dict] = None,
     ):
         """Initialize query parameter."""
-        from_address = from_address if isinstance(from_address, str) else from_address.address
-        to_address = to_address if isinstance(to_address, str) else to_address.address
-        super().__init__("filter", {"FromAndToAddress": {"from": from_address, "to": to_address}})
+        from_address = (
+            from_address
+            if isinstance(from_address, str)
+            else from_address.address
+        )
+        to_address = (
+            to_address if isinstance(to_address, str) else to_address.address
+        )
+        super().__init__(
+            "filter",
+            {"FromAndToAddress": {"from": from_address, "to": to_address}},
+        )
         self.map["options"] = _validate_options(options)
 
 
-# @versionadded(version="0.24.1", reason="New filter supported in Sui RPC API 1.3.0")
-# class FromOrToAddressQuery(_TransactionFilterType, SuiMap):
-#     """Query by sender or recipient address."""
+@versionadded(
+    version="0.31.0", reason="New filter supported in Sui RPC API 1.5.0"
+)
+class FromOrToAddressQuery(_TransactionFilterType, SuiMap):
+    """Query by sender or recipient address, requires indexer."""
 
-#     def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
-#         """Initialize query parameter."""
-#         address = address if isinstance(address, str) else address.address
-#         super().__init__("filter", {"FromOrToAddress": {"addr": address}})
-#         self.map["options"] = _validate_options(options)
+    def __init__(
+        self, address: Union[str, SuiAddress], options: Optional[dict] = None
+    ):
+        """Initialize query parameter."""
+        address = address if isinstance(address, str) else address.address
+        super().__init__("filter", {"FromOrToAddress": {"addr": address}})
+        self.map["options"] = _validate_options(options)
 
 
 class TransactionKindQuery(_TransactionFilterType, SuiMap):
@@ -135,4 +180,16 @@ class TransactionKindQuery(_TransactionFilterType, SuiMap):
     def __init__(self, tx_kind: str, options: Optional[dict] = None):
         """Initialize query parameter."""
         super().__init__("filter", {"TransactionKind": tx_kind})
+        self.map["options"] = _validate_options(options)
+
+
+@versionadded(
+    version="0.31.0", reason="New filter supported in Sui RPC API 1.6.0"
+)
+class TransactionKindInQuery(_TransactionFilterType, SuiMap):
+    """Query by transactions of any given kind in the input, requires indexer."""
+
+    def __init__(self, tx_kinds: list, options: Optional[dict] = None):
+        """Initialize query parameter."""
+        super().__init__("filter", {"TransactionKindIn": tx_kinds})
         self.map["options"] = _validate_options(options)
