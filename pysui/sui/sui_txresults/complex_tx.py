@@ -292,7 +292,7 @@ class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     errors: Optional[list[str]] = field(default_factory=list)
     effects: Optional[dict] = field(default_factory=dict)
     events: Optional[list[Event]] = field(default_factory=list)
-    checkpoint: Optional[int] = field(default_factory=int)
+    checkpoint: Optional[str] = field(default_factory=str)
     confirmed_local_execution: Optional[bool] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default_factory=bool
     )
