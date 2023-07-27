@@ -7,8 +7,8 @@ Python Client SDK for Sui blockchain
 **Release-0.31.0**
 
 - Supports _SUI 1.6.x/1.7.x RPC API_ on devnet
-- Supports _SUI 1.5.x/1.6.x RPC API_ on testnet
-- Supports _SUI 1.4.x/1.5.x RPC API_ on mainnet
+- Supports _SUI 1.6.x/1.7.x RPC API_ on testnet
+- Supports _SUI 1.5.x/1.6.x RPC API_ on mainnet
 
 **Deprecation Strategy**
 

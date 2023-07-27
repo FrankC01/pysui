@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2023-07-27
+
+### Added
+
+- SuiTransaction verifies against ProtocolConfig transaction constraints. `txn.verify_transaction()` can be run at prior to execution using
+- SuiTransaction run_verification flag to `txn.execute(...)`.
+- TransactionKindInQuery QueryTransaction filter, supported in indexer nodes
+- FromOrToAddressQuery QueryTransaction filter, supported in indexer nodes
+
+### Fixed
+
+### Changed
+
+- **Deprecating** legacy MultiSig support in favor of Sui 1.4.0 MultiSig changes, will be removed in pysui 0.33.0.
+- TxResponse `checkpoint` field to Optional[str] type, was previously Optional[int]
+- [change](https://github.com/FrankC01/pysui/issues/127) - Protocol constraints
+- [change](https://github.com/FrankC01/pysui/issues/142) - Dependencies update in **_requirements.txt_**
+
+### Removed
+
+- Documentation (removed legacy add/change/deprecated footnotes)
+
 ## [0.30.2] - 2023-07-18
 
 ### Added
