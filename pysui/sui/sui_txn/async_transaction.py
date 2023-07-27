@@ -87,17 +87,6 @@ class SuiTransactionAsync(_SuiTransactionBase):
         """
         super().__init__(client, merge_gas_budget, initial_sender)
 
-    @versionchanged(version="0.17.0", reason="Only used internally.")
-    @versionchanged(
-        version="0.17.0", reason="Reworked using SignerBlock gas resolution."
-    )
-    @versionchanged(
-        version="0.21.1", reason="Corrected using multisig senders."
-    )
-    @versionchanged(
-        version="0.24.1",
-        reason="Brought transaction cost inline, avoiding redundancy.",
-    )
     @versionchanged(
         version="0.28.0",
         reason="Added optional 'use_gas_object'.",
@@ -248,11 +237,6 @@ class SuiTransactionAsync(_SuiTransactionBase):
         """Returns the BCS TransactionKind."""
         return await self._build_for_execute(gas_budget)
 
-    @versionchanged(
-        version="0.25.0",
-        reason="Made gas_budget optional, defaults to 1M mists."
-        "Added optional `use_gas_object`",
-    )
     @versionchanged(
         version="0.28.0",
         reason="Added optional 'use_gas_object' argument.",
