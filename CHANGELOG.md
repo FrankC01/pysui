@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.1] - Unpublished
+
+### Added
+
+### Fixed
+
+### Changed
+
+- **Deprecating** in `sui_crypto` all specific keytype classes  (i.e. suffixed ED25519, SECP256K1 and SECP256R1) .
+
+### Removed
+
+
 ## [0.31.0] - 2023-07-27
 
 ### Added

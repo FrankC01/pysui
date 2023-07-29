@@ -72,10 +72,7 @@ from pysui.sui.sui_types.bcs import (
     MultiSignature,
     MultiSignatureLegacy,
 )
-from pysui.sui.sui_types.scalars import SuiTxBytes, SuiU16
-
-_SUI_MS_SIGN_CMD: list[str] = ["keytool", "multi-sig-combine-partial-sig"]
-"""Use sui binary keytool for MultiSig signing."""
+from pysui.sui.sui_types.scalars import SuiTxBytes
 
 
 class SuiPublicKey(PublicKey):
@@ -184,6 +181,7 @@ class SuiKeyPair(KeyPair):
 # Secp256r1 Curve Keys
 
 
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiPublicKeySECP256R1(SuiPublicKey):
     """A secp256r1 Public Key."""
 
@@ -199,6 +197,7 @@ class SuiPublicKeySECP256R1(SuiPublicKey):
         )
 
 
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiPrivateKeySECP256R1(SuiPrivateKey):
     """A secp256r1 Private Key."""
 
@@ -229,6 +228,7 @@ class SuiPrivateKeySECP256R1(SuiPrivateKey):
         )
 
 
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiKeyPairSECP256R1(SuiKeyPair):
     """A SuiKey Pair."""
 
@@ -264,6 +264,7 @@ class SuiKeyPairSECP256R1(SuiKeyPair):
         return SuiKeyPairSECP256R1(indata)
 
 
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiPublicKeyED25519(SuiPublicKey):
     """A ED25519 Public Key."""
 
@@ -277,6 +278,7 @@ class SuiPublicKeyED25519(SuiPublicKey):
         self._verify_key = VerifyKey(self.to_b64(), encoder=Base64Encoder)
 
 
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiPrivateKeyED25519(SuiPrivateKey):
     """A ED25519 Private Key."""
 
@@ -295,6 +297,7 @@ class SuiPrivateKeyED25519(SuiPrivateKey):
         return self._signing_key.sign(data, encoder=RawEncoder).signature
 
 
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiKeyPairED25519(SuiKeyPair):
     """A SuiKey Pair."""
 
@@ -327,6 +330,7 @@ class SuiKeyPairED25519(SuiKeyPair):
 
 
 @versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiPublicKeySECP256K1(SuiPublicKey):
     """A SECP256K1 Public Key."""
 
@@ -343,6 +347,7 @@ class SuiPublicKeySECP256K1(SuiPublicKey):
 
 
 @versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiPrivateKeySECP256K1(SuiPrivateKey):
     """A SECP256K1 Private Key."""
 
@@ -374,6 +379,7 @@ class SuiPrivateKeySECP256K1(SuiPrivateKey):
 
 
 @versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 class SuiKeyPairSECP256K1(SuiKeyPair):
     """A SuiKey Pair."""
 
@@ -709,6 +715,7 @@ class MultiSig:
 
 
 # Utility functions
+@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
 def _valid_mnemonic(mnemonics: Union[str, list[str]] = "") -> str:
     """_valid_mnemonic Validate, or create, mnemonic word string.
 
