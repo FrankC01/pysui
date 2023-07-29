@@ -1,10 +1,13 @@
-<img src="https://raw.githubusercontent.com/FrankC01/pysui/main/images//pysui_logo_color.png" width="150" height="200"/>
+<p align="center">
+  <img width="150" height="200" src="https://raw.githubusercontent.com/FrankC01/pysui/main/images//pysui_logo_color.png" alt='PySui'>
+</p>
 
 # pysui
 
 Python Client SDK for Sui blockchain
 
 ## pysui SDK Dependencies
+
 - Rust for installation of Sui Binaries and building the `pysui-fastcrypto` package
 - Sui Binaries if using the Sui configuration (keystores, evironments) and publishing/upgradinge Sui packages
 - Python, at a minimum, version 3.10
