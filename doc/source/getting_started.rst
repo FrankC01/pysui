@@ -8,6 +8,11 @@ there are a few setup steps required:
 Setup
 *****
 
+#. Install Rust
+    Rust is required to install the Sui binaries as well as `pysui-fastcrypto`
+
+    ``curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh``
+
 #. Install Sui Binaries
     For certain capabilities, ``pysui`` requires the Sui binaries are installed
     on the same machine: `Install Sui Readme <https://docs.sui.io/build/install#install-sui-binaries>`_.
@@ -15,7 +20,7 @@ Setup
     Specifically, the binaries are required if...
 
     * You want to use the publish SUi package builder, and/or...
-    * You want to use the Sui generated configuration
+    * You want to use the Sui generated configuration for keystores and active environents
 
 
 

@@ -6,14 +6,14 @@ General
 -------
 
 With ``pysui`` 0.20.0, the SuiTransaction builder was introduced that offers a more powerful transaction compilation
-capability. However; for backwords compatibility ``pysui`` will continue operating just fine using Builders.
+capability. In 0.30.0 a number of `exec_builders` were removed making SuiTransaction the go to for complex transactions.
 
 The Builder Package :py:mod:`pysui.sui.sui_builders` contains builders for
-all of the SUI RPC Read API calls.
+all of the SUI RPC Read API calls as well as a few transaction execution (complex) and subscription API.
 
 A few  of the ``read builders`` are leveraged in the ``SuiClient(s)`` methods and only require
 the expected parameters for the RPC call. All **tranaction** related interactions, however, are performed via
-the Transaction builder.
+the SuiTransaction builder.
 
 Module: base_builder - Sui Builders: Common types.
 --------------------------------------------------

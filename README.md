@@ -4,6 +4,13 @@
 
 Python Client SDK for Sui blockchain
 
+## pysui SDK Dependencies
+- Rust for installation of Sui Binaries and building the `pysui-fastcrypto` package
+- Sui Binaries if using the Sui configuration (keystores, evironments) and publishing/upgradinge Sui packages
+- Python, at a minimum, version 3.10
+
+## pysui SDK current
+
 **Release-0.31.0**
 
 - Supports _SUI 1.6.x/1.7.x RPC API_ on devnet
