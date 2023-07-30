@@ -20,7 +20,7 @@ from io import TextIOWrapper
 import logging
 from pathlib import Path
 import json
-from typing import Optional
+from typing import Optional, Union
 import yaml
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
@@ -148,18 +148,19 @@ class SuiConfig(ClientConfiguration):
     @versionchanged(
         version="0.25.0", reason="Support emphemeral configuration."
     )
+    @versionchanged(version="0.33.0", reason="mnemonics to .")
     def create_new_keypair_and_address(
         self,
         scheme: SignatureScheme,
-        mnemonics: str = None,
+        word_counts: Optional[int] = 12,
         derivation_path: str = None,
     ) -> tuple[str, SuiAddress]:
         """create_new_keypair_and_address Create a new keypair and address identifier and writes to client.yaml.
 
         :param scheme: Identifies whether new key is ed25519, secp256k1 or secp256r1
         :type scheme: SignatureScheme
-        :param mnemonics: string of phrases separated by spaces, defaults to None
-        :type mnemonics: str, optional
+        :param word_counts: count of words to generate mnemonic phrase, defaults to 12
+        :type word_counts: int, optional
         :param derivation_path: The derivation path for key, specific to Signature scheme,
             defaults to root path of scheme
         :type derivation_path: str, optional
@@ -171,7 +172,7 @@ class SuiConfig(ClientConfiguration):
         match scheme:
             case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
                 mnem, keypair, address = create_new_address(
-                    scheme, mnemonics, derivation_path
+                    scheme, word_counts, derivation_path
                 )
                 self._addresses[address.address] = address
                 self._address_keypair[address.address] = keypair
@@ -190,7 +191,7 @@ class SuiConfig(ClientConfiguration):
     def recover_keypair_and_address(
         self,
         scheme: SignatureScheme,
-        mnemonics: str,
+        mnemonics: Union[str, list[str]],
         derivation_path: str,
         install: bool = False,
     ) -> tuple[str, SuiAddress]:
@@ -229,51 +230,6 @@ class SuiConfig(ClientConfiguration):
                 raise NotImplementedError(
                     f"{scheme}: Not recognized as valid keypair scheme."
                 )
-
-    @classmethod
-    @deprecated(version="0.29.0", reason="Use _new_parse_config")
-    def _parse_config(
-        cls, fpath: Path, config_file: TextIOWrapper
-    ) -> tuple[str, str, str, str, str]:
-        """Open configuration file and generalize for ingestion."""
-        kfpath = fpath.parent
-        sui_config = yaml.safe_load(config_file)
-        active_address = (
-            sui_config["active_address"]
-            if "active_address" in sui_config
-            else None
-        )
-        keystore_file = (
-            Path(sui_config["keystore"]["File"])
-            if "keystore" in sui_config
-            else None
-        )
-        # active_env is new (0.15.0) and identifies the alias in use in the 'envs' map list
-        active_env = (
-            sui_config["active_env"] if "active_env" in sui_config else None
-        )
-        if not active_address or not keystore_file or not active_env:
-            raise SuiConfigFileError(
-                f"{fpath} is not a valid SUI configuration file."
-            )
-        current_url = None
-        # Envs is new (0.15.0), it is a list of maps, where the environment
-        # contains RPC url identifed by 'aliases' (i.e. devnet, localnet)
-        if "envs" in sui_config:
-            for envmap in sui_config["envs"]:
-                if active_env == envmap["alias"]:
-                    current_url = envmap["rpc"]
-                    break
-        else:
-            raise SuiConfigFileError("'envs' not found in configuration file.")
-        keystore_file = str(kfpath.joinpath(keystore_file.name).absolute())
-        return (
-            str(fpath),
-            active_env,
-            active_address,
-            keystore_file,
-            current_url,
-        )
 
     @classmethod
     @versionchanged(version="0.29.0", reason="Now returns ws url.")

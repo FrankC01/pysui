@@ -25,6 +25,9 @@ backup/
 # pytest cruft
 .pytest_cache
 
+# mypy cruft
+.mypy_cache
+
 # vscode cruft
 .vscode/launch.json
 
