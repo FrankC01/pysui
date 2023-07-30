@@ -56,6 +56,7 @@ We've started leveraging [suibase](https://github.com/ChainMovers/suibase) in ou
 Requires:
 
 - Linux or macos (x86_64 or Mx)
+- Rust (stable) which also includes rustup and cargo
 - python 3.10 or greater
 - pkg-config
 - libtool
