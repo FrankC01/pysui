@@ -9,6 +9,7 @@ This document is for contributors or the curious developer
 Requires:
 
 - Linux or macos (x86_64 or M1)
+- Rust (stable) which also includes rustup and cargo
 - python 3.10 or greater
 - Rust (stable) which also includes rustup and cargo
 - pkg-config
@@ -35,9 +36,6 @@ Requires:
 - If you get a warning about upgrading pip... do so
 
 `pip install -r requirements.txt`
-
-- If you get an error with secp256k1 then:
-  `pip install wheel` and try to install requirements again
 
 ### Load anciallary development packages
 
