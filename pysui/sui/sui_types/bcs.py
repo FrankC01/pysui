@@ -592,15 +592,6 @@ class MsNewPublicKey(canoser.RustEnum):
 
 
 @versionadded(
-    version="0.20.4", reason="Added to support in-code MultiSig signing."
-)
-class MsRoaring(canoser.Struct):
-    """Represents signing PublicKeys indexes for serialization."""
-
-    _fields = [("RoaringBitmap", [U8])]
-
-
-@versionadded(
     version="0.26.0",
     reason="Added to support new MultiSig bitmap in Sui v1.5.0.",
 )
@@ -617,25 +608,6 @@ class MsCompressedSig(canoser.Struct):
     """Represents compressed individual signed messages for serialization."""
 
     _fields = [("Sig", [U8, 65, False])]
-
-
-@versionadded(
-    version="0.20.4", reason="Added to support in-code MultiSig signing."
-)
-@deprecated(
-    version="0.26.0",
-    reason="Sui converting from roaring bitmap to simple bitmap in 1.5.0",
-)
-class MultiSignatureLegacy(canoser.Struct):
-    """BCS representation of a MultiSig signature for executions."""
-
-    _fields = [
-        ("Scheme", U8),
-        ("Sigs", [MsCompressedSig]),
-        ("RoaringBitMap", MsRoaring),
-        ("PkMap", [MsPublicKey]),
-        ("Threshold", U16),
-    ]
 
 
 @versionadded(
