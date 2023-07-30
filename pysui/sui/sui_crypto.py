@@ -15,48 +15,25 @@
 """Sui Crpto Keys and Keypairs."""
 
 import os
-import packaging.version as package
 import base64
 import binascii
 import hashlib
 import json
-from typing import Union
+from typing import Optional, Union
 from deprecated.sphinx import versionadded, versionchanged, deprecated
-import pyroaring
-import bip_utils
-import ecdsa
-from bip_utils.addr.addr_key_validator import AddrKeyValidator
-from bip_utils.bip.bip39.bip39_mnemonic_decoder import Bip39MnemonicDecoder
-from bip_utils.utils.mnemonic.mnemonic_validator import MnemonicValidator
-from nacl.signing import SigningKey, VerifyKey
-from nacl.encoding import Base64Encoder, RawEncoder
+import pysui_fastcrypto as pfc
 
 
 from pysui.abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
-from pysui.sui.sui_excepts import (
-    SuiFileNotFound,
-    SuiInvalidKeyPair,
-    SuiInvalidKeystringLength,
-    SuiKeystoreAddressError,
-    SuiKeystoreFileError,
-    SuiNoKeyPairs,
-)
 from pysui.sui.sui_constants import (
-    PYSUI_RPC_VERSION,
+    PRIVATE_KEY_BYTE_LEN,
     SCHEME_PRIVATE_KEY_BYTE_LEN,
     SUI_KEYPAIR_LEN,
     ED25519_DEFAULT_KEYPATH,
     ED25519_PUBLICKEY_BYTES_LEN,
-    ED25519_PRIVATEKEY_BYTES_LEN,
-    ED25519_KEYPAIR_BYTES_LEN,
     SECP256K1_DEFAULT_KEYPATH,
-    SECP256K1_KEYPAIR_BYTES_LEN,
     SECP256K1_PUBLICKEY_BYTES_LEN,
-    SECP256K1_PRIVATEKEY_BYTES_LEN,
     SECP256R1_DEFAULT_KEYPATH,
-    SECP256R1_KEYPAIR_BYTES_LEN,
-    SECP256R1_PUBLICKEY_BYTES_LEN,
-    SECP256R1_PRIVATEKEY_BYTES_LEN,
 )
 
 from pysui.sui.sui_types import SuiSignature, SuiAddress
@@ -66,11 +43,9 @@ from pysui.sui.sui_types.bcs import (
     MsEd25519PublicKey,
     MsNewPublicKey,
     MsPublicKey,
-    MsRoaring,
     MsSecp256k1PublicKey,
     MsSecp256r1PublicKey,
     MultiSignature,
-    MultiSignatureLegacy,
 )
 from pysui.sui.sui_types.scalars import SuiTxBytes
 
@@ -84,37 +59,34 @@ class SuiPublicKey(PublicKey):
         return self.to_b64()
 
 
+@versionchanged(version="0.33.0", reason="Converted to use pysui-fastcrypto")
 class SuiPrivateKey(PrivateKey):
     """SuiPrivateKey Sui Basic private/signing key."""
 
-    def sign_secure(
-        self, public_key: SuiPublicKey, tx_data: str, recovery_id: int = 0
-    ) -> bytes:
+    def sign_secure(self, tx_data: str) -> list:
         """sign_secure Sign transaction intent.
 
         :param public_key: PublicKey from signer/private key
         :type public_key: SuiPublicKey
         :param tx_data: Transaction bytes being signed
         :type tx_data: str
-        :param recovery_id: value used for secp256r1 signature completion,default to 0
-        :type: recovery_id: int, optional
-        :return: Singed transaction as bytes
-        :rtype: bytes
+        :return: Singed transaction as list of u8 bytes
+        :rtype: list
         """
-        # Sign hash of transaction intent
-        indata = bytearray([0, 0, 0])
-        indata.extend(base64.b64decode(tx_data))
-        sig_bytes = self.sign(
-            hashlib.blake2b(indata, digest_size=32).digest(), recovery_id
+        return pfc.sign_digest(
+            self.scheme,
+            self.key_bytes,
+            tx_data,
+            [0, 0, 0],
         )
-        # Embelish results
-        # flag | sig | public_key
-        compound = bytearray([self.scheme])
-        compound.extend(sig_bytes)
-        compound.extend(public_key.key_bytes)
-        return bytes(compound)
+
+    @versionadded(version="0.33.0", reason="Hide private key")
+    def __repr__(self) -> str:
+        """To string."""
+        return "Private Key"
 
 
+@versionchanged(version="0.33.0", reason="Converted to use pysui-fastcrypto")
 class SuiKeyPair(KeyPair):
     """SuiKeyPair Sui Basic keypair."""
 
@@ -139,22 +111,12 @@ class SuiKeyPair(KeyPair):
         """Get the keys scheme."""
         return self._scheme
 
-    def new_sign_secure(self, tx_data: Union[str, SuiTxBytes]) -> SuiSignature:
+    @versionchanged(version="0.33.0", reason="Changes to SuiPrivateKey")
+    def new_sign_secure(self, tx_data: str) -> SuiSignature:
         """New secure sign with intent."""
         tx_data = tx_data if isinstance(tx_data, str) else tx_data.value
-        sig = self.private_key.sign_secure(self.public_key, tx_data)
+        sig = bytearray(self.private_key.sign_secure(tx_data))
         return SuiSignature(base64.b64encode(sig).decode())
-
-    def serialize(self) -> str:
-        """serialize Returns a SUI conforming keystring.
-
-        :return: a base64 encoded string of schema and private key bytes
-        :rtype: str
-        """
-        all_bytes = (
-            self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
-        )
-        return base64.b64encode(all_bytes).decode()
 
     def serialize_to_bytes(self) -> bytes:
         """serialize_to_bytes Returns a SUI conforming keystring as bytes.
@@ -163,6 +125,14 @@ class SuiKeyPair(KeyPair):
         :rtype: bytes
         """
         return self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
+
+    def serialize(self) -> str:
+        """serialize Returns a SUI conforming keystring.
+
+        :return: a base64 encoded string of schema and private key bytes
+        :rtype: str
+        """
+        return base64.b64encode(self.serialize_to_bytes()).decode()
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
@@ -173,244 +143,57 @@ class SuiKeyPair(KeyPair):
         )
         return all_bytes
 
+    @classmethod
+    def from_bytes(cls, indata: bytes) -> KeyPair:
+        """Convert bytes to keypair."""
+        raise ValueError("from_bytes is legacy.")
+
+    @versionadded(version="0.33.0", reason="Converted to use pysui-fastcrypto")
+    @classmethod
+    def from_pfc_bytes(
+        cls, scheme: SignatureScheme, pub_bytes: bytes, prv_bytes: bytes
+    ) -> KeyPair:
+        """Convert bytes to keypair."""
+        len_prv = len(prv_bytes)
+        len_pub = len(pub_bytes)
+        assert (
+            len_prv == PRIVATE_KEY_BYTE_LEN
+        ), f"Expected {PRIVATE_KEY_BYTE_LEN} private key length, found {len_prv}"
+        if scheme is SignatureScheme.ED25519:
+            assert (
+                len_pub == ED25519_PUBLICKEY_BYTES_LEN
+            ), f"Expected {ED25519_PUBLICKEY_BYTES_LEN} private key length, found {len_pub}"
+        elif (
+            scheme is SignatureScheme.SECP256K1
+            or scheme is SignatureScheme.SECP256K1
+        ):
+            assert (
+                len_pub == SECP256K1_PUBLICKEY_BYTES_LEN
+            ), f"Expected {SECP256K1_PUBLICKEY_BYTES_LEN} private key length, found {len_pub}"
+
+        sui_kp = SuiKeyPair()
+        sui_kp._scheme = scheme
+        sui_kp._public_key = SuiPublicKey(scheme, pub_bytes)
+        sui_kp._private_key = SuiPrivateKey(scheme, prv_bytes)
+        return sui_kp
+
+    @versionchanged(
+        version="0.33.0", reason="Converted to use pysui-fastcrypto"
+    )
+    @classmethod
+    def from_b64(cls, indata: str) -> KeyPair:
+        """."""
+        signature, pub_list, prv_list = pfc.keys_from_keystring(indata)
+        return cls.from_pfc_bytes(
+            SignatureScheme(signature),
+            bytes(pub_list),
+            bytes(prv_list),
+        )
+
+    @versionchanged(version="0.33.0", reason="Hide private key")
     def __repr__(self) -> str:
         """To string."""
-        return f"PubKey {self._public_key}, PrivKey {self._private_key}"
-
-
-# Secp256r1 Curve Keys
-
-
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiPublicKeySECP256R1(SuiPublicKey):
-    """A secp256r1 Public Key."""
-
-    def __init__(self, indata: bytes) -> None:
-        """Initialize public key."""
-        if len(indata) != SECP256R1_PUBLICKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(
-                f"Public Key expects {SECP256R1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}"
-            )
-        super().__init__(SignatureScheme.SECP256R1, indata)
-        self._verify_key = ecdsa.VerifyingKey.from_string(
-            indata, curve=ecdsa.NIST256p, hashfunc=hashlib.sha256
-        )
-
-
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiPrivateKeySECP256R1(SuiPrivateKey):
-    """A secp256r1 Private Key."""
-
-    def __init__(self, indata: bytes) -> None:
-        """Initialize private key."""
-        dlen = len(indata)
-        if dlen != SECP256R1_PRIVATEKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(
-                f"Private Key expects {SECP256R1_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}"
-            )
-        super().__init__(SignatureScheme.SECP256R1, indata)
-        self._signing_key = ecdsa.SigningKey.from_string(
-            indata, ecdsa.NIST256p, hashfunc=hashlib.sha256
-        )
-
-    def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
-        """SECP256R1 signing bytes."""
-
-        def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
-            """s adjustment to go small."""
-            _s_max = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
-            if s_int > _s_max / 2:
-                s_int = _s_max - s_int
-            return ecdsa.util.sigencode_string(r_int, s_int, order)
-
-        return self._signing_key.sign_deterministic(
-            data, hashfunc=hashlib.sha256, sigencode=_sigencode_string
-        )
-
-
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiKeyPairSECP256R1(SuiKeyPair):
-    """A SuiKey Pair."""
-
-    def __init__(self, secret_bytes: bytes) -> None:
-        """Init keypair with public and private byte array."""
-        super().__init__()
-        self._scheme = SignatureScheme.SECP256R1
-        self._private_key = SuiPrivateKeySECP256R1(secret_bytes)
-        pub_bytes = (
-            self._private_key._signing_key.get_verifying_key().to_string(
-                encoding="compressed"
-            )
-        )
-        self._public_key = SuiPublicKeySECP256R1(pub_bytes)
-
-    @classmethod
-    def from_b64(cls, indata: str) -> KeyPair:
-        """Convert base64 string to keypair."""
-        if len(indata) != SUI_KEYPAIR_LEN:
-            raise SuiInvalidKeyPair(f"Expect str len of {SUI_KEYPAIR_LEN}")
-        base_decode = base64.b64decode(indata)
-        if base_decode[0] == SignatureScheme.SECP256R1:
-            return SuiKeyPairSECP256R1.from_bytes(base_decode[1:])
-        raise SuiInvalidKeyPair("Scheme not SECP256R1")
-
-    @classmethod
-    def from_bytes(cls, indata: bytes) -> KeyPair:
-        """Convert bytes to keypair."""
-        if len(indata) != SECP256R1_KEYPAIR_BYTES_LEN:
-            raise SuiInvalidKeyPair(
-                f"Expect bytes len of {SECP256R1_KEYPAIR_BYTES_LEN}"
-            )
-        return SuiKeyPairSECP256R1(indata)
-
-
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiPublicKeyED25519(SuiPublicKey):
-    """A ED25519 Public Key."""
-
-    def __init__(self, indata: bytes) -> None:
-        """Initialize public key."""
-        if len(indata) != ED25519_PUBLICKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(
-                f"Public Key expects {ED25519_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}"
-            )
-        super().__init__(SignatureScheme.ED25519, indata)
-        self._verify_key = VerifyKey(self.to_b64(), encoder=Base64Encoder)
-
-
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiPrivateKeyED25519(SuiPrivateKey):
-    """A ED25519 Private Key."""
-
-    def __init__(self, indata: bytes) -> None:
-        """Initialize private key."""
-        dlen = len(indata)
-        if dlen != ED25519_PRIVATEKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(
-                f"Private Key expects {ED25519_PRIVATEKEY_BYTES_LEN} bytes, found {dlen}"
-            )
-        super().__init__(SignatureScheme.ED25519, indata)
-        self._signing_key = SigningKey(self.to_b64(), encoder=Base64Encoder)
-
-    def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
-        """ED25519 sign data bytes."""
-        return self._signing_key.sign(data, encoder=RawEncoder).signature
-
-
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiKeyPairED25519(SuiKeyPair):
-    """A SuiKey Pair."""
-
-    def __init__(self, secret_bytes: bytes) -> None:
-        """Init keypair with public and private byte array."""
-        super().__init__()
-        self._scheme = SignatureScheme.ED25519
-        self._private_key = SuiPrivateKeyED25519(secret_bytes)
-        pub_bytes = self._private_key._signing_key.verify_key
-        self._public_key = SuiPublicKeyED25519(pub_bytes.encode())
-
-    @classmethod
-    def from_b64(cls, indata: str) -> KeyPair:
-        """Convert base64 string to keypair."""
-        if len(indata) != SUI_KEYPAIR_LEN:
-            raise SuiInvalidKeyPair(f"Expect str len of {SUI_KEYPAIR_LEN}")
-        base_decode = base64.b64decode(indata)
-        if base_decode[0] == SignatureScheme.ED25519:
-            return SuiKeyPairED25519.from_bytes(base_decode[1:])
-        raise SuiInvalidKeyPair("Scheme not ED25519")
-
-    @classmethod
-    def from_bytes(cls, indata: bytes) -> KeyPair:
-        """Convert bytes to keypair."""
-        if len(indata) != ED25519_KEYPAIR_BYTES_LEN:
-            raise SuiInvalidKeyPair(
-                f"Expect bytes len of {ED25519_KEYPAIR_BYTES_LEN}"
-            )
-        return SuiKeyPairED25519(indata)
-
-
-@versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiPublicKeySECP256K1(SuiPublicKey):
-    """A SECP256K1 Public Key."""
-
-    def __init__(self, indata: bytes) -> None:
-        """Initialize public key."""
-        if len(indata) != SECP256K1_PUBLICKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(
-                f"Public Key expects {SECP256K1_PUBLICKEY_BYTES_LEN} bytes, found {len(indata)}"
-            )
-        super().__init__(SignatureScheme.SECP256K1, indata)
-        self._verify_key = ecdsa.VerifyingKey.from_string(
-            indata, curve=ecdsa.SECP256k1
-        )
-
-
-@versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiPrivateKeySECP256K1(SuiPrivateKey):
-    """A SECP256K1 Private Key."""
-
-    def __init__(self, indata: bytes) -> None:
-        """Initialize private key."""
-        if len(indata) != SECP256K1_PRIVATEKEY_BYTES_LEN:
-            raise SuiInvalidKeyPair(
-                f"Private Key expects {SECP256K1_PRIVATEKEY_BYTES_LEN} bytes, found {len(indata)}"
-            )
-        super().__init__(SignatureScheme.SECP256K1, indata)
-        self._signing_key = ecdsa.SigningKey.from_string(
-            indata, curve=ecdsa.SECP256k1, hashfunc=hashlib.sha256
-        )
-
-    def sign(self, data: bytes, _recovery_id: int = 0) -> bytes:
-        """secp256k1 sign data bytes."""
-
-        def _sigencode_string(r_int: int, s_int: int, order: int) -> bytes:
-            """s adjustment to go small."""
-            _s_max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-            # _s_max = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
-            if s_int > _s_max / 2:
-                s_int = _s_max - s_int
-            return ecdsa.util.sigencode_string(r_int, s_int, order)
-
-        return self._signing_key.sign_deterministic(
-            data, hashfunc=hashlib.sha256, sigencode=_sigencode_string
-        )
-
-
-@versionchanged(version="0.22.1", reason="Move from using secp256k1 library")
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-class SuiKeyPairSECP256K1(SuiKeyPair):
-    """A SuiKey Pair."""
-
-    def __init__(self, secret_bytes: bytes) -> None:
-        """Init keypair with public and private byte array."""
-        super().__init__()
-        self._scheme = SignatureScheme.SECP256K1
-        self._private_key = SuiPrivateKeySECP256K1(secret_bytes)
-        pubkey_bytes = (
-            self._private_key._signing_key.get_verifying_key().to_string(
-                "compressed"
-            )
-        )
-        self._public_key = SuiPublicKeySECP256K1(pubkey_bytes)
-
-    @classmethod
-    def from_b64(cls, indata: str) -> KeyPair:
-        """Convert base64 string to keypair."""
-        if len(indata) != SUI_KEYPAIR_LEN:
-            raise SuiInvalidKeyPair(f"Expect str len of {SUI_KEYPAIR_LEN}")
-        base_decode = base64.b64decode(indata)
-        if base_decode[0] == SignatureScheme.SECP256K1:
-            return SuiKeyPairSECP256K1.from_bytes(base_decode[1:])
-        raise SuiInvalidKeyPair("Scheme not SECP256K1")
-
-    @classmethod
-    def from_bytes(cls, indata: bytes) -> KeyPair:
-        """Convert bytes to keypair."""
-        if len(indata) != SECP256K1_KEYPAIR_BYTES_LEN:
-            raise SuiInvalidKeyPair("Expect bytes len of 65")
-        return SuiKeyPairSECP256K1(indata)
+        return f"PubKey {self._public_key}, PrivKey `Private`"
 
 
 class MultiSig:
@@ -570,18 +353,6 @@ class MultiSig:
             pks.append(npk)
         return pks
 
-    def _legacy_publickey(self) -> list[MsPublicKey]:
-        """."""
-        pks: list[MsPublicKey] = []
-        for index, kkeys in enumerate(self._keys):
-            pk = (
-                base64.b64encode(kkeys.public_key.scheme_and_key())
-                .decode()
-                .encode(encoding="utf8")
-            )
-            pks.append(MsPublicKey(list(pk), self._weights[index]))
-        return pks
-
     @versionadded(
         version="0.21.1", reason="Support for inline multisig signing"
     )
@@ -602,7 +373,7 @@ class MultiSig:
     @versionadded(
         version="0.21.1", reason="Full signature creation without binaries."
     )
-    @deprecated(
+    @versionchanged(
         version="0.31.0",
         reason="Roaring bitmap no longer required in Sui 1.4.x and above.",
     )
@@ -620,36 +391,17 @@ class MultiSig:
 
         # Generate the public keys used position bitmap
         # then build the signature
-        rpc_version = package.parse(os.environ[PYSUI_RPC_VERSION])
-        if rpc_version.major == 1:
-            # RPC <= 1.4.0 uses roaring bitmap
-            if rpc_version.minor <= 3:
-                serialized_rbm: MsRoaring = MsRoaring(
-                    list(pyroaring.BitMap(key_indices).serialize())
-                )
-                msig_signature = MultiSignatureLegacy(
-                    self._schema,
-                    compressed_sigs,
-                    serialized_rbm,
-                    self._legacy_publickey(),
-                    self.threshold,
-                )
-            elif rpc_version.minor >= 4:
-                bm_pks: int = 0
-                for index in key_indices:
-                    bm_pks |= 1 << index
-                serialized_rbm: MsBitmap = MsBitmap(bm_pks)
-                msig_signature = MultiSignature(
-                    self._schema,
-                    compressed_sigs,
-                    serialized_rbm,
-                    self._new_publickey(),
-                    self.threshold,
-                )
-            else:
-                raise ValueError(
-                    f"Version exception {os.environ[PYSUI_RPC_VERSION]}"
-                )
+        bm_pks: int = 0
+        for index in key_indices:
+            bm_pks |= 1 << index
+        serialized_rbm: MsBitmap = MsBitmap(bm_pks)
+        msig_signature = MultiSignature(
+            self._schema,
+            compressed_sigs,
+            serialized_rbm,
+            self._new_publickey(),
+            self.threshold,
+        )
         return SuiSignature(
             base64.b64encode(msig_signature.serialize()).decode()
         )
@@ -714,153 +466,52 @@ class MultiSig:
             raise ValueError(f"{berr.args}") from berr
 
 
-# Utility functions
-@deprecated(version="0.31.1", reason="Removing in pysui 0.33.0")
-def _valid_mnemonic(mnemonics: Union[str, list[str]] = "") -> str:
-    """_valid_mnemonic Validate, or create, mnemonic word string.
-
-    :param mnemonics: space separated word string (12) or list of words(12), defaults to ""
-    :type mnemonics: Union[str, list[str]], optional
-    :raises ValueError: If the validation of supplied mnemonics fails
-    :return: mnemonic word (24) string separated by spaces
-    :rtype: str
-    """
-    if mnemonics:
-        if isinstance(mnemonics, list):
-            mnemonics = " ".join(mnemonics)
-
-        if MnemonicValidator(Bip39MnemonicDecoder()).IsValid(mnemonics):
-            return mnemonics
-        raise ValueError(f"{mnemonics} is not a valid mnemonic phrase.")
-    return (
-        bip_utils.Bip39MnemonicGenerator()
-        .FromWordsNumber(bip_utils.Bip39WordsNum.WORDS_NUM_24)
-        .ToStr()
-    )
-
-
+@versionchanged(
+    version="0.33.0",
+    reason="Requires word count, no longer allows phrase.",
+)
 def create_new_keypair(
-    scheme: SignatureScheme = SignatureScheme.ED25519,
-    mnemonics: Union[str, list[str]] = "",
+    scheme: Optional[SignatureScheme] = SignatureScheme.ED25519,
+    word_counts: Optional[int] = 12,
     derv_path: str = None,
 ) -> tuple[str, SuiKeyPair]:
     """create_new_keypair Generate a new keypair.
 
     :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type, defaults to SignatureScheme.ED25519
     :type keytype: SignatureScheme, optional
-    :param mnemonics: mnemonic words, defaults to None
-    :type mnemonics: Union[str, list[str]], optional
+    :param word_counts: count of words to generate mnemonic phrase, defaults to 12
+    :type word_counts: int, optional
     :param derv_path: derivation path coinciding with key type, defaults to None
     :type derv_path: str, optional
     :raises NotImplementedError: If invalid keytype is provided
     :return: mnemonic words and new keypair
     :rtype: tuple[str, KeyPair]
     """
-    mnemonic_phrase = _valid_mnemonic(mnemonics)
-    seed_bytes = bip_utils.Bip39SeedGenerator(mnemonic_phrase).Generate()
-    validation_str: str = ""
-    key_clazz = None
-    vkey = None
-    pkey = None
-    match scheme:
-        case SignatureScheme.ED25519:
-            # 1. Private, or signer, key
-            bip32_ctx = bip_utils.Bip32Slip10Ed25519.FromSeedAndPath(
-                seed_bytes, derv_path or ED25519_DEFAULT_KEYPATH
-            )
-            ed_priv = SigningKey(
-                base64.b64encode(bip32_ctx.PrivateKey().Raw().ToBytes()),
-                encoder=Base64Encoder,
-            )
-            pkey = ed_priv.encode()
-            # 2. Public, or verifier, key
-            vkey = ed_priv.verify_key.encode()
-            key_clazz = SuiKeyPairED25519
-            validation_str = "ValidateAndGetEd25519Key"
+    assert (
+        isinstance(scheme, SignatureScheme) and scheme < 3
+    ), "Invalid signatgure scheme"
+    assert word_counts in {12, 15, 18, 21, 24}, "Invalid word count"
+    derv_path = (
+        derv_path
+        or [
+            ED25519_DEFAULT_KEYPATH,
+            SECP256K1_DEFAULT_KEYPATH,
+            SECP256R1_DEFAULT_KEYPATH,
+        ][scheme]
+    )
 
-        case SignatureScheme.SECP256K1:
-            bip32_ctx = bip_utils.Bip32Slip10Secp256k1.FromSeedAndPath(
-                seed_bytes, derv_path or SECP256K1_DEFAULT_KEYPATH
-            )
-            # 1. Private, or signer, key
-            secp_priv = ecdsa.SigningKey.from_string(
-                bip32_ctx.PrivateKey().Raw().ToBytes(), curve=ecdsa.SECP256k1
-            )
-            pkey = secp_priv.to_string()
-            # 2. Public, or verifier, key
-            vkey = secp_priv.get_verifying_key().to_string("compressed")
-            key_clazz = SuiKeyPairSECP256K1
-            validation_str = "ValidateAndGetSecp256k1Key"
-
-        case SignatureScheme.SECP256R1:
-            bip32_ctx = bip_utils.Bip32Slip10Nist256p1.FromSeedAndPath(
-                seed_bytes, derv_path or SECP256R1_DEFAULT_KEYPATH
-            )
-            # 1. Private, or signer, key
-            secp_priv = ecdsa.SigningKey.from_string(
-                bip32_ctx.PrivateKey().Raw().ToBytes(), curve=ecdsa.NIST256p
-            )
-            pkey = secp_priv.to_string()
-            # 2. Public, or verifier, key
-            vkey = secp_priv.get_verifying_key().to_string("compressed")
-            key_clazz = SuiKeyPairSECP256R1
-            validation_str = "ValidateAndGetNist256p1Key"
-        case _:
-            raise ValueError(f"Unrecognized SignatureScheme {scheme}")
-
-    try:
-        getattr(AddrKeyValidator, validation_str)(vkey)
-    except TypeError as texc:
-        raise texc
-    except ValueError as vexc:
-        raise vexc
-
-    return mnemonic_phrase, key_clazz(pkey)
+    phrase, pub_list, prv_list = pfc.generate_new_keypair(
+        scheme, derv_path, str(word_counts)
+    )
+    return phrase, SuiKeyPair.from_pfc_bytes(
+        scheme, bytes(pub_list), bytes(prv_list)
+    )
 
 
-def keypair_from_keystring(keystring: str) -> KeyPair:
-    """keypair_from_keystring Parse keystring to keypair.
-
-    :param keystring: base64 keystring
-    :type keystring: str
-    :raises SuiInvalidKeystringLength: If invalid keypair string length
-    :raises NotImplementedError: If invalid keytype signature in string
-    :return: keypair derived from keystring
-    :rtype: KeyPair
-    """
-    if len(keystring) != SUI_KEYPAIR_LEN:
-        raise SuiInvalidKeystringLength(len(keystring))
-    addy_bytes = base64.b64decode(keystring)
-    match addy_bytes[0]:
-        case SignatureScheme.ED25519:
-            return SuiKeyPairED25519.from_bytes(addy_bytes[1:])
-        case SignatureScheme.SECP256K1:
-            return SuiKeyPairSECP256K1.from_bytes(addy_bytes[1:])
-        case SignatureScheme.SECP256R1:
-            return SuiKeyPairSECP256R1.from_bytes(addy_bytes[1:])
-    raise NotImplementedError
-
-
-def create_new_address(
-    keytype: SignatureScheme,
-    mnemonics: Union[str, list[str]] = None,
-    derv_path: str = None,
-) -> tuple[str, KeyPair, SuiAddress]:
-    """create_new_address Create a new keypair and address for a key type.
-
-    :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type
-    :type keytype: SignatureScheme
-    :param mnemonics: mnemonic words, defaults to None
-    :type mnemonics: Union[str, list[str]], optional
-    :param derv_path: derivation path coinciding with key type, defaults to None
-    :type derv_path: str, optional
-    :return: mnemonic words, new keypair and derived sui address
-    :rtype: tuple[str, KeyPair, SuiAddress]
-    """
-    mnem, new_kp = create_new_keypair(keytype, mnemonics, derv_path)
-    return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
-
-
+@versionchanged(
+    version="0.33.0",
+    reason="Using pysui-fastcrypto.",
+)
 def recover_key_and_address(
     keytype: SignatureScheme, mnemonics: Union[str, list[str]], derv_path: str
 ) -> tuple[str, KeyPair, SuiAddress]:
@@ -875,11 +526,59 @@ def recover_key_and_address(
     :return: mnemonic words, recovered keypair and derived sui address
     :rtype: tuple[str, KeyPair, SuiAddress]
     """
-    mnem, new_kp = create_new_keypair(keytype, mnemonics, derv_path)
+    mnemonics = " ".join(mnemonics) if mnemonics is list else mnemonics
+    pub_list, prv_list = pfc.keys_from_mnemonics(keytype, derv_path, mnemonics)
+    new_kp = SuiKeyPair.from_pfc_bytes(
+        keytype, bytes(pub_list), bytes(prv_list)
+    )
+    return mnemonics, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
+
+
+@versionchanged(
+    version="0.33.0",
+    reason="Requires word count, no longer allows phrase.",
+)
+def create_new_address(
+    keytype: SignatureScheme,
+    word_counts: Optional[int] = 12,
+    derv_path: str = None,
+) -> tuple[str, KeyPair, SuiAddress]:
+    """create_new_address Create a new keypair and address for a key type.
+
+    :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type
+    :type keytype: SignatureScheme
+    :param word_counts: count of words to generate mnemonic phrase, defaults to 12
+    :type word_counts: int, optional
+    :param derv_path: derivation path coinciding with key type, defaults to None
+    :type derv_path: str, optional
+    :return: mnemonic words, new keypair and derived sui address
+    :rtype: tuple[str, KeyPair, SuiAddress]
+    """
+    mnem, new_kp = create_new_keypair(keytype, word_counts, derv_path)
     return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
 
 
-@versionadded(version="0.16.1", reason="Localize key management")
+@versionchanged(
+    version="0.33.0",
+    reason="Using pysui-fastcrypto.",
+)
+def keypair_from_keystring(keystring: str) -> SuiKeyPair:
+    """keypair_from_keystring Parse keystring to keypair.
+
+    :param keystring: base64 keystring
+    :type keystring: str
+    :raises SuiInvalidKeystringLength: If invalid keypair string length
+    :raises NotImplementedError: If invalid keytype signature in string
+    :return: keypair derived from keystring
+    :rtype: KeyPair
+    """
+    if len(keystring) != SUI_KEYPAIR_LEN:
+        raise ValueError(
+            f"Invalid keystring length, found {len(keystring)} expected {SUI_KEYPAIR_LEN}"
+        )
+    return SuiKeyPair.from_b64(keystring)
+
+
 def load_keys_and_addresses(
     keystore_file: str,
 ) -> Union[
@@ -913,16 +612,15 @@ def load_keys_and_addresses(
                         _address_keypair[addy.address] = kpair
                     return _keypairs, _addresses, _address_keypair
                 else:
-                    raise SuiNoKeyPairs()
+                    raise ValueError("Empty keystring found")
         except IOError as exc:
-            raise SuiKeystoreFileError(exc) from exc
+            raise exc
         except json.JSONDecodeError as exc:
-            raise SuiKeystoreAddressError(exc) from exc
+            raise exc
     else:
-        raise SuiFileNotFound(str(keystore_file))
+        raise ValueError(f"{keystore_file} not found")
 
 
-@versionadded(version="0.25.0", reason="Ephemeral key and address setup.")
 def emphemeral_keys_and_addresses(
     keystrings: list[str],
 ) -> Union[
@@ -945,4 +643,57 @@ def emphemeral_keys_and_addresses(
 
 
 if __name__ == "__main__":
-    pass
+    in_keystrings = [
+        "AIUPxQveY18QxhDDdTO0D0OD6PNV+et50068d1g/rIyl",
+        "AOM6UAQrFe7r9nNDGRlWwj1o7m1cGK6mDZ3efRJJmvcG",
+        "ASh0NQrbB6bVUXzT+nL0eL/pYpFxA004+yJVr+ESLyKD",
+        "Ap2UtlPaemem6P6cfpg8jNKKlnmrWlqhNH3TNl46zEyK",
+        "AdWV+84ut+b9phzm7ZBISKYDSFk7Weqs07wk4DsMxlRY",
+    ]
+
+    def dump_res(from_func, keystr_dict, addy_dict, addy_key_dict):
+        """."""
+        print(f"\n{from_func}\nKeystring dict")
+        for key, value in keystr_dict.items():
+            print(f"Keystring {key} Keypair {value}")
+        print("\nAddy dict")
+        for key, value in addy_dict.items():
+            print(f"Address {key} SuiAddress {value}")
+        print("\nAddy key dict")
+        for key, value in addy_dict.items():
+            print(f"Address {key} Keypair {value}")
+        print()
+
+    dict_keystr, dict_addy, dict_addy_key = emphemeral_keys_and_addresses(
+        in_keystrings
+    )
+    dump_res("Empemeral", dict_keystr, dict_addy, dict_addy_key)
+    dump_res(
+        "File load",
+        *load_keys_and_addresses(
+            os.path.expanduser("~/.sui/sui_config/sui.keystore")
+        ),
+    )
+    phrase, kp = create_new_keypair()
+    print(f"\nScheme {kp.scheme.as_str()} Phrase {phrase} KeyPair {kp}")
+    phrase, kp = create_new_keypair(SignatureScheme.SECP256K1)
+    print(f"Scheme {kp.scheme.as_str()} Phrase {phrase} KeyPair {kp}")
+    phrase, kp = create_new_keypair(SignatureScheme.SECP256R1)
+    print(f"Scheme {kp.scheme.as_str()} Phrase {phrase} KeyPair {kp}")
+
+    phrase, kp, addy = create_new_address(SignatureScheme.ED25519)
+    print(
+        f"Scheme {kp.scheme.as_str()} Address: {addy.address} Phrase {phrase} KeyPair {kp}"
+    )
+    ophr, kp, addy = recover_key_and_address(
+        SignatureScheme.ED25519, phrase, "m/44'/784'/0'/1'/0'"
+    )
+    print(f"\nAddress {addy.address} Phrase {ophr} KeyPair {kp}")
+
+    sktr = "ADEvd+Ah9oM1yOWMsP7G5KvK8glo4b52PqXRCIK0/i13vgcgDBTSmWoY2Iqd6SvKwXTnHW+KCdNRJIhA2jrdygjXa5x6KXqRZvWuDKnnWwILWd1coaxO7+cGQ8YL6A9VzA=="
+    kp = keypair_from_keystring("AOM6UAQrFe7r9nNDGRlWwj1o7m1cGK6mDZ3efRJJmvcG")
+    res = kp.new_sign_secure(
+        "AAAEAAgAypo7AAAAAAAIAMqaOwAAAAABADREBHzUuo0veOkm9ajjcxYq1NxsLgXSYcC7/X4oFhoaoAUAAAAAAAAgETqmuazrgq7B72tOG6cWceUT75gM8kRFwBGLgqg0TqwAIKni2zhfBVzAIVo83iaLdicFNblEOAdRTxg76Gkmwhn0AgIBAgACAQAAAQEAAQIDAAAAAAMAAAEAAQMAqeLbOF8FXMAhWjzeJot2JwU1uUQ4B1FPGDvoaSbCGfQBATMSrQ+9XmatOs8Nr2zvl1ByFb9anfD2TqJE6569i++gBQAAAAAAACCluoNkyH4V37zDuDBiLgc+AsTvGv/xJ1WIMIN++yeywKni2zhfBVzAIVo83iaLdicFNblEOAdRTxg76Gkmwhn06AMAAAAAAABYtksAAAAAAAA="
+    )
+    print(res.value)
+    assert res.value == sktr
