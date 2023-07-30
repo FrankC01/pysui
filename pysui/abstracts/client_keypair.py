@@ -95,11 +95,7 @@ class PrivateKey(Key):
     """PrivateKey construct."""
 
     @abstractmethod
-    def sign(self, data: bytes, recovery_id: int = 0) -> bytes:
-        """Sign data and return signature bytes."""
-
-    @abstractmethod
-    def sign_secure(self, public_key: PublicKey, tx_data: bytes, recovery_id: int = 0) -> bytes:
+    def sign_secure(self, tx_data: bytes) -> list:
         """Sign data securely, returning signature."""
 
 
