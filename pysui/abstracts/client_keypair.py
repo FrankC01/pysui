@@ -17,6 +17,7 @@
 from abc import ABC, abstractmethod
 import base64
 from enum import IntEnum
+from typing import Union
 from pysui.abstracts import AbstractType
 
 
@@ -95,7 +96,7 @@ class PrivateKey(Key):
     """PrivateKey construct."""
 
     @abstractmethod
-    def sign_secure(self, tx_data: bytes) -> list:
+    def sign_secure(self, tx_data: str) -> list:
         """Sign data securely, returning signature."""
 
 
@@ -109,16 +110,16 @@ class KeyPair(ABC):
 
     @property
     @abstractmethod
-    def public_key(self) -> PublicKey:
+    def public_key(self) -> Union[PublicKey, None]:
         """Get the keypair public key."""
 
     @property
     @abstractmethod
-    def private_key(self) -> PrivateKey:
+    def private_key(self) -> Union[PrivateKey, None]:
         """Get the keypair public key."""
 
     @abstractmethod
-    def new_sign_secure(self, tx_data: str) -> AbstractType:
+    def new_sign_secure(self, tx_data: str) -> Union[AbstractType, str]:
         """Sign transactions securley."""
 
     @classmethod
