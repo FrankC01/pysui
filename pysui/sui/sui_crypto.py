@@ -658,44 +658,6 @@ def emphemeral_keys_and_addresses(
 
 
 if __name__ == "__main__":
-    in_keystrings = [
-        "AIUPxQveY18QxhDDdTO0D0OD6PNV+et50068d1g/rIyl",
-        "AOM6UAQrFe7r9nNDGRlWwj1o7m1cGK6mDZ3efRJJmvcG",
-        "ASh0NQrbB6bVUXzT+nL0eL/pYpFxA004+yJVr+ESLyKD",
-        "Ap2UtlPaemem6P6cfpg8jNKKlnmrWlqhNH3TNl46zEyK",
-        "AdWV+84ut+b9phzm7ZBISKYDSFk7Weqs07wk4DsMxlRY",
-    ]
-
-    def dump_res(from_func, keystr_dict, addy_dict, addy_key_dict):
-        """."""
-        print(f"\n{from_func}\nKeystring dict")
-        for key, value in keystr_dict.items():
-            print(f"Keystring {key} Keypair {value}")
-        print("\nAddy dict")
-        for key, value in addy_dict.items():
-            print(f"Address {key} SuiAddress {value}")
-        print("\nAddy key dict")
-        for key, value in addy_dict.items():
-            print(f"Address {key} Keypair {value}")
-        print()
-
-    dict_keystr, dict_addy, dict_addy_key = emphemeral_keys_and_addresses(
-        in_keystrings
-    )
-    dump_res("Empemeral", dict_keystr, dict_addy, dict_addy_key)
-    dump_res(
-        "File load",
-        *load_keys_and_addresses(
-            os.path.expanduser("~/.sui/sui_config/sui.keystore")
-        ),
-    )
-    phrase, kp = create_new_keypair()
-    print(f"\nScheme {kp.scheme.as_str()} Phrase {phrase} KeyPair {kp}")
-    phrase, kp = create_new_keypair(SignatureScheme.SECP256K1)
-    print(f"Scheme {kp.scheme.as_str()} Phrase {phrase} KeyPair {kp}")
-    phrase, kp = create_new_keypair(SignatureScheme.SECP256R1)
-    print(f"Scheme {kp.scheme.as_str()} Phrase {phrase} KeyPair {kp}")
-
     phrase, kp, addy = create_new_address(SignatureScheme.ED25519)
     print(
         f"Scheme {kp.scheme.as_str()} Address: {addy.address} Phrase {phrase} KeyPair {kp}"
@@ -704,11 +666,3 @@ if __name__ == "__main__":
         SignatureScheme.ED25519, phrase, "m/44'/784'/0'/1'/0'"
     )
     print(f"\nAddress {addy.address} Phrase {ophr} KeyPair {kp}")
-
-    sktr = "ADEvd+Ah9oM1yOWMsP7G5KvK8glo4b52PqXRCIK0/i13vgcgDBTSmWoY2Iqd6SvKwXTnHW+KCdNRJIhA2jrdygjXa5x6KXqRZvWuDKnnWwILWd1coaxO7+cGQ8YL6A9VzA=="
-    kp = keypair_from_keystring("AOM6UAQrFe7r9nNDGRlWwj1o7m1cGK6mDZ3efRJJmvcG")
-    res = kp.new_sign_secure(
-        "AAAEAAgAypo7AAAAAAAIAMqaOwAAAAABADREBHzUuo0veOkm9ajjcxYq1NxsLgXSYcC7/X4oFhoaoAUAAAAAAAAgETqmuazrgq7B72tOG6cWceUT75gM8kRFwBGLgqg0TqwAIKni2zhfBVzAIVo83iaLdicFNblEOAdRTxg76Gkmwhn0AgIBAgACAQAAAQEAAQIDAAAAAAMAAAEAAQMAqeLbOF8FXMAhWjzeJot2JwU1uUQ4B1FPGDvoaSbCGfQBATMSrQ+9XmatOs8Nr2zvl1ByFb9anfD2TqJE6569i++gBQAAAAAAACCluoNkyH4V37zDuDBiLgc+AsTvGv/xJ1WIMIN++yeywKni2zhfBVzAIVo83iaLdicFNblEOAdRTxg76Gkmwhn06AMAAAAAAABYtksAAAAAAAA="
-    )
-    print(res.value)
-    assert res.value == sktr
