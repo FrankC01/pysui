@@ -42,7 +42,6 @@ from pysui.sui.sui_types.bcs import (
     MsCompressedSig,
     MsEd25519PublicKey,
     MsNewPublicKey,
-    MsPublicKey,
     MsSecp256k1PublicKey,
     MsSecp256r1PublicKey,
     MultiSignature,
@@ -92,17 +91,17 @@ class SuiKeyPair(KeyPair):
 
     def __init__(self) -> None:
         """__init__ Default keypair initializer."""
-        self._scheme: SignatureScheme = None
-        self._private_key: SuiPrivateKey = None
-        self._public_key: SuiPublicKey = None
+        self._scheme: SignatureScheme = SignatureScheme.ED25519
+        self._private_key: Union[SuiPrivateKey, None] = None
+        self._public_key: Union[SuiPublicKey, None] = None
 
     @property
-    def private_key(self) -> SuiPrivateKey:
+    def private_key(self) -> Union[SuiPrivateKey, None]:
         """Return the Private Key."""
         return self._private_key
 
     @property
-    def public_key(self) -> SuiPublicKey:
+    def public_key(self) -> Union[SuiPublicKey, None]:
         """Return the Public Key."""
         return self._public_key
 
@@ -114,7 +113,7 @@ class SuiKeyPair(KeyPair):
     @versionchanged(version="0.33.0", reason="Changes to SuiPrivateKey")
     def new_sign_secure(self, tx_data: str) -> SuiSignature:
         """New secure sign with intent."""
-        tx_data = tx_data if isinstance(tx_data, str) else tx_data.value
+        assert self.private_key, "Can not sign with invalid private key"
         sig = bytearray(self.private_key.sign_secure(tx_data))
         return SuiSignature(base64.b64encode(sig).decode())
 
@@ -124,6 +123,9 @@ class SuiKeyPair(KeyPair):
         :return: Bytes of signature scheme + private key
         :rtype: bytes
         """
+        assert (
+            self.private_key
+        ), "Can not serialize_to_bytes with invalid private key"
         return self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
 
     def serialize(self) -> str:
@@ -136,6 +138,12 @@ class SuiKeyPair(KeyPair):
 
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
+        assert (
+            self.private_key
+        ), "Can not convert to bytes with invalid private key"
+        assert (
+            self.public_key
+        ), "Can not convert to bytessign with invalid private key"
         all_bytes = (
             self.scheme.to_bytes(1, "little")
             + self.public_key.key_bytes
@@ -152,7 +160,7 @@ class SuiKeyPair(KeyPair):
     @classmethod
     def from_pfc_bytes(
         cls, scheme: SignatureScheme, pub_bytes: bytes, prv_bytes: bytes
-    ) -> KeyPair:
+    ) -> "SuiKeyPair":
         """Convert bytes to keypair."""
         len_prv = len(prv_bytes)
         len_pub = len(pub_bytes)
@@ -181,7 +189,7 @@ class SuiKeyPair(KeyPair):
         version="0.33.0", reason="Converted to use pysui-fastcrypto"
     )
     @classmethod
-    def from_b64(cls, indata: str) -> KeyPair:
+    def from_b64(cls, indata: str) -> "SuiKeyPair":
         """."""
         signature, pub_list, prv_list = pfc.keys_from_keystring(indata)
         return cls.from_pfc_bytes(
@@ -231,8 +239,9 @@ class MultiSig:
             self._threshold: int = threshold
             self._schema: SignatureScheme = SignatureScheme.MULTISIG
             self._address: SuiAddress = self._multi_sig_address()
+
             self._public_keys: list[SuiPublicKey] = [
-                x.public_key for x in self._keys
+                x.public_key for x in self._keys  # type: ignore
             ]
         else:
             raise ValueError("Invalid arguments provided to constructor")
@@ -247,7 +256,7 @@ class MultiSig:
         digest = self._schema.to_bytes(1, "little")
         digest += self._threshold.to_bytes(2, "little")
         for index, kkeys in enumerate(self._keys):
-            digest += kkeys.public_key.scheme_and_key()
+            digest += kkeys.public_key.scheme_and_key()  # type: ignore
             digest += self._weights[index].to_bytes(1, "little")
         return SuiAddress(hashlib.blake2b(digest, digest_size=32).hexdigest())
 
@@ -327,14 +336,14 @@ class MultiSig:
             pub_keys
         ), "Public key not part of MultiSig keys"
         weights = [self._weights[x] for x in hit_indexes]
-        return hit_indexes, list(zip(pub_keys, weights))
+        return hit_indexes  # , list(zip(pub_keys, weights))
 
     def _new_publickey(self) -> list[MsNewPublicKey]:
         """."""
         # Generate new BCS PublicKeys from the FULL compliment of original public keys
         pks: list[MsNewPublicKey] = []
         for index, kkeys in enumerate(self._keys):
-            pkb = kkeys.public_key.key_bytes
+            pkb = kkeys.public_key.key_bytes  # type: ignore
             if kkeys.scheme == SignatureScheme.ED25519:
                 npk = MsNewPublicKey(
                     "Ed25519",
@@ -362,7 +371,8 @@ class MultiSig:
         """Creates compressed signatures from each of the signing keys present."""
         compressed: list[MsCompressedSig] = []
         for index in key_indices:
-            sig = self._keys[index].new_sign_secure(tx_bytes).value
+            sig_t = self._keys[index].new_sign_secure(tx_bytes)
+            sig = str(sig_t.value)
             compressed.append(
                 MsCompressedSig(
                     list(base64.b64decode(sig)[0 : self._COMPRESSED_SIG_LEN])
@@ -382,11 +392,11 @@ class MultiSig:
     ) -> SuiSignature:
         """sign Signs transaction bytes for operation that changes objects owned by MultiSig address."""
         # Validate the pub_keys alignment with self._keys
-        key_indices, pk_map = self._validate_signers(pub_keys)
+        key_indices = self._validate_signers(pub_keys)
         # Generate BCS compressed signatures for the subset of keys
-        tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value
+        tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value  # type: ignore
         compressed_sigs: list[MsCompressedSig] = self._compressed_signatures(
-            tx_bytes, key_indices
+            str(tx_bytes), key_indices
         )
 
         # Generate the public keys used position bitmap
@@ -473,8 +483,8 @@ class MultiSig:
 def create_new_keypair(
     scheme: Optional[SignatureScheme] = SignatureScheme.ED25519,
     word_counts: Optional[int] = 12,
-    derv_path: str = None,
-) -> tuple[str, SuiKeyPair]:
+    derv_path="",
+) -> tuple[str, KeyPair]:
     """create_new_keypair Generate a new keypair.
 
     :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type, defaults to SignatureScheme.ED25519
@@ -507,7 +517,7 @@ def create_new_keypair(
     phrase, pub_list, prv_list = pfc.generate_new_keypair(
         scheme, derv_path, str(word_counts)
     )
-    return phrase, SuiKeyPair.from_pfc_bytes(
+    return str(phrase), SuiKeyPair.from_pfc_bytes(
         scheme, bytes(pub_list), bytes(prv_list)
     )
 
@@ -535,7 +545,7 @@ def recover_key_and_address(
     new_kp = SuiKeyPair.from_pfc_bytes(
         keytype, bytes(pub_list), bytes(prv_list)
     )
-    return mnemonics, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
+    return mnemonics, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())  # type: ignore
 
 
 @versionchanged(
@@ -545,7 +555,7 @@ def recover_key_and_address(
 def create_new_address(
     keytype: SignatureScheme,
     word_counts: Optional[int] = 12,
-    derv_path: str = None,
+    derv_path=None,
 ) -> tuple[str, KeyPair, SuiAddress]:
     """create_new_address Create a new keypair and address for a key type.
 
@@ -644,6 +654,7 @@ def emphemeral_keys_and_addresses(
             _addresses[addy.address] = addy
             _address_keypair[addy.address] = kpair
         return _keypairs, _addresses, _address_keypair
+    raise ValueError(f"Missing keystring list")
 
 
 if __name__ == "__main__":

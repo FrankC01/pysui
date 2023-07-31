@@ -61,7 +61,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         self,
         *,
         tx_bytes: SuiTxBytes,
-        signatures: SuiArray[SuiSignature],
+        signatures: SuiArray,
         options: Optional[SuiMap] = None,
         request_type: SuiRequestType,
     ) -> None:
