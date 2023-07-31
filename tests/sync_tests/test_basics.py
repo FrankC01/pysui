@@ -120,6 +120,11 @@ def test_gets(sui_client: SyncClient) -> None:
     assert txi.is_ok()
     txi = txi.result_data
     assert txi.checkpoint == checki.sequence_number
+    for (
+        k_straint,
+        v_straint,
+    ) in sui_client.protocol.transaction_constraints.to_dict().items():
+        assert v_straint
 
 
 def test_object_gets(sui_client: SyncClient) -> None:

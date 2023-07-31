@@ -70,13 +70,6 @@ def test_pay_all_keys(sui_client: SyncClient) -> None:
     t_run = txn.execute()
     assert t_run.is_ok()
 
-    # tfr_builder = PayAllSui(
-    #     signer=ed_addy,
-    #     input_coins=[mc_id],
-    #     recipient=k1_addy,
-    #     gas_budget=STANDARD_BUDGET,
-    # )
-    # assert sui_client.execute(tfr_builder).is_ok()
     data = handle_result(sui_client.get_object(mc_id))
     assert data.owner.address_owner == k1_addy
 
@@ -87,13 +80,6 @@ def test_pay_all_keys(sui_client: SyncClient) -> None:
     t_run = txn.execute()
     assert t_run.is_ok()
 
-    # tfr_builder = PayAllSui(
-    #     signer=k1_addy,
-    #     input_coins=[mc_id],
-    #     recipient=r1_addy,
-    #     gas_budget=STANDARD_BUDGET,
-    # )
-    # assert sui_client.execute(tfr_builder).is_ok()
     data = handle_result(sui_client.get_object(mc_id))
     assert data.owner.address_owner == r1_addy
 
@@ -105,12 +91,5 @@ def test_pay_all_keys(sui_client: SyncClient) -> None:
     t_run = txn.execute()
     assert t_run.is_ok()
 
-    # tfr_builder = PayAllSui(
-    #     signer=r1_addy,
-    #     input_coins=[mc_id],
-    #     recipient=ed_addy,
-    #     gas_budget=STANDARD_BUDGET,
-    # )
-    # assert sui_client.execute(tfr_builder).is_ok()
     data = handle_result(sui_client.get_object(mc_id))
     assert data.owner.address_owner == ed_addy
