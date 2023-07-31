@@ -658,11 +658,4 @@ def emphemeral_keys_and_addresses(
 
 
 if __name__ == "__main__":
-    phrase, kp, addy = create_new_address(SignatureScheme.ED25519)
-    print(
-        f"Scheme {kp.scheme.as_str()} Address: {addy.address} Phrase {phrase} KeyPair {kp}"
-    )
-    ophr, kp, addy = recover_key_and_address(
-        SignatureScheme.ED25519, phrase, "m/44'/784'/0'/1'/0'"
-    )
-    print(f"\nAddress {addy.address} Phrase {ophr} KeyPair {kp}")
+    pass
