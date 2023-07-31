@@ -8,6 +8,7 @@
     "79"
   ],
   "python.linting.pylintEnabled": true,
+  // "python.linting.mypyEnabled": true,
   "python.linting.pylintArgs": [
     "----extension-pkg-whitelist=1xml",
     "--max-line-length",

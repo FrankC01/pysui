@@ -102,8 +102,8 @@ class SuiBaseBuilder(Builder):
         self,
         method: str,
         txn_required: bool,
-        handler_cls: Type[SuiBaseType] = None,
-        handler_func: str = None,
+        handler_cls=None,
+        handler_func=None,
     ) -> None:
         """__init__ Initialize builder.
 
@@ -143,10 +143,10 @@ class SuiBaseBuilder(Builder):
         # TODO: Merge with `params` method when refactored or just remove abstract decl
         return self._pull_vars()
 
+    @property
     @versionchanged(
         version="0.24.0", reason="Moved from list to dict for RPC params"
     )
-    @property
     def params(self) -> dict:
         """Return parameters list."""
         return self._pull_vars()
@@ -168,12 +168,13 @@ class SuiBaseBuilder(Builder):
 
     def handle_return(self, indata: dict) -> Union[dict, SuiBaseType]:
         """Handle the expected return."""
-        if self._handler_cls and self._handler_func:
-            return getattr(self._handler_cls, self._handler_func)(indata)
-        if self._handler_cls and self._handler_func is None:
-            return self._handler_cls(indata)
-        if self._handler_cls is None and self._handler_func:
-            return self._handler_func(indata)
+        if indata:
+            if self._handler_cls and self._handler_func:
+                return getattr(self._handler_cls, self._handler_func)(indata)
+            if self._handler_cls and self._handler_func is None:
+                return self._handler_cls(indata)
+            if self._handler_cls is None and self._handler_func:
+                return self._handler_func(indata)
         return indata
 
     # EXPERIMENTAL
@@ -301,10 +302,11 @@ def sui_builder(*includes, **kwargs):
             :return: Dict of arg_name and none
             :rtype: dict
             """
+            var_map: dict = {}
             if spec.kwonlyargs:
-                var_map: dict = {x: None for x in spec.kwonlyargs}
+                var_map = {x: None for x in spec.kwonlyargs}
             else:
-                var_map: dict = {x: None for x in spec.args[1:]}
+                var_map = {x: None for x in spec.args[1:]}
 
             return var_map
 
@@ -418,8 +420,8 @@ class _NativeTransactionBuilder(SuiBaseBuilder):
     def __init__(
         self,
         method: str,
-        handler_cls: Type[SuiBaseType] = None,
-        handler_func: str = None,
+        handler_cls=None,
+        handler_func=None,
     ) -> None:
         """Initialize builder."""
         super().__init__(method, False, handler_cls, handler_func)
