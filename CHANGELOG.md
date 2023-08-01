@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.2] - Unpublished
+
+### Added
+
+- OP_STRATEGIES.md explaining deprecation, release and publishing strategies
+
+### Fixed
+
+- Typos
+
+### Changed
+
+- RPC API version range check in `pysui/sui/sui_clients/sui_common.py` covering 1.5.x to 1.7.x
+- Documentation
+
+### Removed
+
 ## [0.31.1] - Unpublished
 
 ### Added
@@ -17,12 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-
 ## [0.31.0] - 2023-07-27
 
 ### Added
 
-- SuiTransaction verifies against ProtocolConfig transaction constraints. `txn.verify_transaction()` can be run at prior to execution using
+- SuiTransaction verifies against ProtocolConfig transaction constraints. `txn.verify_transaction()` can be run prior to transaction execution
 - SuiTransaction run_verification flag to `txn.execute(...)`.
 - TransactionKindInQuery QueryTransaction filter, supported in indexer nodes
 - FromOrToAddressQuery QueryTransaction filter, supported in indexer nodes

@@ -149,12 +149,8 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: str = "1.4.0"
-    _RPC_REQUIRED_VERSION: str = "1.6.0"
-    _SIGNATURE_ERROR: set[str] = {
-        'Invalid user signature: InvalidSignature { error: "signature error" }.',
-        "signature error",
-    }
+    _RPC_MINIMAL_VERSION: str = "1.5.0"
+    _RPC_REQUIRED_VERSION: str = "1.7.0"
 
     @versionchanged(
         version="0.26.1",
@@ -331,7 +327,7 @@ class _ClientMixin(Provider):
         # If the running version is less than the most recent supported by pysui
         elif rpa < ipa:
             print(
-                f"Host RPC version is back level {rpa}. May experience issues with lastest code built for {ipa}."
+                f"Host RPC version is {rpa} and is backward compatible with code built for {ipa}."
             )
 
     def version_at_least(self, majver: int, minver: int, bldver: int) -> bool:

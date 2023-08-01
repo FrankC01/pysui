@@ -10,6 +10,7 @@ Requires:
 
 - Linux or macos (x86_64 or M1)
 - python 3.10 or greater
+- Rust (stable) which also includes rustup and cargo
 - pkg-config
 - libtool
 - git
