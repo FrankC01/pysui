@@ -23,8 +23,6 @@ from pysui.sui.sui_excepts import (
     SuiParamSchemaInvalid,
 )
 
-# T = TypeVar("T", str, float, int, list)
-
 
 class SuiJsonType(ABC):
     """Sui Json Type."""
