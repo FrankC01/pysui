@@ -34,12 +34,16 @@ from pysui.sui.sui_types.scalars import SuiInteger, SuiString, SuiU64, SuiU8
 from pysui.sui.sui_txn.signing_ms import SigningMultiSig
 from pysui.sui.sui_txn.transaction import _SuiTransactionBase
 import pysui.sui.sui_txn.transaction_builder as tx_builder
-from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
+from pysui.sui.sui_txresults.complex_tx import (
+    DryRunTxResult,
+    TxInspectionResult,
+)
 from pysui.sui.sui_txn.transaction import (
     _DebugInspectTransaction,
     _SuiTransactionBase,
 )
 from pysui.sui.sui_builders.exec_builders import (
+    DryRunTransaction,
     ExecuteTransaction,
 )
 from pysui.sui.sui_txresults.single_tx import (
@@ -95,9 +99,13 @@ class SuiTransactionAsync(_SuiTransactionBase):
         version="0.30.0",
         reason="Raise ValueError if inspection or validating gas object fails",
     )
+    @versionchanged(
+        version="0.32.0",
+        reason="Changed to use DryRun for estimating if explicit gas_budget not set",
+    )
     async def _build_for_execute(
         self,
-        gas_budget: Union[str, SuiString],
+        gas_budget: Union[str, SuiString] = "",
         use_gas_object: Optional[Union[str, ObjectID]] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
         """_build_for_execute Generates the TransactionData object.
@@ -105,12 +113,12 @@ class SuiTransactionAsync(_SuiTransactionBase):
         Note: If wanting to execute, this structure needs to be serialized to a base64 string. See
         the execute method below
 
-        :param gas_budget: The suggested gas budget to use. An introspection of the transaciton is performed and
-            and this budget will be set to larger of the two.
-        :type gas_budget: Union[str, SuiString]
+        :param gas_budget: If gas_budget set it is used explicitly, otherwise a dry-run is peformed to get
+            the recommended budget
+        :type gas_budget: Union[str, SuiString],defaults to empty string (none)
         :param use_gas_object: Explicit gas object to use for payment, defaults to None
         :type use_gas_object: Optional[Union[str, ObjectID]], optional
-        :raises ValueError: If the inspection of the transaction fails.
+        :raises ValueError: If the dry-run of the transaction fails.
         :raises ValueError: If malformed inspection result
         :raises ValueError: If `use_gas_object` and it cannot resolve to Sui coin object
         :raises ValueError: If `use_gas_object` id already used as argument or parameter for transaction
@@ -118,52 +126,51 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :return: TransactionData object replete with all required fields for execution
         :rtype: Union[bcs.TransactionData, ValueError]
         """
-        # Get the transaction body
-        tx_kind = self.raw_kind()
-        # Get costs
-        tx_kind_b64 = base64.b64encode(tx_kind.serialize()).decode()
-        if self.signer_block.sender:
-            for_sender: Union[
-                SuiAddress, SigningMultiSig
-            ] = self.signer_block.sender
-            if not isinstance(for_sender, SuiAddress):
-                for_sender = for_sender.multi_sig.as_sui_address
+        # Determine sender
+        if isinstance(self.signer_block.sender, SuiAddress):
+            who_sends = self.signer_block.sender.address
         else:
-            for_sender = self.client.config.active_address
-        try:
-            logger.debug(f"Inspecting {tx_kind_b64}")
+            who_sends = self.signer_block.sender.signing_address
+
+        # Get the transaction kind body
+        tx_kind = self.raw_kind()
+
+        # Use explicit budget or dry-run for it
+        if gas_budget:
+            gas_budget = int(gas_budget)
+        else:
+            # Dry run first
+            tx_data = bcs.TransactionData(
+                "V1",
+                bcs.TransactionDataV1(
+                    tx_kind,
+                    bcs.Address.from_str(who_sends),
+                    bcs.GasData(
+                        [],
+                        bcs.Address.from_str(who_sends),
+                        int(self._current_gas_price),
+                        self.constraints.max_tx_gas,
+                    ),
+                    bcs.TransactionExpiration("None"),
+                ),
+            )
             result = await self.client.execute(
-                _DebugInspectTransaction(
-                    sender_address=for_sender, tx_bytes=tx_kind_b64
+                DryRunTransaction(
+                    tx_bytes=base64.b64encode(tx_data.serialize()).decode()
                 )
             )
-            if result.is_ok():
-                result = SuiRpcResult(
-                    True, "", TxInspectionResult.factory(result.result_data)
-                )
+            if (
+                result.is_ok()
+                and result.result_data
+                and isinstance(result.result_data, DryRunTxResult)
+            ):
+                dr_data: DryRunTxResult = result.result_data
+                gas_budget = dr_data.effects.gas_used.total
             else:
-                logger.exception(
-                    f"Inspecting transaction failed with {result.result_string}"
-                )
                 raise ValueError(
-                    f"Inspecting transaction failed with {result.result_string}"
+                    f"Dry run failed, can't establish budget for transaction"
                 )
 
-        except KeyError as kexcp:
-            logger.exception(
-                f"Malformed inspection results {result.result_data}"
-            )
-
-            raise ValueError(
-                f"Malformed inspection results {result.result_data}"
-            )
-
-        ispec: TxInspectionResult = result.result_data
-        gas_budget = (
-            gas_budget if isinstance(gas_budget, str) else gas_budget.value
-        )
-
-        gas_budget = max(ispec.effects.gas_used.total, int(gas_budget))
         if use_gas_object:
             test_gas_object = (
                 use_gas_object
@@ -216,10 +223,8 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 merge_coin=self._merge_gas,
                 gas_price=int(self._current_gas_price),
             )
-        if isinstance(self.signer_block.sender, SuiAddress):
-            who_sends = self.signer_block.sender.address
-        else:
-            who_sends = self.signer_block.sender.signing_address
+
+        # Return the final TransactionData structure
         return bcs.TransactionData(
             "V1",
             bcs.TransactionDataV1(
@@ -248,15 +253,15 @@ class SuiTransactionAsync(_SuiTransactionBase):
     async def execute(
         self,
         *,
-        gas_budget: Optional[Union[str, SuiString]] = "1000000",
+        gas_budget: Optional[Union[str, SuiString]] = "",
         options: Optional[dict] = None,
         use_gas_object: Optional[Union[str, ObjectID]] = None,
         run_verification: Optional[bool] = False,
     ) -> Union[SuiRpcResult, ValueError]:
         """execute Finalizes transaction and submits for execution on the chain.
 
-        :param gas_budget: The gas budget to use. An introspection of the transaciton is performed
-            and this method will use the larger of the two, defaults to 1000000
+        :param gas_budget: The gas budget to use. If set, it will be used in
+            transaction. Otherwise a dry-run is peformed to set budget, default to empty string (None)
         :type gas_budget: Optional[Union[str, SuiString]], optional
         :param options: An options dictionary to pass to sui_executeTransactionBlock to control the
             information results, defaults to None
@@ -271,7 +276,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :rtype: SuiRpcResult
         """
         assert not self._executed, "Transaction already executed"
-        gas_budget = gas_budget or "1000000"
+
         txn_data = await self._build_for_execute(gas_budget, use_gas_object)
         ser_data = txn_data.serialize()
         if run_verification:
@@ -1259,3 +1264,18 @@ class SuiTransactionAsync(_SuiTransactionBase):
         return self.builder.transfer_sui(
             tx_builder.PureInput.as_input(recipient), *from_coin, amount
         )
+
+    @versionadded(
+        version="0.32.0",
+        reason="Serialize transaction builder",
+    )
+    def serialize(self):
+        """."""
+
+    @versionadded(
+        version="0.32.0",
+        reason="DeSerialize transaction builder",
+    )
+    @classmethod
+    def deserialize(cls):
+        """."""

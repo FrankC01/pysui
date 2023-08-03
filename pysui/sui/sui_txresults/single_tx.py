@@ -1040,6 +1040,7 @@ class TransactionConstraints(DataClassJsonMixin):
     max_tx_size_bytes: Optional[int] = 0
     max_type_argument_depth: Optional[int] = 0
     max_type_arguments: Optional[int] = 0
+    max_tx_gas: Optional[int] = 0
 
 
 @dataclass
@@ -1088,5 +1089,8 @@ class ProtocolConfig(DataClassJsonMixin):
         )
         pc.transaction_constraints.max_type_arguments = int(
             pc.attributes["max_type_arguments"]["u32"]
+        )
+        pc.transaction_constraints.max_tx_gas = int(
+            pc.attributes["max_tx_gas"]["u64"]
         )
         return pc

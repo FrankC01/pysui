@@ -13,6 +13,7 @@
 
 """Sui high level Transaction Builder supports generation of TransactionKind and TransactionData."""
 
+from abc import ABC, abstractclassmethod, abstractmethod
 import base64
 import os
 from pathlib import Path
@@ -81,7 +82,10 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
 
 @versionadded(version="0.26.0", reason="Refactor to support Async")
 @versionadded(version="0.30.0", reason="Moved to transaction package.")
-class _SuiTransactionBase:
+@versionadded(
+    version="0.32.0", reason="Abstracting and adding serialization support."
+)
+class _SuiTransactionBase(ABC):
     """."""
 
     _MC_RESULT_CACHE: dict = {}
@@ -405,6 +409,36 @@ class _SuiTransactionBase:
         ]
         digest = bcs.Digest.from_bytes(compiled_package.package_digest)
         return modules, dependencies, digest
+
+    @versionadded(
+        version="0.32.0",
+        reason="Serialize transaction builder",
+    )
+    @abstractmethod
+    def serialize(self):
+        """."""
+
+    @versionadded(
+        version="0.32.0",
+        reason="DeSerialize transaction builder",
+    )
+    @abstractclassmethod
+    def deserialize(cls):
+        """."""
+
+    @versionadded(
+        version="0.32.0",
+        reason="Serialize transaction builder",
+    )
+    def _serialize_tb(self):
+        """."""
+
+    @versionadded(
+        version="0.32.0",
+        reason="DeSerialize transaction builder",
+    )
+    def _deserialize_tb(self):
+        """."""
 
 
 if __name__ == "__main__":
