@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2023-08-03
+
+**BREAKING CHANGE**
+
+### Added
+
+- OP_STRATEGIES.md explaining deprecation, release and publishing strategies
+
+### Fixed
+
+- [**BREAKING bug**](https://github.com/FrankC01/pysui/issues/146) See 'Changed' below this line...
+
+### Changed
+
+- The SuiTransaction execute method's `gas_budget` argument now strictly sets the gas budget for the transaction. Prior, an inspection
+would be run and pysui used the greater of the two. Now, `gas_budget`'s default is an emptry string ("") and by leaving it that
+way a dryRun will be run prior to execution to set the budget.
+
+### Removed
+
 ## [0.31.2] - Unpublished
 
 ### Added
