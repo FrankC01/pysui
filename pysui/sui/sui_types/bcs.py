@@ -19,6 +19,7 @@ from typing import Any, Union
 from functools import reduce
 import canoser
 from deprecated.sphinx import versionadded, versionchanged, deprecated
+from pysui.abstracts.client_keypair import SignatureScheme, PublicKey
 from pysui.sui.sui_txresults.single_tx import ObjectRead
 
 from pysui.sui.sui_types.address import SuiAddress
@@ -554,15 +555,18 @@ class TransactionData(canoser.RustEnum):
         return cls.deserialize(in_data)
 
 
+# Multi-signature legacy
 @versionadded(
     version="0.20.4", reason="Added to support in-code MultiSig signing."
 )
+@deprecated(version="0.33.0", reason="Unused, scheduled for removal in 0.35.0")
 class MsPublicKey(canoser.Struct):
     """Represents signing PublicKeys for serialization."""
 
     _fields = [("PublicKey", [U8]), ("Weight", U8)]
 
 
+# Multi-signature
 class MsEd25519PublicKey(canoser.Struct):
     """."""
 
@@ -589,6 +593,26 @@ class MsNewPublicKey(canoser.RustEnum):
         ("Secp256k1", MsSecp256k1PublicKey),
         ("Secp256r1", MsSecp256r1PublicKey),
     ]
+
+    @classmethod
+    def from_pubkey(cls, key: PublicKey, weight: int = 0) -> "MsNewPublicKey":
+        """."""
+        scheme: SignatureScheme = key.scheme
+        kbytes = list(key.scheme_and_key()[1:])
+        if scheme == SignatureScheme.ED25519:
+            res = MsNewPublicKey("Ed25519", MsEd25519PublicKey(kbytes, weight))
+        elif scheme == SignatureScheme.SECP256K1:
+            res = MsNewPublicKey(
+                "Secp256k1", MsSecp256k1PublicKey(kbytes, weight)
+            )
+        elif scheme == SignatureScheme.SECP256R1:
+            res = MsNewPublicKey(
+                "Secp256r1", MsSecp256r1PublicKey(kbytes, weight)
+            )
+        else:
+            raise ValueError(f"SignatureScheme {scheme} not supported")
+
+        return res
 
 
 @versionadded(
@@ -624,3 +648,59 @@ class MultiSignature(canoser.Struct):
         ("PkMap", [MsNewPublicKey]),
         ("Threshold", U16),
     ]
+
+
+# SuiTransaction
+
+
+class TxSenderMulti(canoser.Struct):
+    """BCS Representation of a multi-sig sender."""
+
+    _fields = [
+        ("MutliSigAddress", Address),
+        ("MultiSigKeyAddress", [Address]),
+        ("MultiSigPublicKeys", [MsNewPublicKey]),
+        ("SigningKeyIndexes", MsBitmap),
+    ]
+
+
+class TxSenderSingle(canoser.Struct):
+    """."""
+
+    _fields = [
+        ("Address", Address),
+        ("SigningPublicKeys", MsNewPublicKey),
+    ]
+
+
+class TxSender(canoser.RustEnum):
+    """BCS representation of transaction sender/sponsor."""
+
+    _enums = [
+        ("NotSet", None),
+        ("Single", TxSenderSingle),
+        ("Multi", TxSenderMulti),
+    ]
+
+
+class TxExecutionContext(canoser.RustEnum):
+    """."""
+
+    _enums = [("Sync", None), ("Async", None)]
+
+
+class SuiTransactionDataV1(canoser.Struct):
+    """."""
+
+    _fields = [
+        ("TxExecutionContext", TxExecutionContext),
+        ("TxSender", TxSender),
+        ("TxSponsor", TxSender),
+        ("TxTransaction", TransactionKind),
+    ]
+
+
+class SuiTransaction(canoser.RustEnum):
+    """BCS representation of serialized SuiTransaction."""
+
+    _enums = [("1.0.0", SuiTransactionDataV1)]

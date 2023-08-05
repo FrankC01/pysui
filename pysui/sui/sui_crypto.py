@@ -335,7 +335,7 @@ class MultiSig:
         assert len(hit_indexes) == len(
             pub_keys
         ), "Public key not part of MultiSig keys"
-        weights = [self._weights[x] for x in hit_indexes]
+        # weights = [self._weights[x] for x in hit_indexes]
         return hit_indexes  # , list(zip(pub_keys, weights))
 
     def _new_publickey(self) -> list[MsNewPublicKey]:
