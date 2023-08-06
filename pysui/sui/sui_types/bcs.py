@@ -653,6 +653,25 @@ class MultiSignature(canoser.Struct):
 # SuiTransaction
 
 
+class TxStringInt(canoser.Struct):
+    """."""
+
+    _fields = [
+        ("Key", str),
+        ("Value", U16),
+    ]
+
+
+class TxTransaction(canoser.Struct):
+    """."""
+
+    _fields = [
+        ("Frequencies", [TxStringInt]),
+        ("Inputs", [BuilderArg]),
+        ("Commands", [Command]),
+    ]
+
+
 class TxSenderMulti(canoser.Struct):
     """BCS Representation of a multi-sig sender."""
 
@@ -696,7 +715,7 @@ class SuiTransactionDataV1(canoser.Struct):
         ("TxExecutionContext", TxExecutionContext),
         ("TxSender", TxSender),
         ("TxSponsor", TxSender),
-        ("TxTransaction", TransactionKind),
+        ("TxTransaction", TxTransaction),
     ]
 
 
