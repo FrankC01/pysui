@@ -16,6 +16,8 @@
 from pysui.abstracts.client_keypair import KeyPair, SignatureScheme
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_crypto import MultiSig
+from pysui.sui.sui_txn import sync_transaction
+from pysui.sui.sui_txresults.complex_tx import TxResponse
 from pysui.sui.sui_txresults.single_tx import SuiCoinObject
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_clients.sync_client import SuiClient
@@ -24,11 +26,18 @@ STANDARD_BUDGET: str = "5500000"
 
 
 def first_addy_keypair_for(
-    *, cfg: SuiConfig, sigtype: SignatureScheme = SignatureScheme.ED25519, not_in: list[str] = None
+    *,
+    cfg: SuiConfig,
+    sigtype: SignatureScheme = SignatureScheme.ED25519,
+    not_in: list[str] = None,
 ) -> tuple[str, KeyPair]:
     """Get first address and keypair that matches keypair scheme."""
     not_in = not_in if not_in else []
-    filtered = [(k, v) for (k, v) in cfg.addresses_and_keys.items() if v.scheme == sigtype]
+    filtered = [
+        (k, v)
+        for (k, v) in cfg.addresses_and_keys.items()
+        if v.scheme == sigtype
+    ]
     if filtered:
         for candidate in filtered:
             if candidate[0] not in not_in:
@@ -36,7 +45,9 @@ def first_addy_keypair_for(
     raise ValueError(f"No keypair type of {sigtype.as_str()}")
 
 
-def gas_not_in(client: SuiClient, for_addy: SuiAddress = None, not_in: list[str] = None) -> SuiCoinObject:
+def gas_not_in(
+    client: SuiClient, for_addy: SuiAddress = None, not_in: list[str] = None
+) -> SuiCoinObject:
     """Get gas object that is not in collection."""
     for_addy = for_addy if for_addy else client.config.active_address
     result = client.get_gas(for_addy)
@@ -53,7 +64,46 @@ def gas_not_in(client: SuiClient, for_addy: SuiAddress = None, not_in: list[str]
 def gen_ms(config: SuiConfig) -> MultiSig:
     """."""
     _, ed_key = first_addy_keypair_for(cfg=config)
-    _, k1_key = first_addy_keypair_for(cfg=config, sigtype=SignatureScheme.SECP256K1)
-    _, r1_key = first_addy_keypair_for(cfg=config, sigtype=SignatureScheme.SECP256R1)
+    _, k1_key = first_addy_keypair_for(
+        cfg=config, sigtype=SignatureScheme.SECP256K1
+    )
+    _, r1_key = first_addy_keypair_for(
+        cfg=config, sigtype=SignatureScheme.SECP256R1
+    )
     multi_sig = MultiSig([ed_key, k1_key, r1_key], [1, 2, 3], 3)
     return multi_sig
+
+
+def publish_and_result(txb: sync_transaction) -> tuple[str, str]:
+    """Utility."""
+    # Execute the transaction
+    tx_result = txb.execute()
+    package_id: str = None
+    upgrade_cap_id: str = None
+
+    if tx_result.is_ok():
+        if hasattr(tx_result.result_data, "to_json"):
+            # Get the result data and iterate through object changes
+            tx_response: TxResponse = tx_result.result_data
+            for object_change in tx_response.object_changes:
+                match object_change["type"]:
+                    # Found our newly published package_id
+                    case "published":
+                        package_id = object_change["packageId"]
+                    case "created":
+                        # Found our newly created UpgradeCap
+                        if object_change["objectType"].endswith("UpgradeCap"):
+                            upgrade_cap_id = object_change["objectId"]
+                    case "mutated":
+                        # On upgrades, UpgradeCap is mutated
+                        if object_change["objectType"].endswith("UpgradeCap"):
+                            upgrade_cap_id = object_change["objectId"]
+                    case _:
+                        pass
+        else:
+            raise ValueError(
+                f"Non-standard result found {tx_result.result_data}"
+            )
+    else:
+        raise ValueError(f"Error encoundered {tx_result.result_string}")
+    return (package_id, upgrade_cap_id)

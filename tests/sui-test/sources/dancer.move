@@ -109,4 +109,9 @@ module pysuidance::dancer {
         add_from(tracker, values);
     }
 
+    /// Return a u64 number
+    public fun get_number(_ctx: &mut TxContext) : u64 {
+        1000000
+    }
+
 }

@@ -667,6 +667,7 @@ class TxTransaction(canoser.Struct):
 
     _fields = [
         ("Frequencies", [TxStringInt]),
+        ("ObjectsInUse", [Address]),
         ("Inputs", [BuilderArg]),
         ("Commands", [Command]),
     ]

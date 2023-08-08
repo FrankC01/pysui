@@ -930,11 +930,14 @@ class SuiTransaction(_SuiTransactionBase):
     @versionchanged(
         version="0.17.0", reason="Made 'amount' 'amounts' with list argument."
     )
+    @versionchanged(
+        version="0.33.0", reason="Accept bcs.Argument (i.e. Result) in amounts"
+    )
     def split_coin(
         self,
         *,
         coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
-        amounts: list[Union[int, SuiInteger]],
+        amounts: list[Union[int, SuiInteger, bcs.Argument]],
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """split_coin Creates a new coin(s) with the defined amount(s), split from the provided coin.
 
@@ -956,7 +959,7 @@ class SuiTransaction(_SuiTransactionBase):
         :param coin: The coin address (object id) to split from.
         :type coin: Union[str, ObjectID, ObjectRead,SuiCoinObject, bcs.Argument]
         :param amounts: The amount or list of amounts to split the coin out to
-        :type amounts: list[Union[int, SuiInteger]]
+        :type amounts: list[Union[int, SuiInteger,bcs.Argument]]
         :return: A result or list of results types to use in subsequent commands
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
@@ -966,13 +969,21 @@ class SuiTransaction(_SuiTransactionBase):
         ), "invalid coin object type"
         amounts = amounts if isinstance(amounts, list) else [amounts]
         for amount in amounts:
-            assert isinstance(amount, (int, SuiInteger))
-        amounts = [
-            tx_builder.PureInput.as_input(bcs.U64.encode(x))
-            if isinstance(x, int)
-            else x.value
-            for x in amounts
-        ]
+            assert isinstance(
+                amount, (int, SuiInteger, bcs.Argument)
+            ), "Amounts invalid type"
+        i_amounts = []
+        for amount in amounts:
+            if isinstance(amount, int):
+                i_amounts.append(
+                    tx_builder.PureInput.as_input(bcs.U64.encode(amount))
+                )
+            elif isinstance(amount, SuiInteger):
+                i_amounts.append(
+                    tx_builder.PureInput.as_input(bcs.U64.encode(amount.value))
+                )
+            elif isinstance(amount, bcs.Argument):
+                i_amounts.append(amount)
         coin = (
             coin
             if isinstance(
@@ -981,7 +992,7 @@ class SuiTransaction(_SuiTransactionBase):
             else ObjectID(coin)
         )
         resolved = self._resolve_arguments([coin])
-        return self.builder.split_coin(resolved[0], amounts)
+        return self.builder.split_coin(resolved[0], i_amounts)
 
     @versionadded(
         version="0.16.1",

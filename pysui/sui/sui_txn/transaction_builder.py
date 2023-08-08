@@ -442,6 +442,9 @@ class ProgrammableTransactionBuilder:
         )
 
     @versionchanged(version="0.17.0", reason="Extend to take list of amounts")
+    @versionchanged(
+        version="0.33.0", reason="Accept bcs.Argument (i.e. Result) as amount"
+    )
     def split_coin(
         self,
         from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
@@ -449,7 +452,12 @@ class ProgrammableTransactionBuilder:
     ) -> bcs.Argument:
         """Setup a SplitCoin command and return it's result Argument."""
         logger.debug("Creating SplitCoin transaction")
-        amounts_arg = [self.input_pure(x) for x in amounts]
+        amounts_arg = []
+        for amount in amounts:
+            if isinstance(amount, bcs.Argument):
+                amounts_arg.append(amount)
+            else:
+                amounts_arg.append(self.input_pure(amount))
         if isinstance(from_coin, bcs.Argument):
             coin_arg = from_coin
         else:

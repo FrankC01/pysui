@@ -15,6 +15,7 @@
 from pysui import SyncClient, SuiAddress
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_txn import SigningMultiSig, SyncTransaction
+from pysui.sui.sui_txresults.complex_tx import TxResponse
 from pysui.sui.sui_types import bcs
 import tests.test_utils as tutils
 
@@ -78,7 +79,21 @@ def test_txb_publish(sui_client: SyncClient) -> None:
     txer.transfer_objects(
         transfers=[pcap], recipient=sui_client.config.active_address
     )
-    result = txer.execute(gas_budget=tutils.STANDARD_BUDGET)
+    package_id, _upgrade_cap_id = tutils.publish_and_result(txer)
+    txer = SyncTransaction(sui_client)
+    txer.transfer_objects(
+        transfers=txer.split_coin(
+            coin=txer.gas,
+            amounts=[
+                txer.move_call(
+                    target=package_id + "::dancer::get_number",
+                    arguments=[],
+                )
+            ],
+        ),
+        recipient=sui_client.config.active_address,
+    )
+    result = txer.execute()
     assert result.is_ok()
 
 
