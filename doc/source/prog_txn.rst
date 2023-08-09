@@ -3,18 +3,17 @@ Programmable Transactions
 
 General
 -------
-In version 0.29.1 MystenLabs introduced Programmable Transactions (herein referred
-to as SuiTransaction for the ``pysui`` flavor).
+``pysui`` supports programmable transactions using the SuiTransaction (sync or async) herein referred to as
+SuiTransaction or Transaction.
 
-SuiTransactions consist of one or more commands and if any command fails, the entire transaciton is
-rolled back.
+A SuiTransaction supports building adding one or more commands with inputs. When executed, if any indivudal command fails the entire
+transaciton is rolled back.
 
 A few powerful advantages of this capability include:
 
     * A more expresive batch transaction
     * Both `public`` **and** `public entry` functions can be called on a Sui Move contract
     * If one command produces a result (e.g. `split_coin`), that result may be used as an argument to one or more subsequent commands
-    * Asych options added in 0.26.0
     * And more...
 
 The ``pysui`` Implementation
@@ -28,11 +27,11 @@ differences:
 
 Gettinig Started
 ################
-SuiTransactions encapsulate a SuiClient, transaction signers and gas objects, inspection and execution methods as well as
-the ability to add one or more commands.
+SuiTransactions encapsulate a SuiClient, transaction sender and/or sponsors for signing, gas objects, inspection and execution
+methods as well as the ability to add one or more commands.
 
-For asynchronous transactions, SuiTransactionAsync encapsulates a asynch SuiClient and is in parity with their
-sycnronous counterpart. Basically, all methods on the asynch family are called with ``await``.
+For asynchronous transactions, SuiTransactionAsync encapsulates a asynch SuiClient and is in parity with thes
+sycnronous counterpart. Basically, most methods on the asynch family are called with ``await``.
 
 All examples that follow use the synchronous SuiClient and SuiTransaction.
 
@@ -90,6 +89,84 @@ Inspection
 
 You can verify (inspect) a SuiTransaction as you are building out your transactions. See: :py:meth:`pysui.sui.sui_txn.sync_transaction.SuiTransaction.inspect_all`
 
+Gas for Transaction Payment
+###########################
+
+Obviously, the transaction must be paid for. This can be either the 'sender' of the transaction or a 'sponsor'. By default,
+when creating a new SuiTransaction the 'sender' is the confirugration current active-address and will look for gas objects from
+that account. However; you can optionally identify a sponsor in which case that account will be responsible for the gas objects for
+payment.
+
+The following shows variations which will determine where ``pysui`` resolves the gas payment.
+
+.. code-block:: Python
+
+    # Imports
+    from pysui import SyncClient, SuiConfig, handle_result
+    from pysui.sui.sui_txn import SyncTransaction
+
+    # Standard setup for synchronous client and transaction
+    cfg = SuiConfig.default_config()
+    client = SyncClient(cfg)
+
+    # Will default to 'active-address' as the sender and also who pays for the transaction
+
+    txer = SyncTransaction(client)
+
+    # Construct with a different address as the 'sender',
+    # the initial_sender will be who pays for the transaction
+
+    txer = SyncTransaction(client,initial_sender=SuiAddress("0x......"))
+
+    # Construct default and set different sender on the signers block before execution
+
+    txer = SyncTransaction(client)
+    txer.signer_block.sender = SuiAddress("0x......")
+
+    # Construct default and set different sponsor on the signers block before execution
+    # The sponsor is who pays for the transaction
+
+    txer = SyncTransaction(client)
+    txer.signer_block.sponsor = SuiAddress("0x......")
+
+
+More details below in the Singer, Singers, etc. section.
+
+Serialize and Deserialize
+#########################
+
+A SuiTransaction state can be serialized and deserialized.
+
+This is handy for re-using a well defined transaction with commands and inputs and not
+going through building a transaction from scratch each time.
+
+Serialize
+~~~~~~~~~
+
+When you serialize a SuiTransaction, the following is contained:
+
+    * Sender and/or Sponsor settings (single or multisig)
+    * Transaction builder instrumentation
+    * Set of objects in use at the time of serialization
+    * All transaction block commands and inputs
+
+The SuiTransaction `serialize` method returns a python byte string. Conversley the `deserialize` method takes
+a byte string as input.
+
+The SuiTransaction constructor also has a convenient optional argument `deserialize_from` where you can
+provide either a byte string or a base64 str.
+
+Deserialize
+~~~~~~~~~~~
+
+Note that when you deserialize (either through constructor or after construction through the `deserialize` method):
+
+    * It resets the sender and/or sponsor to those inbound from deserializing
+    * It resets the Transaction builder instrumentation to that inbound from deserializing
+    * It resets the set of objects in use to those inbound from deserializing
+    * It resets all inputs and commands to those inbound from deserializing
+
+
 Execution
 #########
 
@@ -97,7 +174,7 @@ You can execute the transaction directly:
 
 #. :py:meth:`pysui.sui.sui_txn.sync_transaction.SuiTransaction.execute`
 
-Note that once you execute a transaction it is unusable.
+Note that once you execute a transaction you can not longer add commands and re-execute it.
 
 Signing, Signers, etc.
 ######################
@@ -249,7 +326,7 @@ example is a coercion table describing the effect of resolving in `move_call` ar
 +----------------------------------------------------------+-----------------------------+
 | int, SuiInteger                                          | Passed as minimal bit value |
 +----------------------------------------------------------+-----------------------------+
-| bool, bytes, SuiBoolean                                  | Passed as raw valu          |
+| bool, bytes, SuiBoolean                                  | Passed as raw value         |
 +----------------------------------------------------------+-----------------------------+
 | SuiU8, SuiU16, SuiU32, SuiU64, SuiU128, SuiU256          | Passed as value  [#f1]_     |
 +----------------------------------------------------------+-----------------------------+

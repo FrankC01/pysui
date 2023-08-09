@@ -74,22 +74,30 @@ class SuiTransactionAsync(_SuiTransactionBase):
     @versionchanged(
         version="0.29.1", reason="Eliminated redundant gas price RPC call"
     )
+    @versionchanged(
+        version="0.33.0", reason="Added deserialize_from optional argument"
+    )
     def __init__(
         self,
         client: AsyncClient,
         merge_gas_budget: bool = False,
-        initial_sender: Union[SuiAddress, SigningMultiSig] = False,
+        initial_sender: Union[SuiAddress, SigningMultiSig] = None,
+        deserialize_from: Union[str, bytes] = None,
     ) -> None:
-        """__init__ Initialize the Transaction.
+        """__init__ Initialize the asynchronous SuiTransaction.
 
         :param client: The asynchronous SuiClient
-        :type client: SyncClient
+        :type client: AsyncClient
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
-        :param initial_sender: The address of the sender of the transaction, defaults to False
+        :param initial_sender: The address of the sender of the transaction, defaults to None
         :type initial_sender: Union[SuiAddress, SigningMultiSig], optional
+        :param deserialize_from: Will rehydrate SuiTransaction state from serialized base64 str or bytes, defaults to None
+        :type deserialize_from: Union[str, bytes], optional
         """
-        super().__init__(client, merge_gas_budget, initial_sender)
+        super().__init__(
+            client, merge_gas_budget, initial_sender, deserialize_from
+        )
 
     @versionchanged(
         version="0.28.0",

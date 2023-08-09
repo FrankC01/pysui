@@ -137,7 +137,8 @@ class _SuiTransactionBase:
         self,
         client,
         merge_gas_budget: bool = False,
-        initial_sender: Union[SuiAddress, SigningMultiSig] = False,
+        initial_sender: Union[SuiAddress, SigningMultiSig] = None,
+        deserialize_from: Union[str, bytes] = None,
     ) -> None:
         """."""
         self.builder = tx_builder.ProgrammableTransactionBuilder()
@@ -151,6 +152,16 @@ class _SuiTransactionBase:
             client.protocol.transaction_constraints
         )
         self._current_gas_price = client.current_gas_price
+        if deserialize_from:
+            if isinstance(deserialize_from, str):
+                deserialize_from = base64.b64decode(deserialize_from)
+            elif isinstance(deserialize_from, bytes):
+                pass
+            else:
+                raise ValueError(
+                    "deserialize_from must be a base64 string or bytes"
+                )
+            self.deserialize(deserialize_from)
 
     @property
     def gas_price(self) -> int:
@@ -472,7 +483,9 @@ if __name__ == "__main__":
     from pysui import SyncClient, SuiConfig
 
     ser_str = "AAGp4ts4XwVcwCFaPN4mi3YnBTW5RDgHUU8YO+hpJsIZ9ADXa5x6KXqRZvWuDKnnWwILWd1coaxO7+cGQ8YL6A9VzAACb5VuJ1Bb5Bpw+7H3gXCwZF8wFIMD2lLO19C4GxuwBsgDYkFsK9R1yZzI3+ddGueKDpntj3gz/w9fNnJslr3UtdKp/nucq3zhh8doqbFuldvFlTqZ7EYQZ6c6axxCiIc+KLDXO1vLhChTw+U2cyXM/RWoGhQYQvnXmMeT8tWXzGXFAwCqjwAaXfALS6qFFECf4vYH4GEalEynVQHIGLwu1nEb5QEBA7iaqsXuK+mFPR1mt8vOWxuKTr25YNGwdpOZ5HbpwVceAgIDj6xBGRBJAOvOB4nQhOxrOFFRYmeC6qjK8yLedoAhUBcDAwADAAcITW92ZUNhbGwAAA9UcmFuc2Zlck9iamVjdHMCAAlTcGxpdENvaW4BAApNZXJnZUNvaW5zAAAHUHVibGlzaAAAC01ha2VNb3ZlVmVjAAAHVXBncmFkZQAAAQD5gutfHDdtS3K7GwXPtZm7nPLZUN8O+0kHKWitRCLLBAEIQEIPAAAAAAABIKni2zhfBVzAIVo83iaLdicFNblEOAdRTxg76Gkmwhn0ASCp4ts4XwVcwCFaPN4mi3YnBTW5RDgHUU8YO+hpJsIZ9AAA+YLrXxw3bUtyuxsFz7WZu5zy2VDfDvtJBylorUQiywMCAAEBAAABAQIAAAEBAAEBAQMAAQIA"
-    txer = _SuiTransactionBase(SyncClient(SuiConfig.default_config()))
-    ser_bytes = base64.b64decode(ser_str)
-    txer.deserialize(ser_bytes)
+    txer = _SuiTransactionBase(
+        SyncClient(SuiConfig.default_config()), deserialize_from=ser_str
+    )
+    # ser_bytes = base64.b64decode(ser_str)
+    # txer.deserialize(ser_bytes)
     print()
