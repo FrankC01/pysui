@@ -177,6 +177,9 @@ class SuiConfig(ClientConfiguration):
                 self._addresses[address.address] = address
                 self._address_keypair[address.address] = keypair
                 if self._current_env != EMPEHMERAL_USER:
+                    logger.debug(
+                        f"Writing new keypair to {self.keystore_file}"
+                    )
                     self._write_keypair(keypair)
                 else:
                     if not self.active_address:
@@ -204,6 +207,7 @@ class SuiConfig(ClientConfiguration):
         :param derivation_path: The derivation path for key, specific to Signature scheme
         :type derivation_path: str
         :param install: Flag indicating to write back to client.yaml, defaults to False
+            This is ignored if config was initiated through 'user_config()'
         :type install: bool, optional
         :raises NotImplementedError: When providing unregognized scheme
         :raises ValueError: If recovered keypair/address already exists
@@ -223,7 +227,10 @@ class SuiConfig(ClientConfiguration):
                 else:
                     self._addresses[address.address] = address
                     self._address_keypair[address.address] = keypair
-                    if install:
+                    if install and self._current_env != EMPEHMERAL_USER:
+                        logger.debug(
+                            f"Writing new keypair to {self.keystore_file}"
+                        )
                         self._write_keypair(keypair)
                     return mnem, address
             case _:
