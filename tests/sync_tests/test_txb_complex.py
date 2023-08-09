@@ -57,7 +57,7 @@ def test_txb_sponsor(sui_client: SyncClient) -> None:
     sponser_add, _ = tutils.first_addy_keypair_for(
         cfg=sui_client.config, sigtype=SignatureScheme.SECP256R1
     )
-    txer.signer_block.sponser = SuiAddress(sponser_add)
+    txer.signer_block.sponsor = SuiAddress(sponser_add)
     result = txer.execute(gas_budget=tutils.STANDARD_BUDGET)
     assert result.is_ok()
 

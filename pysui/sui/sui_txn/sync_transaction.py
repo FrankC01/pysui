@@ -1292,18 +1292,3 @@ class SuiTransaction(_SuiTransactionBase):
         return self.builder.transfer_sui(
             tx_builder.PureInput.as_input(recipient), *from_coin, amount
         )
-
-    @versionadded(
-        version="0.32.0",
-        reason="Serialize transaction builder",
-    )
-    def serialize(self):
-        """."""
-
-    @versionadded(
-        version="0.32.0",
-        reason="DeSerialize transaction builder",
-    )
-    @classmethod
-    def deserialize(cls):
-        """."""

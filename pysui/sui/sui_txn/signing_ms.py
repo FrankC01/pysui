@@ -122,7 +122,7 @@ class _SignerBlockBase:
         return self._sponsor
 
     @sponsor.setter
-    def sponser(self, new_sponsor: Union[SuiAddress, SigningMultiSig]):
+    def sponsor(self, new_sponsor: Union[SuiAddress, SigningMultiSig]):
         """Set the sponsor to used to pay for transaction. This also signs the transaction."""
         assert isinstance(new_sponsor, (SuiAddress, SigningMultiSig))
         self._sponsor = new_sponsor

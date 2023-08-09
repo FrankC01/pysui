@@ -13,7 +13,7 @@
 
 """Sui high level Transaction Builder supports generation of TransactionKind and TransactionData."""
 
-from abc import ABC, abstractclassmethod, abstractmethod
+
 import base64
 import os
 from pathlib import Path
@@ -31,6 +31,12 @@ from pysui.sui.sui_builders.base_builder import (
 )
 from pysui.sui.sui_txn.signing_ms import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
+from pysui.sui.sui_txn.txn_deser import (
+    deser_sender_and_sponsor,
+    deser_transaction_builder,
+    ser_sender_and_sponsor,
+    ser_transaction_builder,
+)
 from pysui.sui.sui_txresults.single_tx import (
     TransactionConstraints,
 )
@@ -85,7 +91,7 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
 @versionadded(
     version="0.32.0", reason="Abstracting and adding serialization support."
 )
-class _SuiTransactionBase(ABC):
+class _SuiTransactionBase:
     """."""
 
     _MC_RESULT_CACHE: dict = {}
@@ -414,32 +420,59 @@ class _SuiTransactionBase(ABC):
         version="0.32.0",
         reason="Serialize transaction builder",
     )
-    @abstractmethod
-    def serialize(self):
+    @versionchanged(
+        version="0.33.0", reason="Removed abstraction made private"
+    )
+    def _serialize(self) -> bcs.SuiTransaction:
+        """serialize Returns a BCS representation of SuiTransaction state.
+
+        :return: BCS representation of SuiTransaction state
+        :rtype: bcs.SuiTransaction
+        """
+        # Sender and Sponsor
+        sender, sponsor = ser_sender_and_sponsor(
+            self.signer_block, self.client.config
+        )
+        # Finalize with builder data
+        return bcs.SuiTransaction(
+            "1.0.0",
+            bcs.SuiTransactionDataV1(
+                sender, sponsor, ser_transaction_builder(self.builder)
+            ),
+        )
+
+    @versionadded(
+        version="0.33.0",
+        reason="Serialize transaction builder to bytes",
+    )
+    def serialize(self) -> bytes:
         """."""
+        return self._serialize().serialize()
 
     @versionadded(
         version="0.32.0",
-        reason="DeSerialize transaction builder",
+        reason="DeSerialize transaction builder state",
     )
-    @abstractclassmethod
-    def deserialize(cls):
+    def deserialize(self, state_ser: bytes):
         """."""
-
-    @versionadded(
-        version="0.32.0",
-        reason="Serialize transaction builder",
-    )
-    def _serialize_tb(self):
-        """."""
-
-    @versionadded(
-        version="0.32.0",
-        reason="DeSerialize transaction builder",
-    )
-    def _deserialize_tb(self):
-        """."""
+        tx_state = bcs.SuiTransaction.deserialize(state_ser)
+        # Set signature block
+        self._sig_block = deser_sender_and_sponsor(
+            tx_state.value.TxSender,
+            tx_state.value.TxSponsor,
+            self.client.config,
+        )
+        # Setup the builder
+        deser_transaction_builder(
+            tx_state.value.TxTransaction, self.builder, self.client.config
+        )
 
 
 if __name__ == "__main__":
-    pass
+    from pysui import SyncClient, SuiConfig
+
+    ser_str = "AAGp4ts4XwVcwCFaPN4mi3YnBTW5RDgHUU8YO+hpJsIZ9ADXa5x6KXqRZvWuDKnnWwILWd1coaxO7+cGQ8YL6A9VzAACb5VuJ1Bb5Bpw+7H3gXCwZF8wFIMD2lLO19C4GxuwBsgDYkFsK9R1yZzI3+ddGueKDpntj3gz/w9fNnJslr3UtdKp/nucq3zhh8doqbFuldvFlTqZ7EYQZ6c6axxCiIc+KLDXO1vLhChTw+U2cyXM/RWoGhQYQvnXmMeT8tWXzGXFAwCqjwAaXfALS6qFFECf4vYH4GEalEynVQHIGLwu1nEb5QEBA7iaqsXuK+mFPR1mt8vOWxuKTr25YNGwdpOZ5HbpwVceAgIDj6xBGRBJAOvOB4nQhOxrOFFRYmeC6qjK8yLedoAhUBcDAwADAAcITW92ZUNhbGwAAA9UcmFuc2Zlck9iamVjdHMCAAlTcGxpdENvaW4BAApNZXJnZUNvaW5zAAAHUHVibGlzaAAAC01ha2VNb3ZlVmVjAAAHVXBncmFkZQAAAQD5gutfHDdtS3K7GwXPtZm7nPLZUN8O+0kHKWitRCLLBAEIQEIPAAAAAAABIKni2zhfBVzAIVo83iaLdicFNblEOAdRTxg76Gkmwhn0ASCp4ts4XwVcwCFaPN4mi3YnBTW5RDgHUU8YO+hpJsIZ9AAA+YLrXxw3bUtyuxsFz7WZu5zy2VDfDvtJBylorUQiywMCAAEBAAABAQIAAAEBAAEBAQMAAQIA"
+    txer = _SuiTransactionBase(SyncClient(SuiConfig.default_config()))
+    ser_bytes = base64.b64decode(ser_str)
+    txer.deserialize(ser_bytes)
+    print()

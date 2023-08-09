@@ -19,4 +19,4 @@ from pysui.sui.sui_txn.sync_transaction import (
 from pysui.sui.sui_txn.async_transaction import (
     SuiTransactionAsync as AsyncTransaction,
 )
-from pysui.sui.sui_txn.signing_ms import SigningMultiSig
+from pysui.sui.sui_txn.signing_ms import SignerBlock, SigningMultiSig

@@ -680,6 +680,7 @@ class TxSenderMulti(canoser.Struct):
         ("MutliSigAddress", Address),
         ("MultiSigKeyAddress", [Address]),
         ("MultiSigPublicKeys", [MsNewPublicKey]),
+        ("Threshold", U16),
         ("SigningKeyIndexes", MsBitmap),
     ]
 
@@ -703,17 +704,10 @@ class TxSender(canoser.RustEnum):
     ]
 
 
-class TxExecutionContext(canoser.RustEnum):
-    """."""
-
-    _enums = [("Sync", None), ("Async", None)]
-
-
 class SuiTransactionDataV1(canoser.Struct):
     """."""
 
     _fields = [
-        ("TxExecutionContext", TxExecutionContext),
         ("TxSender", TxSender),
         ("TxSponsor", TxSender),
         ("TxTransaction", TxTransaction),
