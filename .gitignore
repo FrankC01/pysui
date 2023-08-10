@@ -5,6 +5,7 @@
 pysuienv
 env
 .env
+.python-version
 
 # Compiled code
 __pycache__

@@ -652,9 +652,10 @@ def as_keystrings(inputs: list[Union[str, dict]]) -> list[str]:
             wallet_hex = input["wallet_key"]
             assert (
                 len(wallet_hex) == SUI_HEX_ADDRESS_STRING_LEN
-                and wallet_hex[0:2] == "0x",
-                "Malformed wallet hex string",
-            )
+            ), f"Invalid wallet_key length, found {len(wallet_hex)} expected {SUI_HEX_ADDRESS_STRING_LEN}"
+            assert (
+                wallet_hex[0:2] == "0x" or wallet_hex[0:2] == "0X"
+            ), "Expected wallet_key to have 0x or 0X prefix"
             scheme = input["key_scheme"]
             assert (
                 isinstance(scheme, SignatureScheme) and scheme.value < 3

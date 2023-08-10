@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] - 2023-08-11
+
+**BREAKING CHANGE**
+
+With this release, the `bip-utils` library has been removed in favor of `pysui-fastcrypto`. This is a
+Python wrapper around the MystenLabs `fastcrypto` Rust crate.
+
+Because of this change, installing pysui now requires Rust and Cargo to be installed,
+see [Rust Install](https://www.rust-lang.org/tools/install). This will allow the Rust crate and wrapper to be
+built specific to your platform.
+
+### Added
+
+- [enhancement](https://github.com/FrankC01/pysui/issues/116) SuiTransaction serialize/deseralize
+- [enhancement](https://github.com/FrankC01/pysui/issues/143) Ability to add a new key to the
+  SuiConfig. The argument can either be a Sui keystring _or_ a dict for importing keys exported from Wallet. The
+  dict must take the form of:
+  ```python
+    {
+      'wallet_key':'0x.....',             # Wallet exported key hex string (66 chars with 0x prefix)
+      'key_scheme': SignatureScheme.XYZ   # Where XYZ is one of {ED25519, SECP256k1, SECP256r1}
+    }
+- The concert with the above enhancement, if initiating `pysui` with `SuiConfig.user_config(...)` the `prv_keys`
+  parameter can be a list of Sui keystrings, the dict as described above, or both.
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/148) Attempt to write to non-existant keystore
+
+### Changed
+
+- [change]((https://github.com/FrankC01/pysui/issues/144) `pysui` now requires pysui-fastcrypto
+- [change]((https://github.com/FrankC01/pysui/issues/145) Per change above, removed all
+  but generic SuiKeyPair, SuiPublicKey and SuiPrivateKey classes
+- [change](https://github.com/FrankC01/pysui/issues/147) Allowing transaction command Result in split_coin amounts list
+- `create_new_keypair_and_address` on SuiConfig now takes word_counts (int) instead of mnemonic phrase
+- Simplified MultiSig BCS construct
+- Documentation
+
+### Removed
+
+- `pyroaring` and `bip-utils` libraries. **_You should rebuild your virtual environment using new requirements.txt_**
+- bcs MultiSigLegacy that used `pyroaring` bitmap construct
+
 ## [0.32.0] - 2023-08-03
 
 **BREAKING CHANGE**

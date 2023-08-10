@@ -8,8 +8,7 @@ Python Client SDK for Sui blockchain
 
 ### pysui SDK Dependencies
 
-- Rust (stable) for installation of Sui Binaries and building of the upcoming (0.33.0) `pysui-fastcrypto` wrapper
-- Sui Binaries if using the Sui configuration (keystores, evironments) and publishing/upgradinge Sui packages
+- Rust (stable) for installation of Sui Binaries (optional) and building `pysui-fastcrypto` Rust wrapper (required)
 - Python version >= 3.10
 
 ### Release/Publish Strategy
@@ -18,25 +17,24 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 ## pysui SDK current (github)
 
-**Release-0.32.0**
+**Release-0.33.0**
 
 **BREAKING CHANGE**
 
-The SuiTransaction execute method's `gas_budget` argument now strictly sets the gas budget for the transaction. Prior, an inspection
-would be run and pysui used the greater of the two. Now, `gas_budget`'s default is an emptry string ("") and by leaving it that
-way a dryRun will be run prior to execution to set the budget.
-
+See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 - Supports _SUI 1.7.x RPC API_
-- Backwards compatable to _Sui 1.5.x RPC API_
+- Backwards compatable to _Sui 1.6.x RPC API_
 
 ## PyPi current: 0.32.0
 
 **BREAKING CHANGE**
 
-The SuiTransaction execute method's `gas_budget` argument now strictly sets the gas budget for the transaction. Prior, an inspection
-would be run and pysui used the greater of the two. Now, `gas_budget`'s default is an emptry string ("") and by leaving it that
-way a dryRun will be run prior to execution to set the budget.
+With this release, the `bip-utils` library has been removed in favor of [pysui-fastcrypto](https://github.com/FrankC01/pysui-fastcrypto). This is a Python wrapper around the MystenLabs [fastcrypto](https://github.com/MystenLabs/fastcrypto) Rust crate used in Sui itself.
+
+Because of this change, pysui now requires Rust and Cargo to be installed!
+See [Rust Install](https://www.rust-lang.org/tools/install). This will allow the Rust crate and wrapper to be
+built specifically for your platform.
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
