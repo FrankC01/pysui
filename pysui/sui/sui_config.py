@@ -44,6 +44,7 @@ from pysui.sui.sui_constants import (
 )
 from pysui.sui.sui_crypto import (
     SuiAddress,
+    as_keystrings,
     create_new_address,
     emphemeral_keys_and_addresses,
     keypair_from_keystring,
@@ -177,6 +178,7 @@ class SuiConfig(ClientConfiguration):
                 )
                 self._addresses[address.address] = address
                 self._address_keypair[address.address] = keypair
+                self._keypairs[keypair.serialize()] = keypair
                 if self._current_env != EMPEHMERAL_USER:
                     logger.debug(
                         f"Writing new keypair to {self.keystore_file}"
@@ -245,19 +247,27 @@ class SuiConfig(ClientConfiguration):
                 )
 
     @versionadded(
-        version="0.33.0", reason="Allow import from valid Sui keystring"
+        version="0.33.0",
+        reason="Allow import from valid Sui keystring or Wallet key export",
     )
     def add_keypair_from_keystring(
         self,
         *,
-        keystring: str,
+        keystring: Union[str, dict],
         install: bool = False,
         make_active: bool = False,
     ) -> SuiAddress:
         """add_keypair_from_keystring Adds a KeyPair from Sui keystring.
 
-        :param keystring: A valid Sui keystring (flag | private 32 byte seed) in base64 form
-        :type keystring: str
+        :param keystring: Either a valid Sui keystring (flag | private 32 byte seed) in base64 form
+            or a dictionary for conversion from wallet::
+
+                {
+                    'wallet_key':'0x.....',                 # Wallet exported key hex string
+                    'key_scheme': SignatureScheme.ED25519   # Must align with wallet_key type
+                }
+
+        :type keystring: Union[str, dict]
         :param install: Flag indicating to write back to sui.keystore, defaults to False
             This flag is ignored if config was initiated through 'user_config()'
         :type install: bool, optional
@@ -267,6 +277,7 @@ class SuiConfig(ClientConfiguration):
         :return: The derives SuiAddress
         :rtype: SuiAddress
         """
+        keystring = as_keystrings([keystring])[0]
         to_kp = keypair_from_keystring(keystring)
         to_addy = SuiAddress.from_bytes(to_kp.to_bytes())
         if to_addy.address in self._addresses:
@@ -358,11 +369,15 @@ class SuiConfig(ClientConfiguration):
         version="0.26.0",
         reason="Relax initialization requirements of prv_keys",
     )
+    @versionchanged(
+        version="0.33.0",
+        reason="Add support for importing Wallet private keys",
+    )
     def user_config(
         cls,
         *,
         rpc_url: str,
-        prv_keys: Optional[list[str]] = None,
+        prv_keys: Optional[list[Union[str, dict]]] = None,
         ws_url: Optional[str] = None,
     ) -> "SuiConfig":
         """user_config Load a user defined configuraiton.
@@ -372,8 +387,16 @@ class SuiConfig(ClientConfiguration):
 
         :param rpc_url: he RPC url for RPC API interaction
         :type rpc_url: str
-        :param prv_keys: Optional list of keystrings (Sui format), defaults to None
-        :type prv_keys: Optional[list[str]], optional
+        :param prv_keys: Optional list containing either
+            valid Sui keystrings (flag | private 32 byte seed) in base64 form and/or
+            dictionaries for conversion from Wallet key exports::
+
+                {
+                    'wallet_key':'0x.....',                 # Wallet exported key hex string
+                    'key_scheme': SignatureScheme.ED25519   # Must align with wallet_key type
+                }
+
+        :type prv_keys: Optional[list[Union[str, dict]]], optional
         :param ws_url: Optional wss url for subscriptions, defaults to None
         :type ws_url: Optional[str], optional
         :return: An instance of SuiConfig that can be used to initialize a SuiClient
@@ -407,7 +430,8 @@ class SuiConfig(ClientConfiguration):
                 config._addresses,
                 config._address_keypair,
             ) = emphemeral_keys_and_addresses(prv_keys)
-            config._active_address = SuiAddress(config.addresses[0])
+            if len(config.addresses):
+                config._active_address = SuiAddress(config.addresses[0])
         else:
             config._active_address = None
         return config

@@ -28,6 +28,7 @@ from pysui.abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
 from pysui.sui.sui_constants import (
     PRIVATE_KEY_BYTE_LEN,
     SCHEME_PRIVATE_KEY_BYTE_LEN,
+    SUI_HEX_ADDRESS_STRING_LEN,
     SUI_KEYPAIR_LEN,
     ED25519_DEFAULT_KEYPATH,
     ED25519_PUBLICKEY_BYTES_LEN,
@@ -635,33 +636,62 @@ def load_keys_and_addresses(
         raise ValueError(f"{keystore_file} not found")
 
 
+@versionadded(version="0.33.0", reason="To support wallet exported keys.")
+def as_keystrings(inputs: list[Union[str, dict]]) -> list[str]:
+    """as_keystrings Returns a list of just keystrings from heterogenous list of keystrings or dicts.
+
+    :param inputs: List of Sui keystrings or Wallet dict for conversion to keystring
+    :type inputs: list[Union[str, dict]]
+    :return: List of strings in Sui keystring form
+    :rtype: list[str]
+    """
+    results: list[str] = []
+    for input in inputs:
+        # If dict with specific kv pairs
+        if isinstance(input, dict):
+            wallet_hex = input["wallet_key"]
+            assert (
+                len(wallet_hex) == SUI_HEX_ADDRESS_STRING_LEN
+                and wallet_hex[0:2] == "0x",
+                "Malformed wallet hex string",
+            )
+            scheme = input["key_scheme"]
+            assert (
+                isinstance(scheme, SignatureScheme) and scheme.value < 3
+            ), "Invalid key scheme"
+            keybytes = bytearray(scheme.value.to_bytes(1, "little"))
+            keybytes.extend(binascii.unhexlify(wallet_hex[2:]))
+            input = base64.b64encode(keybytes).decode()
+        results.append(input)
+    return results
+
+
+@versionchanged(
+    version="0.33.0",
+    reason="To support wallet exported keys and/or Sui valid keystrings.",
+)
 def emphemeral_keys_and_addresses(
-    keystrings: list[str],
-) -> Union[
-    tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]],
-    Exception,
-]:
+    keystrings: list[Union[str, dict]],
+) -> tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]]:
     """emphemeral_keys_and_addresses Convert list of keystrings from SuiConfig.user_config().
 
-    :param keystrings: List of valid Sui keystrings
-    :type keystrings: list[str]
-    :raises ValueError: If list is empty
+    :param keystrings: List of Sui keystrings or Wallet dict for conversion to keystring
+    :type keystrings: list[Union[str, dict]]
     :return: Dictionaries mapping keystrings->KeyPair, address->SuiAddress and address->KeyPair
-    :rtype: Union[ tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]], Exception, ]
+    :rtype: tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]]
     """
-    _keystrings = keystrings
-    if _keystrings:
-        _keypairs: dict[str, KeyPair] = {}
-        _addresses: dict[str, SuiAddress] = {}
-        _address_keypair: dict[str, KeyPair] = {}
-        for keystr in _keystrings:
-            kpair = keypair_from_keystring(keystr)
-            _keypairs[keystr] = kpair
-            addy = SuiAddress.from_keypair_string(kpair.to_b64())
-            _addresses[addy.address] = addy
-            _address_keypair[addy.address] = kpair
-        return _keypairs, _addresses, _address_keypair
-    raise ValueError(f"Missing keystring list")
+    _keystrings = as_keystrings(keystrings)
+
+    _keypairs: dict[str, KeyPair] = {}
+    _addresses: dict[str, SuiAddress] = {}
+    _address_keypair: dict[str, KeyPair] = {}
+    for keystr in _keystrings:
+        kpair = keypair_from_keystring(keystr)
+        _keypairs[keystr] = kpair
+        addy = SuiAddress.from_keypair_string(kpair.to_b64())
+        _addresses[addy.address] = addy
+        _address_keypair[addy.address] = kpair
+    return _keypairs, _addresses, _address_keypair
 
 
 if __name__ == "__main__":
