@@ -190,7 +190,7 @@ class SuiKeyPair(KeyPair):
     )
     @classmethod
     def from_b64(cls, indata: str) -> "SuiKeyPair":
-        """."""
+        """Generate KeyPair from base64 keystring."""
         signature, pub_list, prv_list = pfc.keys_from_keystring(indata)
         return cls.from_pfc_bytes(
             SignatureScheme(signature),
@@ -339,7 +339,7 @@ class MultiSig:
         return hit_indexes  # , list(zip(pub_keys, weights))
 
     def _new_publickey(self) -> list[MsNewPublicKey]:
-        """."""
+        """Generate MultiSig BCS representation of PublicKey."""
         # Generate new BCS PublicKeys from the FULL compliment of original public keys
         pks: list[MsNewPublicKey] = []
         for index, kkeys in enumerate(self._keys):
@@ -607,7 +607,7 @@ def load_keys_and_addresses(
     :raises SuiKeystoreFileError: If error reading file
     :raises SuiKeystoreAddressError: JSON error loading keyfile
     :raises SuiFileNotFound: If the file does not exists
-    :return: Cross reference maps
+    :return: Dictionaries mapping keystrings->KeyPair, address->SuiAddress and address->KeyPair
     :rtype: Union[tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]], Exception]
     """
     if os.path.exists(keystore_file):
@@ -641,7 +641,14 @@ def emphemeral_keys_and_addresses(
     tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]],
     Exception,
 ]:
-    """."""
+    """emphemeral_keys_and_addresses Convert list of keystrings from SuiConfig.user_config().
+
+    :param keystrings: List of valid Sui keystrings
+    :type keystrings: list[str]
+    :raises ValueError: If list is empty
+    :return: Dictionaries mapping keystrings->KeyPair, address->SuiAddress and address->KeyPair
+    :rtype: Union[ tuple[dict[str, KeyPair], dict[str, SuiAddress], dict[str, KeyPair]], Exception, ]
+    """
     _keystrings = keystrings
     if _keystrings:
         _keypairs: dict[str, KeyPair] = {}

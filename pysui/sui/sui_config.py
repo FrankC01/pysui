@@ -46,6 +46,7 @@ from pysui.sui.sui_crypto import (
     SuiAddress,
     create_new_address,
     emphemeral_keys_and_addresses,
+    keypair_from_keystring,
     load_keys_and_addresses,
     recover_key_and_address,
 )
@@ -191,6 +192,10 @@ class SuiConfig(ClientConfiguration):
                 )
 
     @versionadded(version="0.24.0", reason="Added to recover keypairs")
+    @versionchanged(
+        version="0.33.0",
+        reason="If install is True, checks if not in 'user_config' setup before writing",
+    )
     def recover_keypair_and_address(
         self,
         scheme: SignatureScheme,
@@ -206,8 +211,8 @@ class SuiConfig(ClientConfiguration):
         :type mnemonics: str
         :param derivation_path: The derivation path for key, specific to Signature scheme
         :type derivation_path: str
-        :param install: Flag indicating to write back to client.yaml, defaults to False
-            This is ignored if config was initiated through 'user_config()'
+        :param install: Flag indicating to write back to sui.keystore, defaults to False
+            This flag is ignored if config was initiated through 'user_config()'
         :type install: bool, optional
         :raises NotImplementedError: When providing unregognized scheme
         :raises ValueError: If recovered keypair/address already exists
@@ -224,19 +229,57 @@ class SuiConfig(ClientConfiguration):
                     raise ValueError(
                         f"Address {address.address} already exists."
                     )
-                else:
-                    self._addresses[address.address] = address
-                    self._address_keypair[address.address] = keypair
-                    if install and self._current_env != EMPEHMERAL_USER:
-                        logger.debug(
-                            f"Writing new keypair to {self.keystore_file}"
-                        )
-                        self._write_keypair(keypair)
-                    return mnem, address
+
+                self._addresses[address.address] = address
+                self._address_keypair[address.address] = keypair
+                self._keypairs[keypair.serialize()] = keypair
+                if install and self._current_env != EMPEHMERAL_USER:
+                    logger.debug(
+                        f"Writing new keypair to {self.keystore_file}"
+                    )
+                    self._write_keypair(keypair)
+                return mnem, address
             case _:
                 raise NotImplementedError(
                     f"{scheme}: Not recognized as valid keypair scheme."
                 )
+
+    @versionadded(
+        version="0.33.0", reason="Allow import from valid Sui keystring"
+    )
+    def add_keypair_from_keystring(
+        self,
+        *,
+        keystring: str,
+        install: bool = False,
+        make_active: bool = False,
+    ) -> SuiAddress:
+        """add_keypair_from_keystring Adds a KeyPair from Sui keystring.
+
+        :param keystring: A valid Sui keystring (flag | private 32 byte seed) in base64 form
+        :type keystring: str
+        :param install: Flag indicating to write back to sui.keystore, defaults to False
+            This flag is ignored if config was initiated through 'user_config()'
+        :type install: bool, optional
+        :param make_active: Flag to make address from created KeyPair the 'active_address', defaults to False
+        :type make_active: bool, optional
+        :raises ValueError: If the derived address is already registered in SuiConfig
+        :return: The derives SuiAddress
+        :rtype: SuiAddress
+        """
+        to_kp = keypair_from_keystring(keystring)
+        to_addy = SuiAddress.from_bytes(to_kp.to_bytes())
+        if to_addy.address in self._addresses:
+            raise ValueError(f"Address {to_addy.address} already exists.")
+        self._addresses[to_addy.address] = to_addy
+        self._address_keypair[to_addy.address] = to_kp
+        self._keypairs[keystring] = to_kp
+        if install and self._current_env != EMPEHMERAL_USER:
+            logger.debug(f"Writing new keypair to {self.keystore_file}")
+            self._write_keypair(to_kp)
+        if make_active or not self.active_address:
+            self.set_active_address(to_addy)
+        return to_addy
 
     @classmethod
     @versionchanged(version="0.29.0", reason="Now returns ws url.")
