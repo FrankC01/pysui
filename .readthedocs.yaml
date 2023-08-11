@@ -12,7 +12,7 @@ build:
     python: "3.10"
     # You can also specify other tool versions:
     # nodejs: "16"
-    rust: "1.71.0"
+    rust: "1.70"
     # golang: "1.17"
   jobs:
     pre_build:
