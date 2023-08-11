@@ -26,7 +26,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 - Supports _SUI 1.7.x RPC API_
 - Backwards compatable to _Sui 1.6.x RPC API_
 
-## PyPi current: 0.32.0
+## PyPi current: 0.33.0
 
 **BREAKING CHANGE**
 
