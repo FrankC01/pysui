@@ -147,9 +147,16 @@ With this option, you set the rpc_url, keystrings and optional web socket url. F
     cfg = SuiConfig.user_config(
         # Required
         rpc_url="https://fullnode.devnet.sui.io:443",
+
         # Optional. First entry becomes the 'active-address'
-        # Must be a valid Sui base64 keystring (i.e. 'key_type_flag | private_key_seed' )
+        # List elemente must be a valid Sui base64 keystring (i.e. 'key_type_flag | private_key_seed' )
+        # List can contain a dict for importing Wallet keys for example:
+        # prv_keys=['AO.....',{'wallet_key': '0x.....', 'key_scheme': SignatureScheme.ED25519}]
+        #   where
+        #   wallet_key value is 66 char hex string
+        #   key_scheme can be ED25519, SECP256K1 or SECP256R1
         prv_keys=["AOM6UAQrFe7r9nNDGRlWwj1o7m1cGK6mDZ3efRJJmvcG"],
+
         # Optional, only needed for subscribing
         ws_url="wss://fullnode.devnet.sui.io:443",
     )

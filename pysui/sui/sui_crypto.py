@@ -646,24 +646,24 @@ def as_keystrings(inputs: list[Union[str, dict]]) -> list[str]:
     :rtype: list[str]
     """
     results: list[str] = []
-    for input in inputs:
+    for keyinput in inputs:
         # If dict with specific kv pairs
-        if isinstance(input, dict):
-            wallet_hex = input["wallet_key"]
+        if isinstance(keyinput, dict):
+            wallet_hex = keyinput["wallet_key"]
             assert (
                 len(wallet_hex) == SUI_HEX_ADDRESS_STRING_LEN
             ), f"Invalid wallet_key length, found {len(wallet_hex)} expected {SUI_HEX_ADDRESS_STRING_LEN}"
             assert (
                 wallet_hex[0:2] == "0x" or wallet_hex[0:2] == "0X"
             ), "Expected wallet_key to have 0x or 0X prefix"
-            scheme = input["key_scheme"]
+            scheme = keyinput["key_scheme"]
             assert (
                 isinstance(scheme, SignatureScheme) and scheme.value < 3
             ), "Invalid key scheme"
             keybytes = bytearray(scheme.value.to_bytes(1, "little"))
             keybytes.extend(binascii.unhexlify(wallet_hex[2:]))
-            input = base64.b64encode(keybytes).decode()
-        results.append(input)
+            keyinput = base64.b64encode(keybytes).decode()
+        results.append(keyinput)
     return results
 
 
