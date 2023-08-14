@@ -17,18 +17,17 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 ## pysui SDK current (github)
 
-**Release-0.33.0**
-
-**BREAKING CHANGE**
+**Release-0.33.1**
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
-- Supports _SUI 1.7.x RPC API_
+- Supports _SUI 1.8.x RPC API_
 - Backwards compatable to _Sui 1.6.x RPC API_
 
-## PyPi current: 0.33.0
 
-**BREAKING CHANGE**
+## PyPi current
+
+**Release-0.33.0 includes BREAKING CHANGE**
 
 With this release, the `bip-utils` library has been removed in favor of [pysui-fastcrypto](https://github.com/FrankC01/pysui-fastcrypto). This is a Python wrapper around the MystenLabs [fastcrypto](https://github.com/MystenLabs/fastcrypto) Rust crate used in Sui itself.
 

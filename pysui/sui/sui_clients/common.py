@@ -149,8 +149,8 @@ class _ClientMixin(Provider):
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: str = "1.5.0"
-    _RPC_REQUIRED_VERSION: str = "1.7.0"
+    _RPC_MINIMAL_VERSION: str = "1.6.0"
+    _RPC_REQUIRED_VERSION: str = "1.8.0"
 
     @versionchanged(
         version="0.26.1",
