@@ -1,14 +1,10 @@
 # pyproject.toml
 [tool.pytest.ini_options]
-testpaths = [
-    "tests",
-    "tests/sync_tests",
-    "tests/integration_sync",
-]
-pythonpath = ["pysui", "abstracts", "sui","sui/sui_types"]
+testpaths = ["tests", "tests/sync_tests", "tests/integration_sync"]
+pythonpath = ["pysui", "abstracts", "sui", "sui/sui_types"]
 
 [build-system]
-requires = ["setuptools>=61.0","wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -17,7 +13,7 @@ name = "pysui"
 description = "SUI client Python SDK"
 requires-python = ">=3.10"
 keywords = ["software development kit", "sui", "blockchain"]
-license = {text = "Apache-2.0"}
+license = { text = "Apache-2.0" }
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -28,7 +24,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3 :: Only"
+    "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
     "dataclasses_json < 0.6.0, >= 0.5.7",
@@ -40,9 +36,9 @@ dependencies = [
     "canoser==0.8.2",
     "base58 < 2.2.0, >=2.1.1",
     "Deprecated < 1.3.0, >=1.2.14",
-    "pysui-fastcrypto == 0.1.4"
+    "pysui-fastcrypto >= 0.2.0",
 ]
-dynamic = ["version","readme"]
+dynamic = ["version", "readme"]
 
 
 [project.scripts]
@@ -52,14 +48,23 @@ async-sub = "samples.async_sub:main"
 async-sub-txn = "samples.async_sub_txn:main"
 
 [tool.setuptools.packages.find]
-# where = ["pysui","samples"]
-# include = ["*","abstracts*","sui*"]
-exclude = ["out*","temp*","test*","tools*","build*","doc*","pysuienv*","images*"]
+
+
+exclude = [
+    "out*",
+    "temp*",
+    "test*",
+    "tools*",
+    "build*",
+    "doc*",
+    "pysuienv*",
+    "images*",
+]
 
 
 [tool.setuptools.dynamic]
-version = {attr = "pysui.version.__version__"}
-readme = {file = ["README.md"],content-type = "text/markdown"}
+version = { attr = "pysui.version.__version__" }
+readme = { file = ["README.md"], content-type = "text/markdown" }
 
 [project.urls]
 changelog = "https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md"

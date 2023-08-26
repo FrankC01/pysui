@@ -458,7 +458,9 @@ class _SuiTransactionBase:
     )
     def serialize(self) -> bytes:
         """."""
-        return self._serialize().serialize()
+        tbuilder = self._serialize()
+        # print(tbuilder.to_json(indent=2))
+        return tbuilder.serialize()
 
     @versionadded(
         version="0.32.0",

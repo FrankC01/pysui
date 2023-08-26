@@ -122,6 +122,14 @@ class KeyPair(ABC):
     def new_sign_secure(self, tx_data: str) -> Union[AbstractType, str]:
         """Sign transactions securley."""
 
+    @abstractmethod
+    def sign_message(self, message: str) -> str:
+        """Sign arbitrary message, returning it's base64 raw signature."""
+
+    @abstractmethod
+    def verify_signature(self, message: str, signature: str) -> bool:
+        """Verify message with signature, returning true/false."""
+
     @classmethod
     @abstractmethod
     def from_b64(cls, indata: str) -> "KeyPair":

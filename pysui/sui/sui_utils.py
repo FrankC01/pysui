@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import NoneType
 from typing import Any, Iterable, Union
-from deprecated.sphinx import versionchanged
+from deprecated.sphinx import versionchanged, deprecated
 import base58
 import yaml
 from dataclasses_json import DataClassJsonMixin
@@ -220,6 +220,9 @@ def _new_package_digest(
 @versionchanged(
     version="0.17.0",
     reason="Added the package digest that matches chain digest.",
+)
+@deprecated(
+    version="0.34.0", reason="legacy_digest no longer supported in Sui"
 )
 def publish_build(
     path_to_package: Path,

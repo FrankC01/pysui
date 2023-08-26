@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] - Unpublished
+
+### Added
+
+- KeyPair: signing (`sign_message`) arbitrary base64 strings and verifying (`verify_signature`) signatures.
+
+### Fixed
+
+- Fails gracefully if calling `get_gas_from_faucet` on SuiClient's with non-supported config.
+
+### Changed
+
+- [change](https://github.com/FrankC01/pysui/issues/154) Changes in align with new suibase proxy configuration
+- [change](https://github.com/FrankC01/pysui/issues/155) Bump pysui-fastcrypto version requirement [see](https://github.com/FrankC01/pysui-fastcrypto/issues/1)
+- [deprecating](https://github.com/FrankC01/pysui/issues/153) sui_utils `publish_build` option. Will remove in 0.36.0
+- bumped pysui-fastcrypto depedency to >= 0.2.0
+
+### Removed
+
+- pkg_resources dependency in sui_clients.common.py
+
 ## [0.33.1] - Unpublished
 
 ### Added

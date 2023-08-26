@@ -19,7 +19,6 @@ import json
 from dataclasses import dataclass
 from abc import abstractmethod
 from typing import Any, Optional, Union, Callable
-from pkg_resources import packaging
 import httpx
 from deprecated.sphinx import versionchanged, versionadded
 from pysui.abstracts import RpcResult, Provider
@@ -150,7 +149,7 @@ class _ClientMixin(Provider):
     """
 
     _RPC_MINIMAL_VERSION: str = "1.6.0"
-    _RPC_REQUIRED_VERSION: str = "1.8.0"
+    _RPC_REQUIRED_VERSION: str = "1.9.0"
 
     @versionchanged(
         version="0.26.1",
@@ -313,9 +312,9 @@ class _ClientMixin(Provider):
 
         :raises RuntimeError: If RPC API version less than minimal support
         """
-        rpa = packaging.version.parse(self.rpc_version)
-        mpa = packaging.version.parse(self._RPC_MINIMAL_VERSION)
-        ipa = packaging.version.parse(self._RPC_REQUIRED_VERSION)
+        rpa = [int(x) for x in self.rpc_version.split(".")]
+        mpa = [int(x) for x in self._RPC_MINIMAL_VERSION.split(".")]
+        ipa = [int(x) for x in self._RPC_REQUIRED_VERSION.split(".")]
         # If the running version is greater than most recent supported by pysui
         if rpa >= ipa:
             pass
@@ -327,15 +326,13 @@ class _ClientMixin(Provider):
         # If the running version is less than the most recent supported by pysui
         elif rpa < ipa:
             print(
-                f"Host RPC version is {rpa} and is backward compatible with code built for {ipa}."
+                f"Host RPC version is {self.rpc_version} and is backward compatible with code built for {self._RPC_REQUIRED_VERSION}."
             )
 
     def version_at_least(self, majver: int, minver: int, bldver: int) -> bool:
         """Check if minor version is greater than or equal to."""
-        tpa = packaging.version.parse(
-            ".".join([str(majver), str(minver), str(bldver)])
-        )
-        rpa = packaging.version.parse(self.rpc_version)
+        tpa = [majver, minver, bldver]
+        rpa = [int(x) for x in self.rpc_version.split(".")]
         if rpa >= tpa:
             return True
         return False

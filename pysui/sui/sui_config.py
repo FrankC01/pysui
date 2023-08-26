@@ -27,6 +27,7 @@ from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
     EMPEHMERAL_PATH,
     EMPEHMERAL_USER,
+    LOCALNET_PROXY_SUI_URL,
     LOCALNET_SUI_URL,
     MAINNET_SOCKET_URL,
     PYSUI_EXEC_ENV,
@@ -103,6 +104,8 @@ class SuiConfig(ClientConfiguration):
         self._current_url = rpc_url
         self._current_env = environment
         self._local_running = False
+        self._faucet_url = None
+        self._socket_url = None
         match self._current_env:
             case "devnet":
                 self._faucet_url = DEVNET_FAUCET_URL
@@ -114,7 +117,7 @@ class SuiConfig(ClientConfiguration):
                 self._socket_url = (
                     socket_url if socket_url else TESTNET_SOCKET_URL
                 )
-            case "localnet":
+            case "localnet" | "localnet_proxy":
                 self._faucet_url = LOCALNET_FAUCET_URL
                 self._socket_url = (
                     socket_url if socket_url else LOCALNET_SOCKET_URL
@@ -274,7 +277,7 @@ class SuiConfig(ClientConfiguration):
         :param make_active: Flag to make address from created KeyPair the 'active_address', defaults to False
         :type make_active: bool, optional
         :raises ValueError: If the derived address is already registered in SuiConfig
-        :return: The derives SuiAddress
+        :return: The derived SuiAddress
         :rtype: SuiAddress
         """
         keystring = as_keystrings([keystring])[0]
@@ -373,6 +376,10 @@ class SuiConfig(ClientConfiguration):
         version="0.33.0",
         reason="Add support for importing Wallet private keys",
     )
+    @versionchanged(
+        version="0.34.0",
+        reason="Add support for suibase localnet proxy",
+    )
     def user_config(
         cls,
         *,
@@ -417,7 +424,7 @@ class SuiConfig(ClientConfiguration):
         elif rpc_url == TESTNET_SUI_URL:
             config._faucet_url = TESTNET_FAUCET_URL
             config._socket_url = ws_url or TESTNET_SOCKET_URL
-        elif rpc_url == LOCALNET_SUI_URL:
+        elif rpc_url == LOCALNET_SUI_URL or rpc_url == LOCALNET_PROXY_SUI_URL:
             config._faucet_url = LOCALNET_FAUCET_URL
             config._socket_url = ws_url or LOCALNET_SOCKET_URL
         else:

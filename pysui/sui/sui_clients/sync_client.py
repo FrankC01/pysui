@@ -391,6 +391,10 @@ class SuiClient(_ClientMixin):
             address=address, coin_type=coin_type, fetch_all=fetch_all
         )
 
+    @versionchanged(
+        version="0.34.0",
+        reason="Added faucet check. Will fail gracefull setting SuiRpcResult",
+    )
     def get_gas_from_faucet(self, for_address: SuiAddress = None) -> Any:
         """get_gas_from_faucet Gets gas from SUI faucet.
 
@@ -402,16 +406,23 @@ class SuiClient(_ClientMixin):
         """
         for_address = for_address or self.config.active_address
         try:
-            result = self._client.post(
-                self.config.faucet_url,
-                headers=GetObjectsOwnedByAddress(for_address).header,
-                json={"FixedAmountRequest": {"recipient": f"{for_address}"}},
-            ).json()
-            if result["error"] is None:
+            if self.config.faucet_url:
+                result = self._client.post(
+                    self.config.faucet_url,
+                    headers=GetObjectsOwnedByAddress(for_address).header,
+                    json={
+                        "FixedAmountRequest": {"recipient": f"{for_address}"}
+                    },
+                ).json()
+                if result["error"] is None:
+                    return SuiRpcResult(
+                        True, None, FaucetGasRequest.from_dict(result)
+                    )
+                return SuiRpcResult(False, result["error"])
+            else:
                 return SuiRpcResult(
-                    True, None, FaucetGasRequest.from_dict(result)
+                    False, "Faucet not enabled for this configuration."
                 )
-            return SuiRpcResult(False, result["error"])
         except JSONDecodeError as jexc:
             return SuiRpcResult(
                 False, f"JSON Decoder Error {jexc.msg}", vars(jexc)

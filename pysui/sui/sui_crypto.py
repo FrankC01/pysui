@@ -118,6 +118,22 @@ class SuiKeyPair(KeyPair):
         sig = bytearray(self.private_key.sign_secure(tx_data))
         return SuiSignature(base64.b64encode(sig).decode())
 
+    @versionchanged(version="0.34.0", reason="Added to sign arbirary messages")
+    def sign_message(self, message: str) -> str:
+        """Sign arbitrary message, returning it's base64 raw signature."""
+        return pfc.sign_message(
+            self.scheme, self.private_key.key_bytes, message
+        )
+
+    @versionchanged(
+        version="0.34.0", reason="Added to verify signature of message"
+    )
+    def verify_signature(self, message: str, sig: str) -> bool:
+        """Sign arbitrary message, returning it's base64 raw signature."""
+        return pfc.verify(
+            self.scheme, self.private_key.key_bytes, message, sig
+        )
+
     def serialize_to_bytes(self) -> bytes:
         """serialize_to_bytes Returns a SUI conforming keystring as bytes.
 

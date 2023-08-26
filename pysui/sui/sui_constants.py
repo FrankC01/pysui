@@ -55,6 +55,8 @@ DEVNET_SOCKET_URL: str = "wss://fullnode.devnet.sui.io:443"
 
 LOCALNET_SUI_URL: str = "https://127.0.0.1:9000"
 """Testnet Sui client url."""
+LOCALNET_PROXY_SUI_URL: str = "http://0.0.0.0:44340"
+"""Testnet Sui proxy client url."""
 LOCALNET_FAUCET_URL: str = "http://127.0.0.1:9123/gas"
 """Localnet client faucet url."""
 LOCALNET_SOCKET_URL: str = "ws://127.0.0.1:9000"
