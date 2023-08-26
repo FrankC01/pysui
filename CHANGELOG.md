@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/158) Failure evaluating Command in `verify_transaction(...)`
 - Fails gracefully if calling `get_gas_from_faucet` on SuiClient's with non-supported config.
 
 ### Changed

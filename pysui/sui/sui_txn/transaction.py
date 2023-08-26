@@ -208,6 +208,9 @@ class _SuiTransactionBase:
     @versionchanged(
         version="0.31.0", reason="Validating against all PTB constraints"
     )
+    @versionchanged(
+        version="0.34.0", reason="Fixed Command argument evaluation"
+    )
     def verify_transaction(
         self, ser_kind: Optional[bytes] = None
     ) -> tuple[TransactionConstraints, Union[dict, None]]:
@@ -252,16 +255,14 @@ class _SuiTransactionBase:
                     args_one = len(prog_txn.value.Arguments)
                     type_args_one = len(prog_txn.value.Type_Arguments)
                 case "TransferObjects":
-                    args_one = len(prog_txn.value.Arguments)
+                    args_one = len(prog_txn.value.Objects)
                 case "MergeCoins":
                     args_one = len(prog_txn.value.FromCoins)
                 case "SplitCoin":
                     args_one = len(prog_txn.value.Amount)
                 case "MakeMoveVec":
                     args_one = len(prog_txn.value.Vector)
-                case "Publish":
-                    args_one = len(prog_txn.value.Modules)
-                case "Upgrade":
+                case "Publish" | "Upgrade":
                     args_one = len(prog_txn.value.Modules)
                 case _:
                     pass
