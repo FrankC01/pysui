@@ -227,9 +227,8 @@ class MultiSig:
     _MIN_KEYS: int = 2
     _MAX_KEYS: int = 10
     _MAX_WEIGHT: int = 255
-    _MAX_THRESHOLD: int = 65535
+    _MAX_THRESHOLD: int = 2549
     _COMPRESSED_SIG_LEN: int = 65
-    _SIGNATURE_SCHEME: SignatureScheme = SignatureScheme.MULTISIG
 
     def __init__(
         self, suikeys: list[SuiKeyPair], weights: list[int], threshold: int
@@ -242,7 +241,7 @@ class MultiSig:
         :type suikeys: list[SuiKeyPair]
         :param weights: Corresponding weights for each key. Max value of each weight is 255 (8 bit unsigned)
         :type weights: list[int]
-        :param threshold: The threshold criteria for this MultiSig. Max value is 65,535 (16 bit unsigned)
+        :param threshold: The threshold criteria for this MultiSig. Max value is 2549 (16 bit unsigned)
         :type threshold: int
         """
         if (
@@ -250,11 +249,12 @@ class MultiSig:
             and len(suikeys) == len(weights)
             and threshold <= self._MAX_THRESHOLD
             and max(weights) <= self._MAX_WEIGHT
+            and sum(weights) >= threshold
         ):
             self._keys: list[SuiKeyPair] = suikeys
             self._weights: list[int] = weights
             self._threshold: int = threshold
-            self._schema: SignatureScheme = SignatureScheme.MULTISIG
+            self._scheme: SignatureScheme = SignatureScheme.MULTISIG
             self._address: SuiAddress = self._multi_sig_address()
 
             self._public_keys: list[SuiPublicKey] = [
@@ -270,7 +270,7 @@ class MultiSig:
         :rtype: SuiAddress
         """
         # Build the digest to generate a SuiAddress (hash) from
-        digest = self._schema.to_bytes(1, "little")
+        digest = self._scheme.to_bytes(1, "little")
         digest += self._threshold.to_bytes(2, "little")
         for index, kkeys in enumerate(self._keys):
             digest += kkeys.public_key.scheme_and_key()  # type: ignore
@@ -280,7 +280,7 @@ class MultiSig:
     @property
     def scheme(self) -> SignatureScheme:
         """Return the MultiSig signature scheme."""
-        return self._SIGNATURE_SCHEME
+        return SignatureScheme.MULTISIG
 
     @property
     @versionchanged(
@@ -330,7 +330,6 @@ class MultiSig:
         # Must be subset of full ms list
         if len(pub_keys) <= len(self._public_keys):
             hit_indexes = [self._public_keys.index(i) for i in pub_keys]
-            # hit_indexes = [i for i, j in enumerate(pub_keys) if j in self._public_keys]
             # If all inbound pubkeys have reference to item in ms list
             if len(hit_indexes) == len(pub_keys):
                 if (
@@ -346,14 +345,12 @@ class MultiSig:
         assert len(pub_keys) <= len(
             self._public_keys
         ), "More public keys than MultiSig"
-        # hit_indexes = [i for i, j in enumerate(pub_keys) if j in self._public_keys]
         hit_indexes = [self._public_keys.index(i) for i in pub_keys]
         # If all inbound pubkeys have reference to item in ms list
         assert len(hit_indexes) == len(
             pub_keys
         ), "Public key not part of MultiSig keys"
-        # weights = [self._weights[x] for x in hit_indexes]
-        return hit_indexes  # , list(zip(pub_keys, weights))
+        return hit_indexes
 
     def _new_publickey(self) -> list[MsNewPublicKey]:
         """Generate MultiSig BCS representation of PublicKey."""
@@ -423,7 +420,7 @@ class MultiSig:
             bm_pks |= 1 << index
         serialized_rbm: MsBitmap = MsBitmap(bm_pks)
         msig_signature = MultiSignature(
-            self._schema,
+            self._scheme,
             compressed_sigs,
             serialized_rbm,
             self._new_publickey(),
@@ -462,7 +459,7 @@ class MultiSig:
         """
         try:
             ms_bytes = base64.b64decode(ser_str)
-            assert SignatureScheme(ms_bytes[0]) == cls._SIGNATURE_SCHEME
+            assert SignatureScheme(ms_bytes[0]) == SignatureScheme.MULTISIG
             count = int(ms_bytes[1])
             kes_index = 2
             wei_index = kes_index + (count * SCHEME_PRIVATE_KEY_BYTE_LEN)

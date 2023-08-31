@@ -6,6 +6,9 @@
 
 Python Client SDK for Sui blockchain
 
+- Supports _SUI 1.9.x RPC API_
+- Backwards compatable to _Sui 1.6.x RPC API_
+
 ### pysui SDK Dependencies
 
 - Rust (stable) for installation of Sui Binaries (optional) and building `pysui-fastcrypto` Rust wrapper (required)
@@ -17,19 +20,15 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 ## pysui SDK current (github)
 
-**Release-0.34.0**
+**Release-0.34.1**
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
-
-- Supports _SUI 1.9.x RPC API_
-- Backwards compatable to _Sui 1.6.x RPC API_
-
 
 ## PyPi current
 
 **Release-0.34.0 includes BREAKING CHANGE**
 
-With this release, the `bip-utils` library has been removed in favor of [pysui-fastcrypto](https://github.com/FrankC01/pysui-fastcrypto). This is a Python wrapper around the MystenLabs [fastcrypto](https://github.com/MystenLabs/fastcrypto) Rust crate used in Sui itself.
+The `bip-utils` library has been removed in favor of [pysui-fastcrypto](https://github.com/FrankC01/pysui-fastcrypto). This is a Python wrapper around the MystenLabs [fastcrypto](https://github.com/MystenLabs/fastcrypto) Rust crate used in Sui itself.
 
 Because of this change, pysui now requires Rust and Cargo to be installed!
 See [Rust Install](https://www.rust-lang.org/tools/install). This will allow the Rust crate and wrapper to be
