@@ -20,7 +20,7 @@ from deprecated.sphinx import versionadded, versionchanged
 from pysui import SuiAddress, SyncClient, handle_result, ObjectID, AsyncClient
 from pysui.sui.sui_builders.base_builder import sui_builder
 from pysui.sui.sui_builders.exec_builders import _MoveCallTransactionBuilder
-from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
+from pysui.sui.sui_crypto import MultiSig, SuiPublicKey, BaseMultiSig
 from pysui.sui.sui_txresults.single_tx import SuiCoinObject
 from pysui.sui.sui_types.collections import SuiArray
 from pysui.sui.sui_types.scalars import SuiSignature, SuiString
@@ -61,15 +61,17 @@ class _ConsolidateSui(_MoveCallTransactionBuilder):
 @versionadded(
     version="0.21.1", reason="Support subset pubkey address generation"
 )
+@versionchanged(version="0.35.0", reason="Change msig to BaseMultiSig")
 class SigningMultiSig:
     """Wraps the mutli-sig along with pubkeys to use in SuiTransaction."""
 
-    def __init__(self, msig: MultiSig, pub_keys: list[SuiPublicKey]):
+    def __init__(self, msig: BaseMultiSig, pub_keys: list[SuiPublicKey]):
         """."""
         self.multi_sig = msig
         self.pub_keys = pub_keys
         self.indicies = msig.validate_signers(pub_keys)
         self._address = self.multi_sig.address
+        self._can_sign_msg = isinstance(msig, MultiSig)
 
     @property
     def signing_address(self) -> str:
@@ -174,9 +176,12 @@ class _SignerBlockBase:
                     )
                 )
             else:
-                sig_list.append(
-                    signer.multi_sig.sign(tx_bytes, signer.pub_keys)
-                )
+                if signer._can_sign_msg:
+                    sig_list.append(
+                        signer.multi_sig.sign(tx_bytes, signer.pub_keys)
+                    )
+                else:
+                    raise ValueError("BaseMultiSig can not sign in execution")
         return SuiArray(sig_list)
 
 

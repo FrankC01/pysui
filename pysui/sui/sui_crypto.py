@@ -221,8 +221,8 @@ class SuiKeyPair(KeyPair):
         return f"PubKey {self._public_key}, PrivKey `Private`"
 
 
-class MultiSig:
-    """Multi signature support."""
+class BaseMultiSig:
+    """."""
 
     _MIN_KEYS: int = 2
     _MAX_KEYS: int = 10
@@ -231,35 +231,24 @@ class MultiSig:
     _COMPRESSED_SIG_LEN: int = 65
 
     def __init__(
-        self, suikeys: list[SuiKeyPair], weights: list[int], threshold: int
+        self,
+        sui_pub_keys: list[SuiPublicKey],
+        weights: list[int],
+        threshold: int,
     ):
-        """__init__ Initiate a MultiSig object.
-
-        Note that Sui multi-sig accepts up to a maximum of ten (10) individual signer keys.
-
-        :param suikeys: The list of keys participating in the multi-sig signing operations.
-        :type suikeys: list[SuiKeyPair]
-        :param weights: Corresponding weights for each key. Max value of each weight is 255 (8 bit unsigned)
-        :type weights: list[int]
-        :param threshold: The threshold criteria for this MultiSig. Max value is 2549 (16 bit unsigned)
-        :type threshold: int
-        """
+        """Validating initialization of components."""
         if (
-            len(suikeys) in range(self._MIN_KEYS, self._MAX_KEYS)
-            and len(suikeys) == len(weights)
+            len(sui_pub_keys) in range(self._MIN_KEYS, self._MAX_KEYS)
+            and len(sui_pub_keys) == len(weights)
             and threshold <= self._MAX_THRESHOLD
             and max(weights) <= self._MAX_WEIGHT
             and sum(weights) >= threshold
         ):
-            self._keys: list[SuiKeyPair] = suikeys
-            self._weights: list[int] = weights
-            self._threshold: int = threshold
             self._scheme: SignatureScheme = SignatureScheme.MULTISIG
+            self._weights: list[int] = weights
+            self._public_keys = sui_pub_keys
+            self._threshold: int = threshold
             self._address: SuiAddress = self._multi_sig_address()
-
-            self._public_keys: list[SuiPublicKey] = [
-                x.public_key for x in self._keys  # type: ignore
-            ]
         else:
             raise ValueError("Invalid arguments provided to constructor")
 
@@ -272,8 +261,8 @@ class MultiSig:
         # Build the digest to generate a SuiAddress (hash) from
         digest = self._scheme.to_bytes(1, "little")
         digest += self._threshold.to_bytes(2, "little")
-        for index, kkeys in enumerate(self._keys):
-            digest += kkeys.public_key.scheme_and_key()  # type: ignore
+        for index, kkeys in enumerate(self._public_keys):
+            digest += kkeys.scheme_and_key()  # type: ignore
             digest += self._weights[index].to_bytes(1, "little")
         return SuiAddress(hashlib.blake2b(digest, digest_size=32).hexdigest())
 
@@ -306,11 +295,6 @@ class MultiSig:
         return self._public_keys.copy()
 
     @property
-    def full_keys(self) -> list[SuiKeyPair]:
-        """."""
-        return self._keys.copy()
-
-    @property
     def weights(self) -> list[int]:
         """Return a copy of the list of weights used in this MultiSig."""
         return self._weights.copy()
@@ -339,25 +323,12 @@ class MultiSig:
                     return hit_indexes
         raise ValueError("Keys and weights for signing do not meet thresholds")
 
-    def _validate_signers(self, pub_keys: list[SuiPublicKey]) -> list[int]:
-        """Validate pubkeys part of multisig and have enough weight."""
-        # Must be subset of full ms list
-        assert len(pub_keys) <= len(
-            self._public_keys
-        ), "More public keys than MultiSig"
-        hit_indexes = [self._public_keys.index(i) for i in pub_keys]
-        # If all inbound pubkeys have reference to item in ms list
-        assert len(hit_indexes) == len(
-            pub_keys
-        ), "Public key not part of MultiSig keys"
-        return hit_indexes
-
     def _new_publickey(self) -> list[MsNewPublicKey]:
         """Generate MultiSig BCS representation of PublicKey."""
         # Generate new BCS PublicKeys from the FULL compliment of original public keys
         pks: list[MsNewPublicKey] = []
-        for index, kkeys in enumerate(self._keys):
-            pkb = kkeys.public_key.key_bytes  # type: ignore
+        for index, kkeys in enumerate(self._public_keys):
+            pkb = kkeys.key_bytes  # type: ignore
             if kkeys.scheme == SignatureScheme.ED25519:
                 npk = MsNewPublicKey(
                     "Ed25519",
@@ -375,6 +346,79 @@ class MultiSig:
                 )
             pks.append(npk)
         return pks
+
+    def _signature(
+        self,
+        pub_keys: list[SuiPublicKey],
+        compressed_sigs: list[MsCompressedSig],
+    ) -> SuiSignature:
+        """."""
+        key_indices = self.validate_signers(pub_keys)
+        # Generate the public keys used position bitmap
+        # then build the signature
+        bm_pks: int = 0
+        for index in key_indices:
+            bm_pks |= 1 << index
+        serialized_rbm: MsBitmap = MsBitmap(bm_pks)
+
+        msig_signature = MultiSignature(
+            self._scheme,
+            compressed_sigs,
+            serialized_rbm,
+            self._new_publickey(),
+            self.threshold,
+        )
+        return SuiSignature(
+            base64.b64encode(msig_signature.serialize()).decode()
+        )
+
+    def signature_from(
+        self, pub_keys: list[SuiPublicKey], signatures: list[SuiSignature]
+    ) -> SuiSignature:
+        """signature_from Creates a multisig signature from signed bytes.
+
+        :param pub_keys: List of public keys associated to keypairs that created signatures
+        :type pub_keys: list[SuiPublicKey]
+        :param signatures: Signatures from signed transaction bytes digest
+        :type signatures: list[SuiSignature]
+        :return: A multisig signature
+        :rtype: SuiSignature
+        """
+        compressed: list[MsCompressedSig] = []
+        for index in signatures:
+            sig = str(index.value)
+            compressed.append(
+                MsCompressedSig(
+                    list(base64.b64decode(sig)[0 : self._COMPRESSED_SIG_LEN])
+                )
+            )
+        return self._signature(pub_keys, compressed)
+
+
+class MultiSig(BaseMultiSig):
+    """Multi signature support."""
+
+    def __init__(
+        self, suikeys: list[SuiKeyPair], weights: list[int], threshold: int
+    ):
+        """__init__ Initiate a MultiSig object.
+
+        Note that Sui multi-sig accepts up to a maximum of ten (10) individual signer keys.
+
+        :param suikeys: The list of keys participating in the multi-sig signing operations.
+        :type suikeys: list[SuiKeyPair]
+        :param weights: Corresponding weights for each key. Max value of each weight is 255 (8 bit unsigned)
+        :type weights: list[int]
+        :param threshold: The threshold criteria for this MultiSig. Max value is 2549 (16 bit unsigned)
+        :type threshold: int
+        """
+        super().__init__([kp.public_key for kp in suikeys], weights, threshold)
+        self._keys = suikeys
+
+    @property
+    def full_keys(self) -> list[SuiKeyPair]:
+        """."""
+        return self._keys.copy()
 
     @versionadded(
         version="0.21.1", reason="Support for inline multisig signing"
@@ -406,29 +450,13 @@ class MultiSig:
     ) -> SuiSignature:
         """sign Signs transaction bytes for operation that changes objects owned by MultiSig address."""
         # Validate the pub_keys alignment with self._keys
-        key_indices = self._validate_signers(pub_keys)
+        # key_indices = self._validate_signers(pub_keys)
         # Generate BCS compressed signatures for the subset of keys
         tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value  # type: ignore
         compressed_sigs: list[MsCompressedSig] = self._compressed_signatures(
-            str(tx_bytes), key_indices
+            str(tx_bytes), self.validate_signers(pub_keys)
         )
-
-        # Generate the public keys used position bitmap
-        # then build the signature
-        bm_pks: int = 0
-        for index in key_indices:
-            bm_pks |= 1 << index
-        serialized_rbm: MsBitmap = MsBitmap(bm_pks)
-        msig_signature = MultiSignature(
-            self._scheme,
-            compressed_sigs,
-            serialized_rbm,
-            self._new_publickey(),
-            self.threshold,
-        )
-        return SuiSignature(
-            base64.b64encode(msig_signature.serialize()).decode()
-        )
+        return self._signature(pub_keys, compressed_sigs)
 
     def serialize(self) -> str:
         """serialize Serializes the MultiSig object to base64 string.

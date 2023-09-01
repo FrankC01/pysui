@@ -308,6 +308,42 @@ class SuiTransactionAsync(_SuiTransactionBase):
         self._executed = True
         return await self.client.execute(exec_tx)
 
+    @versionadded(version="0.35.0", reason="Added for offline signing support")
+    async def deferred_execution(
+        self,
+        *,
+        gas_budget: Optional[Union[str, SuiString]] = "",
+        use_gas_object: Optional[Union[str, ObjectID]] = None,
+        run_verification: Optional[bool] = False,
+    ) -> Union[str, ValueError]:
+        """deferred_execution Finalizes transaction and returns base64 string for signing.
+
+        The result can then be signed (single, multisig, etc) and then executed
+
+        :param gas_budget: The gas budget to use. If set, it will be used in
+            transaction. Otherwise a dry-run is peformed to set budget, default to empty string (None)
+        :type gas_budget: Optional[Union[str, SuiString]], optional
+        :param use_gas_object: Explicit gas object to use for payment, defaults to None.
+            Will fail if provided object is marked as 'in use' in commands.
+        :type use_gas_object: Optional[Union[str, ObjectID]], optional
+        :param run_verification: Will run validation on transaction using Sui ProtocolConfig constraints, defaults to False.
+            Will fail if validation errors (SuiRpcResult.is_err()).
+        :type run_verification: Optional[bool], optional
+        :return: The bsae64 encoded transaction bytes that can be signed for execution
+        :rtype: str
+        """
+        assert not self._executed, "Transaction already executed"
+        txn_data = await self._build_for_execute(gas_budget, use_gas_object)
+        ser_data = txn_data.serialize()
+        if run_verification:
+            _, failed_verification = self.verify_transaction(ser_data)
+            if failed_verification:
+                return SuiRpcResult(
+                    False, "Failed validation", failed_verification
+                )
+        self._executed = True
+        return base64.b64encode(ser_data).decode()
+
     @versionchanged(
         version="0.16.1",
         reason="Added returning SuiRpcResult if inspect transaction failed.",
