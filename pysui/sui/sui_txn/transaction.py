@@ -286,7 +286,7 @@ class _SuiTransactionBase:
         # Check size of transaction bytes
         # Build faux gas as needed
         if not ser_kind:
-            reuse_addy = bcs.Address.from_str(self._sig_block.payer_address)
+            reuse_addy = bcs.Address.from_str("0x0")
             ser_txdata = bcs.TransactionData(
                 "V1",
                 bcs.TransactionDataV1(
@@ -435,16 +435,21 @@ class _SuiTransactionBase:
     @versionchanged(
         version="0.33.0", reason="Removed abstraction made private"
     )
-    def _serialize(self) -> bcs.SuiTransaction:
+    def _serialize(self, include_sender_sponsor) -> bcs.SuiTransaction:
         """serialize Returns a BCS representation of SuiTransaction state.
 
         :return: BCS representation of SuiTransaction state
         :rtype: bcs.SuiTransaction
         """
         # Sender and Sponsor
-        sender, sponsor = ser_sender_and_sponsor(
-            self.signer_block, self.client.config
-        )
+        if include_sender_sponsor:
+            sender, sponsor = ser_sender_and_sponsor(
+                self.signer_block, self.client.config
+            )
+        else:
+            sender = bcs.TxSender("NotSet")
+            sponsor = bcs.TxSender("NotSet")
+
         # Finalize with builder data
         return bcs.SuiTransaction(
             "1.0.0",
@@ -457,9 +462,15 @@ class _SuiTransactionBase:
         version="0.33.0",
         reason="Serialize transaction builder to bytes",
     )
-    def serialize(self) -> bytes:
+    @versionadded(
+        version="0.35.0",
+        reason="Option to omit sender/sponsor",
+    )
+    def serialize(
+        self, include_sender_sponsor: Optional[bool] = True
+    ) -> bytes:
         """."""
-        tbuilder = self._serialize()
+        tbuilder = self._serialize(include_sender_sponsor)
         # print(tbuilder.to_json(indent=2))
         return tbuilder.serialize()
 

@@ -12,8 +12,9 @@
 
 """Client Configuration Abstraction."""
 from abc import ABC, abstractmethod
+from typing import Union
 from .client_types import AbstractType
-from .client_keypair import KeyPair
+from .client_keypair import KeyPair, PublicKey
 
 
 class ClientConfiguration(ABC):
@@ -72,3 +73,12 @@ class ClientConfiguration(ABC):
         if addy.address in self._address_keypair:
             return self._address_keypair[addy.address]
         raise ValueError(f"{addy.address} is not known")
+
+    def keypair_for_publickey(
+        self, pub_key: PublicKey
+    ) -> Union[KeyPair, None]:
+        """Return the keypair for the public key or None if no match."""
+        for kp in self._keypairs.values():
+            if kp.public_key == pub_key:
+                return kp
+        return None
