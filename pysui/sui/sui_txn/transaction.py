@@ -342,9 +342,10 @@ class _SuiTransactionBase:
             match clz_name:
                 case "list" | "SuiArray":
                     # Have exceeded limit/constraint
-                    if nest_depth >= bcs.TYPETAG_VECTOR_DEPTH_MAX:
+
+                    if nest_depth >= self.constraints.max_type_argument_depth:
                         raise ValueError(
-                            f"vector is constrained to max {bcs.TYPETAG_VECTOR_DEPTH_MAX} depth. Found {nest_depth}."
+                            f"vector is constrained to max {self.constraints.max_type_argument_depth} depth. Found {nest_depth}."
                         )
 
                     # Generalize to list

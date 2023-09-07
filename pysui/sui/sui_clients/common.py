@@ -149,7 +149,7 @@ class _ClientMixin(Provider):
     """
 
     _RPC_MINIMAL_VERSION: str = "1.6.0"
-    _RPC_REQUIRED_VERSION: str = "1.9.0"
+    _RPC_REQUIRED_VERSION: str = "1.10.0"
 
     @versionchanged(
         version="0.26.1",
