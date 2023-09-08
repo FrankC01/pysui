@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2023-08-28
+
+### Added
+
+- [enhcancement](https://github.com/FrankC01/pysui/issues/161) SuiTransaction supports offline signing.
+`SuiTransaction.deferred_execution` takes same arguments as `SuiTransaction.execute` but returns a
+base64 string that can be signed and then used in the `ExecuteTransaction` builder.
+- `BaseMultiSig`, base class for `MultiSig`, that supports constructing with just publickeys. When
+signatures are gathered then use `BaseMultiSig.signature_from` for generating the MultiSig signature. Attemptinig
+to `SuiTransaction.execute` when using BaseMultiSig will fail
+- `SuiConfig.keypair_for_publickey` method
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/162) Constraint on vector limits constant
+was replaced but validation routine not updated
+
+### Changed
+
+### Removed
+
 ## [0.34.1] - Unpublished
 
 ### Added
