@@ -223,7 +223,8 @@ class PureInput:
     def _(cls, arg: SuiAddress) -> list:
         """Convert SuiAddress to list of bytes."""
         logger.debug(f"SuiAddress->pure {arg.address}")
-        return PureInput.pure(binascii.unhexlify(arg.address[2:]))
+        addy = bcs.Address.from_sui_address(arg)
+        return list(addy.serialize())
 
     @pure.register
     @classmethod
