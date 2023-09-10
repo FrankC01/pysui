@@ -16,6 +16,8 @@ pure vectors (i.e. vector<u8>, etc.)
 
 ### Changed
 
+- Bumped dataclasses-json to 0.6.0
+
 ### Removed
 
 ## [0.35.0] - 2023-08-28

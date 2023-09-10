@@ -27,7 +27,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
-    "dataclasses_json < 0.6.0, >= 0.5.7",
+    "dataclasses_json < 0.7.0, >= 0.6.0",
     "PyYAML < 6.2, >= 6.0.1",
     "httpx < 0.25, >=0.24.1",
     "h2 < 4.2.0, >= 4.1.0",
