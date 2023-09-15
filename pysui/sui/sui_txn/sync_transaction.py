@@ -313,7 +313,13 @@ class SuiTransaction(_SuiTransactionBase):
     @versionadded(
         version="0.17.0", reason="Convenience for serializing and dry-running."
     )
-    def get_transaction_data(self, *, gas_budget) -> bcs.TransactionData:
+    @versionchanged(
+        version="0.35.1",
+        reason="gas_budget is optional.",
+    )
+    def get_transaction_data(
+        self, *, gas_budget: Optional[str] = None
+    ) -> bcs.TransactionData:
         """Returns the BCS TransactionKind."""
         return self._build_for_execute(gas_budget)
 

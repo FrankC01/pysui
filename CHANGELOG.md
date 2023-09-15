@@ -17,6 +17,7 @@ pure vectors (i.e. vector<u8>, etc.)
 ### Changed
 
 - Bumped dataclasses-json to 0.6.0
+- `gas_budget` now optional on `SuiTransaction.get_transaction_data`
 
 ### Removed
 
