@@ -164,36 +164,10 @@ def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
 
 
 @versionadded(
-    version="0.17.0",
-    reason="Added true package hash (digest) to CompiledPacakge.",
-)
-def _package_digest(
-    package: CompiledPackage, readers: list[ModuleReader]
-) -> None:
-    """Converts compiled module bytes for publishing and digest calculation."""
-    mod_strs: list = []
-    all_bytes: list = []
-    # Get the bytes for digest and string for publishing
-    for mod_bytes in readers:
-        mr_bytes = mod_bytes.reader.getvalue()
-        all_bytes.append(mr_bytes)
-        mod_strs.append(SuiString(base64.b64encode(mr_bytes).decode()))
-    for dep_str in package.dependencies:
-        all_bytes.append(binascii.unhexlify(dep_str[2:]))
-
-    all_bytes.sort()
-    hasher = hashlib.blake2b(digest_size=32)
-    for bblock in all_bytes:
-        hasher.update(bblock)
-    package.package_digest = hasher.digest()
-    package.compiled_modules = mod_strs
-
-
-@versionadded(
     version="0.20.0",
     reason="Sui move build introduced hashing the modules first.",
 )
-def _new_package_digest(
+def _package_digest(
     package: CompiledPackage, readers: list[ModuleReader]
 ) -> None:
     """Converts compiled module bytes for publishing and digest calculation."""
@@ -228,7 +202,6 @@ def publish_build(
     path_to_package: Path,
     include_unpublished: bool = False,
     skip_git_dependencie: bool = False,
-    legacy_digest: bool = False,
 ) -> Union[CompiledPackage, Exception]:
     """Build and collect module base64 strings and dependencies ObjectIDs."""
     if os.environ[PYSUI_EXEC_ENV] == EMPEHMERAL_PATH:
@@ -257,10 +230,7 @@ def publish_build(
     # Construct initial package
     cpackage = _build_dep_info(build_subdir[0].path)
     # Set module bytes as base64 strings and generate package digest
-    if legacy_digest:
-        _package_digest(cpackage, _modules_bytes(byte_modules))
-    else:
-        _new_package_digest(cpackage, _modules_bytes(byte_modules))
+    _package_digest(cpackage, _modules_bytes(byte_modules))
     return cpackage
 
 
@@ -742,5 +712,4 @@ COERCION_FN_MAP = {
 }
 
 if __name__ == "__main__":
-    ppath = Path(os.path.expanduser("~/frankc01/sui-track"))
-    stuff = publish_build(ppath)
+    pass

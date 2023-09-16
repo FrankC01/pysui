@@ -5,9 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] - 2023-09-16
+
+### Added
+
+- Sui RPC 1.11.0 support
+
+### Fixed
+
+### Changed
+
+### Removed
+
+- Sui RPC  1.6.0 support
+- `legacy_digest` option from `sui_utils.publish_build`
+
 ## [0.35.1] - Unpublished
 
 ### Added
+
+- Sui RPC 1.11.0 support
 
 ### Fixed
 
@@ -20,6 +37,9 @@ pure vectors (i.e. vector<u8>, etc.)
 - `gas_budget` now optional on `SuiTransaction.get_transaction_data`
 
 ### Removed
+
+- Sui RPC  1.6.0 support
+- `legacy_digest` option from `sui_utils.publish_build`
 
 ## [0.35.0] - 2023-08-28
 

@@ -409,7 +409,6 @@ class _SuiTransactionBase:
         project_path: str,
         with_unpublished_dependencies: bool,
         skip_fetch_latest_git_deps: bool,
-        legacy_digest: bool,
     ) -> tuple[list[str], list[str], bcs.Digest]:
         """."""
         src_path = Path(os.path.expanduser(project_path))
@@ -417,7 +416,6 @@ class _SuiTransactionBase:
             src_path,
             with_unpublished_dependencies,
             skip_fetch_latest_git_deps,
-            legacy_digest,
         )
         modules = list(
             map(self._to_bytes_from_str, compiled_package.compiled_modules)

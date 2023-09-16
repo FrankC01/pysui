@@ -708,13 +708,16 @@ class SuiTransaction(_SuiTransactionBase):
         version="0.20.0",
         reason="Removed recipient. Transfer of UpgradeCap up to user as per Sui best practice.",
     )
+    @versionchanged(
+        version="0.36.0",
+        reason="Removed legacy_digest. No longer supported in Sui.",
+    )
     def publish(
         self,
         *,
         project_path: str,
         with_unpublished_dependencies: bool = False,
         skip_fetch_latest_git_deps: bool = False,
-        legacy_digest: bool = False,
     ) -> bcs.Argument:
         """publish Creates a publish command.
 
@@ -734,7 +737,6 @@ class SuiTransaction(_SuiTransactionBase):
             project_path,
             with_unpublished_dependencies,
             skip_fetch_latest_git_deps,
-            legacy_digest,
         )
         return self.builder.publish(modules, dependencies)
 
@@ -761,6 +763,10 @@ class SuiTransaction(_SuiTransactionBase):
         version="0.20.0",
         reason="Added package compiled digest control as per Sui 1.0.0.",
     )
+    @versionchanged(
+        version="0.36.0",
+        reason="Dropped legacy_digest. No longer supported in Sui.",
+    )
     def publish_upgrade(
         self,
         *,
@@ -769,7 +775,6 @@ class SuiTransaction(_SuiTransactionBase):
         upgrade_cap: Union[str, ObjectID, ObjectRead],
         with_unpublished_dependencies: bool = False,
         skip_fetch_latest_git_deps: bool = False,
-        legacy_digest: bool = False,
     ) -> bcs.Argument:
         """publish_upgrade Authorize, publish and commit upgrade of package.
 
@@ -785,8 +790,6 @@ class SuiTransaction(_SuiTransactionBase):
         :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
             package dependencies, defaults to False
         :type skip_fetch_latest_git_deps: bool, optional
-        :param legacy_digest: Flag indicating to create a digest the old way
-        :type legacy_digest: bool, optional
         :return: The Result Argument
         :rtype: bcs.Argument
         """
@@ -798,7 +801,6 @@ class SuiTransaction(_SuiTransactionBase):
             project_path,
             with_unpublished_dependencies,
             skip_fetch_latest_git_deps,
-            legacy_digest,
         )
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
