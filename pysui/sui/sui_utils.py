@@ -195,9 +195,6 @@ def _package_digest(
     version="0.17.0",
     reason="Added the package digest that matches chain digest.",
 )
-@deprecated(
-    version="0.34.0", reason="legacy_digest no longer supported in Sui"
-)
 def publish_build(
     path_to_package: Path,
     include_unpublished: bool = False,
