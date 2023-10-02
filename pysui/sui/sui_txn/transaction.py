@@ -37,6 +37,10 @@ from pysui.sui.sui_txn.txn_deser import (
     ser_sender_and_sponsor,
     ser_transaction_builder,
 )
+from pysui.sui.sui_txresults.package_meta import (
+    SuiParameterReference,
+    SuiParameterStruct,
+)
 from pysui.sui.sui_txresults.single_tx import (
     TransactionConstraints,
 )
@@ -316,7 +320,8 @@ class _SuiTransactionBase:
 
         var_map = vars(result_err)
         err_dict: dict = {x: y for (x, y) in var_map.items() if y != 0}
-        return self.constraints, err_dict
+        err_dict.pop("feature_dict")
+        return self.constraints, err_dict if err_dict else None
 
     @versionadded(
         version="0.18.0", reason="Reuse for argument nested list recursion."
@@ -426,6 +431,54 @@ class _SuiTransactionBase:
         ]
         digest = bcs.Digest.from_bytes(compiled_package.package_digest)
         return modules, dependencies, digest
+
+    def _receiving_parm(self, parm) -> bool:
+        """."""
+        arg_is_receiving = False
+        if isinstance(parm, SuiParameterStruct) and parm.name == "Receiving":
+            arg_is_receiving = True
+        elif (
+            isinstance(parm, SuiParameterReference)
+            and parm.reference_to.name == "Receiving"
+        ):
+            arg_is_receiving = True
+        return arg_is_receiving
+
+    @versionadded(
+        version="0.37.0",
+        reason="Process arguments for Receiving object decoration",
+    )
+    def _receiving_feature(self, arguments: list, parameters: list) -> list:
+        """."""
+        for index, arg in enumerate(arguments):
+            parm = parameters[index]
+            # Is parameter type a transfer::Receiving kind
+            is_receiving = self._receiving_parm(parm)
+            is_receiving_supported = self.constraints.feature_dict.get(
+                "receive_objects", False
+            )
+            if is_receiving and not self.constraints.feature_dict.get(
+                "receive_objects", False
+            ):
+                raise ValueError(
+                    f"Receiving not supported in Sui {self.client.rpc_version}"
+                )
+            # If type is a CallArg object (imm/shared/receive)
+            if isinstance(arg, tuple):
+                if is_receiving:
+                    if is_receiving_supported:
+                        arguments[index] = (
+                            arg[0],
+                            bcs.ObjectArg("Receiving", arg[1].value),
+                        )
+                        arg = arguments[index]
+                        # arg[1] = bcs.ObjectArg("Receiving", arg[1].value)
+                    else:
+                        pass
+                if hasattr(parm, "is_mutable") and parm.is_mutable:
+                    r_arg: bcs.ObjectArg = arg[1]
+                    r_arg.value.Mutable = True
+        return arguments
 
     @versionadded(
         version="0.32.0",

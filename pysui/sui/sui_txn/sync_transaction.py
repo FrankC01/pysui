@@ -616,16 +616,9 @@ class SuiTransaction(_SuiTransactionBase):
             arguments = (
                 arguments if isinstance(arguments, list) else arguments.array
             )
-            arguments = self._resolve_arguments(arguments)
-            for index, arg in enumerate(arguments):
-                parm = parameters[index]
-                if (
-                    hasattr(parm, "is_mutable")
-                    and parm.is_mutable
-                    and isinstance(arg, tuple)
-                ):
-                    r_arg: bcs.ObjectArg = arg[1]
-                    r_arg.value.Mutable = True
+            arguments = self._receiving_feature(
+                self._resolve_arguments(arguments), parameters
+            )
         else:
             arguments = []
         # Standardize the type_arguments to list
@@ -682,16 +675,7 @@ class SuiTransaction(_SuiTransactionBase):
             res_count,
         ) = self._move_call_target_cache(target)
         if arguments:
-            for index, arg in enumerate(arguments):
-                parm = parameters[index]
-                if (
-                    hasattr(parm, "is_mutable")
-                    and parm.is_mutable
-                    and isinstance(arg, tuple)
-                ):
-                    r_arg: bcs.ObjectArg = arg[1]
-                    r_arg.value.Mutable = True
-
+            arguments = self._receiving_feature(arguments, parameters)
         type_arguments = (
             type_arguments if isinstance(type_arguments, list) else []
         )

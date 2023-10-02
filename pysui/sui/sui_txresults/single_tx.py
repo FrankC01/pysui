@@ -1032,6 +1032,7 @@ class ValidatorApys(DataClassJsonMixin):
 class TransactionConstraints(DataClassJsonMixin):
     """Subset of Protocol Constraints."""
 
+    protocol_version: Optional[int] = 0
     max_arguments: Optional[int] = 0
     max_input_objects: Optional[int] = 0
     max_num_transferred_move_object_ids: Optional[int] = 0
@@ -1041,6 +1042,7 @@ class TransactionConstraints(DataClassJsonMixin):
     max_type_argument_depth: Optional[int] = 0
     max_type_arguments: Optional[int] = 0
     max_tx_gas: Optional[int] = 0
+    feature_dict: Optional[dict] = field(default_factory=dict)
 
 
 @dataclass
@@ -1066,6 +1068,7 @@ class ProtocolConfig(DataClassJsonMixin):
     def loader(cls, indata: dict) -> "ProtocolConfig":
         """Loader to resolve constraints."""
         pc = ProtocolConfig.from_dict(indata)
+        pc.transaction_constraints.protocol_version = int(pc.protocol_version)
         pc.transaction_constraints.max_arguments = int(
             pc.attributes["max_arguments"]["u32"]
         )
@@ -1093,4 +1096,5 @@ class ProtocolConfig(DataClassJsonMixin):
         pc.transaction_constraints.max_tx_gas = int(
             pc.attributes["max_tx_gas"]["u64"]
         )
+        pc.transaction_constraints.feature_dict = pc.feature_flags
         return pc

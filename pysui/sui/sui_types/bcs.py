@@ -359,6 +359,7 @@ class ObjectArg(canoser.RustEnum):
     _enums = [
         ("ImmOrOwnedObject", ObjectReference),
         ("SharedObject", SharedObjectReference),
+        ("Receiving", ObjectReference),
     ]
 
 

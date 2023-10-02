@@ -20,13 +20,13 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 ## pysui SDK current (github)
 
-**Release-0.36.1**
+**Release-0.37.0**
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.36.0**
+**Release-0.37.0**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
