@@ -439,6 +439,7 @@ class _SuiTransactionBase:
             arg_is_receiving = True
         elif (
             isinstance(parm, SuiParameterReference)
+            and hasattr(parm.reference_to, "name")
             and parm.reference_to.name == "Receiving"
         ):
             arg_is_receiving = True
