@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated doc theme dependency
+
 ### Removed
 
 ## [0.37.0] - 2023-10-02
