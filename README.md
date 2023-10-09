@@ -26,7 +26,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.37.0**
+**Release-0.37.1**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
