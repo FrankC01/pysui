@@ -15,6 +15,8 @@ build:
     rust: "1.70"
     # golang: "1.17"
   jobs:
+    post_create_environment:
+      - pip install sphinx-rtd-theme
     pre_build:
       - sphinx-apidoc -o doc/source pysui/
 
