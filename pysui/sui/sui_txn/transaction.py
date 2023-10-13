@@ -92,9 +92,7 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
 
 @versionadded(version="0.26.0", reason="Refactor to support Async")
 @versionadded(version="0.30.0", reason="Moved to transaction package.")
-@versionadded(
-    version="0.32.0", reason="Abstracting and adding serialization support."
-)
+@versionadded(version="0.32.0", reason="Abstracting and adding serialization support.")
 class _SuiTransactionBase:
     """."""
 
@@ -162,9 +160,7 @@ class _SuiTransactionBase:
             elif isinstance(deserialize_from, bytes):
                 pass
             else:
-                raise ValueError(
-                    "deserialize_from must be a base64 string or bytes"
-                )
+                raise ValueError("deserialize_from must be a base64 string or bytes")
             self.deserialize(deserialize_from)
 
     @property
@@ -206,15 +202,9 @@ class _SuiTransactionBase:
         """
         return base64.b64encode(self.raw_kind().serialize()).decode()
 
-    @versionadded(
-        version="0.30.0", reason="Observing Sui ProtocolConfig constraints"
-    )
-    @versionchanged(
-        version="0.31.0", reason="Validating against all PTB constraints"
-    )
-    @versionchanged(
-        version="0.34.0", reason="Fixed Command argument evaluation"
-    )
+    @versionadded(version="0.30.0", reason="Observing Sui ProtocolConfig constraints")
+    @versionchanged(version="0.31.0", reason="Validating against all PTB constraints")
+    @versionchanged(version="0.34.0", reason="Fixed Command argument evaluation")
     def verify_transaction(
         self, ser_kind: Optional[bytes] = None
     ) -> tuple[TransactionConstraints, Union[dict, None]]:
@@ -232,9 +222,7 @@ class _SuiTransactionBase:
         for i_key in self.builder.inputs.keys():
             if i_key.enum_name == "Pure":
                 ilen = len(i_key.value)
-                max_pure_inputs = (
-                    ilen if ilen > max_pure_inputs else max_pure_inputs
-                )
+                max_pure_inputs = ilen if ilen > max_pure_inputs else max_pure_inputs
             else:
                 obj_inputs.append(i_key)
 
@@ -243,9 +231,7 @@ class _SuiTransactionBase:
             result_err.max_pure_argument_size = max_pure_inputs
 
         # Check input objects (objs + move calls)
-        obj_count = (
-            len(obj_inputs) + self.builder.command_frequency["MoveCall"]
-        )
+        obj_count = len(obj_inputs) + self.builder.command_frequency["MoveCall"]
         if obj_count > self.constraints.max_input_objects:
             result_err.max_input_objects = obj_count
 
@@ -281,10 +267,7 @@ class _SuiTransactionBase:
             result_err.max_num_transferred_move_object_ids = total_args
 
         # Check max_programmable_tx_commands
-        if (
-            len(self.builder.commands)
-            > self.constraints.max_programmable_tx_commands
-        ):
+        if len(self.builder.commands) > self.constraints.max_programmable_tx_commands:
             result_err.max_programmable_tx_commands = len(self.commands)
 
         # Check size of transaction bytes
@@ -323,9 +306,7 @@ class _SuiTransactionBase:
         err_dict.pop("feature_dict")
         return self.constraints, err_dict if err_dict else None
 
-    @versionadded(
-        version="0.18.0", reason="Reuse for argument nested list recursion."
-    )
+    @versionadded(version="0.18.0", reason="Reuse for argument nested list recursion.")
     @versionadded(
         version="0.19.0",
         reason="Broaden types in _PURE_CANDIDATES with set of Optional<Ux> types",
@@ -404,9 +385,7 @@ class _SuiTransactionBase:
     def _to_bytes_from_str(self, inbound: Union[str, SuiString]) -> list[int]:
         """Utility to convert base64 string to bytes then as list of u8."""
         return list(
-            base64.b64decode(
-                inbound if isinstance(inbound, str) else inbound.value
-            )
+            base64.b64decode(inbound if isinstance(inbound, str) else inbound.value)
         )
 
     def _compile_source(
@@ -422,9 +401,7 @@ class _SuiTransactionBase:
             with_unpublished_dependencies,
             skip_fetch_latest_git_deps,
         )
-        modules = list(
-            map(self._to_bytes_from_str, compiled_package.compiled_modules)
-        )
+        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
         dependencies = [
             bcs.Address.from_str(x if isinstance(x, str) else x.value)
             for x in compiled_package.dependencies
@@ -485,9 +462,7 @@ class _SuiTransactionBase:
         version="0.32.0",
         reason="Serialize transaction builder",
     )
-    @versionchanged(
-        version="0.33.0", reason="Removed abstraction made private"
-    )
+    @versionchanged(version="0.33.0", reason="Removed abstraction made private")
     def _serialize(self, include_sender_sponsor) -> bcs.SuiTransaction:
         """serialize Returns a BCS representation of SuiTransaction state.
 
@@ -519,9 +494,7 @@ class _SuiTransactionBase:
         version="0.35.0",
         reason="Option to omit sender/sponsor",
     )
-    def serialize(
-        self, include_sender_sponsor: Optional[bool] = True
-    ) -> bytes:
+    def serialize(self, include_sender_sponsor: Optional[bool] = True) -> bytes:
         """."""
         tbuilder = self._serialize(include_sender_sponsor)
         # print(tbuilder.to_json(indent=2))
