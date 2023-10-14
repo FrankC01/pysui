@@ -124,9 +124,7 @@ def pysui_default_handler(result: SuiRpcResult) -> Any:
     sys.exit(-1)
 
 
-def handle_result(
-    from_cmd: SuiRpcResult, handler=pysui_default_handler
-) -> Any:
+def handle_result(from_cmd: SuiRpcResult, handler=pysui_default_handler) -> Any:
     """handle_result Returns value from invoking handler.
 
     :param from_cmd: The result from calling Sui RPC API
@@ -149,7 +147,7 @@ class _ClientMixin(Provider):
     """
 
     _RPC_MINIMAL_VERSION: str = "1.7.0"
-    _RPC_REQUIRED_VERSION: str = "1.12.0"
+    _RPC_REQUIRED_VERSION: str = "1.13.0"
 
     @versionchanged(
         version="0.26.1",
@@ -213,9 +211,7 @@ class _ClientMixin(Provider):
                     [],
                 ),
             )
-            self._protocol = ProtocolConfig.loader(
-                rpc_protocol_result.json()["result"]
-            )
+            self._protocol = ProtocolConfig.loader(rpc_protocol_result.json()["result"])
             self._gas_price = rpc_gas_result.json()["result"]
 
         (
@@ -226,17 +222,13 @@ class _ClientMixin(Provider):
         self.rpc_version_support()
         os.environ[PYSUI_RPC_VERSION] = self._rpc_version
 
-    def _generate_data_block(
-        self, data_block: dict, method: str, params: list
-    ) -> dict:
+    def _generate_data_block(self, data_block: dict, method: str, params: list) -> dict:
         """Build the json data block for Rpc."""
         data_block["method"] = method
         data_block["params"] = params
         return data_block
 
-    @versionchanged(
-        version="0.24.0", reason="Moved from list to dict for RPC params"
-    )
+    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
     def _validate_builder(
         self, builder: SuiBaseBuilder
     ) -> Union[dict, SuiRpcApiNotAvailable]:
@@ -363,15 +355,10 @@ class _ClientMixin(Provider):
         signers_list.append(self.config.keypair_for_address(base_signer))
         if signers:
             for other_address in signers.array:
-                signers_list.append(
-                    self.config.keypair_for_address(other_address)
-                )
+                signers_list.append(self.config.keypair_for_address(other_address))
         # Iterate and return signatures list
         total_signed = SuiArray(
-            [
-                kpair.new_sign_secure(tx_bytes.tx_bytes)
-                for kpair in signers_list
-            ]
+            [kpair.new_sign_secure(tx_bytes.tx_bytes) for kpair in signers_list]
         )
         return ExecuteTransaction(
             tx_bytes=tx_bytes,
@@ -380,17 +367,13 @@ class _ClientMixin(Provider):
         )
 
     # Protocol properties
-    @versionadded(
-        version="0.28.0", reason="Connection specific ProtcolConfig."
-    )
+    @versionadded(version="0.28.0", reason="Connection specific ProtcolConfig.")
     @property
     def protocol(self) -> ProtocolConfig:
         """Return the raw protocol config in place for the connection."""
         return self._protocol
 
-    @versionadded(
-        version="0.29.0", reason="Added constraint for RPC sfetches."
-    )
+    @versionadded(version="0.29.0", reason="Added constraint for RPC sfetches.")
     @property
     def max_gets(self) -> int:
         """Return maximum getXXX values (either cursored types or multiget types)."""

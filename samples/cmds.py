@@ -47,9 +47,7 @@ from pysui.sui.sui_txresults.single_tx import SuiCoinObjects
 
 def sdk_version(_client: SyncClient, _args: argparse.Namespace) -> None:
     """Dispay version(s)."""
-    print(
-        f"pysui SDK version: {__version__} SUI RPC API version {_client.rpc_version}"
-    )
+    print(f"pysui SDK version: {__version__} SUI RPC API version {_client.rpc_version}")
 
 
 def sui_active_address(client: SyncClient, _args: argparse.Namespace) -> None:
@@ -200,9 +198,7 @@ def sui_api(client: SyncClient, args: argparse.Namespace) -> None:
                 )
             print()
             print("Returns")
-            print(
-                f"    {namedef.result.name:<20} => type: {namedef.result.schema}"
-            )
+            print(f"    {namedef.result.name:<20} => type: {namedef.result.schema}")
         else:
             print(f"Sui RPC API does not contain {args.name}")
 
@@ -225,9 +221,7 @@ def transfer_object(client: SyncClient, args: argparse.Namespace) -> None:
 
     print(
         handle_result(
-            txn.execute(
-                gas_budget=args.gas_budget, use_gas_object=args.gas_object
-            )
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.gas_object)
         ).to_json(indent=2)
     )
 
@@ -243,9 +237,7 @@ def transfer_sui(client: SyncClient, args: argparse.Namespace) -> None:
     )
     print(
         handle_result(
-            txn.execute(
-                gas_budget=args.gas_budget, use_gas_object=args.sui_object_id
-            )
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.sui_object_id)
         ).to_json(indent=2)
     )
 
@@ -255,14 +247,10 @@ def merge_coin(client: SyncClient, args: argparse.Namespace) -> None:
     args.signer = args.signer if args.signer else client.current_address
     # print(args)
     txn = SyncTransaction(client, initial_sender=args.signer)
-    txn.merge_coins(
-        merge_to=args.primary_coin, merge_from=[args.coin_to_merge]
-    )
+    txn.merge_coins(merge_to=args.primary_coin, merge_from=[args.coin_to_merge])
     print(
         handle_result(
-            txn.execute(
-                gas_budget=args.gas_budget, use_gas_object=args.gas_object
-            )
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.gas_object)
         ).to_json(indent=2)
     )
 
@@ -281,9 +269,7 @@ def split_coin(client: SyncClient, args: argparse.Namespace) -> None:
         txn.transfer_objects(transfers=coins, recipient=args.signer)
     print(
         handle_result(
-            txn.execute(
-                gas_budget=args.gas_budget, use_gas_object=args.gas_object
-            )
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.gas_object)
         ).to_json(indent=2)
     )
 
@@ -293,14 +279,10 @@ def split_coin_equally(client: SyncClient, args: argparse.Namespace) -> None:
     args.signer = args.signer if args.signer else client.current_address
     # print(args)
     txn = SyncTransaction(client, initial_sender=args.signer)
-    txn.split_coin_equal(
-        coin=args.coin_object_id, split_count=int(args.split_count)
-    )
+    txn.split_coin_equal(coin=args.coin_object_id, split_count=int(args.split_count))
     print(
         handle_result(
-            txn.execute(
-                gas_budget=args.gas_budget, use_gas_object=args.gas_object
-            )
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.gas_object)
         ).to_json(indent=2)
     )
 
@@ -315,9 +297,7 @@ def publish(client: SyncClient, args: argparse.Namespace) -> None:
         txn.transfer_objects(transfers=[upc], recipient=args.sender)
         print(
             handle_result(
-                txn.execute(
-                    gas_budget=args.gas_budget, use_gas_object=args.gas_object
-                )
+                txn.execute(gas_budget=args.gas_budget, use_gas_object=args.gas_object)
             ).to_json(indent=2)
         )
     except (
@@ -355,9 +335,7 @@ def move_call(client: SyncClient, args: argparse.Namespace) -> None:
     )
     print(
         handle_result(
-            txn.execute(
-                gas_budget=args.gas_budget, use_gas_object=args.gas_object
-            )
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.gas_object)
         ).to_json(indent=2)
     )
 
@@ -371,20 +349,14 @@ def sui_pay(client: SyncClient, args: argparse.Namespace) -> None:
             i_coin = txn.split_coin(
                 coin=args.input_coins[x], amounts=[int(args.amounts[x])]
             )
-            txn.transfer_objects(
-                transfers=i_coin, recipient=args.recipients[x]
-            )
+            txn.transfer_objects(transfers=i_coin, recipient=args.recipients[x])
     else:
-        print(
-            "Lengths of --input-coins, --amounts and --recipients must be equal."
-        )
+        print("Lengths of --input-coins, --amounts and --recipients must be equal.")
         return
 
     print(
         handle_result(
-            txn.execute(
-                gas_budget=args.gas_budget, use_gas_object=args.gas_object
-            )
+            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.gas_object)
         ).to_json(indent=2)
     )
 
@@ -415,9 +387,7 @@ def sui_pay_sui(client: SyncClient, args: argparse.Namespace) -> None:
                 amount=int(args.amounts[x]),
             )
     else:
-        print(
-            "Lengths of --input-coins, --amounts and --recipients must be equal."
-        )
+        print("Lengths of --input-coins, --amounts and --recipients must be equal.")
         return
 
     print(
@@ -472,9 +442,7 @@ def _convert_event_query(
 def events_all(client: SyncClient, args: argparse.Namespace) -> None:
     """Event info request handler for all events."""
     var_args = vars(args)
-    result = client.get_events(
-        **_convert_event_query(var_args, AllFilter(filters=[]))
-    )
+    result = client.get_events(**_convert_event_query(var_args, AllFilter(filters=[])))
     # result = client.get_events(query=AllFilter(filters=[]))
     if result.is_ok():
         print(result.result_data.to_json(indent=2))

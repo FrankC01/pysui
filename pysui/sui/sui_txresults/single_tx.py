@@ -30,9 +30,7 @@ class FaucetGas(DataClassJsonMixin):
     """Faucet Gas Object."""
 
     amount: int
-    transfer_tx_digest: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    transfer_tx_digest: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     object_id: str = field(metadata=config(field_name="id"))
 
 
@@ -53,9 +51,7 @@ class FaucetGasRequest(DataClassJsonMixin):
 class ObjectReadData(DataClassJsonMixin):
     """From sui_getObject."""
 
-    has_public_transfer: bool = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    has_public_transfer: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
     fields: dict
     data_type: str = field(metadata=config(field_name="dataType"))
     type_: str = field(metadata=config(field_name="type"))
@@ -267,9 +263,7 @@ class ObjectRead(DataClassJsonMixin):
         if isinstance(self.owner, str):
             match self.owner:
                 case "Immutable":
-                    self.owner = ImmutableOwner.from_dict(
-                        {"owner_type": "Immutable"}
-                    )
+                    self.owner = ImmutableOwner.from_dict({"owner_type": "Immutable"})
                 case _:
                     self.owner = NotRequestedOwner.from_dict(
                         {"owner_type": "Filter excluded"}
@@ -310,9 +304,7 @@ class ObjectRead(DataClassJsonMixin):
         """Alias balance for coin types."""
         if isinstance(self.content, SuiCoin):
             return self.content.balance
-        raise AttributeError(
-            f"Object {self.identifier} is not a 0x2:coin:Coin type."
-        )
+        raise AttributeError(f"Object {self.identifier} is not a 0x2:coin:Coin type.")
 
     @property
     def type_signature(self) -> str:
@@ -362,9 +354,7 @@ class ObjectRead(DataClassJsonMixin):
                     vth = {
                         "code": instatus,
                         "digest": indata["digest"],
-                        "object_id": indata[
-                            "objectId", "version" : indata["version"]
-                        ],
+                        "object_id": indata["objectId", "version" : indata["version"]],
                     }
                     ObjectDeleted.from_dict(vth)
                 case _:
@@ -403,9 +393,7 @@ class ObjectReadPage(DataClassJsonMixin):
 
     data: list[dict]
     has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
-    next_cursor: Union[str, None] = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
     def __post_init__(self):
         """Post init processing for parameters."""
@@ -430,9 +418,7 @@ class ObjectRawRead(DataClassJsonMixin):
     owner: Any
     reference: GenericRef
     storage_rebate: int = field(metadata=config(field_name="storageRebate"))
-    previous_transaction: str = field(
-        metadata=config(field_name="previousTransaction")
-    )
+    previous_transaction: str = field(metadata=config(field_name="previousTransaction"))
 
     def __post_init__(self):
         """Post init processing for parameters."""
@@ -461,9 +447,7 @@ class ObjectRawRead(DataClassJsonMixin):
                     {"object_id": read_object}
                 )
             case "Deleted":
-                result: ObjectRead = ObjectDeleted.from_dict(
-                    {"reference": read_object}
-                )
+                result: ObjectRead = ObjectDeleted.from_dict({"reference": read_object})
         return result
 
     @classmethod
@@ -637,25 +621,17 @@ class ValidatorSummary(DataClassJsonMixin):
 
     commission_rate: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     description: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    exchange_rates_id: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-    exchange_rates_size: int = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    exchange_rates_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    exchange_rates_size: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     gas_price: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     image_url: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     name: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     net_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    network_pubkey_bytes: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    network_pubkey_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     next_epoch_commission_rate: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    next_epoch_gas_price: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    next_epoch_gas_price: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     next_epoch_net_address: Optional[str] = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
@@ -674,18 +650,14 @@ class ValidatorSummary(DataClassJsonMixin):
     next_epoch_protocol_pubkey_bytes: Optional[str] = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    next_epoch_stake: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    next_epoch_stake: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     next_epoch_worker_address: Optional[str] = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
     next_epoch_worker_pubkey_bytes: Optional[str] = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    operation_cap_id: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    operation_cap_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     p2p_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     pending_stake: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     pending_pool_token_withdraw: str = field(
@@ -694,17 +666,13 @@ class ValidatorSummary(DataClassJsonMixin):
     pending_total_sui_withdraw: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    pool_token_balance: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    pool_token_balance: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     primary_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     project_url: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     proof_of_possession_bytes: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    protocol_pubkey_bytes: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    protocol_pubkey_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     rewards_pool: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     staking_pool_activation_epoch: Optional[str] = field(
         metadata=config(letter_case=LetterCase.CAMEL)
@@ -713,15 +681,11 @@ class ValidatorSummary(DataClassJsonMixin):
         metadata=config(letter_case=LetterCase.CAMEL)
     )
     staking_pool_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    staking_pool_sui_balance: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    staking_pool_sui_balance: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     sui_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     voting_power: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     worker_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    worker_pubkey_bytes: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    worker_pubkey_bytes: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass
@@ -735,21 +699,11 @@ class SuiLatestSystemState(DataClassJsonMixin):
         metadata=config(letter_case=LetterCase.CAMEL)
     )
     epoch: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    epoch_duration_ms: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-    epoch_start_timestamp_ms: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-    inactive_pools_id: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-    inactive_pools_size: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-    max_validator_count: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    epoch_duration_ms: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    epoch_start_timestamp_ms: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    inactive_pools_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    inactive_pools_size: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    max_validator_count: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     min_validator_joining_stake: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
@@ -759,15 +713,9 @@ class SuiLatestSystemState(DataClassJsonMixin):
     pending_active_validators_size: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    pending_removals: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-    protocol_version: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-    reference_gas_price: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    pending_removals: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    protocol_version: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    reference_gas_price: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     safe_mode: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
     safe_mode_computation_rewards: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
@@ -781,9 +729,7 @@ class SuiLatestSystemState(DataClassJsonMixin):
     safe_mode_storage_rewards: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    stake_subsidy_balance: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    stake_subsidy_balance: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     stake_subsidy_current_distribution_amount: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
@@ -799,9 +745,7 @@ class SuiLatestSystemState(DataClassJsonMixin):
     stake_subsidy_start_epoch: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    staking_pool_mappings_id: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    staking_pool_mappings_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     staking_pool_mappings_size: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
@@ -811,13 +755,9 @@ class SuiLatestSystemState(DataClassJsonMixin):
     storage_fund_total_object_storage_rebates: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    system_state_version: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    system_state_version: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     total_stake: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    validator_candidates_id: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    validator_candidates_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     validator_candidates_size: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
@@ -840,9 +780,7 @@ class StakedSui(DataClassJsonMixin):
     """From sui_getDelegatedStakes."""
 
     staked_sui_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    stake_active_epoch: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    stake_active_epoch: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     principal: str
     # token_lock: Optional[int] = field(metadata=config(letter_case=LetterCase.CAMEL))
     status: str
@@ -860,9 +798,7 @@ class DelegatedStake(DataClassJsonMixin):
 
     stakes: list[StakedSui]
     staking_pool: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    validator_address: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    validator_address: str = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass
@@ -894,9 +830,7 @@ class SuiCoinBalance(DataClassJsonMixin):
     """From sui_getBalance."""
 
     coin_type: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    coin_object_count: int = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    coin_object_count: int = field(metadata=config(letter_case=LetterCase.CAMEL))
     total_balance: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     locked_balance: str = field(
         metadata=config(letter_case=LetterCase.CAMEL), default=""
@@ -931,9 +865,7 @@ class SuiCoinObject(DataClassJsonMixin):
     version: str
     digest: str
     balance: str
-    previous_transaction: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    previous_transaction: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     # locked_until_epoch: Optional[str] = field(metadata=config(letter_case=LetterCase.CAMEL), default_factory=str)
 
     @property
@@ -966,9 +898,7 @@ class SuiCoinObjects(DataClassJsonMixin):
     """From sui_getCoins."""
 
     data: list[SuiCoinObject]
-    next_cursor: Union[str, None] = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass
@@ -990,9 +920,7 @@ class DynamicFields(DataClassJsonMixin):
 
     data: list[DynamicFieldInfo]
     has_next_page: bool = field(metadata=config(letter_case=LetterCase.CAMEL))
-    next_cursor: Union[str, None] = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    next_cursor: Union[str, None] = field(metadata=config(letter_case=LetterCase.CAMEL))
 
 
 @dataclass
@@ -1055,9 +983,7 @@ class ProtocolConfig(DataClassJsonMixin):
     min_supported_protocol_version: str = field(
         metadata=config(letter_case=LetterCase.CAMEL)
     )
-    protocol_version: str = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
+    protocol_version: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     feature_flags: dict = field(metadata=config(letter_case=LetterCase.CAMEL))
     attributes: dict
     transaction_constraints: Optional[TransactionConstraints] = field(
@@ -1093,8 +1019,6 @@ class ProtocolConfig(DataClassJsonMixin):
         pc.transaction_constraints.max_type_arguments = int(
             pc.attributes["max_type_arguments"]["u32"]
         )
-        pc.transaction_constraints.max_tx_gas = int(
-            pc.attributes["max_tx_gas"]["u64"]
-        )
+        pc.transaction_constraints.max_tx_gas = int(pc.attributes["max_tx_gas"]["u64"])
         pc.transaction_constraints.feature_dict = pc.feature_flags
         return pc

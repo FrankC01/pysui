@@ -140,9 +140,7 @@ class SuiApi(DataClassJsonMixin):
     description: str = ""
 
 
-def _resolve_param_type(
-    schema_dict: dict, indata: dict, tpath: list
-) -> SuiJsonType:
+def _resolve_param_type(schema_dict: dict, indata: dict, tpath: list) -> SuiJsonType:
     """Find the sui type base."""
     if "type" in indata:
         ptype = indata.get("type")
@@ -170,9 +168,7 @@ def _resolve_param_type(
                     vitems = []
                     for item in dcp["items"]:
                         ipath = []
-                        vitems.append(
-                            _resolve_param_type(schema_dict, item, ipath)
-                        )
+                        vitems.append(_resolve_param_type(schema_dict, item, ipath))
                     dcp["items"] = vitems
                     dcp["type_path"] = ["tuple"]
                     return SuiJsonTuple.from_dict(dcp)

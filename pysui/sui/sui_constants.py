@@ -64,8 +64,10 @@ LOCALNET_SOCKET_URL: str = "ws://127.0.0.1:9000"
 
 TESTNET_SUI_URL: str = "https://fullnode.testnet.sui.io:443"
 """Testnet Sui client url."""
-TESTNET_FAUCET_URL: str = "http://faucet.testnet.sui.io/gas"
-"""Testnet client faucet url."""
+TESTNET_FAUCET_URL: str = (
+    "https://faucet.testnet.sui.io/v1/gas"  # "http://faucet.testnet.sui.io/gas"
+)
+TESTNET_FAUCET_STATUS_URL: str = "https://faucet.testnet.sui.io/v1/status/"
 TESTNET_SOCKET_URL: str = "wss://fullnode.testnet.sui.io:443"
 """Testnet socket url."""
 

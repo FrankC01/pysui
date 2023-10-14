@@ -30,6 +30,7 @@ from pysui import (
 )
 
 from pysui.sui.sui_clients.common import _ClientMixin
+from pysui.sui.sui_constants import TESTNET_FAUCET_STATUS_URL
 from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
 from pysui.sui.sui_types.scalars import (
     SuiInteger,
@@ -92,12 +93,8 @@ class SuiClient(_ClientMixin):
         """Return whether client is syncrhonous (True) or not (False)."""
         return False
 
-    @versionchanged(
-        version="0.28.0", reason="Consolidated exception handling."
-    )
-    async def _execute(
-        self, builder: SuiBaseBuilder
-    ) -> Union[SuiRpcResult, Exception]:
+    @versionchanged(version="0.28.0", reason="Consolidated exception handling.")
+    async def _execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
         # Validate builder and send request
         try:
@@ -112,9 +109,7 @@ class SuiClient(_ClientMixin):
                 result.json(),
             )
         except JSONDecodeError as jexc:
-            return SuiRpcResult(
-                False, f"JSON Decoder Error {jexc.msg}", vars(jexc)
-            )
+            return SuiRpcResult(False, f"JSON Decoder Error {jexc.msg}", vars(jexc))
         except (
             httpx.HTTPError,
             httpx.InvalidURL,
@@ -134,9 +129,7 @@ class SuiClient(_ClientMixin):
             result = await self._execute(builder)
             if result.is_ok():
                 if "error" in result.result_data:
-                    return SuiRpcResult(
-                        False, result.result_data["error"], None
-                    )
+                    return SuiRpcResult(False, result.result_data["error"], None)
                 # print(result.result_data)
                 return SuiRpcResult(
                     True,
@@ -144,9 +137,7 @@ class SuiClient(_ClientMixin):
                     builder.handle_return(result.result_data["result"]),
                 )
             return result
-        return await self._multi_signed_execution(
-            builder, additional_signatures
-        )
+        return await self._multi_signed_execution(builder, additional_signatures)
 
     async def execute_no_sign(
         self, builder: SuiBaseBuilder
@@ -157,9 +148,7 @@ class SuiClient(_ClientMixin):
             if result.is_ok():
                 result = result.result_data
                 if "error" in result:
-                    return SuiRpcResult(
-                        False, result["error"]["message"], None
-                    )
+                    return SuiRpcResult(False, result["error"]["message"], None)
                 result = SuiRpcResult(
                     True,
                     None,
@@ -174,9 +163,7 @@ class SuiClient(_ClientMixin):
             False, "execute_no_sign is used only with transaction types"
         )
 
-    @versionchanged(
-        version="0.16.1", reason="Support sponsored transaction signing."
-    )
+    @versionchanged(version="0.16.1", reason="Support sponsored transaction signing.")
     async def execute_with_multisig(
         self,
         builder: SuiBaseBuilder,
@@ -194,10 +181,7 @@ class SuiClient(_ClientMixin):
                     sig_array = [new_sig]
                     if signers:
                         sig_array.extend(
-                            [
-                                kpair.new_sign_secure(tx_bytes)
-                                for kpair in signers.array
-                            ]
+                            [kpair.new_sign_secure(tx_bytes) for kpair in signers.array]
                         )
                     exec_tx = ExecuteTransaction(
                         tx_bytes=tx_bytes,
@@ -234,10 +218,7 @@ class SuiClient(_ClientMixin):
         builder = ExecuteTransaction(
             tx_bytes=tx_bytes,
             signatures=SuiArray(
-                [
-                    kpair.new_sign_secure(tx_bytes.tx_bytes)
-                    for kpair in signers_list
-                ]
+                [kpair.new_sign_secure(tx_bytes.tx_bytes) for kpair in signers_list]
             ),
             request_type=self.request_type,
         )
@@ -249,9 +230,7 @@ class SuiClient(_ClientMixin):
             )
         return result
 
-    async def dry_run(
-        self, builder: SuiBaseBuilder
-    ) -> Union[SuiRpcResult, Exception]:
+    async def dry_run(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Submit transaction than sui_dryRunTransaction only."""
         if builder.txn_required:
             result = await self.execute_no_sign(builder)
@@ -260,9 +239,7 @@ class SuiClient(_ClientMixin):
                     DryRunTransaction(tx_bytes=result.result_data.tx_bytes)
                 )
             return result
-        return SuiRpcResult(
-            False, "dry_run is used only with transaction types"
-        )
+        return SuiRpcResult(False, "dry_run is used only with transaction types")
 
     async def _multi_signed_execution(
         self,
@@ -326,9 +303,7 @@ class SuiClient(_ClientMixin):
                 result = SuiRpcResult(
                     True,
                     "",
-                    SuiCoinObjects.from_dict(
-                        {"data": accumer, "next_cursor": None}
-                    ),
+                    SuiCoinObjects.from_dict({"data": accumer, "next_cursor": None}),
                 )
             # if < 50 or > 50 and fetch_all false
             # legacy behavior
@@ -366,9 +341,7 @@ class SuiClient(_ClientMixin):
         :rtype: SuiRpcResult
         """
         address = address or self.config.active_address
-        return await self._get_coins_for_type(
-            address=address, fetch_all=fetch_all
-        )
+        return await self._get_coins_for_type(address=address, fetch_all=fetch_all)
 
     @versionchanged(
         version="0.28.0",
@@ -411,29 +384,48 @@ class SuiClient(_ClientMixin):
         :rtype: Any
         """
         for_address = for_address or self.config.active_address
+
+        async def _test_faucet_status(task_id: str) -> SuiRpcResult:
+            while True:
+                result = await self._client.get(
+                    TESTNET_FAUCET_STATUS_URL + task_id,
+                ).json()
+                if result["error"]:
+                    return SuiRpcResult(False, f"Error on status for task {task_id}")
+                elif result["status"]["status"] == "SUCCEEDED":
+                    return SuiRpcResult(
+                        True,
+                        None,
+                        FaucetGasRequest.from_dict(
+                            {
+                                "transferred_gas_objects": result["status"][
+                                    "transferred_gas_objects"
+                                ]["sent"]
+                            }
+                        ),
+                    )
+                elif result["status"]["status"] == "INPROGRESS":
+                    pass
+                else:
+                    return SuiRpcResult(False, result)
+
         try:
             if self.config.faucet_url:
                 result = await self._client.post(
                     self.config.faucet_url,
                     headers=GetObjectsOwnedByAddress(for_address).header,
-                    json={
-                        "FixedAmountRequest": {"recipient": f"{for_address}"}
-                    },
+                    json={"FixedAmountRequest": {"recipient": f"{for_address}"}},
                 )
                 result = result.json()
                 if result["error"] is None:
-                    return SuiRpcResult(
-                        True, None, FaucetGasRequest.from_dict(result)
-                    )
+                    if self.config.environment == "testnet":
+                        return await _test_faucet_status(result["task"])
+                    return SuiRpcResult(True, None, FaucetGasRequest.from_dict(result))
                 return SuiRpcResult(False, result["error"])
             else:
-                return SuiRpcResult(
-                    False, "Faucet not enabled for this configuration."
-                )
+                return SuiRpcResult(False, "Faucet not enabled for this configuration.")
         except JSONDecodeError as jexc:
-            return SuiRpcResult(
-                False, f"JSON Decoder Error {jexc.msg}", vars(jexc)
-            )
+            return SuiRpcResult(False, f"JSON Decoder Error {jexc.msg}", vars(jexc))
         except httpx.ReadTimeout as hexc:
             return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
         except TypeError as texc:
@@ -529,16 +521,12 @@ class SuiClient(_ClientMixin):
                     accum.extend(gres.result_data)
             result = SuiRpcResult(True, None, accum)
         else:
-            result = await self.execute(
-                GetMultipleObjects(object_ids=identifiers)
-            )
+            result = await self.execute(GetMultipleObjects(object_ids=identifiers))
 
         return result
         # return await self.execute(GetMultipleObjects(object_ids=identifiers))
 
-    async def get_package(
-        self, package_id: ObjectID
-    ) -> Union[SuiRpcResult, Exception]:
+    async def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """get_package Get details of Sui package.
 
         :param package_id: The ObjectID of object being queried.

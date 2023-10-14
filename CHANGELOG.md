@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Move to VSC bundled formatter `ms-python.black-formatter`
+- Url for testnet faucet
+- Bumped supported Sui RPC to 1.13.0
 
 ### Removed
 
