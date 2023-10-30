@@ -65,24 +65,17 @@ if not logging.getLogger().handlers:
     logger.propagate = False
 
 
-@versionchanged(
-    version="0.30.0", reason="Separated sync and async SuiTransaction."
-)
+@versionchanged(version="0.30.0", reason="Separated sync and async SuiTransaction.")
 class SuiTransactionAsync(_SuiTransactionBase):
     """."""
 
-    @versionchanged(
-        version="0.29.1", reason="Eliminated redundant gas price RPC call"
-    )
-    @versionchanged(
-        version="0.33.0", reason="Added deserialize_from optional argument"
-    )
+    @versionchanged(version="0.29.1", reason="Eliminated redundant gas price RPC call")
+    @versionchanged(version="0.33.0", reason="Added deserialize_from optional argument")
+    @versionchanged(version="0.39.0", reason="Added compress_inputs option")
+    @versionchanged(version="0.39.0", reason="keyword arguments")
     def __init__(
         self,
-        client: AsyncClient,
-        merge_gas_budget: bool = False,
-        initial_sender: Union[SuiAddress, SigningMultiSig] = None,
-        deserialize_from: Union[str, bytes] = None,
+        **kwargs,
     ) -> None:
         """__init__ Initialize the asynchronous SuiTransaction.
 
@@ -92,12 +85,12 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :type merge_gas_budget: bool, optional
         :param initial_sender: The address of the sender of the transaction, defaults to None
         :type initial_sender: Union[SuiAddress, SigningMultiSig], optional
+        :param compress_inputs: Reuse identical inputs, defaults to False
+        :type compress_inputs: bool,optional
         :param deserialize_from: Will rehydrate SuiTransaction state from serialized base64 str or bytes, defaults to None
         :type deserialize_from: Union[str, bytes], optional
         """
-        super().__init__(
-            client, merge_gas_budget, initial_sender, deserialize_from
-        )
+        super().__init__(**kwargs)
 
     @versionchanged(
         version="0.28.0",
@@ -193,9 +186,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
             if res.is_ok():
                 use_coin: ObjectRead = res.result_data
             else:
-                logger.exception(
-                    f"Unable to fetch gas object {test_gas_object}"
-                )
+                logger.exception(f"Unable to fetch gas object {test_gas_object}")
                 raise ValueError(
                     f"Unable to fetch gas object {test_gas_object} error {res.result_string}"
                 )
@@ -296,9 +287,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         if run_verification:
             _, failed_verification = self.verify_transaction(ser_data)
             if failed_verification:
-                return SuiRpcResult(
-                    False, "Failed validation", failed_verification
-                )
+                return SuiRpcResult(False, "Failed validation", failed_verification)
 
         # To base64
         tx_b64 = base64.b64encode(ser_data).decode()
@@ -344,9 +333,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         if run_verification:
             _, failed_verification = self.verify_transaction(ser_data)
             if failed_verification:
-                return SuiRpcResult(
-                    False, "Failed validation", failed_verification
-                )
+                return SuiRpcResult(False, "Failed validation", failed_verification)
         self._executed = True
         return base64.b64encode(ser_data).decode()
 
@@ -364,9 +351,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         """
         tx_bytes = self.build_for_inspection()
         if self.signer_block.sender:
-            for_sender: Union[
-                SuiAddress, SigningMultiSig
-            ] = self.signer_block.sender
+            for_sender: Union[SuiAddress, SigningMultiSig] = self.signer_block.sender
             if not isinstance(for_sender, SuiAddress):
                 for_sender = for_sender.multi_sig.as_sui_address
         else:
@@ -374,18 +359,14 @@ class SuiTransactionAsync(_SuiTransactionBase):
         try:
             logger.debug(f"Inspecting {tx_bytes}")
             result = await self.client.execute(
-                _DebugInspectTransaction(
-                    sender_address=for_sender, tx_bytes=tx_bytes
-                )
+                _DebugInspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes)
             )
             result = SuiRpcResult(
                 True, "", TxInspectionResult.factory(result.result_data)
             )
 
         except KeyError as kexcp:
-            logger.exception(
-                f"Malformed inspection results {result.result_data}"
-            )
+            logger.exception(f"Malformed inspection results {result.result_data}")
             raise ValueError(result.result_data)
 
         # result = await self.client.execute(
@@ -396,18 +377,14 @@ class SuiTransactionAsync(_SuiTransactionBase):
         return result
 
     # Argument resolution to lower level types
-    @versionadded(
-        version="0.18.0", reason="Reuse for argument nested list recursion."
-    )
+    @versionadded(version="0.18.0", reason="Reuse for argument nested list recursion.")
     @versionchanged(version="0.29.0", reason="Handle scale of object fetch.")
     async def _resolve_objects(
         self, items: list, objref_indexes: list, objtup_indexes: list
     ):
         """Finalizes object ref types."""
         if objref_indexes:
-            res = await self.client.get_objects_for(
-                [items[x] for x in objref_indexes]
-            )
+            res = await self.client.get_objects_for([items[x] for x in objref_indexes])
 
             # res = await self.client.execute(
             #     GetMultipleObjects(
@@ -430,9 +407,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
             for tindex in objtup_indexes:
                 item = items[tindex]
                 if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
-                    obj_ref = GenericRef(
-                        item.object_id, item.version, item.digest
-                    )
+                    obj_ref = GenericRef(item.object_id, item.version, item.digest)
                     b_obj_arg = bcs.ObjectArg(
                         "ImmOrOwnedObject",
                         bcs.ObjectReference.from_generic_ref(obj_ref),
@@ -443,15 +418,11 @@ class SuiTransactionAsync(_SuiTransactionBase):
                         bcs.SharedObjectReference.from_object_read(item),
                     )
                 items[tindex] = (
-                    bcs.BuilderArg(
-                        "Object", bcs.Address.from_str(item.object_id)
-                    ),
+                    bcs.BuilderArg("Object", bcs.Address.from_str(item.object_id)),
                     b_obj_arg,
                 )
 
-    @versionchanged(
-        version="0.18.0", reason="Handle argument nested list recursion."
-    )
+    @versionchanged(version="0.18.0", reason="Handle argument nested list recursion.")
     async def _resolve_arguments(self, items: list) -> list:
         """Process list intended as 'params' in move call."""
         objref_indexes: list[int] = []
@@ -501,12 +472,8 @@ class SuiTransactionAsync(_SuiTransactionBase):
             return res_tup
         raise ValueError(f"Unable to find target: {target}")
 
-    @versionchanged(
-        version="0.19.0", reason="Check that only type Objects are passed"
-    )
-    @versionchanged(
-        version="0.21.1", reason="Added optional item_type argument"
-    )
+    @versionchanged(version="0.19.0", reason="Check that only type Objects are passed")
+    @versionchanged(version="0.21.1", reason="Added optional item_type argument")
     async def make_move_vector(
         self, items: list[Any], item_type: Optional[str] = None
     ) -> bcs.Argument:
@@ -522,9 +489,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
             return result
 
         if item_type:
-            type_tag = bcs.OptionalTypeTag(
-                bcs.TypeTag.type_tag_from(item_type)
-            )
+            type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
         else:
             type_tag = bcs.OptionalTypeTag()
         if items:
@@ -532,10 +497,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
             if first_item:
                 # If not all arguments, ensure the remaining are consistent
                 first_class = first_item.__class__.__name__
-                if (
-                    first_class != "Argument"
-                    and first_class in self._PURE_CANDIDATES
-                ):
+                if first_class != "Argument" and first_class in self._PURE_CANDIDATES:
                     raise ValueError(
                         f"make_move_vec is for Objects only. Found type {first_class}"
                     )
@@ -594,9 +556,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         ) = await self._move_call_target_cache(target)
         # Standardize the arguments to list
         if arguments:
-            arguments = (
-                arguments if isinstance(arguments, list) else arguments.array
-            )
+            arguments = arguments if isinstance(arguments, list) else arguments.array
             arguments = self._receiving_feature(
                 await self._resolve_arguments(arguments), parameters
             )
@@ -609,9 +569,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 if isinstance(type_arguments, list)
                 else type_arguments.array
             )
-            type_arguments = [
-                bcs.TypeTag.type_tag_from(x) for x in type_arguments
-            ]
+            type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
         else:
             type_arguments = []
 
@@ -628,9 +586,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         self,
         *,
         target: Union[str, SuiString],
-        arguments: list[
-            Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]
-        ],
+        arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
         type_arguments: Optional[list[bcs.TypeTag]] = None,
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """_move_call Internal move call when arguments and type_arguments already prepared.
@@ -657,9 +613,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         ) = await self._move_call_target_cache(target)
         if arguments:
             arguments = self._receiving_feature(arguments, parameters)
-        type_arguments = (
-            type_arguments if isinstance(type_arguments, list) else []
-        )
+        type_arguments = type_arguments if isinstance(type_arguments, list) else []
         return self.builder.move_call(
             target=target_id,
             arguments=arguments,
@@ -714,9 +668,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 upcap.object_type == self._STANDARD_UPGRADE_CAP_TYPE
                 or upcap.object_type.endswith(self._UPGRADE_CAP_SUFFIX)
             ):
-                raise ValueError(
-                    f"{upcap.object_type} not recognized as UpgradeCap"
-                )
+                raise ValueError(f"{upcap.object_type} not recognized as UpgradeCap")
             return upcap
         raise ValueError(f"Error in finding UpgradeCap on {upgrade_cap}")
 
@@ -772,9 +724,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
             upgrade_cap = (
-                upgrade_cap
-                if isinstance(upgrade_cap, str)
-                else upgrade_cap.value
+                upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
             )
             upgrade_cap = await self._verify_upgrade_cap(upgrade_cap)
         else:
@@ -801,9 +751,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
             modules, dependencies, package_id, auth_cmd
         )
         # Commit
-        return self.builder.commit_upgrade(
-            bcs.Argument("Input", cap_arg), receipt
-        )
+        return self.builder.commit_upgrade(bcs.Argument("Input", cap_arg), receipt)
 
     @versionadded(version="0.20.0", reason="Support Sui 1.0.0 custom upgrades")
     async def custom_upgrade(
@@ -859,9 +807,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
             upgrade_cap = (
-                upgrade_cap
-                if isinstance(upgrade_cap, str)
-                else upgrade_cap.value
+                upgrade_cap if isinstance(upgrade_cap, str) else upgrade_cap.value
             )
             upgrade_cap = await self._verify_upgrade_cap(upgrade_cap)
         else:
@@ -991,9 +937,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         i_amounts = []
         for amount in amounts:
             if isinstance(amount, int):
-                i_amounts.append(
-                    tx_builder.PureInput.as_input(bcs.U64.encode(amount))
-                )
+                i_amounts.append(tx_builder.PureInput.as_input(bcs.U64.encode(amount)))
             elif isinstance(amount, SuiInteger):
                 i_amounts.append(
                     tx_builder.PureInput.as_input(bcs.U64.encode(amount.value))
@@ -1002,9 +946,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
                 i_amounts.append(amount)
         coin = (
             coin
-            if isinstance(
-                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
-            )
+            if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument))
             else ObjectID(coin)
         )
         resolved = await self._resolve_arguments([coin])
@@ -1037,17 +979,11 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert isinstance(
             coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
         ), "invalid coin object type"
-        assert isinstance(
-            split_count, (int, SuiInteger)
-        ), "invalid amount type"
-        split_count = (
-            split_count if isinstance(split_count, int) else split_count.value
-        )
+        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
+        split_count = split_count if isinstance(split_count, int) else split_count.value
         coin = (
             coin
-            if isinstance(
-                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
-            )
+            if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument))
             else ObjectID(coin)
         )
         resolved = await self._resolve_arguments(
@@ -1082,21 +1018,13 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert isinstance(
             coin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
         ), "invalid coin object type"
-        assert isinstance(
-            split_count, (int, SuiInteger)
-        ), "invalid amount type"
-        split_count = (
-            split_count if isinstance(split_count, int) else split_count.value
-        )
+        assert isinstance(split_count, (int, SuiInteger)), "invalid amount type"
+        split_count = split_count if isinstance(split_count, int) else split_count.value
         if split_count < 2:
-            raise ValueError(
-                f"Split count {split_count} must be greater than 1"
-            )
+            raise ValueError(f"Split count {split_count} must be greater than 1")
         coin = (
             coin
-            if isinstance(
-                coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
-            )
+            if isinstance(coin, (ObjectID, ObjectRead, SuiCoinObject, bcs.Argument))
             else ObjectID(coin)
         )
         resolved = await self._resolve_arguments(
@@ -1112,9 +1040,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         )
         # Itemize the new coins
         if coin_type.count("<") == 0:
-            coin_type_tag = bcs.TypeTag.type_tag_from(
-                f"0x2::coin::Coin<{coin_type}>"
-            )
+            coin_type_tag = bcs.TypeTag.type_tag_from(f"0x2::coin::Coin<{coin_type}>")
 
         # We only want the new coins
         nreslist: list[bcs.Argument] = []
@@ -1139,13 +1065,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
     async def merge_coins(
         self,
         *,
-        merge_to: Union[
-            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
-        ],
+        merge_to: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
         merge_from: Union[
-            list[
-                Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
-            ],
+            list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]],
             SuiArray,
         ],
     ) -> bcs.Argument:
@@ -1162,10 +1084,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert isinstance(
             merge_to, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
         ), "Unsupported type for merge_to"
-        if (
-            isinstance(merge_to, bcs.Argument)
-            and merge_to.enum_name == "GasCoin"
-        ):
+        if isinstance(merge_to, bcs.Argument) and merge_to.enum_name == "GasCoin":
             self.signer_block._merging_to_gas()
         resolved = await self._resolve_arguments(
             [merge_to if not isinstance(merge_to, str) else ObjectID(merge_to)]
@@ -1176,16 +1095,12 @@ class SuiTransactionAsync(_SuiTransactionBase):
         #     merge_from, (list, SuiArray)
         # ), "Unsupported merge_from collection type"
         parm_list: list = []
-        merge_from = (
-            merge_from if isinstance(merge_from, list) else merge_from.coins
-        )
+        merge_from = merge_from if isinstance(merge_from, list) else merge_from.coins
         for fcoin in merge_from:
             assert isinstance(
                 fcoin, (str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument)
             ), "Unsupported entry in merge_from"
-            parm_list.append(
-                fcoin if not isinstance(fcoin, str) else ObjectID(fcoin)
-            )
+            parm_list.append(fcoin if not isinstance(fcoin, str) else ObjectID(fcoin))
         return self.builder.merge_coins(
             merge_to, await self._resolve_arguments(parm_list)
         )
@@ -1193,9 +1108,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
     async def public_transfer_object(
         self,
         *,
-        object_to_send: Union[
-            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
-        ],
+        object_to_send: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
         recipient: SuiAddress,
         object_type: str,
     ) -> bcs.Argument:
@@ -1217,9 +1130,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         ), "invalid object type"
         assert isinstance(recipient, SuiAddress), "Invalid recipient type"
         obj_type_tag = bcs.TypeTag.type_tag_from(object_type)
-        resolved_args = await self._resolve_arguments(
-            [object_to_send, recipient]
-        )
+        resolved_args = await self._resolve_arguments([object_to_send, recipient])
         return await self._move_call(
             target=self._PUBLIC_TRANSFER,
             arguments=resolved_args,
@@ -1230,9 +1141,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         self,
         *,
         transfers: Union[
-            list[
-                Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
-            ],
+            list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]],
             SuiArray,
         ],
         recipient: Union[ObjectID, SuiAddress],
@@ -1250,13 +1159,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
         assert isinstance(
             transfers, (list, SuiArray, bcs.Argument)
         ), "Unsupported trasfers collection type"
-        assert isinstance(
-            recipient, (ObjectID, SuiAddress)
-        ), "invalid recipient type"
+        assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
         if isinstance(transfers, (list, SuiArray)):
-            transfers = (
-                transfers if isinstance(transfers, list) else transfers.array
-            )
+            transfers = transfers if isinstance(transfers, list) else transfers.array
             coerced_transfers: list = []
             for txfer in transfers:
                 assert isinstance(
@@ -1276,9 +1181,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         self,
         *,
         recipient: Union[ObjectID, SuiAddress],
-        from_coin: Union[
-            str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument
-        ],
+        from_coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument],
         amount: Optional[Union[int, SuiInteger]] = None,
     ) -> bcs.Argument:
         """transfer_sui Transfers a Sui coin object to a recipient.
@@ -1295,9 +1198,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        assert isinstance(
-            recipient, (ObjectID, SuiAddress)
-        ), "invalid recipient type"
+        assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
         if amount:
             assert isinstance(amount, (int, SuiInteger))
             amount = amount if isinstance(amount, int) else amount.value

@@ -139,15 +139,15 @@ def handle_result(from_cmd: SuiRpcResult, handler=pysui_default_handler) -> Any:
     return handler(from_cmd)
 
 
-class _ClientMixin(Provider):
+class ClientMixin(Provider):
     """Abstract Mix-in.
 
     Inherited by both Synch and Async clients to ensure
     constructor consistency as well as utility functions
     """
 
-    _RPC_MINIMAL_VERSION: str = "1.7.0"
-    _RPC_REQUIRED_VERSION: str = "1.13.0"
+    _RPC_MINIMAL_VERSION: str = "1.8.0"
+    _RPC_REQUIRED_VERSION: str = "1.14.0"
 
     @versionchanged(
         version="0.26.1",

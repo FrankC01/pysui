@@ -23,6 +23,38 @@ from tests.test_utils import (
 )
 
 
+def test_compressor(sui_client: SyncClient) -> None:
+    """Test input compressions."""
+    primary_coin = gas_not_in(sui_client)
+    # Compress it
+    txer = SyncTransaction(client=sui_client, compress_inputs=True)
+    scoin = txer.split_coin(coin=primary_coin, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=[scoin],
+        recipient=sui_client.config.active_address,
+    )
+    scoin = txer.split_coin(coin=primary_coin, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=[scoin],
+        recipient=sui_client.config.active_address,
+    )
+    assert len(list(txer.builder.inputs.keys())) == 3
+
+    # Leave expanded
+    txer = SyncTransaction(client=sui_client, compress_inputs=False)
+    scoin = txer.split_coin(coin=primary_coin, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=[scoin],
+        recipient=sui_client.config.active_address,
+    )
+    scoin = txer.split_coin(coin=primary_coin, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=[scoin],
+        recipient=sui_client.config.active_address,
+    )
+    assert len(list(txer.builder.inputs.keys())) == 6
+
+
 def test_split_equal(sui_client: SyncClient) -> None:
     """Simple split coin and verify count.
 
@@ -41,7 +73,7 @@ def test_split_equal(sui_client: SyncClient) -> None:
     assert first_g.is_ok()
     gasses = first_g.result_data.data
     pre_split_len = len(gasses)
-    txn = SyncTransaction(sui_client, initial_sender=SuiAddress(address))
+    txn = SyncTransaction(client=sui_client, initial_sender=SuiAddress(address))
     txn.split_coin_equal(coin=main_coin, split_count=2)
     t_run = txn.execute(use_gas_object=gas_coin.object_id)
     assert t_run.is_ok()
@@ -65,7 +97,7 @@ def test_pay_all_keys(sui_client: SyncClient) -> None:
 
     main_coin = gas_not_in(sui_client, ed_addy)
     mc_id = ObjectID(main_coin.coin_object_id)
-    txn = SyncTransaction(sui_client, initial_sender=SuiAddress(ed_addy))
+    txn = SyncTransaction(client=sui_client, initial_sender=SuiAddress(ed_addy))
     txn.transfer_objects(transfers=[main_coin], recipient=SuiAddress(k1_addy))
     t_run = txn.execute()
     assert t_run.is_ok()
@@ -75,7 +107,7 @@ def test_pay_all_keys(sui_client: SyncClient) -> None:
 
     main_coin = gas_not_in(sui_client, k1_addy)
     mc_id = ObjectID(main_coin.coin_object_id)
-    txn = SyncTransaction(sui_client, initial_sender=SuiAddress(k1_addy))
+    txn = SyncTransaction(client=sui_client, initial_sender=SuiAddress(k1_addy))
     txn.transfer_objects(transfers=[main_coin], recipient=SuiAddress(r1_addy))
     t_run = txn.execute()
     assert t_run.is_ok()
@@ -86,7 +118,7 @@ def test_pay_all_keys(sui_client: SyncClient) -> None:
     main_coin = gas_not_in(sui_client, r1_addy)
     mc_id = ObjectID(main_coin.coin_object_id)
 
-    txn = SyncTransaction(sui_client, initial_sender=SuiAddress(r1_addy))
+    txn = SyncTransaction(client=sui_client, initial_sender=SuiAddress(r1_addy))
     txn.transfer_objects(transfers=[main_coin], recipient=SuiAddress(ed_addy))
     t_run = txn.execute()
     assert t_run.is_ok()

@@ -261,11 +261,12 @@ class PureInput:
 class ProgrammableTransactionBuilder:
     """ProgrammableTransactionBuilder core transaction construction."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, compress_inputs: bool = False) -> None:
         """Builder initializer."""
         self.inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
         self.commands: list[bcs.Command] = []
         self.objects_registry: Set[str] = set()
+        self.compress_inputs: bool = compress_inputs
 
         self.command_frequency = {
             "MoveCall": 0,
@@ -299,12 +300,8 @@ class ProgrammableTransactionBuilder:
         """
         return bcs.TransactionKind("ProgrammableTransaction", self._finish())
 
-    @versionchanged(
-        version="0.20.0", reason="Check for duplication. See bug #99"
-    )
-    @versionchanged(
-        version="0.30.2", reason="Remove reuse of identical pure inputs"
-    )
+    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
+    @versionchanged(version="0.30.2", reason="Remove reuse of identical pure inputs")
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
         """input_pure registers a pure input argument in the inputs collection.
 
@@ -317,35 +314,39 @@ class ProgrammableTransactionBuilder:
         logger.debug("Adding pure input")
         out_index = len(self.inputs)
         if key.enum_name == "Pure":
+            if self.compress_inputs:
+                e_index = 0
+                for _ekey, evalue in self.inputs.items():
+                    if key.value == evalue.value:
+                        logger.debug(
+                            f"Duplicate object input found at index {e_index}, reusing"
+                        )
+                        return bcs.Argument("Input", e_index)
+                    e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
         else:
-            raise ValueError(
-                f"Expected Pure builder arg, found {key.enum_name}"
-            )
+            raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
         logger.debug(f"New pure input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
     # TODO: Rationalize SharedObject nuances
-    @versionchanged(
-        version="0.20.0", reason="Check for duplication. See bug #99"
-    )
-    def input_obj(
-        self, key: bcs.BuilderArg, object_arg: bcs.ObjectArg
-    ) -> bcs.Argument:
+    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
+    def input_obj(self, key: bcs.BuilderArg, object_arg: bcs.ObjectArg) -> bcs.Argument:
         """."""
         logger.debug("Adding object input")
         out_index = len(self.inputs)
         if key.enum_name == "Object" and isinstance(
             object_arg, bcs.ObjectArg
         ):  # _key = hash(input)
-            e_index = 0
-            for _ekey, evalue in self.inputs.items():
-                if object_arg == evalue.value:
-                    logger.debug(
-                        f"Duplicate object input found at index {e_index}, reusing"
-                    )
-                    return bcs.Argument("Input", e_index)
-                e_index += 1
+            if self.compress_inputs:
+                e_index = 0
+                for _ekey, evalue in self.inputs.items():
+                    if object_arg == evalue.value:
+                        logger.debug(
+                            f"Duplicate object input found at index {e_index}, reusing"
+                        )
+                        return bcs.Argument("Input", e_index)
+                    e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
         else:
             raise ValueError(
@@ -370,14 +371,10 @@ class ProgrammableTransactionBuilder:
         logger.debug(f"Adding command {out_index}")
         self.commands.append(command_obj)
         if nresults > 1:
-            logger.debug(
-                f"Creating nested result return for {nresults} elements"
-            )
+            logger.debug(f"Creating nested result return for {nresults} elements")
             nreslist: list[bcs.Argument] = []
             for nrindex in range(nresults):
-                nreslist.append(
-                    bcs.Argument("NestedResult", (out_index, nrindex))
-                )
+                nreslist.append(bcs.Argument("NestedResult", (out_index, nrindex)))
             return nreslist
         logger.debug("Creating single result return")
         return bcs.Argument("Result", out_index)
@@ -405,24 +402,16 @@ class ProgrammableTransactionBuilder:
             elif isinstance(arg, bcs.Argument):
                 argrefs.append(arg)
             else:
-                raise ValueError(
-                    f"Unknown arg in movecall {arg.__class__.__name__}"
-                )
+                raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
 
-        return self.command(
-            bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs))
-        )
+        return self.command(bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs)))
 
-    @versionchanged(
-        version="0.17.0", reason="Add result count for correct arg return."
-    )
+    @versionchanged(version="0.17.0", reason="Add result count for correct arg return.")
     def move_call(
         self,
         *,
         target: bcs.Address,
-        arguments: list[
-            Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]
-        ],
+        arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
         type_arguments: list[bcs.TypeTag],
         module: str,
         function: str,
@@ -441,9 +430,7 @@ class ProgrammableTransactionBuilder:
             elif isinstance(arg, list):
                 argrefs.append(self.input_pure(PureInput.as_input(arg)))
             else:
-                raise ValueError(
-                    f"Unknown arg in movecall {arg.__class__.__name__}"
-                )
+                raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
 
         return self.command(
             bcs.Command(
@@ -489,16 +476,12 @@ class ProgrammableTransactionBuilder:
         """Setup a MergeCoins command and return it's result Argument."""
         logger.debug("Creating MergeCoins transaction")
         to_coin = (
-            to_coin
-            if isinstance(to_coin, bcs.Argument)
-            else self.input_obj(*to_coin)
+            to_coin if isinstance(to_coin, bcs.Argument) else self.input_obj(*to_coin)
         )
         from_args: list[bcs.Argument] = []
         for fcoin in from_coins:
             from_args.append(
-                fcoin
-                if isinstance(fcoin, bcs.Argument)
-                else self.input_obj(*fcoin)
+                fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin)
             )
         return self.command(
             bcs.Command("MergeCoins", bcs.MergeCoins(to_coin, from_args))
@@ -519,16 +502,12 @@ class ProgrammableTransactionBuilder:
         if isinstance(object_ref, list):
             for fcoin in object_ref:
                 from_args.append(
-                    fcoin
-                    if isinstance(fcoin, bcs.Argument)
-                    else self.input_obj(*fcoin)
+                    fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin)
                 )
         else:
             from_args.append(object_ref)
         return self.command(
-            bcs.Command(
-                "TransferObjects", bcs.TransferObjects(from_args, receiver_arg)
-            )
+            bcs.Command("TransferObjects", bcs.TransferObjects(from_args, receiver_arg))
         )
 
     def transfer_sui(
@@ -566,9 +545,7 @@ class ProgrammableTransactionBuilder:
         """Setup a Publish command and return it's result Argument."""
         logger.debug("Creating Publish transaction")
         # result = self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
-        return self.command(
-            bcs.Command("Publish", bcs.Publish(modules, dep_ids))
-        )
+        return self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
 
     def authorize_upgrade(
         self,

@@ -29,6 +29,7 @@ from pysui.sui.sui_builders.base_builder import (
     _NativeTransactionBuilder,
     sui_builder,
 )
+from pysui.sui.sui_clients.common import ClientMixin
 from pysui.sui.sui_txn.signing_ms import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
 from pysui.sui.sui_txn.txn_deser import (
@@ -137,13 +138,17 @@ class _SuiTransactionBase:
 
     def __init__(
         self,
-        client,
-        merge_gas_budget: bool = False,
+        *,
+        client: ClientMixin,
+        compress_inputs: bool = False,
         initial_sender: Union[SuiAddress, SigningMultiSig] = None,
+        merge_gas_budget: bool = False,
         deserialize_from: Union[str, bytes] = None,
     ) -> None:
         """."""
-        self.builder = tx_builder.ProgrammableTransactionBuilder()
+        self.builder = tx_builder.ProgrammableTransactionBuilder(
+            compress_inputs=compress_inputs
+        )
         self.client = client
         self._sig_block = SignerBlock(
             sender=initial_sender or client.config.active_address

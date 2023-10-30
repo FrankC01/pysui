@@ -29,7 +29,7 @@ from pysui import (
     SuiConfig,
 )
 
-from pysui.sui.sui_clients.common import _ClientMixin
+from pysui.sui.sui_clients.common import ClientMixin
 from pysui.sui.sui_constants import TESTNET_FAUCET_STATUS_URL
 from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
 from pysui.sui.sui_types.scalars import (
@@ -67,7 +67,7 @@ if not logging.getLogger().handlers:
     logger.propagate = False
 
 
-class SuiClient(_ClientMixin):
+class SuiClient(ClientMixin):
     """Sui Asyncrhonous Client."""
 
     @versionchanged(version="0.28.0", reason="Added logging")

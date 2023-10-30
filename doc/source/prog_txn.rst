@@ -51,7 +51,7 @@ This requires providing an instantiated SuiClient.
         # By default, this will assume that the 'active-address' is the sender and sole signer of the transaction
         # However; support for MultiSig signers and Sponsoring transactions is also supported
 
-        txn = SyncTransaction(SyncClient(SuiConfig.default_config()))
+        txn = SyncTransaction(client=SyncClient(SuiConfig.default_config()))
 
         # Get a few objects to use as command arguments
 
@@ -111,22 +111,22 @@ The following shows variations which will determine where ``pysui`` resolves the
 
     # Will default to 'active-address' as the sender and also who pays for the transaction
 
-    txer = SyncTransaction(client)
+    txer = SyncTransaction(client=client)
 
     # Construct with a different address as the 'sender',
     # the initial_sender will be who pays for the transaction
 
-    txer = SyncTransaction(client,initial_sender=SuiAddress("0x......"))
+    txer = SyncTransaction(client=client,initial_sender=SuiAddress("0x......"))
 
     # Construct default and set different sender on the signers block before execution
 
-    txer = SyncTransaction(client)
+    txer = SyncTransaction(client=client)
     txer.signer_block.sender = SuiAddress("0x......")
 
     # Construct default and set different sponsor on the signers block before execution
     # The sponsor is who pays for the transaction
 
-    txer = SyncTransaction(client)
+    txer = SyncTransaction(client=client)
     txer.signer_block.sponsor = SuiAddress("0x......")
 
 
@@ -208,7 +208,7 @@ The examples below demonstrate the approaches.
         msig_pubkeys: list[SuiPublicKey] = ...
 
         # Construct the transaction with the SigningMultiSig
-        txer = SyncTransaction(client,initial_sender=SigningMultiSig(msig, msig_pubkeys))
+        txer = SyncTransaction(client=client,initial_sender=SigningMultiSig(msig, msig_pubkeys))
 
         # Split and transfer
         split_coin = txer.split_coin(coin=txer.gas,amounts=[10000000000])
@@ -236,7 +236,7 @@ The examples below demonstrate the approaches.
         sender_msig = SigningMultiSig(msig, msig_pubkeys)
 
         # Construct the transaction with default sender
-        txer = SyncTransaction(client)
+        txer = SyncTransaction(client=client)
 
         # Split and transfer
         split_coin = txer.split_coin(coin=txer.gas,amounts=[10000000000])
@@ -269,7 +269,7 @@ this example uses a simple SuiAddress:
         # By default, this will assume that the 'active-address' is the sole signer of the transaction
         # But we want to sponsor the transaction from another address (who will pay for the transaction)
 
-        txer = SyncTransaction(SyncClient(SuiConfig.default_config()))
+        txer = SyncTransaction(client=SyncClient(SuiConfig.default_config()))
 
         # Get a coin for splitting from the active-address and create the command
         coin_to_split = ... # Retrieved somehow
@@ -437,7 +437,7 @@ result of the command is the UpgradeCap and it must be transfered to an owner.
         client = client if client else SyncClient(SuiConfig.default_config())
 
         # Initiate a new transaction
-        txer = SyncTransaction(client)
+        txer = SyncTransaction(client=client)
 
         # Create a publish command
         upgrade_cap = txer.publish(project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_PACKAGE_PROJECT>")
@@ -465,7 +465,7 @@ Example assumes you've taken necessary steps to prepare the package source for u
         client = client if client else SyncClient(SuiConfig.default_config())
 
         # Initiate a new transaction
-        txer = SyncTransaction(client)
+        txer = SyncTransaction(client=client)
 
         txer.publish_upgrade(
             project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_PACKAGE_PROJECT>",
@@ -503,7 +503,7 @@ The example function below follows the `Sui custom upgrade policies example  <ht
         """Publish a customized policy and make it's upgrade cap immutable."""
         client = client if client else SyncClient(SuiConfig.default_config())
 
-        txer = SyncTransaction(client)
+        txer = SyncTransaction(client=client)
 
         # Publish policy command
         upgrade_cap = txer.publish(project_path="<ABSOLUTE_OR_RELATIVE_PATH_TO_CUSTOM_POLICY_PACKAGE>")
@@ -516,7 +516,7 @@ The example function below follows the `Sui custom upgrade policies example  <ht
         print(f"Policy UpgradeCap ID: {policy_cap_id}")
 
         # New transaction
-        txer = SyncTransaction(client)
+        txer = SyncTransaction(client=client)
 
         # Make cap immutable
         txer.move_call(
@@ -531,7 +531,7 @@ The example function below follows the `Sui custom upgrade policies example  <ht
         client = client if client else SyncClient(SuiConfig.default_config())
 
         # New transaction
-        txer = SyncTransaction(client)
+        txer = SyncTransaction(client=client)
 
         # Publish the example
         ex_upgrade_cap = txer.publish(project_path="~/my_move_contracts/example")
@@ -569,7 +569,7 @@ The example function below follows the `Sui custom upgrade policies example  <ht
     def custom_upgrade(client: SyncClient = None):
         """Call SuiTransaction HOF for custom upgrades."""
         client = client if client else SyncClient(SuiConfig.default_config())
-        txer = SyncTransaction(client)
+        txer = SyncTransaction(client=client)
         txer.custom_upgrade(
             project_path="~/frankc01/example",
             package_id=example_package_id,
