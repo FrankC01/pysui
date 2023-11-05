@@ -265,7 +265,7 @@ class ProgrammableTransactionBuilder:
         """Builder initializer."""
         self.inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
         self.commands: list[bcs.Command] = []
-        self.objects_registry: Set[str] = set()
+        self.objects_registry: dict[str, str] = {}
         self.compress_inputs: bool = compress_inputs
 
         self.command_frequency = {
@@ -352,7 +352,8 @@ class ProgrammableTransactionBuilder:
             raise ValueError(
                 f"Expected Object builder arg and ObjectArg, found {key.enum_name} and {type(object_arg)}"
             )
-        self.objects_registry.add(key.value.to_address_str())
+        self.objects_registry[key.value.to_address_str()] = object_arg.enum_name
+        # self.objects_registry.add(key.value.to_address_str())
         logger.debug(f"New object input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 

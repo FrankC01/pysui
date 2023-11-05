@@ -58,9 +58,7 @@ class _ConsolidateSui(_MoveCallTransactionBuilder):
 
 
 @versionadded(version="0.17.0", reason="Standardize on signing permutations")
-@versionadded(
-    version="0.21.1", reason="Support subset pubkey address generation"
-)
+@versionadded(version="0.21.1", reason="Support subset pubkey address generation")
 @versionchanged(version="0.35.0", reason="Change msig to BaseMultiSig")
 class SigningMultiSig:
     """Wraps the mutli-sig along with pubkeys to use in SuiTransaction."""
@@ -160,9 +158,7 @@ class _SignerBlockBase:
         # result_list.extend(self.additional_signers)
         # return result_list
 
-    @versionchanged(
-        version="0.21.2", reason="Fix regression on MultiSig signing."
-    )
+    @versionchanged(version="0.21.2", reason="Fix regression on MultiSig signing.")
     def get_signatures(
         self, *, client: SyncClient, tx_bytes: str
     ) -> SuiArray[SuiSignature]:
@@ -171,15 +167,11 @@ class _SignerBlockBase:
         for signer in self._get_potential_signatures():
             if isinstance(signer, SuiAddress):
                 sig_list.append(
-                    client.config.keypair_for_address(signer).new_sign_secure(
-                        tx_bytes
-                    )
+                    client.config.keypair_for_address(signer).new_sign_secure(tx_bytes)
                 )
             else:
                 if signer._can_sign_msg:
-                    sig_list.append(
-                        signer.multi_sig.sign(tx_bytes, signer.pub_keys)
-                    )
+                    sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
                 else:
                     raise ValueError("BaseMultiSig can not sign in execution")
         return SuiArray(sig_list)
@@ -233,12 +225,13 @@ class SignerBlock(_SignerBlockBase):
         return self._get_payer()
 
     @versionadded(version="0.30.0", reason="Refactored from get_gas_object.")
+    @versionadded(version="0.39.0", reason="Change object_in_use type.")
     def _get_gas_data(
         self,
         payer: str,
         owner_coins: list[SuiCoinObject],
         budget: int,
-        objects_in_use: list,
+        objects_in_use: dict,
         merge_coin: bool,
         gas_price: int,
     ) -> Union[bcs.GasData, ValueError]:
@@ -309,9 +302,7 @@ class SignerBlock(_SignerBlockBase):
             int(budget),
         )
 
-    @versionchanged(
-        version="0.21.1", reason="Corrected when using multisig senders."
-    )
+    @versionchanged(version="0.21.1", reason="Corrected when using multisig senders.")
     @versionchanged(
         version="0.28.0", reason="Use _ConsolidateSui if coins needed for gas."
     )
@@ -319,12 +310,16 @@ class SignerBlock(_SignerBlockBase):
         version="0.30.0",
         reason="Leverage multiple gas objects passed for paying in transaction.",
     )
+    @versionchanged(
+        version="0.39.0",
+        reason="Change object_in_use type",
+    )
     def get_gas_object(
         self,
         *,
         client: SyncClient,
         budget: int,
-        objects_in_use: list,
+        objects_in_use: dict,
         merge_coin: bool,
         gas_price: int,
     ) -> Union[bcs.GasData, ValueError]:
@@ -356,12 +351,16 @@ class SignerBlock(_SignerBlockBase):
         version="0.30.0",
         reason="Leverage multiple gas objects passed for paying in transaction.",
     )
+    @versionchanged(
+        version="0.39.0",
+        reason="Change object_in_use registry type.",
+    )
     async def get_gas_object_async(
         self,
         *,
         client: AsyncClient,
         budget: int,
-        objects_in_use: list,
+        objects_in_use: dict,
         merge_coin: bool,
         gas_price: int,
     ) -> bcs.GasData:

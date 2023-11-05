@@ -58,9 +58,7 @@ def _ser_multi_signer(sms: SigningMultiSig) -> bcs.TxSender:
         bcs.TxSenderMulti(
             bcs.Address.from_str(base_address),
             [
-                bcs.Address.from_str(
-                    SuiAddress.from_bytes(i.scheme_and_key()).address
-                )
+                bcs.Address.from_str(SuiAddress.from_bytes(i.scheme_and_key()).address)
                 for i in base_pkeys
             ],
             [
@@ -99,18 +97,16 @@ def ser_transaction_builder(
     builder: ProgrammableTransactionBuilder,
 ) -> bcs.TxTransaction:
     """Serialize the transaction builder data."""
-    freq = [
-        bcs.TxStringInt(x, y) for x, y in builder.command_frequency.items()
+    freq = [bcs.TxStringInt(x, y) for x, y in builder.command_frequency.items()]
+    obj_in_use = [
+        bcs.TxStringString(x[0], x[1]) for x in builder.objects_registry.items()
     ]
-    obj_in_use = [bcs.Address.from_str(x) for x in builder.objects_registry]
     return bcs.TxTransaction(
         freq, obj_in_use, list(builder.inputs.keys()), builder.commands
     )
 
 
-def _de_ser_single_signer(
-    tx_send: bcs.TxSenderSingle, cfg: SuiConfig
-) -> SuiAddress:
+def _de_ser_single_signer(tx_send: bcs.TxSenderSingle, cfg: SuiConfig) -> SuiAddress:
     """."""
     addy = tx_send.Address.to_sui_address()
     kp = cfg.keypair_for_address(addy)
@@ -134,18 +130,14 @@ def _de_ser_multi_signer(
     # Addresses of multi-sig members
     mc_addys = [x.to_sui_address() for x in tx_send.MultiSigKeyAddress]
     # Pubkey bytes of multi-sig members
-    mc_pubbytes = [
-        bytes(x.value.PublicKey) for x in tx_send.MultiSigPublicKeys
-    ]
+    mc_pubbytes = [bytes(x.value.PublicKey) for x in tx_send.MultiSigPublicKeys]
     # Weights of multi-sig members
     mc_weights = [x.value.Weight for x in tx_send.MultiSigPublicKeys]
     # Resolve keypairs in addresses
     mc_kps = [config.keypair_for_address(x) for x in mc_addys]
     # Confirm pubkey byte matches
     for i in range(len(mc_kps)):
-        assert (
-            mc_pubbytes[i] == mc_kps[i].public_key.key_bytes
-        ), "PublicKey mismatch"
+        assert mc_pubbytes[i] == mc_kps[i].public_key.key_bytes, "PublicKey mismatch"
     # Create the multi-sig
     msig = MultiSig(mc_kps, mc_weights, tx_send.Threshold)
     # Confirm the addresses match
@@ -176,11 +168,12 @@ def deser_sender_and_sponsor(
     return sblock
 
 
-def _deser_inputs(obj_dict: dict, accum: dict, input: bcs.BuilderArg) -> dict:
+def _deser_inputs(
+    obj_dict: dict, objs_in_use: dict, accum: dict, input: bcs.BuilderArg
+) -> dict:
     """."""
     if input.enum_name == "Pure":
         accum[input] = bcs.CallArg(input.enum_name, input.value)
-        # accum.append(input)
     elif input.enum_name == "Object":
         obj_addy = input.value.to_address_str()
         if obj_addy in obj_dict:
@@ -188,7 +181,7 @@ def _deser_inputs(obj_dict: dict, accum: dict, input: bcs.BuilderArg) -> dict:
             if isinstance(item.owner, (AddressOwner, ImmutableOwner)):
                 obj_ref = GenericRef(item.object_id, item.version, item.digest)
                 b_obj_arg = bcs.ObjectArg(
-                    "ImmOrOwnedObject",
+                    objs_in_use[item.object_id],
                     bcs.ObjectReference.from_generic_ref(obj_ref),
                 )
             elif isinstance(item.owner, SharedOwner):
@@ -213,18 +206,19 @@ def deser_transaction_builder(
 ):
     """."""
     freq_dict = {el.Key: el.Value for el in tx_builder.Frequencies}
-    objs_in_use = [x.to_address_str() for x in tx_builder.ObjectsInUse]
+    objs_in_use = {x.Key: x.Value for x in tx_builder.ObjectsInUse}
+    # objs_in_use = [x.to_address_str() for x in tx_builder.ObjectsInUse]
     client = SyncClient(config)
     # Resolve any objects in use
+    obj_list = list(objs_in_use.keys())
     data_objs_dict = {
-        dobj.object_id: dobj
-        for dobj in handle_result(client.get_objects_for(objs_in_use))
+        dobj.object_id: dobj for dobj in handle_result(client.get_objects_for(obj_list))
     }
     # Make inputs dictionary
     inputs = reduce(
-        partial(_deser_inputs, data_objs_dict), tx_builder.Inputs, {}
+        partial(_deser_inputs, data_objs_dict, objs_in_use), tx_builder.Inputs, {}
     )
     builder.command_frequency = freq_dict
     builder.inputs = inputs
-    builder.objects_registry = set(objs_in_use)
+    builder.objects_registry = objs_in_use
     builder.commands = tx_builder.Commands.copy()

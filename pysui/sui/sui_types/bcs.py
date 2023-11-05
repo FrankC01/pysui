@@ -14,7 +14,6 @@
 """Sui BCS Types."""
 
 import binascii
-import base64
 from typing import Any, Union
 from functools import reduce
 import canoser
@@ -33,9 +32,7 @@ _DIGEST_LENGTH: int = 32
 class Address(canoser.Struct):
     """Address Represents a Sui Address or ObjectID as list of ints."""
 
-    _fields = [
-        ("Address", canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH, False))
-    ]
+    _fields = [("Address", canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH, False))]
 
     def to_str(self) -> str:
         """."""
@@ -153,7 +150,9 @@ class Uint256(canoser.int_type.IntType):
     """Uint256 represents a 256 bit ulong as hack as canoser doesn't support."""
 
     byte_lens = 32
-    max_value = 115792089237316195423570985008687907853269984665640564039457584007913129639935
+    max_value = (
+        115792089237316195423570985008687907853269984665640564039457584007913129639935
+    )
     min_value = 0
     signed = False
 
@@ -343,9 +342,7 @@ class StructTag(canoser.Struct):
             multi_struct[last_pos] = multi_struct[last_pos][:-inner_count]
             return reduce(_reducer, multi_struct[::-1], None).value
         split_type = type_str.split("::")
-        return cls(
-            Address.from_str(split_type[0]), split_type[1], split_type[2], []
-        )
+        return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
 
 
 # Overcome forward reference at init time with these injections
@@ -557,9 +554,7 @@ class TransactionData(canoser.RustEnum):
 
 
 # Multi-signature legacy
-@versionadded(
-    version="0.20.4", reason="Added to support in-code MultiSig signing."
-)
+@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
 @deprecated(version="0.33.0", reason="Unused, scheduled for removal in 0.35.0")
 class MsPublicKey(canoser.Struct):
     """Represents signing PublicKeys for serialization."""
@@ -603,13 +598,9 @@ class MsNewPublicKey(canoser.RustEnum):
         if scheme == SignatureScheme.ED25519:
             res = MsNewPublicKey("Ed25519", MsEd25519PublicKey(kbytes, weight))
         elif scheme == SignatureScheme.SECP256K1:
-            res = MsNewPublicKey(
-                "Secp256k1", MsSecp256k1PublicKey(kbytes, weight)
-            )
+            res = MsNewPublicKey("Secp256k1", MsSecp256k1PublicKey(kbytes, weight))
         elif scheme == SignatureScheme.SECP256R1:
-            res = MsNewPublicKey(
-                "Secp256r1", MsSecp256r1PublicKey(kbytes, weight)
-            )
+            res = MsNewPublicKey("Secp256r1", MsSecp256r1PublicKey(kbytes, weight))
         else:
             raise ValueError(f"SignatureScheme {scheme} not supported")
 
@@ -626,9 +617,7 @@ class MsBitmap(canoser.Struct):
     _fields = [("Bitmap", U16)]
 
 
-@versionadded(
-    version="0.20.4", reason="Added to support in-code MultiSig signing."
-)
+@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
 class MsCompressedSig(canoser.Struct):
     """Represents compressed individual signed messages for serialization."""
 
@@ -663,12 +652,21 @@ class TxStringInt(canoser.Struct):
     ]
 
 
+class TxStringString(canoser.Struct):
+    """."""
+
+    _fields = [
+        ("Key", str),
+        ("Value", str),
+    ]
+
+
 class TxTransaction(canoser.Struct):
     """."""
 
     _fields = [
         ("Frequencies", [TxStringInt]),
-        ("ObjectsInUse", [Address]),
+        ("ObjectsInUse", [TxStringString]),
         ("Inputs", [BuilderArg]),
         ("Commands", [Command]),
     ]
