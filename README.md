@@ -6,8 +6,22 @@
 
 Python Client SDK for Sui blockchain
 
-- Supports _SUI 1.14.x RPC API_
-- Backwards compatable to _Sui 1.8.x RPC API_
+- Supports _SUI 1.15.x RPC API_
+- Backwards compatable to _Sui 1.10.x RPC API_
+
+## Sui GraphQL RPC service lies ahead
+
+MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
+from JSON RPC to GraphQL RPC.
+
+We will be changing `pysui` to begin aligning with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in their annoucement:
+
+1. December 2023: We will introduce a GraphQL `SuiClient` (experimental) and begin implementing parallel 'read' methods as found in the current SuiClient.
+2. January 2024: Continue with SuiClient parity changes and expose underlying GraphQL for users to craft their
+own queries.
+3. February 2024: Deprecate pysui Builders and existing SuiClients and enable SuiClient GraphQL 'streaming' support.
+4. March 2024: Remove Builders and Obsolete SuiClients and bump pysui to version 1.0.0.
+
 
 ### pysui SDK Dependencies
 
@@ -20,7 +34,7 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 ## pysui SDK current (github)
 
-**Release-0.39.0**
+**Release-0.39.1**
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
