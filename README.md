@@ -9,6 +9,24 @@ Python Client SDK for Sui blockchain
 - Supports _SUI 1.15.x RPC API_
 - Backwards compatable to _Sui 1.10.x RPC API_
 
+## pysui SDK current (github)
+
+**Release-0.39.1**
+
+See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
+
+## PyPi current
+
+**Release-0.39.0**
+
+- [Latest PyPi Version](https://pypi.org/project/pysui/)
+
+## pysui SDK Dependencies
+
+- Rust (stable) for installation of Sui Binaries (optional) and building `pysui-fastcrypto` Rust wrapper (required)
+- Python version >= 3.10
+
+
 ## Sui GraphQL RPC service lies ahead
 
 MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
@@ -23,27 +41,6 @@ own queries.
 4. March 2024: Remove Builders and Obsolete SuiClients and bump pysui to version 1.0.0.
 
 
-### pysui SDK Dependencies
-
-- Rust (stable) for installation of Sui Binaries (optional) and building `pysui-fastcrypto` Rust wrapper (required)
-- Python version >= 3.10
-
-### Release/Publish Strategy
-
-See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
-
-## pysui SDK current (github)
-
-**Release-0.39.1**
-
-See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
-
-## PyPi current
-
-**Release-0.39.0**
-
-- [Latest PyPi Version](https://pypi.org/project/pysui/)
-
 ### Documentation
 
 - [ReadTheDocs](https://pysui.readthedocs.io/en/latest/index.html)
@@ -55,6 +52,10 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 ### Issues and enhancement requests
 
 We would appreciate using the [github issue log](https://github.com/FrankC01/pysui/issues) to let us know!
+
+### Release/Publish Strategy
+
+See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 ### Discord
 

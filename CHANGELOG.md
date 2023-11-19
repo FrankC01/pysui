@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Low end Sui support version set to 1.10.0
+- Restructure README
 
 ### Removed
 
