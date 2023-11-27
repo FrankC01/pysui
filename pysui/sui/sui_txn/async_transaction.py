@@ -474,6 +474,9 @@ class SuiTransactionAsync(_SuiTransactionBase):
 
     @versionchanged(version="0.19.0", reason="Check that only type Objects are passed")
     @versionchanged(version="0.21.1", reason="Added optional item_type argument")
+    @versionchanged(
+        version="0.40.0", reason="Removed constraint of making vector from pure types"
+    )
     async def make_move_vector(
         self, items: list[Any], item_type: Optional[str] = None
     ) -> bcs.Argument:
@@ -497,10 +500,10 @@ class SuiTransactionAsync(_SuiTransactionBase):
             if first_item:
                 # If not all arguments, ensure the remaining are consistent
                 first_class = first_item.__class__.__name__
-                if first_class != "Argument" and first_class in self._PURE_CANDIDATES:
-                    raise ValueError(
-                        f"make_move_vec is for Objects only. Found type {first_class}"
-                    )
+                # if first_class != "Argument" and first_class in self._PURE_CANDIDATES:
+                #     raise ValueError(
+                #         f"make_move_vec is for Objects only. Found type {first_class}"
+                #     )
                 for item in items:
                     item_class = item.__class__.__name__
                     if item_class == "Argument":
