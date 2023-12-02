@@ -94,8 +94,11 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
 @versionadded(version="0.26.0", reason="Refactor to support Async")
 @versionadded(version="0.30.0", reason="Moved to transaction package.")
 @versionadded(version="0.32.0", reason="Abstracting and adding serialization support.")
+@versionchanged(
+    version="0.40.1", reason="Default 'compress_inputs' on SuiTransaction to True"
+)
 class _SuiTransactionBase:
-    """."""
+    """SuiTransaction base object."""
 
     _MC_RESULT_CACHE: dict = {}
     _PURE_CANDIDATES: set[str] = {
@@ -140,7 +143,7 @@ class _SuiTransactionBase:
         self,
         *,
         client: ClientMixin,
-        compress_inputs: bool = False,
+        compress_inputs: bool = True,
         initial_sender: Union[SuiAddress, SigningMultiSig] = None,
         merge_gas_budget: bool = False,
         deserialize_from: Union[str, bytes] = None,

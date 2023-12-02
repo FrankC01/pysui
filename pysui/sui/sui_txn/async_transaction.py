@@ -361,17 +361,15 @@ class SuiTransactionAsync(_SuiTransactionBase):
             result = await self.client.execute(
                 _DebugInspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes)
             )
-            result = SuiRpcResult(
-                True, "", TxInspectionResult.factory(result.result_data)
-            )
+            if result.is_ok():
+                result = SuiRpcResult(
+                    True, "", TxInspectionResult.factory(result.result_data)
+                )
 
         except KeyError as kexcp:
             logger.exception(f"Malformed inspection results {result.result_data}")
             raise ValueError(result.result_data)
 
-        # result = await self.client.execute(
-        #     InspectTransaction(sender_address=for_sender, tx_bytes=tx_bytes)
-        # )
         if result.is_ok():
             return result.result_data
         return result
