@@ -27,11 +27,11 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
-    "dataclasses_json < 0.7.0, >= 0.6.0",
+    "dataclasses_json < 0.7.0, >= 0.6.3",
     "PyYAML < 6.2, >= 6.0.1",
-    "httpx < 0.26, >=0.25.0",
+    "httpx < 0.26, >=0.25.2",
     "h2 < 5.0, >= 4.1",
-    "websockets < 11.1.0, >=11.0.3",
+    "websockets < 13.0.0, >=12.0.0",
     "typing_utils < 0.2.0, >=0.1.0",
     "canoser==0.8.2",
     "base58 < 2.2.0, >=2.1.1",

@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bumped libraries: dataclasses-json, httpx, websockets
+- Bumped dev libraries: mypy, pytest, pylint, sphinx_rtd_theme
 - [change](https://github.com/FrankC01/pysui/issues/175) Default 'compress_inputs' on SuiTransaction to True
 
 ### Removed
