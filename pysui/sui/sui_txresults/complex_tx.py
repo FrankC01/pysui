@@ -16,7 +16,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 from dataclasses_json import DataClassJsonMixin, LetterCase, config
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.sui.sui_txresults.common import (
     GenericOwnerRef,
     GenericRef,
@@ -66,6 +66,17 @@ class ConsensusCommitPrologue(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
+class ConsensusCommitPrologueV2(SuiTxReturnType, DataClassJsonMixin):
+    """A system transaction marking the start of a series of transactions scheduled as part of a checkpoint."""
+
+    kind: str
+    commit_timestamp_ms: str
+    consensus_commit_digest: str
+    epoch: str
+    prologue_round: str = field(metadata=config(field_name="round"))
+
+
+@dataclass
 class ProgrammableTransaction(SuiTxReturnType, DataClassJsonMixin):
     """A series of commands where the results of one command can be used in future commands."""
 
@@ -86,6 +97,7 @@ class AuthenticatorStateUpdate(SuiTxReturnType, DataClassJsonMixin):
 
 
 @versionadded(version="0.40.0", reason="Added to transaction results.")
+@deprecated(version="0.40.1", reason="Sui removed round/prologue_round in 1.16.0")
 @dataclass
 class RandomnessStateUpdate(SuiTxReturnType, DataClassJsonMixin):
     """A transaction which updates global randomness state."""
@@ -94,7 +106,9 @@ class RandomnessStateUpdate(SuiTxReturnType, DataClassJsonMixin):
     epoch: str
     random_bytes: list[int]
     randomness_round: str
-    prologue_round: str = field(metadata=config(field_name="round"))
+    prologue_round: Optional[str] = field(
+        metadata=config(field_name="round"), default_factory=str
+    )
 
 
 @versionadded(version="0.40.0", reason="Added to transaction results.")
@@ -133,6 +147,10 @@ class TransactionData(SuiTxReturnType, DataClassJsonMixin):
                     self.transaction = Genesis.from_dict(self.transaction)
                 case "ProgrammableTransaction":
                     self.transaction = ProgrammableTransaction.from_dict(
+                        self.transaction
+                    )
+                case "ConsensusCommitPrologueV2":
+                    self.transaction = ConsensusCommitPrologueV2.from_dict(
                         self.transaction
                     )
                 case "ConsensusCommitPrologue":
