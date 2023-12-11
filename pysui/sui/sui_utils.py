@@ -30,6 +30,7 @@ import yaml
 from dataclasses_json import DataClassJsonMixin
 from deprecated.sphinx import versionchanged, versionadded
 from pysui.sui.sui_constants import (
+    DEFAULT_ALIAS_PATH_STRING,
     DEFAULT_DEVNET_PATH_STRING,
     EMPEHMERAL_PATH,
     PYSUI_EXEC_ENV,
@@ -71,9 +72,7 @@ _SUI_BUILD_SKIP_GIT: list[str] = [
     "--skip-fetch-latest-git-deps",
     "-p",
 ]
-_UNPUBLISHED: str = (
-    "0000000000000000000000000000000000000000000000000000000000000000"
-)
+_UNPUBLISHED: str = "0000000000000000000000000000000000000000000000000000000000000000"
 
 
 @dataclass
@@ -134,9 +133,7 @@ def _modules_bytes(
     if not mod_list:
         raise SuiMiisingModuleByteCode(f"{module_path} is empty")
     # Open and get the bytes representation of same
-    result_list: list[ModuleReader] = [
-        _module_bytes(module) for module in mod_list
-    ]
+    result_list: list[ModuleReader] = [_module_bytes(module) for module in mod_list]
     return result_list
 
 
@@ -144,9 +141,9 @@ def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
     """Fetch details about build."""
     build_info = Path(build_path).joinpath("BuildInfo.yaml")
     if build_info.exists():
-        build_info_dict = yaml.safe_load(
-            build_info.read_text(encoding="utf-8")
-        )["compiled_package_info"]
+        build_info_dict = yaml.safe_load(build_info.read_text(encoding="utf-8"))[
+            "compiled_package_info"
+        ]
         pname = build_info_dict["package_name"].lower()
         inner_dep = build_info_dict["address_alias_instantiation"]
         pindent = f"0x{inner_dep[pname]}"
@@ -167,9 +164,7 @@ def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
     version="0.20.0",
     reason="Sui move build introduced hashing the modules first.",
 )
-def _package_digest(
-    package: CompiledPackage, readers: list[ModuleReader]
-) -> None:
+def _package_digest(package: CompiledPackage, readers: list[ModuleReader]) -> None:
     """Converts compiled module bytes for publishing and digest calculation."""
     mod_strs: list = []
     all_bytes: list = []
@@ -208,15 +203,11 @@ def publish_build(
     # Find the build folder
     build_path = path_to_package.joinpath("build")
     if not build_path.exists():
-        raise SuiMiisingBuildFolder(
-            f"No build folder found in {path_to_package}"
-        )
+        raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
     # Get the project folder
     build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
     if len(build_subdir) > 1:
-        raise SuiMiisingBuildFolder(
-            f"No build folder found in {path_to_package}"
-        )
+        raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
     # Finally, get the module(s) bytecode folder
     byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
     if not byte_modules.exists():
@@ -231,7 +222,8 @@ def publish_build(
     return cpackage
 
 
-def sui_base_get_config() -> tuple[Path, Path]:
+@versionchanged(version="0.41.0", reason="Sui aliases configuration feature added")
+def sui_base_get_config() -> tuple[Path, Path, Union[Path, None]]:
     """sui_base_get_config Load a sui-base configuration.
 
     :raises ValueError: client.yaml not found
@@ -245,11 +237,15 @@ def sui_base_get_config() -> tuple[Path, Path]:
     match astem:
         case "localnet" | "devnet" | "testnet":
             # client yaml
-            local_cfg = Path(
-                os.readlink(active_path.joinpath("config"))
-            ).joinpath("client.yaml")
+            local_cfg = Path(os.readlink(active_path.joinpath("config"))).joinpath(
+                "client.yaml"
+            )
             if not local_cfg.exists():
                 raise ValueError(f"client.yaml not found {local_cfg}")
+            # alias json
+            alias_file = Path(os.readlink(active_path.joinpath("config"))).joinpath(
+                "sui.aliases"
+            )
             # Sui binary
             sui_exec_path = Path(
                 os.readlink(active_path.joinpath("sui-repo"))
@@ -261,11 +257,13 @@ def sui_base_get_config() -> tuple[Path, Path]:
             local_cfg = Path(os.path.expanduser(DEFAULT_DEVNET_PATH_STRING))
             if not local_cfg.exists():
                 raise ValueError(f"client.yaml not found {local_cfg}")
+            # alias json
+            alias_file = Path(os.path.expanduser(DEFAULT_ALIAS_PATH_STRING))
             # Default Sui binary
             sui_exec_path = Path(os.path.expanduser(DEFAULT_SUI_BINARY_PATH))
             if not sui_exec_path.exists():
                 raise ValueError(f"sui binary not found {sui_exec_path}")
-    return local_cfg, sui_exec_path
+    return local_cfg, sui_exec_path, alias_file
 
 
 # Iteration helpers - lists
@@ -291,9 +289,7 @@ def partition(ilist: Iterable, chunk_size: int):
 # Conversion utilities
 
 
-@versionchanged(
-    version="0.19.0", reason="Account for > 3 and < 66 size hex string"
-)
+@versionchanged(version="0.19.0", reason="Account for > 3 and < 66 size hex string")
 def hexstring_to_list(indata: str, default_fill_length: int = 64) -> list[int]:
     """hexstring_to_list convert a hexstr (e.g. 0x...) into a list of ints.
 
@@ -353,9 +349,7 @@ def int_to_listu8(byte_count: int, in_el: int) -> list[int]:
     byte_res = math.ceil(in_el.bit_length() / 8)
     if byte_res == byte_count:
         return list(in_el.to_bytes(byte_res, "little"))
-    raise ValueError(
-        f"Expected byte count {byte_count} found byte count {byte_res}"
-    )
+    raise ValueError(f"Expected byte count {byte_count} found byte count {byte_res}")
 
 
 # Coercion utilities
@@ -517,9 +511,7 @@ def as_sui_map(in_data: Any) -> Union[SuiMap, ValueError]:
         result = SuiMap("", "")
         result.map = {}
     if not result:
-        raise ValueError(
-            f"Can not get SuiMap from {in_data} with type {type(in_data)}"
-        )
+        raise ValueError(f"Can not get SuiMap from {in_data} with type {type(in_data)}")
     return result
 
 
@@ -585,11 +577,7 @@ def to_base_64(in_data: Any, clz: Any) -> Union[Any, ValueError]:
     elif is_base_64(in_data):
         result = clz(in_data)
     elif isinstance(in_data, (str, bytes, bytearray)):
-        in_data = (
-            in_data
-            if not isinstance(in_data, str)
-            else bytes(in_data, "utf-16")
-        )
+        in_data = in_data if not isinstance(in_data, str) else bytes(in_data, "utf-16")
         result = clz(base64.b64encode(in_data))
     if not result:
         raise ValueError(

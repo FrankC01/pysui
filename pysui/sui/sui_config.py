@@ -16,8 +16,8 @@
 
 
 import os
-from io import TextIOWrapper
 import logging
+import base64
 from pathlib import Path
 import json
 from typing import Optional, Union
@@ -25,6 +25,7 @@ import yaml
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
 from pysui.sui.sui_constants import (
+    DEFAULT_ALIAS_PATH_STRING,
     EMPEHMERAL_PATH,
     EMPEHMERAL_USER,
     LOCALNET_PROXY_SUI_URL,
@@ -51,12 +52,13 @@ from pysui.sui.sui_crypto import (
     keypair_from_keystring,
     load_keys_and_addresses,
     recover_key_and_address,
+    gen_mnemonic_phrase,
 )
 from pysui.sui.sui_excepts import (
     SuiConfigFileError,
     SuiFileNotFound,
 )
-from pysui.sui.sui_utils import sui_base_get_config
+from pysui.sui.sui_utils import partition, sui_base_get_config
 
 logger = logging.getLogger("pysui.config")
 if not logging.getLogger().handlers:
@@ -109,56 +111,119 @@ class SuiConfig(ClientConfiguration):
         match self._current_env:
             case "devnet":
                 self._faucet_url = DEVNET_FAUCET_URL
-                self._socket_url = (
-                    socket_url if socket_url else DEVNET_SOCKET_URL
-                )
+                self._socket_url = socket_url if socket_url else DEVNET_SOCKET_URL
             case "testnet":
                 self._faucet_url = TESTNET_FAUCET_URL
-                self._socket_url = (
-                    socket_url if socket_url else TESTNET_SOCKET_URL
-                )
+                self._socket_url = socket_url if socket_url else TESTNET_SOCKET_URL
             case "localnet" | "localnet_proxy":
                 self._faucet_url = LOCALNET_FAUCET_URL
-                self._socket_url = (
-                    socket_url if socket_url else LOCALNET_SOCKET_URL
-                )
+                self._socket_url = socket_url if socket_url else LOCALNET_SOCKET_URL
                 self._local_running = True
             case "mainnet":
                 self._faucet_url = None
-                self._socket_url = (
-                    socket_url if socket_url else MAINNET_SOCKET_URL
-                )
+                self._socket_url = socket_url if socket_url else MAINNET_SOCKET_URL
             case _:
                 self._socket_url = socket_url
-        (
-            self._keypairs,
-            self._addresses,
-            self._address_keypair,
-        ) = load_keys_and_addresses(self.keystore_file)
+        self._cref_matrix = load_keys_and_addresses(self.keystore_file)
+        # Setup aliases
 
-    def _write_keypair(self, keypair: KeyPair, file_path: str = None) -> None:
-        """Register the keypair and write out to keystore file."""
-        filepath = file_path if file_path else self.keystore_file
-        logger.debug(f"Writing new keypair to {filepath}")
-        if os.path.exists(filepath):
-            self._keypairs[keypair.serialize()] = keypair
-            with open(filepath, "w", encoding="utf8") as keystore:
+        if self.alias_file:
+            try:
+                with open(self.alias_file, encoding="utf8") as keyfile:
+                    self._alias_assocation(json.load(keyfile))
+            except FileNotFoundError:
+                self._alias_assocation({})
+
+    @versionadded(version="0.41.0", reason="Support aliases.")
+    def _write_aliases(self):
+        """Write alias file."""
+        if self._current_env != EMPEHMERAL_USER:
+            alias_filepath = self.alias_file
+            logger.debug(f"Writing aliases to {alias_filepath}")
+            with open(alias_filepath, "w", encoding="utf8") as alias_store:
+                alias_store.write(json.dumps(self.aliases_encode(), indent=2))
+
+    @versionchanged(version="0.41.0", reason="Support aliases.")
+    def _write_keypairs(self, file_path: Optional[str] = None) -> None:
+        """Update keystore and alias files."""
+        keys_filepath = file_path if file_path else self.keystore_file
+        logger.debug(f"Updating keystore {keys_filepath}")
+        if os.path.exists(keys_filepath):
+            with open(keys_filepath, "w", encoding="utf8") as keystore:
                 keystore.write(json.dumps(self.keystrings, indent=2))
         else:
-            raise SuiFileNotFound((filepath))
+            raise SuiFileNotFound((keys_filepath))
+        self._write_aliases()
 
-    @versionchanged(
-        version="0.21.2", reason="Corrected signature return values."
-    )
-    @versionchanged(
-        version="0.25.0", reason="Support emphemeral configuration."
-    )
-    @versionchanged(version="0.33.0", reason="mnemonics to .")
+    def _alias_check_or_gen(
+        self,
+        *,
+        aliases: Optional[list[str]] = None,
+        word_counts: Optional[int] = 12,
+        alias: Optional[str] = None,
+        just_one: Optional[bool] = True,
+        current_iter: Optional[int] = 0,
+    ) -> Union[str, list[str]]:
+        """_alias_check_or_gen If alias is provided, checks if unique otherwise creates one or more.
+
+        :param aliases: List of existing aliases, defaults to None
+        :type aliases: list[str], optional
+        :param word_counts: Words count used for mnemonic phrase, defaults to 12
+        :type word_counts: Optional[int], optional
+        :param alias: An inbound alias, defaults to None
+        :type alias: Optional[str], optional
+        :param just_one: If just 1 alias otherwise return parts list, defaults to True
+        :type just_one: Optional[bool], optional
+        :param current_iter: Internal recursion count, defaults to 0
+        :type current_iter: Optional[int], optional
+        :return: One or more aliases
+        :rtype: Union[str, list[str]]
+        """
+        if not alias:
+            parts = list(
+                partition(
+                    gen_mnemonic_phrase(word_counts).split(" "), int(word_counts / 2)
+                )
+            )
+            parts = [a + "-" + b for a, b in zip(*parts)]
+            genned: list[str] = []
+            # Find a unique part if just_one
+            if just_one:
+                if not aliases:
+                    alias = parts[0]
+                else:
+                    for part in parts:
+                        if part not in aliases:
+                            # Found one
+                            alias = part
+                            break
+            else:
+                genned = parts
+            # If all match (unlikely), try unless threshold
+            if not alias and just_one:
+                if current_iter > 2:
+                    raise ValueError("Unable to find unique alias")
+                else:
+                    alias = self._alias_check_or_gen(
+                        aliases=aliases,
+                        word_counts=word_counts,
+                        current_iter=current_iter + 1,
+                    )
+        else:
+            if alias in aliases:
+                raise ValueError(f"Alias {alias} already exists.")
+        return alias if just_one else genned
+
+    @versionchanged(version="0.33.0", reason="Return mnemonics to caller.")
+    @versionchanged(version="0.41.0", reason="Support aliases.")
+    @versionchanged(version="0.41.0", reason="Added make_active flag.")
     def create_new_keypair_and_address(
         self,
         scheme: SignatureScheme,
         word_counts: Optional[int] = 12,
         derivation_path: str = None,
+        make_active: Optional[bool] = False,
+        alias: Optional[str] = None,
     ) -> tuple[str, SuiAddress]:
         """create_new_keypair_and_address Create a new keypair and address identifier and writes to client.yaml.
 
@@ -169,27 +234,49 @@ class SuiConfig(ClientConfiguration):
         :param derivation_path: The derivation path for key, specific to Signature scheme,
             defaults to root path of scheme
         :type derivation_path: str, optional
+        :param make_active: Flag to make address from created KeyPair the 'active_address', defaults to False
+        :type make_active: bool, optional
+        :param alias: Associates alias string to newly created kp and address,defaults to None
+            If not provide, alias will be generated
+        :type alias: Optional[str], optional
         :raises NotImplementedError: When providing unregognized scheme
         :return: The input or generated mnemonic string and the new keypair associated SuiAddress
         :rtype: tuple[str, SuiAddress]
         """
-        logger.debug(f"Creating new keypair for type {scheme.as_str}")
+        logger.debug(
+            f"Creating new keypair for type {scheme.as_str} with alias {alias}"
+        )
         match scheme:
             case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
+                # First, early check alias given or create new one
+                alias = self._alias_check_or_gen(
+                    aliases=self.aliases, alias=alias, word_counts=word_counts
+                )
+                # Generate the new key and address
                 mnem, keypair, address = create_new_address(
                     scheme, word_counts, derivation_path
                 )
-                self._addresses[address.address] = address
-                self._address_keypair[address.address] = keypair
-                self._keypairs[keypair.serialize()] = keypair
+                # Valid Sui base64 keystring
+                kpstr = keypair.serialize()
+                # Valid type encoded base64 Sui public key
+                puks = base64.b64encode(keypair.public_key.scheme_and_key()).decode()
+                self._cref_matrix.append(
+                    [
+                        # Alias to public key string
+                        {alias: puks},
+                        # Keypair string to keypair
+                        {kpstr: keypair},
+                        # Public key string to keypair string
+                        {puks: kpstr},
+                        # Address string to address
+                        {address.address: address},
+                    ]
+                )
                 if self._current_env != EMPEHMERAL_USER:
-                    logger.debug(
-                        f"Writing new keypair to {self.keystore_file}"
-                    )
-                    self._write_keypair(keypair)
-                else:
-                    if not self.active_address:
-                        self._active_address = address
+                    logger.debug(f"Writing new keypair to {self.keystore_file}")
+                    self._write_keypairs()
+                if make_active or not self.active_address:
+                    self.set_active_address(address)
                 return mnem, address
             case _:
                 raise NotImplementedError(
@@ -201,12 +288,16 @@ class SuiConfig(ClientConfiguration):
         version="0.33.0",
         reason="If install is True, checks if not in 'user_config' setup before writing",
     )
+    @versionchanged(version="0.41.0", reason="Support aliases.")
+    @versionchanged(version="0.41.0", reason="Added make_active flag.")
     def recover_keypair_and_address(
         self,
         scheme: SignatureScheme,
         mnemonics: Union[str, list[str]],
         derivation_path: str,
         install: bool = False,
+        make_active: Optional[bool] = False,
+        alias: Optional[str] = None,
     ) -> tuple[str, SuiAddress]:
         """recover_keypair_and_address Recover a keypair from mnemonic string.
 
@@ -219,30 +310,46 @@ class SuiConfig(ClientConfiguration):
         :param install: Flag indicating to write back to sui.keystore, defaults to False
             This flag is ignored if config was initiated through 'user_config()'
         :type install: bool, optional
+        :param make_active: Flag to make address from created KeyPair the 'active_address', defaults to False
+        :type make_active: bool, optional
+        :param alias: Associates alias string to newly created kp and address,defaults to None
+            If not provide, alias will be generated
+        :type alias: Optional[str], optional
         :raises NotImplementedError: When providing unregognized scheme
         :raises ValueError: If recovered keypair/address already exists
         :return: The input mnemonic string and the new keypair associated SuiAddress
         :rtype: tuple[str, SuiAddress]
         """
-        logger.debug(f"Recovering keypair of type {scheme.as_str}")
+        logger.debug(f"Recovering keypair of type {scheme.as_str} with alias {alias}")
         match scheme:
             case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
+                alias = self._alias_check_or_gen(aliases=self.aliases, alias=alias)
                 mnem, keypair, address = recover_key_and_address(
                     scheme, mnemonics, derivation_path
                 )
-                if address.address in self._addresses:
-                    raise ValueError(
-                        f"Address {address.address} already exists."
-                    )
-
-                self._addresses[address.address] = address
-                self._address_keypair[address.address] = keypair
-                self._keypairs[keypair.serialize()] = keypair
+                if address.address in self.addresses:
+                    raise ValueError(f"Address {address.address} already exists.")
+                # Valid Sui base64 keystring
+                kpstr = keypair.serialize()
+                # Valid type encoded base64 Sui public key
+                puks = base64.b64encode(keypair.public_key.scheme_and_key()).decode()
+                self._cref_matrix.append(
+                    [
+                        # Alias to public key string
+                        {alias: puks},
+                        # Keypair string to keypair
+                        {kpstr: keypair},
+                        # Public key string to keypair string
+                        {puks: kpstr},
+                        # Address string to address
+                        {address.address: address},
+                    ]
+                )
                 if install and self._current_env != EMPEHMERAL_USER:
-                    logger.debug(
-                        f"Writing new keypair to {self.keystore_file}"
-                    )
-                    self._write_keypair(keypair)
+                    logger.debug(f"Writing new keypair to {self.keystore_file}")
+                    self._write_keypairs()
+                if make_active or not self.active_address:
+                    self.set_active_address(address)
                 return mnem, address
             case _:
                 raise NotImplementedError(
@@ -253,12 +360,14 @@ class SuiConfig(ClientConfiguration):
         version="0.33.0",
         reason="Allow import from valid Sui keystring or Wallet key export",
     )
+    @versionchanged(version="0.41.0", reason="Support aliases.")
     def add_keypair_from_keystring(
         self,
         *,
         keystring: Union[str, dict],
         install: bool = False,
-        make_active: bool = False,
+        make_active: Optional[bool] = False,
+        alias: Optional[str] = False,
     ) -> SuiAddress:
         """add_keypair_from_keystring Adds a KeyPair from Sui keystring.
 
@@ -276,21 +385,40 @@ class SuiConfig(ClientConfiguration):
         :type install: bool, optional
         :param make_active: Flag to make address from created KeyPair the 'active_address', defaults to False
         :type make_active: bool, optional
+        :param alias: Associates alias string to newly created kp and address,defaults to None
+            If not provide, alias will be generated
+        :type alias: Optional[str], optional
         :raises ValueError: If the derived address is already registered in SuiConfig
         :return: The derived SuiAddress
         :rtype: SuiAddress
         """
+
+        alias = self._alias_check_or_gen(aliases=self.aliases, alias=alias)
+
         keystring = as_keystrings([keystring])[0]
         to_kp = keypair_from_keystring(keystring)
         to_addy = SuiAddress.from_bytes(to_kp.to_bytes())
-        if to_addy.address in self._addresses:
+        if to_addy.address in self.addresses:
             raise ValueError(f"Address {to_addy.address} already exists.")
-        self._addresses[to_addy.address] = to_addy
-        self._address_keypair[to_addy.address] = to_kp
-        self._keypairs[keystring] = to_kp
+        # Valid Sui base64 keystring
+        kpstr = to_kp.serialize()
+        # Valid type encoded base64 Sui public key
+        puks = base64.b64encode(to_kp.public_key.scheme_and_key()).decode()
+        self._cref_matrix.append(
+            [
+                # Alias to public key string
+                {alias: puks},
+                # Keypair string to keypair
+                {kpstr: to_kp},
+                # Public key string to keypair string
+                {puks: kpstr},
+                # Address string to address
+                {to_addy.address: to_addy},
+            ]
+        )
         if install and self._current_env != EMPEHMERAL_USER:
             logger.debug(f"Writing new keypair to {self.keystore_file}")
-            self._write_keypair(to_kp)
+            self._write_keypairs()
         if make_active or not self.active_address:
             self.set_active_address(to_addy)
         return to_addy
@@ -300,19 +428,13 @@ class SuiConfig(ClientConfiguration):
     def _new_parse_config(cls, sui_config: str) -> tuple[str, str, str, str]:
         """New Config Parser."""
         active_address = (
-            sui_config["active_address"]
-            if "active_address" in sui_config
-            else None
+            sui_config["active_address"] if "active_address" in sui_config else None
         )
         keystore_file = (
-            Path(sui_config["keystore"]["File"])
-            if "keystore" in sui_config
-            else None
+            Path(sui_config["keystore"]["File"]) if "keystore" in sui_config else None
         )
         # active_env is new (0.15.0) and identifies the alias in use in the 'envs' map list
-        active_env = (
-            sui_config["active_env"] if "active_env" in sui_config else None
-        )
+        active_env = sui_config["active_env"] if "active_env" in sui_config else None
         if not active_address or not keystore_file or not active_env:
             raise SuiConfigFileError("Not a valid SUI configuration file.")
         current_url = None
@@ -330,21 +452,26 @@ class SuiConfig(ClientConfiguration):
 
     @classmethod
     @versionadded(version="0.16.1", reason="More flexible configuration.")
+    @versionchanged(version="0.41.0", reason="Sui aliases configuration feature added")
     def _create_config(
-        cls, expanded_path: Path, expanded_binary: Path
+        cls, expanded_path: Path, expanded_binary: Path, expanded_alias: Path
     ) -> "SuiConfig":
         """."""
         client_yaml = yaml.safe_load(expanded_path.read_text(encoding="utf8"))
         config = super(ClientConfiguration, cls).__new__(cls)
-        config.__init__(str(expanded_path), client_yaml["keystore"]["File"])
+        # alias_file = (
+        #     str(expanded_alias) if expanded_alias and expanded_alias.exists() else None
+        # )
+        config.__init__(
+            str(expanded_path), client_yaml["keystore"]["File"], str(expanded_alias)
+        )
         _set_env_vars(expanded_path, expanded_binary)
         config._initiate(*cls._new_parse_config(client_yaml))
         return config
 
     @classmethod
-    @versionadded(
-        version="0.16.1", reason="New loading of default configuration."
-    )
+    @versionadded(version="0.16.1", reason="New loading of default configuration.")
+    @versionchanged(version="0.41.0", reason="Sui aliases configuration feature added")
     def default_config(cls) -> "SuiConfig":
         """."""
         logger.debug("Initializing default configuration from ~/.sui")
@@ -353,6 +480,7 @@ class SuiConfig(ClientConfiguration):
             return cls._create_config(
                 expanded_path,
                 Path(os.path.expanduser(DEFAULT_SUI_BINARY_PATH)),
+                Path(os.path.expanduser(DEFAULT_ALIAS_PATH_STRING)),
             )
         raise SuiFileNotFound(f"{expanded_path} not found.")
 
@@ -432,15 +560,12 @@ class SuiConfig(ClientConfiguration):
             config._socket_url = ws_url or EMPEHMERAL_USER
         config._local_running = False
         if prv_keys:
-            (
-                config._keypairs,
-                config._addresses,
-                config._address_keypair,
-            ) = emphemeral_keys_and_addresses(prv_keys)
+            config._cref_matrix = emphemeral_keys_and_addresses(prv_keys)
             if len(config.addresses):
                 config._active_address = SuiAddress(config.addresses[0])
         else:
             config._active_address = None
+        config._alias_assocation([])
         return config
 
     @property
@@ -476,11 +601,6 @@ class SuiConfig(ClientConfiguration):
         :rtype: str
         """
         return self._current_env
-
-    @property
-    def keystore_file(self) -> str:
-        """Return the fully qualified keystore path."""
-        return self._current_keystore_file
 
     def set_active_address(self, address: SuiAddress) -> SuiAddress:
         """Change the active address to address."""

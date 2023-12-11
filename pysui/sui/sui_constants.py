@@ -37,6 +37,7 @@ DEFAULT_SUI_BINARY_PATH: str = "~/.cargo/bin/sui"
 # Config file constants
 
 DEFAULT_DEVNET_PATH_STRING: str = "~/.sui/sui_config/client.yaml"
+DEFAULT_ALIAS_PATH_STRING: str = "~/.sui/sui_config/sui.aliases"
 
 """Devnet client configuration default."""
 DEVNET_ENVIRONMENT_KEY: str = "devnet"
@@ -121,7 +122,7 @@ SECP256K1_PUBLICKEY_BYTES_LEN: int = 33
 SECP256K1_PRIVATEKEY_BYTES_LEN: int = PRIVATE_KEY_BYTE_LEN
 """Length of SECP256K1 private key bytes."""
 
-# SECP256K1 Keypair derivation path
+# SECP256R1 Keypair derivation path
 # m / purpose' / coin_type' / account' / change / address_index
 SECP256R1_DEFAULT_KEYPATH: str = "m/74'/784'/0'/0/0"
 # SECP256R1 from address bytes
