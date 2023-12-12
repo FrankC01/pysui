@@ -20,7 +20,7 @@ from .client_types import AbstractType
 from .client_keypair import KeyPair, PublicKey
 
 
-class _Matrix(IntEnum):
+class CrefType(IntEnum):
     """."""
 
     ALIAS = 0
@@ -51,15 +51,35 @@ class ClientConfiguration(ABC):
         self._configuration_path = config_path
         self._cref_matrix: list[list[dict]] = []
 
-    def _get_cref(self, value: str, vin: _Matrix, vout: _Matrix) -> Union[int, Any]:
+    def _cref_result_for(
+        self, value: str, vin: CrefType, vout: CrefType
+    ) -> Union[int, Any]:
         """."""
         result = None
         for index, mrow in enumerate(self._cref_matrix):
             if value in mrow[vin]:
                 result = (
-                    index if vout == _Matrix.INDEX else list(mrow[vout].values())[0]
+                    index if vout == CrefType.INDEX else list(mrow[vout].values())[0]
                 )
                 break
+        return result
+
+    def _get_cref_value(
+        self, value: str, vin: CrefType, vout: CrefType
+    ) -> Union[int, Any]:
+        """_get_cref Gets an associated value of input value.
+
+        :param value: The key value
+        :type value: str
+        :param vin: What type does value represent
+        :type vin: CrefType
+        :param vout: What value type result to return
+        :type vout: CrefType
+        :raises ValueError: If input value is not present or vin type
+        :return: Either int (if vout CrefType.INDEX) or value (if vout !CrefType.INDEX)
+        :rtype: Union[int, Any]
+        """
+        result = self._cref_result_for(value, vin, vout)
         if result is None:
             raise ValueError(f"{value} not found for {vin}")
         return result
@@ -71,9 +91,8 @@ class ClientConfiguration(ABC):
         aliases: Optional[list[str]] = None,
         word_counts: Optional[int] = 12,
         alias: Optional[str] = None,
-        just_one: Optional[bool] = True,
         current_iter: Optional[int] = 0,
-    ) -> Union[str, list[str]]:
+    ) -> str:
         """_alias_check_or_gen If alias is provided, checks if unique otherwise creates one or more.
 
         :param aliases: List of existing aliases
@@ -82,12 +101,20 @@ class ClientConfiguration(ABC):
         :type word_counts: Optional[int], optional
         :param alias: An inbound alias, defaults to None
         :type alias: Optional[str], optional
-        :param just_one: If just 1 alias otherwise return parts list, defaults to True
-        :type just_one: Optional[bool], optional
         :param current_iter: Internal recursion count, defaults to 0
         :type current_iter: Optional[int], optional
-        :return: One or more aliases
-        :rtype: Union[str, list[str]]
+        :return: An alias
+        :rtype: str
+        """
+
+    @abstractmethod
+    def _alias_gen_batch(self, *, word_counts: int) -> list[str]:
+        """_alias_gen_batch Generates a batch of alias name pairs
+
+        :param word_counts: Words count used for mnemonic phrase
+        :type word_counts: int
+        :return: A list of alias-name pairs
+        :rtype: list[str]
         """
 
     def _alias_assocation(self, aliases: list[dict]) -> None:
@@ -107,8 +134,10 @@ class ClientConfiguration(ABC):
             for alias_dict in aliases:
                 alias_name = alias_dict.get("alias")
                 pub_key_str = alias_dict["public_key_base64"]
-                at_row = self._get_cref(pub_key_str, _Matrix.PKEY, _Matrix.INDEX)
-                self._cref_matrix[at_row][_Matrix.ALIAS] = {alias_name: pub_key_str}
+                at_row = self._get_cref_value(
+                    pub_key_str, CrefType.PKEY, CrefType.INDEX
+                )
+                self._cref_matrix[at_row][CrefType.ALIAS] = {alias_name: pub_key_str}
         # otherwise if we have keys we can gen aliases (scales to any size)
         elif self._cref_matrix:
             crlen = len(self._cref_matrix)
@@ -116,13 +145,36 @@ class ClientConfiguration(ABC):
             fetches = basefetch + 1 if crlen % 12 else basefetch
             accumer: list[str] = []
             for _ in range(fetches):
-                accumer.extend(
-                    self._alias_check_or_gen(alias=[], word_counts=24, just_one=False)
-                )
+                accumer.extend(self._alias_gen_batch(word_counts=24))
+
             for index, at_row in enumerate(self._cref_matrix):
-                at_row[_Matrix.ALIAS] = {
-                    accumer[index]: next(iter(at_row[_Matrix.PKEY]))
+                at_row[CrefType.ALIAS] = {
+                    accumer[index]: next(iter(at_row[CrefType.PKEY]))
                 }
+
+    def _replace_alias_key(self, row_index: int, new_key: str) -> str:
+        """_replace_alias_key Replaces the alias key (rename) at cref row index.
+
+        :param row_index: The _cref_matrix index
+        :type row_index: int
+        :param new_key: The new alias name for row
+        :type new_key: str
+        :return: The old key
+        :rtype: str
+        """
+        cref_row = self._cref_matrix[row_index]
+        old_alias = cref_row[CrefType.ALIAS]
+        cref_row[CrefType.ALIAS] = {new_key: list(old_alias.values())[0]}
+        return next(iter(old_alias))
+
+    @property
+    def _has_aliases(self) -> bool:
+        """_has_aliases Tests if aliases are part of crefCrefType
+
+        :return: True if aliases present
+        :rtype: bool
+        """
+        return self._cref_matrix and self._cref_matrix[0] and self._cref_matrix[0][0]
 
     @property
     @abstractmethod
@@ -150,52 +202,54 @@ class ClientConfiguration(ABC):
     def aliases(self) -> list[str]:
         """Get aliases managed by wallet."""
         return (
-            [next(iter(cref_row[_Matrix.ALIAS])) for cref_row in self._cref_matrix]
-            if self.alias_file
+            [next(iter(cref_row[CrefType.ALIAS])) for cref_row in self._cref_matrix]
+            if self._cref_matrix
             else []
         )
 
     @versionadded(version="0.41.0", reason="Supporting aliases")
     def aliases_encode(self) -> list[dict]:
         """Encodes aliases."""
-        # arows = [crow[_Matrix.ALIAS] for crow in self._cref_matrix]
-        return [
-            [{"alias": k, "public_key_base64": v} for k, v in drows.items()][0]
-            for drows in [crow[_Matrix.ALIAS] for crow in self._cref_matrix]
-        ]
+        encoded_aliases: list[dict] = []
+        if self._has_aliases:
+            encoded_aliases = [
+                [{"alias": k, "public_key_base64": v} for k, v in drows.items()][0]
+                for drows in [crow[CrefType.ALIAS] for crow in self._cref_matrix]
+            ]
+        return encoded_aliases
 
     @property
     def keystrings(self) -> list[str]:
         """Get keypair strings managed by wallet."""
-        return [next(iter(cref_row[_Matrix.KPAIR])) for cref_row in self._cref_matrix]
+        return [next(iter(cref_row[CrefType.KPAIR])) for cref_row in self._cref_matrix]
 
     @property
     def addresses_and_keys(self) -> dict:
         """Get a copy of dictionary of address/keypair."""
         return {
-            next(iter(cref_row[_Matrix.ADDY])): list(cref_row[_Matrix.KPAIR].values())[
-                0
-            ]
+            next(iter(cref_row[CrefType.ADDY])): list(
+                cref_row[CrefType.KPAIR].values()
+            )[0]
             for cref_row in self._cref_matrix
         }
 
     @property
     def addresses(self) -> list[str]:
         """Get all the addresses."""
-        return [next(iter(cref_row[_Matrix.ADDY])) for cref_row in self._cref_matrix]
+        return [next(iter(cref_row[CrefType.ADDY])) for cref_row in self._cref_matrix]
 
     def keypair_for_keystring(self, key_string: str) -> KeyPair:
         """Get KeyPair for keystring."""
-        return self._get_cref(key_string, _Matrix.KPAIR, _Matrix.KPAIR)
+        return self._get_cref(key_string, CrefType.KPAIR, CrefType.KPAIR)
 
     def keypair_for_address(self, addy: AbstractType) -> KeyPair:
         """Get the keypair for a given address."""
-        return self._get_cref(addy.address, _Matrix.ADDY, _Matrix.KPAIR)
+        return self._get_cref(addy.address, CrefType.ADDY, CrefType.KPAIR)
 
     def keypair_for_publickey(self, pub_key: PublicKey) -> Union[KeyPair, None]:
         """Return the keypair for the public key or None if no match."""
         return self._get_cref(
-            b64encode(pub_key.scheme_and_key()).decode(), _Matrix.PKEY, _Matrix.KPAIR
+            b64encode(pub_key.scheme_and_key()).decode(), CrefType.PKEY, CrefType.KPAIR
         )
 
     @versionadded(version="0.41.0", reason="Supporting aliases")
@@ -207,7 +261,7 @@ class ClientConfiguration(ABC):
         :return: The SuiAddress for alias
         :rtype: AbstractType
         """
-        return self._get_cref(alias, _Matrix.ALIAS, _Matrix.ADDY)
+        return self._get_cref(alias, CrefType.ALIAS, CrefType.ADDY)
 
     @versionadded(version="0.41.0", reason="Supporting aliases")
     def keypair_for_alias(self, alias: str) -> Union[KeyPair, None]:
@@ -218,4 +272,4 @@ class ClientConfiguration(ABC):
         :return: The KeyPair associated to alias
         :rtype: Union[KeyPair, None]
         """
-        return self._get_cref(alias, _Matrix.ALIAS, _Matrix.KPAIR)
+        return self._get_cref(alias, CrefType.ALIAS, CrefType.KPAIR)

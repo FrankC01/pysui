@@ -23,7 +23,7 @@ import json
 from typing import Optional, Union
 import yaml
 from deprecated.sphinx import versionadded, versionchanged, deprecated
-from pysui.abstracts import ClientConfiguration, SignatureScheme, KeyPair
+from pysui.abstracts import ClientConfiguration, SignatureScheme, CrefType
 from pysui.sui.sui_constants import (
     DEFAULT_ALIAS_PATH_STRING,
     EMPEHMERAL_PATH,
@@ -126,7 +126,6 @@ class SuiConfig(ClientConfiguration):
                 self._socket_url = socket_url
         self._cref_matrix = load_keys_and_addresses(self.keystore_file)
         # Setup aliases
-
         if self.alias_file:
             try:
                 with open(self.alias_file, encoding="utf8") as keyfile:
@@ -137,7 +136,7 @@ class SuiConfig(ClientConfiguration):
     @versionadded(version="0.41.0", reason="Support aliases.")
     def _write_aliases(self):
         """Write alias file."""
-        if self._current_env != EMPEHMERAL_USER:
+        if self._current_env != EMPEHMERAL_USER and self._has_aliases:
             alias_filepath = self.alias_file
             logger.debug(f"Writing aliases to {alias_filepath}")
             with open(alias_filepath, "w", encoding="utf8") as alias_store:
@@ -155,15 +154,29 @@ class SuiConfig(ClientConfiguration):
             raise SuiFileNotFound((keys_filepath))
         self._write_aliases()
 
+    @versionadded(version="0.41.0", reason="Support aliases.")
+    def _alias_gen_batch(self, *, word_counts: int) -> list[str]:
+        """_alias_gen_batch Generates a batch of alias name pairs
+
+        :param word_counts: Words count used for mnemonic phrase
+        :type word_counts: int
+        :return: A list of alias-name pairs
+        :rtype: list[str]
+        """
+        parts = list(
+            partition(gen_mnemonic_phrase(word_counts).split(" "), int(word_counts / 2))
+        )
+        return [k + "-" + v for k, v in zip(*parts)]
+
+    @versionadded(version="0.41.0", reason="Support aliases.")
     def _alias_check_or_gen(
         self,
         *,
         aliases: Optional[list[str]] = None,
         word_counts: Optional[int] = 12,
         alias: Optional[str] = None,
-        just_one: Optional[bool] = True,
         current_iter: Optional[int] = 0,
-    ) -> Union[str, list[str]]:
+    ) -> str:
         """_alias_check_or_gen If alias is provided, checks if unique otherwise creates one or more.
 
         :param aliases: List of existing aliases, defaults to None
@@ -172,35 +185,24 @@ class SuiConfig(ClientConfiguration):
         :type word_counts: Optional[int], optional
         :param alias: An inbound alias, defaults to None
         :type alias: Optional[str], optional
-        :param just_one: If just 1 alias otherwise return parts list, defaults to True
-        :type just_one: Optional[bool], optional
         :param current_iter: Internal recursion count, defaults to 0
         :type current_iter: Optional[int], optional
-        :return: One or more aliases
-        :rtype: Union[str, list[str]]
+        :return: An aliases
+        :rtype: str
         """
         if not alias:
-            parts = list(
-                partition(
-                    gen_mnemonic_phrase(word_counts).split(" "), int(word_counts / 2)
-                )
-            )
-            parts = [a + "-" + b for a, b in zip(*parts)]
-            genned: list[str] = []
+            alias_names = self._alias_gen_batch(word_counts=word_counts)
             # Find a unique part if just_one
-            if just_one:
-                if not aliases:
-                    alias = parts[0]
-                else:
-                    for part in parts:
-                        if part not in aliases:
-                            # Found one
-                            alias = part
-                            break
+            if not aliases:
+                alias = alias_names[0]
             else:
-                genned = parts
+                for alias_name in alias_names:
+                    if alias_name not in aliases:
+                        # Found one
+                        alias = alias_name
+                        break
             # If all match (unlikely), try unless threshold
-            if not alias and just_one:
+            if not alias:
                 if current_iter > 2:
                     raise ValueError("Unable to find unique alias")
                 else:
@@ -212,7 +214,33 @@ class SuiConfig(ClientConfiguration):
         else:
             if alias in aliases:
                 raise ValueError(f"Alias {alias} already exists.")
-        return alias if just_one else genned
+        return alias
+
+    def rename_alias(self, *, old_alias: str, new_alias: str) -> None:
+        """rename_alias Renames existing alias.
+
+        :param old_alias: Existing alias name
+        :type old_alias: str
+        :param new_alias: Replacement name
+        :type new_alias: str
+        :raises ValueError: Invalid arguments
+        :return: None
+        :rtype: NoneType
+        """
+        if (
+            old_alias
+            and isinstance(old_alias, str)
+            and new_alias
+            and isinstance(new_alias, str)
+            and len(new_alias) <= 64
+        ):
+            self._replace_alias_key(
+                self._cref_result_for(old_alias, CrefType.ALIAS, CrefType.INDEX),
+                new_alias,
+            )
+            self._write_aliases()
+        else:
+            raise ValueError("Invalid arguments")
 
     @versionchanged(version="0.33.0", reason="Return mnemonics to caller.")
     @versionchanged(version="0.41.0", reason="Support aliases.")

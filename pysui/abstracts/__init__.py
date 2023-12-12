@@ -13,7 +13,12 @@
 
 """Abstraction package."""
 from pysui.abstracts.client_types import AbstractType, SuiBaseType, SuiScalarType
-from pysui.abstracts.client_config import ClientConfiguration
-from pysui.abstracts.client_keypair import KeyPair, PublicKey, PrivateKey, SignatureScheme
+from pysui.abstracts.client_config import ClientConfiguration, CrefType
+from pysui.abstracts.client_keypair import (
+    KeyPair,
+    PublicKey,
+    PrivateKey,
+    SignatureScheme,
+)
 from pysui.abstracts.client_rpc import RpcResult, Provider
 from pysui.abstracts.client_rpc import Builder
