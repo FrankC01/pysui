@@ -240,15 +240,15 @@ class ClientConfiguration(ABC):
 
     def keypair_for_keystring(self, key_string: str) -> KeyPair:
         """Get KeyPair for keystring."""
-        return self._get_cref(key_string, CrefType.KPAIR, CrefType.KPAIR)
+        return self._get_cref_value(key_string, CrefType.KPAIR, CrefType.KPAIR)
 
     def keypair_for_address(self, addy: AbstractType) -> KeyPair:
         """Get the keypair for a given address."""
-        return self._get_cref(addy.address, CrefType.ADDY, CrefType.KPAIR)
+        return self._get_cref_value(addy.address, CrefType.ADDY, CrefType.KPAIR)
 
     def keypair_for_publickey(self, pub_key: PublicKey) -> Union[KeyPair, None]:
         """Return the keypair for the public key or None if no match."""
-        return self._get_cref(
+        return self._get_cref_value(
             b64encode(pub_key.scheme_and_key()).decode(), CrefType.PKEY, CrefType.KPAIR
         )
 
@@ -261,7 +261,7 @@ class ClientConfiguration(ABC):
         :return: The SuiAddress for alias
         :rtype: AbstractType
         """
-        return self._get_cref(alias, CrefType.ALIAS, CrefType.ADDY)
+        return self._get_cref_value(alias, CrefType.ALIAS, CrefType.ADDY)
 
     @versionadded(version="0.41.0", reason="Supporting aliases")
     def keypair_for_alias(self, alias: str) -> Union[KeyPair, None]:
@@ -272,4 +272,4 @@ class ClientConfiguration(ABC):
         :return: The KeyPair associated to alias
         :rtype: Union[KeyPair, None]
         """
-        return self._get_cref(alias, CrefType.ALIAS, CrefType.KPAIR)
+        return self._get_cref_value(alias, CrefType.ALIAS, CrefType.KPAIR)
