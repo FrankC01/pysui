@@ -58,9 +58,10 @@ class ClientConfiguration(ABC):
         result = None
         for index, mrow in enumerate(self._cref_matrix):
             if value in mrow[vin]:
-                result = (
-                    index if vout == CrefType.INDEX else list(mrow[vout].values())[0]
-                )
+                if vout == CrefType.INDEX:
+                    result = index
+                else:
+                    result = list(mrow[vout].values())[0]
                 break
         return result
 
@@ -253,8 +254,8 @@ class ClientConfiguration(ABC):
         )
 
     @versionadded(version="0.41.0", reason="Supporting aliases")
-    def address_for_alias(self, alias: str) -> AbstractType:
-        """address_for_alias Returns an address for an alias
+    def addr4al(self, alias: str) -> AbstractType:
+        """addr4al Returns an address for an alias
 
         :param alias: alias name
         :type alias: str
@@ -264,8 +265,8 @@ class ClientConfiguration(ABC):
         return self._get_cref_value(alias, CrefType.ALIAS, CrefType.ADDY)
 
     @versionadded(version="0.41.0", reason="Supporting aliases")
-    def keypair_for_alias(self, alias: str) -> Union[KeyPair, None]:
-        """keypair_for_alias Returns the keypair associated with alias
+    def kp4al(self, alias: str) -> Union[KeyPair, None]:
+        """kp4al Returns the keypair associated with alias
 
         :param alias: alias name
         :type alias: str
@@ -273,3 +274,53 @@ class ClientConfiguration(ABC):
         :rtype: Union[KeyPair, None]
         """
         return self._get_cref_value(alias, CrefType.ALIAS, CrefType.KPAIR)
+
+    @versionadded(version="0.41.0", reason="Supporting aliases")
+    def pk4al(self, alias: str) -> Union[PublicKey, None]:
+        """pk4al Returns the PublicKey associated with alias
+
+        :param alias: alias name
+        :type alias: str
+        :return: The PublicKey associated to alias
+        :rtype: Union[PublicKey, None]
+        """
+        return self._get_cref_value(alias, CrefType.ALIAS, CrefType.PKEY)
+
+    @versionadded(version="0.41.0", reason="Supporting aliases")
+    def al4addr(self, addr: Union[str, AbstractType]) -> str:
+        """al4addr Returns an alias for an address
+
+        :param addr: Address str or Address type
+        :type alias: Union[str, AbstractType]
+        :return: The alias name associated to address
+        :rtype: str
+        """
+        addy = addr if isinstance(addr, str) else addr.address
+        result = self._get_cref_value(addy, CrefType.ADDY, CrefType.INDEX)
+        return next(iter(self._cref_matrix[result][CrefType.ALIAS]))
+
+    @versionadded(version="0.41.0", reason="Supporting aliases")
+    def al4kp(self, kp: KeyPair) -> str:
+        """al4kp Returns the alias associated with keypair
+
+        :param kp: Key pair to find associated alias
+        :type kp: KeyPair
+        :return: The alias name associated to KeyPair
+        :rtype: str
+        """
+        kps = kp.serialize()
+        result = self._get_cref_value(kps, CrefType.KPAIR, CrefType.INDEX)
+        return next(iter(self._cref_matrix[result][CrefType.ALIAS]))
+
+    @versionadded(version="0.41.0", reason="Supporting aliases")
+    def al4pk(self, pk: PublicKey) -> str:
+        """al4pk Returns the alias associated with PublicKey
+
+        :param pk: Public key to find associated alias
+        :type pk: PublicKey
+        :return: The alias associated to PublicKey
+        :rtype: str
+        """
+        pks = b64encode(pk.scheme_and_key()).decode()
+        result = self._get_cref_value(pks, CrefType.PKEY, CrefType.INDEX)
+        return next(iter(self._cref_matrix[result][CrefType.ALIAS]))

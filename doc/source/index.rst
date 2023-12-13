@@ -22,6 +22,7 @@ Welcome to pysui's documentation!
    intro
    logging
    builders
+   aliases
    multi_sig
    prog_txn
    subscriptions
