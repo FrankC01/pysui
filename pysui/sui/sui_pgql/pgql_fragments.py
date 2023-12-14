@@ -14,7 +14,7 @@
 """QueryNode generators."""
 
 from functools import cache
-from pysui.sui.sui_pgql.clients import PGQL_Fragment
+from pysui.sui.sui_pgql.pgql_clients import PGQL_Fragment
 from gql.dsl import DSLFragment, DSLInlineFragment, DSLMetaField, DSLSchema
 
 
