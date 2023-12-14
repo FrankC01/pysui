@@ -21,6 +21,7 @@ temp_sub.py
 out*
 protocol.json
 backup/
+latest_sch*
 
 
 # pytest cruft
