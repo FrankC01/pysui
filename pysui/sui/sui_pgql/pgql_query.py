@@ -17,7 +17,7 @@ from typing import Optional, Callable, Union, Any
 from gql.dsl import DSLQuery, dsl_gql, DSLSchema
 from graphql import DocumentNode
 
-from pysui.sui.sui_pgql.clients import PGQL_QueryNode, PGQL_NoOp
+from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode, PGQL_NoOp
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_fragments as frag
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
@@ -56,9 +56,9 @@ class GetCoinMetaData(PGQL_QueryNode):
 
 
 class GetAllCoinBalances(PGQL_QueryNode):
-    """GetAllCoins Returns the total coin balances, for all coin types, owned by the address owner.
+    """GetAllCoins Returns the total coin balances, for all coin types, for owner.
 
-    This is different from legacy as only a list of coin type summaries are returned.
+    This is different from legacy Builder as only a list of coin type summaries are returned.
     You take the coin_type from any list member and call...
     """
 
@@ -72,7 +72,7 @@ class GetAllCoinBalances(PGQL_QueryNode):
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
         """
-        self.owner = TypeValidator.check_address(owner)
+        self.owner = TypeValidator.check_owner(owner)
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
@@ -106,7 +106,7 @@ class GetAllCoinBalances(PGQL_QueryNode):
 
 
 class GetCoins(PGQL_QueryNode):
-    """GetCoins Returns all Coin objects of a specific type owned by an address."""
+    """GetCoins Returns all Coin objects of a specific type for owner."""
 
     def __init__(
         self,
@@ -124,7 +124,7 @@ class GetCoins(PGQL_QueryNode):
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
         """
-        self.owner = TypeValidator.check_address(owner)
+        self.owner = TypeValidator.check_owner(owner)
         self.coin_type = coin_type
         self.next_page = next_page
 
@@ -273,7 +273,7 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
         """
-        self.owner = TypeValidator.check_address(owner)
+        self.owner = TypeValidator.check_owner(owner)
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
@@ -525,7 +525,7 @@ class GetMultipleTx(PGQL_QueryNode):
 # TODO: Need object rep
 # TODO: When staking matures
 class GetDelegatedStakes(PGQL_QueryNode):
-    """GetDelegatedStakes return all [StakedSui] coins for address owner."""
+    """GetDelegatedStakes return all [StakedSui] coins for owner."""
 
     def __init__(self, owner: str, next_page: Optional[pgql_type.PagingCursor] = None):
         """QueryNode initializer.
@@ -535,7 +535,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
         :param next_page: _description_, defaults to None
         :type next_page: Optional[pgql_type.PagingCursor], optional
         """
-        self.owner = TypeValidator.check_address(owner)
+        self.owner = TypeValidator.check_owner(owner)
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:

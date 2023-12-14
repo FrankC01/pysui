@@ -15,7 +15,7 @@
 
 import asyncio
 
-from pysui.sui.sui_pgql.clients import (
+from pysui.sui.sui_pgql.pgql_clients import (
     AsyncSuiGQLClient,
     SUI_GRAPHQL_MAINNET,
     SUI_GRAPHQL_TESTNET,

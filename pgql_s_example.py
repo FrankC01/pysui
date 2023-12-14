@@ -13,7 +13,7 @@
 
 """Sample module for incremental buildout of Sui GraphQL RPC for Pysui 1.0.0."""
 
-from pysui.sui.sui_pgql.clients import (
+from pysui.sui.sui_pgql.pgql_clients import (
     SuiGQLClient,
     SUI_GRAPHQL_MAINNET,
     SUI_GRAPHQL_TESTNET,

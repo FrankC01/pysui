@@ -29,7 +29,7 @@ from gql.dsl import (
 from graphql import DocumentNode, print_ast, GraphQLSchema
 from graphql.utilities.print_schema import print_schema
 
-# Move to Constants
+# TODO: Move to Constants
 SUI_GRAPHQL_MAINNET: str = "https://graphql-beta.mainnet.sui.io"
 SUI_GRAPHQL_TESTNET: str = "https://graphql-beta.testnet.sui.io"
 
@@ -38,7 +38,7 @@ from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
 
 
 class BaseSuiGQLClient:
-    """."""
+    """Base GraphQL client."""
 
     GRAPH_QL_SCHEMA: DSLSchema = None
 
@@ -50,14 +50,16 @@ class BaseSuiGQLClient:
         self,
         *,
         url_str: str,
-        sui_config: Any,
+        # TODO: Enable when sui env and gql URL normalize
+        # sui_config: Any,
         version: str,
         schema: GraphQLSchema,
         rpc_config: SuiConfigGQL,
     ):
         """."""
         self._url: str = url_str
-        self._sui_config: Any = sui_config
+        # TODO: Enable when sui env and gql URL normalize
+        # self._sui_config: Any = sui_config
         self._version: str = version
         self._rpc_config: SuiConfigGQL = rpc_config
         self._raw_schema: GraphQLSchema = schema
@@ -137,7 +139,8 @@ class SuiGQLClient(BaseSuiGQLClient):
         *,
         gql_rpc_url: str,
         write_schema: Optional[bool] = False,
-        config: Optional[Any] = None,
+        # TODO: Enable when sui env and gql URL normalize
+        # config: Optional[Any] = None,
     ):
         """Sui GraphQL Client initializer."""
         # self.rpc_url = gql_rpc_url
@@ -168,7 +171,8 @@ class SuiGQLClient(BaseSuiGQLClient):
 
         super().__init__(
             url_str=gql_rpc_url,
-            sui_config=config,
+            # TODO: Enable when sui env and gql URL normalize
+            # sui_config=config,
             version=gql_version,
             schema=self._rpc_client.schema,
             rpc_config=rpc_config,
@@ -238,12 +242,16 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         *,
         gql_rpc_url: str,
         write_schema: Optional[bool] = False,
-        config: Optional[Any] = None,
+        # TODO: Enable when sui env and gql URL normalize
+        # config: Optional[Any] = None,
     ):
         """Async Sui GraphQL Client initializer."""
         # Get sync client to populate all applicable properties
         s_client = SuiGQLClient(
-            gql_rpc_url=gql_rpc_url, write_schema=write_schema, config=config
+            gql_rpc_url=gql_rpc_url,
+            write_schema=write_schema,
+            # TODO: Enable when sui env and gql URL normalize
+            # config=config,
         )
 
         # Create async client
@@ -258,7 +266,8 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         # Initialize our base with copies of sync
         super().__init__(
             url_str=s_client.url,
-            sui_config=s_client.config,
+            # TODO: Enable when sui env and gql URL normalize
+            # sui_config=s_client.config,
             version=s_client.version,
             schema=s_client._raw_schema,
             rpc_config=s_client.rpc_config,
