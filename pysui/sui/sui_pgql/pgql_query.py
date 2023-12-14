@@ -72,7 +72,7 @@ class GetAllCoinBalances(PGQL_QueryNode):
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
         """
-        self.owner = TypeValidator.check_owner(owner)
+        self.owner = owner
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
@@ -124,7 +124,7 @@ class GetCoins(PGQL_QueryNode):
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
         """
-        self.owner = TypeValidator.check_owner(owner)
+        self.owner = owner
         self.coin_type = coin_type
         self.next_page = next_page
 
@@ -273,7 +273,7 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
         """
-        self.owner = TypeValidator.check_owner(owner)
+        self.owner = owner
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
@@ -535,7 +535,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
         :param next_page: _description_, defaults to None
         :type next_page: Optional[pgql_type.PagingCursor], optional
         """
-        self.owner = TypeValidator.check_owner(owner)
+        self.owner = owner
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:

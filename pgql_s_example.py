@@ -19,6 +19,7 @@ from pysui.sui.sui_pgql.pgql_clients import (
     SUI_GRAPHQL_TESTNET,
 )
 import pysui.sui.sui_pgql.pgql_query as qn
+from pysui import SuiConfig
 
 
 def do_coin_meta(client: SuiGQLClient):
@@ -245,15 +246,19 @@ def do_protcfg(client: SuiGQLClient):
 
 
 if __name__ == "__main__":
-    client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET, write_schema=True)
+    client_init = SuiGQLClient(
+        gql_rpc_url=SUI_GRAPHQL_MAINNET,
+        write_schema=True,
+        config=SuiConfig.default_config(),
+    )
     ## QueryNodes (fetch)
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
-    # do_gas(client_init)
+    do_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
     # do_object(client_init)
-    do_objects(client_init)
+    # do_objects(client_init)
     # do_objects_for(client_init)
     # do_event(client_init)
     # do_tx(client_init)
