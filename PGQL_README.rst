@@ -1,6 +1,6 @@
-"""""""""""""""""""""""""""""""""
-pysui-gql (pysui GraphQL client)
-"""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""
+pgql a.k.a pysui-gql (pysui GraphQL client)
+""""""""""""""""""""""""""""""""""""""""""""
 
 .. contents:: Overview
     :depth: 3
@@ -17,44 +17,8 @@ A graphql stub to test against Sui RPC 2.0 graphql (currently beta is 1.5)
 Key Dependencies
 ====================
 
-pysui-gql uses `pipenv <https://pypi.org/project/pipenv/>`_ for package dependency management and virutal environments
-
 pysui-gql uses `gql <https://pypi.org/project/gql/>`_ for GraphQL queries, mutations, etc. Includes DSL
 
-====================
-Setup
-====================
-
-#. Install pipenv
-#. Clone this repo
-#. Change into repo folder
-
-.. code-block::
-
-    brew install pipenv
-    git clone git@github.com:Suitters/pysui-gpc.git
-    cd pysui-gql
-
-
---------------------------
-First time
---------------------------
-
-This demonstrates initial setup of virtual environment using pipenv
-
-#. Setup and Activate virtual environment
-#. Install packages
-#. Edit code
-
-.. code-block::
-
-    pipenv --python 3.11.4
-    pipenv shell
-    pipenv install
-    code .
-    exit
-
-After the initial setup, you'll only need to ``pipenv shell`` in the pysui-gql folder.
 
 --------------------------
 Running Samples
@@ -62,10 +26,10 @@ Running Samples
 
 .. code-block::
 
-    pipenv shell
-    python g1.py # Synchronous
-    python ag1.py # Asynchronous
-    exit
+    . env/bin/activate
+    python pgql_s_example.py # Synchronous
+    python pgql_a_example.py # Asynchronous
+    deactivate
 
 ====================
 Simple dev example
@@ -76,8 +40,8 @@ Simple dev example
     #
     """Development example."""
 
-    from pgql import SuiGQLClient, SUI_GRAPHQL_MAINNET
-    import pgql.pysui_gql_query as qn
+    from pysui.sui.sui_pgql.clients import SuiGQLClient, SUI_GRAPHQL_MAINNET
+    import pysui.sui.sui_pgql.pgql_query as qn
 
     def main(client: SuiGQLClient):
         """Fetch 0x2::sui::SUI (default) for owner."""
@@ -93,7 +57,6 @@ Simple dev example
     if __name__ == "__main__":
         client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET)
         main(client_init)
-        client_init.client.close_sync()
 
 ========================================
 Anatomy of client.execute_query
