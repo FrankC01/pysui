@@ -4,6 +4,7 @@
 
 import re
 from typing import Union
+from pysui import SuiConfig
 from pysui.sui.sui_constants import SUI_HEX_ADDRESS_STRING_LEN
 
 # owner lengths
@@ -16,9 +17,14 @@ class TypeValidator:
     __partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{1,64}")
 
     @classmethod
-    def check_owner(cls, owner: str) -> Union[str, ValueError]:
+    def check_owner(cls, owner: str, config: SuiConfig) -> Union[str, ValueError]:
         """."""
         inlen = len(owner)
+        assert isinstance(owner, str), "Owner should be str"
+        try:
+            return config.addr4al(owner).address
+        except ValueError:
+            pass
         if inlen < 3 or inlen > SUI_HEX_ADDRESS_STRING_LEN:
             raise ValueError("Invalid Sui owner")
 

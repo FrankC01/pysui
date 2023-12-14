@@ -33,6 +33,8 @@ from graphql.utilities.print_schema import print_schema
 SUI_GRAPHQL_MAINNET: str = "https://graphql-beta.mainnet.sui.io"
 SUI_GRAPHQL_TESTNET: str = "https://graphql-beta.testnet.sui.io"
 
+from pysui import SuiConfig
+from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
 
@@ -50,24 +52,21 @@ class BaseSuiGQLClient:
         self,
         *,
         url_str: str,
-        # TODO: Enable when sui env and gql URL normalize
-        # sui_config: Any,
+        sui_config: SuiConfig,
         version: str,
         schema: GraphQLSchema,
         rpc_config: SuiConfigGQL,
     ):
         """."""
         self._url: str = url_str
-        # TODO: Enable when sui env and gql URL normalize
-        # self._sui_config: Any = sui_config
+        self._sui_config: SuiConfig = sui_config
         self._version: str = version
         self._rpc_config: SuiConfigGQL = rpc_config
         self._raw_schema: GraphQLSchema = schema
         self._set_schema(DSLSchema(schema))
 
-    # TODO: Set to SuiConfig
     @property
-    def config(self) -> Any:
+    def config(self) -> SuiConfig:
         """Fetch the graphql client."""
         return self._sui_config
 
@@ -139,15 +138,14 @@ class SuiGQLClient(BaseSuiGQLClient):
         *,
         gql_rpc_url: str,
         write_schema: Optional[bool] = False,
-        # TODO: Enable when sui env and gql URL normalize
-        # config: Optional[Any] = None,
+        config: SuiConfig,
     ):
         """Sui GraphQL Client initializer."""
         # self.rpc_url = gql_rpc_url
 
         self._rpc_client: Client = Client(
             transport=RequestsHTTPTransport(
-                # Url will be supplied from SuiConfig
+                # Url will be supplied from SuiConfig?
                 url=gql_rpc_url,
                 verify=True,
                 retries=3,
@@ -171,8 +169,7 @@ class SuiGQLClient(BaseSuiGQLClient):
 
         super().__init__(
             url_str=gql_rpc_url,
-            # TODO: Enable when sui env and gql URL normalize
-            # sui_config=config,
+            sui_config=config,
             version=gql_version,
             schema=self._rpc_client.schema,
             rpc_config=rpc_config,
@@ -218,16 +215,27 @@ class SuiGQLClient(BaseSuiGQLClient):
                 dres = self.client.execute(with_document_node)
                 return dres if not encode_fn else encode_fn(dres)
             elif with_query_node:
-                qdoc_node = with_query_node.as_document_node(self.GRAPH_QL_SCHEMA)
-                if qdoc_node.__class__ == PGQL_NoOp.__class__:
-                    return pgql_type.NoopGQL.from_query()
-                encode_fn = encode_fn or with_query_node.encode_fn()
-                qres = self.client.execute(qdoc_node)
-                return qres if not encode_fn else encode_fn(qres)
+                if issubclass(type(with_query_node), PGQL_QueryNode):
+                    if hasattr(with_query_node, "owner"):
+                        resolved_owner = TypeValidator.check_owner(
+                            getattr(with_query_node, "owner"), self.config
+                        )
+                        setattr(with_query_node, "owner", resolved_owner)
+                    qdoc_node = with_query_node.as_document_node(self.GRAPH_QL_SCHEMA)
+                    if isinstance(qdoc_node, PGQL_NoOp):
+                        # if qdoc_node.__class__ == PGQL_NoOp.__class__:
+                        return pgql_type.NoopGQL.from_query()
+                    encode_fn = encode_fn or with_query_node.encode_fn()
+                    qres = self.client.execute(qdoc_node)
+                    return qres if not encode_fn else encode_fn(qres)
+                else:
+                    return pgql_type.ErrorGQL.from_query(
+                        ["with_query_node argument is not a valid PGQL_QueryNode type"]
+                    )
             else:
                 return pgql_type.ErrorGQL.from_query(
                     [
-                        "Call requires python string, gql.DocumentNode, or PGQL_QueryNode types"
+                        "Call requires python str, gql.DocumentNode, or PGQL_QueryNode types"
                     ]
                 )
         except texc.TransportQueryError as gte:
@@ -242,22 +250,20 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         *,
         gql_rpc_url: str,
         write_schema: Optional[bool] = False,
-        # TODO: Enable when sui env and gql URL normalize
-        # config: Optional[Any] = None,
+        config: SuiConfig,
     ):
         """Async Sui GraphQL Client initializer."""
         # Get sync client to populate all applicable properties
         s_client = SuiGQLClient(
             gql_rpc_url=gql_rpc_url,
             write_schema=write_schema,
-            # TODO: Enable when sui env and gql URL normalize
-            # config=config,
+            config=config,
         )
 
         # Create async client
         self._rpc_client: Client = Client(
             transport=AIOHTTPTransport(
-                # Url will be supplied from SuiConfig
+                # Url will be supplied from SuiConfig?
                 url=gql_rpc_url,
             ),
             schema=s_client._raw_schema,
@@ -266,8 +272,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         # Initialize our base with copies of sync
         super().__init__(
             url_str=s_client.url,
-            # TODO: Enable when sui env and gql URL normalize
-            # sui_config=s_client.config,
+            sui_config=s_client.config,
             version=s_client.version,
             schema=s_client._raw_schema,
             rpc_config=s_client.rpc_config,
