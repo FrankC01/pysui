@@ -39,6 +39,41 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
 
 
+class PGQL_QueryNode(ABC):
+    """Base query class."""
+
+    @abstractmethod
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Returns a gql DocumentNode ready to execute.
+
+        This must be implemented in subclasses.
+        """
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]:
+        """Return the serialization function in derived class or None.
+
+        :return: A function taking a dictionary as input and returning a PGQL_Type or Any, or None
+        :rtype: Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]
+        """
+        return None
+
+
+class PGQL_NoOp(PGQL_QueryNode):
+    """Noop query class."""
+
+    def as_document_node(self) -> DocumentNode:
+        """Returns a gql DocumentNode ready to execute.
+
+        This must be implemented in subclasses.
+        """
+        return None
+
+
+class PGQL_Fragment(ABC):
+    """Base Fragment class."""
+
+
 class BaseSuiGQLClient:
     """Base GraphQL client."""
 
@@ -94,40 +129,17 @@ class BaseSuiGQLClient:
         """
         return self._version
 
-
-class PGQL_QueryNode(ABC):
-    """Base query class."""
-
-    @abstractmethod
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Returns a gql DocumentNode ready to execute.
-
-        This must be implemented in subclasses.
-        """
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]:
-        """Return the serialization function in derived class or None.
-
-        :return: A function taking a dictionary as input and returning a PGQL_Type or Any, or None
-        :rtype: Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]
-        """
-        return None
-
-
-class PGQL_NoOp(PGQL_QueryNode):
-    """Noop query class."""
-
-    def as_document_node(self) -> DocumentNode:
-        """Returns a gql DocumentNode ready to execute.
-
-        This must be implemented in subclasses.
-        """
-        return None
-
-
-class PGQL_Fragment(ABC):
-    """Base Fragment class."""
+    def _qnode_pre_run(self, qnode: PGQL_QueryNode) -> Union[DocumentNode, ValueError]:
+        """."""
+        if issubclass(type(qnode), PGQL_QueryNode):
+            if hasattr(qnode, "owner"):
+                resolved_owner = TypeValidator.check_owner(
+                    getattr(qnode, "owner"), self.config
+                )
+                setattr(qnode, "owner", resolved_owner)
+            return qnode.as_document_node(self.GRAPH_QL_SCHEMA)
+        else:
+            raise ValueError("Not a valid PGQL_QueryNode")
 
 
 class SuiGQLClient(BaseSuiGQLClient):
@@ -215,23 +227,15 @@ class SuiGQLClient(BaseSuiGQLClient):
                 dres = self.client.execute(with_document_node)
                 return dres if not encode_fn else encode_fn(dres)
             elif with_query_node:
-                if issubclass(type(with_query_node), PGQL_QueryNode):
-                    if hasattr(with_query_node, "owner"):
-                        resolved_owner = TypeValidator.check_owner(
-                            getattr(with_query_node, "owner"), self.config
-                        )
-                        setattr(with_query_node, "owner", resolved_owner)
-                    qdoc_node = with_query_node.as_document_node(self.GRAPH_QL_SCHEMA)
+                try:
+                    qdoc_node = self._qnode_pre_run(with_query_node)
                     if isinstance(qdoc_node, PGQL_NoOp):
-                        # if qdoc_node.__class__ == PGQL_NoOp.__class__:
                         return pgql_type.NoopGQL.from_query()
                     encode_fn = encode_fn or with_query_node.encode_fn()
                     qres = self.client.execute(qdoc_node)
                     return qres if not encode_fn else encode_fn(qres)
-                else:
-                    return pgql_type.ErrorGQL.from_query(
-                        ["with_query_node argument is not a valid PGQL_QueryNode type"]
-                    )
+                except ValueError as ve:
+                    return pgql_type.ErrorGQL.from_query(ve.args)
             else:
                 return pgql_type.ErrorGQL.from_query(
                     [
@@ -318,12 +322,15 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
                 eres = await self.client.execute_async(with_document_node)
                 return eres if not encode_fn else encode_fn(eres)
             elif with_query_node:
-                qdoc_node = with_query_node.as_document_node(self.GRAPH_QL_SCHEMA)
-                if qdoc_node.__class__ == PGQL_NoOp.__class__:
-                    return pgql_type.NoopGQL.from_query()
-                encode_fn = encode_fn or with_query_node.encode_fn()
-                eres = await self.client.execute_async(qdoc_node)
-                return eres if not encode_fn else encode_fn(eres)
+                try:
+                    qdoc_node = self._qnode_pre_run(with_query_node)
+                    if isinstance(qdoc_node, PGQL_NoOp):
+                        return pgql_type.NoopGQL.from_query()
+                    encode_fn = encode_fn or with_query_node.encode_fn()
+                    qres = await self.client.execute_async(qdoc_node)
+                    return qres if not encode_fn else encode_fn(qres)
+                except ValueError as ve:
+                    return pgql_type.ErrorGQL.from_query(ve.args)
             else:
                 return pgql_type.ErrorGQL.from_query(
                     [
