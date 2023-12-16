@@ -1,32 +1,31 @@
-""""""""""""""""""""""""""""""""""""""""""""
-pgql a.k.a pysui-gql (pysui GraphQL client)
-""""""""""""""""""""""""""""""""""""""""""""
 
-.. contents:: Overview
-    :depth: 3
+GraphQL
+"""""""
 
-====================
-Introduction
-====================
+MystenLab's announcement can be found `Here <https://github.com/mystenLabs/sui/issues/13700/>`_ . This change begins the
+transitions from JSON RPC node interactions to GraphQL RPC node interactions.
 
-**ALPHA ALPHA ALPHA** - Use tenderly, it's fragile!
+``pysui`` has added support for interacting with the Sui GraphQL RPC node as well as porting most Builders to what we
+refer to as QueryNodes.
 
-A graphql stub to test against Sui RPC 2.0 graphql (currently beta is 1.5)
+As of this writing, there are limitations to Sui GraphQL RPC. Before moving forward, read `This <https://forums.sui.io/t/launching-the-beta-graphql-rpc-service/45104/12/>`_ to
+know what is active in the beta.
 
 ====================
 Key Dependencies
 ====================
 
-pysui-gql uses `gql <https://pypi.org/project/gql/>`_ for GraphQL queries, mutations, etc. Includes DSL
+pysui uses `gql <https://pypi.org/project/gql/>`_ for GraphQL queries and eventually mutations and subscriptions. Includes DSL.
 
+You can use the capabilities of this library to create your own query strings, DocumentNodes or QueryNodes.
 
---------------------------
+====================
 Running Samples
---------------------------
+====================
 
 .. code-block::
 
-    . env/bin/activate
+    . env/bin/activate # Or however you've setup a virtual environment
     python pgql_s_example.py # Synchronous
     python pgql_a_example.py # Asynchronous
     deactivate
@@ -42,6 +41,7 @@ Simple dev example
 
     from pysui.sui.sui_pgql.clients import SuiGQLClient, SUI_GRAPHQL_MAINNET
     import pysui.sui.sui_pgql.pgql_query as qn
+    from pysui import SuiConfig
 
     def main(client: SuiGQLClient):
         """Fetch 0x2::sui::SUI (default) for owner."""
@@ -55,7 +55,9 @@ Simple dev example
         print(qres.to_json(indent=2))
 
     if __name__ == "__main__":
-        client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET)
+        # SuiConfig is not necessarily pointing to the same environemnt
+        # We use it in beta for alias lookups to Sui addresses
+        client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET,config=SuiConfig.default_config(),)
         main(client_init)
 
 ========================================
@@ -78,22 +80,23 @@ The SuiGQLClient support multiple options to execute a query
 
 * ``with_string`` convert a GraphQL query string to a gql `DocumentNode <https://gql.readthedocs.io/en/stable/usage/basic_usage.html#>`_ and execute, returning a dictionary result by default
 * ``with_document_node`` will execute a gql DocumentNode and return a dictionary result by default
-* ``with_query_node`` will execute a ``pysui`` QueryNode and return a dictionary result if no ser_fn function is defined
+* ``with_query_node`` will execute a ``pysui`` QueryNode and return a dictionary result if no ``encode_fn`` function is defined
 * ``encode_fn`` is an explict callable for encoding a query result that takes a dictionary and returns Any. If specified along with a ``pysui`` QueryNode, it will override the encode_fn method
 
 ===============
 pysui QueryNode
 ===============
 
-pysui QueryNodes are predefined GraphQL queries that attempt to achieve parity with most pysui SDK Builders. However some may not be supported.
+pysui QueryNodes are predefined GraphQL queries that attempt to achieve parity with most pysui SDK Builders,
+however some may not be supported.
 
-pysui QueryNodes can take zero or more parameters depending on the query, and some provide paging control for large results. All pysui QueryNodes
+pysui QueryNodes (such as ``GetCoins`` above) take zero or more parameters depending on the query, and some provide paging control for large results. All pysui QueryNodes
 provide an ``encode_fn`` to encode the dictionary result from gql to a dataclass/dataclass-json class. This can be overriden as
 noted above.
 
 pysui QueryNodes leverage gql's `DSL <https://gql.readthedocs.io/en/stable/advanced/dsl_module.html#>`_ to
-construct queries, fragments and inline fragments. Once constructed, pysui QueryNodes can be submitted to the client ``execute_query``
-method.
+construct queries, fragments and inline fragments. Once constructed, pysui QueryNodes can be submitted to
+the client (SuiGQLClient or AsyncSuiGQLClient) ``execute_query`` method.
 
 When passing a QueryNode to ``execute_query`` a few things happen prior to submitting:
 
