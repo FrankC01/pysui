@@ -94,3 +94,12 @@ noted above.
 pysui QueryNodes leverage gql's `DSL <https://gql.readthedocs.io/en/stable/advanced/dsl_module.html#>`_ to
 construct queries, fragments and inline fragments. Once constructed, pysui QueryNodes can be submitted to the client ``execute_query``
 method.
+
+When passing a QueryNode to ``execute_query`` a few things happen prior to submitting:
+
+#. If the QueryNode has property ``owner`` it is first checked if the value is an alias and will resolve, otherwise the value is validated as a Sui address
+#. The QueryNode's ``as_document_node`` is called to return a DocumentNode
+#. The result is checked and if it is the ``PGQL_NoOp`` type, a ``NoopGQL`` object is returned, otherwise...
+#. The DocumentNode is submitted for execution and ``gql`` returns a Python dict of the result
+#. A check is then made to see if either ``encode_fn`` is provided or if the QueryNode provides an ``encode_fn`` the function is called to prepare the result and returns
+#. Otherwise the Python dict is returned
