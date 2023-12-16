@@ -248,7 +248,7 @@ def do_protcfg(client: SuiGQLClient):
 if __name__ == "__main__":
     client_init = SuiGQLClient(
         gql_rpc_url=SUI_GRAPHQL_MAINNET,
-        write_schema=True,
+        write_schema=False,
         config=SuiConfig.default_config(),
     )
     ## QueryNodes (fetch)

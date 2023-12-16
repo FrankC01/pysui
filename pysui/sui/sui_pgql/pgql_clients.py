@@ -77,11 +77,11 @@ class PGQL_Fragment(ABC):
 class BaseSuiGQLClient:
     """Base GraphQL client."""
 
-    GRAPH_QL_SCHEMA: DSLSchema = None
+    _GRAPH_QL_SCHEMA: DSLSchema = None
 
     @classmethod
     def _set_schema(cls, schema: DSLSchema) -> None:
-        cls.GRAPH_QL_SCHEMA = schema
+        cls._GRAPH_QL_SCHEMA = schema
 
     def __init__(
         self,
@@ -129,6 +129,15 @@ class BaseSuiGQLClient:
         """
         return self._version
 
+    @property
+    def schema(self) -> DSLSchema:
+        """schema Return the DSLSchema for configuration
+
+        :return: DSLSchema for Sui Schema version associated with connection.
+        :rtype: DSLSchema
+        """
+        return self._GRAPH_QL_SCHEMA
+
     def _qnode_pre_run(self, qnode: PGQL_QueryNode) -> Union[DocumentNode, ValueError]:
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
@@ -137,7 +146,7 @@ class BaseSuiGQLClient:
                     getattr(qnode, "owner"), self.config
                 )
                 setattr(qnode, "owner", resolved_owner)
-            return qnode.as_document_node(self.GRAPH_QL_SCHEMA)
+            return qnode.as_document_node(self.schema)
         else:
             raise ValueError("Not a valid PGQL_QueryNode")
 

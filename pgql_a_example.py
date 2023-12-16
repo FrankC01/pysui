@@ -21,6 +21,7 @@ from pysui.sui.sui_pgql.pgql_clients import (
     SUI_GRAPHQL_TESTNET,
 )
 import pysui.sui.sui_pgql.pgql_query as qn
+from pysui import SuiConfig
 
 
 async def do_coin_meta(client: AsyncSuiGQLClient):
@@ -248,15 +249,20 @@ async def do_protcfg(client: AsyncSuiGQLClient):
 
 async def main():
     """."""
-    client_init = AsyncSuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET, write_schema=True)
+    client_init = AsyncSuiGQLClient(
+        gql_rpc_url=SUI_GRAPHQL_MAINNET,
+        write_schema=False,
+        config=SuiConfig.default_config(),
+    )
+
     ## QueryNodes (fetch)
     # await do_coin_meta(client_init)
     # await do_coins_for_type(client_init)
-    # await do_gas(client_init)
+    await do_gas(client_init)
     # await do_sysstate(client_init)
     # await do_all_balances(client_init)
     # await do_object(client_init)
-    await do_objects(client_init)
+    # await do_objects(client_init)
     # await do_objects_for(client_init)
     # await do_event(client_init)
     # await do_tx(client_init)
