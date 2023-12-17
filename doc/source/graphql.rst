@@ -198,3 +198,84 @@ When passing a QueryNode to ``execute_query`` a few things happen prior to submi
 ================================
 Creating PGQL_QueryNode queries
 ================================
+
+-------
+Step 1:
+-------
+
+Note the required and optional methods from ``pysui.sui.sui_pgql.pgql_client.PGQL_QueryNode``:
+
+.. code-block:: python
+
+    class PGQL_QueryNode(ABC):
+        """Base QueryNode class."""
+
+        @abstractmethod
+        def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+            """Returns a gql DocumentNode ready to execute.
+
+            This must be implemented in subclasses.
+
+            :param schema: The current Sui GraphQL schema
+            :type schema: DSLSchema
+            :return: A query processed into a gql DocumentNode
+            :rtype: DocumentNode
+            """
+
+        @staticmethod
+        def encode_fn() -> Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]:
+            """Return the serialization function in derived class or None.
+
+            This is optional,
+
+            :return: A function taking a dictionary as input and returning a PGQL_Type or Any, or None
+            :rtype: Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]
+            """
+            return None
+
+-------
+Step 2:
+-------
+
+Derive and implement your construct. This example is a predefined pysui QueryNode that uses the
+``gql`` DSL with the schema. It also has defined an encoding type.
+
+.. code-block:: python
+
+    from typing import Optional, Callable, Union, Any
+    from gql.dsl import DSLQuery, dsl_gql, DSLSchema
+    from graphql import DocumentNode
+
+    from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode
+    import pysui.sui.sui_pgql.pgql_types as pgql_type
+
+    class GetCoinMetaData(PGQL_QueryNode):
+        """GetCoinMetaData returns meta data for a specific `coin_type`."""
+
+        def __init__(self, *, coin_type: Optional[str] = "0x2::sui::SUI") -> None:
+            """QueryNode initializer.
+
+            :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
+            :type coin_type: str, optional
+            """
+            self.coin_type = coin_type
+
+        def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+            """Build the DocumentNode."""
+            qres = schema.Query.coinMetadata(coinType=self.coin_type).select(
+                schema.CoinMetadata.decimals,
+                schema.CoinMetadata.name,
+                schema.CoinMetadata.symbol,
+                schema.CoinMetadata.description,
+                schema.CoinMetadata.iconUrl,
+                schema.CoinMetadata.supply,
+                object_data=schema.CoinMetadata.asMoveObject.select(
+                    schema.MoveObject.asObject.select(meta_object_id=schema.Object.location)
+                ),
+            )
+            return dsl_gql(DSLQuery(qres))
+
+        @staticmethod
+        def encode_fn() -> Callable[[dict], pgql_type.SuiCoinMetadataGQL]:
+            """Return the encoding function to create a SuiCoinMetadataGQL dataclass."""
+            return pgql_type.SuiCoinMetadataGQL.from_query
