@@ -35,7 +35,7 @@ If an alias name is not provided when calling these, one will be automatically g
 Use for lookup and substitutions
 --------------------------------
 
-A number of associative lookups have been addred to ``SuiConfiguration``:
+A number of associative lookups have been added to ``SuiConfiguration``:
     * addr4al - Given an alias name return the associated SuiAddress
     * kp4al - Given an alias name return the associated KeyPair
     * pk4al - Given an alias name return the associated PublicKey

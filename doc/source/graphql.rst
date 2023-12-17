@@ -60,11 +60,12 @@ Simple dev example
         client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET,config=SuiConfig.default_config(),)
         main(client_init)
 
-========================================
-Anatomy of client.execute_query
-========================================
+=================
+Executing Queries
+=================
 
-The SuiGQLClient support multiple options to execute a query
+The SuiGQLClient encapsulates the ``gql`` Client and support multiple options to execute a query and
+returning results
 
 .. code-block:: python
 
@@ -83,16 +84,103 @@ The SuiGQLClient support multiple options to execute a query
 * ``with_query_node`` will execute a ``pysui`` QueryNode and return a dictionary result if no ``encode_fn`` function is defined
 * ``encode_fn`` is an explict callable for encoding a query result that takes a dictionary and returns Any. If specified along with a ``pysui`` QueryNode, it will override the encode_fn method
 
-===============
-pysui QueryNode
-===============
+--------------
+String queries
+--------------
 
-pysui QueryNodes are predefined GraphQL queries that attempt to achieve parity with most pysui SDK Builders,
-however some may not be supported.
+String queries are just that: A string describing the query. When submitted to
+the ``SuiGQLClient.execute_query(with_string="query string")`` it will
+convert the sting to a ``DocumentNode``, execute the query and either return the raw result or invoke the ``encode_fn`` if provided.
 
-pysui QueryNodes (such as ``GetCoins`` above) take zero or more parameters depending on the query, and some provide paging control for large results. All pysui QueryNodes
-provide an ``encode_fn`` to encode the dictionary result from gql to a dataclass/dataclass-json class. This can be overriden as
-noted above.
+.. code-block:: python
+
+    #
+    """String query example."""
+
+    from pysui.sui.sui_pgql.clients import SuiGQLClient, SUI_GRAPHQL_MAINNET
+    from pysui import SuiConfig
+
+    def main(client: SuiGQLClient):
+        """Configuration and protocol information."""
+        _QUERY = """
+            query {
+                chainIdentifier
+                checkpointConnection (last: 1) {
+                    nodes {
+                        sequenceNumber
+                        timestamp
+                    }
+                }
+                serviceConfig {
+                    enabledFeatures
+                    maxQueryDepth
+                    maxQueryNodes
+                    maxDbQueryCost
+                    maxPageSize
+                    requestTimeoutMs
+                    maxQueryPayloadSize
+                }
+            protocolConfig {
+                protocolVersion
+                configs {
+                    key
+                    value
+                }
+                featureFlags {
+                    key
+                    value
+                }
+                }
+            }
+        """
+        qres = client.execute_query(with_string=_QUERY)
+        print(qres)
+
+    if __name__ == "__main__":
+        # SuiConfig is not necessarily pointing to the same environemnt
+        # We use it in beta for alias lookups to Sui addresses
+        client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET,config=SuiConfig.default_config(),)
+        main(client_init)
+
+-----------------------
+DocumentNode queries
+-----------------------
+
+``DocumentNode`` queries are those that use the ``gql`` intermediate step of convering a query string to a DocumentNode
+using ``gql`` functions.
+
+.. code-block:: python
+
+    #
+    """DocumentNode query example."""
+
+    from gql import Client, gql
+    from pysui.sui.sui_pgql.clients import SuiGQLClient, SUI_GRAPHQL_MAINNET
+    from pysui import SuiConfig
+
+    def main(client: SuiGQLClient):
+        """Configuration and protocol information."""
+        _QUERY = # Same query string as used above
+        qres = client.execute_query(with_document_node=gql(_QUERY))
+        print(qres)
+
+    if __name__ == "__main__":
+        # SuiConfig is not necessarily pointing to the same environemnt
+        # We use it in beta for alias lookups to Sui addresses
+        client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET,config=SuiConfig.default_config(),)
+        main(client_init)
+
+-----------------------
+pysui QueryNode queries
+-----------------------
+
+pysui QueryNodes are those that subclass ``pysui.sui.sui_pgql.pgql_client.PGQL_QueryNode``. ``pysui`` provides a number of
+predefined QueryNode queries that attempt to achieve parity with most pysui SDK Builders, however some may not be supported.
+
+pysui QueryNodes (such as ``GetCoins`` above) take zero or more parameters depending on the query, and
+some provide paging control for large results. All pysui can QueryNodes provide an ``NODE.encode_fn(dict)`` static method
+to encode the dictionary result, from executing, to a encoding style of their own. This can be overriden as noted above.
+
 
 pysui QueryNodes leverage gql's `DSL <https://gql.readthedocs.io/en/stable/advanced/dsl_module.html#>`_ to
 construct queries, fragments and inline fragments. Once constructed, pysui QueryNodes can be submitted to
@@ -106,3 +194,7 @@ When passing a QueryNode to ``execute_query`` a few things happen prior to submi
 #. The DocumentNode is submitted for execution and ``gql`` returns a Python dict of the result
 #. A check is then made to see if either ``encode_fn`` is provided or if the QueryNode provides an ``encode_fn`` the function is called to prepare the result and returns
 #. Otherwise the Python dict is returned
+
+================================
+Creating PGQL_QueryNode queries
+================================
