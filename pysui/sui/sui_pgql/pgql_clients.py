@@ -47,6 +47,11 @@ class PGQL_QueryNode(ABC):
         """Returns a gql DocumentNode ready to execute.
 
         This must be implemented in subclasses.
+
+        :param schema: The current Sui GraphQL schema
+        :type schema: DSLSchema
+        :return: A query processed into a gql DocumentNode
+        :rtype: DocumentNode
         """
 
     @staticmethod
