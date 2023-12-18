@@ -188,7 +188,6 @@ the client (SuiGQLClient or AsyncSuiGQLClient) ``execute_query`` method.
 
 When passing a QueryNode to ``execute_query`` a few things happen prior to submitting:
 
-#. If the QueryNode has property ``owner`` it is first checked if the value is an alias and will resolve, otherwise the value is validated as a Sui address
 #. The QueryNode's ``as_document_node`` is called to return a DocumentNode
 #. The result is checked and if it is the ``PGQL_NoOp`` type, a ``NoopGQL`` object is returned, otherwise...
 #. The DocumentNode is submitted for execution and ``gql`` returns a Python dict of the result
@@ -198,6 +197,15 @@ When passing a QueryNode to ``execute_query`` a few things happen prior to submi
 ================================
 Creating PGQL_QueryNode queries
 ================================
+
+-------
+Notes:
+-------
+
+#. During the execute step, if a QueryNode has public property ``owner`` it is first checked if the value
+    is an alias and will resolve it to the associated Sui address, otherwise the value is validated as a Sui address literal.
+#. In the ``as_document_node`` call it does not have to be constructed using DSL as the example below in Step 2 shows. It is
+    only required that the method returns a DocumentNode.
 
 -------
 Step 1:

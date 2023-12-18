@@ -151,7 +151,11 @@ class BaseSuiGQLClient:
                     getattr(qnode, "owner"), self.config
                 )
                 setattr(qnode, "owner", resolved_owner)
-            return qnode.as_document_node(self.schema)
+            dnode = qnode.as_document_node(self.schema)
+            if isinstance(dnode, DocumentNode):
+                return dnode
+            else:
+                ValueError("QueryNode did not produce a gql DocumentNode")
         else:
             raise ValueError("Not a valid PGQL_QueryNode")
 
@@ -238,8 +242,11 @@ class SuiGQLClient(BaseSuiGQLClient):
                 sres = self.client.execute(gql(with_string))
                 return sres if not encode_fn else encode_fn(sres)
             elif with_document_node:
-                dres = self.client.execute(with_document_node)
-                return dres if not encode_fn else encode_fn(dres)
+                if isinstance(with_document_node, DocumentNode):
+                    dres = self.client.execute(with_document_node)
+                    return dres if not encode_fn else encode_fn(dres)
+                else:
+                    ValueError("Not a valid gql DocumentNode")
             elif with_query_node:
                 try:
                     qdoc_node = self._qnode_pre_run(with_query_node)
@@ -333,8 +340,11 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
                 sres = await self.client.execute(gql(with_string))
                 return sres if not encode_fn else encode_fn(sres)
             elif with_document_node:
-                eres = await self.client.execute_async(with_document_node)
-                return eres if not encode_fn else encode_fn(eres)
+                if isinstance(with_document_node, DocumentNode):
+                    dres = await self.client.execute(with_document_node)
+                    return dres if not encode_fn else encode_fn(dres)
+                else:
+                    ValueError("Not a valid gql DocumentNode")
             elif with_query_node:
                 try:
                     qdoc_node = self._qnode_pre_run(with_query_node)
