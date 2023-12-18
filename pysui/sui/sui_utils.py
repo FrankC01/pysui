@@ -205,7 +205,9 @@ def publish_build(
     if not build_path.exists():
         raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
     # Get the project folder
-    build_subdir = [x for x in os.scandir(build_path) if x.is_dir()]
+    build_subdir = [
+        x for x in os.scandir(build_path) if x.is_dir() and x.name != "locks"
+    ]
     if len(build_subdir) > 1:
         raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
     # Finally, get the module(s) bytecode folder
