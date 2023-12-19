@@ -27,13 +27,14 @@ from gql.dsl import (
     DSLSchema,
 )
 from graphql import DocumentNode, print_ast, GraphQLSchema
+from graphql.error.syntax_error import GraphQLSyntaxError
 from graphql.utilities.print_schema import print_schema
 
 # TODO: Move to Constants
 SUI_GRAPHQL_MAINNET: str = "https://graphql-beta.mainnet.sui.io"
 SUI_GRAPHQL_TESTNET: str = "https://graphql-beta.testnet.sui.io"
 
-from pysui import SuiConfig
+from pysui import SuiConfig, SuiRpcResult
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
@@ -239,32 +240,48 @@ class SuiGQLClient(BaseSuiGQLClient):
         """
         try:
             if with_string:
-                sres = self.client.execute(gql(with_string))
-                return sres if not encode_fn else encode_fn(sres)
+                if isinstance(with_string, str):
+                    sres = self.client.execute(gql(with_string))
+                    return SuiRpcResult(
+                        True, None, sres if not encode_fn else encode_fn(sres)
+                    )
+                else:
+                    raise ValueError("Expected a str for with_string argument.")
             elif with_document_node:
                 if isinstance(with_document_node, DocumentNode):
                     dres = self.client.execute(with_document_node)
-                    return dres if not encode_fn else encode_fn(dres)
+                    return SuiRpcResult(
+                        True, None, dres if not encode_fn else encode_fn(dres)
+                    )
                 else:
-                    ValueError("Not a valid gql DocumentNode")
+                    raise ValueError("Not a valid gql DocumentNode")
             elif with_query_node:
-                try:
-                    qdoc_node = self._qnode_pre_run(with_query_node)
-                    if isinstance(qdoc_node, PGQL_NoOp):
-                        return pgql_type.NoopGQL.from_query()
-                    encode_fn = encode_fn or with_query_node.encode_fn()
-                    qres = self.client.execute(qdoc_node)
-                    return qres if not encode_fn else encode_fn(qres)
-                except ValueError as ve:
-                    return pgql_type.ErrorGQL.from_query(ve.args)
+                qdoc_node = self._qnode_pre_run(with_query_node)
+                if isinstance(qdoc_node, PGQL_NoOp):
+                    return pgql_type.NoopGQL.from_query()
+                encode_fn = encode_fn or with_query_node.encode_fn()
+                qres = self.client.execute(qdoc_node)
+                return SuiRpcResult(
+                    True, None, qres if not encode_fn else encode_fn(qres)
+                )
             else:
-                return pgql_type.ErrorGQL.from_query(
-                    [
-                        "Call requires python str, gql.DocumentNode, or PGQL_QueryNode types"
-                    ]
+                raise ValueError(
+                    "Call requires python str, gql.DocumentNode, or PGQL_QueryNode types"
                 )
         except texc.TransportQueryError as gte:
-            return pgql_type.ErrorGQL.from_query(gte.errors)
+            return SuiRpcResult(
+                False, "TransportQueryError", pgql_type.ErrorGQL.from_query(gte.errors)
+            )
+        except GraphQLSyntaxError as gqe:
+            return SuiRpcResult(
+                False,
+                "GraphQLSyntaxError",
+                pgql_type.ErrorGQL.from_query(gqe.formatted),
+            )
+        except ValueError as ve:
+            return SuiRpcResult(
+                False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
+            )
 
 
 class AsyncSuiGQLClient(BaseSuiGQLClient):
@@ -337,29 +354,45 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         """
         try:
             if with_string:
-                sres = await self.client.execute(gql(with_string))
-                return sres if not encode_fn else encode_fn(sres)
+                if isinstance(with_string, str):
+                    sres = await self.client.execute(gql(with_string))
+                    return SuiRpcResult(
+                        True, None, sres if not encode_fn else encode_fn(sres)
+                    )
+                else:
+                    raise ValueError("Expected a str for with_string argument.")
             elif with_document_node:
                 if isinstance(with_document_node, DocumentNode):
                     dres = await self.client.execute(with_document_node)
-                    return dres if not encode_fn else encode_fn(dres)
+                    return SuiRpcResult(
+                        True, None, dres if not encode_fn else encode_fn(dres)
+                    )
                 else:
-                    ValueError("Not a valid gql DocumentNode")
+                    raise ValueError("Not a valid gql DocumentNode")
             elif with_query_node:
-                try:
-                    qdoc_node = self._qnode_pre_run(with_query_node)
-                    if isinstance(qdoc_node, PGQL_NoOp):
-                        return pgql_type.NoopGQL.from_query()
-                    encode_fn = encode_fn or with_query_node.encode_fn()
-                    qres = await self.client.execute_async(qdoc_node)
-                    return qres if not encode_fn else encode_fn(qres)
-                except ValueError as ve:
-                    return pgql_type.ErrorGQL.from_query(ve.args)
+                qdoc_node = self._qnode_pre_run(with_query_node)
+                if isinstance(qdoc_node, PGQL_NoOp):
+                    return pgql_type.NoopGQL.from_query()
+                encode_fn = encode_fn or with_query_node.encode_fn()
+                qres = await self.client.execute(qdoc_node)
+                return SuiRpcResult(
+                    True, None, qres if not encode_fn else encode_fn(qres)
+                )
             else:
-                return pgql_type.ErrorGQL.from_query(
-                    [
-                        "Call requires python string, gql.DocumentNode, or PGQL_QueryNode types"
-                    ]
+                raise ValueError(
+                    "Call requires python str, gql.DocumentNode, or PGQL_QueryNode types"
                 )
         except texc.TransportQueryError as gte:
-            return pgql_type.ErrorGQL.from_query(gte.errors)
+            return SuiRpcResult(
+                False, "TransportQueryError", pgql_type.ErrorGQL.from_query(gte.errors)
+            )
+        except GraphQLSyntaxError as gqe:
+            return SuiRpcResult(
+                False,
+                "GraphQLSyntaxError",
+                pgql_type.ErrorGQL.from_query(gqe.formatted),
+            )
+        except ValueError as ve:
+            return SuiRpcResult(
+                False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
+            )
