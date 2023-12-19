@@ -82,7 +82,7 @@ class ClientConfiguration(ABC):
         """
         result = self._cref_result_for(value, vin, vout)
         if result is None:
-            raise ValueError(f"{value} not found for {vin}")
+            raise ValueError(f"{value} not found for {vin.name}")
         return result
 
     @abstractmethod

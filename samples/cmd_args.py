@@ -32,9 +32,7 @@ def _build_read_cmds(subparser) -> None:
     subp = subparser.add_parser("addresses", help="Shows all addresses")
     subp.set_defaults(subcommand="addresses")
     # New address
-    subp = subparser.add_parser(
-        "new-address", help="Generate new address and keypair"
-    )
+    subp = subparser.add_parser("new-address", help="Generate new address and keypair")
     addy_arg_group = subp.add_mutually_exclusive_group(required=True)
     addy_arg_group.add_argument(
         "-e",
@@ -98,9 +96,7 @@ def _build_read_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="rpcapi")
     # Committee info
-    subp = subparser.add_parser(
-        "committee", help="Show committee info for epoch"
-    )
+    subp = subparser.add_parser("committee", help="Show committee info for epoch")
     subp.add_argument(
         "-e",
         "--epoch",
@@ -110,9 +106,7 @@ def _build_read_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="committee")
     # Faucet usage
-    subp = subparser.add_parser(
-        "faucet", help="Get additional gas from SUI faucet"
-    )
+    subp = subparser.add_parser("faucet", help="Get additional gas from SUI faucet")
     subp.add_argument(
         "-a",
         "--address",
@@ -211,9 +205,7 @@ def _build_transfer_cmds(subparser) -> None:
 def _build_pay_cmds(subparser) -> None:
     """Pay commands."""
     # Pay
-    subp = subparser.add_parser(
-        "pay", help="Send coin of any type to recipient(s)"
-    )
+    subp = subparser.add_parser("pay", help="Send coin of any type to recipient(s)")
     subp.add_argument(
         "-s",
         "--signer",
@@ -261,9 +253,7 @@ def _build_pay_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="pay")
     # PaySui
-    subp = subparser.add_parser(
-        "paysui", help="Send SUI coins to a list of addresses."
-    )
+    subp = subparser.add_parser("paysui", help="Send SUI coins to a list of addresses.")
     subp.add_argument(
         "-s",
         "--signer",
@@ -342,9 +332,7 @@ def _build_pay_cmds(subparser) -> None:
 def _build_package_cmds(subparser) -> None:
     """Package commands."""
     # Normalized Package
-    subp = subparser.add_parser(
-        "package", help="Show normalized package information"
-    )
+    subp = subparser.add_parser("package", help="Show normalized package information")
     subp.add_argument(
         "-i", "--id", required=True, help="package ID", action=ValidateObjectID
     )
@@ -625,9 +613,7 @@ def _build_extended_read_commands(subparser) -> None:
     esubp = ecmds.add_parser(
         "struct", help="Return events with the given move structure name"
     )
-    esubp.add_argument(
-        "-s", "--struct", required=True, dest="struct_name", type=str
-    )
+    esubp.add_argument("-s", "--struct", required=True, dest="struct_name", type=str)
     __common_event_opts(esubp)
     esubp.set_defaults(subcommand="event-struct")
     # Sender events
@@ -714,16 +700,31 @@ def _build_tx_query_commands(subparser) -> None:
     )
     tcmds = subp.add_subparsers(title="subcommand", required=True)
     # Total count
-    esubp = tcmds.add_parser(
-        "count", help="Return total transaction count from server"
-    )
+    esubp = tcmds.add_parser("count", help="Return total transaction count from server")
     esubp.set_defaults(subcommand="txn-count")
     # Transaction
     esubp = tcmds.add_parser("txn", help="Return transaction information")
-    esubp.add_argument(
-        "-d", "--digest", required=True, help="the transaction's digest"
-    )
+    esubp.add_argument("-d", "--digest", required=True, help="the transaction's digest")
     esubp.set_defaults(subcommand="txn-txn")
+
+
+def _build_aliases_cmds(subparser) -> None:
+    """Address aliases commands."""
+    # Transaction
+    subp = subparser.add_parser(
+        "aliases",
+        help="[NEW] Sui Address alias management",
+        usage="aliases subcommand [--subcommand_options]",
+    )
+    acmds = subp.add_subparsers(title="subcommand", required=True)
+    asubp = acmds.add_parser("list", help="List aliases and associated Sui addresses")
+    asubp.set_defaults(subcommand="list-aliases")
+    asubp = acmds.add_parser(
+        "rename", help="Rename aliases for associated Sui addresses"
+    )
+    asubp.add_argument("-e", "--existing", required=True, help="Existing alias name")
+    asubp.add_argument("-t", "--to", required=True, help="Alias to name")
+    asubp.set_defaults(subcommand="rename-aliases")
 
 
 def build_parser(in_args: list) -> argparse.Namespace:
@@ -737,6 +738,7 @@ def build_parser(in_args: list) -> argparse.Namespace:
     )
     parser.set_defaults(subcommand="version")
     subparser = parser.add_subparsers(title="commands")
+    _build_aliases_cmds(subparser)
     _build_read_cmds(subparser)
     _build_coin_cmds(subparser)
     _build_transfer_cmds(subparser)

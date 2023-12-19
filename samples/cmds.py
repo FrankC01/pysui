@@ -539,6 +539,32 @@ def sui_faucet(client: SyncClient, args: argparse.Namespace) -> None:
         print(f"Faucet Error: {result.result_string}")
 
 
+def alias_list(client: SyncClient, args: argparse.Namespace) -> None:
+    """List address aliases."""
+    print()
+    for alias in client.config.aliases:
+        print(f"Alias:      {alias}")
+        print(f"Address:    {client.config.addr4al(alias)}")
+        print(f"PublicKey:  {client.config.pk4al(alias)}\n")
+
+
+def alias_rename(client: SyncClient, args: argparse.Namespace) -> None:
+    """List address aliases."""
+    print()
+    try:
+        client.config.addr4al(args.existing)
+    except ValueError as ve:
+        print(ve.args)
+        return
+    try:
+        client.config.rename_alias(old_alias=args.existing, new_alias=args.to)
+        print(
+            f"Renamed {args.existing} to {args.to} for Sui address {client.config.addr4al(args.to)}"
+        )
+    except ValueError as ve:
+        print(ve.args)
+
+
 SUI_CMD_DISPATCH = {
     "event-all": events_all,
     "event-module": events_module,
@@ -569,4 +595,6 @@ SUI_CMD_DISPATCH = {
     "committee": committee,
     "version": sdk_version,
     "faucet": sui_faucet,
+    "list-aliases": alias_list,
+    "rename-aliases": alias_rename,
 }
