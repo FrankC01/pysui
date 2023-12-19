@@ -13,13 +13,13 @@
 
 """Sample module for incremental buildout of Sui GraphQL RPC for Pysui 1.0.0."""
 
+from pysui import SuiConfig, SuiRpcResult
 from pysui.sui.sui_pgql.pgql_clients import (
     SuiGQLClient,
     SUI_GRAPHQL_MAINNET,
     SUI_GRAPHQL_TESTNET,
 )
 import pysui.sui.sui_pgql.pgql_query as qn
-from pysui import SuiConfig, SuiRpcResult
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -158,7 +158,6 @@ def do_chain_id(client: SuiGQLClient):
 
     Demonstrates overriding serialization
     """
-
     print(client.chain_id)
 
 
