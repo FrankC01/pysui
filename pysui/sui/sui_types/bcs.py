@@ -644,7 +644,7 @@ class MultiSignature(canoser.Struct):
 
 
 class TxStringInt(canoser.Struct):
-    """."""
+    """Key Value pair where value is int. Used in TxTransaction use table consstruct."""
 
     _fields = [
         ("Key", str),
@@ -653,7 +653,7 @@ class TxStringInt(canoser.Struct):
 
 
 class TxStringString(canoser.Struct):
-    """."""
+    """Key Value pair where value is string. Used in TxTransaction use table consstruct."""
 
     _fields = [
         ("Key", str),
@@ -662,7 +662,10 @@ class TxStringString(canoser.Struct):
 
 
 class TxTransaction(canoser.Struct):
-    """."""
+    """Table of builder constructs.
+
+    Serialized out and use to validate deserialization back in
+    """
 
     _fields = [
         ("Frequencies", [TxStringInt]),
@@ -673,7 +676,7 @@ class TxTransaction(canoser.Struct):
 
 
 class TxSenderMulti(canoser.Struct):
-    """BCS Representation of a multi-sig sender."""
+    """BCS Representation of a multi-sig sender/sponsor."""
 
     _fields = [
         ("MutliSigAddress", Address),
@@ -685,7 +688,7 @@ class TxSenderMulti(canoser.Struct):
 
 
 class TxSenderSingle(canoser.Struct):
-    """."""
+    """BCS representation of a single sender/sponsor."""
 
     _fields = [
         ("Address", Address),
@@ -704,7 +707,7 @@ class TxSender(canoser.RustEnum):
 
 
 class SuiTransactionDataV1(canoser.Struct):
-    """."""
+    """BCS representation of transaction builder."""
 
     _fields = [
         ("TxSender", TxSender),
@@ -714,6 +717,6 @@ class SuiTransactionDataV1(canoser.Struct):
 
 
 class SuiTransaction(canoser.RustEnum):
-    """BCS representation of serialized SuiTransaction."""
+    """BCS representation of serialized pysui SuiTransaction (a.k.a. builder)."""
 
     _enums = [("1.0.0", SuiTransactionDataV1)]

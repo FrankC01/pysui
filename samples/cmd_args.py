@@ -62,20 +62,23 @@ def _build_read_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="new-address")
     # Gas
-    subp = subparser.add_parser("gas", help="Shows gas objects and total mist")
+    subp = subparser.add_parser(
+        "gas",
+        help="Shows gas objects and total mist. If owwner or alias not provided, defaults to active-address.",
+    )
     addy_arg_group = subp.add_mutually_exclusive_group(required=False)
     addy_arg_group.add_argument(
         "-o",
         "--owner",
         required=False,
-        help="Gas for owner Sui address",
+        help="Sui address of gas owner",
         action=ValidateAddress,
     )
     addy_arg_group.add_argument(
         "-a",
         "--alias",
         required=False,
-        help="Gas for alias of owner Sui address",
+        help="Alias of owner address",
         action=ValidateAlias,
     )
     subp.set_defaults(subcommand="gas")
@@ -86,20 +89,23 @@ def _build_read_cmds(subparser) -> None:
     # subp.add_argument("-j", "--json", required=False, help="Display output as json", action="store_true")
     subp.set_defaults(subcommand="object")
     # Objects
-    subp = subparser.add_parser("objects", help="Show all objects")
+    subp = subparser.add_parser(
+        "objects",
+        help="Show all objects. If owwner or alias not provided, defaults to active-address.",
+    )
     addy_arg_group = subp.add_mutually_exclusive_group(required=False)
     addy_arg_group.add_argument(
         "-o",
         "--owner",
         required=False,
-        help="Objects for owner Sui address",
+        help="Sui address of objects owner",
         action=ValidateAddress,
     )
     addy_arg_group.add_argument(
         "-a",
         "--alias",
         required=False,
-        help="Objects for alias of owner Sui address",
+        help="Alias of owner address",
         action=ValidateAlias,
     )
     subp.add_argument(
@@ -130,13 +136,24 @@ def _build_read_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="committee")
     # Faucet usage
-    subp = subparser.add_parser("faucet", help="Get additional gas from SUI faucet")
-    subp.add_argument(
-        "-a",
-        "--address",
+    subp = subparser.add_parser(
+        "faucet",
+        help="Get additional gas from SUI faucet. If owwner or alias not provided, defaults to active-address.",
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
         required=False,
-        help="The address to transfer gas to. If None, defaults to the active-address",
+        help="Sui address to send gas to",
         action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner to send gas to",
+        action=ValidateAlias,
     )
     subp.set_defaults(subcommand="faucet")
 
@@ -146,20 +163,13 @@ def _build_transfer_cmds(subparser) -> None:
     # Transfer SUI
     subp = subparser.add_parser(
         "transfer-object",
-        help="Transfer an object from one address to another",
+        help="Transfer an object from one address to another. If owwner or alias not provided, defaults to active-address.",
     )
     subp.add_argument(
-        "-d",
-        "--object-id",
+        "-t",
+        "--transfer",
         required=True,
-        help="Specify sui object being transfered",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-o",
-        "--gas-object",
-        required=True,
-        help="Specify sui gas object paying for the transaction",
+        help="Specify object ID of sui object being transfered",
         action=ValidateObjectID,
     )
     subp.add_argument(
@@ -170,37 +180,53 @@ def _build_transfer_cmds(subparser) -> None:
         action=ValidateAddress,
     )
     subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
+        "-b",
+        "--budget",
+        required=False,
         help="Specify 'transfer-object' transaction budget amount in mists (e.g. 1000)",
         type=str,
     )
     subp.add_argument(
-        "-s",
-        "--signer",
+        "-g",
+        "--gas",
         required=False,
-        help="Specify gas owner address for signing. Default to active address",
+        help="Specify sui gas object used to pay for the transaction",
+        action=ValidateObjectID,
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with",
         action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner",
+        action=ValidateAlias,
     )
     subp.set_defaults(subcommand="transfer-object")
     # Transfer SUI
     subp = subparser.add_parser(
-        "transfer-sui", help="Transfer SUI 'mist(s)' to a Sui address"
+        "transfer-sui",
+        help="Transfer SUI 'mist(s)' to a Sui address. If owwner or alias not provided, defaults to active-address.",
     )
     subp.add_argument(
-        "-a",
-        "--amount",
+        "-t",
+        "--takes",
+        required=True,
+        help="Specify sui gas object to take mists from",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-m",
+        "--mists",
         required=True,
         help="Specify amount of MISTs to transfer.",
         type=str,
-    )
-    subp.add_argument(
-        "-o",
-        "--sui-object-id",
-        required=True,
-        help="Specify sui gas object to transfer from",
-        action=ValidateObjectID,
     )
     subp.add_argument(
         "-r",
@@ -210,18 +236,33 @@ def _build_transfer_cmds(subparser) -> None:
         action=ValidateAddress,
     )
     subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
+        "-b",
+        "--budget",
+        required=False,
         help="Specify 'transfer-sui' transaction budget amount in Mist (e.g. 1000)",
         type=str,
     )
     subp.add_argument(
-        "-s",
-        "--signer",
+        "-g",
+        "--gas",
         required=False,
-        help="Specify gas owner address for signing. Default to active address",
+        help="Specify sui gas object used to pay for the transaction",
+        action=ValidateObjectID,
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with",
         action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner",
+        action=ValidateAlias,
     )
     subp.set_defaults(subcommand="transfer-sui")
 

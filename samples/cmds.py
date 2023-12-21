@@ -96,9 +96,9 @@ def sui_gas(client: SyncClient, args: argparse.Namespace) -> None:
 
     for_owner: str = None
     if args.owner:
-        for_addy = args.owner
+        for_owner = args.owner
     elif args.alias:
-        for_addy = client.config.addr4al(args.alias)
+        for_owner = client.config.addr4al(args.alias)
 
     gas_result = client.get_gas(for_owner, True)
     if gas_result.is_ok():
@@ -178,9 +178,9 @@ def sui_objects(client: SyncClient, args: argparse.Namespace) -> None:
     """Show specific object."""
     for_owner: str = None
     if args.owner:
-        for_addy = args.owner
+        for_owner = args.owner
     elif args.alias:
-        for_addy = client.config.addr4al(args.alias)
+        for_owner = client.config.addr4al(args.alias)
 
     result = client.get_objects(for_owner)
     if result.is_ok():
@@ -231,29 +231,37 @@ def transfer_object(client: SyncClient, args: argparse.Namespace) -> None:
     :param args: _description_
     :type args: argparse.Namespace
     """
-    args.signer = args.signer if args.signer else client.current_address
-    txn = SyncTransaction(client, initial_sender=args.signer)
-    txn.transfer_objects(transfers=[args.object_id], recipient=args.recipient)
+    for_owner: sui_addresses = client.config.active_address
+    if args.owner:
+        for_owner = args.owner
+    elif args.alias:
+        for_owner = client.config.addr4al(args.alias)
+    txn = SyncTransaction(client=client, initial_sender=for_owner)
+    txn.transfer_objects(transfers=[args.transfer], recipient=args.recipient)
 
     print(
         handle_result(
-            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.gas_object)
+            txn.execute(gas_budget=args.budget, use_gas_object=args.gas)
         ).to_json(indent=2)
     )
 
 
 def transfer_sui(client: SyncClient, args: argparse.Namespace) -> None:
     """Transfer gas object."""
-    args.signer = args.signer if args.signer else client.current_address
-    txn = SyncTransaction(client, initial_sender=args.signer)
+    for_owner: sui_addresses = client.config.active_address
+    if args.owner:
+        for_owner = args.owner
+    elif args.alias:
+        for_owner = client.config.addr4al(args.alias)
+    txn = SyncTransaction(client=client, initial_sender=for_owner)
     txn.transfer_sui(
         recipient=args.recipient,
-        from_coin=txn.gas,
-        amount=int(args.amount),
+        from_coin=args.takes,
+        amount=int(args.mists),
     )
     print(
         handle_result(
-            txn.execute(gas_budget=args.gas_budget, use_gas_object=args.sui_object_id)
+            txn.execute(gas_budget=args.budget, use_gas_object=args.gas)
         ).to_json(indent=2)
     )
 
@@ -548,7 +556,13 @@ def txn_txn(client: SyncClient, args: argparse.Namespace) -> None:
 
 def sui_faucet(client: SyncClient, args: argparse.Namespace) -> None:
     """Get more gas from SUI faucet."""
-    result = client.get_gas_from_faucet(args.address)
+    for_owner: str = None
+    if args.owner:
+        for_owner = args.owner
+    elif args.alias:
+        for_owner = client.config.addr4al(args.alias)
+
+    result = client.get_gas_from_faucet(for_owner)
     if result.is_ok():
         print(f"Faucet Result: {result.result_data.to_json(indent=2)}.")
     else:
