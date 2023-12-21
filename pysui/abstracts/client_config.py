@@ -126,19 +126,26 @@ class ClientConfiguration(ABC):
 
         :param aliases: list of dicts with alias to public keystr association
         :type aliases: list[dict]
-        :raises ValueError: if alias dictionary is empty
+        :raises ValueError: if aliases count not equal to keypairs count
         :return: None
         :rtype: NoneType
         """
         # If there are aliases then they were already persisted
         if aliases:
-            for alias_dict in aliases:
-                alias_name = alias_dict.get("alias")
-                pub_key_str = alias_dict["public_key_base64"]
-                at_row = self._get_cref_value(
-                    pub_key_str, CrefType.PKEY, CrefType.INDEX
+            if len(aliases) == len(self._cref_matrix):
+                for alias_dict in aliases:
+                    alias_name = alias_dict.get("alias")
+                    pub_key_str = alias_dict["public_key_base64"]
+                    at_row = self._get_cref_value(
+                        pub_key_str, CrefType.PKEY, CrefType.INDEX
+                    )
+                    self._cref_matrix[at_row][CrefType.ALIAS] = {
+                        alias_name: pub_key_str
+                    }
+            else:
+                raise ValueError(
+                    f"Aliases count {len(aliases)} does not match address/key count {len(self._cref_matrix)}"
                 )
-                self._cref_matrix[at_row][CrefType.ALIAS] = {alias_name: pub_key_str}
         # otherwise if we have keys we can gen aliases (scales to any size)
         elif self._cref_matrix:
             crlen = len(self._cref_matrix)

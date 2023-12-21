@@ -94,7 +94,13 @@ def sui_gas(client: SyncClient, args: argparse.Namespace) -> None:
         print()
         return total
 
-    gas_result = client.get_gas(args.address, True)
+    for_owner: str = None
+    if args.owner:
+        for_addy = args.owner
+    elif args.alias:
+        for_addy = client.config.addr4al(args.alias)
+
+    gas_result = client.get_gas(for_owner, True)
     if gas_result.is_ok():
         _detail_gas_objects(gas_result.result_data)
     else:
@@ -105,20 +111,24 @@ def sui_new_address(client: SyncClient, args: argparse.Namespace) -> None:
     """Generate a new SUI address."""
     if args.ed25519:
         mnen, address = client.config.create_new_keypair_and_address(
-            SignatureScheme.ED25519
+            scheme=SignatureScheme.ED25519, alias=args.alias
         )
     elif args.secp256k1:
         mnen, address = client.config.create_new_keypair_and_address(
-            SignatureScheme.SECP256K1
+            scheme=SignatureScheme.SECP256K1, alias=args.alias
         )
     elif args.secp256r1:
         mnen, address = client.config.create_new_keypair_and_address(
-            SignatureScheme.SECP256R1
+            scheme=SignatureScheme.SECP256R1, alias=args.alias
         )
     else:
         raise ValueError(f"Unknown keytype {args}")
-    print(f"Keep this passphrase '{mnen}'")
-    print(f"For new address {address}")
+    print(f"Keep this passphrase: '{mnen}'")
+    print(f"For new address: {address}")
+    if args.alias:
+        print(f"Alias assigned {client.config.al4addr(address)}")
+    else:
+        print(f"Alias generated {client.config.al4addr(address)}")
 
 
 def sui_package(client: SyncClient, args: argparse.Namespace) -> None:
@@ -166,7 +176,13 @@ def _objects_header_print() -> None:
 
 def sui_objects(client: SyncClient, args: argparse.Namespace) -> None:
     """Show specific object."""
-    result = client.get_objects(args.address)
+    for_owner: str = None
+    if args.owner:
+        for_addy = args.owner
+    elif args.alias:
+        for_addy = client.config.addr4al(args.alias)
+
+    result = client.get_objects(for_owner)
     if result.is_ok():
         if args.json:
             print(result.result_data.to_json(indent=2))

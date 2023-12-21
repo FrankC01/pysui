@@ -17,6 +17,7 @@ import sys
 import argparse
 from pathlib import Path
 from typing import Any, Sequence
+from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
 from pysui.sui.sui_types import ObjectID, SuiInteger, SuiAddress
 
 
@@ -26,6 +27,27 @@ def check_positive(value: str) -> int:
     if ivalue < 0:
         raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")
     return SuiInteger(ivalue)
+
+
+class ValidateAlias(argparse.Action):
+    """Alias string validator."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = ...,
+    ) -> None:
+        """Validate."""
+        vlen: int = len(values)
+        if SUI_MIN_ALIAS_LEN <= vlen <= SUI_MAX_ALIAS_LEN:
+            setattr(namespace, self.dest, values)
+        else:
+            parser.error(
+                f"Invalid alias string length, must be betwee {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
+            )
+            sys.exit(-1)
 
 
 class ValidateAddress(argparse.Action):

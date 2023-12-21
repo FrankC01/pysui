@@ -25,6 +25,8 @@ import yaml
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.abstracts import ClientConfiguration, SignatureScheme, CrefType
 from pysui.sui.sui_constants import (
+    SUI_MIN_ALIAS_LEN,
+    SUI_MAX_ALIAS_LEN,
     DEFAULT_ALIAS_PATH_STRING,
     EMPEHMERAL_PATH,
     EMPEHMERAL_USER,
@@ -214,6 +216,10 @@ class SuiConfig(ClientConfiguration):
         else:
             if alias in aliases:
                 raise ValueError(f"Alias {alias} already exists.")
+            if SUI_MIN_ALIAS_LEN <= len(alias) <= SUI_MAX_ALIAS_LEN:
+                raise ValueError(
+                    f"Invalid alias string length, must be betwee {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
+                )
         return alias
 
     def rename_alias(self, *, old_alias: str, new_alias: str) -> None:
@@ -232,7 +238,7 @@ class SuiConfig(ClientConfiguration):
             and isinstance(old_alias, str)
             and new_alias
             and isinstance(new_alias, str)
-            and len(new_alias) <= 64
+            and SUI_MIN_ALIAS_LEN <= len(new_alias) <= SUI_MAX_ALIAS_LEN
         ):
             self._replace_alias_key(
                 self._cref_result_for(old_alias, CrefType.ALIAS, CrefType.INDEX),
@@ -245,11 +251,13 @@ class SuiConfig(ClientConfiguration):
     @versionchanged(version="0.33.0", reason="Return mnemonics to caller.")
     @versionchanged(version="0.41.0", reason="Support aliases.")
     @versionchanged(version="0.41.0", reason="Added make_active flag.")
+    @versionchanged(version="0.42.0", reason="Changed to require keyword arguments.")
     def create_new_keypair_and_address(
         self,
+        *,
         scheme: SignatureScheme,
         word_counts: Optional[int] = 12,
-        derivation_path: str = None,
+        derivation_path: Optional[str] = None,
         make_active: Optional[bool] = False,
         alias: Optional[str] = None,
     ) -> tuple[str, SuiAddress]:

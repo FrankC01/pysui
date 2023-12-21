@@ -85,6 +85,12 @@ EMPEHMERAL_PATH: str = "ephemeral"
 EMPEHMERAL_USER: str = "user"
 """A user memory only configuration"""
 
+# Alias length
+SUI_MIN_ALIAS_LEN: int = 3
+"""Minimal length of an alias name string."""
+SUI_MAX_ALIAS_LEN: int = 64
+"""Maximum length of an alias name string."""
+
 # Address lengths
 SUI_HEX_ADDRESS_STRING_LEN: int = 66
 """Length of valid address string with '0x' prefix."""

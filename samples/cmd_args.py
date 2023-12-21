@@ -16,6 +16,7 @@
 import argparse
 from samples.cmd_arg_validators import (
     ValidateObjectID,
+    ValidateAlias,
     ValidateAddress,
     ValidatePackageDir,
     check_positive,
@@ -52,15 +53,30 @@ def _build_read_cmds(subparser) -> None:
         help="Generate using secp256r1 scheme",
         action="store_true",
     )
+    subp.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias name for new address",
+        action=ValidateAlias,
+    )
     subp.set_defaults(subcommand="new-address")
     # Gas
     subp = subparser.add_parser("gas", help="Shows gas objects and total mist")
-    subp.add_argument(
-        "-a",
-        "--address",
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
         required=False,
-        help="Gas for address",
+        help="Gas for owner Sui address",
         action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Gas for alias of owner Sui address",
+        action=ValidateAlias,
     )
     subp.set_defaults(subcommand="gas")
     # Object
@@ -71,12 +87,20 @@ def _build_read_cmds(subparser) -> None:
     subp.set_defaults(subcommand="object")
     # Objects
     subp = subparser.add_parser("objects", help="Show all objects")
-    subp.add_argument(
-        "-a",
-        "--address",
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
         required=False,
-        help="Objects for address",
+        help="Objects for owner Sui address",
         action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Objects for alias of owner Sui address",
+        action=ValidateAlias,
     )
     subp.add_argument(
         "-j",
@@ -722,8 +746,20 @@ def _build_aliases_cmds(subparser) -> None:
     asubp = acmds.add_parser(
         "rename", help="Rename aliases for associated Sui addresses"
     )
-    asubp.add_argument("-e", "--existing", required=True, help="Existing alias name")
-    asubp.add_argument("-t", "--to", required=True, help="Alias to name")
+    asubp.add_argument(
+        "-e",
+        "--existing",
+        required=True,
+        help="Existing alias name",
+        action=ValidateAlias,
+    )
+    asubp.add_argument(
+        "-t",
+        "--to",
+        required=True,
+        help="Alias to name",
+        action=ValidateAlias,
+    )
     asubp.set_defaults(subcommand="rename-aliases")
 
 
