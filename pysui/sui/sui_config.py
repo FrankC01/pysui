@@ -68,8 +68,6 @@ if not logging.getLogger().handlers:
     logger.addHandler(logging.NullHandler())
     logger.propagate = False
 
-__alias_pattern: re.Pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
-
 
 @versionadded(
     version="0.16.1",
@@ -97,6 +95,8 @@ def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
 # pylint:disable=too-many-instance-attributes,attribute-defined-outside-init,too-many-arguments,unnecessary-dunder-call
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
+
+    __ALIAS_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
     @versionchanged(version="0.29.0", reason="Now accepts ws url.")
     def _initiate(
@@ -243,7 +243,7 @@ class SuiConfig(ClientConfiguration):
             and isinstance(new_alias, str)
             and SUI_MIN_ALIAS_LEN <= len(new_alias) <= SUI_MAX_ALIAS_LEN
         ):
-            re_alias = __alias_pattern.findall(new_alias)
+            re_alias = self.__ALIAS_PATTERN.findall(new_alias)
             if not re_alias or len(re_alias[0]) != len(new_alias):
                 raise ValueError(f"Invalid new_alias {new_alias} for alias")
             self._replace_alias_key(
