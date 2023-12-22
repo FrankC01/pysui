@@ -57,7 +57,7 @@ def _build_read_cmds(subparser) -> None:
         "-a",
         "--alias",
         required=False,
-        help="Alias name for new address",
+        help="Alias name for new address. Optional.",
         action=ValidateAlias,
     )
     subp.set_defaults(subcommand="new-address")
@@ -71,14 +71,14 @@ def _build_read_cmds(subparser) -> None:
         "-o",
         "--owner",
         required=False,
-        help="Sui address of gas owner",
+        help="Sui address of gas owner. Optional.",
         action=ValidateAddress,
     )
     addy_arg_group.add_argument(
         "-a",
         "--alias",
         required=False,
-        help="Alias of owner address",
+        help="Alias of owner address. Optional.",
         action=ValidateAlias,
     )
     subp.set_defaults(subcommand="gas")
@@ -98,14 +98,14 @@ def _build_read_cmds(subparser) -> None:
         "-o",
         "--owner",
         required=False,
-        help="Sui address of objects owner",
+        help="Sui address of objects owner. Optional.",
         action=ValidateAddress,
     )
     addy_arg_group.add_argument(
         "-a",
         "--alias",
         required=False,
-        help="Alias of owner address",
+        help="Alias of owner address. Optional.",
         action=ValidateAlias,
     )
     subp.add_argument(
@@ -145,14 +145,14 @@ def _build_read_cmds(subparser) -> None:
         "-o",
         "--owner",
         required=False,
-        help="Sui address to send gas to",
+        help="Sui address to send gas to. Optional.",
         action=ValidateAddress,
     )
     addy_arg_group.add_argument(
         "-a",
         "--alias",
         required=False,
-        help="Alias of Sui owner to send gas to",
+        help="Alias of Sui owner to send gas to. Optional.",
         action=ValidateAlias,
     )
     subp.set_defaults(subcommand="faucet")
@@ -183,14 +183,14 @@ def _build_transfer_cmds(subparser) -> None:
         "-b",
         "--budget",
         required=False,
-        help="Specify 'transfer-object' transaction budget amount in mists (e.g. 1000)",
+        help="Specify 'transfer-object' transaction budget amount in mists (e.g. 1000). Optional.",
         type=str,
     )
     subp.add_argument(
         "-g",
         "--gas",
         required=False,
-        help="Specify sui gas object used to pay for the transaction",
+        help="Specify sui gas object used to pay for the transaction. Optional.",
         action=ValidateObjectID,
     )
     addy_arg_group = subp.add_mutually_exclusive_group(required=False)
@@ -198,14 +198,14 @@ def _build_transfer_cmds(subparser) -> None:
         "-o",
         "--owner",
         required=False,
-        help="Sui address to send/sign with",
+        help="Sui address to send/sign with. Optional.",
         action=ValidateAddress,
     )
     addy_arg_group.add_argument(
         "-a",
         "--alias",
         required=False,
-        help="Alias of Sui owner",
+        help="Alias of Sui owner. Optional.",
         action=ValidateAlias,
     )
     subp.set_defaults(subcommand="transfer-object")
@@ -239,14 +239,14 @@ def _build_transfer_cmds(subparser) -> None:
         "-b",
         "--budget",
         required=False,
-        help="Specify 'transfer-sui' transaction budget amount in Mist (e.g. 1000)",
+        help="Specify 'transfer-sui' transaction budget amount in Mist (e.g. 1000). Optional.",
         type=str,
     )
     subp.add_argument(
         "-g",
         "--gas",
         required=False,
-        help="Specify sui gas object used to pay for the transaction",
+        help="Specify sui gas object used to pay for the transaction. Optional.",
         action=ValidateObjectID,
     )
     addy_arg_group = subp.add_mutually_exclusive_group(required=False)
@@ -254,14 +254,14 @@ def _build_transfer_cmds(subparser) -> None:
         "-o",
         "--owner",
         required=False,
-        help="Sui address to send/sign with",
+        help="Sui address to send/sign with. Optional.",
         action=ValidateAddress,
     )
     addy_arg_group.add_argument(
         "-a",
         "--alias",
         required=False,
-        help="Alias of Sui owner",
+        help="Alias of Sui owner. Optional.",
         action=ValidateAlias,
     )
     subp.set_defaults(subcommand="transfer-sui")
@@ -270,13 +270,9 @@ def _build_transfer_cmds(subparser) -> None:
 def _build_pay_cmds(subparser) -> None:
     """Pay commands."""
     # Pay
-    subp = subparser.add_parser("pay", help="Send coin of any type to recipient(s)")
-    subp.add_argument(
-        "-s",
-        "--signer",
-        required=False,
-        help="Specify pay signer address. Default to active address",
-        action=ValidateAddress,
+    subp = subparser.add_parser(
+        "pay",
+        help="Send coin of any type to recipient(s). If owwner or alias not provided, defaults to active-address.",
     )
     subp.add_argument(
         "-i",
@@ -287,8 +283,8 @@ def _build_pay_cmds(subparser) -> None:
         action=ValidateObjectID,
     )
     subp.add_argument(
-        "-a",
-        "--amounts",
+        "-m",
+        "--mists",
         required=True,
         nargs="+",
         help="Specify amounts of MIST for each <INPUT-COINS> provided.",
@@ -303,28 +299,40 @@ def _build_pay_cmds(subparser) -> None:
         action=ValidateAddress,
     )
     subp.add_argument(
-        "-o",
-        "--gas-object",
-        required=True,
-        help="Specify gas object to transfer from",
+        "-g",
+        "--gas",
+        required=False,
+        help="Specify sui gas object used to pay for the transaction. Optional.",
         action=ValidateObjectID,
     )
     subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify 'pay' transaction budget",
+        "-b",
+        "--budget",
+        required=False,
+        help="Specify 'pay' transaction budget.Optional.",
         type=str,
     )
-    subp.set_defaults(subcommand="pay")
-    # PaySui
-    subp = subparser.add_parser("paysui", help="Send SUI coins to a list of addresses.")
-    subp.add_argument(
-        "-s",
-        "--signer",
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
         required=False,
-        help="Specify pay signer address. Default to active address",
+        help="Sui address to send/sign with. Optional.",
         action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner. Optional.",
+        action=ValidateAlias,
+    )
+    subp.set_defaults(subcommand="pay")
+
+    # PaySui
+    subp = subparser.add_parser(
+        "paysui",
+        help="Send SUI coins to a list of addresses. If owwner or alias not provided, defaults to active-address.",
     )
     subp.add_argument(
         "-i",
@@ -335,8 +343,8 @@ def _build_pay_cmds(subparser) -> None:
         action=ValidateObjectID,
     )
     subp.add_argument(
-        "-a",
-        "--amounts",
+        "-m",
+        "--mists",
         required=True,
         nargs="+",
         help="Specify amounts of MIST for each <INPUT-COINS> provided.",
@@ -351,23 +359,32 @@ def _build_pay_cmds(subparser) -> None:
         action=ValidateAddress,
     )
     subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify 'pay' transaction budget",
+        "-b",
+        "--budget",
+        required=False,
+        help="Specify 'pay-sui' transaction budget. Optional.",
         type=str,
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with. Optional.",
+        action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner. Optional.",
+        action=ValidateAlias,
     )
     subp.set_defaults(subcommand="paysui")
     # PayAllSui
     subp = subparser.add_parser(
-        "payallsui", help="Send all SUI coin(s) to recipient(s)"
-    )
-    subp.add_argument(
-        "-s",
-        "--signer",
-        required=False,
-        help="Specify pay signer address. Default to active address",
-        action=ValidateAddress,
+        "payallsui",
+        help="Send all SUI coin(s) to recipient(s). If owwner or alias not provided, defaults to active-address.",
     )
     subp.add_argument(
         "-i",
@@ -385,13 +402,181 @@ def _build_pay_cmds(subparser) -> None:
         action=ValidateAddress,
     )
     subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify 'pay' transaction budget",
+        "-b",
+        "--budget",
+        required=False,
+        help="Specify 'pay' transaction budget. Optional.",
         type=str,
     )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with. Optional.",
+        action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner. Optional.",
+        action=ValidateAlias,
+    )
+
     subp.set_defaults(subcommand="payallsui")
+
+
+def _build_coin_cmds(subparser) -> None:
+    """Coin commands."""
+    # Merge coin
+    subp = subparser.add_parser(
+        "merge-coin",
+        help="Merge two coins together. If owwner or alias not provided, defaults to active-address.",
+    )
+    subp.add_argument(
+        "-p",
+        "--primary-coin",
+        required=True,
+        help="Specify the primary coin ID to merge into",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-c",
+        "--coin-to-merge",
+        required=True,
+        help="Specify the coin ID to merge from.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-g",
+        "--gas",
+        required=False,
+        help="Specify gas object to pay transaction from. Optional.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-b",
+        "--budget",
+        required=False,
+        help="Specify 'merge-coin' transaction budget.Optional.",
+        type=str,
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with. Optional.",
+        action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner. Optional.",
+        action=ValidateAlias,
+    )
+    subp.set_defaults(subcommand="merge-coin")
+    # Split coin
+    subp = subparser.add_parser(
+        "split-coin",
+        help="Split coin into one or more coins by amount. If owwner or alias not provided, defaults to active-address.",
+    )
+    subp.add_argument(
+        "-c",
+        "--coin_object_id",
+        required=True,
+        help="Specify the coin ID the split-amounts are being split from.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-m",
+        "--mists",
+        required=True,
+        nargs="+",
+        help="Specify mist amounts to split the coin into.",
+        type=str,
+    )
+    subp.add_argument(
+        "-g",
+        "--gas",
+        required=False,
+        help="Specify gas object to pay transaction from. Optional.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-b",
+        "--budget",
+        required=False,
+        help="Specify 'split-coin' transaction budget. Optional.",
+        type=str,
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with. Optional.",
+        action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner. Optional.",
+        action=ValidateAlias,
+    )
+    subp.set_defaults(subcommand="split-coin")
+    # Split coin
+    subp = subparser.add_parser(
+        "split-coin-equally",
+        help="Split coin into one or more coins equally. If owwner or alias not provided, defaults to active-address.",
+    )
+    subp.add_argument(
+        "-c",
+        "--coin_object_id",
+        required=True,
+        help="Specify the coin ID of the coin being split from.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-s",
+        "--split_count",
+        required=True,
+        help="Specify count of coins to split the coin_object_id into.",
+        type=str,
+    )
+    subp.add_argument(
+        "-g",
+        "--gas",
+        required=False,
+        help="Specify gas object to pay transaction from. Optional.",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "-b",
+        "--budget",
+        required=False,
+        help="Specify transaction budget. Optional.",
+        type=str,
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with. Optional.",
+        action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner. Optional.",
+        action=ValidateAlias,
+    )
+    subp.set_defaults(subcommand="split-coin-equally")
 
 
 def _build_package_cmds(subparser) -> None:
@@ -403,44 +588,52 @@ def _build_package_cmds(subparser) -> None:
     )
     subp.set_defaults(subcommand="package")
     # Publish package
-    subp = subparser.add_parser("publish", help="Publish a SUI package")
-    subp.add_argument(
-        "-s",
-        "--sender",
-        required=False,
-        help="Specify publish sender address. Default to active address",
-        action=ValidateAddress,
+    subp = subparser.add_parser(
+        "publish",
+        help="Publish a SUI package. If owwner or alias not provided, defaults to active-address.",
     )
     subp.add_argument(
-        "-c",
-        "--compiled_modules",
+        "-p",
+        "--package",
         required=True,
-        help="Specify the path to package folder containing compiled modules to publish.",
+        help="Specify the path to package folder to publish.",
         action=ValidatePackageDir,
     )
     subp.add_argument(
-        "-o",
-        "--gas-object",
-        required=True,
-        help="Specify gas object to pay transaction from",
+        "-g",
+        "--gas",
+        required=False,
+        help="Specify gas object to pay transaction from. Optional.",
         action=ValidateObjectID,
     )
     subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify transaction budget",
+        "-b",
+        "--budget",
+        required=False,
+        help="Specify transaction budget. Optional.",
         type=str,
     )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with. Optional.",
+        action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner. Optional.",
+        action=ValidateAlias,
+    )
+
     subp.set_defaults(subcommand="publish")
     # Move call
-    subp = subparser.add_parser("call", help="Call a move contract function")
-    subp.add_argument(
-        "-s",
-        "--signer",
-        required=False,
-        help="Specify SUI call signer address. Default to active address",
-        action=ValidateAddress,
+    subp = subparser.add_parser(
+        "call",
+        help="Call a move contract function. If owwner or alias not provided, defaults to active-address.",
     )
     subp.add_argument(
         "-p",
@@ -472,151 +665,42 @@ def _build_package_cmds(subparser) -> None:
         type=SuiString,
     )
     subp.add_argument(
-        "-a",
-        "--arguments",
+        "--args",
         required=False,
         nargs="+",
         help="Function arguments.",
         type=SuiString,
     )
     subp.add_argument(
-        "-o",
-        "--gas-object",
-        required=True,
-        help="Specify gas object to pay transaction from",
+        "-g",
+        "--gas",
+        required=False,
+        help="Specify gas object to pay transaction from. Optional.",
         action=ValidateObjectID,
     )
     subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify transaction budget",
+        "-b",
+        "--budget",
+        required=False,
+        help="Specify transaction budget. Optional.",
         type=str,
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address to send/sign with. Optional.",
+        action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of Sui owner. Optional.",
+        action=ValidateAlias,
     )
     subp.set_defaults(subcommand="call")
-
-
-def _build_coin_cmds(subparser) -> None:
-    """Coin commands."""
-    # Merge coin
-    subp = subparser.add_parser("merge-coin", help="Merge two coins together")
-    subp.add_argument(
-        "-s",
-        "--signer",
-        required=False,
-        help="Specify merge-coin signer address. Default to active address",
-        action=ValidateAddress,
-    )
-    subp.add_argument(
-        "-p",
-        "--primary-coin",
-        required=True,
-        help="Specify the primary coin ID to merge into",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-c",
-        "--coin-to-merge",
-        required=True,
-        help="Specify the coin ID to merge from.",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-o",
-        "--gas-object",
-        required=True,
-        help="Specify gas object to pay transaction from",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify 'merge-coin' transaction budget",
-        type=str,
-    )
-    subp.set_defaults(subcommand="merge-coin")
-    # Split coin
-    subp = subparser.add_parser(
-        "split-coin", help="Split coin into one or more coins by amount"
-    )
-    subp.add_argument(
-        "-s",
-        "--signer",
-        required=False,
-        help="Specify split-coin signer address. Default to active address",
-        action=ValidateAddress,
-    )
-    subp.add_argument(
-        "-c",
-        "--coin_object_id",
-        required=True,
-        help="Specify the coin ID the split-amounts are being split from.",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-a",
-        "--split_amounts",
-        required=True,
-        nargs="+",
-        help="Specify amounts to split the coin into.",
-        type=str,
-    )
-    subp.add_argument(
-        "-o",
-        "--gas-object",
-        required=True,
-        help="Specify gas object to pay transaction from",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify 'split-coin' transaction budget",
-        type=str,
-    )
-    subp.set_defaults(subcommand="split-coin")
-    # Split coin
-    subp = subparser.add_parser(
-        "split-coin-equally", help="Split coin into one or more coins equally"
-    )
-    subp.add_argument(
-        "-s",
-        "--signer",
-        required=False,
-        help="Specify split-coin-equally signer address. Default to active address",
-        action=ValidateAddress,
-    )
-    subp.add_argument(
-        "-c",
-        "--coin_object_id",
-        required=True,
-        help="Specify the coin ID of the coin being split from.",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-a",
-        "--split_count",
-        required=True,
-        help="Specify count of coins to split the coin_object_id into.",
-        type=str,
-    )
-    subp.add_argument(
-        "-o",
-        "--gas-object",
-        required=True,
-        help="Specify gas object to pay transaction from",
-        action=ValidateObjectID,
-    )
-    subp.add_argument(
-        "-g",
-        "--gas-budget",
-        required=True,
-        help="Specify transaction budget",
-        type=str,
-    )
-    subp.set_defaults(subcommand="split-coin-equally")
 
 
 def _build_extended_read_commands(subparser) -> None:
