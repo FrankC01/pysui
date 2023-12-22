@@ -18,6 +18,7 @@
 import os
 import logging
 import base64
+import re
 from pathlib import Path
 import json
 from typing import Optional, Union
@@ -66,6 +67,8 @@ logger = logging.getLogger("pysui.config")
 if not logging.getLogger().handlers:
     logger.addHandler(logging.NullHandler())
     logger.propagate = False
+
+__alias_pattern: re.Pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
 
 @versionadded(
@@ -240,6 +243,9 @@ class SuiConfig(ClientConfiguration):
             and isinstance(new_alias, str)
             and SUI_MIN_ALIAS_LEN <= len(new_alias) <= SUI_MAX_ALIAS_LEN
         ):
+            re_alias = __alias_pattern.findall(new_alias)
+            if not re_alias or len(re_alias[0]) != len(new_alias):
+                raise ValueError(f"Invalid new_alias {new_alias} for alias")
             self._replace_alias_key(
                 self._cref_result_for(old_alias, CrefType.ALIAS, CrefType.INDEX),
                 new_alias,
