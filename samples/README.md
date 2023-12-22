@@ -57,27 +57,28 @@ options:
   -v, --version         Show pysui SDK version
 
 commands:
-  {active-address,addresses,new-address,gas,object,objects,rpcapi,committee,faucet,merge-coin,split-coin,split-coin-equally,transfer-object,transfer-sui,pay,paysui,payallsui,package,publish,call,events,txns}
+  {aliases,active-address,addresses,new-address,gas,object,objects,rpcapi,committee,faucet,merge-coin,split-coin,split-coin-equally,transfer-object,transfer-sui,pay,paysui,payallsui,package,publish,call,events,txns}
+    aliases             [NEW] Sui Address alias management
     active-address      Shows active address
     addresses           Shows all addresses
     new-address         Generate new address and keypair
-    gas                 Shows gas objects and total mist
+    gas                 Shows gas objects and total mist. If owwner or alias not provided, defaults to active-address.
     object              Show object by id
-    objects             Show all objects
+    objects             Show all objects. If owwner or alias not provided, defaults to active-address.
     rpcapi              Show Sui RPC API information
     committee           Show committee info for epoch
-    faucet              Get additional gas from SUI faucet
-    merge-coin          Merge two coins together
-    split-coin          Split coin into one or more coins by amount
-    split-coin-equally  Split coin into one or more coins equally
-    transfer-object     Transfer an object from one address to another
-    transfer-sui        Transfer SUI 'mist(s)' to a Sui address
-    pay                 Send coin of any type to recipient(s)
-    paysui              Send SUI coins to a list of addresses.
-    payallsui           Send all SUI coin(s) to recipient(s)
+    faucet              Get additional gas from SUI faucet. If owwner or alias not provided, defaults to active-address.
+    merge-coin          Merge two coins together. If owwner or alias not provided, defaults to active-address.
+    split-coin          Split coin into one or more coins by amount. If owwner or alias not provided, defaults to active-address.
+    split-coin-equally  Split coin into one or more coins equally. If owwner or alias not provided, defaults to active-address.
+    transfer-object     Transfer an object from one address to another. If owwner or alias not provided, defaults to active-address.
+    transfer-sui        Transfer SUI 'mist(s)' to a Sui address. If owwner or alias not provided, defaults to active-address.
+    pay                 Send coin of any type to recipient(s). If owwner or alias not provided, defaults to active-address.
+    paysui              Send SUI coins to a list of addresses. If owwner or alias not provided, defaults to active-address.
+    payallsui           Send all SUI coin(s) to recipient(s). If owwner or alias not provided, defaults to active-address.
     package             Show normalized package information
-    publish             Publish a SUI package
-    call                Call a move contract function
+    publish             Publish a SUI package. If owwner or alias not provided, defaults to active-address.
+    call                Call a move contract function. If owwner or alias not provided, defaults to active-address.
     events              Show events for types
     txns                Show transaction information
 ```
