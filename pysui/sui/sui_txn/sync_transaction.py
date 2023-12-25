@@ -650,32 +650,25 @@ class SuiTransaction(_SuiTransactionBase):
         version="0.36.0",
         reason="Removed legacy_digest. No longer supported in Sui.",
     )
+    @versionchanged(
+        version="0.50.0",
+        reason="Removed with_unpublished_dependencies and skip_fetch_latest_git_deps replace with `args` list.",
+    )
     def publish(
-        self,
-        *,
-        project_path: str,
-        with_unpublished_dependencies: bool = False,
-        skip_fetch_latest_git_deps: bool = False,
+        self, *, project_path: str, args_list: Optional[list[str]] = None
     ) -> bcs.Argument:
         """publish Creates a publish command.
 
         :param project_path: path to project folder
         :type project_path: str
-        :param with_unpublished_dependencies: Flag indicating inclusion of adding unpublished dependencies
-            of package, defaults to False
-        :type with_unpublished_dependencies: bool, optional
-        :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
-            package dependencies, defaults to False
-        :type skip_fetch_latest_git_deps: bool, optional
+        :param args_list: Additional `sui move build` arguments, defaults to None
+        :type args_list: Optional[list[str]], optional
         :return: A command result (UpgradeCap) that should used in a subsequent transfer commands
         :rtype: bcs.Argument
         """
         assert not self._executed, "Transaction already executed"
-        modules, dependencies, _digest = self._compile_source(
-            project_path,
-            with_unpublished_dependencies,
-            skip_fetch_latest_git_deps,
-        )
+
+        modules, dependencies, _digest = self._compile_source(project_path, args_list)
         return self.builder.publish(modules, dependencies)
 
     def _verify_upgrade_cap(self, upgrade_cap: str) -> ObjectRead:
@@ -703,14 +696,17 @@ class SuiTransaction(_SuiTransactionBase):
         version="0.36.0",
         reason="Dropped legacy_digest. No longer supported in Sui.",
     )
+    @versionchanged(
+        version="0.50.0",
+        reason="Removed with_unpublished_dependencies and skip_fetch_latest_git_deps replace with `args` list.",
+    )
     def publish_upgrade(
         self,
         *,
         project_path: str,
         package_id: Union[str, ObjectID],
         upgrade_cap: Union[str, ObjectID, ObjectRead],
-        with_unpublished_dependencies: bool = False,
-        skip_fetch_latest_git_deps: bool = False,
+        args_list: Optional[list[str]],
     ) -> bcs.Argument:
         """publish_upgrade Authorize, publish and commit upgrade of package.
 
@@ -720,12 +716,8 @@ class SuiTransaction(_SuiTransactionBase):
         :type package_id: Union[str, ObjectID]
         :param upgrade_cap: The upgrade capability object
         :type upgrade_cap: Union[str, ObjectID, ObjectRead]
-        :param with_unpublished_dependencies: Flag indicating inclusion of adding unpublished dependencies
-            of package, defaults to False
-        :type with_unpublished_dependencies: bool, optional
-        :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
-            package dependencies, defaults to False
-        :type skip_fetch_latest_git_deps: bool, optional
+        :param args_list: Additional `sui move build` arguments, defaults to None
+        :type args_list: Optional[list[str]], optional
         :return: The Result Argument
         :rtype: bcs.Argument
         """
@@ -733,11 +725,7 @@ class SuiTransaction(_SuiTransactionBase):
         assert isinstance(upgrade_cap, (str, ObjectID, ObjectRead))
         assert isinstance(package_id, (str, ObjectID))
         # Compile the new package
-        modules, dependencies, digest = self._compile_source(
-            project_path,
-            with_unpublished_dependencies,
-            skip_fetch_latest_git_deps,
-        )
+        modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
             upgrade_cap = (
@@ -770,6 +758,10 @@ class SuiTransaction(_SuiTransactionBase):
         return self.builder.commit_upgrade(bcs.Argument("Input", cap_arg), receipt)
 
     @versionadded(version="0.20.0", reason="Support Sui 1.0.0 custom upgrades")
+    @versionchanged(
+        version="0.50.0",
+        reason="Removed with_unpublished_dependencies and skip_fetch_latest_git_deps replace with `args` list.",
+    )
     def custom_upgrade(
         self,
         *,
@@ -782,9 +774,7 @@ class SuiTransaction(_SuiTransactionBase):
         commit_upgrade_fn: Callable[
             ["SuiTransaction", ObjectRead, bcs.Argument], bcs.Argument
         ],
-        with_unpublished_dependencies: bool = False,
-        skip_fetch_latest_git_deps: bool = False,
-        legacy_digest: bool = False,
+        args_list: Optional[list[str]] = None,
     ) -> bcs.Argument:
         """custom_upgrade Support for custom authorization and commitments.
 
@@ -798,26 +788,15 @@ class SuiTransaction(_SuiTransactionBase):
         :type authorize_upgrade_fn: Callable[[&quot;SuiTransaction&quot;, ObjectRead, bcs.Digest], bcs.Argument]
         :param commit_upgrade_fn: Function to be called that generates custom commitment 'move_call'
         :type commit_upgrade_fn: Callable[[&quot;SuiTransaction&quot;, ObjectRead, bcs.Argument], bcs.Argument]
-        :param with_unpublished_dependencies: Flag indicating inclusion of adding unpublished dependencies
-            of package, defaults to False
-        :type with_unpublished_dependencies: bool, optional
-        :param skip_fetch_latest_git_deps: Flag indicating to skip compiliation fetch of
-            package dependencies, defaults to False
-        :type skip_fetch_latest_git_deps: bool, optional
-        :param legacy_digest: Flag indicating to create a digest the old way
-        :type legacy_digest: bool, optional
-        :return: The Result Argument
+        :param args_list: Additional `sui move build` arguments, defaults to None
+        :type args_list: Optional[list[str]], optional
+        :return: The result argument
         :rtype: bcs.Argument
         """
         assert authorize_upgrade_fn, "'authorize_upgrade_fn' is NoneType"
         assert commit_upgrade_fn, "'commit_upgrade_fn' is NoneType"
         # Compile the new package
-        modules, dependencies, digest = self._compile_source(
-            project_path,
-            with_unpublished_dependencies,
-            skip_fetch_latest_git_deps,
-            legacy_digest,
-        )
+        modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Verify get/upgrade cap details
         if not isinstance(upgrade_cap, ObjectRead):
             upgrade_cap = (

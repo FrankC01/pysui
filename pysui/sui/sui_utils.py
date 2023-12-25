@@ -65,14 +65,9 @@ from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectReadData
 
 # _SUI_BUILD: list[str] = ["sui", "move", "build", "-p"]
 # _SUI_BUILD_SKIP_GIT: list[str] = ["sui", "move", "build", "--skip-fetch-latest-git-deps", "-p"]
-_SUI_BUILD: list[str] = ["move", "build", "-p"]
-_SUI_BUILD_SKIP_GIT: list[str] = [
-    "move",
-    "build",
-    "--skip-fetch-latest-git-deps",
-    "-p",
-]
 _UNPUBLISHED: str = "0000000000000000000000000000000000000000000000000000000000000000"
+
+_SUI_BUILD: list[str] = ["move", "build"]
 
 
 @dataclass
@@ -92,7 +87,7 @@ class CompiledPackage:
 
 
 def _compile_project(
-    path_to_package: Path, skip_git_dependencies: bool
+    path_to_package: Path, args_list: list[str]
 ) -> Union[Path, SuiException]:
     """_compile_project Compiles a sui move project.
 
@@ -108,13 +103,14 @@ def _compile_project(
     :return: The path_to_package Path
     :rtype: Union[Path, SuiException]
     """
-    if skip_git_dependencies:
-        args = _SUI_BUILD_SKIP_GIT.copy()
-    else:
-        args = _SUI_BUILD.copy()
-    args.insert(0, os.environ[PYSUI_EXEC_ENV])
-    args.append(str(path_to_package))
-    result = subprocess.run(args, capture_output=True, text=True)
+    mbs = _SUI_BUILD.copy()
+    mbs.extend(args_list)
+    mbs.append("-p")
+    mbs.append(path_to_package)
+    # return " ".join(mbs)
+
+    mbs.insert(0, os.environ[PYSUI_EXEC_ENV])
+    result = subprocess.run(mbs, capture_output=True, text=True)
     if result.returncode == 0:
         return path_to_package
     raise SuiPackageBuildFail(result.stdout)
@@ -192,14 +188,13 @@ def _package_digest(package: CompiledPackage, readers: list[ModuleReader]) -> No
 )
 def publish_build(
     path_to_package: Path,
-    include_unpublished: bool = False,
-    skip_git_dependencie: bool = False,
+    args_list: list[str],
 ) -> Union[CompiledPackage, Exception]:
     """Build and collect module base64 strings and dependencies ObjectIDs."""
     if os.environ[PYSUI_EXEC_ENV] == EMPEHMERAL_PATH:
         raise ValueError(f"Configuration does not support publishing")
     # Compile the package
-    path_to_package = _compile_project(path_to_package, skip_git_dependencie)
+    path_to_package = _compile_project(path_to_package, args_list)
     # Find the build folder
     build_path = path_to_package.joinpath("build")
     if not build_path.exists():

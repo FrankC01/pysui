@@ -396,18 +396,21 @@ class _SuiTransactionBase:
             base64.b64decode(inbound if isinstance(inbound, str) else inbound.value)
         )
 
+    @versionchanged(
+        version="0.50.0",
+        reason="Removed with_unpublished_dependencies and skip_fetch_latest_git_deps replace with `args_list`",
+    )
     def _compile_source(
         self,
         project_path: str,
-        with_unpublished_dependencies: bool,
-        skip_fetch_latest_git_deps: bool,
+        args_list: list[str],
     ) -> tuple[list[str], list[str], bcs.Digest]:
         """."""
         src_path = Path(os.path.expanduser(project_path))
+        args_list = args_list if args_list else []
         compiled_package = publish_build(
             src_path,
-            with_unpublished_dependencies,
-            skip_fetch_latest_git_deps,
+            args_list,
         )
         modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
         dependencies = [
