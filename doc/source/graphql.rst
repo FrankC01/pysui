@@ -39,7 +39,7 @@ Simple dev example
     #
     """Development example."""
 
-    from pysui.sui.sui_pgql.clients import SuiGQLClient, SUI_GRAPHQL_MAINNET
+    from pysui.sui.sui_pgql.clients import SuiGQLClient
     import pysui.sui.sui_pgql.pgql_query as qn
     from pysui import SuiConfig
 
@@ -55,9 +55,8 @@ Simple dev example
         print(qres.to_json(indent=2))
 
     if __name__ == "__main__":
-        # SuiConfig is not necessarily pointing to the same environemnt
-        # We use it in beta for alias lookups to Sui addresses
-        client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET,config=SuiConfig.default_config(),)
+        # Initialize synchronous client (must be mainnet or testnet)
+        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False,)
         main(client_init)
 
 =================
@@ -155,7 +154,7 @@ using ``gql`` functions.
     """DocumentNode query example."""
 
     from gql import Client, gql
-    from pysui.sui.sui_pgql.clients import SuiGQLClient, SUI_GRAPHQL_MAINNET
+    from pysui.sui.sui_pgql.clients import SuiGQLClient
     from pysui import SuiConfig
 
     def main(client: SuiGQLClient):
@@ -167,7 +166,7 @@ using ``gql`` functions.
     if __name__ == "__main__":
         # SuiConfig is not necessarily pointing to the same environemnt
         # We use it in beta for alias lookups to Sui addresses
-        client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET,config=SuiConfig.default_config(),)
+        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False,)
         main(client_init)
 
 -----------------------

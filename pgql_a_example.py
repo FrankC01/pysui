@@ -16,11 +16,7 @@
 import asyncio
 
 from pysui import SuiConfig, SuiRpcResult
-from pysui.sui.sui_pgql.pgql_clients import (
-    AsyncSuiGQLClient,
-    SUI_GRAPHQL_MAINNET,
-    SUI_GRAPHQL_TESTNET,
-)
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
 
 
@@ -202,13 +198,7 @@ async def do_txs(client: AsyncSuiGQLClient):
 
 async def do_staked_sui(client: AsyncSuiGQLClient):
     """."""
-    owner = (
-        # Main net
-        "0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
-        if client.url == SUI_GRAPHQL_MAINNET
-        # Test net
-        else "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4"
-    )
+    owner = "0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
     handle_result(
         await client.execute_query(with_query_node=qn.GetDelegatedStakes(owner=owner))
     )
@@ -270,7 +260,6 @@ async def do_protcfg(client: AsyncSuiGQLClient):
 async def main():
     """."""
     client_init = AsyncSuiGQLClient(
-        gql_rpc_url=SUI_GRAPHQL_MAINNET,
         write_schema=False,
         config=SuiConfig.default_config(),
     )

@@ -30,14 +30,12 @@ from graphql import DocumentNode, print_ast, GraphQLSchema
 from graphql.error.syntax_error import GraphQLSyntaxError
 from graphql.utilities.print_schema import print_schema
 
-# TODO: Move to Constants
-SUI_GRAPHQL_MAINNET: str = "https://graphql-beta.mainnet.sui.io"
-SUI_GRAPHQL_TESTNET: str = "https://graphql-beta.testnet.sui.io"
 
 from pysui import SuiConfig, SuiRpcResult
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
+import pysui.sui.sui_constants as cnst
 
 
 class PGQL_QueryNode(ABC):
@@ -84,6 +82,8 @@ class BaseSuiGQLClient:
     """Base GraphQL client."""
 
     _GRAPH_QL_SCHEMA: DSLSchema = None
+    _SUI_GRAPHQL_MAINNET: str = "https://graphql-beta.mainnet.sui.io"
+    _SUI_GRAPHQL_TESTNET: str = "https://graphql-beta.testnet.sui.io"
 
     @classmethod
     def _set_schema(cls, schema: DSLSchema) -> None:
@@ -167,12 +167,21 @@ class SuiGQLClient(BaseSuiGQLClient):
     def __init__(
         self,
         *,
-        gql_rpc_url: str,
         write_schema: Optional[bool] = False,
         config: SuiConfig,
     ):
         """Sui GraphQL Client initializer."""
-        # self.rpc_url = gql_rpc_url
+        gql_rpc_url: str = None
+
+        match config.rpc_url:
+            case cnst.MAINNET_SUI_URL:
+                gql_rpc_url = self._SUI_GRAPHQL_MAINNET
+            case cnst.TESTNET_SUI_URL:
+                gpl_rpc_URL = self._SUI_GRAPHQL_TESTNET
+            case _:
+                raise ValueError(
+                    f"Found {config.rpc_url}. URL must be mainnet or testnet sui url."
+                )
 
         self._rpc_client: Client = Client(
             transport=RequestsHTTPTransport(
@@ -290,14 +299,23 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     def __init__(
         self,
         *,
-        gql_rpc_url: str,
         write_schema: Optional[bool] = False,
         config: SuiConfig,
     ):
         """Async Sui GraphQL Client initializer."""
+        gql_rpc_url: str = None
+        match config.rpc_url:
+            case cnst.MAINNET_SUI_URL:
+                gql_rpc_url = self._SUI_GRAPHQL_MAINNET
+            case cnst.TESTNET_SUI_URL:
+                gpl_rpc_URL = self._SUI_GRAPHQL_TESTNET
+            case _:
+                raise ValueError(
+                    f"Found {config.rpc_url}. URL must be mainnet or testnet sui url."
+                )
+
         # Get sync client to populate all applicable properties
         s_client = SuiGQLClient(
-            gql_rpc_url=gql_rpc_url,
             write_schema=write_schema,
             config=config,
         )
