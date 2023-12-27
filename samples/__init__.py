@@ -11,7 +11,4 @@
 
 # -*- coding: utf-8 -*-
 
-
 """Sample Setup."""
-
-# from samples.sample_wallet import SuiWallet

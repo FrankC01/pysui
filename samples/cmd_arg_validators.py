@@ -22,7 +22,7 @@ from pysui.sui.sui_types import ObjectID, SuiInteger, SuiAddress
 
 
 def check_positive(value: str) -> int:
-    """Check for positive integers."""
+    """Check argument for positive integers."""
     ivalue = int(value)
     if ivalue < 0:
         raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")

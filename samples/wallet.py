@@ -18,7 +18,6 @@ import os
 import pathlib
 import sys
 
-
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 PARENT = PROJECT_DIR.parent
 
@@ -51,9 +50,7 @@ def main():
             cfg = SuiConfig.sui_base_config()
         else:
             cfg = SuiConfig.default_config()
-        print(
-            f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}"
-        )
+        print(f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}")
         cmd_call(SyncClient(cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")

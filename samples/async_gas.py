@@ -100,7 +100,7 @@ async def get_all_gas(client: AsyncClient) -> dict[SuiAddress, list[SuiGas]]:
 
 
 async def main_run(client: AsyncClient):
-    """main Asynchronous entry point."""
+    """Main Asynchronous entry point."""
     config: SuiConfig = client.config
     owned_objects = asyncio.create_task(client.get_objects())
     gasses = asyncio.create_task(get_all_gas(client))

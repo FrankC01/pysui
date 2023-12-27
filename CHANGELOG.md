@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.50.0] - 2023-12-27
+
+** BREAKING CHANGES **
+
+### Added
+
+- GraphQL (queries, fragments, client) for testnet or mainnet snapshot queries.
+
+### Fixed
+
+### Changed
+
+- **Breaking**: SuiTransaction publish, publish_upgrade and custom_upgrade [args_list](https://github.com/FrankC01/pysui/issues/174)
+- Wallet added alias listing and change alias
+- Wallet commands that took Sui Address can now take an alias
+- Wallet `new-address` command now takes optional alias name argument [-a,--alias]
+- **Breaking**:
+    - SuiConfig.create_new_keypair_and_address now requires keyword arguments
+    - Wallet `gas` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
+    - Wallet `objects` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
+    - Wallet `faucet` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
+    - Wallet `transfer-object`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet transfer-object -h` for additional command changes
+    - Wallet `transfer-sui`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet transfer-sui -h` for additional command changes
+    - Wallet `pay`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet pay -h` for additional command changes
+    - Wallet `paysui`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet paysui -h` for additional command changes
+    - Wallet `payallsui`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet payallsui -h` for additional command changes
+    - Wallet `split-coin`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet split-coin -h` for additional command changes
+    - Wallet `merge-coin`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet merge-coin -h` for additional command changes
+    - Wallet `split-coin-equally`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet split-coin-equally -h` for additional command changes
+    - Wallet `publish`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet publish -h` for additional command changes
+    - Wallet `call`
+        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+        - See `wallet call -h` for additional command changes
+
+### Removed
+
 ## [0.41.1] - Unpublished
 
 ### Added

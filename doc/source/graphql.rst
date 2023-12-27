@@ -6,10 +6,18 @@ MystenLab's announcement can be found `Here <https://github.com/mystenLabs/sui/i
 transitions from JSON RPC node interactions to GraphQL RPC node interactions.
 
 ``pysui`` has added support for interacting with the Sui GraphQL RPC node as well as porting most Builders to what we
-refer to as QueryNodes.
+refer to as QueryNodes for read operations.
 
-As of this writing, there are limitations to Sui GraphQL RPC. Before moving forward, read `This <https://forums.sui.io/t/launching-the-beta-graphql-rpc-service/45104/12/>`_ to
+At the time of this writing, there are limitations to Sui GraphQL RPC. Before moving forward read `This <https://forums.sui.io/t/launching-the-beta-graphql-rpc-service/45104/12/>`_ to
 know what is active in the beta.
+
+====================
+Subject to Change
+====================
+
+pysui's GraphQL implementation, class names, etc. subject to change as this is only initial release. This implementation is
+not production ready and should be considered experiemental.
+
 
 ====================
 Key Dependencies
@@ -22,6 +30,9 @@ You can use the capabilities of this library to create your own query strings, D
 ====================
 Running Samples
 ====================
+
+If you are have installed Sui binaries change the environment to either testnet or mainnet. Note that Sui GraphQL mainnet has
+less bugs than testnet.
 
 .. code-block::
 
@@ -56,7 +67,7 @@ Simple dev example
 
     if __name__ == "__main__":
         # Initialize synchronous client (must be mainnet or testnet)
-        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False,)
+        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
 =================
@@ -138,7 +149,7 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
     if __name__ == "__main__":
         # SuiConfig is not necessarily pointing to the same environemnt
         # We use it in beta for alias lookups to Sui addresses
-        client_init = SuiGQLClient(gql_rpc_url=SUI_GRAPHQL_MAINNET,config=SuiConfig.default_config(),)
+        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
 -----------------------
@@ -166,7 +177,7 @@ using ``gql`` functions.
     if __name__ == "__main__":
         # SuiConfig is not necessarily pointing to the same environemnt
         # We use it in beta for alias lookups to Sui addresses
-        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False,)
+        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
 -----------------------

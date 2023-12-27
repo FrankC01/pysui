@@ -11,7 +11,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Testing subscriptions."""
+"""Testing asynch Event subscriptions."""
 
 import os
 import sys
@@ -72,9 +72,7 @@ async def main_run(sub_manager: subscriber):
                 match event.result_string:
                     case "Cancelled" | None:
                         res_finish = event.result_string or "Normal Exit"
-                        print(
-                            f"    {event.result_data.name} task state: {res_finish}"
-                        )
+                        print(f"    {event.result_data.name} task state: {res_finish}")
                         print(
                             f"    Processed events: {len(event.result_data.collected)}"
                         )

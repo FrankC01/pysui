@@ -196,7 +196,7 @@ def _objects_header_print() -> None:
 
 
 def sui_objects(client: SyncClient, args: argparse.Namespace) -> None:
-    """Show specific object."""
+    """Show specific Sui object."""
     for_owner: str = None
     if args.owner:
         for_owner = args.owner
