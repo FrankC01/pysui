@@ -716,7 +716,8 @@ def emphemeral_keys_and_addresses(
     _cref_matrix: list[list[dict]] = []
     for keystr in _keystrings:
         kpair = keypair_from_keystring(keystr)
-        addy = SuiAddress.from_keypair_string(keystr)
+        addy = SuiAddress.from_keypair_string(kpair.to_b64())
+        # addy = SuiAddress.from_keypair_string(keystr)
         crm_entry = [{}]
         puks = base64.b64encode(kpair.public_key.scheme_and_key()).decode()
         crm_entry.extend([{keystr: kpair}, {puks: keystr}, {addy.address: addy}])
