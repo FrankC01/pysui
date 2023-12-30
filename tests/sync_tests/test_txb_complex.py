@@ -70,9 +70,7 @@ def test_txb_publish(sui_client: SyncClient) -> None:
     assert cwd.exists()
     txer = SyncTransaction(client=sui_client)
     pcap = txer.publish(
-        project_path=str(cwd),
-        with_unpublished_dependencies=False,
-        skip_fetch_latest_git_deps=True,
+        project_path=str(cwd), args_list=["--skip-fetch-latest-git-deps"]
     )
     txer.transfer_objects(transfers=[pcap], recipient=sui_client.config.active_address)
     package_id, _upgrade_cap_id = tutils.publish_and_result(txer)

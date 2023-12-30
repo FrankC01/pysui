@@ -5,8 +5,8 @@ GraphQL
 MystenLab's announcement can be found `Here <https://github.com/mystenLabs/sui/issues/13700/>`_ . This change begins the
 transitions from JSON RPC node interactions to GraphQL RPC node interactions.
 
-``pysui`` has added support for interacting with the Sui GraphQL RPC node as well as porting most Builders to what we
-refer to as QueryNodes for read operations.
+``pysui`` has added support for interacting with the Sui GraphQL RPC node as well as porting Builders to what we
+refer to as QueryNodes for, currently, read operations.
 
 At the time of this writing, there are limitations to Sui GraphQL RPC. Before moving forward read `This <https://forums.sui.io/t/launching-the-beta-graphql-rpc-service/45104/12/>`_ to
 know what is active in the beta.
@@ -31,7 +31,7 @@ You can use the capabilities of this library to create your own query strings, D
 Running Samples
 ====================
 
-If you are have installed Sui binaries change the environment to either testnet or mainnet. Note that Sui GraphQL mainnet has
+If you have installed Sui binaries then change the environment to either testnet or mainnet. Note that Sui GraphQL mainnet has
 less bugs than testnet.
 
 .. code-block::
@@ -70,6 +70,29 @@ Simple dev example
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
+------
+Schema
+------
+
+To leverage the power of Sui GraphQL one would benefit to understand the schema implemented. To create a
+copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy in the current directory:
+
+.. code-block:: python
+
+    from pysui.sui.sui_pgql.clients import SuiGQLClient
+    from pysui import SuiConfig
+
+    def main():
+        """Dump Sui GraphQL Schema."""
+        # Initialize synchronous client (must be mainnet or testnet)
+        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=True)
+
+        print("Schema dumped to: `latest_schemaVERSION.graqhql`")
+
+    if __name__ == "__main__":
+        main()
+
+
 =================
 Executing Queries
 =================
@@ -107,11 +130,11 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
     #
     """String query example."""
 
-    from pysui.sui.sui_pgql.clients import SuiGQLClient, SUI_GRAPHQL_MAINNET
+    from pysui.sui.sui_pgql.clients import SuiGQLClient
     from pysui import SuiConfig
 
     def main(client: SuiGQLClient):
-        """Configuration and protocol information."""
+        """Execute a static string query."""
         _QUERY = """
             query {
                 chainIdentifier
@@ -121,34 +144,13 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
                         timestamp
                     }
                 }
-                serviceConfig {
-                    enabledFeatures
-                    maxQueryDepth
-                    maxQueryNodes
-                    maxDbQueryCost
-                    maxPageSize
-                    requestTimeoutMs
-                    maxQueryPayloadSize
-                }
-            protocolConfig {
-                protocolVersion
-                configs {
-                    key
-                    value
-                }
-                featureFlags {
-                    key
-                    value
-                }
-                }
             }
         """
         qres = client.execute_query(with_string=_QUERY)
         print(qres)
 
     if __name__ == "__main__":
-        # SuiConfig is not necessarily pointing to the same environemnt
-        # We use it in beta for alias lookups to Sui addresses
+        # Initialize synchronous client (must be mainnet or testnet)
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
@@ -164,19 +166,18 @@ using ``gql`` functions.
     #
     """DocumentNode query example."""
 
-    from gql import Client, gql
+    from gql import gql
     from pysui.sui.sui_pgql.clients import SuiGQLClient
     from pysui import SuiConfig
 
     def main(client: SuiGQLClient):
-        """Configuration and protocol information."""
+        """Execute a DocumentNode as result of `gql` compilation."""
         _QUERY = # Same query string as used above
         qres = client.execute_query(with_document_node=gql(_QUERY))
         print(qres)
 
     if __name__ == "__main__":
-        # SuiConfig is not necessarily pointing to the same environemnt
-        # We use it in beta for alias lookups to Sui addresses
+        # Initialize synchronous client (must be mainnet or testnet)
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 

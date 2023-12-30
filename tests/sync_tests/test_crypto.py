@@ -16,6 +16,7 @@
 import pytest
 from pysui import SuiAddress
 from pysui.abstracts.client_keypair import SignatureScheme
+import pysui.abstracts.client_config as acfg
 from pysui.sui.sui_crypto import (
     create_new_address,
     create_new_keypair,
@@ -44,19 +45,12 @@ ADDRESS_OUT_LIST: list[str] = [
 
 def test_emphemeral_creates():
     """test_emphemeral_creates validate round trip in keystrings."""
-    dict_keystr, _dict_addy, _dict_addy_key = emphemeral_keys_and_addresses(
-        KEYSTRING_LIST
-    )
-    # Should match on keystrings
-    for idex, kstr in enumerate(dict_keystr.keys()):
-        assert kstr in KEYSTRING_LIST
-        assert idex == KEYSTRING_LIST.index(kstr)
-        assert kstr == dict_keystr[kstr].serialize()
-        assert dict_keystr[kstr].serialize() in KEYSTRING_LIST
-        assert (
-            SuiAddress.from_keypair_string(dict_keystr[kstr].to_b64()).address
-            == ADDRESS_OUT_LIST[idex]
-        )
+    cref_matrix: list[list[dict]] = emphemeral_keys_and_addresses(KEYSTRING_LIST)
+    assert len(KEYSTRING_LIST) == len(cref_matrix)
+    # Should match on keystrings and addresses
+    for idex, cref in enumerate(cref_matrix):
+        assert KEYSTRING_LIST[idex] in cref[acfg.CrefType.KPAIR]
+        assert ADDRESS_OUT_LIST[idex] in cref[acfg.CrefType.ADDY]
 
 
 def test_keypair_create():
@@ -105,13 +99,7 @@ def test_bad_keypair_create():
     # Bad wordcount
     with pytest.raises(ValueError) as exc_info:
         phrase, kp = create_new_keypair(SignatureScheme.ED25519, 16)
-        assert (
-            str(exc_info)
-            == "Word count must be one of integer {12, 15, 18, 21, 24}"
-        )
+        assert str(exc_info) == "Word count must be one of integer {12, 15, 18, 21, 24}"
     with pytest.raises(ValueError) as exc_info:
         phrase, kp = create_new_keypair(SignatureScheme.ED25519, "16")
-        assert (
-            str(exc_info)
-            == "Word count must be one of integer {12, 15, 18, 21, 24}"
-        )
+        assert str(exc_info) == "Word count must be one of integer {12, 15, 18, 21, 24}"
