@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bumped httpx to 0.26.x
+- Changed Sui support to include >= 1.12.0 through >=0.17.0
 
 ### Removed
 
