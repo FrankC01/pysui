@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped httpx to 0.26.x
 - Changed Sui support to include >= 1.12.0 through >=0.17.0
+- Allow '.' in address alias names, regex = `^[a-zA-Z][a-zA-Z0-9._-]*$`
 
 ### Removed
 

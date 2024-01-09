@@ -96,7 +96,7 @@ def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
-    __ALIAS_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
+    __ALIAS_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9._-]*$")
 
     @versionchanged(version="0.29.0", reason="Now accepts ws url.")
     def _initiate(
