@@ -352,6 +352,9 @@ class TxResponse(SuiTxReturnType, DataClassJsonMixin):
     timestamp_ms: Optional[int] = field(
         metadata=config(letter_case=LetterCase.CAMEL), default=0
     )
+    raw_effects: Optional[list[int]] = field(
+        metadata=config(letter_case=LetterCase.CAMEL), default_factory=list
+    )
 
     def __post_init__(self):
         """Post init processing.

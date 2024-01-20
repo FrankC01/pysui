@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.51.0] - Unpublished
+
+### Added
+
+- DEFAULT_SUI_CONFIG_PATH and DEFAULT_SUI_CLIENT_CONFIG constants
+- SuiConfig.pysui_config(_path_to_folder_) - Unique client.yaml, sui.aliases and sui.keystore with persist support.
+
+### Fixed
+
+### Changed
+
+### Removed
+
 ## [0.50.2] - Unpublished
 
 ### Added

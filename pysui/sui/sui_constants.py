@@ -35,7 +35,9 @@ DEFAULT_SUI_BINARY_PATH: str = "~/.cargo/bin/sui"
 """The default fully qualified sui binary path."""
 
 # Config file constants
-
+DEFAULT_SUI_CONFIG_PATH: str = "~/.sui/sui_config/"
+DEFAULT_SUI_CLIENT_CONFIG: str = "client.yaml"
+DEFAULT_SUI_ALIAS_CONFIG: str = "sui.aliases"
 DEFAULT_DEVNET_PATH_STRING: str = "~/.sui/sui_config/client.yaml"
 DEFAULT_ALIAS_PATH_STRING: str = "~/.sui/sui_config/sui.aliases"
 

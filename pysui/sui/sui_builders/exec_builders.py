@@ -10,26 +10,22 @@
 #    limitations under the License.
 
 # -*- coding: utf-8 -*-
-# pylint: disable=too-many-instance-attributes
 
 """Sui Builders: Complex transaction."""
 
 from abc import abstractmethod
 from typing import Final, Optional
-from deprecated.sphinx import deprecated
+from deprecated.sphinx import deprecated, versionchanged
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.sui.sui_builders.base_builder import (
     _NativeTransactionBuilder,
     SuiRequestType,
     SuiBaseBuilder,
-    SuiTransactionBuilderMode,
     sui_builder,
 )
 from pysui.sui.sui_types.scalars import (
     SuiNullType,
     SuiTxBytes,
-    SuiSignature,
-    ObjectID,
     SuiString,
 )
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
@@ -44,6 +40,7 @@ from pysui.sui.sui_txresults.complex_tx import (
 from pysui.sui import sui_utils
 
 
+@versionchanged(version="0.51.0", reason="added 'showRawEffects' to options flag")
 class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
@@ -53,6 +50,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
         "showEvents": True,
         "showInput": True,
         "showObjectChanges": True,
+        "showRawEffects": False,
         "showRawInput": True,
     }
 
@@ -82,9 +80,7 @@ class ExecuteTransaction(_NativeTransactionBuilder):
             handler_func="from_dict",
         )
         if options is None or isinstance(options, SuiNullType):
-            self.options = sui_utils.as_sui_map(
-                self._DEFAULT_EXECUTE_TX_OPTIONS.copy()
-            )
+            self.options = sui_utils.as_sui_map(self._DEFAULT_EXECUTE_TX_OPTIONS.copy())
         else:
             self.options = sui_utils.as_sui_map(options)
 
@@ -120,6 +116,7 @@ class InspectTransaction(_NativeTransactionBuilder):
         tx_bytes: SuiString,
         gas_price: Optional[SuiString] = None,
         epoch: Optional[SuiString] = None,
+        # additional_args: Optional[SuiMap] = None,
     ) -> None:
         """__init__ Initialize builder.
 
@@ -137,6 +134,10 @@ class InspectTransaction(_NativeTransactionBuilder):
             handler_cls=TxInspectionResult,
             handler_func="factory",
         )
+        # if additional_args is None or isinstance(additional_args, SuiNullType):
+        #     self.additional_args = sui_utils.as_sui_map({})
+        # else:
+        #     self.additional_args = sui_utils.as_sui_map(additional_args)
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):

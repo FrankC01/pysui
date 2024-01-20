@@ -26,6 +26,8 @@ import yaml
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.abstracts import ClientConfiguration, SignatureScheme, CrefType
 from pysui.sui.sui_constants import (
+    DEFAULT_SUI_ALIAS_CONFIG,
+    DEFAULT_SUI_CLIENT_CONFIG,
     SUI_MIN_ALIAS_LEN,
     SUI_MAX_ALIAS_LEN,
     DEFAULT_ALIAS_PATH_STRING,
@@ -515,7 +517,12 @@ class SuiConfig(ClientConfiguration):
     @versionadded(version="0.16.1", reason="New loading of default configuration.")
     @versionchanged(version="0.41.0", reason="Sui aliases configuration feature added")
     def default_config(cls) -> "SuiConfig":
-        """."""
+        """default_config Loads the configuration created by use of sui binaries `sui client`
+
+        :raises SuiFileNotFound: If Sui configuration does not exist
+        :return: Instantiated configuration ready for use
+        :rtype: SuiConfig
+        """
         logger.debug("Initializing default configuration from ~/.sui")
         expanded_path = Path(os.path.expanduser(DEFAULT_DEVNET_PATH_STRING))
         if expanded_path.exists():
@@ -527,12 +534,41 @@ class SuiConfig(ClientConfiguration):
         raise SuiFileNotFound(f"{expanded_path} not found.")
 
     @classmethod
+    @versionadded(version="0.51.0", reason="New alternate configuration path loading.")
+    def pysui_config(cls, cfg_path: str) -> "SuiConfig":
+        """pysui_config Loads an alternate configuration from specified path.
+
+        This behaves as a normal configuration where address and alias adds/changes are persisted
+
+        :param cfg_path: path to folder holding alternate configuration
+        :type cfg_path: str
+        :raises SuiFileNotFound: If path is invalid
+        :return: Instantiated configuration ready for use
+        :rtype: SuiConfig
+        """
+        logger.debug(f"Initializing configuration from path {cfg_path}")
+        expanded_path = Path(os.path.expanduser(cfg_path))
+        if expanded_path.exists():
+            alias_path = expanded_path / DEFAULT_SUI_ALIAS_CONFIG
+            expanded_path = expanded_path / DEFAULT_SUI_CLIENT_CONFIG
+            return cls._create_config(
+                expanded_path,
+                Path(os.path.expanduser(DEFAULT_SUI_BINARY_PATH)),
+                alias_path,
+            )
+        raise SuiFileNotFound(f"{expanded_path} not found.")
+
+    @classmethod
     @versionadded(
         version="0.16.1",
         reason="Supporting more flexible non-default configurations",
     )
     def sui_base_config(cls) -> "SuiConfig":
-        """."""
+        """sui_base_config Loads the active configuration set by suibase
+
+        :return: Instantiated configuration ready for use
+        :rtype: SuiConfig
+        """
         logger.debug("Initializing suibase local node configuration.")
         return cls._create_config(*sui_base_get_config())
 
