@@ -165,6 +165,11 @@ class SuiMap(SuiCollection):
         """Alias for transactions."""
         return self.map
 
+    @property
+    def additional_args(self) -> dict[str, Any]:
+        """Alias for transaction inspect."""
+        return self.map
+
 
 class BatchParameter(SuiMap):
     """BatchParameter is abstraction for TransferObjectParams and MoveCallRequestParams."""

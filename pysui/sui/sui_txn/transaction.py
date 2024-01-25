@@ -17,13 +17,14 @@
 import base64
 import os
 from pathlib import Path
-from typing import Optional, Union
+from typing import Final, Optional, Union
 import logging
 
 
 from deprecated.sphinx import versionadded, versionchanged
 
 from pysui import SuiAddress, ObjectID
+from pysui.sui import sui_utils
 
 from pysui.sui.sui_builders.base_builder import (
     _NativeTransactionBuilder,
@@ -46,8 +47,9 @@ from pysui.sui.sui_txresults.single_tx import (
     TransactionConstraints,
 )
 from pysui.sui.sui_types import bcs
-from pysui.sui.sui_types.collections import SuiArray
+from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_types.scalars import (
+    SuiNullType,
     SuiString,
 )
 from pysui.sui.sui_utils import publish_build
@@ -62,6 +64,15 @@ if not logging.getLogger().handlers:
 class _DebugInspectTransaction(_NativeTransactionBuilder):
     """_DebugInspectTransaction added for malformed inspection results."""
 
+    # _DEFAULT_INSPECT_TX_ADDITIONL_ARGS: Final[dict] = {
+    #     "gasBudget": SuiNullType(),
+    #     "gasObjects": SuiNullType(),
+    #     "items": SuiNullType(),
+    #     "gasSponsor": SuiNullType(),
+    #     "showRawTxnDataAndEffects": SuiNullType(),
+    #     "skipChecks": SuiNullType(),
+    # }
+
     @sui_builder()
     def __init__(
         self,
@@ -70,6 +81,7 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
         tx_bytes: SuiString,
         gas_price: Optional[SuiString] = None,
         epoch: Optional[SuiString] = None,
+        additional_args: Optional[SuiMap] = None,
     ) -> None:
         """__init__ Initialize builder.
 
@@ -89,6 +101,11 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
             # handler_cls=TxInspectionResult,
             # handler_func="factory",
         )
+
+        if additional_args is None or isinstance(additional_args, SuiNullType):
+            self.additional_args = sui_utils.as_sui_map({})
+        else:
+            self.additional_args = sui_utils.as_sui_map(additional_args)
 
 
 @versionadded(version="0.26.0", reason="Refactor to support Async")

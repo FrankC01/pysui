@@ -24,7 +24,7 @@ _QUERY = """
 
     query {
         chainIdentifier
-        checkpointConnection (last: 1) {
+        checkpoints (last: 1) {
             nodes {
                 sequenceNumber
                 timestamp
@@ -87,9 +87,14 @@ class SuiConfigGQL:
     chainIdentifier: str
     serviceConfig: ServiceConfigGQL
     protocolConfig: pgql_type.ProtocolConfigGQL
-    checkpointConnection: CheckpointConnectionGQL
+    checkpoints: CheckpointConnectionGQL
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "SuiConfigGQL":
+        """."""
+        return SuiConfigGQL.from_dict(in_data)
 
 
 def pgql_config() -> tuple[str, Callable]:
     """."""
-    return _QUERY, SuiConfigGQL.from_dict
+    return _QUERY, SuiConfigGQL.from_query

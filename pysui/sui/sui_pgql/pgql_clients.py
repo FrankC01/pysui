@@ -83,7 +83,7 @@ class BaseSuiGQLClient:
 
     _GRAPH_QL_SCHEMA: DSLSchema = None
     _SUI_GRAPHQL_MAINNET: str = "https://graphql-beta.mainnet.sui.io"
-    _SUI_GRAPHQL_TESTNET: str = "https://graphql-beta.testnet.sui.io"
+    _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
 
     @classmethod
     def _set_schema(cls, schema: DSLSchema) -> None:
@@ -156,7 +156,7 @@ class BaseSuiGQLClient:
             if isinstance(dnode, DocumentNode):
                 return dnode
             else:
-                ValueError("QueryNode did not produce a gql DocumentNode")
+                raise ValueError("QueryNode did not produce a gql DocumentNode")
         else:
             raise ValueError("Not a valid PGQL_QueryNode")
 
@@ -177,7 +177,7 @@ class SuiGQLClient(BaseSuiGQLClient):
             case cnst.MAINNET_SUI_URL:
                 gql_rpc_url = self._SUI_GRAPHQL_MAINNET
             case cnst.TESTNET_SUI_URL:
-                gpl_rpc_URL = self._SUI_GRAPHQL_TESTNET
+                gql_rpc_url = self._SUI_GRAPHQL_TESTNET
             case _:
                 raise ValueError(
                     f"Found {config.rpc_url}. URL must be mainnet or testnet sui url."
@@ -198,7 +198,7 @@ class SuiGQLClient(BaseSuiGQLClient):
             # Enable/disable
             if write_schema:
                 mver = "_".join(gql_version.split("."))
-                fname = f"./latest_schema{mver}.graqhql"
+                fname = f"./latest_schema{mver}.graphql"
                 with open(fname, "w", encoding="utf8") as inner_file:
                     inner_file.write(print_schema(self._rpc_client.schema))
 

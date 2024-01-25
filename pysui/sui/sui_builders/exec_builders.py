@@ -108,6 +108,15 @@ class InspectTransaction(_NativeTransactionBuilder):
     Includes both the transaction effects and return values of the transaction.
     """
 
+    _DEFAULT_INSPECT_TX_ADDITIONL_ARGS: Final[dict] = {
+        "gasBudget": None,
+        "gasObjects": [],
+        "items": [],
+        "gasSponsor": [],
+        "showRawTxnDataAndEffects": None,
+        "skipChecks": False,
+    }
+
     @sui_builder()
     def __init__(
         self,
@@ -116,7 +125,7 @@ class InspectTransaction(_NativeTransactionBuilder):
         tx_bytes: SuiString,
         gas_price: Optional[SuiString] = None,
         epoch: Optional[SuiString] = None,
-        # additional_args: Optional[SuiMap] = None,
+        additional_args: Optional[SuiMap] = None,
     ) -> None:
         """__init__ Initialize builder.
 
@@ -134,10 +143,10 @@ class InspectTransaction(_NativeTransactionBuilder):
             handler_cls=TxInspectionResult,
             handler_func="factory",
         )
-        # if additional_args is None or isinstance(additional_args, SuiNullType):
-        #     self.additional_args = sui_utils.as_sui_map({})
-        # else:
-        #     self.additional_args = sui_utils.as_sui_map(additional_args)
+        if additional_args is None or isinstance(additional_args, SuiNullType):
+            self.additional_args = sui_utils.as_sui_map({})
+        else:
+            self.additional_args = sui_utils.as_sui_map(additional_args)
 
 
 class _MoveCallTransactionBuilder(SuiBaseBuilder):

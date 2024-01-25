@@ -43,9 +43,7 @@ class GetCoinMetaData(PGQL_QueryNode):
             schema.CoinMetadata.description,
             schema.CoinMetadata.iconUrl,
             schema.CoinMetadata.supply,
-            object_data=schema.CoinMetadata.asMoveObject.select(
-                schema.MoveObject.asObject.select(meta_object_id=schema.Object.location)
-            ),
+            schema.CoinMetadata.address,
         )
         return dsl_gql(DSLQuery(qres))
 

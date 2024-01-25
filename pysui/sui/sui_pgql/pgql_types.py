@@ -357,7 +357,7 @@ class SuiCoinMetadataGQL(PGQL_Type):
     symbol: Optional[str] = None
     description: Optional[str] = None
     supply: Optional[str] = None
-    meta_object_id: Optional[str] = None
+    address: Optional[str] = None
     icon_url: Optional[str] = None
 
     @classmethod
@@ -534,7 +534,7 @@ class KeyValue:
     """Generic map element."""
 
     key: str
-    value: Union[bool, str]
+    value: Union[bool, str, None]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -549,11 +549,15 @@ class ProtocolConfigGQL:
         default_factory=TransactionConstraints
     )
 
-    def _value_to_type(self, v: str) -> int:
+    def _value_to_type(self, v: Any) -> Union[int, bool]:
         """."""
         if v:
-            inner_v = v[v.index("(") + 1 : v.index(")")]
-            return int(inner_v) if v[0] == "U" else float(inner_v)
+            if isinstance(v, bool):
+                return v
+            if isinstance(v, str):
+                if v.count("."):
+                    return float(v)
+                return int(v, base=0)
         return None
 
     def __post_init__(self):

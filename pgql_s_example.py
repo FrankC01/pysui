@@ -38,7 +38,7 @@ def do_coin_meta(client: SuiGQLClient):
             with_query_node=qn.GetCoinMetaData(
                 coin_type="0x3::staking_pool::StakedSui",
             )
-        ).to_json(indent=2)
+        )
     )
 
 
@@ -258,8 +258,9 @@ if __name__ == "__main__":
         write_schema=False,
         config=SuiConfig.default_config(),
     )
+    ## QueryNodes (fetch) (Checked)
+    do_coin_meta(client_init)
     ## QueryNodes (fetch)
-    # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_sysstate(client_init)
@@ -269,7 +270,7 @@ if __name__ == "__main__":
     # do_objects_for(client_init)
     # do_event(client_init)
     # do_tx(client_init)
-    do_txs(client_init)
+    # do_txs(client_init)
     # do_staked_sui(client_init)
     # do_latest_cp(client_init)
     # do_sequence_cp(client_init)
@@ -277,8 +278,8 @@ if __name__ == "__main__":
     # do_checkpoints(client_init)
     # do_refgas(client_init)
     # do_nameservice(client_init)
-    # do_protcfg(client_init)
-    ## Config
+    ## Config (Checked)
     # do_chain_id(client_init)
     # do_configs(client_init)
+    # do_protcfg(client_init)
     client_init.client.close_sync()
