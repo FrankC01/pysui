@@ -79,7 +79,7 @@ class GetAllCoinBalances(PGQL_QueryNode):
             return PGQL_NoOp
 
         qres = schema.Query.address(address=self.owner).alias("qres")
-        balance_connection = schema.Address.balanceConnection
+        balance_connection = schema.Address.balances
         if self.next_page:
             balance_connection(after=self.next_page.endCursor)
 
@@ -93,7 +93,7 @@ class GetAllCoinBalances(PGQL_QueryNode):
                 schema.Balance.coinType.select(coin_type=schema.MoveType.repr),
             ),
         )
-        qres.select(owner_address=schema.Address.location, balances=balance_connection)
+        qres.select(owner_address=schema.Address.address, balances=balance_connection)
 
         return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
 
@@ -132,9 +132,7 @@ class GetCoins(PGQL_QueryNode):
             return PGQL_NoOp
 
         qres = schema.Query.address(address=self.owner).alias("qres")
-        coin_connection = schema.Address.coinConnection(type=self.coin_type).alias(
-            "coins"
-        )
+        coin_connection = schema.Address.coins(type=self.coin_type).alias("coins")
         if self.next_page:
             coin_connection(after=self.next_page.endCursor)
 
@@ -160,10 +158,10 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """Build DocumentNode."""
-        qres = schema.Query.latestSuiSystemState.alias("qres").select(
-            schema.SuiSystemStateSummary.systemStateVersion,
-            schema.SuiSystemStateSummary.referenceGasPrice,
-            schema.SuiSystemStateSummary.systemParameters.select(
+        qres = schema.Query.epoch.alias("qres").select(
+            schema.Epoch.systemStateVersion,
+            schema.Epoch.referenceGasPrice,
+            schema.Epoch.systemParameters.select(
                 schema.SystemParameters.durationMs,
                 schema.SystemParameters.stakeSubsidyStartEpoch,
                 schema.SystemParameters.minValidatorCount,
@@ -173,14 +171,14 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
                 schema.SystemParameters.validatorVeryLowStakeThreshold,
                 schema.SystemParameters.validatorLowStakeThreshold,
             ),
-            schema.SuiSystemStateSummary.stakeSubsidy.select(
+            schema.Epoch.systemStakeSubsidy.select(
                 schema.StakeSubsidy.balance,
                 schema.StakeSubsidy.distributionCounter,
                 schema.StakeSubsidy.currentDistributionAmount,
                 schema.StakeSubsidy.periodLength,
                 schema.StakeSubsidy.decreaseRate,
             ),
-            schema.SuiSystemStateSummary.validatorSet.select(
+            schema.Epoch.validatorSet.select(
                 schema.ValidatorSet.totalStake,
                 schema.ValidatorSet.pendingRemovals,
                 schema.ValidatorSet.pendingActiveValidatorsSize,
@@ -203,21 +201,19 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
                     schema.Validator.nextEpochCommissionRate,
                     schema.Validator.nextEpochGasPrice,
                     validatorAddress=schema.Validator.address.select(
-                        schema.Address.location
+                        schema.Address.address
                     ),
                 ),
             ),
-            schema.SuiSystemStateSummary.storageFund.select(
+            schema.Epoch.storageFund.select(
                 schema.StorageFund.totalObjectStorageRebates,
                 schema.StorageFund.nonRefundableBalance,
             ),
-            schema.SuiSystemStateSummary.safeMode.select(schema.SafeMode.enabled),
-            schema.SuiSystemStateSummary.startTimestamp,
-            schema.SuiSystemStateSummary.epoch.select(
-                schema.Epoch.epochId,
-                schema.Epoch.startTimestamp,
-                schema.Epoch.endTimestamp,
-            ),
+            schema.Epoch.safeMode.select(schema.SafeMode.enabled),
+            # schema.SuiSystemStateSummary.startTimestamp,
+            schema.Epoch.epochId,
+            schema.Epoch.startTimestamp,
+            schema.Epoch.endTimestamp,
         )
         return dsl_gql(DSLQuery(qres))
 
@@ -279,7 +275,7 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
-        qres = schema.Query.objectConnection(filter={"owner": self.owner})
+        qres = schema.Query.objects(filter={"owner": self.owner})
         if self.next_page:
             qres(after=self.next_page.endCursor)
 
@@ -330,7 +326,7 @@ class GetMultipleObjects(PGQL_QueryNode):
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
-        qres = schema.Query.objectConnection(filter={"objectIds": self.object_ids})
+        qres = schema.Query.objects(filter={"objectIds": self.object_ids})
         if self.next_page:
             qres(after=self.next_page.endCursor)
 

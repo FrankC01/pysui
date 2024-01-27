@@ -145,6 +145,7 @@ class ObjectReadGQL(PGQL_Type):
     content: dict  # Yes
     owner_id: Optional[str] = None  # Yes
 
+    # TODO: Need to handle different owner types
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadGQL":
         """Serializes query result to list of Sui objects.
@@ -174,7 +175,7 @@ class ObjectReadsGQL(PGQL_Type):
 
         The in_data is a dictionary with 2 keys: 'cursor' and 'objects_data'
         """
-        in_data = in_data.pop("objectConnection")
+        in_data = in_data.pop("objects")
         # Get cursor
         ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
         dlist: list[ObjectReadGQL] = [
@@ -447,7 +448,7 @@ class ValidatorGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorGQL":
         """."""
-        in_data["validatorAddress"] = in_data["validatorAddress"]["location"]
+        in_data["validatorAddress"] = in_data["validatorAddress"]["address"]
         return ValidatorGQL.from_dict(in_data)
 
 
@@ -458,11 +459,11 @@ class ValidatorSetGQL(PGQL_Type):
 
     total_stake: int
     validators: list[ValidatorGQL]
-    pending_removals: list[int]
-    pending_active_validators_size: int
-    stake_pool_mappings_size: int
-    inactive_pools_size: int
-    validator_candidates_size: int
+    pending_removals: Optional[list[int]]
+    pending_active_validators_size: Optional[int]
+    stake_pool_mappings_size: Optional[int]
+    inactive_pools_size: Optional[int]
+    validator_candidates_size: Optional[int]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
@@ -494,12 +495,9 @@ class SystemStateSummaryGQL(PGQL_Type):
     system_state_version: str
     reference_gas_price: ReferenceGasPriceGQL
     system_parameters: dict
-    stake_subsidy: dict
     validator_set: ValidatorSetGQL
     storage_fund: dict
     safe_mode: dict
-    start_timestamp: str
-    epoch: dict
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SystemStateSummaryGQL":

@@ -48,8 +48,8 @@ def do_coins_for_type(client: SuiGQLClient):
         client.execute_query(
             # GetAllCoinsOfType requires a coin type
             with_query_node=qn.GetCoins(
-                owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a",
-                coin_type="0xbff8dc60d3f714f678cd4490ff08cabbea95d308c6de47a150c79cc875e0c7c6::sbox::SBOX",
+                owner="0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
+                coin_type="0x2::sui::SUI",
             )
         )
     )
@@ -77,20 +77,22 @@ def do_sysstate(client: SuiGQLClient):
 
 
 def do_all_balances(client: SuiGQLClient):
-    """Fetch all coin types and there total balances for owner.
+    """Fetch all coin types for active address and total balances.
 
     Demonstrates paging as well
     """
-    coin_owner = "0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
     result = client.execute_query(
-        with_query_node=qn.GetAllCoinBalances(owner=coin_owner)
+        with_query_node=qn.GetAllCoinBalances(
+            owner=client.config.active_address.address
+        )
     )
     handle_result(result)
     if result.is_ok():
         while result.result_data.next_cursor.hasNextPage:
             result = client.execute_query(
                 with_query_node=qn.GetAllCoinBalances(
-                    owner=coin_owner, next_page=result.next_cursor
+                    owner=client.config.active_address.address,
+                    next_page=result.next_cursor,
                 )
             )
             handle_result(result)
@@ -103,7 +105,7 @@ def do_object(client: SuiGQLClient):
         client.execute_query(
             with_query_node=qn.GetObject(
                 # object_id="0xf0f919fac17bf50e82f32550290c359553fc3df6267cbeb4e4dbb75195375f4b"
-                object_id="0x6"
+                object_id="0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0"
             )
         )
     )
@@ -114,7 +116,7 @@ def do_objects(client: SuiGQLClient):
     handle_result(
         client.execute_query(
             with_query_node=qn.GetObjectsOwnedByAddress(
-                owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+                owner=client.config.active_address.address
             )
         )
     )
@@ -126,9 +128,9 @@ def do_objects_for(client: SuiGQLClient):
         client.execute_query(
             with_query_node=qn.GetMultipleObjects(
                 object_ids=[
-                    "0x52da4299641620148676cab1abdb17d6c4de7c0534a9c130a05887a0b8fcb2e2",
-                    "0x598a5a12cfedbe3ba2a0ce1162345e95ea926c6a7fb29062a152a85fbb29af07",
-                    "0xf889dd9c5f0f7459a01abf8fead765d4a529c3d492948d7df1ddb480cec83aeb",
+                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
+                    "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
+                    "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
                 ]
             )
         )
@@ -259,15 +261,15 @@ if __name__ == "__main__":
         config=SuiConfig.default_config(),
     )
     ## QueryNodes (fetch) (Checked)
-    do_coin_meta(client_init)
-    ## QueryNodes (fetch)
+    # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
     # do_object(client_init)
     # do_objects(client_init)
-    # do_objects_for(client_init)
+    ## QueryNodes (fetch)
+    do_objects_for(client_init)
     # do_event(client_init)
     # do_tx(client_init)
     # do_txs(client_init)

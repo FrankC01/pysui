@@ -64,26 +64,26 @@ class StandardCoin(PGQL_Fragment):
                     pg_cursor.fragment(schema)
                 ),
                 coin_objects=schema.CoinConnection.nodes.select(
-                    schema.Coin.balance,
-                    schema.Coin.asMoveObject.select(
-                        schema.MoveObject.hasPublicTransfer,
-                        schema.MoveObject.asObject.select(
-                            schema.Object.version,
-                            schema.Object.digest,
-                            schema.Object.previousTransactionBlock.select(
-                                previous_transaction=schema.TransactionBlock.digest
-                            ),
-                            coin_object_id=schema.Object.location,
-                            owner=schema.Object.owner.select(
-                                coin_owner=schema.Owner.location
-                            ),
-                        ),
-                        schema.MoveObject.contents.select(
-                            object_type=schema.MoveValue.type.select(
-                                coin_type=schema.MoveType.repr
+                    schema.Coin.version,
+                    schema.Coin.digest,
+                    schema.Coin.hasPublicTransfer,
+                    schema.Coin.previousTransactionBlock.select(
+                        previous_transaction=schema.TransactionBlock.digest
+                    ),
+                    schema.Coin.owner.select(
+                        DSLInlineFragment()
+                        .on(schema.AddressOwner)
+                        .select(
+                            schema.AddressOwner.owner.select(
+                                coin_owner=schema.Owner.address
                             )
                         ),
                     ),
+                    schema.Coin.contents.select(
+                        schema.MoveValue.type.select(coin_type=schema.MoveType.repr)
+                    ),
+                    balance=schema.Coin.coinBalance,
+                    coin_object_id=schema.Coin.address,
                 ),
             )
         )
@@ -100,8 +100,8 @@ class BaseObject(PGQL_Fragment):
             .select(
                 schema.Object.version,
                 object_digest=schema.Object.digest,
-                object_id=schema.Object.location,
-                object_kind=schema.Object.kind,
+                object_id=schema.Object.address,
+                object_kind=schema.Object.status,
             )
         )
 
@@ -118,9 +118,15 @@ class StandardObject(PGQL_Fragment):
             .select(
                 schema.Object.bcs,
                 base_object.fragment(schema),
-                # object_digest=schema.Object.digest,
-                # object_id=schema.Object.location,
-                # object_kind=schema.Object.kind,
+                # TODO: Need to handle different owner types
+                schema.Object.owner.select(
+                    DSLInlineFragment()
+                    .on(schema.AddressOwner)
+                    .select(
+                        schema.AddressOwner.owner.select(owner_id=schema.Owner.address),
+                    ),
+                    obj_owner_kind=DSLMetaField("__typename"),
+                ),
                 storage_rebate=schema.Object.storageRebate,
                 prior_transaction=schema.Object.previousTransactionBlock.select(
                     previous_transaction_digest=schema.TransactionBlock.digest
@@ -134,7 +140,6 @@ class StandardObject(PGQL_Fragment):
                         ),
                     ),
                 ),
-                owned_by=schema.Object.owner.select(owner_id=schema.Owner.location),
             )
         )
 
