@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.51.0] - Unpublished
+## [0.52.0] - Unpublished
+
+** BREAKING CHANGES **
+
+### Added
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/187) Fixed type arguments BCS with nested type array
+
+### Changed
+
+- **BREAKING** Sui GraphQL RPC new update, only testnet support. Most pre-defined QueryNode's changed.
+
+### Removed
+
+## [0.51.0] - 2024-01-20
 
 ### Added
 

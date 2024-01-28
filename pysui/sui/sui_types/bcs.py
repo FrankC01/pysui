@@ -302,6 +302,7 @@ class TypeTag(canoser.RustEnum):
 
 
 @versionchanged(version="0.17.1", reason="Fixed nested types.")
+@versionchanged(version="0.52.0", reason="Fixed nested types that are arrays of types.")
 class StructTag(canoser.Struct):
     """StructTag represents a type value (e.g. 0x2::sui::SUI) in BCS when used in MoveCall."""
 
@@ -322,7 +323,7 @@ class StructTag(canoser.Struct):
         :rtype: StructTag
         """
 
-        def _reducer(accum: TypeTag, item: str) -> TypeTag:
+        def _reducer(accum: Union[TypeTag, list[TypeTag]], item: str) -> TypeTag:
             """Accumulate nested type tags."""
             new_s = item.split("::")
             if not accum:
@@ -332,15 +333,36 @@ class StructTag(canoser.Struct):
                 )
             return TypeTag(
                 "Struct",
-                cls(Address.from_str(new_s[0]), new_s[1], new_s[2], [accum]),
+                cls(
+                    Address.from_str(new_s[0]),
+                    new_s[1],
+                    new_s[2],
+                    accum if isinstance(accum, list) else [accum],
+                ),
             )
 
         inner_count = type_str.count("<")
         if inner_count:
             multi_struct = type_str.split("<")
             last_pos = len(multi_struct) - 1
+            # Remove the residual '>' chars
             multi_struct[last_pos] = multi_struct[last_pos][:-inner_count]
-            return reduce(_reducer, multi_struct[::-1], None).value
+            # Walk in reverse all but the first and create struct type tags
+            lowest_level = None
+            for last_one in multi_struct[1::][::-1]:
+                # If has a array (comma separated) accumulate
+                if last_one.count(","):
+                    lowest_level = [_reducer(None, x) for x in last_one.split(",")]
+                    continue
+                lowest_level = _reducer(lowest_level, last_one)
+            # Return the main struct tag container
+            main_struct = multi_struct[0].split("::")
+            return cls(
+                Address.from_str(main_struct[0]),
+                main_struct[1],
+                main_struct[2],
+                [lowest_level],
+            )
         split_type = type_str.split("::")
         return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
 
@@ -720,3 +742,10 @@ class SuiTransaction(canoser.RustEnum):
     """BCS representation of serialized pysui SuiTransaction (a.k.a. builder)."""
 
     _enums = [("1.0.0", SuiTransactionDataV1)]
+
+
+if __name__ == "__main__":
+    in_type = "0xa283fd6b45f1103176e7ae27e870c89df7c8783b15345e2b13faa81ec25c4fa6::protocol::Contract<0xb24b6789e088b876afabca733bed2299fbc9e2d6369be4d1acfa17d8145454d9::swap::LSP<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI,0x239e9725bdab1fcb2e4798a057da809e52f13134a09bc9913659d4a80ddfdaad::shui::SHUI>>"
+    in_type2 = "0xa283fd6b45f1103176e7ae27e870c89df7c8783b15345e2b13faa81ec25c4fa6::protocol::Contract<0xb24b6789e088b876afabca733bed2299fbc9e2d6369be4d1acfa17d8145454d9::swap::LSP<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>>"
+    res = TypeTag.type_tag_from(in_type)
+    print(res.to_json(indent=2))
