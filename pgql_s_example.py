@@ -21,7 +21,10 @@ import pysui.sui.sui_pgql.pgql_query as qn
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
     """."""
     if result.is_ok():
-        print(result.result_data.to_json(indent=2))
+        if hasattr(result.result_data, "to_json"):
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_data)
     else:
         print(result.result_string)
         print(result.result_data.to_json(indent=2))
@@ -165,7 +168,7 @@ def do_tx(client: SuiGQLClient):
     handle_result(
         client.execute_query(
             with_query_node=qn.GetTx(
-                digest="CypToNgx6jN2V6vDZGtgpeEv1zSs4VGJcANJi85w9Ypm"
+                digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz"
             )
         )
     )
@@ -197,7 +200,7 @@ def do_txs(client: SuiGQLClient):
 
 def do_staked_sui(client: SuiGQLClient):
     """."""
-    owner = "0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+    owner = client.config.active_address.address
 
     handle_result(
         client.execute_query(with_query_node=qn.GetDelegatedStakes(owner=owner))
@@ -225,7 +228,7 @@ def do_digest_cp(client: SuiGQLClient):
     handle_result(
         client.execute_query(
             with_query_node=qn.GetCheckpointByDigest(
-                digest="8GonuNB363QrdTNMCx1u7mM73tVgnv7QiheSczktnN1R"
+                digest="EPVQ81Mpucuuf9CQ7aD2jcATZthSZJVqQ7Fh7hQSsMKF"
             )
         )
     )
@@ -268,8 +271,7 @@ if __name__ == "__main__":
     # do_all_balances(client_init)
     # do_object(client_init)
     # do_objects(client_init)
-    ## QueryNodes (fetch)
-    do_objects_for(client_init)
+    # do_objects_for(client_init)
     # do_event(client_init)
     # do_tx(client_init)
     # do_txs(client_init)
@@ -278,10 +280,11 @@ if __name__ == "__main__":
     # do_sequence_cp(client_init)
     # do_digest_cp(client_init)
     # do_checkpoints(client_init)
-    # do_refgas(client_init)
     # do_nameservice(client_init)
+    ## QueryNodes (fetch)
+    # do_refgas(client_init)
     ## Config (Checked)
-    # do_chain_id(client_init)
+    do_chain_id(client_init)
     # do_configs(client_init)
     # do_protcfg(client_init)
     client_init.client.close_sync()

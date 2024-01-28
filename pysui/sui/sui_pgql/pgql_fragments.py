@@ -153,16 +153,17 @@ class StandardEvent(PGQL_Fragment):
             DSLFragment("EventStandard")
             .on(schema.Event)
             .select(
-                schema.Event.sendingModuleId.select(
-                    schema.MoveModuleId.package.select(
-                        schema.MovePackage.asObject.select(
-                            package_id=schema.Object.location,
-                        )
+                schema.Event.sendingModule.select(
+                    schema.MoveModule.package.select(
+                        package_id=schema.MovePackage.address
+                        # schema.MovePackage.asObject.select(
+                        #     package_id=schema.Object.location,
+                        # )
                     ),
-                    module_name=schema.MoveModuleId.name,
+                    module_name=schema.MoveModule.name,
                 ),
-                schema.Event.eventType.select(event_type=schema.MoveType.repr),
-                schema.Event.senders.select(schema.Address.location),
+                schema.Event.type.select(event_type=schema.MoveType.repr),
+                schema.Event.sender.select(schema.Address.address),
                 schema.Event.timestamp,
                 schema.Event.json,
             )
@@ -182,14 +183,14 @@ class StandardTransaction(PGQL_Fragment):
             .select(
                 schema.TransactionBlock.digest,
                 schema.TransactionBlock.sender.select(
-                    submitter_address=schema.Address.location
+                    submitter_address=schema.Address.address
                 ),
                 schema.TransactionBlock.expiration.select(schema.Epoch.epochId),
                 schema.TransactionBlock.gasInput.select(
                     transaction_budget=schema.GasInput.gasBudget,
                     price=schema.GasInput.gasPrice,
                     sponsor=schema.GasInput.gasSponsor.select(
-                        sponsor_address=schema.Address.location
+                        sponsor_address=schema.Address.address
                     ),
                     sponsor_pay_with=schema.GasInput.gasPayment.select(
                         gas_objects=schema.ObjectConnection.nodes.select(
@@ -202,26 +203,34 @@ class StandardTransaction(PGQL_Fragment):
                     schema.TransactionBlockEffects.errors,
                     schema.TransactionBlockEffects.timestamp,
                     schema.TransactionBlockEffects.balanceChanges.select(
-                        tx_cost=schema.BalanceChange.amount,
-                        tx_cost_from=schema.BalanceChange.owner.select(
-                            schema.Owner.location
-                        ),
+                        schema.BalanceChangeConnection.nodes.select(
+                            schema.BalanceChange.coinType.select(
+                                coin_type=schema.MoveType.repr
+                            ),
+                            balance_change=schema.BalanceChange.amount,
+                            change_to=schema.BalanceChange.owner.select(
+                                object_id=schema.Owner.address
+                            ),
+                        )
                     ),
                     schema.TransactionBlockEffects.gasEffects.select(
                         schema.GasEffects.gasObject.select(
-                            gas_object_id=schema.Object.location,
+                            gas_object_id=schema.Object.address,
                         ),
                         schema.GasEffects.gasSummary.select(gas_cost.fragment(schema)),
                     ),
                     schema.TransactionBlockEffects.objectChanges.select(
-                        created=schema.ObjectChange.idCreated,
-                        deleted=schema.ObjectChange.idDeleted,
-                        input_state=schema.ObjectChange.inputState.select(
-                            base_obj.fragment(schema)
-                        ),
-                        output_state=schema.ObjectChange.outputState.select(
-                            base_obj.fragment(schema)
-                        ),
+                        schema.ObjectChangeConnection.nodes.select(
+                            address=schema.ObjectChange.address,
+                            deleted=schema.ObjectChange.idDeleted,
+                            created=schema.ObjectChange.idCreated,
+                            input_state=schema.ObjectChange.inputState.select(
+                                base_obj.fragment(schema)
+                            ),
+                            output_state=schema.ObjectChange.outputState.select(
+                                base_obj.fragment(schema)
+                            ),
+                        )
                     ),
                     schema.TransactionBlockEffects.checkpoint.select(
                         schema.Checkpoint.sequenceNumber,
@@ -234,17 +243,51 @@ class StandardTransaction(PGQL_Fragment):
                         ),
                     ),
                 ),
-                txn_kind=schema.TransactionBlock.kind.select(
-                    DSLInlineFragment()
-                    .on(schema.ProgrammableTransaction)
-                    .select(
-                        schema.ProgrammableTransaction.value,
-                    ),
-                    DSLInlineFragment()
-                    .on(schema.GenesisTransaction)
-                    .select(schema.GenesisTransaction.objects),
-                    txn_kind=DSLMetaField("__typename"),
-                ),
+                # txn_kind=schema.TransactionBlock.kind.select(
+                #     DSLInlineFragment()
+                #     .on(schema.ProgrammableTransactionBlock)
+                #     .select(
+                #         inputs=schema.ProgrammableTransactionBlock.inputs.select(
+                #             DSLInlineFragment()
+                #             .on(schema.TransactionInputConnection)
+                #             .select(
+                #                 schema.TransactionInputConnection.nodes.select(
+                #                     DSLInlineFragment()
+                #                     .on(schema.Pure)
+                #                     .select(
+                #                         schema.Pure.bytes,
+                #                         DSLMetaField("__typename"),
+                #                     ),
+                #                     DSLInlineFragment()
+                #                     .on(schema.OwnedOrImmutable)
+                #                     .select(
+                #                         schema.OwnedOrImmutable.address,
+                #                         schema.OwnedOrImmutable.version,
+                #                         schema.OwnedOrImmutable.digest,
+                #                         DSLMetaField("__typename"),
+                #                     ),
+                #                     DSLInlineFragment()
+                #                     .on(schema.SharedInput)
+                #                     .select(
+                #                         schema.SharedInput.address,
+                #                         schema.SharedInput.initialSharedVersion,
+                #                         schema.SharedInput.mutable,
+                #                         DSLMetaField("__typename"),
+                #                     ),
+                #                     DSLInlineFragment()
+                #                     .on(schema.Receiving)
+                #                     .select(
+                #                         schema.Receiving.address,
+                #                         schema.Receiving.version,
+                #                         schema.Receiving.digest,
+                #                         DSLMetaField("__typename"),
+                #                     ),
+                #                 )
+                #             ),
+                #         ),
+                #     ),
+                #     txn_kind=DSLMetaField("__typename"),
+                # ),
             )
         )
 
@@ -265,7 +308,7 @@ class StandardCheckpoint(PGQL_Fragment):
                 schema.Checkpoint.timestamp,
                 schema.Checkpoint.previousCheckpointDigest,
                 schema.Checkpoint.networkTotalTransactions,
-                transaction_blocks=schema.Checkpoint.transactionBlockConnection.select(
+                transaction_blocks=schema.Checkpoint.transactionBlocks.select(
                     cursor=schema.TransactionBlockConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),

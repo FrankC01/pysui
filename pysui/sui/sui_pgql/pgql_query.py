@@ -413,7 +413,7 @@ class GetEvents(PGQL_QueryNode):
         """Build DocumentNode."""
         pg_cursor = frag.PageCursor()
         std_event = frag.StandardEvent()
-        qres = schema.Query.eventConnection(filter=self.event_filter).select(
+        qres = schema.Query.events(filter=self.event_filter).select(
             cursor=schema.EventConnection.pageInfo.select(pg_cursor.fragment(schema)),
             events=schema.EventConnection.nodes.select(std_event.fragment(schema)),
         )
@@ -487,7 +487,7 @@ class GetMultipleTx(PGQL_QueryNode):
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
-        qres = schema.Query.transactionBlockConnection(filter=self.qfilter)
+        qres = schema.Query.transactionBlocks(filter=self.qfilter)
         if self.next_page:
             qres(after=self.next_page.endCursor)
 
@@ -537,7 +537,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
             return PGQL_NoOp
 
         qres = schema.Query.address(address=self.owner)
-        staked_coin = schema.Address.stakedSuiConnection
+        staked_coin = schema.Address.stakedSuis
         if self.next_page:
             staked_coin(after=self.next_page.endCursor)
 
@@ -549,18 +549,15 @@ class GetDelegatedStakes(PGQL_QueryNode):
                 pg_cursor.fragment(schema)
             ),
             staked_coin=schema.StakedSuiConnection.nodes.select(
-                schema.StakedSui.status,
+                schema.StakedSui.version,
+                schema.StakedSui.digest,
+                schema.StakedSui.hasPublicTransfer,
                 schema.StakedSui.principal,
                 schema.StakedSui.estimatedReward,
-                schema.StakedSui.activeEpoch.select(activated=schema.Epoch.epochId),
-                schema.StakedSui.requestEpoch.select(activated=schema.Epoch.epochId),
-                schema.StakedSui.asMoveObject.select(
-                    schema.MoveObject.hasPublicTransfer,
-                    schema.MoveObject.asObject.select(
-                        schema.Object.version,
-                        coin_object_id=schema.Object.location,
-                    ),
-                ),
+                activated=schema.StakedSui.activatedEpoch.select(schema.Epoch.epochId),
+                requested=schema.StakedSui.requestedEpoch.select(schema.Epoch.epochId),
+                status=schema.StakedSui.stakeStatus,
+                object_id=schema.StakedSui.address,
             ),
         )
         qres.select(staked_coin)
@@ -593,7 +590,7 @@ class GetLatestCheckpointSequence(PGQL_QueryNode):
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         std_checkpoint = frag.StandardCheckpoint()
         pg_cursor = frag.PageCursor()
-        qres = schema.Query.checkpointConnection(last=1).select(
+        qres = schema.Query.checkpoints(last=1).select(
             schema.CheckpointConnection.nodes.select(std_checkpoint.fragment(schema))
         )
         return dsl_gql(
@@ -671,7 +668,7 @@ class GetCheckpoints(PGQL_QueryNode):
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
-        qres = schema.Query.checkpointConnection
+        qres = schema.Query.checkpoints
         if self.next_page:
             qres(after=self.next_page.endCursor)
 
@@ -752,8 +749,8 @@ class GetNameServiceAddress(PGQL_QueryNode):
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         return dsl_gql(
             DSLQuery(
-                schema.Query.resolveNameServiceAddress(name=self.name).select(
-                    schema.Address.location
+                schema.Query.resolveSuinsAddress(domain=self.name).select(
+                    schema.Address.address
                 )
             )
         )

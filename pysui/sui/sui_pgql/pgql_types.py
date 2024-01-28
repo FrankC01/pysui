@@ -192,20 +192,20 @@ class EventGQL(PGQL_Type):
     package_id: str
     module_name: str
     event_type: str
-    senders: list[str]
     timestamp: str
-    json: dict
+    json: str
+    sender: Optional[str]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "EventGQL":
         """Serializes query result to list of Sui objects."""
-        in_mod_id = in_data.pop("sendingModuleId")
+        in_mod_id = in_data.pop("sendingModule")
         to_merge: dict = {}
         _fast_flat(in_mod_id, to_merge)
         in_data |= to_merge
-        in_data["json"] = json.loads(in_data["json"])
-        in_data["event_type"] = in_data.pop("eventType")["event_type"]
-        in_data["senders"] = [x["location"] for x in in_data["senders"]]
+        in_data["json"] = json.dumps(in_data["json"])
+        in_data["event_type"] = in_data.pop("type")["event_type"]
+        # in_data["sender"] = [x["address"] for x in in_data["sender"]]
         return EventGQL.from_dict(in_data)
 
 
@@ -223,7 +223,7 @@ class EventsGQL(PGQL_Type):
         The in_data is a dictionary with 2 keys: 'cursor' and 'events'
         """
 
-        in_data = in_data.pop("eventConnection")
+        in_data = in_data.pop("events")
         # Get cursor
         ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
         dlist: list[ObjectReadGQL] = [
@@ -272,7 +272,7 @@ class CheckpointGQL(PGQL_Type):
     @classmethod
     def from_last_checkpoint(clz, in_data: dict) -> "CheckpointGQL":
         """Serializes query result of tx blocks in checkpoint."""
-        in_data = in_data.pop("checkpointConnection", None)
+        in_data = in_data.pop("checkpoints", None)
         in_data = in_data["nodes"][0]
         in_data["transaction_blocks"] = TxBlockListGQL.from_query(
             in_data["transaction_blocks"]
@@ -291,7 +291,7 @@ class CheckpointsGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "CheckpointsGQL":
         """."""
-        in_data = in_data.pop("checkpointConnection")
+        in_data = in_data.pop("checkpoints")
         ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
         ndata: list[CheckpointGQL] = [
             CheckpointGQL.from_query(i_cp) for i_cp in in_data["checkpoints"]
@@ -376,7 +376,7 @@ class TransactionResultGQL(PGQL_Type):
     """Transaction result representation class."""
 
     digest: str
-    txn_kind: dict
+    # txn_kind: dict
     sender: dict
     expiration: Union[dict, None]
     gas_input: dict
@@ -415,7 +415,7 @@ class TransactionSummariesGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionSummariesGQL":
         """."""
-        in_data = in_data.pop("transactionBlockConnection")
+        in_data = in_data.pop("transactionBlocks")
         ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
         tsummary = [
             TransactionSummaryGQL.from_query(x) for x in in_data.pop("tx_blocks")
