@@ -51,7 +51,7 @@ def do_coins_for_type(client: SuiGQLClient):
         client.execute_query(
             # GetAllCoinsOfType requires a coin type
             with_query_node=qn.GetCoins(
-                owner="0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
+                owner=client.config.active_address.address,
                 coin_type="0x2::sui::SUI",
             )
         )
@@ -263,8 +263,8 @@ if __name__ == "__main__":
         write_schema=False,
         config=SuiConfig.default_config(),
     )
-    ## QueryNodes (fetch) (Checked)
-    # do_coin_meta(client_init)
+    ## QueryNodes (fetch)
+    do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_sysstate(client_init)
@@ -281,10 +281,9 @@ if __name__ == "__main__":
     # do_digest_cp(client_init)
     # do_checkpoints(client_init)
     # do_nameservice(client_init)
-    ## QueryNodes (fetch)
     # do_refgas(client_init)
-    ## Config (Checked)
-    do_chain_id(client_init)
+    ## Config
+    # do_chain_id(client_init)
     # do_configs(client_init)
     # do_protcfg(client_init)
     client_init.client.close_sync()

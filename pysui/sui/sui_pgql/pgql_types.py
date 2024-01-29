@@ -376,7 +376,6 @@ class TransactionResultGQL(PGQL_Type):
     """Transaction result representation class."""
 
     digest: str
-    # txn_kind: dict
     sender: dict
     expiration: Union[dict, None]
     gas_input: dict
@@ -483,7 +482,7 @@ class ReferenceGasPriceGQL(PGQL_Type):
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ReferenceGasPriceGQL":
-        in_data = in_data.pop("latestSuiSystemState", in_data)
+        in_data = in_data.pop("epoch", in_data)
         return ReferenceGasPriceGQL.from_dict(in_data)
 
 

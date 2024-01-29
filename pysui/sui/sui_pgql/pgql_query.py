@@ -724,11 +724,7 @@ class GetReferenceGasPrice(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         return dsl_gql(
-            DSLQuery(
-                schema.Query.latestSuiSystemState.select(
-                    schema.SuiSystemStateSummary.referenceGasPrice
-                )
-            )
+            DSLQuery(schema.Query.epoch.select(schema.Epoch.referenceGasPrice))
         )
 
     @staticmethod

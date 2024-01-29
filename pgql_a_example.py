@@ -23,7 +23,10 @@ import pysui.sui.sui_pgql.pgql_query as qn
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
     """."""
     if result.is_ok():
-        print(result.result_data.to_json(indent=2))
+        if hasattr(result.result_data, "to_json"):
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_data)
     else:
         print(result.result_string)
         print(result.result_data.to_json(indent=2))
@@ -40,7 +43,7 @@ async def do_coin_meta(client: AsyncSuiGQLClient):
             with_query_node=qn.GetCoinMetaData(
                 coin_type="0x3::staking_pool::StakedSui",
             )
-        ).to_json(indent=2)
+        )
     )
 
 
@@ -50,8 +53,8 @@ async def do_coins_for_type(client: AsyncSuiGQLClient):
         await client.execute_query(
             # GetAllCoinsOfType requires a coin type
             with_query_node=qn.GetCoins(
-                owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a",
-                coin_type="0xbff8dc60d3f714f678cd4490ff08cabbea95d308c6de47a150c79cc875e0c7c6::sbox::SBOX",
+                owner=client.config.active_address.address,
+                coin_type="0x2::sui::SUI",
             )
         )
     )
@@ -166,7 +169,7 @@ async def do_tx(client: AsyncSuiGQLClient):
     handle_result(
         await client.execute_query(
             with_query_node=qn.GetTx(
-                digest="CypToNgx6jN2V6vDZGtgpeEv1zSs4VGJcANJi85w9Ypm"
+                digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz"
             )
         )
     )
@@ -198,7 +201,7 @@ async def do_txs(client: AsyncSuiGQLClient):
 
 async def do_staked_sui(client: AsyncSuiGQLClient):
     """."""
-    owner = "0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+    owner = client.config.active_address.address
     handle_result(
         await client.execute_query(with_query_node=qn.GetDelegatedStakes(owner=owner))
     )
@@ -225,7 +228,7 @@ async def do_digest_cp(client: AsyncSuiGQLClient):
     handle_result(
         await client.execute_query(
             with_query_node=qn.GetCheckpointByDigest(
-                digest="8GonuNB363QrdTNMCx1u7mM73tVgnv7QiheSczktnN1R"
+                digest="EPVQ81Mpucuuf9CQ7aD2jcATZthSZJVqQ7Fh7hQSsMKF"
             )
         )
     )
@@ -265,7 +268,7 @@ async def main():
     )
 
     ## QueryNodes (fetch)
-    # await do_coin_meta(client_init)
+    await do_coin_meta(client_init)
     # await do_coins_for_type(client_init)
     # await do_gas(client_init)
     # await do_sysstate(client_init)
@@ -283,11 +286,10 @@ async def main():
     # await do_checkpoints(client_init)
     # await do_refgas(client_init)
     # await do_nameservice(client_init)
-    # await do_protcfg(client_init)
     ## Config
     # await do_chain_id(client_init)
     # await do_configs(client_init)
-    await do_protcfg(client_init)
+    # await do_protcfg(client_init)
 
 
 if __name__ == "__main__":

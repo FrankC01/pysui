@@ -82,7 +82,7 @@ class BaseSuiGQLClient:
     """Base GraphQL client."""
 
     _GRAPH_QL_SCHEMA: DSLSchema = None
-    _SUI_GRAPHQL_MAINNET: str = "https://graphql-beta.mainnet.sui.io"
+    _SUI_GRAPHQL_MAINNET: str = "NOT AVAILABLE"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
 
     @classmethod
@@ -174,13 +174,13 @@ class SuiGQLClient(BaseSuiGQLClient):
         gql_rpc_url: str = None
 
         match config.rpc_url:
-            case cnst.MAINNET_SUI_URL:
-                gql_rpc_url = self._SUI_GRAPHQL_MAINNET
+            # case cnst.MAINNET_SUI_URL:
+            #     gql_rpc_url = self._SUI_GRAPHQL_MAINNET
             case cnst.TESTNET_SUI_URL:
                 gql_rpc_url = self._SUI_GRAPHQL_TESTNET
             case _:
                 raise ValueError(
-                    f"Found {config.rpc_url}. URL must be mainnet or testnet sui url."
+                    f"Found {config.rpc_url}. GraphQL URL is only active on testnet."
                 )
 
         self._rpc_client: Client = Client(
@@ -305,13 +305,13 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         """Async Sui GraphQL Client initializer."""
         gql_rpc_url: str = None
         match config.rpc_url:
-            case cnst.MAINNET_SUI_URL:
-                gql_rpc_url = self._SUI_GRAPHQL_MAINNET
+            # case cnst.MAINNET_SUI_URL:
+            #     gql_rpc_url = self._SUI_GRAPHQL_MAINNET
             case cnst.TESTNET_SUI_URL:
-                gpl_rpc_URL = self._SUI_GRAPHQL_TESTNET
+                gql_rpc_url = self._SUI_GRAPHQL_TESTNET
             case _:
                 raise ValueError(
-                    f"Found {config.rpc_url}. URL must be mainnet or testnet sui url."
+                    f"Found {config.rpc_url}. GraphQL URL is only active on testnet."
                 )
 
         # Get sync client to populate all applicable properties

@@ -16,13 +16,13 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.51.0**
+**Release-0.51.2**
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.51.0**
+**Release-0.51.2**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
@@ -31,13 +31,11 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
 from JSON RPC to GraphQL RPC.
 
-With pysui 0.50.0 are releasing `pysui`'s initial alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement.
+With pysui 0.50.0 we released `pysui`'s initial alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement.
 
-Note: Currently The MystenLabs/Sui GraphQL RPC is beta and operates on a snapshot of data, it is not maintaining beyond:
-  - testnet data timestamp: "2023-12-16T19:07:30.993Z"
-  - mainnet data timestamp: "2023-11-21T22:03:27.667Z"
+Note: The MystenLabs/Sui GraphQL RPC is currently only available on testnet
 
-pysui 0.50.0 contains support for our December 2023 target:
+pysui 0.51.2 contains support for our January 2024 target:
 
 1. **_December 2023_**: Synchronous and asynchronous GraphQL clients (experimental) with intial 'read' queries parallel to current pysui read _Builders_. Also expose underlying GraphQL for users to craft their own queries.
 2. January 2024: Continue with GraphQL and Builder parity changes. Mysten to roll out live data to devnet, testnet and mainnet.

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.52.0] - Unpublished
+## [0.51.2] - 2024-01-29
 
 ** BREAKING CHANGES **
 
@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/187) Fixed type arguments BCS with nested type array
+- [bug](https://github.com/FrankC01/pysui/issues/186) sui_devInspectTransactionBlock now takes addtional args
 
 ### Changed
 
