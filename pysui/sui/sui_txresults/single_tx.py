@@ -59,7 +59,7 @@ class ObjectReadData(DataClassJsonMixin):
 
     def __post_init__(self):
         """Post init processing for parameters."""
-        ref = self.type_.split("<")
+        ref = self.type_.split("<", 1)
         if len(ref) > 1:
             inner_ref = ref[1][:-1].split(",")
             if len(inner_ref) > 1:
