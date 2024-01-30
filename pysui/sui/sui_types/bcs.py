@@ -15,7 +15,6 @@
 
 import binascii
 from typing import Any, Union
-from functools import reduce
 import canoser
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.abstracts.client_keypair import SignatureScheme, PublicKey
@@ -325,7 +324,7 @@ class StructTag(canoser.Struct):
 
         def _reducer(accum: Union[TypeTag, list[TypeTag]], item: str) -> TypeTag:
             """Accumulate nested type tags."""
-            new_s = item.split("::")
+            new_s = item.strip().split("::")
             if not accum:
                 return TypeTag(
                     "Struct",
@@ -361,7 +360,7 @@ class StructTag(canoser.Struct):
                 Address.from_str(main_struct[0]),
                 main_struct[1],
                 main_struct[2],
-                [lowest_level],
+                [lowest_level] if not isinstance(lowest_level, list) else lowest_level,
             )
         split_type = type_str.split("::")
         return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
