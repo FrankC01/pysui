@@ -752,16 +752,75 @@ class GetNameServiceAddress(PGQL_QueryNode):
         )
 
 
+# TODO: Need object rep
 # TODO: Renamed from Builder NameServiceName
-class GetNameServiceNames:
+class GetNameServiceNames(PGQL_QueryNode):
     """Return the resolved names given address, if multiple names are resolved, the first one is the primary name."""
 
     def __init__(
         self,
         *,
-        address: str,
+        owner: str,
     ):
         """QueryNode initializer."""
+        self.owner = owner
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        return dsl_gql(
+            DSLQuery(
+                schema.Query.address(address=self.owner).select(
+                    primary_ns=schema.Address.defaultSuinsName,
+                    additional_ns=schema.Address.suinsRegistrations.select(
+                        schema.SuinsRegistrationConnection.nodes.select(
+                            schema.SuinsRegistration.defaultSuinsName
+                        )
+                    ),
+                )
+            )
+        )
+
+
+# query Apy {
+#   checkpoint {
+#     epoch {
+#       validatorSet {
+#         activeValidators {
+#           address {
+#             address
+#           }
+#           name
+#           apy
+#         }
+#       }
+#     }
+#   }
+# }
+
+
+# TODO: Need object rep
+class GetValidatorsApy(PGQL_QueryNode):
+    """Return the validator APY."""
+
+    def __init__(self):
+        """QueryNode initializer."""
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        return dsl_gql(
+            DSLQuery(
+                schema.Query.checkpoint.select(
+                    schema.Checkpoint.epoch.select(
+                        schema.Epoch.validatorSet.select(
+                            schema.ValidatorSet.activeValidators.select(
+                                schema.Validator.name,
+                                schema.Validator.apy,
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
 
 # TODO: May be deprecated
@@ -772,12 +831,7 @@ class GetLoadedChildObjects:
         """QueryNode initializer."""
 
 
-# TODO: To be implemented
-class GetValidatorsApy:
-    """Return the validator APY."""
-
-    def __init__(self):
-        """QueryNode initializer."""
+#
 
 
 # TODO: Not sure where to get the data yet

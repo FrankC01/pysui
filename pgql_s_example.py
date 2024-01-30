@@ -251,6 +251,22 @@ def do_nameservice(client: SuiGQLClient):
     )
 
 
+def do_owned_nameservice(client: SuiGQLClient):
+    """Fetch the most current system state summary."""
+    handle_result(
+        client.execute_query(
+            with_query_node=qn.GetNameServiceNames(
+                owner=client.config.active_address.address
+            )
+        )
+    )
+
+
+def do_validators_apy(client: SuiGQLClient):
+    """Fetch the most current system state summary."""
+    handle_result(client.execute_query(with_query_node=qn.GetValidatorsApy()))
+
+
 def do_protcfg(client: SuiGQLClient):
     """Fetch the most current system state summary."""
     handle_result(
@@ -264,7 +280,7 @@ if __name__ == "__main__":
         config=SuiConfig.default_config(),
     )
     ## QueryNodes (fetch)
-    do_coin_meta(client_init)
+    # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_sysstate(client_init)
@@ -281,6 +297,8 @@ if __name__ == "__main__":
     # do_digest_cp(client_init)
     # do_checkpoints(client_init)
     # do_nameservice(client_init)
+    # do_owned_nameservice(client_init)
+    do_validators_apy(client_init)
     # do_refgas(client_init)
     ## Config
     # do_chain_id(client_init)
