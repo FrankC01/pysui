@@ -15,14 +15,15 @@
 
 import binascii
 from typing import Any, Union
-import canoser
-from deprecated.sphinx import versionadded, versionchanged, deprecated
-from pysui.abstracts.client_keypair import SignatureScheme, PublicKey
-from pysui.sui.sui_txresults.single_tx import ObjectRead
 
-from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_utils import hexstring_to_list, b58str_to_list
+import canoser
+from deprecated.sphinx import deprecated, versionadded, versionchanged
+
+from pysui.abstracts.client_keypair import PublicKey, SignatureScheme
 from pysui.sui.sui_txresults.common import GenericRef
+from pysui.sui.sui_txresults.single_tx import ObjectRead
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_utils import b58str_to_list, hexstring_to_list
 
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
@@ -356,11 +357,13 @@ class StructTag(canoser.Struct):
                 lowest_level = _reducer(lowest_level, last_one)
             # Return the main struct tag container
             main_struct = multi_struct[0].split("::")
+            if not isinstance(lowest_level, list):
+                lowest_level = [lowest_level]
             return cls(
                 Address.from_str(main_struct[0]),
                 main_struct[1],
                 main_struct[2],
-                [lowest_level] if not isinstance(lowest_level, list) else lowest_level,
+                lowest_level,
             )
         split_type = type_str.split("::")
         return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
