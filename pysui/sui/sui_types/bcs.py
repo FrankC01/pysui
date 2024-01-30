@@ -302,7 +302,9 @@ class TypeTag(canoser.RustEnum):
 
 
 @versionchanged(version="0.17.1", reason="Fixed nested types.")
-@versionchanged(version="0.52.0", reason="Fixed nested types that are arrays of types.")
+@versionchanged(
+    version="0.51.3", reason="PR fixed nested types that are arrays of types."
+)
 class StructTag(canoser.Struct):
     """StructTag represents a type value (e.g. 0x2::sui::SUI) in BCS when used in MoveCall."""
 
@@ -744,10 +746,3 @@ class SuiTransaction(canoser.RustEnum):
     """BCS representation of serialized pysui SuiTransaction (a.k.a. builder)."""
 
     _enums = [("1.0.0", SuiTransactionDataV1)]
-
-
-if __name__ == "__main__":
-    in_type = "0xa283fd6b45f1103176e7ae27e870c89df7c8783b15345e2b13faa81ec25c4fa6::protocol::Contract<0xb24b6789e088b876afabca733bed2299fbc9e2d6369be4d1acfa17d8145454d9::swap::LSP<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI,0x239e9725bdab1fcb2e4798a057da809e52f13134a09bc9913659d4a80ddfdaad::shui::SHUI>>"
-    in_type2 = "0xa283fd6b45f1103176e7ae27e870c89df7c8783b15345e2b13faa81ec25c4fa6::protocol::Contract<0xb24b6789e088b876afabca733bed2299fbc9e2d6369be4d1acfa17d8145454d9::swap::LSP<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>>"
-    res = TypeTag.type_tag_from(in_type)
-    print(res.to_json(indent=2))
