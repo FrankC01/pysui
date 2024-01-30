@@ -16,10 +16,12 @@
 
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
-from dataclasses_json import DataClassJsonMixin, config, LetterCase
+
+from dataclasses_json import DataClassJsonMixin, LetterCase, config
 from deprecated.sphinx import versionchanged
-from pysui.sui.sui_types import ObjectID, SuiAddress
+
 from pysui.sui.sui_txresults.common import GenericRef
+from pysui.sui.sui_types import ObjectID, SuiAddress
 
 # pylint:disable=too-many-instance-attributes
 # Faucet results
@@ -61,11 +63,7 @@ class ObjectReadData(DataClassJsonMixin):
         """Post init processing for parameters."""
         ref = self.type_.split("<", 1)
         if len(ref) > 1:
-            inner_ref = ref[1][:-1].split(",")
-            if len(inner_ref) > 1:
-                self.type_arg = [x.strip() for x in inner_ref]
-            else:
-                self.type_arg = ref[1][:-1]
+            self.type_arg = ref[1][:-1]
         if "id" in self.fields:
             self.fields["id"] = self.fields["id"]["id"]
 
