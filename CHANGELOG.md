@@ -5,9 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.52.0] - Unpublished
+
+### Added
+
+- Support for GraphQL on mainnet
+- Continue porting of Builders to QueryNodes for GraphQL:
+  - GetNameServiceAddress # Renamed from Builder NameServiceAddress
+  - GetNameServiceNames # Renamed from Builder NameServiceName
+  - GetValidatorsApy
+  - GetStructure
+
+### Fixed
+
+### Changed
+
+### Removed
+
 ## [0.51.3] - Unpublished
 
 ### Added
+
+- Continue porting of Builders to QueryNodes for GraphQL
 
 ### Fixed
 
@@ -16,8 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bumped support to Sui 1.18.0, back compatible from 1.17.x
 
 ### Removed
+
 ## [0.51.2] - 2024-01-29
 
 ** BREAKING CHANGES **

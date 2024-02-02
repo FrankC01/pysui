@@ -734,7 +734,7 @@ class GetReferenceGasPrice(PGQL_QueryNode):
 
 
 # TODO: Need object rep
-# TODO: Renamed from Builder NameServiceAddress
+# Renamed from Builder NameServiceAddress
 class GetNameServiceAddress(PGQL_QueryNode):
     """Return the resolved name service address for name."""
 
@@ -753,7 +753,7 @@ class GetNameServiceAddress(PGQL_QueryNode):
 
 
 # TODO: Need object rep
-# TODO: Renamed from Builder NameServiceName
+# Renamed from Builder NameServiceName
 class GetNameServiceNames(PGQL_QueryNode):
     """Return the resolved names given address, if multiple names are resolved, the first one is the primary name."""
 
@@ -781,23 +781,6 @@ class GetNameServiceNames(PGQL_QueryNode):
         )
 
 
-# query Apy {
-#   checkpoint {
-#     epoch {
-#       validatorSet {
-#         activeValidators {
-#           address {
-#             address
-#           }
-#           name
-#           apy
-#         }
-#       }
-#     }
-#   }
-# }
-
-
 # TODO: Need object rep
 class GetValidatorsApy(PGQL_QueryNode):
     """Return the validator APY."""
@@ -823,25 +806,49 @@ class GetValidatorsApy(PGQL_QueryNode):
         )
 
 
-# TODO: May be deprecated
-class GetLoadedChildObjects:
-    """Returns the child object versions loaded by the object runtime particularly dynamic fields."""
+# TODO: Need object rep
+class GetStructure(PGQL_QueryNode):
+    """GetStructure When executed, returns a module's structure representation."""
 
-    def __init__(self, *, digest: str):
-        """QueryNode initializer."""
+    def __init__(
+        self,
+        *,
+        package: str,
+        module_name: str,
+        structure_name: str,
+    ) -> None:
+        """QueryNode initializer.
+
+        :param package: object_id of package to query
+        :type package: str
+        :param module_name: Name of module from package containing function_name to fetch
+        :type module_name: str
+        :param structure_name: Name of structure from structure to fetch
+        :type structure_name: str
+        """
+        self.package = package
+        self.module = module_name
+        self.struct = structure_name
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        struc = frag.MoveStructure()
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.struct(name=self.struct).select(
+                        struc.fragment(schema)
+                    )
+                )
+            )
+        )
+        return dsl_gql(struc.fragment(schema), DSLQuery(qres))
 
 
-#
-
-
-# TODO: Not sure where to get the data yet
-class GetMultiplePastObjects:
-    """GetMultiplePastObjects When executed, return the object information for a specified version.
-
-    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
-    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
-    policies.
-    """
+#############################
+# Queued
+#############################
 
 
 # TODO: Not sure where to get the data yet
@@ -910,26 +917,37 @@ class GetFunctionArgs:
         """
 
 
-# TODO: Not sure where to get the data yet
-class GetStructure:
-    """GetStructure When executed, returns a module's structure representation."""
+# TODO: On hold
+class GetMultiplePastObjects(PGQL_QueryNode):
+    """GetMultiplePastObjects When executed, return the object information for a specified version.
 
-    def __init__(
-        self,
-        *,
-        package: str,
-        module_name: str,
-        structure_name: str,
-    ) -> None:
-        """QueryNode initializer.
+    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
+    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
+    policies.
+    """
 
-        :param package: ObjectID of package to query
-        :type package: ObjectID
-        :param module_name: Name of module from package containing function_name to fetch
-        :type module_name: SuiString
-        :param structure_name: Name of structure from structure to fetch
-        :type structure_name: SuiString
+    def __init__(self, for_versions: list[dict]):
+        """__init__ Initialize QueryNode to fetch object information give a list of object keys.
+
+        Where each `dict` (key) is of construct:
+        {
+            objectId:str,
+            version:int
+        }
+
+        :param history: The list of ObjectKsy dictionaries
+        :type history: list[dict]
         """
+        self.version_list = for_versions
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        return DSLQuery(schema.Query.objects)
+
+
+#############################
+# TBD
+#############################
 
 
 # TODO: Not sure where to get the data yet
@@ -978,13 +996,21 @@ class QueryTransactions:
 ############################
 
 
+class GetLoadedChildObjects:
+    """Returns the child object versions loaded by the object runtime particularly dynamic fields."""
+
+    def __init__(self, *, digest: str):
+        """QueryNode initializer."""
+        raise NotImplemented("Deprecated in Sui GraphQL.")
+
+
 class GetAllCoins:
     """GetAllCoins Returns all Coin objects owned by an address."""
 
     def __init__(
         self, *, owner: Any, cursor: Optional[Any] = None, limit: Optional[Any] = None
     ):
-        """."""
+        """QueryNode initializer."""
         raise NotImplemented("Deprecated in GraphQL, use GetCoins instead.")
 
 

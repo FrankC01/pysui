@@ -16,6 +16,7 @@
 from pysui import SuiConfig, SuiRpcResult
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_pgql.pgql_types as ptypes
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -64,7 +65,8 @@ def do_gas(client: SuiGQLClient):
         client.execute_query(
             # GetAllCoins defaults to "0x2::sui::SUI"
             with_query_node=qn.GetCoins(
-                owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+                # owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+                owner=client.config.active_address.address
             )
         )
     )
@@ -215,27 +217,43 @@ def do_latest_cp(client: SuiGQLClient):
 
 
 def do_sequence_cp(client: SuiGQLClient):
-    """."""
-    handle_result(
-        client.execute_query(
-            with_query_node=qn.GetCheckpointBySequence(sequence_number=18888268)
+    """Fetch a checkpoint by checkpoint sequence number.
+
+    Uses the most recent checkpoint's sequence id (inefficient for example only)
+    """
+    result = client.execute_query(with_query_node=qn.GetLatestCheckpointSequence())
+    if result.is_ok():
+        cp: ptypes.CheckpointGQL = result.result_data
+        handle_result(
+            client.execute_query(
+                with_query_node=qn.GetCheckpointBySequence(
+                    sequence_number=cp.sequence_number
+                )
+            )
         )
-    )
+    else:
+        print(result.result_string)
 
 
 def do_digest_cp(client: SuiGQLClient):
-    """."""
-    handle_result(
-        client.execute_query(
-            with_query_node=qn.GetCheckpointByDigest(
-                digest="EPVQ81Mpucuuf9CQ7aD2jcATZthSZJVqQ7Fh7hQSsMKF"
+    """Fetch a checkpoint by checkpoint digest.
+
+    Uses the most recent checkpoint's digest (inefficient for example only)
+    """
+    result = client.execute_query(with_query_node=qn.GetLatestCheckpointSequence())
+    if result.is_ok():
+        cp: ptypes.CheckpointGQL = result.result_data
+        handle_result(
+            client.execute_query(
+                with_query_node=qn.GetCheckpointByDigest(digest=cp.digest)
             )
         )
-    )
+    else:
+        print(result.result_string)
 
 
 def do_checkpoints(client: SuiGQLClient):
-    """."""
+    """Get a batch of checkpoints."""
     handle_result(client.execute_query(with_query_node=qn.GetCheckpoints()))
 
 
@@ -274,11 +292,28 @@ def do_protcfg(client: SuiGQLClient):
     )
 
 
+def do_struct(client: SuiGQLClient):
+    """Fetch structure by package::module::struct_name.
+
+    This is a testnet object!!!
+    """
+    result = client.execute_query(
+        with_query_node=qn.GetStructure(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+            structure_name="Tracker",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data)
+
+
 if __name__ == "__main__":
     client_init = SuiGQLClient(
         write_schema=False,
         config=SuiConfig.default_config(),
     )
+    print(f"Schema version {client_init.schema_version}")
     ## QueryNodes (fetch)
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
@@ -298,8 +333,9 @@ if __name__ == "__main__":
     # do_checkpoints(client_init)
     # do_nameservice(client_init)
     # do_owned_nameservice(client_init)
-    do_validators_apy(client_init)
+    # do_validators_apy(client_init)
     # do_refgas(client_init)
+    do_struct(client_init)
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)

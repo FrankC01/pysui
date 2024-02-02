@@ -82,7 +82,7 @@ class BaseSuiGQLClient:
     """Base GraphQL client."""
 
     _GRAPH_QL_SCHEMA: DSLSchema = None
-    _SUI_GRAPHQL_MAINNET: str = "NOT AVAILABLE"
+    _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
 
     @classmethod
@@ -174,8 +174,8 @@ class SuiGQLClient(BaseSuiGQLClient):
         gql_rpc_url: str = None
 
         match config.rpc_url:
-            # case cnst.MAINNET_SUI_URL:
-            #     gql_rpc_url = self._SUI_GRAPHQL_MAINNET
+            case cnst.MAINNET_SUI_URL:
+                gql_rpc_url = self._SUI_GRAPHQL_MAINNET
             case cnst.TESTNET_SUI_URL:
                 gql_rpc_url = self._SUI_GRAPHQL_TESTNET
             case _:
@@ -219,6 +219,11 @@ class SuiGQLClient(BaseSuiGQLClient):
     def client(self) -> Client:
         """Fetch the graphql client."""
         return self._rpc_client
+
+    @property
+    def schema_version(self) -> str:
+        """Return Sui GraphQL schema version."""
+        return self._version
 
     def execute_query(
         self,

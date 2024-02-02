@@ -341,3 +341,24 @@ class StandardProtocolConfig(PGQL_Fragment):
                 ),
             )
         )
+
+
+class MoveStructure(PGQL_Fragment):
+    """Structure meta-representation"""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+
+        return (
+            DSLFragment("MoveStruct")
+            .on(schema.MoveStruct)
+            .select(
+                schema.MoveStruct.name,
+                schema.MoveStruct.abilities,
+                schema.MoveStruct.fields.select(
+                    schema.MoveField.name,
+                    schema.MoveField.type.select(schema.OpenMoveType.signature),
+                ),
+            )
+        )
