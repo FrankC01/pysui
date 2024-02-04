@@ -431,7 +431,7 @@ class ValidatorGQL(PGQL_Type):
     validator_address: str
     description: str
     project_url: str
-    staking_pool_sui_balance: str
+    # staking_pool_sui_balance: str
     pending_stake: str
     pending_pool_token_withdraw: str
     pending_total_sui_withdraw: str
@@ -460,7 +460,6 @@ class ValidatorSetGQL(PGQL_Type):
     validators: list[ValidatorGQL]
     pending_removals: Optional[list[int]]
     pending_active_validators_size: Optional[int]
-    stake_pool_mappings_size: Optional[int]
     inactive_pools_size: Optional[int]
     validator_candidates_size: Optional[int]
 
@@ -468,7 +467,7 @@ class ValidatorSetGQL(PGQL_Type):
     def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
         """."""
         in_data["validators"] = [
-            ValidatorGQL.from_query(v_obj) for v_obj in in_data["validators"]
+            ValidatorGQL.from_query(v_obj) for v_obj in in_data["validators"]["nodes"]
         ]
         return ValidatorSetGQL.from_dict(in_data)
 
@@ -492,6 +491,7 @@ class SystemStateSummaryGQL(PGQL_Type):
     """SuiSystemStateSummary representation class."""
 
     system_state_version: str
+    total_transactions: int
     reference_gas_price: ReferenceGasPriceGQL
     system_parameters: dict
     validator_set: ValidatorSetGQL
@@ -580,3 +580,213 @@ class ProtocolConfigGQL:
     @classmethod
     def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":
         return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfig"))
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveStructureGQL:
+    """Sui MoveStucture representation."""
+
+    struct_name: str
+    abilities: list[str]
+    fields: list[dict]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "MoveStructureGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        return MoveStructureGQL.from_dict(fdict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveStructuresGQL:
+    """Sui collection of MoveStuctures."""
+
+    structures: list[MoveStructureGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "MoveStructuresGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        return MoveStructuresGQL.from_dict(
+            {"structures": [MoveStructureGQL.from_query(x) for x in fdict["nodes"]]}
+        )
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveFunctionGQL:
+    """Sui MoveFunction representation."""
+
+    function_name: str
+    is_entry: bool
+    visibility: str
+    type_parameters: list
+    parameters: list[dict]
+    returns: Optional[list] = dataclasses.field(default_factory=list)
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "MoveFunctionGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        return MoveFunctionGQL.from_dict(fdict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveFunctionsGQL:
+    """Sui MoveFunction representation."""
+
+    functions: list[MoveFunctionGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "MoveFunctionsGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        return MoveFunctionsGQL.from_dict(
+            {"functions": [MoveFunctionGQL.from_query(x) for x in fdict["nodes"]]}
+        )
+
+        # return MoveFunctionGQL.from_dict(fdict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveModuleeGQL:
+    """Sui MoveModule representation."""
+
+    module_name: str
+    module_structures: MoveFunctionsGQL
+    module_functions: MoveFunctionsGQL
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "MoveModuleeGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+
+        fdict["module_structures"] = MoveStructuresGQL.from_query(
+            {"nodes": fdict["module_structures"]}
+        )
+        fdict["module_functions"] = MoveFunctionsGQL.from_query(
+            {"nodes": fdict["module_functions"]}
+        )
+        return MoveModuleeGQL.from_dict(fdict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MovePackageGQL:
+    """Sui MovePackage representation."""
+
+    package_id: str
+    package_version: int
+    modules: list[MoveModuleeGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "MovePackageGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        fdict["modules"] = [MoveModuleeGQL.from_query(x) for x in fdict["nodes"]]
+        fdict.pop("nodes")
+        return MovePackageGQL.from_dict(fdict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ValidatorGQL:
+    """Sui ValidatorSet representation."""
+
+    validator_name: str
+    validator_address: str
+    description: str
+    imageUrl: str
+    projectUrl: str
+    stakingPoolSuiBalance: str
+    stakingPoolActivationEpoch: int
+    exchangeRatesSize: int
+    rewardsPool: str
+    poolTokenBalance: str
+    pendingStake: str
+    pendingTotalSuiWithdraw: str
+    pendingPoolTokenWithdraw: str
+    votingPower: int
+    gasPrice: str
+    commissionRate: int
+    nextEpochStake: str
+    nextEpochGasPrice: str
+    nextEpochCommissionRate: 1200
+    apy: int
+    atRisk: Optional[int] = None
+    operating_cap_address: Optional[str] = None
+    exchange_rates_address: Optional[str] = None
+    staking_pool_address: Optional[str] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        if "operatingCap" in fdict:
+            fdict["operating_cap_address"] = None
+            fdict.pop("operatingCap")
+        if "exchangeRate" in fdict:
+            fdict["exchange_rates_address"] = None
+            fdict.pop("exchangeRate")
+        if "stakingPool" in fdict:
+            fdict["staking_pool_address"] = None
+            fdict.pop("stakingPool")
+        return ValidatorGQL.from_dict(fdict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ValidatorSetGQL:
+    """Sui ValidatorSet representation."""
+
+    totalStake: str
+    pendingRemovals: list
+    pendingActiveValidatorsId: str
+    pendingActiveValidatorsSize: int
+    stakingPoolMappingsId: str
+    inactivePoolsId: str
+    validatorCandidatesId: str
+    validatorCandidatesSize: int
+    validators: list[ValidatorGQL]
+    next_cursor: PagingCursor
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        fdict["next_cursor"] = PagingCursor(
+            fdict.pop("hasNextPage"), fdict.pop("endCursor")
+        )
+        fdict["validators"] = [ValidatorGQL.from_query(x) for x in fdict["validators"]]
+        return ValidatorSetGQL.from_dict(fdict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ValidatorApyGQL:
+    """Sui ValidatorApy representation."""
+
+    name: str
+    apy: int
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ValidatorApysGQL:
+    """Sui ValidatorApy representation."""
+
+    next_cursor: PagingCursor
+    validators_apy: list[ValidatorApyGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ValidatorApysGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        fdict["next_cursor"] = PagingCursor(
+            fdict.pop("hasNextPage"), fdict.pop("endCursor")
+        )
+        return ValidatorApysGQL.from_dict(fdict)

@@ -14,6 +14,7 @@
 """QueryNode generators."""
 
 from typing import Optional, Callable, Union, Any
+from gql import gql
 from gql.dsl import DSLQuery, dsl_gql, DSLSchema
 from graphql import DocumentNode
 
@@ -159,6 +160,7 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """Build DocumentNode."""
         qres = schema.Query.epoch.alias("qres").select(
+            schema.Epoch.totalTransactions,
             schema.Epoch.systemStateVersion,
             schema.Epoch.referenceGasPrice,
             schema.Epoch.systemParameters.select(
@@ -182,26 +184,27 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
                 schema.ValidatorSet.totalStake,
                 schema.ValidatorSet.pendingRemovals,
                 schema.ValidatorSet.pendingActiveValidatorsSize,
-                schema.ValidatorSet.stakePoolMappingsSize,
                 schema.ValidatorSet.inactivePoolsSize,
                 schema.ValidatorSet.validatorCandidatesSize,
                 validators=schema.ValidatorSet.activeValidators.select(
-                    schema.Validator.name,
-                    schema.Validator.description,
-                    schema.Validator.projectUrl,
-                    schema.Validator.commissionRate,
-                    schema.Validator.stakingPoolSuiBalance,
-                    schema.Validator.pendingStake,
-                    schema.Validator.pendingPoolTokenWithdraw,
-                    schema.Validator.pendingTotalSuiWithdraw,
-                    schema.Validator.votingPower,
-                    schema.Validator.gasPrice,
-                    schema.Validator.atRisk,
-                    schema.Validator.nextEpochStake,
-                    schema.Validator.nextEpochCommissionRate,
-                    schema.Validator.nextEpochGasPrice,
-                    validatorAddress=schema.Validator.address.select(
-                        schema.Address.address
+                    schema.ValidatorConnection.nodes.select(
+                        schema.Validator.name,
+                        schema.Validator.description,
+                        schema.Validator.projectUrl,
+                        schema.Validator.commissionRate,
+                        schema.Validator.stakingPoolSuiBalance,
+                        schema.Validator.pendingStake,
+                        schema.Validator.pendingPoolTokenWithdraw,
+                        schema.Validator.pendingTotalSuiWithdraw,
+                        schema.Validator.votingPower,
+                        schema.Validator.gasPrice,
+                        schema.Validator.atRisk,
+                        schema.Validator.nextEpochStake,
+                        schema.Validator.nextEpochCommissionRate,
+                        schema.Validator.nextEpochGasPrice,
+                        validatorAddress=schema.Validator.address.select(
+                            schema.Address.address
+                        ),
                     ),
                 ),
             ),
@@ -781,32 +784,82 @@ class GetNameServiceNames(PGQL_QueryNode):
         )
 
 
-# TODO: Need object rep
+# TODO: Handle Cursor
 class GetValidatorsApy(PGQL_QueryNode):
     """Return the validator APY."""
 
-    def __init__(self):
+    def __init__(self, next_page: Optional[pgql_type.PagingCursor] = None):
         """QueryNode initializer."""
+        self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
+        pg_cursor = frag.PageCursor()
         return dsl_gql(
+            pg_cursor.fragment(schema),
             DSLQuery(
                 schema.Query.checkpoint.select(
                     schema.Checkpoint.epoch.select(
                         schema.Epoch.validatorSet.select(
                             schema.ValidatorSet.activeValidators.select(
-                                schema.Validator.name,
-                                schema.Validator.apy,
-                            )
+                                cursor=schema.ValidatorConnection.pageInfo.select(
+                                    pg_cursor.fragment(schema)
+                                ),
+                                validators_apy=schema.ValidatorConnection.nodes.select(
+                                    schema.Validator.name,
+                                    schema.Validator.apy,
+                                ),
+                            ),
                         )
                     )
                 )
-            )
+            ),
         )
 
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.ValidatorApysGQL], None]:
+        """Return the serialization function for ValidatorSetGQL."""
+        return pgql_type.ValidatorApysGQL.from_query
 
-# TODO: Need object rep
+
+# TODO: Handle Cursor
+class GetCurrentValidators(PGQL_QueryNode):
+    """Return the set of validators from the current Epoch."""
+
+    def __init__(self, next_page: Optional[pgql_type.PagingCursor] = None):
+        """QueryNode initializer."""
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+        pg_cursor = frag.PageCursor().fragment(schema)
+        val = frag.Validator().fragment(schema)
+        valset = frag.ValidatorSet().fragment(schema)
+        return dsl_gql(
+            valset,
+            pg_cursor,
+            val,
+            DSLQuery(
+                schema.Query.checkpoint.select(
+                    schema.Checkpoint.epoch.select(
+                        schema.Epoch.validatorSet.select(valset)
+                    )
+                )
+            ),
+        )
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.ValidatorSetGQL], None]:
+        """Return the serialization function for ValidatorSetGQL."""
+        return pgql_type.ValidatorSetGQL.from_query
+
+
+# TODO: Need object lower level properties rep
 class GetStructure(PGQL_QueryNode):
     """GetStructure When executed, returns a module's structure representation."""
 
@@ -821,9 +874,9 @@ class GetStructure(PGQL_QueryNode):
 
         :param package: object_id of package to query
         :type package: str
-        :param module_name: Name of module from package containing function_name to fetch
+        :param module_name: Name of module from package containing the structure_name to fetch
         :type module_name: str
-        :param structure_name: Name of structure from structure to fetch
+        :param structure_name: Name of structure to fetch
         :type structure_name: str
         """
         self.package = package
@@ -845,22 +898,129 @@ class GetStructure(PGQL_QueryNode):
         )
         return dsl_gql(struc.fragment(schema), DSLQuery(qres))
 
-
-#############################
-# Queued
-#############################
-
-
-# TODO: Not sure where to get the data yet
-class GetPackage:
-    """GetPackage When executed, return structured representations of all modules in the given package."""
-
-    def __init__(self, *, package: str) -> None:
-        """__init__ Initialize GetPackage object."""
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveStructureGQL], None]:
+        """Return the serialization function for ReferenceGasPrice."""
+        return pgql_type.MoveStructureGQL.from_query
 
 
-# TODO: Not sure where to get the data yet
-class GetModule:
+class GetStructures(PGQL_QueryNode):
+    """GetStructures When executed, returns all of a module's structures."""
+
+    def __init__(
+        self,
+        *,
+        package: str,
+        module_name: str,
+    ) -> None:
+        """QueryNode initializer.
+
+        :param package: object_id of package to query
+        :type package: str
+        :param module_name: Name of module from package containing structures to fetch
+        :type module_name: str
+        """
+        self.package = package
+        self.module = module_name
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        struc = frag.MoveStructure()
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.structs.select(
+                        schema.MoveStructConnection.nodes.select(struc.fragment(schema))
+                    )
+                )
+            )
+        )
+        return dsl_gql(struc.fragment(schema), DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveStructuresGQL], None]:
+        """Return the serialization function for ReferenceGasPrice."""
+        return pgql_type.MoveStructuresGQL.from_query
+
+
+# TODO: Need object lower parameters and type parameters properties rep
+class GetFunction(PGQL_QueryNode):
+    """GetFunction When executed, returns a module's function information."""
+
+    def __init__(self, *, package: str, module_name: str, function_name: str) -> None:
+        """QueryNode initializer.
+
+        :param package: object_id of package to query
+        :type package: str
+        :param module_name: Name of module from package containing the function to fetch
+        :type module_name: str
+        :param function_name: Name of function in the module to fetch
+        :type module_name: str
+        """
+        self.package = package
+        self.module = module_name
+        self.function = function_name
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        func = frag.MoveFunction()
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.function(name=self.function).select(
+                        func.fragment(schema)
+                    )
+                )
+            )
+        )
+        return dsl_gql(func.fragment(schema), DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveFunctionGQL], None]:
+        """Return the serialization function for ReferenceGasPrice."""
+        return pgql_type.MoveFunctionGQL.from_query
+
+
+class GetFunctions(PGQL_QueryNode):
+    """GetFunctions When executed, returns all module's functions information."""
+
+    def __init__(self, *, package: str, module_name: str) -> None:
+        """QueryNode initializer.
+
+        :param package: object_id of package to query
+        :type package: str
+        :param module_name: Name of module from package containing the function to fetch
+        :type module_name: str
+        """
+        self.package = package
+        self.module = module_name
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        func = frag.MoveFunction()
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.functions.select(
+                        schema.MoveFunctionConnection.nodes.select(
+                            func.fragment(schema)
+                        )
+                    )
+                )
+            )
+        )
+        return dsl_gql(func.fragment(schema), DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveFunctionsGQL], None]:
+        """Return the serialization function for ReferenceGasPrice."""
+        return pgql_type.MoveFunctionsGQL.from_query
+
+
+class GetModule(PGQL_QueryNode):
     """GetModule When executed, returns the structural representation of a module.
 
     Includes general Module informationn as well as structure and function definitions.
@@ -874,31 +1034,70 @@ class GetModule:
         :param module_name: Name of module from package to fetch
         :type module_name: SuiString
         """
+        self.package = package
+        self.module = module_name
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        func = frag.MoveFunction()
+        struc = frag.MoveStructure()
+        mod = frag.MoveModule()
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(mod.fragment(schema))
+            )
+        )
+        return dsl_gql(
+            func.fragment(schema),
+            struc.fragment(schema),
+            mod.fragment(schema),
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveModuleeGQL], None]:
+        """Return the serialization MoveModule."""
+        return pgql_type.MoveModuleeGQL.from_query
 
 
-# TODO: Not sure where to get the data yet
-class GetFunction:
-    """GetFunction When executed, returns the structural representation of a module's function.
+class GetPackage(PGQL_QueryNode):
+    """GetPackage When executed, return structured representations of the package."""
 
-    Includes general function arguments and return type definitions.
-    """
+    def __init__(self, *, package: str) -> None:
+        """__init__ Initialize GetPackage object."""
+        self.package = package
 
-    def __init__(
-        self,
-        *,
-        package: str,
-        module_name: str,
-        function_name: str,
-    ) -> None:
-        """__init__ Initialize GetModule object.
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        func = frag.MoveFunction()
+        struc = frag.MoveStructure()
+        mod = frag.MoveModule()
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.address.alias("package_id"),
+                schema.MovePackage.version.alias("package_version"),
+                schema.MovePackage.modules.select(
+                    schema.MoveModuleConnection.nodes.select(mod.fragment(schema))
+                ),
+            )
+        )
+        return dsl_gql(
+            func.fragment(schema),
+            struc.fragment(schema),
+            mod.fragment(schema),
+            DSLQuery(qres),
+        )
 
-        :param package: ObjectID of package to query
-        :type package: ObjectID
-        :param module_name: Name of module from package containing function_name to fetch
-        :type module_name: SuiString
-        :param function_name: Name of module from package to fetch
-        :type function_name: SuiString
-        """
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MovePackageGQL], None]:
+        """Return the serialization MovePackage."""
+        return pgql_type.MovePackageGQL.from_query
+
+
+#############################
+# Queued
+#############################
 
 
 # TODO: Not sure where to get the data yet
@@ -915,6 +1114,11 @@ class GetFunctionArgs:
         :param function: Name of module's function to fetch arguments for
         :type function: SuiString
         """
+
+
+#############################
+# TBD
+#############################
 
 
 # TODO: On hold
@@ -945,28 +1149,6 @@ class GetMultiplePastObjects(PGQL_QueryNode):
         return DSLQuery(schema.Query.objects)
 
 
-#############################
-# TBD
-#############################
-
-
-# TODO: Not sure where to get the data yet
-class GetCommittee(PGQL_QueryNode):
-    """GetCommittee When executed, returns information on committee (collection of nodes)."""
-
-    def __init__(self, epoch: Optional[str] = None) -> None:
-        """QueryNode initializer.
-
-        :param epoch: Epoch to return state of committee from, defaults to None
-        :type epoch: SuiString, optional
-        """
-        self.epoch = epoch
-
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        qres = schema.Query
-        return dsl_gql(DSLQuery(qres))
-
-
 # TODO:From Query.eventConnection
 class QueryEvents:
     """QueryEvents returns a list of events for a specified query criteria."""
@@ -991,17 +1173,26 @@ class QueryTransactions:
         """QueryNode initializer."""
 
 
+# TODO: Not sure where to get the data yet
+class GetCommittee(PGQL_QueryNode):
+    """GetCommittee When executed, returns information on committee (collection of nodes)."""
+
+    def __init__(self, epoch: Optional[str] = None) -> None:
+        """QueryNode initializer.
+
+        :param epoch: Epoch to return state of committee from, defaults to None
+        :type epoch: SuiString, optional
+        """
+        self.epoch = epoch
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        qres = schema.Query
+        return dsl_gql(DSLQuery(qres))
+
+
 ############################
 # Not supported in GraphQL #
 ############################
-
-
-class GetLoadedChildObjects:
-    """Returns the child object versions loaded by the object runtime particularly dynamic fields."""
-
-    def __init__(self, *, digest: str):
-        """QueryNode initializer."""
-        raise NotImplemented("Deprecated in Sui GraphQL.")
 
 
 class GetAllCoins:
@@ -1030,14 +1221,6 @@ class GetTotalSupply:
         raise NotImplemented("Deprecated in GraphQL, use GetCoinMetaData instead.")
 
 
-class GetRpcAPI:
-    """GetRpcAPI When executed, returns full list of SUI node RPC API supported."""
-
-    def __init__(self) -> None:
-        """Initialize builder."""
-        raise NotImplemented("Deprecated in GraphQL.")
-
-
 class GetTotalTxCount:
     """GetTotalTxCount When executed, return the total number of transactions known to the server."""
 
@@ -1058,13 +1241,17 @@ class GetChainID:
         )
 
 
-class GetCurrentValidators:
-    """Return the set of validators at the time of this execution."""
+class GetRpcAPI:
+    """GetRpcAPI When executed, returns full list of SUI node RPC API supported."""
 
-    def __init__(
-        self,
-    ) -> None:
+    def __init__(self) -> None:
+        """Initialize builder."""
+        raise NotImplemented("Deprecated in GraphQL.")
+
+
+class GetLoadedChildObjects:
+    """Returns the child object versions loaded by the object runtime particularly dynamic fields."""
+
+    def __init__(self, *, digest: str):
         """QueryNode initializer."""
-        raise NotImplemented(
-            "Deprecated in GraphQL. Use validator_set property GetLatestSuiSystemState"
-        )
+        raise NotImplemented("Deprecated in Sui GraphQL.")

@@ -170,7 +170,7 @@ def do_tx(client: SuiGQLClient):
     handle_result(
         client.execute_query(
             with_query_node=qn.GetTx(
-                digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz"
+                digest="2ijgsaTtrVjgVnkVY3JeRsZ6CRhhf6YFWxJniRVCBv3B"
             )
         )
     )
@@ -281,8 +281,13 @@ def do_owned_nameservice(client: SuiGQLClient):
 
 
 def do_validators_apy(client: SuiGQLClient):
-    """Fetch the most current system state summary."""
+    """Fetch the most current validators apy and identity."""
     handle_result(client.execute_query(with_query_node=qn.GetValidatorsApy()))
+
+
+def do_validators(client: SuiGQLClient):
+    """Fetch the most current validator detail."""
+    handle_result(client.execute_query(with_query_node=qn.GetCurrentValidators()))
 
 
 def do_protcfg(client: SuiGQLClient):
@@ -305,7 +310,82 @@ def do_struct(client: SuiGQLClient):
         )
     )
     if result.is_ok():
-        print(result.result_data)
+        print(result.result_data.to_json(indent=2))
+
+
+def do_structs(client: SuiGQLClient):
+    """Fetch structures by package::module.
+
+    This is a testnet object!!!
+    """
+    result = client.execute_query(
+        with_query_node=qn.GetStructures(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+def do_func(client: SuiGQLClient):
+    """Fetch structures by package::module.
+
+    This is a testnet object!!!
+    """
+    result = client.execute_query(
+        with_query_node=qn.GetFunction(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+            function_name="create_service_tracker",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+def do_funcs(client: SuiGQLClient):
+    """Fetch structures by package::module.
+
+    This is a testnet object!!!
+    """
+    result = client.execute_query(
+        with_query_node=qn.GetFunctions(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+def do_module(client: SuiGQLClient):
+    """Fetch a module from package.
+
+    This is a testnet object!!!
+    """
+    result = client.execute_query(
+        with_query_node=qn.GetModule(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+def do_package(client: SuiGQLClient):
+    """Fetch a module from package.
+
+    This is a testnet object!!!
+    """
+    result = client.execute_query(
+        with_query_node=qn.GetPackage(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
 
 
 if __name__ == "__main__":
@@ -319,23 +399,29 @@ if __name__ == "__main__":
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_sysstate(client_init)
-    # do_all_balances(client_init)
+    # do_all_balances(client_init) # BROKEN TIMEOUT
     # do_object(client_init)
     # do_objects(client_init)
     # do_objects_for(client_init)
     # do_event(client_init)
     # do_tx(client_init)
     # do_txs(client_init)
-    # do_staked_sui(client_init)
+    # do_staked_sui(client_init)  # BROKEN TIMEOUT
     # do_latest_cp(client_init)
     # do_sequence_cp(client_init)
     # do_digest_cp(client_init)
     # do_checkpoints(client_init)
     # do_nameservice(client_init)
     # do_owned_nameservice(client_init)
-    # do_validators_apy(client_init)
+    do_validators_apy(client_init)
+    # do_validators(client_init)
     # do_refgas(client_init)
-    do_struct(client_init)
+    # do_struct(client_init)
+    # do_structs(client_init)
+    # do_func(client_init)
+    # do_funcs(client_init)
+    # do_module(client_init)
+    # do_package(client_init)
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)

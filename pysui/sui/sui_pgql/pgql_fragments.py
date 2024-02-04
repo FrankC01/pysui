@@ -19,7 +19,7 @@ from gql.dsl import DSLFragment, DSLInlineFragment, DSLMetaField, DSLSchema
 
 
 class GasCost(PGQL_Fragment):
-    """GasCost is used to retrieve gas cost summaries on types that support it."""
+    """GasCost reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -36,7 +36,7 @@ class GasCost(PGQL_Fragment):
 
 
 class PageCursor(PGQL_Fragment):
-    """PageCursor is used to retrieve paging control on types supporting PageInfo."""
+    """PageCursor reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -51,7 +51,7 @@ class PageCursor(PGQL_Fragment):
 
 
 class StandardCoin(PGQL_Fragment):
-    """StandardCoin is used to retrieve standard coin shape."""
+    """StandardCoin reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -90,7 +90,7 @@ class StandardCoin(PGQL_Fragment):
 
 
 class BaseObject(PGQL_Fragment):
-    """BaseObject applies to any object type."""
+    """BaseObject reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -107,7 +107,7 @@ class BaseObject(PGQL_Fragment):
 
 
 class StandardObject(PGQL_Fragment):
-    """StandardObject is used to retrieve standard object shape."""
+    """StandardObject reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -145,7 +145,7 @@ class StandardObject(PGQL_Fragment):
 
 
 class StandardEvent(PGQL_Fragment):
-    """StandardEvent is used to retrieve standard event shape."""
+    """StandardEvent reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -171,7 +171,7 @@ class StandardEvent(PGQL_Fragment):
 
 
 class StandardTransaction(PGQL_Fragment):
-    """StandardTransaction is used to retrieve standard transaction shape."""
+    """StandardTransaction reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -293,7 +293,7 @@ class StandardTransaction(PGQL_Fragment):
 
 
 class StandardCheckpoint(PGQL_Fragment):
-    """StandardChecpoint is used to retrieve standard checkpoint shape."""
+    """StandardChecpoint reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -321,7 +321,7 @@ class StandardCheckpoint(PGQL_Fragment):
 
 
 class StandardProtocolConfig(PGQL_Fragment):
-    """StandardChecpoint is used to retrieve standard checkpoint shape."""
+    """StandardChecpoint reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -344,7 +344,7 @@ class StandardProtocolConfig(PGQL_Fragment):
 
 
 class MoveStructure(PGQL_Fragment):
-    """Structure meta-representation"""
+    """MoveStructure reusable fragment"""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -354,11 +354,146 @@ class MoveStructure(PGQL_Fragment):
             DSLFragment("MoveStruct")
             .on(schema.MoveStruct)
             .select(
-                schema.MoveStruct.name,
+                schema.MoveStruct.name.alias("struct_name"),
                 schema.MoveStruct.abilities,
                 schema.MoveStruct.fields.select(
-                    schema.MoveField.name,
-                    schema.MoveField.type.select(schema.OpenMoveType.signature),
+                    schema.MoveField.name.alias("field_name"),
+                    schema.MoveField.type.alias("field_type").select(
+                        schema.OpenMoveType.signature
+                    ),
+                ),
+            )
+        )
+
+
+class MoveFunction(PGQL_Fragment):
+    """MoveFunction reusable fragment"""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+
+        return (
+            DSLFragment("MoveFunction")
+            .on(schema.MoveFunction)
+            .select(
+                schema.MoveFunction.name.alias("function_name"),
+                schema.MoveFunction.isEntry,
+                schema.MoveFunction.visibility,
+                schema.MoveFunction.typeParameters.select(
+                    schema.MoveFunctionTypeParameter.constraints
+                ),
+                getattr(schema.MoveFunction, "return")
+                .alias("returns")
+                .select(schema.OpenMoveType.signature),
+                schema.MoveFunction.parameters.select(schema.OpenMoveType.signature),
+            )
+        )
+
+
+class MoveModule(PGQL_Fragment):
+    """MoveModule reusable fragment.
+
+    Contains structs and functions
+    """
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        struc = MoveStructure()
+        func = MoveFunction()
+        return (
+            DSLFragment("MoveModule")
+            .on(schema.MoveModule)
+            .select(
+                schema.MoveModule.name.alias("module_name"),
+                schema.MoveModule.structs.alias("structure_list").select(
+                    module_structures=schema.MoveStructConnection.nodes.select(
+                        struc.fragment(schema)
+                    )
+                ),
+                schema.MoveModule.functions.alias("function_list").select(
+                    module_functions=schema.MoveFunctionConnection.nodes.select(
+                        func.fragment(schema)
+                    )
+                ),
+            )
+        )
+
+
+class Validator(PGQL_Fragment):
+    """Validator reusable fragment."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        return (
+            DSLFragment("Validator")
+            .on(schema.Validator)
+            .select(
+                schema.Validator.name.alias("validator_name"),
+                schema.Validator.address.select(
+                    schema.Address.address.alias("validator_address")
+                ),
+                schema.Validator.description,
+                schema.Validator.imageUrl,
+                schema.Validator.projectUrl,
+                schema.Validator.operationCap.select(
+                    schema.MoveObject.address.alias("operating_cap_address")
+                ),
+                schema.Validator.stakingPoolSuiBalance,
+                schema.Validator.stakingPoolActivationEpoch,
+                schema.Validator.stakingPool.select(
+                    schema.MoveObject.address.alias("staking_pool_address")
+                ),
+                schema.Validator.exchangeRatesSize,
+                schema.Validator.exchangeRates.select(
+                    schema.MoveObject.address.alias("exchange_rates_address")
+                ),
+                schema.Validator.rewardsPool,
+                schema.Validator.poolTokenBalance,
+                schema.Validator.pendingStake,
+                schema.Validator.pendingTotalSuiWithdraw,
+                schema.Validator.pendingPoolTokenWithdraw,
+                schema.Validator.votingPower,
+                schema.Validator.gasPrice,
+                schema.Validator.commissionRate,
+                schema.Validator.nextEpochStake,
+                schema.Validator.nextEpochGasPrice,
+                schema.Validator.nextEpochCommissionRate,
+                schema.Validator.atRisk,
+                schema.Validator.apy,
+            )
+        )
+
+
+class ValidatorSet(PGQL_Fragment):
+    """ValidatorSet reusable fragment."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        pg_cursor = PageCursor()
+        vals = Validator()
+        return (
+            DSLFragment("ValidatorSet")
+            .on(schema.ValidatorSet)
+            .select(
+                schema.ValidatorSet.totalStake,
+                schema.ValidatorSet.pendingRemovals,
+                schema.ValidatorSet.pendingActiveValidatorsId,
+                schema.ValidatorSet.pendingActiveValidatorsSize,
+                schema.ValidatorSet.stakingPoolMappingsId,
+                schema.ValidatorSet.inactivePoolsId,
+                schema.ValidatorSet.validatorCandidatesId,
+                schema.ValidatorSet.validatorCandidatesSize,
+                schema.ValidatorSet.activeValidators.select(
+                    cursor=schema.ValidatorConnection.pageInfo.select(
+                        pg_cursor.fragment(schema)
+                    ),
+                    validators=schema.ValidatorConnection.nodes.select(
+                        vals.fragment(schema)
+                    ),
                 ),
             )
         )

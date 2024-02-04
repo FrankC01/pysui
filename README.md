@@ -6,7 +6,7 @@
 
 Python Client SDK for Sui blockchain
 
-- Supports _SUI 1.18.x RPC API_
+- Supports _SUI 1.19.x RPC API_
 - Backwards compatable to _Sui 1.17.x RPC API_
 
 ## pysui SDK Dependencies
@@ -22,7 +22,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.51.2**
+**Release-0.52.0**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
@@ -35,7 +35,7 @@ With pysui 0.50.0 we released `pysui`'s initial alignment with MystenLabs strate
 
 Note: The MystenLabs/Sui GraphQL RPC is currently only available on testnet
 
-pysui 0.51.2 contains support for our January 2024 target:
+pysui 0.52.0 contains initial support for our February 2024 target:
 
 1. **_December 2023_**: Synchronous and asynchronous GraphQL clients (experimental) with intial 'read' queries parallel to current pysui read _Builders_. Also expose underlying GraphQL for users to craft their own queries.
 2. January 2024: Continue with GraphQL and Builder parity changes. Mysten to roll out live data to devnet, testnet and mainnet.

@@ -10,11 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support for GraphQL on mainnet
-- Continue porting of Builders to QueryNodes for GraphQL:
-  - GetNameServiceAddress # Renamed from Builder NameServiceAddress
-  - GetNameServiceNames # Renamed from Builder NameServiceName
-  - GetValidatorsApy
-  - GetStructure
+- Continue porting of Builders to QueryNodes for GraphQL. Note not all Builders may be ported and the data
+fields and format results, while similar, are not guarenteed to be identical. See pgql_query.py for details.
 
 ### Fixed
 

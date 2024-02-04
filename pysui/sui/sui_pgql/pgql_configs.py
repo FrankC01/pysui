@@ -34,7 +34,9 @@ _QUERY = """
             enabledFeatures
             maxQueryDepth
             maxQueryNodes
+            maxOutputNodes
             maxDbQueryCost
+            defaultPageSize
             maxPageSize
             requestTimeoutMs
             maxQueryPayloadSize
@@ -62,9 +64,11 @@ class ServiceConfigGQL:
     enabledFeatures: list[str]
     maxQueryDepth: int
     maxQueryNodes: int
-    maxDbQueryCost: str
-    maxPageSize: str
-    requestTimeoutMs: str
+    maxOutputNodes: int
+    defaultPageSize: int
+    maxDbQueryCost: int
+    maxPageSize: int
+    requestTimeoutMs: int
     maxQueryPayloadSize: int
 
 
