@@ -19,8 +19,8 @@ from typing import Callable, Any, Optional, Union
 from gql import Client, gql
 
 # TODO: Replace with HTTPX equivalents
-from gql.transport.requests import RequestsHTTPTransport
-from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.httpx import HTTPXTransport
+from gql.transport.httpx import HTTPXAsyncTransport
 
 from gql.transport import exceptions as texc
 from gql.dsl import (
@@ -184,11 +184,10 @@ class SuiGQLClient(BaseSuiGQLClient):
                 )
 
         self._rpc_client: Client = Client(
-            transport=RequestsHTTPTransport(
+            transport=HTTPXTransport(
                 # Url will be supplied from SuiConfig?
                 url=gql_rpc_url,
                 verify=True,
-                retries=3,
             ),
             fetch_schema_from_transport=True,
         )
@@ -310,8 +309,8 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         """Async Sui GraphQL Client initializer."""
         gql_rpc_url: str = None
         match config.rpc_url:
-            # case cnst.MAINNET_SUI_URL:
-            #     gql_rpc_url = self._SUI_GRAPHQL_MAINNET
+            case cnst.MAINNET_SUI_URL:
+                gql_rpc_url = self._SUI_GRAPHQL_MAINNET
             case cnst.TESTNET_SUI_URL:
                 gql_rpc_url = self._SUI_GRAPHQL_TESTNET
             case _:
@@ -327,7 +326,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
         # Create async client
         self._rpc_client: Client = Client(
-            transport=AIOHTTPTransport(
+            transport=HTTPXAsyncTransport(
                 # Url will be supplied from SuiConfig?
                 url=gql_rpc_url,
             ),
@@ -347,6 +346,11 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     def client(self) -> Client:
         """Fetch the graphql client."""
         return self._rpc_client
+
+    @property
+    def schema_version(self) -> str:
+        """Return Sui GraphQL schema version."""
+        return self._version
 
     async def execute_query(
         self,

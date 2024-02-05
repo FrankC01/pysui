@@ -36,14 +36,6 @@ def do_coin_meta(client: SuiGQLClient):
     """Fetch meta data about coins, includes supply."""
     # Defaults to 0x2::sui::SUI
     handle_result(client.execute_query(with_query_node=qn.GetCoinMetaData()))
-    # Check stakes as well
-    handle_result(
-        client.execute_query(
-            with_query_node=qn.GetCoinMetaData(
-                coin_type="0x3::staking_pool::StakedSui",
-            )
-        )
-    )
 
 
 def do_coins_for_type(client: SuiGQLClient):
@@ -335,11 +327,18 @@ def do_func(client: SuiGQLClient):
     """
     result = client.execute_query(
         with_query_node=qn.GetFunction(
-            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
-            module_name="base",
-            function_name="create_service_tracker",
+            package="0xf68e1b31a796d9e47de5de8d73107ba9e4d43503e31afb0107c20d43e2c6615e",
+            module_name="tds_authorized_entry",
+            function_name="activate",
         )
     )
+    # result = client.execute_query(
+    #     with_query_node=qn.GetFunction(
+    #         package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+    #         module_name="base",
+    #         function_name="create_service_tracker",
+    #     )
+    # )
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
 
@@ -395,7 +394,7 @@ if __name__ == "__main__":
     )
     print(f"Schema version {client_init.schema_version}")
     ## QueryNodes (fetch)
-    # do_coin_meta(client_init)
+    do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_sysstate(client_init)
@@ -413,7 +412,7 @@ if __name__ == "__main__":
     # do_checkpoints(client_init)
     # do_nameservice(client_init)
     # do_owned_nameservice(client_init)
-    do_validators_apy(client_init)
+    # do_validators_apy(client_init)
     # do_validators(client_init)
     # do_refgas(client_init)
     # do_struct(client_init)

@@ -1100,22 +1100,6 @@ class GetPackage(PGQL_QueryNode):
 #############################
 
 
-# TODO: Not sure where to get the data yet
-class GetFunctionArgs:
-    """GetFunction When executed, returns the argument types of a Move function."""
-
-    def __init__(self, *, package: str, module: str, function: str) -> None:
-        """__init__ Initialize GetModule object.
-
-        :param package: ObjectID of package to query
-        :type package: ObjectID
-        :param module: Name of module from package containing function_name to fetch
-        :type module: SuiString
-        :param function: Name of module's function to fetch arguments for
-        :type function: SuiString
-        """
-
-
 #############################
 # TBD
 #############################
@@ -1219,6 +1203,24 @@ class GetTotalSupply:
     def __init__(self, *, coin_type: Optional[Any] = None):
         """."""
         raise NotImplemented("Deprecated in GraphQL, use GetCoinMetaData instead.")
+
+
+class GetFunctionArgs:
+    """GetFunction When executed, returns the argument types of a Move function."""
+
+    def __init__(self, *, package: str, module: str, function: str) -> None:
+        """__init__ Initialize GetModule object.
+
+        :param package: ObjectID of package to query
+        :type package: ObjectID
+        :param module: Name of module from package containing function_name to fetch
+        :type module: SuiString
+        :param function: Name of module's function to fetch arguments for
+        :type function: SuiString
+        """
+        raise NotImplemented(
+            "Deprecated in GraphQL, use GetFunction instead and extract 'parameters' property."
+        )
 
 
 class GetTotalTxCount:

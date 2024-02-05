@@ -18,6 +18,7 @@ import asyncio
 from pysui import SuiConfig, SuiRpcResult
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_pgql.pgql_types as ptypes
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -37,14 +38,6 @@ async def do_coin_meta(client: AsyncSuiGQLClient):
     """Fetch meta data about coins, includes supply."""
     # Defaults to 0x2::sui::SUI
     handle_result(await client.execute_query(with_query_node=qn.GetCoinMetaData()))
-    # Check stakes as well
-    handle_result(
-        await client.execute_query(
-            with_query_node=qn.GetCoinMetaData(
-                coin_type="0x3::staking_pool::StakedSui",
-            )
-        )
-    )
 
 
 async def do_coins_for_type(client: AsyncSuiGQLClient):
@@ -65,9 +58,7 @@ async def do_gas(client: AsyncSuiGQLClient):
     result = handle_result(
         await client.execute_query(
             # GetAllCoins defaults to "0x2::sui::SUI"
-            with_query_node=qn.GetCoins(
-                owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
-            )
+            with_query_node=qn.GetCoins(owner=client.config.active_address.address)
         )
     )
     if result.is_ok():
@@ -88,16 +79,18 @@ async def do_all_balances(client: AsyncSuiGQLClient):
 
     Demonstrates paging as well
     """
-    coin_owner = "0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
     result = await client.execute_query(
-        with_query_node=qn.GetAllCoinBalances(owner=coin_owner)
+        with_query_node=qn.GetAllCoinBalances(
+            owner=client.config.active_address.address
+        )
     )
     handle_result(result)
     if result.is_ok():
         while result.result_data.next_cursor.hasNextPage:
             result = await client.execute_query(
                 with_query_node=qn.GetAllCoinBalances(
-                    owner=coin_owner, next_page=result.next_cursor
+                    owner=client.config.active_address.address,
+                    next_page=result.next_cursor,
                 )
             )
             handle_result(result)
@@ -109,8 +102,7 @@ async def do_object(client: AsyncSuiGQLClient):
     handle_result(
         await client.execute_query(
             with_query_node=qn.GetObject(
-                # object_id="0xf0f919fac17bf50e82f32550290c359553fc3df6267cbeb4e4dbb75195375f4b"
-                object_id="0x6"
+                object_id="0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0"
             )
         )
     )
@@ -121,7 +113,7 @@ async def do_objects(client: AsyncSuiGQLClient):
     handle_result(
         await client.execute_query(
             with_query_node=qn.GetObjectsOwnedByAddress(
-                owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+                owner=client.config.active_address.address
             )
         )
     )
@@ -133,9 +125,9 @@ async def do_objects_for(client: AsyncSuiGQLClient):
         await client.execute_query(
             with_query_node=qn.GetMultipleObjects(
                 object_ids=[
-                    "0x52da4299641620148676cab1abdb17d6c4de7c0534a9c130a05887a0b8fcb2e2",
-                    "0x598a5a12cfedbe3ba2a0ce1162345e95ea926c6a7fb29062a152a85fbb29af07",
-                    "0xf889dd9c5f0f7459a01abf8fead765d4a529c3d492948d7df1ddb480cec83aeb",
+                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
+                    "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
+                    "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
                 ]
             )
         )
@@ -216,22 +208,36 @@ async def do_latest_cp(client: AsyncSuiGQLClient):
 
 async def do_sequence_cp(client: AsyncSuiGQLClient):
     """."""
-    handle_result(
-        await client.execute_query(
-            with_query_node=qn.GetCheckpointBySequence(sequence_number=18888268)
-        )
+    result = await client.execute_query(
+        with_query_node=qn.GetLatestCheckpointSequence()
     )
+    if result.is_ok():
+        cp: ptypes.CheckpointGQL = result.result_data
+        handle_result(
+            await client.execute_query(
+                with_query_node=qn.GetCheckpointBySequence(
+                    sequence_number=cp.sequence_number
+                )
+            )
+        )
+    else:
+        print(result.result_string)
 
 
 async def do_digest_cp(client: AsyncSuiGQLClient):
     """."""
-    handle_result(
-        await client.execute_query(
-            with_query_node=qn.GetCheckpointByDigest(
-                digest="EPVQ81Mpucuuf9CQ7aD2jcATZthSZJVqQ7Fh7hQSsMKF"
+    result = await client.execute_query(
+        with_query_node=qn.GetLatestCheckpointSequence()
+    )
+    if result.is_ok():
+        cp: ptypes.CheckpointGQL = result.result_data
+        handle_result(
+            await client.execute_query(
+                with_query_node=qn.GetCheckpointByDigest(digest=cp.digest)
             )
         )
-    )
+    else:
+        print(result.result_string)
 
 
 async def do_checkpoints(client: AsyncSuiGQLClient):
@@ -253,11 +259,130 @@ async def do_nameservice(client: AsyncSuiGQLClient):
     )
 
 
+async def do_owned_nameservice(client: AsyncSuiGQLClient):
+    """Fetch the most current system state summary."""
+    handle_result(
+        await client.execute_query(
+            with_query_node=qn.GetNameServiceNames(
+                owner=client.config.active_address.address
+            )
+        )
+    )
+
+
+async def do_validators_apy(client: AsyncSuiGQLClient):
+    """Fetch the most current validators apy and identity."""
+    handle_result(await client.execute_query(with_query_node=qn.GetValidatorsApy()))
+
+
+async def do_validators(client: AsyncSuiGQLClient):
+    """Fetch the most current validator detail."""
+    handle_result(await client.execute_query(with_query_node=qn.GetCurrentValidators()))
+
+
 async def do_protcfg(client: AsyncSuiGQLClient):
     """Fetch the most current system state summary."""
     handle_result(
         await client.execute_query(with_query_node=qn.GetProtocolConfig(version=30))
     )
+
+
+async def do_struct(client: AsyncSuiGQLClient):
+    """Fetch structure by package::module::struct_name.
+
+    This is a testnet object!!!
+    """
+    result = await client.execute_query(
+        with_query_node=qn.GetStructure(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+            structure_name="Tracker",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+async def do_structs(client: AsyncSuiGQLClient):
+    """Fetch structures by package::module.
+
+    This is a testnet object!!!
+    """
+    result = await client.execute_query(
+        with_query_node=qn.GetStructures(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+async def do_func(client: AsyncSuiGQLClient):
+    """Fetch structures by package::module.
+
+    This is a testnet object!!!
+    """
+    result = await client.execute_query(
+        with_query_node=qn.GetFunction(
+            package="0xf68e1b31a796d9e47de5de8d73107ba9e4d43503e31afb0107c20d43e2c6615e",
+            module_name="tds_authorized_entry",
+            function_name="activate",
+        )
+    )
+    # result = client.execute_query(
+    #     with_query_node=qn.GetFunction(
+    #         package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+    #         module_name="base",
+    #         function_name="create_service_tracker",
+    #     )
+    # )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+async def do_funcs(client: AsyncSuiGQLClient):
+    """Fetch structures by package::module.
+
+    This is a testnet object!!!
+    """
+    result = await client.execute_query(
+        with_query_node=qn.GetFunctions(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+async def do_module(client: AsyncSuiGQLClient):
+    """Fetch a module from package.
+
+    This is a testnet object!!!
+    """
+    result = await client.execute_query(
+        with_query_node=qn.GetModule(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            module_name="base",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+
+
+async def do_package(client: AsyncSuiGQLClient):
+    """Fetch a module from package.
+
+    This is a testnet object!!!
+    """
+    result = await client.execute_query(
+        with_query_node=qn.GetPackage(
+            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+        )
+    )
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
 
 
 async def main():
@@ -266,9 +391,9 @@ async def main():
         write_schema=False,
         config=SuiConfig.default_config(),
     )
-
+    print(f"Schema version {client_init.schema_version}")
     ## QueryNodes (fetch)
-    await do_coin_meta(client_init)
+    # await do_coin_meta(client_init)
     # await do_coins_for_type(client_init)
     # await do_gas(client_init)
     # await do_sysstate(client_init)
@@ -284,8 +409,15 @@ async def main():
     # await do_sequence_cp(client_init)
     # await do_digest_cp(client_init)
     # await do_checkpoints(client_init)
-    # await do_refgas(client_init)
+    # await do_owned_nameservice(client_init)
     # await do_nameservice(client_init)
+    # await do_refgas(client_init)
+    await do_struct(client_init)
+    await do_structs(client_init)
+    await do_func(client_init)
+    await do_funcs(client_init)
+    await do_module(client_init)
+    await do_package(client_init)
     ## Config
     # await do_chain_id(client_init)
     # await do_configs(client_init)

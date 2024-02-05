@@ -73,9 +73,7 @@ class GetCoinMetaData(_NativeTransactionBuilder):
     """GetCoinMetaData returns meta data for a specific `coin_type`."""
 
     @sui_builder()
-    def __init__(
-        self, *, coin_type: Optional[SuiString] = "0x2::sui::SUI"
-    ) -> None:
+    def __init__(self, *, coin_type: Optional[SuiString] = "0x2::sui::SUI") -> None:
         """__init__ Initialize builder.
 
         :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
@@ -297,9 +295,7 @@ class GetObject(_NativeTransactionBuilder):
             "sui_getObject", handler_cls=ObjectRead, handler_func="factory"
         )
         if options is None or isinstance(options, SuiNullType):
-            self.options = sutils.as_sui_map(
-                self._DEFAULT_GET_OBJECT_OPTIONS.copy()
-            )
+            self.options = sutils.as_sui_map(self._DEFAULT_GET_OBJECT_OPTIONS.copy())
         else:
             self.options = sutils.as_sui_map(options)
 
@@ -416,9 +412,7 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
         )
         # super().__init__("sui_getOwnedObjects", handler_cls=ObjectInfo, handler_func="factory")
         if query is None or isinstance(query, SuiNullType):
-            self.query = sutils.as_sui_map(
-                self._DEFAULT_GET_OWNED_OBJECT_QUERY.copy()
-            )
+            self.query = sutils.as_sui_map(self._DEFAULT_GET_OWNED_OBJECT_QUERY.copy())
         else:
             self.query = sutils.as_sui_map(query)
 
@@ -725,9 +719,7 @@ class GetTx(_NativeTransactionBuilder):
     """GetTx When executed, return the transaction response object."""
 
     @sui_builder()
-    def __init__(
-        self, *, digest: SuiString, options: Optional[SuiMap] = None
-    ) -> None:
+    def __init__(self, *, digest: SuiString, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
         super().__init__(
             "sui_getTransactionBlock",
@@ -753,9 +745,7 @@ class GetMultipleTx(_NativeTransactionBuilder):
     """."""
 
     @sui_builder()
-    def __init__(
-        self, *, digests: SuiArray, options: Optional[SuiMap] = None
-    ) -> None:
+    def __init__(self, *, digests: SuiArray, options: Optional[SuiMap] = None) -> None:
         """Initialize builder."""
         super().__init__(
             "sui_multiGetTransactionBlocks",
@@ -959,9 +949,7 @@ class GetValidatorsApy(_NativeTransactionBuilder):
 
 
 @versionadded(version="0.21.0", reason="New Sui (1.1.0) RPC API method.")
-@versionchanged(
-    version="0.30.0", reason="Generalizing Transaction constraints."
-)
+@versionchanged(version="0.30.0", reason="Generalizing Transaction constraints.")
 class GetProtocolConfig(_NativeTransactionBuilder):
     """Return the protocol config table for the given version number.
 
