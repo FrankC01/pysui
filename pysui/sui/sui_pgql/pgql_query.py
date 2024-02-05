@@ -1157,23 +1157,6 @@ class QueryTransactions:
         """QueryNode initializer."""
 
 
-# TODO: Not sure where to get the data yet
-class GetCommittee(PGQL_QueryNode):
-    """GetCommittee When executed, returns information on committee (collection of nodes)."""
-
-    def __init__(self, epoch: Optional[str] = None) -> None:
-        """QueryNode initializer.
-
-        :param epoch: Epoch to return state of committee from, defaults to None
-        :type epoch: SuiString, optional
-        """
-        self.epoch = epoch
-
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        qres = schema.Query
-        return dsl_gql(DSLQuery(qres))
-
-
 ############################
 # Not supported in GraphQL #
 ############################
@@ -1253,6 +1236,14 @@ class GetRpcAPI:
 
 class GetLoadedChildObjects:
     """Returns the child object versions loaded by the object runtime particularly dynamic fields."""
+
+    def __init__(self, *, digest: str):
+        """QueryNode initializer."""
+        raise NotImplemented("Deprecated in Sui GraphQL.")
+
+
+class GetCommittee:
+    """GetCommittee When executed, returns information on committee (collection of nodes)."""
 
     def __init__(self, *, digest: str):
         """QueryNode initializer."""
