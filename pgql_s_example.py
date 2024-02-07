@@ -108,6 +108,37 @@ def do_object(client: SuiGQLClient):
     )
 
 
+def do_past_object(client: SuiGQLClient):
+    """Fetch a past object.
+    To run, change the objectID str and version int.
+    """
+    handle_result(
+        client.execute_query(
+            with_query_node=qn.GetPastObject(
+                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
+                version=17078252,
+            )
+        )
+    )
+
+
+def do_multiple_past_object(client: SuiGQLClient):
+    """Fetch a past object.
+    To run, change the objectID str and version int.
+    """
+    past_objects = [
+        {
+            "objectId": "0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
+            "version": 17078252,
+        }
+    ]
+    handle_result(
+        client.execute_query(
+            with_query_node=qn.GetMultiplePastObjects(for_versions=past_objects)
+        )
+    )
+
+
 def do_objects(client: SuiGQLClient):
     """Fetch all objects help by owner."""
     handle_result(
@@ -129,6 +160,17 @@ def do_objects_for(client: SuiGQLClient):
                     "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
                     "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
                 ]
+            )
+        )
+    )
+
+
+def do_dynamics(client: SuiGQLClient):
+    """."""
+    handle_result(
+        client.execute_query(
+            with_query_node=qn.GetDynamicFields(
+                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed"
             )
         )
     )
@@ -394,14 +436,17 @@ if __name__ == "__main__":
     )
     print(f"Schema version {client_init.schema_version}")
     ## QueryNodes (fetch)
-    do_coin_meta(client_init)
+    # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init) # BROKEN TIMEOUT
     # do_object(client_init)
     # do_objects(client_init)
+    # do_past_object(client_init)
+    # do_multiple_past_object(client_init)
     # do_objects_for(client_init)
+    do_dynamics(client_init)
     # do_event(client_init)
     # do_tx(client_init)
     # do_txs(client_init)

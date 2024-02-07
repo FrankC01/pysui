@@ -15,7 +15,7 @@
 
 from typing import Optional, Callable, Union, Any
 from gql import gql
-from gql.dsl import DSLQuery, dsl_gql, DSLSchema
+from gql.dsl import DSLQuery, dsl_gql, DSLSchema, DSLMetaField, DSLInlineFragment
 from graphql import DocumentNode
 
 from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode, PGQL_NoOp
@@ -282,20 +282,18 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
         if self.next_page:
             qres(after=self.next_page.endCursor)
 
-        std_object = frag.StandardObject()
-        pg_cursor = frag.PageCursor()
-        base_object = frag.BaseObject()
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
         qres.select(
-            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor.fragment(schema)),
-            objects_data=schema.ObjectConnection.nodes.select(
-                std_object.fragment(schema)
-            ),
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(std_object),
         )
 
         return dsl_gql(
-            pg_cursor.fragment(schema),
-            std_object.fragment(schema),
-            base_object.fragment(schema),
+            pg_cursor,
+            std_object,
+            base_object,
             DSLQuery(qres),
         )
 
@@ -333,20 +331,18 @@ class GetMultipleObjects(PGQL_QueryNode):
         if self.next_page:
             qres(after=self.next_page.endCursor)
 
-        std_object = frag.StandardObject()
-        pg_cursor = frag.PageCursor()
-        base_object = frag.BaseObject()
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
         qres.select(
-            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor.fragment(schema)),
-            objects_data=schema.ObjectConnection.nodes.select(
-                std_object.fragment(schema)
-            ),
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(std_object),
         )
 
         return dsl_gql(
-            pg_cursor.fragment(schema),
-            std_object.fragment(schema),
-            base_object.fragment(schema),
+            pg_cursor,
+            std_object,
+            base_object,
             DSLQuery(qres),
         )
 
@@ -372,17 +368,17 @@ class GetPastObject(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """Build DocumentNode."""
-        std_object = frag.StandardObject()
-        base_object = frag.BaseObject()
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
 
         return dsl_gql(
-            std_object.fragment(schema),
-            base_object.fragment(schema),
+            std_object,
+            base_object,
             DSLQuery(
                 object=schema.Query.object(
                     address=self.object_id, version=self.version
                 ).select(
-                    std_object.fragment(schema),
+                    std_object,
                 )
             ),
         )
@@ -391,6 +387,113 @@ class GetPastObject(PGQL_QueryNode):
     def encode_fn() -> Callable[[dict], pgql_type.ObjectReadGQL]:
         """Return the serializer to ObjectReadGQL function."""
         return pgql_type.ObjectReadGQL.from_query
+
+
+class GetMultiplePastObjects(PGQL_QueryNode):
+    """GetMultiplePastObjects When executed, return the object information for a specified version.
+
+    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
+    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
+    policies.
+    """
+
+    def __init__(self, *, for_versions: list[dict]):
+        """__init__ Initialize QueryNode to fetch object information give a list of object keys.
+
+        Where each `dict` (key) is of construct:
+        {
+            objectId:str,
+            version:int
+        }
+
+        :param history: The list of ObjectKsy dictionaries
+        :type history: list[dict]
+        """
+        self.version_list = for_versions
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+
+        return dsl_gql(
+            std_object,
+            base_object,
+            pg_cursor,
+            DSLQuery(
+                schema.Query.objects(filter={"objectKeys": self.version_list}).select(
+                    cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+                    objects_data=schema.ObjectConnection.nodes.select(std_object),
+                )
+            ),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.ObjectReadsGQL]:
+        """Return the serializer to ObjectReadsGQL function."""
+        return pgql_type.ObjectReadsGQL.from_query
+
+
+class GetDynamicFields(PGQL_QueryNode):
+    """GetDynamicFields when executed, returns the list of dynamic field objects owned by an object."""
+
+    def __init__(
+        self,
+        *,
+        object_id: str,
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ) -> None:
+        """__init__ Builder initializer.
+
+        :param object_id: The ID of the queried parent object
+        :type The owning object id that has dynamic fields
+        """
+        self.object_id = object_id
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        pg_cursor = frag.PageCursor().fragment(schema)
+        return dsl_gql(
+            pg_cursor,
+            DSLQuery(
+                schema.Query.object(address=self.object_id).select(
+                    schema.Object.address,
+                    schema.Object.version,
+                    schema.Object.dynamicFields.select(
+                        cursor=schema.DynamicFieldConnection.pageInfo.select(pg_cursor),
+                        dynamic_fields=schema.DynamicFieldConnection.nodes.select(
+                            schema.DynamicField.name.select(
+                                name_type=schema.MoveValue.type.select(
+                                    name_layout=schema.MoveType.layout,
+                                ),
+                                name_data=schema.MoveValue.data,
+                            ),
+                            field_kind=DSLMetaField("__typename"),
+                            field_data=schema.DynamicField.value.select(
+                                DSLInlineFragment()
+                                .on(schema.MoveObject)
+                                .select(
+                                    schema.MoveObject.address,
+                                    schema.MoveObject.version,
+                                    schema.MoveObject.digest,
+                                    data_kind=DSLMetaField("__typename"),
+                                ),
+                                DSLInlineFragment()
+                                .on(schema.MoveValue)
+                                .select(
+                                    object_type=schema.MoveValue.type.select(
+                                        schema.MoveType.layout
+                                    ),
+                                    data_kind=DSLMetaField("__typename"),
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+            ),
+        )
 
 
 class GetEvents(PGQL_QueryNode):
@@ -1103,34 +1206,6 @@ class GetPackage(PGQL_QueryNode):
 #############################
 # TBD
 #############################
-
-
-# TODO: On hold
-class GetMultiplePastObjects(PGQL_QueryNode):
-    """GetMultiplePastObjects When executed, return the object information for a specified version.
-
-    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
-    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
-    policies.
-    """
-
-    def __init__(self, for_versions: list[dict]):
-        """__init__ Initialize QueryNode to fetch object information give a list of object keys.
-
-        Where each `dict` (key) is of construct:
-        {
-            objectId:str,
-            version:int
-        }
-
-        :param history: The list of ObjectKsy dictionaries
-        :type history: list[dict]
-        """
-        self.version_list = for_versions
-
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """."""
-        return DSLQuery(schema.Query.objects)
 
 
 # TODO:From Query.eventConnection

@@ -119,6 +119,37 @@ async def do_objects(client: AsyncSuiGQLClient):
     )
 
 
+async def do_past_object(client: AsyncSuiGQLClient):
+    """Fetch a past object.
+    To run, change the objectID str and version int.
+    """
+    handle_result(
+        await client.execute_query(
+            with_query_node=qn.GetPastObject(
+                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
+                version=17078252,
+            )
+        )
+    )
+
+
+async def do_multiple_past_object(client: AsyncSuiGQLClient):
+    """Fetch a past object.
+    To run, change the objectID str and version int.
+    """
+    past_objects = [
+        {
+            "objectId": "0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
+            "version": 17078252,
+        }
+    ]
+    handle_result(
+        await client.execute_query(
+            with_query_node=qn.GetMultiplePastObjects(for_versions=past_objects)
+        )
+    )
+
+
 async def do_objects_for(client: AsyncSuiGQLClient):
     """Fetch specific objects by their ids."""
     handle_result(
@@ -129,6 +160,17 @@ async def do_objects_for(client: AsyncSuiGQLClient):
                     "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
                     "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
                 ]
+            )
+        )
+    )
+
+
+async def do_dynamics(client: AsyncSuiGQLClient):
+    """."""
+    handle_result(
+        await client.execute_query(
+            with_query_node=qn.GetDynamicFields(
+                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed"
             )
         )
     )
@@ -400,7 +442,10 @@ async def main():
     # await do_all_balances(client_init)
     # await do_object(client_init)
     # await do_objects(client_init)
+    # await do_past_object(client_init)
+    # await do_multiple_past_object(client_init)
     # await do_objects_for(client_init)
+    await do_dynamics(client_init)
     # await do_event(client_init)
     # await do_tx(client_init)
     # await do_txs(client_init)
@@ -412,12 +457,12 @@ async def main():
     # await do_owned_nameservice(client_init)
     # await do_nameservice(client_init)
     # await do_refgas(client_init)
-    await do_struct(client_init)
-    await do_structs(client_init)
-    await do_func(client_init)
-    await do_funcs(client_init)
-    await do_module(client_init)
-    await do_package(client_init)
+    # await do_struct(client_init)
+    # await do_structs(client_init)
+    # await do_func(client_init)
+    # await do_funcs(client_init)
+    # await do_module(client_init)
+    # await do_package(client_init)
     ## Config
     # await do_chain_id(client_init)
     # await do_configs(client_init)
