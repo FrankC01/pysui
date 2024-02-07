@@ -193,9 +193,9 @@ class PureInput:
     def _(cls, arg: str) -> list:
         """Convert str to list of bytes."""
         logger.debug(f"str->pure {arg}")
-        base_list = list(bytearray(arg, encoding="utf-8"))
-        base_list.insert(0, len(base_list))
-        return base_list
+        byte_list = list(bytearray(arg, encoding="utf-8"))
+        length_prefix = list(bytearray(serialize_uint32_as_uleb128(None, len(byte_list))))
+        return length_prefix + byte_list
 
     @pure.register
     @classmethod
