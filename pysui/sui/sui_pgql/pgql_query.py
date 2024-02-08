@@ -444,58 +444,71 @@ class GetDynamicFields(PGQL_QueryNode):
         object_id: str,
         next_page: Optional[pgql_type.PagingCursor] = None,
     ) -> None:
-        """__init__ Builder initializer.
+        """QueryNode initializer.
 
-        :param object_id: The ID of the queried parent object
-        :type The owning object id that has dynamic fields
+        :param object_id: The object id that holds dynamic fields
+        :type object_id: str
+        :param next_page: A paging directive, defaults to None
+        :type next_page: Optional[pgql_type.PagingCursor], optional
         """
         self.object_id = object_id
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """."""
+        """Return a query for dynamic fields."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+        qres = schema.Query.object(address=self.object_id)
+        qres = qres.select(
+            schema.Object.address.alias("parent_object_id"), schema.Object.version
+        )
+        dfield_connection = schema.Object.dynamicFields
+        if self.next_page:
+            dfield_connection(after=self.next_page.endCursor)
+
         pg_cursor = frag.PageCursor().fragment(schema)
-        return dsl_gql(
-            pg_cursor,
-            DSLQuery(
-                schema.Query.object(address=self.object_id).select(
-                    schema.Object.address,
-                    schema.Object.version,
-                    schema.Object.dynamicFields.select(
-                        cursor=schema.DynamicFieldConnection.pageInfo.select(pg_cursor),
-                        dynamic_fields=schema.DynamicFieldConnection.nodes.select(
-                            schema.DynamicField.name.select(
-                                name_type=schema.MoveValue.type.select(
-                                    name_layout=schema.MoveType.layout,
-                                ),
-                                name_data=schema.MoveValue.data,
-                            ),
-                            field_kind=DSLMetaField("__typename"),
-                            field_data=schema.DynamicField.value.select(
-                                DSLInlineFragment()
-                                .on(schema.MoveObject)
-                                .select(
-                                    schema.MoveObject.address,
-                                    schema.MoveObject.version,
-                                    schema.MoveObject.digest,
-                                    data_kind=DSLMetaField("__typename"),
-                                ),
-                                DSLInlineFragment()
-                                .on(schema.MoveValue)
-                                .select(
-                                    object_type=schema.MoveValue.type.select(
-                                        schema.MoveType.layout
-                                    ),
-                                    data_kind=DSLMetaField("__typename"),
-                                ),
-                            ),
-                        ),
+        dfield_connection.select(
+            cursor=schema.DynamicFieldConnection.pageInfo.select(pg_cursor),
+            dynamic_fields=schema.DynamicFieldConnection.nodes.select(
+                schema.DynamicField.name.select(
+                    name_type=schema.MoveValue.type.select(
+                        name_layout=schema.MoveType.layout,
                     ),
-                )
+                    name_data=schema.MoveValue.data,
+                ),
+                field_kind=DSLMetaField("__typename"),
+                field_data=schema.DynamicField.value.select(
+                    DSLInlineFragment()
+                    .on(schema.MoveObject)
+                    .select(
+                        schema.MoveObject.address,
+                        schema.MoveObject.version,
+                        schema.MoveObject.digest,
+                        data_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.MoveValue)
+                    .select(
+                        object_type=schema.MoveValue.type.select(
+                            schema.MoveType.layout
+                        ),
+                        data_kind=DSLMetaField("__typename"),
+                    ),
+                ),
             ),
         )
+        return dsl_gql(
+            pg_cursor,
+            DSLQuery(qres.select(dfield_connection)),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.DynamicFieldsGQL]:
+        """Return the serializer to DynamicFieldsGQL function."""
+        return pgql_type.DynamicFieldsGQL.from_query
 
 
+# TODO: Handle paging
 class GetEvents(PGQL_QueryNode):
     """GetEvents When executed, return list of events for a specified transaction block."""
 
@@ -672,7 +685,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
 
 # TODO: When staking matures
 class GetStakesById:
-    """GetStakesById return all [DelegatedStake] coins identified.If a Stake was withdrawn its status will be Unstaked."""
+    """GetStakesById return all [DelegatedStake] coins identified. If a Stake was withdrawn its status will be Unstaked."""
 
     def __init__(self, staked_sui_ids: list[str]):
         """__init__ Builder initializer.
@@ -1199,11 +1212,6 @@ class GetPackage(PGQL_QueryNode):
 
 
 #############################
-# Queued
-#############################
-
-
-#############################
 # TBD
 #############################
 
@@ -1244,7 +1252,7 @@ class GetAllCoins:
         self, *, owner: Any, cursor: Optional[Any] = None, limit: Optional[Any] = None
     ):
         """QueryNode initializer."""
-        raise NotImplemented("Deprecated in GraphQL, use GetCoins instead.")
+        raise NotImplemented("Deprecated in pysui GraphQL, use GetCoins instead.")
 
 
 class GetCoinTypeBalance:
@@ -1252,7 +1260,9 @@ class GetCoinTypeBalance:
 
     def __init__(self, *, owner: Any, coin_type: Optional[Any] = None):
         """."""
-        raise NotImplemented("Deprecated in GraphQL, use GetAllCoinBalances instead.")
+        raise NotImplemented(
+            "Deprecated in pysui GraphQL, use GetAllCoinBalances instead."
+        )
 
 
 class GetTotalSupply:
@@ -1260,7 +1270,9 @@ class GetTotalSupply:
 
     def __init__(self, *, coin_type: Optional[Any] = None):
         """."""
-        raise NotImplemented("Deprecated in GraphQL, use GetCoinMetaData instead.")
+        raise NotImplemented(
+            "Deprecated in pysui GraphQL, use GetCoinMetaData instead."
+        )
 
 
 class GetFunctionArgs:
@@ -1277,7 +1289,7 @@ class GetFunctionArgs:
         :type function: SuiString
         """
         raise NotImplemented(
-            "Deprecated in GraphQL, use GetFunction instead and extract 'parameters' property."
+            "Deprecated in pysui GraphQL, use GetFunction instead and extract 'parameters' property."
         )
 
 
@@ -1287,7 +1299,7 @@ class GetTotalTxCount:
     def __init__(self) -> None:
         """Initialize builder."""
         raise NotImplemented(
-            "Deprecated in GraphQL. Use propery `network_total_transactions` from GetLatestCheckpointSequence"
+            "Deprecated in pysui GraphQL. Use propery `network_total_transactions` from GetLatestCheckpointSequence"
         )
 
 
@@ -1297,7 +1309,7 @@ class GetChainID:
     def __init__(self) -> None:
         """QueryNode initializer.."""
         raise NotImplemented(
-            "Deprecated in GraphQL. Use property SuiGQLClient.chain_id"
+            "Deprecated in pysui GraphQL. Use property SuiGQLClient.chain_id"
         )
 
 
@@ -1306,7 +1318,7 @@ class GetRpcAPI:
 
     def __init__(self) -> None:
         """Initialize builder."""
-        raise NotImplemented("Deprecated in GraphQL.")
+        raise NotImplemented("Deprecated in pysui GraphQL.")
 
 
 class GetLoadedChildObjects:
@@ -1314,7 +1326,7 @@ class GetLoadedChildObjects:
 
     def __init__(self, *, digest: str):
         """QueryNode initializer."""
-        raise NotImplemented("Deprecated in Sui GraphQL.")
+        raise NotImplemented("Deprecated in pysui GraphQL.")
 
 
 class GetCommittee:
@@ -1322,4 +1334,4 @@ class GetCommittee:
 
     def __init__(self, *, digest: str):
         """QueryNode initializer."""
-        raise NotImplemented("Deprecated in Sui GraphQL.")
+        raise NotImplemented("Deprecated in pysui GraphQL.")

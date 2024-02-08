@@ -790,3 +790,33 @@ class ValidatorApysGQL:
             fdict.pop("hasNextPage"), fdict.pop("endCursor")
         )
         return ValidatorApysGQL.from_dict(fdict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class DynamicFieldGQL:
+    """Sui Object's Dynamic Field representation."""
+
+    name: dict
+    field_kind: str
+    field_data: dict
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class DynamicFieldsGQL:
+    """Sui Object's Dynamic Fields representation."""
+
+    parent_object_id: str
+    version: int
+    next_cursor: PagingCursor
+    dynamic_fields: list[DynamicFieldGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "DynamicFieldsGQL":
+        fdict: dict = {}
+        _fast_flat(in_data, fdict)
+        fdict["next_cursor"] = PagingCursor(
+            fdict.pop("hasNextPage"), fdict.pop("endCursor")
+        )
+        return DynamicFieldsGQL.from_dict(fdict)
