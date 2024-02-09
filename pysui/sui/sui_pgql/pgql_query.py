@@ -508,7 +508,6 @@ class GetDynamicFields(PGQL_QueryNode):
         return pgql_type.DynamicFieldsGQL.from_query
 
 
-# TODO: Handle paging
 class GetEvents(PGQL_QueryNode):
     """GetEvents When executed, return list of events for a specified transaction block."""
 
@@ -530,9 +529,16 @@ class GetEvents(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """Build DocumentNode."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
         pg_cursor = frag.PageCursor()
         std_event = frag.StandardEvent()
-        qres = schema.Query.events(filter=self.event_filter).select(
+        qres = schema.Query.events(filter=self.event_filter)
+        if self.next_page:
+            qres(after=self.next_page.endCursor)
+
+        qres.select(
             cursor=schema.EventConnection.pageInfo.select(pg_cursor.fragment(schema)),
             events=schema.EventConnection.nodes.select(std_event.fragment(schema)),
         )
@@ -1172,9 +1178,9 @@ class GetModule(PGQL_QueryNode):
         )
 
     @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveModuleeGQL], None]:
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveModuleGQL], None]:
         """Return the serialization MoveModule."""
-        return pgql_type.MoveModuleeGQL.from_query
+        return pgql_type.MoveModuleGQL.from_query
 
 
 class GetPackage(PGQL_QueryNode):
@@ -1186,22 +1192,22 @@ class GetPackage(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""
-        func = frag.MoveFunction()
-        struc = frag.MoveStructure()
-        mod = frag.MoveModule()
+        func = frag.MoveFunction().fragment(schema)
+        struc = frag.MoveStructure().fragment(schema)
+        mod = frag.MoveModule().fragment(schema)
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
                 schema.MovePackage.address.alias("package_id"),
                 schema.MovePackage.version.alias("package_version"),
                 schema.MovePackage.modules.select(
-                    schema.MoveModuleConnection.nodes.select(mod.fragment(schema))
+                    schema.MoveModuleConnection.nodes.select(mod)
                 ),
             )
         )
         return dsl_gql(
-            func.fragment(schema),
-            struc.fragment(schema),
-            mod.fragment(schema),
+            func,
+            struc,
+            mod,
             DSLQuery(qres),
         )
 

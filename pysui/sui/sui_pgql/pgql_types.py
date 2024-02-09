@@ -152,13 +152,15 @@ class ObjectReadGQL(PGQL_Type):
 
         The in_data is a dictionary with nested dictionaries
         """
-        in_data = in_data["object"] if "object" in in_data else in_data
-        res_dict: dict = {}
-        contents = in_data["as_move_content"]["as_object"].pop("content")
-        # Flatten dictionary
-        _fast_flat(in_data, res_dict)
-        res_dict["content"] = contents
-        return ObjectReadGQL.from_dict(res_dict)
+        if in_data.get("object"):
+            in_data = in_data["object"] if "object" in in_data else in_data
+            res_dict: dict = {}
+            contents = in_data["as_move_content"]["as_object"].pop("content")
+            # Flatten dictionary
+            _fast_flat(in_data, res_dict)
+            res_dict["content"] = contents
+            return ObjectReadGQL.from_dict(res_dict)
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -384,7 +386,9 @@ class TransactionResultGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionResultGQL":
         """."""
-        return TransactionResultGQL.from_dict(in_data.pop("transactionBlock"))
+        if in_data.get("transactionBlock"):
+            return TransactionResultGQL.from_dict(in_data.pop("transactionBlock"))
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -593,9 +597,12 @@ class MoveStructureGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MoveStructureGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-        return MoveStructureGQL.from_dict(fdict)
+        if in_data:
+            in_data = in_data.get("object", in_data)
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            return MoveStructureGQL.from_dict(fdict)
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -607,11 +614,14 @@ class MoveStructuresGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MoveStructuresGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-        return MoveStructuresGQL.from_dict(
-            {"structures": [MoveStructureGQL.from_query(x) for x in fdict["nodes"]]}
-        )
+        if in_data:
+            in_data = in_data.get("object", in_data)
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            return MoveStructuresGQL.from_dict(
+                {"structures": [MoveStructureGQL.from_query(x) for x in fdict["nodes"]]}
+            )
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -642,36 +652,43 @@ class MoveFunctionsGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MoveFunctionsGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-        return MoveFunctionsGQL.from_dict(
-            {"functions": [MoveFunctionGQL.from_query(x) for x in fdict["nodes"]]}
-        )
-
-        # return MoveFunctionGQL.from_dict(fdict)
+        """."""
+        if in_data:
+            in_data = in_data.get("object", in_data)
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            return MoveFunctionsGQL.from_dict(
+                {"functions": [MoveFunctionGQL.from_query(x) for x in fdict["nodes"]]}
+            )
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
-class MoveModuleeGQL:
+class MoveModuleGQL:
     """Sui MoveModule representation."""
 
     module_name: str
-    module_structures: MoveFunctionsGQL
+    module_structures: MoveStructuresGQL
     module_functions: MoveFunctionsGQL
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "MoveModuleeGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-
-        fdict["module_structures"] = MoveStructuresGQL.from_query(
-            {"nodes": fdict["module_structures"]}
-        )
-        fdict["module_functions"] = MoveFunctionsGQL.from_query(
-            {"nodes": fdict["module_functions"]}
-        )
-        return MoveModuleeGQL.from_dict(fdict)
+    def from_query(clz, in_data: dict) -> "MoveModuleGQL":
+        if in_data:
+            in_data = in_data.get("object", in_data)
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            if "structure_list" in fdict:
+                fdict["module_structures"] = []
+            # fdict["module_structures"] = fdict.get("module_structures", [])
+            fdict["module_structures"] = MoveStructuresGQL.from_query(
+                {"nodes": fdict["module_structures"]}
+            )
+            fdict["module_functions"] = MoveFunctionsGQL.from_query(
+                {"nodes": fdict["module_functions"]}
+            )
+            return MoveModuleGQL.from_dict(fdict)
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -681,15 +698,17 @@ class MovePackageGQL:
 
     package_id: str
     package_version: int
-    modules: list[MoveModuleeGQL]
+    modules: list[MoveModuleGQL]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MovePackageGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-        fdict["modules"] = [MoveModuleeGQL.from_query(x) for x in fdict["nodes"]]
-        fdict.pop("nodes")
-        return MovePackageGQL.from_dict(fdict)
+        if in_data.get("object"):
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            fdict["modules"] = [MoveModuleGQL.from_query(x) for x in fdict["nodes"]]
+            fdict.pop("nodes")
+            return MovePackageGQL.from_dict(fdict)
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -814,9 +833,11 @@ class DynamicFieldsGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "DynamicFieldsGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-        fdict["next_cursor"] = PagingCursor(
-            fdict.pop("hasNextPage"), fdict.pop("endCursor")
-        )
-        return DynamicFieldsGQL.from_dict(fdict)
+        if in_data.get("objects"):
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            fdict["next_cursor"] = PagingCursor(
+                fdict.pop("hasNextPage"), fdict.pop("endCursor")
+            )
+            return DynamicFieldsGQL.from_dict(fdict)
+        return NoopGQL.from_query()

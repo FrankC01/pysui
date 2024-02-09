@@ -30,7 +30,10 @@ def handle_result(result: SuiRpcResult) -> SuiRpcResult:
             print(result.result_data)
     else:
         print(result.result_string)
-        print(result.result_data.to_json(indent=2))
+        if result.result_data and hasattr(result.result_data, "to_json"):
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_data)
     return result
 
 
@@ -336,9 +339,9 @@ async def do_struct(client: AsyncSuiGQLClient):
     """
     result = await client.execute_query(
         with_query_node=qn.GetStructure(
-            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
-            module_name="base",
-            structure_name="Tracker",
+            package="0x2",
+            module_name="coin",
+            structure_name="CoinMetadata",
         )
     )
     if result.is_ok():
@@ -352,8 +355,8 @@ async def do_structs(client: AsyncSuiGQLClient):
     """
     result = await client.execute_query(
         with_query_node=qn.GetStructures(
-            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
-            module_name="base",
+            package="0x2",
+            module_name="coin",
         )
     )
     if result.is_ok():
@@ -367,18 +370,11 @@ async def do_func(client: AsyncSuiGQLClient):
     """
     result = await client.execute_query(
         with_query_node=qn.GetFunction(
-            package="0xf68e1b31a796d9e47de5de8d73107ba9e4d43503e31afb0107c20d43e2c6615e",
-            module_name="tds_authorized_entry",
-            function_name="activate",
+            package="0x2",
+            module_name="coin",
+            function_name="join",
         )
     )
-    # result = client.execute_query(
-    #     with_query_node=qn.GetFunction(
-    #         package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
-    #         module_name="base",
-    #         function_name="create_service_tracker",
-    #     )
-    # )
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
 
@@ -390,8 +386,8 @@ async def do_funcs(client: AsyncSuiGQLClient):
     """
     result = await client.execute_query(
         with_query_node=qn.GetFunctions(
-            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
-            module_name="base",
+            package="0x2",
+            module_name="coin",
         )
     )
     if result.is_ok():
@@ -405,8 +401,8 @@ async def do_module(client: AsyncSuiGQLClient):
     """
     result = await client.execute_query(
         with_query_node=qn.GetModule(
-            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
-            module_name="base",
+            package="0x2",
+            module_name="coin",
         )
     )
     if result.is_ok():
@@ -420,7 +416,7 @@ async def do_package(client: AsyncSuiGQLClient):
     """
     result = await client.execute_query(
         with_query_node=qn.GetPackage(
-            package="0x609d03f3ce5453a041ff61f359c67ead4bfaae9249a262d891076819411c936a",
+            package="0x2",
         )
     )
     if result.is_ok():

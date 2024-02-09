@@ -400,22 +400,18 @@ class MoveModule(PGQL_Fragment):
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
         """."""
-        struc = MoveStructure()
-        func = MoveFunction()
+        struc = MoveStructure().fragment(schema)
+        func = MoveFunction().fragment(schema)
         return (
             DSLFragment("MoveModule")
             .on(schema.MoveModule)
             .select(
                 schema.MoveModule.name.alias("module_name"),
                 schema.MoveModule.structs.alias("structure_list").select(
-                    module_structures=schema.MoveStructConnection.nodes.select(
-                        struc.fragment(schema)
-                    )
+                    module_structures=schema.MoveStructConnection.nodes.select(struc)
                 ),
                 schema.MoveModule.functions.alias("function_list").select(
-                    module_functions=schema.MoveFunctionConnection.nodes.select(
-                        func.fragment(schema)
-                    )
+                    module_functions=schema.MoveFunctionConnection.nodes.select(func)
                 ),
             )
         )

@@ -17,6 +17,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Any, Optional, Union
 from gql import Client, gql
+import httpx
 
 # TODO: Replace with HTTPX equivalents
 from gql.transport.httpx import HTTPXTransport
@@ -285,6 +286,14 @@ class SuiGQLClient(BaseSuiGQLClient):
             return SuiRpcResult(
                 False, "TransportQueryError", pgql_type.ErrorGQL.from_query(gte.errors)
             )
+        except (
+            httpx.HTTPError,
+            httpx.InvalidURL,
+            httpx.CookieConflict,
+        ) as hexc:
+            return SuiRpcResult(
+                False, f"HTTPX error: {hexc.__class__.__name__}", vars(hexc)
+            )
         except GraphQLSyntaxError as gqe:
             return SuiRpcResult(
                 False,
@@ -413,6 +422,14 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         except texc.TransportQueryError as gte:
             return SuiRpcResult(
                 False, "TransportQueryError", pgql_type.ErrorGQL.from_query(gte.errors)
+            )
+        except (
+            httpx.HTTPError,
+            httpx.InvalidURL,
+            httpx.CookieConflict,
+        ) as hexc:
+            return SuiRpcResult(
+                False, f"HTTPX error: {hexc.__class__.__name__}", vars(hexc)
             )
         except GraphQLSyntaxError as gqe:
             return SuiRpcResult(
