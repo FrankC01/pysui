@@ -101,14 +101,7 @@ def do_all_balances(client: SuiGQLClient):
 
 def do_object(client: SuiGQLClient):
     """Fetch specific object data."""
-    handle_result(
-        client.execute_query(
-            with_query_node=qn.GetObject(
-                # object_id="0xf0f919fac17bf50e82f32550290c359553fc3df6267cbeb4e4dbb75195375f4b"
-                object_id="0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0"
-            )
-        )
-    )
+    handle_result(client.execute_query(with_query_node=qn.GetObject(object_id="0x6")))
 
 
 def do_past_object(client: SuiGQLClient):
@@ -154,7 +147,10 @@ def do_objects(client: SuiGQLClient):
 
 
 def do_objects_for(client: SuiGQLClient):
-    """Fetch specific objects by their ids."""
+    """Fetch specific objects by their ids.
+
+    These are test IDs, replace to run.
+    """
     handle_result(
         client.execute_query(
             with_query_node=qn.GetMultipleObjects(
@@ -169,7 +165,10 @@ def do_objects_for(client: SuiGQLClient):
 
 
 def do_dynamics(client: SuiGQLClient):
-    """."""
+    """Get objects dynamic field and dynamic object fields.
+
+    This is test ID, replace to run.
+    """
     handle_result(
         client.execute_query(
             with_query_node=qn.GetDynamicFields(
@@ -442,7 +441,7 @@ def do_package(client: SuiGQLClient):
 
 if __name__ == "__main__":
     client_init = SuiGQLClient(
-        write_schema=False,
+        write_schema=True,
         config=SuiConfig.default_config(),
     )
     print(f"Schema version {client_init.schema_version}")
@@ -452,7 +451,7 @@ if __name__ == "__main__":
     # do_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)  # BROKEN TIMEOUT
-    # do_object(client_init)
+    do_object(client_init)
     # do_objects(client_init)
     # do_past_object(client_init)
     # do_multiple_past_object(client_init)
@@ -476,7 +475,7 @@ if __name__ == "__main__":
     # do_func(client_init)
     # do_funcs(client_init)
     # do_module(client_init)
-    do_package(client_init)
+    # do_package(client_init)
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)

@@ -103,11 +103,7 @@ async def do_all_balances(client: AsyncSuiGQLClient):
 async def do_object(client: AsyncSuiGQLClient):
     """Fetch specific object data."""
     handle_result(
-        await client.execute_query(
-            with_query_node=qn.GetObject(
-                object_id="0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0"
-            )
-        )
+        await client.execute_query(with_query_node=qn.GetObject(object_id="0x6"))
     )
 
 
@@ -154,7 +150,10 @@ async def do_multiple_past_object(client: AsyncSuiGQLClient):
 
 
 async def do_objects_for(client: AsyncSuiGQLClient):
-    """Fetch specific objects by their ids."""
+    """Fetch specific objects by their ids.
+
+    These are test IDs, replace to run.
+    """
     handle_result(
         await client.execute_query(
             with_query_node=qn.GetMultipleObjects(
@@ -169,7 +168,10 @@ async def do_objects_for(client: AsyncSuiGQLClient):
 
 
 async def do_dynamics(client: AsyncSuiGQLClient):
-    """."""
+    """Get objects dynamic field and dynamic object fields.
+
+    This is test ID, replace to run.
+    """
     handle_result(
         await client.execute_query(
             with_query_node=qn.GetDynamicFields(
@@ -436,12 +438,12 @@ async def main():
     # await do_gas(client_init)
     # await do_sysstate(client_init)
     # await do_all_balances(client_init)
-    # await do_object(client_init)
+    await do_object(client_init)
     # await do_objects(client_init)
     # await do_past_object(client_init)
     # await do_multiple_past_object(client_init)
     # await do_objects_for(client_init)
-    await do_dynamics(client_init)
+    # await do_dynamics(client_init)
     # await do_event(client_init)
     # await do_tx(client_init)
     # await do_txs(client_init)

@@ -16,7 +16,7 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.51.3**
+**Release-0.52.0**
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
@@ -26,7 +26,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
-## Sui GraphQL RPC service beta
+## Sui GraphQL RPC beta
 
 MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
 from JSON RPC to GraphQL RPC.
@@ -38,8 +38,8 @@ Note: The MystenLabs/Sui GraphQL RPC is currently only available on testnet
 pysui 0.52.0 contains initial support for our February 2024 target:
 
 1. **_December 2023_**: Synchronous and asynchronous GraphQL clients (experimental) with intial 'read' queries parallel to current pysui read _Builders_. Also expose underlying GraphQL for users to craft their own queries.
-2. January 2024: Continue with GraphQL and Builder parity changes. Mysten to roll out live data to devnet, testnet and mainnet.
-3. February 2024: Deprecate pysui Builders and existing SuiClients and enable SuiClient GraphQL 'streaming' support.
+2. **_January 2024_**: Continue with GraphQL and Builder parity changes. Mysten to roll out live data to devnet, testnet and mainnet. Note, only testnet was available in Jan '24.
+3. February 2024: Deprecate pysui Builders and existing SuiClients and enable SuiClient GraphQL 'streaming' support. Note, only testnet and mainnet are currently available in Feb '24, in addition 'streaming' is not yet supported.
 4. Sometime in 2024: Remove Builders and Obsolete SuiClients and bump pysui to version 1.0.0.
 
 You can read pysui documentation on graphql [here](https://pysui.readthedocs.io/en/latest/graphql.html)

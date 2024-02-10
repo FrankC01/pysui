@@ -689,23 +689,6 @@ class GetDelegatedStakes(PGQL_QueryNode):
         return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
 
 
-# TODO: When staking matures
-class GetStakesById:
-    """GetStakesById return all [DelegatedStake] coins identified. If a Stake was withdrawn its status will be Unstaked."""
-
-    def __init__(self, staked_sui_ids: list[str]):
-        """__init__ Builder initializer.
-
-        :param staked_sui_ids: Array of delegated stake object ids.
-        :type staked_sui_ids: SuiArray[ObjectID]
-        """
-        # super().__init__(
-        #     "suix_getStakesByIds",
-        #     handler_cls=DelegatedStakes,
-        #     handler_func="factory",
-        # )
-
-
 class GetLatestCheckpointSequence(PGQL_QueryNode):
     """GetLatestCheckpointSequence return the sequence number of the latest checkpoint that has been executed."""
 
@@ -1222,30 +1205,6 @@ class GetPackage(PGQL_QueryNode):
 #############################
 
 
-# TODO:From Query.eventConnection
-class QueryEvents:
-    """QueryEvents returns a list of events for a specified query criteria."""
-
-    def __init__(
-        self,
-        *,
-        query: dict,
-    ) -> None:
-        """QueryNode initializer."""
-
-
-# TODO:From Query.transactionBlockConnection
-class QueryTransactions:
-    """QueryTransactions returns a list of transactions for a specified query criteria.."""
-
-    def __init__(
-        self,
-        *,
-        query: dict,
-    ) -> None:
-        """QueryNode initializer."""
-
-
 ############################
 # Not supported in GraphQL #
 ############################
@@ -1305,8 +1264,24 @@ class GetTotalTxCount:
     def __init__(self) -> None:
         """Initialize builder."""
         raise NotImplemented(
-            "Deprecated in pysui GraphQL. Use propery `network_total_transactions` from GetLatestCheckpointSequence"
+            "Deprecated in pysui GraphQL. Use property `network_total_transactions` from GetLatestCheckpointSequence"
         )
+
+
+class QueryEvents:
+    """QueryEvents returns a list of events for a specified query criteria."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        raise NotImplemented("Deprecated in pysui GraphQL. Use use GetEvents")
+
+
+class QueryTransactions:
+    """QueryTransactions returns a list of transactions for a specified query criteria.."""
+
+    def __init__(self) -> None:
+        """Initialize builder."""
+        raise NotImplemented("Deprecated in pysui GraphQL. Use use GetTx")
 
 
 class GetChainID:
@@ -1317,6 +1292,14 @@ class GetChainID:
         raise NotImplemented(
             "Deprecated in pysui GraphQL. Use property SuiGQLClient.chain_id"
         )
+
+
+class GetStakesByIds:
+    """GetStakesById return all [DelegatedStake] coins identified. If a Stake was withdrawn its status will be Unstaked."""
+
+    def __init__(self) -> None:
+        """QueryNode initializer.."""
+        raise NotImplemented("Deprecated in pysui GraphQL. Use property GetObjects")
 
 
 class GetRpcAPI:

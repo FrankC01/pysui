@@ -173,12 +173,14 @@ class SuiGQLClient(BaseSuiGQLClient):
     ):
         """Sui GraphQL Client initializer."""
         gql_rpc_url: str = None
-
+        env_prefix = ""
         match config.rpc_url:
             case cnst.MAINNET_SUI_URL:
                 gql_rpc_url = self._SUI_GRAPHQL_MAINNET
+                env_prefix = "mainnet"
             case cnst.TESTNET_SUI_URL:
                 gql_rpc_url = self._SUI_GRAPHQL_TESTNET
+                env_prefix = "testnet"
             case _:
                 raise ValueError(
                     f"Found {config.rpc_url}. GraphQL URL is only active on testnet."
@@ -198,7 +200,7 @@ class SuiGQLClient(BaseSuiGQLClient):
             # Enable/disable
             if write_schema:
                 mver = "_".join(gql_version.split("."))
-                fname = f"./latest_schema{mver}.graphql"
+                fname = f"./{env_prefix}_schema-{mver}.graphql"
                 with open(fname, "w", encoding="utf8") as inner_file:
                     inner_file.write(print_schema(self._rpc_client.schema))
 

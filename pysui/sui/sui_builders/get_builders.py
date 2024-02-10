@@ -15,7 +15,7 @@
 """Sui Builders: Simple sui_getXXX calls."""
 
 from typing import Final, Optional
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 from pysui.sui.sui_builders.base_builder import (
     _NativeTransactionBuilder,
     sui_builder,
@@ -69,6 +69,7 @@ from pysui.sui.sui_types.transaction_filter import (
 import pysui.sui.sui_utils as sutils
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetCoinMetaData(_NativeTransactionBuilder):
     """GetCoinMetaData returns meta data for a specific `coin_type`."""
 
@@ -86,6 +87,7 @@ class GetCoinMetaData(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetAllCoinBalances(_NativeTransactionBuilder):
     """GetAllCoinBalances Returns the total coin balances, for all coin types, owned by the address owner.."""
 
@@ -103,6 +105,7 @@ class GetAllCoinBalances(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetAllCoins(_NativeTransactionBuilder):
     """GetAllCoins Returns all Coin objects owned by an address."""
 
@@ -130,6 +133,7 @@ class GetAllCoins(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetCoinTypeBalance(_NativeTransactionBuilder):
     """GetCoinTypeBalance Return the total coin balance for a coin type."""
 
@@ -154,6 +158,7 @@ class GetCoinTypeBalance(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetCoins(_NativeTransactionBuilder):
     """Return the list of Coin objects of specific coin_type owned by an address."""
 
@@ -184,6 +189,7 @@ class GetCoins(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetLatestSuiSystemState(_NativeTransactionBuilder):
     """GetLatestSuiSystemState return the latest known SUI system state."""
 
@@ -197,6 +203,7 @@ class GetLatestSuiSystemState(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetTotalSupply(_NativeTransactionBuilder):
     """Return the total supply for a given coin type (eg. 0x2::sui::SUI)."""
 
@@ -214,6 +221,7 @@ class GetTotalSupply(_NativeTransactionBuilder):
         super().__init__("suix_getTotalSupply")
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetDynamicFieldObject(_NativeTransactionBuilder):
     """GetDynamicFieldObject when executed, return the dynamic field object information for a specified object."""
 
@@ -233,6 +241,7 @@ class GetDynamicFieldObject(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetDynamicFields(_NativeTransactionBuilder):
     """GetDynamicFields when executed, returns the list of dynamic field objects owned by an object."""
 
@@ -259,6 +268,7 @@ class GetDynamicFields(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetObject(_NativeTransactionBuilder):
     """GetObject When executed, returns the object detailed information for a specified object."""
 
@@ -318,6 +328,7 @@ class GetObject(_NativeTransactionBuilder):
         return cls._DEFAULT_GET_PACKAGE_OPTIONS.copy()
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetMultipleObjects(_NativeTransactionBuilder):
     """GetMultipleObjects When executed, returns the objects detailed information for a list of object identifiers."""
 
@@ -364,6 +375,7 @@ class GetMultipleObjects(_NativeTransactionBuilder):
         return GetObject.package_options()
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
     """GetObjectsOwnedByAddress When executed, returns the list of objects owned by an address."""
 
@@ -417,6 +429,7 @@ class GetObjectsOwnedByAddress(_NativeTransactionBuilder):
             self.query = sutils.as_sui_map(query)
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetPastObject(_NativeTransactionBuilder):
     """GetPastObject When executed, return the object information for a specified version.
 
@@ -452,6 +465,7 @@ class GetPastObject(_NativeTransactionBuilder):
             self.options = sutils.as_sui_map(options)
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetMultiplePastObjects(_NativeTransactionBuilder):
     """GetMultiplePastObjects When executed, return the object information for a specified version.
 
@@ -484,6 +498,7 @@ class GetMultiplePastObjects(_NativeTransactionBuilder):
             self.options = sutils.as_sui_map(options)
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetPackage(_NativeTransactionBuilder):
     """GetPackage When executed, return structured representations of all modules in the given package."""
 
@@ -501,6 +516,7 @@ class GetPackage(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetModule(_NativeTransactionBuilder):
     """GetModule When executed, returns the structural representation of a module.
 
@@ -523,6 +539,7 @@ class GetModule(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetFunction(_NativeTransactionBuilder):
     """GetFunction When executed, returns the structural representation of a module's function.
 
@@ -553,6 +570,7 @@ class GetFunction(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetFunctionArgs(_NativeTransactionBuilder):
     """GetFunction When executed, returns the argument types of a Move function."""
 
@@ -576,6 +594,7 @@ class GetFunctionArgs(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetStructure(_NativeTransactionBuilder):
     """GetStructure When executed, returns a module's structure representation."""
 
@@ -603,6 +622,7 @@ class GetStructure(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetRpcAPI(_NativeTransactionBuilder):
     """GetRpcAPI When executed, returns full list of SUI node RPC API supported."""
 
@@ -612,6 +632,7 @@ class GetRpcAPI(_NativeTransactionBuilder):
         super().__init__("rpc.discover")
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetCommittee(_NativeTransactionBuilder):
     """GetCommittee When executed, returns information on committee (collection of nodes)."""
 
@@ -632,6 +653,7 @@ class GetCommittee(_NativeTransactionBuilder):
 # Event Query
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class QueryEvents(_NativeTransactionBuilder):
     """QueryEvents returns a list of events for a specified query criteria."""
 
@@ -661,6 +683,7 @@ class QueryEvents(_NativeTransactionBuilder):
             self.query = AllFilter(filters=[])
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class QueryTransactions(_NativeTransactionBuilder):
     """QueryTransactions returns a list of transactions for a specified query criteria.."""
 
@@ -690,6 +713,7 @@ class QueryTransactions(_NativeTransactionBuilder):
             raise ValueError("Expected query for QueryTransaciton builder.")
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetEvents(_NativeTransactionBuilder):
     """GetEvents When executed, return list of events for a specified query criteria."""
 
@@ -706,6 +730,7 @@ class GetEvents(_NativeTransactionBuilder):
         # super().__init__("sui_getEvents", handler_cls=EventQueryEnvelope, handler_func="from_dict")
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetTotalTxCount(_NativeTransactionBuilder):
     """GetTotalTxCount When executed, return the total number of transactions known to the server."""
 
@@ -715,6 +740,7 @@ class GetTotalTxCount(_NativeTransactionBuilder):
         super().__init__("sui_getTotalTransactionBlocks")
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetTx(_NativeTransactionBuilder):
     """GetTx When executed, return the transaction response object."""
 
@@ -741,6 +767,7 @@ class GetTx(_NativeTransactionBuilder):
         return DEFAULT_GET_TX_OPTIONS.copy()
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetMultipleTx(_NativeTransactionBuilder):
     """."""
 
@@ -767,6 +794,7 @@ class GetMultipleTx(_NativeTransactionBuilder):
         return GetTx.default_options()
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetDelegatedStakes(_NativeTransactionBuilder):
     """GetDelegatedStakes return all [DelegatedStake] coins for address owner."""
 
@@ -784,6 +812,7 @@ class GetDelegatedStakes(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetStakesById(_NativeTransactionBuilder):
     """GetStakesById return all [DelegatedStake] coins identified.If a Stake was withdrawn its status will be Unstaked."""
 
@@ -801,6 +830,7 @@ class GetStakesById(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetLatestCheckpointSequence(_NativeTransactionBuilder):
     """GetLatestCheckpointSequence return the sequence number of the latest checkpoint that has been executed."""
 
@@ -813,6 +843,7 @@ class GetLatestCheckpointSequence(_NativeTransactionBuilder):
 @versionchanged(
     version="0.24.0", reason="RPC expacts 'id' so correct during param fetch"
 )
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetCheckpointByDigest(_NativeTransactionBuilder):
     """GetCheckpointByDigest return a checkpoint for cp_id."""
 
@@ -839,6 +870,7 @@ class GetCheckpointByDigest(_NativeTransactionBuilder):
 @versionchanged(
     version="0.24.0", reason="RPC expacts 'id' so correct during param fetch"
 )
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetCheckpointBySequence(_NativeTransactionBuilder):
     """GetCheckpoint return a checkpoint for cp_id."""
 
@@ -862,6 +894,7 @@ class GetCheckpointBySequence(_NativeTransactionBuilder):
         return {"id": res["cp_seq"]}
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetCheckpoints(_NativeTransactionBuilder):
     """GetCheckpoints return paginated list of checkpoints."""
 
@@ -881,6 +914,7 @@ class GetCheckpoints(_NativeTransactionBuilder):
         )
 
 
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetReferenceGasPrice(_NativeTransactionBuilder):
     """GetReferenceGasPrice return the reference gas price for the network."""
 
@@ -891,6 +925,7 @@ class GetReferenceGasPrice(_NativeTransactionBuilder):
 
 
 @versionadded(version="0.17.0", reason="Support Sui 0.32.0 RPC API")
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class NameServiceAddress(_NativeTransactionBuilder):
     """Return the resolved address given resolver and name."""
 
@@ -901,6 +936,7 @@ class NameServiceAddress(_NativeTransactionBuilder):
 
 
 @versionadded(version="0.17.0", reason="Support Sui 0.32.0 RPC API")
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class NameServiceNames(_NativeTransactionBuilder):
     """Return the resolved names given address, if multiple names are resolved, the first one is the primary name."""
 
@@ -935,6 +971,7 @@ class GetLoadedChildObjects(_NativeTransactionBuilder):
 
 
 @versionadded(version="0.20.0", reason="New Sui RPC API method.")
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetValidatorsApy(_NativeTransactionBuilder):
     """Return the validator APY."""
 
@@ -950,6 +987,7 @@ class GetValidatorsApy(_NativeTransactionBuilder):
 
 @versionadded(version="0.21.0", reason="New Sui (1.1.0) RPC API method.")
 @versionchanged(version="0.30.0", reason="Generalizing Transaction constraints.")
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetProtocolConfig(_NativeTransactionBuilder):
     """Return the protocol config table for the given version number.
 
@@ -967,6 +1005,7 @@ class GetProtocolConfig(_NativeTransactionBuilder):
 
 
 @versionadded(version="0.23.0", reason="New Sui (1.2.0) RPC API method.")
+@deprecated(version="0.52.0", reason="Use QueryNode equivalent")
 class GetChainID(_NativeTransactionBuilder):
     """Return the chain's identifier."""
 
