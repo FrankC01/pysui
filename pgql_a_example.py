@@ -14,8 +14,10 @@
 """Sample module for incremental buildout of Async Sui GraphQL RPC for Pysui 1.0.0."""
 
 import asyncio
+import base64
 
-from pysui import SuiConfig, SuiRpcResult
+from pysui import SuiConfig, SuiRpcResult, AsyncClient
+from pysui.sui.sui_txn import AsyncTransaction
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
@@ -425,6 +427,24 @@ async def do_package(client: AsyncSuiGQLClient):
         print(result.result_data.to_json(indent=2))
 
 
+async def do_dry_run(client: AsyncSuiGQLClient):
+    """Execute a dry run."""
+    if client.chain_environment == "testnet":
+        txer = AsyncTransaction(client=AsyncClient(client.config))
+        scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
+        await txer.transfer_objects(
+            transfers=scres, recipient=client.config.active_address
+        )
+
+        tx_data = await txer.get_transaction_data()
+        tx_b64 = base64.b64encode(tx_data.serialize()).decode()
+        handle_result(
+            await client.execute_query(
+                with_query_node=qn.DryRunTransaction(tx_bytestr=tx_b64)
+            )
+        )
+
+
 async def main():
     """."""
     client_init = AsyncSuiGQLClient(
@@ -438,7 +458,7 @@ async def main():
     # await do_gas(client_init)
     # await do_sysstate(client_init)
     # await do_all_balances(client_init)
-    await do_object(client_init)
+    # await do_object(client_init)
     # await do_objects(client_init)
     # await do_past_object(client_init)
     # await do_multiple_past_object(client_init)
@@ -461,6 +481,7 @@ async def main():
     # await do_funcs(client_init)
     # await do_module(client_init)
     # await do_package(client_init)
+    await do_dry_run(client_init)
     ## Config
     # await do_chain_id(client_init)
     # await do_configs(client_init)

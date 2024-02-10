@@ -128,6 +128,11 @@ class BaseSuiGQLClient:
         return self._rpc_config.chainIdentifier
 
     @property
+    def chain_environment(self) -> str:
+        """Fetch which environment (testnet, devenet) operating with."""
+        return self._rpc_config.gqlEnvironment
+
+    @property
     def version(self) -> str:
         """Return the Sui GraphQL RPC Version
 
@@ -208,6 +213,7 @@ class SuiGQLClient(BaseSuiGQLClient):
         with self._rpc_client as session:
             qstr, fndeser = pgql_config()
             rpc_config = fndeser(session.execute(gql(qstr)))
+            rpc_config.gqlEnvironment = env_prefix
 
         super().__init__(
             url_str=gql_rpc_url,

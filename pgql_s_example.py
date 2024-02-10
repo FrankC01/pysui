@@ -13,7 +13,9 @@
 
 """Sample module for incremental buildout of Sui GraphQL RPC for Pysui 1.0.0."""
 
-from pysui import SuiConfig, SuiRpcResult
+import base64
+from pysui import SuiConfig, SuiRpcResult, SyncClient
+from pysui.sui.sui_txn import SyncTransaction
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
@@ -439,9 +441,24 @@ def do_package(client: SuiGQLClient):
         print(result.result_data.to_json(indent=2))
 
 
+def do_dry_run(client: SuiGQLClient):
+    """Execute a dry run."""
+    if client.chain_environment == "testnet":
+        txer = SyncTransaction(client=SyncClient(client.config))
+        scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+        txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+
+        tx_b64 = base64.b64encode(txer.get_transaction_data().serialize()).decode()
+        handle_result(
+            client.execute_query(
+                with_query_node=qn.DryRunTransaction(tx_bytestr=tx_b64)
+            )
+        )
+
+
 if __name__ == "__main__":
     client_init = SuiGQLClient(
-        write_schema=True,
+        write_schema=False,
         config=SuiConfig.default_config(),
     )
     print(f"Schema version {client_init.schema_version}")
@@ -451,7 +468,7 @@ if __name__ == "__main__":
     # do_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)  # BROKEN TIMEOUT
-    do_object(client_init)
+    # do_object(client_init)
     # do_objects(client_init)
     # do_past_object(client_init)
     # do_multiple_past_object(client_init)
@@ -476,6 +493,7 @@ if __name__ == "__main__":
     # do_funcs(client_init)
     # do_module(client_init)
     # do_package(client_init)
+    do_dry_run(client_init)
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)

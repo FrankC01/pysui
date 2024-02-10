@@ -377,17 +377,39 @@ class SuiCoinMetadataGQL(PGQL_Type):
 class TransactionResultGQL(PGQL_Type):
     """Transaction result representation class."""
 
-    digest: str
     sender: dict
     expiration: Union[dict, None]
     gas_input: dict
     effects: dict
+    digest: Optional[str] = ""
 
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionResultGQL":
         """."""
         if in_data.get("transactionBlock"):
             return TransactionResultGQL.from_dict(in_data.pop("transactionBlock"))
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class DryRunResultGQL(PGQL_Type):
+    """DryRun result representation class."""
+
+    transaction_block: TransactionResultGQL
+    error: Optional[str] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "DryRunResultGQL":
+        """."""
+        if in_data:
+            in_data = in_data.get("dryRun")
+            if in_data:
+                dr_err = in_data.pop("error")
+                tblock = TransactionResultGQL.from_query(in_data)
+                return DryRunResultGQL.from_dict(
+                    {"error": dr_err, "transaction_block": tblock}
+                )
         return NoopGQL.from_query()
 
 

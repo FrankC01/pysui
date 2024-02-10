@@ -1200,6 +1200,35 @@ class GetPackage(PGQL_QueryNode):
         return pgql_type.MovePackageGQL.from_query
 
 
+class DryRunTransaction(PGQL_QueryNode):
+    """."""
+
+    def __init__(self, *, tx_bytestr: str) -> None:
+        """__init__ Initialize GetPackage object."""
+        self.tx_data = tx_bytestr
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        std_txn = frag.StandardTransaction().fragment(schema)
+        base_obj = frag.BaseObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
+
+        qres = (
+            schema.Query.dryRunTransactionBlock(txBytes=self.tx_data)
+            .alias("dryRun")
+            .select(
+                schema.DryRunResult.error,
+                transactionBlock=schema.DryRunResult.transaction.select(std_txn),
+            )
+        )
+        return dsl_gql(base_obj, gas_cost, std_txn, DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
+        """Return the serialization MovePackage."""
+        return pgql_type.DryRunResultGQL.from_query
+
+
 #############################
 # TBD
 #############################

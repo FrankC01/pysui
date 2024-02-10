@@ -20,6 +20,7 @@ import dataclasses_json
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
+# TODO: Temporary Protocol Config hack, remove when ready
 _QUERY = """
 
     query {
@@ -41,7 +42,7 @@ _QUERY = """
             requestTimeoutMs
             maxQueryPayloadSize
         }
-      protocolConfig {
+      protocolConfig(protocolVersion:35) {
           protocolVersion
           configs {
             key
@@ -92,6 +93,7 @@ class SuiConfigGQL:
     serviceConfig: ServiceConfigGQL
     protocolConfig: pgql_type.ProtocolConfigGQL
     checkpoints: CheckpointConnectionGQL
+    gqlEnvironment: Optional[str] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SuiConfigGQL":
