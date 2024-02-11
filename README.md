@@ -39,7 +39,11 @@ pysui 0.52.0 contains initial support for our February 2024 target:
 
 1. **_December 2023_**: Synchronous and asynchronous GraphQL clients (experimental) with intial 'read' queries parallel to current pysui read _Builders_. Also expose underlying GraphQL for users to craft their own queries.
 2. **_January 2024_**: Continue with GraphQL and Builder parity changes. Mysten to roll out live data to devnet, testnet and mainnet. Note, only testnet was available in Jan '24.
-3. February 2024: Deprecate pysui Builders and existing SuiClients and enable SuiClient GraphQL 'streaming' support. Note, only testnet and mainnet are currently available in Feb '24, in addition 'streaming' is not yet supported.
+3. February 2024: Begin deprecatating pysui Builders and existing SuiClients and enable SuiClient GraphQL 'streaming' support. Note, only testnet and mainnet are currently available in Feb '24, in addition:
+
+  - DryRun and Execute are available
+  - streaming is not yet supported
+  - Examples for all supported queries and mutations are in pgql_s_example (Synchronous) and pgql_a_example (Asynchronous)
 4. Sometime in 2024: Remove Builders and Obsolete SuiClients and bump pysui to version 1.0.0.
 
 You can read pysui documentation on graphql [here](https://pysui.readthedocs.io/en/latest/graphql.html)
