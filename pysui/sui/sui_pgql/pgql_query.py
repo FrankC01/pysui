@@ -15,7 +15,14 @@
 
 from typing import Optional, Callable, Union, Any
 from gql import gql
-from gql.dsl import DSLQuery, dsl_gql, DSLSchema, DSLMetaField, DSLInlineFragment
+from gql.dsl import (
+    DSLQuery,
+    dsl_gql,
+    DSLSchema,
+    DSLMetaField,
+    DSLInlineFragment,
+    DSLMutation,
+)
 from graphql import DocumentNode
 
 from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode, PGQL_NoOp
@@ -569,15 +576,17 @@ class GetTx(PGQL_QueryNode):
         :return: The transaction query DocumentNode for specific digest
         :rtype: DocumentNode
         """
-        std_txn = frag.StandardTransaction()
-        base_object = frag.BaseObject()
-        gas_cost = frag.GasCost()
+        std_txn = frag.StandardTransaction().fragment(schema)
+        tx_effects = frag.StandardTxEffects().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
         qres = schema.Query.transactionBlock(digest=self.digest)
-        qres.select(std_txn.fragment(schema))
+        qres.select(std_txn)
         return dsl_gql(
-            std_txn.fragment(schema),
-            base_object.fragment(schema),
-            gas_cost.fragment(schema),
+            std_txn,
+            tx_effects,
+            base_object,
+            gas_cost,
             DSLQuery(qres),
         )
 
@@ -616,11 +625,9 @@ class GetMultipleTx(PGQL_QueryNode):
         if self.next_page:
             qres(after=self.next_page.endCursor)
 
-        pg_cursor = frag.PageCursor()
+        pg_cursor = frag.PageCursor().fragment(schema)
         qres.select(
-            cursor=schema.TransactionBlockConnection.pageInfo.select(
-                pg_cursor.fragment(schema)
-            ),
+            cursor=schema.TransactionBlockConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionBlockConnection.nodes.select(
                 schema.TransactionBlock.digest,
                 schema.TransactionBlock.effects.select(
@@ -631,7 +638,7 @@ class GetMultipleTx(PGQL_QueryNode):
             ),
         )
         return dsl_gql(
-            pg_cursor.fragment(schema),
+            pg_cursor,
             DSLQuery(qres),
         )
 
@@ -1204,7 +1211,7 @@ class DryRunTransaction(PGQL_QueryNode):
     """."""
 
     def __init__(self, *, tx_bytestr: str) -> None:
-        """__init__ Initialize GetPackage object."""
+        """__init__ Initialize DryRunTransaction object."""
         self.tx_data = tx_bytestr
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
@@ -1212,6 +1219,7 @@ class DryRunTransaction(PGQL_QueryNode):
         std_txn = frag.StandardTransaction().fragment(schema)
         base_obj = frag.BaseObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
+        tx_effects = frag.StandardTxEffects().fragment(schema)
 
         qres = (
             schema.Query.dryRunTransactionBlock(txBytes=self.tx_data)
@@ -1221,12 +1229,40 @@ class DryRunTransaction(PGQL_QueryNode):
                 transactionBlock=schema.DryRunResult.transaction.select(std_txn),
             )
         )
-        return dsl_gql(base_obj, gas_cost, std_txn, DSLQuery(qres))
+        return dsl_gql(base_obj, gas_cost, std_txn, tx_effects, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization MovePackage."""
         return pgql_type.DryRunResultGQL.from_query
+
+
+class ExecuteTransaction(PGQL_QueryNode):
+    """."""
+
+    def __init__(self, *, tx_bytestr: str, sig_array: list[str]) -> None:
+        """__init__ Initialize ExecuteTransaction object."""
+        self.tx_data: str = tx_bytestr
+        self.sigs: list[str] = sig_array
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        base_obj = frag.BaseObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
+        tx_effects = frag.StandardTxEffects().fragment(schema)
+
+        qres = schema.Mutation.executeTransactionBlock(
+            txBytes=self.tx_data, signatures=self.sigs
+        ).select(
+            schema.ExecutionResult.errors,
+            executionEffects=schema.ExecutionResult.effects.select(tx_effects),
+        )
+        return dsl_gql(base_obj, gas_cost, tx_effects, DSLMutation(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.ExecutionResultGQL], None]:
+        """Return the serialization Execution result function."""
+        return pgql_type.ExecutionResultGQL.from_query
 
 
 #############################

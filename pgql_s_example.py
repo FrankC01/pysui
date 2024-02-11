@@ -223,7 +223,7 @@ def do_tx(client: SuiGQLClient):
     handle_result(
         client.execute_query(
             with_query_node=qn.GetTx(
-                digest="2ijgsaTtrVjgVnkVY3JeRsZ6CRhhf6YFWxJniRVCBv3B"
+                digest="6GkzHKUPJaG1umRizcBFiidRKmfYAfoejwsBne43AwoN"
             )
         )
     )
@@ -456,6 +456,27 @@ def do_dry_run(client: SuiGQLClient):
         )
 
 
+def do_execute(client: SuiGQLClient):
+    """Execute a transaction."""
+    if client.chain_environment == "testnet":
+        rpc_client = SyncClient(client.config)
+        txer = SyncTransaction(client=rpc_client)
+        scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+        txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+        tx_b64 = txer.deferred_execution(run_verification=True)
+        print(tx_b64)
+        sig_array = txer.signer_block.get_signatures(client=rpc_client, tx_bytes=tx_b64)
+        rsig_array = [x.value for x in sig_array.array]
+        print(rsig_array)
+        handle_result(
+            client.execute_query(
+                with_query_node=qn.ExecuteTransaction(
+                    tx_bytestr=tx_b64, sig_array=rsig_array
+                )
+            )
+        )
+
+
 if __name__ == "__main__":
     client_init = SuiGQLClient(
         write_schema=False,
@@ -475,7 +496,7 @@ if __name__ == "__main__":
     # do_objects_for(client_init)
     # do_dynamics(client_init)
     # do_event(client_init)
-    # do_tx(client_init)
+    do_tx(client_init)
     # do_txs(client_init)
     # do_staked_sui(client_init)  # BROKEN TIMEOUT
     # do_latest_cp(client_init)
@@ -493,7 +514,8 @@ if __name__ == "__main__":
     # do_funcs(client_init)
     # do_module(client_init)
     # do_package(client_init)
-    do_dry_run(client_init)
+    # do_dry_run(client_init)
+    # do_execute(client_init)
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)

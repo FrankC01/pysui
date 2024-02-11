@@ -170,13 +170,69 @@ class StandardEvent(PGQL_Fragment):
         )
 
 
+class StandardTxEffects(PGQL_Fragment):
+    """StandardTxEffects reusable fragment."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        base_obj = BaseObject().fragment(schema)
+        gas_cost = GasCost().fragment(schema)
+
+        return (
+            DSLFragment("TxEffects")
+            .on(schema.TransactionBlockEffects)
+            .select(
+                schema.TransactionBlockEffects.status,
+                schema.TransactionBlockEffects.errors,
+                schema.TransactionBlockEffects.timestamp,
+                schema.TransactionBlockEffects.balanceChanges.select(
+                    schema.BalanceChangeConnection.nodes.select(
+                        schema.BalanceChange.coinType.select(
+                            coin_type=schema.MoveType.repr
+                        ),
+                        balance_change=schema.BalanceChange.amount,
+                        change_to=schema.BalanceChange.owner.select(
+                            object_id=schema.Owner.address
+                        ),
+                    )
+                ),
+                schema.TransactionBlockEffects.gasEffects.select(
+                    schema.GasEffects.gasObject.select(
+                        gas_object_id=schema.Object.address,
+                    ),
+                    schema.GasEffects.gasSummary.select(gas_cost),
+                ),
+                schema.TransactionBlockEffects.objectChanges.select(
+                    schema.ObjectChangeConnection.nodes.select(
+                        address=schema.ObjectChange.address,
+                        deleted=schema.ObjectChange.idDeleted,
+                        created=schema.ObjectChange.idCreated,
+                        input_state=schema.ObjectChange.inputState.select(base_obj),
+                        output_state=schema.ObjectChange.outputState.select(base_obj),
+                    )
+                ),
+                schema.TransactionBlockEffects.checkpoint.select(
+                    schema.Checkpoint.sequenceNumber,
+                    schema.Checkpoint.networkTotalTransactions,
+                    schema.Checkpoint.timestamp,
+                    schema.Checkpoint.epoch.select(
+                        schema.Epoch.epochId,
+                        schema.Epoch.startTimestamp,
+                        schema.Epoch.endTimestamp,
+                    ),
+                ),
+            )
+        )
+
+
 class StandardTransaction(PGQL_Fragment):
     """StandardTransaction reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
-        base_obj = BaseObject()
-        gas_cost = GasCost()
+        base_obj = BaseObject().fragment(schema)
+        tx_effects = StandardTxEffects().fragment(schema)
         return (
             DSLFragment("TxStandard")
             .on(schema.TransactionBlock)
@@ -194,55 +250,55 @@ class StandardTransaction(PGQL_Fragment):
                     ),
                     sponsor_pay_with=schema.GasInput.gasPayment.select(
                         gas_objects=schema.ObjectConnection.nodes.select(
-                            base_obj.fragment(schema),
+                            base_obj,
                         )
                     ),
                 ),
-                schema.TransactionBlock.effects.select(
-                    schema.TransactionBlockEffects.status,
-                    schema.TransactionBlockEffects.errors,
-                    schema.TransactionBlockEffects.timestamp,
-                    schema.TransactionBlockEffects.balanceChanges.select(
-                        schema.BalanceChangeConnection.nodes.select(
-                            schema.BalanceChange.coinType.select(
-                                coin_type=schema.MoveType.repr
-                            ),
-                            balance_change=schema.BalanceChange.amount,
-                            change_to=schema.BalanceChange.owner.select(
-                                object_id=schema.Owner.address
-                            ),
-                        )
-                    ),
-                    schema.TransactionBlockEffects.gasEffects.select(
-                        schema.GasEffects.gasObject.select(
-                            gas_object_id=schema.Object.address,
-                        ),
-                        schema.GasEffects.gasSummary.select(gas_cost.fragment(schema)),
-                    ),
-                    schema.TransactionBlockEffects.objectChanges.select(
-                        schema.ObjectChangeConnection.nodes.select(
-                            address=schema.ObjectChange.address,
-                            deleted=schema.ObjectChange.idDeleted,
-                            created=schema.ObjectChange.idCreated,
-                            input_state=schema.ObjectChange.inputState.select(
-                                base_obj.fragment(schema)
-                            ),
-                            output_state=schema.ObjectChange.outputState.select(
-                                base_obj.fragment(schema)
-                            ),
-                        )
-                    ),
-                    schema.TransactionBlockEffects.checkpoint.select(
-                        schema.Checkpoint.sequenceNumber,
-                        schema.Checkpoint.networkTotalTransactions,
-                        schema.Checkpoint.timestamp,
-                        schema.Checkpoint.epoch.select(
-                            schema.Epoch.epochId,
-                            schema.Epoch.startTimestamp,
-                            schema.Epoch.endTimestamp,
-                        ),
-                    ),
-                ),
+                schema.TransactionBlock.effects.select(tx_effects),
+                #     schema.TransactionBlockEffects.status,
+                #     schema.TransactionBlockEffects.errors,
+                #     schema.TransactionBlockEffects.timestamp,
+                #     schema.TransactionBlockEffects.balanceChanges.select(
+                #         schema.BalanceChangeConnection.nodes.select(
+                #             schema.BalanceChange.coinType.select(
+                #                 coin_type=schema.MoveType.repr
+                #             ),
+                #             balance_change=schema.BalanceChange.amount,
+                #             change_to=schema.BalanceChange.owner.select(
+                #                 object_id=schema.Owner.address
+                #             ),
+                #         )
+                #     ),
+                #     schema.TransactionBlockEffects.gasEffects.select(
+                #         schema.GasEffects.gasObject.select(
+                #             gas_object_id=schema.Object.address,
+                #         ),
+                #         schema.GasEffects.gasSummary.select(gas_cost.fragment(schema)),
+                #     ),
+                #     schema.TransactionBlockEffects.objectChanges.select(
+                #         schema.ObjectChangeConnection.nodes.select(
+                #             address=schema.ObjectChange.address,
+                #             deleted=schema.ObjectChange.idDeleted,
+                #             created=schema.ObjectChange.idCreated,
+                #             input_state=schema.ObjectChange.inputState.select(
+                #                 base_obj.fragment(schema)
+                #             ),
+                #             output_state=schema.ObjectChange.outputState.select(
+                #                 base_obj.fragment(schema)
+                #             ),
+                #         )
+                #     ),
+                #     schema.TransactionBlockEffects.checkpoint.select(
+                #         schema.Checkpoint.sequenceNumber,
+                #         schema.Checkpoint.networkTotalTransactions,
+                #         schema.Checkpoint.timestamp,
+                #         schema.Checkpoint.epoch.select(
+                #             schema.Epoch.epochId,
+                #             schema.Epoch.startTimestamp,
+                #             schema.Epoch.endTimestamp,
+                #         ),
+                #     ),
+                # ),
                 # txn_kind=schema.TransactionBlock.kind.select(
                 #     DSLInlineFragment()
                 #     .on(schema.ProgrammableTransactionBlock)

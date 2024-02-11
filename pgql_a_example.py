@@ -445,6 +445,29 @@ async def do_dry_run(client: AsyncSuiGQLClient):
         )
 
 
+async def do_execute(client: AsyncSuiGQLClient):
+    """Execute a transaction."""
+    if client.chain_environment == "testnet":
+        rpc_client = AsyncClient(client.config)
+        txer = AsyncTransaction(client=rpc_client)
+        scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
+        await txer.transfer_objects(
+            transfers=scres, recipient=client.config.active_address
+        )
+        tx_b64 = await txer.deferred_execution(run_verification=True)
+        print(tx_b64)
+        sig_array = txer.signer_block.get_signatures(client=rpc_client, tx_bytes=tx_b64)
+        rsig_array = [x.value for x in sig_array.array]
+        print(rsig_array)
+        handle_result(
+            await client.execute_query(
+                with_query_node=qn.ExecuteTransaction(
+                    tx_bytestr=tx_b64, sig_array=rsig_array
+                )
+            )
+        )
+
+
 async def main():
     """."""
     client_init = AsyncSuiGQLClient(
@@ -481,7 +504,8 @@ async def main():
     # await do_funcs(client_init)
     # await do_module(client_init)
     # await do_package(client_init)
-    await do_dry_run(client_init)
+    # await do_dry_run(client_init)
+    await do_execute(client_init)
     ## Config
     # await do_chain_id(client_init)
     # await do_configs(client_init)

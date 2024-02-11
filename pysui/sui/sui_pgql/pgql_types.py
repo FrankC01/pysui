@@ -415,6 +415,29 @@ class DryRunResultGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ExecutionResultGQL(PGQL_Type):
+    """Execution result representation class."""
+
+    execution_effects: dict
+    errors: Optional[list[str]] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ExecutionResultGQL":
+        """."""
+        if in_data:
+            in_data = in_data.get("executeTransactionBlock")
+            if in_data:
+                return ExecutionResultGQL.from_dict(in_data)
+                # dr_err = in_data.pop("errors")
+                # tblock = TransactionResultGQL.from_query(in_data)
+                # return ExecutionResultGQL.from_dict(
+                #     {"errors": dr_err, "executionEffects": tblock}
+                # )
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class TransactionSummaryGQL(PGQL_Type):
     digest: str
     status: str
