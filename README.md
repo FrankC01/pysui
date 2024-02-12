@@ -14,6 +14,8 @@ Python Client SDK for Sui blockchain
 - Rust (stable) for installation of Sui Binaries (optional) and building `pysui-fastcrypto` Rust wrapper (required)
 - Python version >= 3.10
 
+**Note**: With 0.52.0 it is recommended to start a new virtual environment and installing from PyPi!
+
 ## pysui SDK current (github)
 
 **Release-0.52.0**
@@ -22,7 +24,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.51.2**
+**Release-0.52.0**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 

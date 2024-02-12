@@ -15,6 +15,8 @@ fields and format results, while similar, are not guarenteed to be identical. Se
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/192) Fixed pure string length encoding [PR](https://github.com/FrankC01/pysui/pull/191)
+
 ### Changed
 
 ### Removed

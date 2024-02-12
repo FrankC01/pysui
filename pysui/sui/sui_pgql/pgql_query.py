@@ -1247,17 +1247,20 @@ class ExecuteTransaction(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""
-        base_obj = frag.BaseObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
-        tx_effects = frag.StandardTxEffects().fragment(schema)
 
         qres = schema.Mutation.executeTransactionBlock(
             txBytes=self.tx_data, signatures=self.sigs
         ).select(
             schema.ExecutionResult.errors,
-            executionEffects=schema.ExecutionResult.effects.select(tx_effects),
+            schema.ExecutionResult.effects.select(
+                schema.TransactionBlockEffects.status,
+                schema.TransactionBlockEffects.lamportVersion,
+                schema.TransactionBlockEffects.transactionBlock.select(
+                    schema.TransactionBlock.digest
+                ),
+            ),
         )
-        return dsl_gql(base_obj, gas_cost, tx_effects, DSLMutation(qres))
+        return dsl_gql(DSLMutation(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.ExecutionResultGQL], None]:

@@ -418,7 +418,9 @@ class DryRunResultGQL(PGQL_Type):
 class ExecutionResultGQL(PGQL_Type):
     """Execution result representation class."""
 
-    execution_effects: dict
+    status: str
+    lamport_version: int
+    digest: str
     errors: Optional[list[str]] = None
 
     @classmethod
@@ -427,12 +429,9 @@ class ExecutionResultGQL(PGQL_Type):
         if in_data:
             in_data = in_data.get("executeTransactionBlock")
             if in_data:
-                return ExecutionResultGQL.from_dict(in_data)
-                # dr_err = in_data.pop("errors")
-                # tblock = TransactionResultGQL.from_query(in_data)
-                # return ExecutionResultGQL.from_dict(
-                #     {"errors": dr_err, "executionEffects": tblock}
-                # )
+                fdict: dict = {}
+                _fast_flat(in_data, fdict)
+                return ExecutionResultGQL.from_dict(fdict)
         return NoopGQL.from_query()
 
 
