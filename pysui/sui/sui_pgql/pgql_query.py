@@ -1207,10 +1207,67 @@ class GetPackage(PGQL_QueryNode):
         return pgql_type.MovePackageGQL.from_query
 
 
+class DryRunTransactionKind(PGQL_QueryNode):
+    """."""
+
+    def __init__(
+        self,
+        *,
+        tx_bytestr: str,
+        tx_meta: Optional[dict] = None,
+        skip_checks: Optional[bool] = True,
+    ) -> None:
+        """__init__ Initialize DryRunTransactionKind object.
+
+        for the `tx_meta` argument, it expects a dictionary with one or more keys set.
+        {
+            sender: The Sui address string for the sender (defaults to 0x0),
+            gasPrice: The gas price integer (defaults to reference gas price)
+            gasObjects: list[dict] A list of gas object references, defaults to mock Coin object. Reference dict:
+                {
+                    address: The object id string of the gas object
+                    version: The version integer of the gas object
+                    digest: The digest of the gas object
+                }
+            gasBudget: The budget to use. Defaults to max gas budget
+            gasSponsor: The Sui address string of the sponsor, defaults to the sender
+        }
+        """
+        self.tx_data = tx_bytestr
+        self.tx_meta = tx_meta if tx_meta else {}
+        self.tx_skipchecks = skip_checks
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        std_txn = frag.StandardTransaction().fragment(schema)
+        base_obj = frag.BaseObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
+        tx_effects = frag.StandardTxEffects().fragment(schema)
+
+        qres = (
+            schema.Query.dryRunTransactionBlock(
+                txBytes=self.tx_data,
+                txMeta=self.tx_meta,
+                skipChecks=self.tx_skipchecks,
+            )
+            .alias("dryRun")
+            .select(
+                schema.DryRunResult.error,
+                transactionBlock=schema.DryRunResult.transaction.select(std_txn),
+            )
+        )
+        return dsl_gql(base_obj, gas_cost, std_txn, tx_effects, DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
+        """Return the serialization MovePackage."""
+        return pgql_type.DryRunResultGQL.from_query
+
+
 class DryRunTransaction(PGQL_QueryNode):
     """."""
 
-    def __init__(self, *, tx_bytestr: str) -> None:
+    def __init__(self, *, tx_bytestr) -> None:
         """__init__ Initialize DryRunTransaction object."""
         self.tx_data = tx_bytestr
 

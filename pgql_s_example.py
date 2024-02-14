@@ -441,8 +441,23 @@ def do_package(client: SuiGQLClient):
         print(result.result_data.to_json(indent=2))
 
 
+def do_dry_run_kind(client: SuiGQLClient):
+    """Execute a dry run with TransactionKind where meta data is set by caller."""
+    if client.chain_environment == "testnet":
+        txer = SyncTransaction(client=SyncClient(client.config))
+        scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+        txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+
+        tx_b64 = base64.b64encode(txer.raw_kind().serialize()).decode()
+        handle_result(
+            client.execute_query(
+                with_query_node=qn.DryRunTransactionKind(tx_bytestr=tx_b64)
+            )
+        )
+
+
 def do_dry_run(client: SuiGQLClient):
-    """Execute a dry run."""
+    """Execute a dry run with TransactionData where gas and budget set by txer."""
     if client.chain_environment == "testnet":
         txer = SyncTransaction(client=SyncClient(client.config))
         scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
@@ -506,9 +521,9 @@ if __name__ == "__main__":
     # do_digest_cp(client_init)
     # do_checkpoints(client_init)
     # do_nameservice(client_init)
-    # do_owned_nameservice(client_init) # BROKEN TIMEOUT
-    # do_validators_apy(client_init)  # BROKEN TIMEOUT
-    # do_validators(client_init) # BROKEN TIMEOUT
+    # do_owned_nameservice(client_init)  # BROKEN TIMEOUT
+    # do_validators_apy(client_init)
+    # do_validators(client_init)
     # do_refgas(client_init)
     # do_struct(client_init)
     # do_structs(client_init)
@@ -517,7 +532,10 @@ if __name__ == "__main__":
     # do_module(client_init)
     # do_package(client_init)
     # do_dry_run(client_init)
-    do_execute(client_init)
+    do_dry_run_kind(client_init)
+    # do_execute(client_init)
+    ## Painful
+
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)
