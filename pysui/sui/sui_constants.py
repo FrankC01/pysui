@@ -51,8 +51,11 @@ TESTNET_ENVIRONMENT_KEY: str = "testnet"
 
 DEVNET_SUI_URL: str = "https://fullnode.devnet.sui.io:443"
 """Devnet Sui client url."""
-DEVNET_FAUCET_URL: str = "https://faucet.devnet.sui.io/gas"
-"""Devnet client faucet url."""
+# DEVNET_FAUCET_URL: str = "https://faucet.devnet.sui.io/gas"
+# """Devnet client faucet url."""
+DEVNET_FAUCET_URLV1: str = "https://faucet.devnet.sui.io/v1/gas"
+DEVNET_FAUCET_STATUS_URLV1: str = "https://faucet.devnet.sui.io/v1/status/"
+"""Devnet client faucet url V1."""
 DEVNET_SOCKET_URL: str = "wss://fullnode.devnet.sui.io:443"
 """Devnet socket url."""
 
@@ -67,10 +70,10 @@ LOCALNET_SOCKET_URL: str = "ws://127.0.0.1:9000"
 
 TESTNET_SUI_URL: str = "https://fullnode.testnet.sui.io:443"
 """Testnet Sui client url."""
-TESTNET_FAUCET_URL: str = (
+TESTNET_FAUCET_URLV1: str = (
     "https://faucet.testnet.sui.io/v1/gas"  # "http://faucet.testnet.sui.io/gas"
 )
-TESTNET_FAUCET_STATUS_URL: str = "https://faucet.testnet.sui.io/v1/status/"
+TESTNET_FAUCET_STATUS_URLV1: str = "https://faucet.testnet.sui.io/v1/status/"
 TESTNET_SOCKET_URL: str = "wss://fullnode.testnet.sui.io:443"
 """Testnet socket url."""
 

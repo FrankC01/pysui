@@ -30,7 +30,10 @@ from pysui import (
 )
 
 from pysui.sui.sui_clients.common import ClientMixin
-from pysui.sui.sui_constants import TESTNET_FAUCET_STATUS_URL
+from pysui.sui.sui_constants import (
+    TESTNET_FAUCET_STATUS_URLV1,
+    DEVNET_FAUCET_STATUS_URLV1,
+)
 from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
 from pysui.sui.sui_types.scalars import (
     SuiInteger,
@@ -327,6 +330,7 @@ class SuiClient(ClientMixin):
         version="0.28.0",
         reason="Added fetch_all as currently limited by RPC providers results",
     )
+    @deprecated(version="0.53.0", reason="Transition to GraphQL QueryNode")
     async def get_gas(
         self, address: SuiAddress = None, fetch_all: Optional[bool] = False
     ) -> SuiRpcResult:
@@ -347,6 +351,7 @@ class SuiClient(ClientMixin):
         version="0.28.0",
         reason="Added fetch_all as currently limited by RPC providers results",
     )
+    @deprecated(version="0.53.0", reason="Transition to GraphQL QueryNode")
     async def get_coin(
         self,
         coin_type: SuiString,
@@ -385,10 +390,10 @@ class SuiClient(ClientMixin):
         """
         for_address = for_address or self.config.active_address
 
-        async def _test_faucet_status(task_id: str) -> SuiRpcResult:
+        async def _faucet_status(furl: str, task_id: str) -> SuiRpcResult:
             while True:
                 result = await self._client.get(
-                    TESTNET_FAUCET_STATUS_URL + task_id,
+                    furl + task_id,
                 ).json()
                 if result["error"]:
                     return SuiRpcResult(False, f"Error on status for task {task_id}")
@@ -411,16 +416,22 @@ class SuiClient(ClientMixin):
 
         try:
             if self.config.faucet_url:
-                result = await self._client.post(
+                s1 = await self._client.post(
                     self.config.faucet_url,
                     headers=GetObjectsOwnedByAddress(for_address).header,
                     json={"FixedAmountRequest": {"recipient": f"{for_address}"}},
                 )
-                result = result.json()
+                # If exhausted requests
+                if s1.status_code == 429:
+                    return SuiRpcResult(False, s1.reason_phrase)
+                result = s1.json()
                 if result["error"] is None:
-                    if self.config.environment == "testnet":
-                        return await _test_faucet_status(result["task"])
-                    return SuiRpcResult(True, None, FaucetGasRequest.from_dict(result))
+                    faucet_status = (
+                        DEVNET_FAUCET_STATUS_URLV1
+                        if self.config.environment == "devnet"
+                        else TESTNET_FAUCET_STATUS_URLV1
+                    )
+                    return await _faucet_status(faucet_status, result["task"])
                 return SuiRpcResult(False, result["error"])
             else:
                 return SuiRpcResult(False, "Faucet not enabled for this configuration.")
@@ -435,6 +446,7 @@ class SuiClient(ClientMixin):
         version="0.28.0",
         reason="Added fetch_all as currently limited by RPC providers results",
     )
+    @deprecated(version="0.53.0", reason="Transition to GraphQL QueryNode")
     async def get_objects(
         self,
         address: SuiAddress = None,
@@ -474,6 +486,7 @@ class SuiClient(ClientMixin):
                 result = SuiRpcResult(True, "", objread_page)
         return result
 
+    @deprecated(version="0.53.0", reason="Transition to GraphQL QueryNode")
     async def get_object(
         self, identifier: ObjectID, version: SuiInteger = None
     ) -> Union[SuiRpcResult, Exception]:
@@ -496,6 +509,7 @@ class SuiClient(ClientMixin):
         version="0.29.0",
         reason="Handles large identifier list",
     )
+    @deprecated(version="0.53.0", reason="Transition to GraphQL QueryNode")
     async def get_objects_for(
         self, identifiers: list[ObjectID]
     ) -> Union[SuiRpcResult, Exception]:
@@ -526,6 +540,7 @@ class SuiClient(ClientMixin):
         return result
         # return await self.execute(GetMultipleObjects(object_ids=identifiers))
 
+    @deprecated(version="0.53.0", reason="Transition to GraphQL QueryNode")
     async def get_package(self, package_id: ObjectID) -> Union[SuiRpcResult, Exception]:
         """get_package Get details of Sui package.
 
@@ -539,6 +554,7 @@ class SuiClient(ClientMixin):
         result = await self.execute(GetPackage(package=package_id))
         return result
 
+    @deprecated(version="0.53.0", reason="Transition to GraphQL QueryNode")
     async def get_events(
         self,
         *,

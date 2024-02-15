@@ -41,11 +41,11 @@ from pysui.sui.sui_constants import (
     DEFAULT_SUI_BINARY_PATH,
     DEFAULT_DEVNET_PATH_STRING,
     DEVNET_SUI_URL,
-    DEVNET_FAUCET_URL,
+    DEVNET_FAUCET_URLV1,
     DEVNET_SOCKET_URL,
     LOCALNET_FAUCET_URL,
     LOCALNET_SOCKET_URL,
-    TESTNET_FAUCET_URL,
+    TESTNET_FAUCET_URLV1,
     TESTNET_SOCKET_URL,
     TESTNET_SUI_URL,
 )
@@ -117,10 +117,10 @@ class SuiConfig(ClientConfiguration):
         self._socket_url = None
         match self._current_env:
             case "devnet":
-                self._faucet_url = DEVNET_FAUCET_URL
+                self._faucet_url = DEVNET_FAUCET_URLV1
                 self._socket_url = socket_url if socket_url else DEVNET_SOCKET_URL
             case "testnet":
-                self._faucet_url = TESTNET_FAUCET_URL
+                self._faucet_url = TESTNET_FAUCET_URLV1
                 self._socket_url = socket_url if socket_url else TESTNET_SOCKET_URL
             case "localnet" | "localnet_proxy":
                 self._faucet_url = LOCALNET_FAUCET_URL
@@ -291,7 +291,11 @@ class SuiConfig(ClientConfiguration):
             f"Creating new keypair for type {scheme.as_str} with alias {alias}"
         )
         match scheme:
-            case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
+            case (
+                SignatureScheme.ED25519
+                | SignatureScheme.SECP256K1
+                | SignatureScheme.SECP256R1
+            ):
                 # First, early check alias given or create new one
                 alias = self._alias_check_or_gen(
                     aliases=self.aliases, alias=alias, word_counts=word_counts
@@ -366,7 +370,11 @@ class SuiConfig(ClientConfiguration):
         """
         logger.debug(f"Recovering keypair of type {scheme.as_str} with alias {alias}")
         match scheme:
-            case SignatureScheme.ED25519 | SignatureScheme.SECP256K1 | SignatureScheme.SECP256R1:
+            case (
+                SignatureScheme.ED25519
+                | SignatureScheme.SECP256K1
+                | SignatureScheme.SECP256R1
+            ):
                 alias = self._alias_check_or_gen(aliases=self.aliases, alias=alias)
                 mnem, keypair, address = recover_key_and_address(
                     scheme, mnemonics, derivation_path
@@ -625,10 +633,10 @@ class SuiConfig(ClientConfiguration):
         config._current_url = rpc_url
         config._current_env = EMPEHMERAL_USER
         if rpc_url == DEVNET_SUI_URL:
-            config._faucet_url = DEVNET_FAUCET_URL
+            config._faucet_url = DEVNET_FAUCET_URLV1
             config._socket_url = ws_url or DEVNET_SOCKET_URL
         elif rpc_url == TESTNET_SUI_URL:
-            config._faucet_url = TESTNET_FAUCET_URL
+            config._faucet_url = TESTNET_FAUCET_URLV1
             config._socket_url = ws_url or TESTNET_SOCKET_URL
         elif rpc_url == LOCALNET_SUI_URL or rpc_url == LOCALNET_PROXY_SUI_URL:
             config._faucet_url = LOCALNET_FAUCET_URL
