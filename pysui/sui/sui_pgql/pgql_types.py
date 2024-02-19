@@ -15,6 +15,7 @@
 from abc import ABC, abstractmethod
 
 import dataclasses
+from enum import IntEnum
 from typing import Any, Optional, Union, Callable
 import dataclasses_json
 import json
@@ -668,6 +669,100 @@ class MoveStructuresGQL:
         return NoopGQL.from_query()
 
 
+class RefType(IntEnum):
+    """."""
+
+    NO_REF = 0
+    REF = 1
+    MUT_REF = 2
+
+    @classmethod
+    def from_ref(cls, rstr: str) -> "RefType":
+        """."""
+        return (
+            RefType.REF
+            if rstr == "&"
+            else RefType.MUT_REF if rstr == "&mut" else RefType.NO_REF
+        )
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveTypeArg:
+    """."""
+
+    ref: RefType
+    scalar_type: str
+
+    @classmethod
+    def from_str(cls, in_ref: str, in_type: str) -> "MoveTypeArg":
+        """ "."""
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveScalarArg:
+    """."""
+
+    ref: RefType
+    scalar_type: str
+
+    @classmethod
+    def from_str(cls, in_ref: str, in_type: str) -> "MoveScalarArg":
+        """ "."""
+        return cls(RefType.from_ref(in_ref), in_type)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveObjectRefArg:
+    """."""
+
+    ref: RefType
+    obj_type: str
+    needs_type: bool
+
+    @classmethod
+    def from_body(cls, in_ref: str, in_type: dict) -> "MoveObjectRefArg":
+        """ "."""
+        return cls(
+            RefType.from_ref(in_ref),
+            in_type["package"] + "::" + in_type["module"] + "::" + in_type["type"],
+            bool(in_type.get("typeParameters")),
+        )
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveVectorArg:
+    """."""
+
+    ref: RefType
+    vec_arg: Union[MoveScalarArg, MoveObjectRefArg]
+
+    @classmethod
+    def from_body(cls, in_ref: str, in_type: dict) -> "MoveVectorArg":
+        """ "."""
+        from_vec = in_type["vector"]
+        return cls(
+            RefType.from_ref(in_ref),
+            (
+                MoveScalarArg.from_str("", from_vec)
+                if isinstance(from_vec, str)
+                else MoveObjectRefArg.from_body("", from_vec["datatype"])
+            ),
+        )
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveArgSummary:
+    """."""
+
+    arg_list: list[Union[MoveScalarArg, MoveObjectRefArg, MoveTypeArg, MoveVectorArg]]
+    returns: Optional[int] = None
+
+
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class MoveFunctionGQL:
@@ -685,6 +780,26 @@ class MoveFunctionGQL:
         fdict: dict = {}
         _fast_flat(in_data, fdict)
         return MoveFunctionGQL.from_dict(fdict)
+
+    def arg_summary(self) -> MoveArgSummary:
+        """Summarize the function's arguments."""
+        a_list: list = []
+        for parm in self.parameters:
+            sig = parm.get("signature")
+            ref = sig.get("ref")
+            body = sig.get("body")
+            if "datatype" in body:
+                if body.get("datatype")["type"] == "TxContext":
+                    continue
+                a_list.append(MoveObjectRefArg.from_body(ref, body.get("datatype")))
+            elif "vector" in body:
+                a_list.append(MoveVectorArg.from_body(ref, body))
+            else:
+                if isinstance(body, dict):
+                    a_list.append((ref, "type", body))
+                else:
+                    a_list.append(MoveScalarArg.from_str(ref, body))
+        return MoveArgSummary(a_list, len(self.returns) if self.returns else None)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

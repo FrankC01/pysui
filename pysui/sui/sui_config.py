@@ -35,6 +35,7 @@ from pysui.sui.sui_constants import (
     EMPEHMERAL_USER,
     LOCALNET_PROXY_SUI_URL,
     LOCALNET_SUI_URL,
+    MAINNET_SUI_URL,
     MAINNET_SOCKET_URL,
     PYSUI_EXEC_ENV,
     PYSUI_CLIENT_CONFIG_ENV,
@@ -101,12 +102,14 @@ class SuiConfig(ClientConfiguration):
     __ALIAS_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9._-]*$")
 
     @versionchanged(version="0.29.0", reason="Now accepts ws url.")
+    @versionchanged(version="0.53.0", reason="Added GraphQL url property.")
     def _initiate(
         self,
         active_address: str,
         rpc_url: str,
         socket_url: str,
         environment: str,
+        gql_url: Optional[str] = None,
     ) -> None:
         """."""
         self._active_address = SuiAddress(active_address)
@@ -115,6 +118,7 @@ class SuiConfig(ClientConfiguration):
         self._local_running = False
         self._faucet_url = None
         self._socket_url = None
+        self._current_graphql_url = gql_url
         match self._current_env:
             case "devnet":
                 self._faucet_url = DEVNET_FAUCET_URLV1
@@ -600,6 +604,7 @@ class SuiConfig(ClientConfiguration):
         rpc_url: str,
         prv_keys: Optional[list[Union[str, dict]]] = None,
         ws_url: Optional[str] = None,
+        gql_url: Optional[str] = None,
     ) -> "SuiConfig":
         """user_config Load a user defined configuraiton.
 
@@ -620,6 +625,8 @@ class SuiConfig(ClientConfiguration):
         :type prv_keys: Optional[list[Union[str, dict]]], optional
         :param ws_url: Optional wss url for subscriptions, defaults to None
         :type ws_url: Optional[str], optional
+        :param gql_url: Optional GraphQL RPC url, defaults to None
+        :type gql_url: Optional[str], optional
         :return: An instance of SuiConfig that can be used to initialize a SuiClient
         :rtype: SuiConfig
         """
@@ -631,6 +638,7 @@ class SuiConfig(ClientConfiguration):
         _set_env_vars(EMPEHMERAL_PATH, EMPEHMERAL_PATH)
         config._current_env = EMPEHMERAL_USER
         config._current_url = rpc_url
+        config._current_graphql_url = gql_url
         config._current_env = EMPEHMERAL_USER
         if rpc_url == DEVNET_SUI_URL:
             config._faucet_url = DEVNET_FAUCET_URLV1
@@ -638,6 +646,9 @@ class SuiConfig(ClientConfiguration):
         elif rpc_url == TESTNET_SUI_URL:
             config._faucet_url = TESTNET_FAUCET_URLV1
             config._socket_url = ws_url or TESTNET_SOCKET_URL
+        elif rpc_url == MAINNET_SUI_URL:
+            config._faucet_url = EMPEHMERAL_PATH
+            config._socket_url = ws_url or MAINNET_SOCKET_URL
         elif rpc_url == LOCALNET_SUI_URL or rpc_url == LOCALNET_PROXY_SUI_URL:
             config._faucet_url = LOCALNET_FAUCET_URL
             config._socket_url = ws_url or LOCALNET_SOCKET_URL
@@ -658,6 +669,11 @@ class SuiConfig(ClientConfiguration):
     def rpc_url(self) -> str:
         """Return the current URL."""
         return self._current_url
+
+    @property
+    def graphql_url(self) -> str:
+        """Return the GraphQL RPC URL."""
+        return self._current_graphql_url
 
     @property
     def local_config(self) -> bool:

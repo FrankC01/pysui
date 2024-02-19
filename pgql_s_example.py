@@ -394,7 +394,8 @@ def do_func(client: SuiGQLClient):
         )
     )
     if result.is_ok():
-        print(result.result_data.to_json(indent=2))
+        mv_fn: ptypes.MoveFunctionGQL = result.result_data
+        print(mv_fn.to_json(indent=2))
 
 
 def do_funcs(client: SuiGQLClient):
@@ -505,7 +506,7 @@ if __name__ == "__main__":
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_sysstate(client_init)
-    # do_all_balances(client_init)  # BROKEN TIMEOUT
+    # do_all_balances(client_init)
     # do_object(client_init)
     # do_objects(client_init)
     # do_past_object(client_init)
@@ -527,12 +528,12 @@ if __name__ == "__main__":
     # do_refgas(client_init)
     # do_struct(client_init)
     # do_structs(client_init)
-    # do_func(client_init)
+    do_func(client_init)
     # do_funcs(client_init)
     # do_module(client_init)
     # do_package(client_init)
     # do_dry_run(client_init)
-    do_dry_run_kind(client_init)
+    # do_dry_run_kind(client_init)
     # do_execute(client_init)
     ## Painful
 

@@ -27,8 +27,6 @@ from pysui.sui.sui_types.scalars import SuiSignature, SuiString
 
 from pysui.sui.sui_types import bcs
 
-_PAY_GAS: int = 4000000
-
 
 @versionadded(version="0.28.0", reason="Deprecating PayAllSui builder.")
 class _ConsolidateSui(_MoveCallTransactionBuilder):
@@ -86,7 +84,6 @@ class _SignerBlockBase:
         *,
         sender: Optional[Union[SuiAddress, SigningMultiSig]] = None,
         sponsor: Optional[Union[SuiAddress, SigningMultiSig]] = None,
-        # additional_signers: Optional[list[Union[SuiAddress, SigningMultiSig]]] = None,
     ):
         """__init__ Create a signer block.
 
@@ -98,8 +95,6 @@ class _SignerBlockBase:
         self._sender = sender
         self._sponsor = sponsor
         self._merge_to_gas: bool = False
-        # self._merge_to_gas:list = []
-        # self._additional_signers = additional_signers if additional_signers else []
 
     def _merging_to_gas(self):
         """."""
@@ -127,24 +122,6 @@ class _SignerBlockBase:
         assert isinstance(new_sponsor, (SuiAddress, SigningMultiSig))
         self._sponsor = new_sponsor
 
-    # @property
-    # def additional_signers(self) -> list[Union[SuiAddress, SigningMultiSig]]:
-    #     """Gets the list of additional signers although Sui doesn't seem to support at the moment."""
-    #     return self._additional_signers
-
-    # @additional_signers.setter
-    # def additional_signers(self, new_additional_signers: list[Union[SuiAddress, SigningMultiSig]]):
-    #     """sets the list of additional signers although Sui doesn't seem to support at the moment."""
-    #     new_additional_signers = new_additional_signers if new_additional_signers else []
-    #     for additional_signer in new_additional_signers:
-    #         assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
-    #     self._additional_signers = new_additional_signers
-
-    # def add_additioinal_signer(self, additional_signer: Union[SuiAddress, SigningMultiSig]):
-    #     """Add another signer to the additional_signers list."""
-    #     assert isinstance(additional_signer, (SuiAddress, SigningMultiSig))
-    #     self._additional_signers.append(additional_signer)
-
     def _get_potential_signatures(
         self,
     ) -> list[Union[SuiAddress, SigningMultiSig]]:
@@ -155,8 +132,6 @@ class _SignerBlockBase:
         if self.sponsor:
             result_list.append(self._sponsor)
         return result_list
-        # result_list.extend(self.additional_signers)
-        # return result_list
 
     @versionchanged(version="0.21.2", reason="Fix regression on MultiSig signing.")
     def get_signatures(
@@ -191,7 +166,6 @@ class SignerBlock(_SignerBlockBase):
         *,
         sender: Optional[Union[SuiAddress, SigningMultiSig]] = None,
         sponsor: Optional[Union[SuiAddress, SigningMultiSig]] = None,
-        # additional_signers: Optional[list[Union[SuiAddress, SigningMultiSig]]] = None,
     ):
         """__init__ Create a signer block.
 

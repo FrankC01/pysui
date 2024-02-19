@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [change](https://github.com/FrankC01/pysui/issues/184) Devnet Faucet V1
 - Deprecating chain data queries on Sync JSON-RPC SuiClient and Async JSON-RPC SuiClient
+- Bumped support to Sui 1.20.0
 
 ### Removed
 

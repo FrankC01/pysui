@@ -374,7 +374,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         *,
         with_string: Optional[str] = None,
         with_document_node: Optional[DocumentNode] = None,
-        with_query_node: Optional["PGQL_QueryNode"] = None,
+        with_query_node: Optional[PGQL_QueryNode] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> dict:
         """Executes a GraphQL query and returns raw result.
