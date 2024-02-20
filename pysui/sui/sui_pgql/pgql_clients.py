@@ -15,6 +15,7 @@
 
 
 from abc import ABC, abstractmethod
+import logging
 from typing import Callable, Any, Optional, Union
 from gql import Client, gql
 import httpx
@@ -37,6 +38,12 @@ from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
 import pysui.sui.sui_constants as cnst
+
+# Standard library logging setup
+logger = logging.getLogger("pysui.pgql_client")
+if not logging.getLogger().handlers:
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
 
 
 class PGQL_QueryNode(ABC):
@@ -82,7 +89,6 @@ class PGQL_Fragment(ABC):
 class BaseSuiGQLClient:
     """Base GraphQL client."""
 
-    _GRAPH_QL_SCHEMA: DSLSchema = None
     _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
 
@@ -90,22 +96,45 @@ class BaseSuiGQLClient:
     def _set_schema(cls, schema: DSLSchema) -> None:
         cls._GRAPH_QL_SCHEMA = schema
 
+    @classmethod
+    def _resolve_url(cls, sui_config: SuiConfig) -> list[str, str]:
+        """Resolve the GraphQL RPC Url."""
+        match sui_config.rpc_url:
+            case cnst.MAINNET_SUI_URL:
+                url = cls._SUI_GRAPHQL_MAINNET
+                env_prefix = "mainnet"
+            case cnst.TESTNET_SUI_URL:
+                url = cls._SUI_GRAPHQL_TESTNET
+                env_prefix = "testnet"
+            case _:
+                raise ValueError(
+                    f"Found {sui_config.rpc_url}. GraphQL URL is only active on testnet."
+                )
+        return [url, env_prefix]
+
     def __init__(
         self,
         *,
-        url_str: str,
         sui_config: SuiConfig,
+        gql_client: Client,
         version: str,
-        schema: GraphQLSchema,
+        schema: DSLSchema,
         rpc_config: SuiConfigGQL,
+        write_schema: Optional[bool] = False,
     ):
         """."""
-        self._url: str = url_str
+
         self._sui_config: SuiConfig = sui_config
+        self._inner_client: Client = gql_client
+        self._url: str = gql_client.transport.url
         self._version: str = version
+        self._schema: DSLSchema = schema
         self._rpc_config: SuiConfigGQL = rpc_config
-        self._raw_schema: GraphQLSchema = schema
-        self._set_schema(DSLSchema(schema))
+        if write_schema:
+            mver = "_".join(self._version.split("."))
+            fname = f"./{self._rpc_config.gqlEnvironment}_schema-{mver}.graphql"
+            with open(fname, "w", encoding="utf8") as inner_file:
+                inner_file.write(print_schema(self._inner_client.schema))
 
     @property
     def config(self) -> SuiConfig:
@@ -119,8 +148,13 @@ class BaseSuiGQLClient:
 
     @property
     def url(self) -> str:
-        """Fetch the active URL."""
+        """Fetch the active GraphQL URL."""
         return self._url
+
+    @property
+    def client(self) -> Client:
+        """Fetch the graphql client."""
+        return self._inner_client
 
     @property
     def chain_id(self) -> str:
@@ -133,12 +167,8 @@ class BaseSuiGQLClient:
         return self._rpc_config.gqlEnvironment
 
     @property
-    def version(self) -> str:
-        """Return the Sui GraphQL RPC Version
-
-        :return: _description_
-        :rtype: str
-        """
+    def schema_version(self) -> str:
+        """Return Sui GraphQL schema version."""
         return self._version
 
     @property
@@ -148,7 +178,7 @@ class BaseSuiGQLClient:
         :return: DSLSchema for Sui Schema version associated with connection.
         :rtype: DSLSchema
         """
-        return self._GRAPH_QL_SCHEMA
+        return self._schema
 
     def _qnode_pre_run(self, qnode: PGQL_QueryNode) -> Union[DocumentNode, ValueError]:
         """."""
@@ -173,65 +203,35 @@ class SuiGQLClient(BaseSuiGQLClient):
     def __init__(
         self,
         *,
-        write_schema: Optional[bool] = False,
         config: SuiConfig,
+        write_schema: Optional[bool] = False,
     ):
         """Sui GraphQL Client initializer."""
-        gql_rpc_url: str = None
-        env_prefix = ""
-        match config.rpc_url:
-            case cnst.MAINNET_SUI_URL:
-                gql_rpc_url = self._SUI_GRAPHQL_MAINNET
-                env_prefix = "mainnet"
-            case cnst.TESTNET_SUI_URL:
-                gql_rpc_url = self._SUI_GRAPHQL_TESTNET
-                env_prefix = "testnet"
-            case _:
-                raise ValueError(
-                    f"Found {config.rpc_url}. GraphQL URL is only active on testnet."
-                )
-
-        self._rpc_client: Client = Client(
+        # Resolve GraphQL URL
+        gurl, genv = BaseSuiGQLClient._resolve_url(config)
+        # Build Sync Client
+        _iclient: Client = Client(
             transport=HTTPXTransport(
-                # Url will be supplied from SuiConfig?
-                url=gql_rpc_url,
+                url=gurl,
                 verify=True,
             ),
             fetch_schema_from_transport=True,
         )
-
-        with self._rpc_client as session:
-            gql_version = session.transport.response_headers["x-sui-rpc-version"]
-            # Enable/disable
-            if write_schema:
-                mver = "_".join(gql_version.split("."))
-                fname = f"./{env_prefix}_schema-{mver}.graphql"
-                with open(fname, "w", encoding="utf8") as inner_file:
-                    inner_file.write(print_schema(self._rpc_client.schema))
-
-        rpc_config: SuiConfigGQL = None
-        with self._rpc_client as session:
+        with _iclient as session:
+            _version: str = session.transport.response_headers["x-sui-rpc-version"]
+            _schema: DSLSchema = DSLSchema(_iclient.schema)
             qstr, fndeser = pgql_config()
-            rpc_config = fndeser(session.execute(gql(qstr)))
-            rpc_config.gqlEnvironment = env_prefix
+            _rpc_config = fndeser(session.execute(gql(qstr)))
+            _rpc_config.gqlEnvironment = genv
 
         super().__init__(
-            url_str=gql_rpc_url,
             sui_config=config,
-            version=gql_version,
-            schema=self._rpc_client.schema,
-            rpc_config=rpc_config,
+            gql_client=_iclient,
+            version=_version,
+            schema=_schema,
+            rpc_config=_rpc_config,
+            write_schema=write_schema,
         )
-
-    @property
-    def client(self) -> Client:
-        """Fetch the graphql client."""
-        return self._rpc_client
-
-    @property
-    def schema_version(self) -> str:
-        """Return Sui GraphQL schema version."""
-        return self._version
 
     def execute_query(
         self,
@@ -324,50 +324,35 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         config: SuiConfig,
     ):
         """Async Sui GraphQL Client initializer."""
-        gql_rpc_url: str = None
-        match config.rpc_url:
-            case cnst.MAINNET_SUI_URL:
-                gql_rpc_url = self._SUI_GRAPHQL_MAINNET
-            case cnst.TESTNET_SUI_URL:
-                gql_rpc_url = self._SUI_GRAPHQL_TESTNET
-            case _:
-                raise ValueError(
-                    f"Found {config.rpc_url}. GraphQL URL is only active on testnet."
-                )
+        gurl, genv = BaseSuiGQLClient._resolve_url(config)
 
-        # Get sync client to populate all applicable properties
-        s_client = SuiGQLClient(
-            write_schema=write_schema,
-            config=config,
-        )
-
-        # Create async client
-        self._rpc_client: Client = Client(
-            transport=HTTPXAsyncTransport(
-                # Url will be supplied from SuiConfig?
-                url=gql_rpc_url,
+        _iclient: Client = Client(
+            transport=HTTPXTransport(
+                url=gurl,
+                verify=True,
             ),
-            schema=s_client._raw_schema,
+            fetch_schema_from_transport=True,
         )
+        with _iclient as session:
+            _version: str = session.transport.response_headers["x-sui-rpc-version"]
+            _schema: DSLSchema = DSLSchema(_iclient.schema)
+            qstr, fndeser = pgql_config()
+            _rpc_config = fndeser(session.execute(gql(qstr)))
+            _rpc_config.gqlEnvironment = genv
 
-        # Initialize our base with copies of sync
         super().__init__(
-            url_str=s_client.url,
-            sui_config=s_client.config,
-            version=s_client.version,
-            schema=s_client._raw_schema,
-            rpc_config=s_client.rpc_config,
+            sui_config=config,
+            gql_client=Client(
+                transport=HTTPXAsyncTransport(
+                    url=gurl,
+                ),
+                fetch_schema_from_transport=True,
+            ),
+            version=_version,
+            schema=_schema,
+            rpc_config=_rpc_config,
+            write_schema=write_schema,
         )
-
-    @property
-    def client(self) -> Client:
-        """Fetch the graphql client."""
-        return self._rpc_client
-
-    @property
-    def schema_version(self) -> str:
-        """Return Sui GraphQL schema version."""
-        return self._version
 
     async def execute_query(
         self,

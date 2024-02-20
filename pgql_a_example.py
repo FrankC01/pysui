@@ -478,7 +478,7 @@ async def main():
     ## QueryNodes (fetch)
     # await do_coin_meta(client_init)
     # await do_coins_for_type(client_init)
-    # await do_gas(client_init)
+    await do_gas(client_init)
     # await do_sysstate(client_init)
     # await do_all_balances(client_init)
     # await do_object(client_init)
@@ -500,7 +500,7 @@ async def main():
     # await do_refgas(client_init)
     # await do_struct(client_init)
     # await do_structs(client_init)
-    await do_func(client_init)
+    # await do_func(client_init)
     # await do_funcs(client_init)
     # await do_module(client_init)
     # await do_package(client_init)
@@ -510,6 +510,7 @@ async def main():
     # await do_chain_id(client_init)
     # await do_configs(client_init)
     # await do_protcfg(client_init)
+    await client_init.client.close_async()
 
 
 if __name__ == "__main__":
