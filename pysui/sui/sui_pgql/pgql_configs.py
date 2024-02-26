@@ -15,7 +15,7 @@
 
 
 import dataclasses
-from typing import Optional, Union, Callable
+from typing import Any, Optional, Union, Callable
 import dataclasses_json
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -29,6 +29,9 @@ _QUERY = """
             nodes {
                 sequenceNumber
                 timestamp
+                epoch {
+                        referenceGasPrice
+                    }
             }
         }
         serviceConfig {
@@ -78,6 +81,13 @@ class ServiceConfigGQL:
 class CheckpointNodeGQL:
     sequenceNumber: int
     timestamp: str
+    epoch: Any
+    reference_gas_price: Optional[str] = None
+
+    def __post_init__(self):
+        """."""
+        if "referenceGasPrice" in self.epoch:
+            self.reference_gas_price = self.epoch["referenceGasPrice"]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

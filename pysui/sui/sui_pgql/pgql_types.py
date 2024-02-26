@@ -131,6 +131,41 @@ class SuiCoinObjectsGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class SuiObjectOwnedShared:
+    """Collection of coin data objects."""
+
+    obj_owner_kind: str
+    initial_version: int
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiObjectOwnedAddress:
+    """Collection of coin data objects."""
+
+    obj_owner_kind: str
+    address_id: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiObjectOwnedParent:
+    """Collection of coin data objects."""
+
+    obj_owner_kind: str
+    parent_id: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiObjectOwnedImmutable:
+    """Collection of coin data objects."""
+
+    obj_owner_kind: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class ObjectReadGQL(PGQL_Type):
     """Raw object representation class."""
 
@@ -139,12 +174,20 @@ class ObjectReadGQL(PGQL_Type):
     object_digest: str  # Yes
     previous_transaction_digest: str  # Yes
     object_kind: str  # Yes
-    object_type: str  # Yes
+
     storage_rebate: str  # Yes
-    has_public_transfer: bool  # Yes
     bcs: str  # Yes
-    content: dict  # Yes
-    owner_id: Optional[str] = None  # Yes
+
+    object_owner: Union[
+        SuiObjectOwnedAddress,
+        SuiObjectOwnedParent,
+        SuiObjectOwnedShared,
+        SuiObjectOwnedImmutable,
+    ]
+    has_public_transfer: Optional[bool] = False  # Yes
+    object_type: Optional[str] = None
+    content: Optional[dict] = None
+    owner_id: Optional[str] = None
 
     # TODO: Need to handle different owner types
     @classmethod
@@ -154,12 +197,32 @@ class ObjectReadGQL(PGQL_Type):
         The in_data is a dictionary with nested dictionaries
         """
         if in_data.get("object"):
-            in_data = in_data["object"] if "object" in in_data else in_data
             res_dict: dict = {}
-            contents = in_data["as_move_content"]["as_object"].pop("content")
-            # Flatten dictionary
+            in_data = in_data["object"] if "object" in in_data else in_data
+            owner = in_data.pop("owner")
+            owner_kind = owner["obj_owner_kind"]
+            if in_data.get("as_move_content"):
+                contents = in_data["as_move_content"]["as_object"].pop("content")
+            else:
+                contents = None
+            # Flatten
             _fast_flat(in_data, res_dict)
+            # Reassign
             res_dict["content"] = contents
+            match owner_kind:
+                case "AddressOwner":
+                    res_dict["object_owner"] = SuiObjectOwnedAddress(
+                        owner_kind, owner["owner"]["address_id"]
+                    )
+                case "Shared":
+                    res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
+                case "Parent":
+                    res_dict["object_owner"] = SuiObjectOwnedParent(
+                        owner_kind, owner["owner"]["parent_id"]
+                    )
+                case "Immutable":
+                    res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
+            # Flatten dictionary
             return ObjectReadGQL.from_dict(res_dict)
         return NoopGQL.from_query()
 
@@ -718,17 +781,43 @@ class MoveScalarArg:
 class MoveObjectRefArg:
     """."""
 
-    ref: RefType
-    obj_type: str
-    needs_type: bool
+    ref_type: RefType
+    type_package: str
+    type_module: str
+    type_struct: str
+    type_params: list
+    has_type: bool
 
     @classmethod
     def from_body(cls, in_ref: str, in_type: dict) -> "MoveObjectRefArg":
         """ "."""
+        ref_type: RefType = (
+            in_ref if isinstance(in_ref, RefType) else RefType.from_ref(in_ref)
+        )
+        inner_type = in_type.get("typeParameters")
+        has_type = bool(inner_type)
+        inner_list = []
+
+        if has_type:
+            inner_list = []
+            for inner_t in inner_type:
+                if isinstance(inner_t, dict):
+                    if "typeParameter" in inner_t:
+                        inner_list.append(inner_t["typeParameter"])
+                    else:
+                        inner_list.append(
+                            MoveObjectRefArg.from_body(ref_type, inner_t["datatype"])
+                        )
+                else:
+                    inner_list.append(MoveScalarArg.from_str("", inner_t))
+
         return cls(
-            RefType.from_ref(in_ref),
-            in_type["package"] + "::" + in_type["module"] + "::" + in_type["type"],
-            bool(in_type.get("typeParameters")),
+            ref_type,
+            in_type["package"],
+            in_type["module"],
+            in_type["type"],
+            inner_list,
+            has_type,
         )
 
 
@@ -756,10 +845,30 @@ class MoveVectorArg:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class MoveWitnessArg:
+    """."""
+
+    ref: RefType
+
+    @classmethod
+    def from_body(cls, in_ref: str) -> "MoveWitnessArg":
+        """."""
+        return cls(
+            RefType.from_ref(in_ref),
+        )
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class MoveArgSummary:
     """."""
 
-    arg_list: list[Union[MoveScalarArg, MoveObjectRefArg, MoveTypeArg, MoveVectorArg]]
+    type_parameters: list
+    arg_list: list[
+        Union[
+            MoveScalarArg, MoveObjectRefArg, MoveTypeArg, MoveVectorArg, MoveWitnessArg
+        ]
+    ]
     returns: Optional[int] = None
 
 
@@ -795,11 +904,17 @@ class MoveFunctionGQL:
             elif "vector" in body:
                 a_list.append(MoveVectorArg.from_body(ref, body))
             else:
-                if isinstance(body, dict):
-                    a_list.append((ref, "type", body))
+                if (
+                    isinstance(body, dict)
+                    and len(body) == 1
+                    and "typeParameter" in body
+                ):
+                    a_list.append(MoveWitnessArg.from_body(ref))
                 else:
                     a_list.append(MoveScalarArg.from_str(ref, body))
-        return MoveArgSummary(a_list, len(self.returns) if self.returns else None)
+        return MoveArgSummary(
+            self.type_parameters, a_list, len(self.returns) if self.returns else None
+        )
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

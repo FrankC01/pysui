@@ -93,10 +93,6 @@ class BaseSuiGQLClient:
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
 
     @classmethod
-    def _set_schema(cls, schema: DSLSchema) -> None:
-        cls._GRAPH_QL_SCHEMA = schema
-
-    @classmethod
     def _resolve_url(cls, sui_config: SuiConfig) -> list[str, str]:
         """Resolve the GraphQL RPC Url."""
         match sui_config.rpc_url:
@@ -140,6 +136,11 @@ class BaseSuiGQLClient:
     def config(self) -> SuiConfig:
         """Fetch the graphql client."""
         return self._sui_config
+
+    @property
+    def current_gas_price(self) -> int:
+        """Fetch the current epoch gas price."""
+        return int(self._rpc_config.checkpoints.nodes[0].reference_gas_price)
 
     @property
     def rpc_config(self) -> SuiConfigGQL:

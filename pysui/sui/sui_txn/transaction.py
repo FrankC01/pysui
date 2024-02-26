@@ -31,6 +31,7 @@ from pysui.sui.sui_builders.base_builder import (
     sui_builder,
 )
 from pysui.sui.sui_clients.common import ClientMixin
+from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
 from pysui.sui.sui_txn.signing_ms import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
 from pysui.sui.sui_txn.txn_deser import (
@@ -159,7 +160,7 @@ class _SuiTransactionBase:
     def __init__(
         self,
         *,
-        client: ClientMixin,
+        client: Union[ClientMixin, BaseSuiGQLClient],
         compress_inputs: bool = True,
         initial_sender: Union[SuiAddress, SigningMultiSig] = None,
         merge_gas_budget: bool = False,
@@ -466,9 +467,7 @@ class _SuiTransactionBase:
             if is_receiving and not self.constraints.feature_dict.get(
                 "receive_objects", False
             ):
-                raise ValueError(
-                    f"Receiving not supported in Sui {self.client.rpc_version}"
-                )
+                raise ValueError(f"Receiving not supported in Sui current environment")
             # If type is a CallArg object (imm/shared/receive)
             if isinstance(arg, tuple):
                 if is_receiving:

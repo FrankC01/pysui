@@ -123,9 +123,28 @@ class StandardObject(PGQL_Fragment):
                     DSLInlineFragment()
                     .on(schema.AddressOwner)
                     .select(
-                        schema.AddressOwner.owner.select(owner_id=schema.Owner.address),
+                        schema.AddressOwner.owner.select(
+                            address_id=schema.Owner.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
                     ),
-                    obj_owner_kind=DSLMetaField("__typename"),
+                    DSLInlineFragment()
+                    .on(schema.Shared)
+                    .select(
+                        initial_version=schema.Shared.initialSharedVersion,
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Immutable)
+                    .select(
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Parent)
+                    .select(
+                        schema.Parent.parent.select(parent_id=schema.Object.address),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
                 ),
                 storage_rebate=schema.Object.storageRebate,
                 prior_transaction=schema.Object.previousTransactionBlock.select(

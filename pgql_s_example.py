@@ -389,13 +389,14 @@ def do_func(client: SuiGQLClient):
     result = client.execute_query(
         with_query_node=qn.GetFunction(
             package="0x2",
-            module_name="coin",
-            function_name="join",
+            module_name="clock",
+            function_name="timestamp_ms",
         )
     )
     if result.is_ok():
         mv_fn: ptypes.MoveFunctionGQL = result.result_data
         print(mv_fn.to_json(indent=2))
+        print(mv_fn.arg_summary().to_json(indent=2))
 
 
 def do_funcs(client: SuiGQLClient):
@@ -504,10 +505,10 @@ if __name__ == "__main__":
     ## QueryNodes (fetch)
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
-    do_gas(client_init)
+    # do_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
-    # do_object(client_init)
+    do_object(client_init)
     # do_objects(client_init)
     # do_past_object(client_init)
     # do_multiple_past_object(client_init)
