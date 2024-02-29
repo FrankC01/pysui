@@ -286,6 +286,16 @@ def partition(ilist: Iterable, chunk_size: int):
 # Conversion utilities
 
 
+def hexstring_to_sui_id(indata: str, default_fill_length: int = 64) -> str:
+    """Convert hexstring to valid full length sui address/object id."""
+
+    if len(indata) < default_fill_length:
+        if indata.count("x") or indata.count("X"):
+            indata = indata[2:]
+        indata = f"0x{indata.zfill(default_fill_length)}"
+    return indata
+
+
 @versionchanged(version="0.19.0", reason="Account for > 3 and < 66 size hex string")
 def hexstring_to_list(indata: str, default_fill_length: int = 64) -> list[int]:
     """hexstring_to_list convert a hexstr (e.g. 0x...) into a list of ints.
@@ -295,13 +305,7 @@ def hexstring_to_list(indata: str, default_fill_length: int = 64) -> list[int]:
     :return: converted indata to int list
     :rtype: list[int]
     """
-    if len(indata) < default_fill_length:
-        if indata.count("x") or indata.count("X"):
-            indata = indata[2:]
-        # asplit = indata.split("x") if indata.count("x") == 1 else indata.split("X")
-        indata = f"0x{indata.zfill(default_fill_length)}"
-
-    return [int(x) for x in binascii.unhexlify(indata[2:])]
+    return [int(x) for x in binascii.unhexlify(hexstring_to_sui_id(indata)[2:])]
 
 
 def b64str_to_list(indata: str) -> list[int]:

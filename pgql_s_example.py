@@ -498,7 +498,7 @@ def do_execute(client: SuiGQLClient):
 
 if __name__ == "__main__":
     client_init = SuiGQLClient(
-        write_schema=False,
+        write_schema=True,
         config=SuiConfig.default_config(),
     )
     print(f"Schema version {client_init.schema_version}")
@@ -508,7 +508,7 @@ if __name__ == "__main__":
     # do_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
-    do_object(client_init)
+    # do_object(client_init)
     # do_objects(client_init)
     # do_past_object(client_init)
     # do_multiple_past_object(client_init)

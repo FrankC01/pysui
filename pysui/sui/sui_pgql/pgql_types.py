@@ -786,6 +786,8 @@ class MoveObjectRefArg:
     type_module: str
     type_struct: str
     type_params: list
+    is_optional: bool
+    is_receiving: bool
     has_type: bool
 
     @classmethod
@@ -817,6 +819,8 @@ class MoveObjectRefArg:
             in_type["module"],
             in_type["type"],
             inner_list,
+            in_type["type"] == "Option",
+            in_type["type"] == "Receiving",
             has_type,
         )
 

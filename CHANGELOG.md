@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.53.0] - Unpublished
+## [0.53.0] - 2024-02-29
 
 ### Added
 
@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [change](https://github.com/FrankC01/pysui/issues/184) Devnet Faucet V1
+- [change](https://github.com/FrankC01/pysui/issues/193) Support Sui SharedObject delete
 - Deprecating chain data queries on Sync JSON-RPC SuiClient and Async JSON-RPC SuiClient
 - Bumped support to Sui 1.20.0
 

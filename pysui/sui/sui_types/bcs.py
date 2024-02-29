@@ -23,7 +23,7 @@ from pysui.abstracts.client_keypair import PublicKey, SignatureScheme
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.single_tx import ObjectRead
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_utils import b58str_to_list, hexstring_to_list
+from pysui.sui.sui_utils import b58str_to_list, hexstring_to_list, hexstring_to_sui_id
 
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
@@ -120,6 +120,14 @@ class ObjectReference(canoser.Struct):
 class SharedObjectReference(canoser.Struct):
     """SharedObjectReference represents a shared object by it's objects reference fields."""
 
+    _IMMUTABLES: list[str] = [
+        hexstring_to_sui_id("0x5"),
+        hexstring_to_sui_id("0x6"),
+        hexstring_to_sui_id("0x7"),
+        hexstring_to_sui_id("0x8"),
+        hexstring_to_sui_id("0x403"),
+    ]
+
     _fields = [
         (
             "ObjectID",
@@ -138,11 +146,11 @@ class SharedObjectReference(canoser.Struct):
         :return: The instantiated BCS object
         :rtype: SharedObjectReference
         """
-        # return cls(Address.from_str(indata.object_id), indata.version, True)
+        mutable = False if indata.object_id in cls._IMMUTABLES else True
         return cls(
             Address.from_str(indata.object_id),
             int(indata.owner.initial_shared_version),
-            indata.owner.mutable,
+            mutable,
         )
 
 
