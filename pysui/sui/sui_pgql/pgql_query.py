@@ -681,6 +681,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
                 pg_cursor.fragment(schema)
             ),
             staked_coin=schema.StakedSuiConnection.nodes.select(
+                schema.StakedSui.poolId,
                 schema.StakedSui.version,
                 schema.StakedSui.digest,
                 schema.StakedSui.hasPublicTransfer,
@@ -692,8 +693,13 @@ class GetDelegatedStakes(PGQL_QueryNode):
                 object_id=schema.StakedSui.address,
             ),
         )
-        qres.select(staked_coin)
+        qres.select(schema.Address.address, staked_coin)
         return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.SuiStakedCoinsGQL], None]:
+        """Return the serializer to SuiStakedCoinsGQL function."""
+        return pgql_type.SuiStakedCoinsGQL.from_query
 
 
 class GetLatestCheckpointSequence(PGQL_QueryNode):

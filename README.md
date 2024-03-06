@@ -6,25 +6,29 @@
 
 Python Client SDK for Sui blockchain
 
-- Supports _SUI 1.20.x RPC API_
-- Backwards compatable to _Sui 1.17.x RPC API_
 
 ## pysui SDK Dependencies
 
 - Rust (stable) for installation of Sui Binaries (optional) and building `pysui-fastcrypto` Rust wrapper (required)
 - Python version >= 3.10
 
-**Note**: With 0.52.0 it is recommended to start a new virtual environment and installing from PyPi!
+**Note**: If moving from 0.51.0 or earlier it is recommended to start a new virtual environment and installing from PyPi!
 
 ## pysui SDK current (github)
 
-**Release-0.53.0**
+**Release-0.54.0**
+
+- Supports _SUI 1.21.x RPC API_
+- Backwards compatable to _Sui 1.18.x RPC API_
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
 **Release-0.53.0**
+
+- Supports _SUI 1.20.x RPC API_
+- Backwards compatable to _Sui 1.17.x RPC API_
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 

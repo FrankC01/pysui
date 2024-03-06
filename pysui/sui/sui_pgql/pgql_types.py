@@ -131,6 +131,52 @@ class SuiCoinObjectsGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class SuiStakedCoinGQL:
+    """Staked coin object."""
+
+    poolId: str
+    version: int
+    digest: str
+    has_public_transfer: bool
+    principal: str
+    estimated_reward: str
+    activated: dict
+    requested: dict
+    status: str
+    object_id: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiStakedCoinsGQL(PGQL_Type):
+    """Collection of staked coin objects."""
+
+    owner: str
+    staked_coins: list[SuiStakedCoinGQL]
+    next_cursor: PagingCursor
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "SuiStakedCoinsGQL":
+        """Serializes query result to list of Sui gas coin objects.
+
+        The in_data is a dictionary with 2 keys: 'cursor' and 'coin_objects'
+        """
+        if len(in_data):
+            in_data = in_data.pop("address")
+            next_cursor = in_data["stakedSuis"].pop("cursor")
+            staked_coins = in_data["stakedSuis"].pop("staked_coin")
+            return SuiStakedCoinsGQL.from_dict(
+                {
+                    "owner": in_data["address"],
+                    "stakedCoins": staked_coins,
+                    "nextCursor": next_cursor,
+                }
+            )
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class SuiObjectOwnedShared:
     """Collection of coin data objects."""
 
@@ -441,11 +487,11 @@ class SuiCoinMetadataGQL(PGQL_Type):
 class TransactionResultGQL(PGQL_Type):
     """Transaction result representation class."""
 
-    sender: dict
     expiration: Union[dict, None]
     gas_input: dict
     effects: dict
     digest: Optional[str] = ""
+    sender: Optional[dict] = dataclasses.field(default_factory=dict)
 
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionResultGQL":
@@ -845,6 +891,15 @@ class MoveVectorArg:
                 else MoveObjectRefArg.from_body("", from_vec["datatype"])
             ),
         )
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveListArg:
+    """."""
+
+    ref: RefType
+    list_arg: list[Union[MoveScalarArg, MoveObjectRefArg]]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

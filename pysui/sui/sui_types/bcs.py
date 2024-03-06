@@ -1,6 +1,6 @@
-#    Copyright Frank V. Castellucci
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
+#    Copyright Frank V. Castellucci
 #    You may obtain a copy of the License at
 #        http://www.apache.org/licenses/LICENSE-2.0
 #    Unless required by applicable law or agreed to in writing, software
@@ -15,7 +15,7 @@
 
 import binascii
 from typing import Any, Union
-
+import json
 import canoser
 from deprecated.sphinx import deprecated, versionadded, versionchanged
 
@@ -24,6 +24,7 @@ from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.single_tx import ObjectRead
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import b58str_to_list, hexstring_to_list, hexstring_to_sui_id
+import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
@@ -100,6 +101,7 @@ class ObjectReference(canoser.Struct):
     ]
 
     @classmethod
+    @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
     def from_generic_ref(cls, indata: GenericRef) -> "ObjectReference":
         """from_generic_ref init construct with GenericRef from ObjectRead structure.
 
@@ -113,6 +115,52 @@ class ObjectReference(canoser.Struct):
                 Address.from_str(indata.object_id),
                 int(indata.version),
                 Digest.from_str(indata.digest),
+            )
+        raise ValueError(f"{indata} is not valid")
+
+    @classmethod
+    @versionadded(version="0.54.0", reason="Support argument inferencing")
+    def from_gql_ref(cls, indata: pgql_type.ObjectReadGQL) -> "ObjectReference":
+        """from_generic_ref init construct with GenericRef from ObjectRead structure.
+
+        :param indata: The reference information for an Object from ObjectRead
+        :type indata: GenericRef
+        :return: The instantiated BCS object
+        :rtype: SharedObjectReference
+        """
+        if isinstance(indata, pgql_type.ObjectReadGQL):
+            return cls(
+                Address.from_str(indata.object_id),
+                indata.version,
+                Digest.from_str(indata.object_digest),
+            )
+        raise ValueError(f"{indata} is not valid")
+
+
+@versionadded(version="0.54.0", reason="Support argument inferencing")
+class ReceivingReference(canoser.Struct):
+    """ReceivingReference represents an object by it's objects reference fields."""
+
+    _fields = [
+        ("ObjectID", Address),
+        ("SequenceNumber", canoser.Uint64),
+        ("ObjectDigest", Digest),
+    ]
+
+    @classmethod
+    def from_gql_ref(cls, indata: pgql_type.ObjectReadGQL) -> "ObjectReference":
+        """from_generic_ref init construct with GenericRef from ObjectRead structure.
+
+        :param indata: The reference information for an Object from ObjectRead
+        :type indata: GenericRef
+        :return: The instantiated BCS object
+        :rtype: SharedObjectReference
+        """
+        if isinstance(indata, pgql_type.ObjectReadGQL):
+            return cls(
+                Address.from_str(indata.object_id),
+                indata.version,
+                Digest.from_str(indata.object_digest),
             )
         raise ValueError(f"{indata} is not valid")
 
@@ -138,6 +186,7 @@ class SharedObjectReference(canoser.Struct):
     ]
 
     @classmethod
+    @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
     def from_object_read(cls, indata: ObjectRead) -> "SharedObjectReference":
         """from_generic_ref init construct with GenericRef from ObjectRead structure.
 
@@ -150,6 +199,25 @@ class SharedObjectReference(canoser.Struct):
         return cls(
             Address.from_str(indata.object_id),
             int(indata.owner.initial_shared_version),
+            mutable,
+        )
+
+    @classmethod
+    @versionadded(version="0.54.0", reason="Support argument inferencing")
+    def from_gql_ref(
+        cls, indata: pgql_type.ObjectReadGQL, is_mutable: bool = False
+    ) -> "SharedObjectReference":
+        """from_gql_ref init construct with ObjectReadGQL.
+
+        :param indata: The reference information for an Object from ObjectReadGQL
+        :type indata: ObjectReadGQL
+        :return: The instantiated BCS object
+        :rtype: SharedObjectReference
+        """
+        mutable = is_mutable if indata.object_id not in cls._IMMUTABLES else False
+        return cls(
+            Address.from_str(indata.object_id),
+            indata.object_owner.initial_version,
             mutable,
         )
 
@@ -185,6 +253,7 @@ U256 = Uint256
 
 
 @versionadded(version="0.19.0", reason="Added")
+@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU8(canoser.RustOptional):
     """OptionalU8 Optional assignment of unsigned 8 bit int."""
 
@@ -192,6 +261,7 @@ class OptionalU8(canoser.RustOptional):
 
 
 @versionadded(version="0.19.0", reason="Added")
+@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU16(canoser.RustOptional):
     """OptionalU16 Optional assignment of unsigned 16 bit int."""
 
@@ -199,12 +269,14 @@ class OptionalU16(canoser.RustOptional):
 
 
 @versionadded(version="0.19.0", reason="Added")
+@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU32(canoser.RustOptional):
     """OptionalU32 Optional assignment of unsigned 32 bit int."""
 
     _type = U32
 
 
+@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU64(canoser.RustOptional):
     """OptionalU64 Optional assignment of unsigned 64 bit int."""
 
@@ -212,6 +284,7 @@ class OptionalU64(canoser.RustOptional):
 
 
 @versionadded(version="0.19.0", reason="Added")
+@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU128(canoser.RustOptional):
     """OptionalU128 Optional assignment of unsigned 128 bit int."""
 
@@ -219,6 +292,7 @@ class OptionalU128(canoser.RustOptional):
 
 
 @versionadded(version="0.19.0", reason="Added")
+@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU256(canoser.RustOptional):
     """OptionalU256 Optional assignment of unsigned 256 bit int."""
 
@@ -390,7 +464,7 @@ class ObjectArg(canoser.RustEnum):
     _enums = [
         ("ImmOrOwnedObject", ObjectReference),
         ("SharedObject", SharedObjectReference),
-        ("Receiving", ObjectReference),
+        ("Receiving", ReceivingReference),
     ]
 
 
@@ -425,15 +499,31 @@ class Argument(canoser.RustEnum):
     ]
 
 
+@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalTypeTag(canoser.RustOptional):
     """OptionalTypeTag Optional assignment of TypeTag."""
 
     _type = TypeTag
 
-    # @classmethod
-    # def check_value(cls, value):
-    #     """."""
-    #     print(value)
+
+@versionadded(version="0.54.0", reason="Support argument inferencing")
+class OptionalTypeFactory:
+    """Optional Optional assignment of any canoser type."""
+
+    @classmethod
+    def as_optional(cls, in_type: Any = canoser.Struct) -> canoser.RustOptional:
+        """."""
+
+        class AnOptional(canoser.RustOptional):
+            """."""
+
+            _type = in_type.__class__
+
+            def to_json(self, indent=4):
+                """."""
+                json.dumps(self.to_json_serializable(), indent=indent)
+
+        return AnOptional(None)
 
 
 class ProgrammableMoveCall(canoser.Struct):

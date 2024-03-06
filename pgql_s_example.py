@@ -498,7 +498,7 @@ def do_execute(client: SuiGQLClient):
 
 if __name__ == "__main__":
     client_init = SuiGQLClient(
-        write_schema=True,
+        write_schema=False,
         config=SuiConfig.default_config(),
     )
     print(f"Schema version {client_init.schema_version}")
@@ -517,13 +517,13 @@ if __name__ == "__main__":
     # do_event(client_init)
     # do_tx(client_init)
     # do_txs(client_init)
-    # do_staked_sui(client_init)  # BROKEN TIMEOUT
+    do_staked_sui(client_init)
     # do_latest_cp(client_init)
     # do_sequence_cp(client_init)
     # do_digest_cp(client_init)
     # do_checkpoints(client_init)
     # do_nameservice(client_init)
-    # do_owned_nameservice(client_init)  # BROKEN TIMEOUT
+    # do_owned_nameservice(client_init)
     # do_validators_apy(client_init)
     # do_validators(client_init)
     # do_refgas(client_init)
@@ -536,7 +536,6 @@ if __name__ == "__main__":
     # do_dry_run(client_init)
     # do_dry_run_kind(client_init)
     # do_execute(client_init)
-    ## Painful
 
     ## Config
     # do_chain_id(client_init)
