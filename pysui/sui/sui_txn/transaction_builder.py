@@ -331,7 +331,6 @@ class ProgrammableTransactionBuilder:
         logger.debug(f"New pure input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
-    # TODO: Rationalize SharedObject nuances
     @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
     def input_obj(self, key: bcs.BuilderArg, object_arg: bcs.ObjectArg) -> bcs.Argument:
         """."""
@@ -359,6 +358,13 @@ class ProgrammableTransactionBuilder:
         logger.debug(f"New object input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
+    @versionadded(version="0.54.0", reason="Support stand-alone ObjectArg")
+    def input_obj_from_objarg(self, object_arg: bcs.ObjectArg) -> bcs.Argument:
+        """."""
+        oval: bcs.Address = object_arg.value.ObjectID
+        barg = bcs.BuilderArg("Object", oval)
+        return self.input_obj(barg, object_arg)
+
     def command(
         self, command_obj: bcs.Command, nresults: int = 1
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
@@ -382,6 +388,10 @@ class ProgrammableTransactionBuilder:
         logger.debug("Creating single result return")
         return bcs.Argument("Result", out_index)
 
+    @versionchanged(
+        version="0.54.0",
+        reason="Accept bcs.ObjectArg(s) support GraphQL implementation.",
+    )
     def make_move_vector(
         self,
         vtype: bcs.OptionalTypeTag,
@@ -389,6 +399,7 @@ class ProgrammableTransactionBuilder:
             Union[
                 bcs.Argument,
                 bcs.BuilderArg,
+                bcs.ObjectArg,
                 tuple[bcs.BuilderArg, bcs.ObjectArg],
             ]
         ],
@@ -400,6 +411,8 @@ class ProgrammableTransactionBuilder:
         for arg in items:
             if isinstance(arg, bcs.BuilderArg):
                 argrefs.append(self.input_pure(arg))
+            elif isinstance(arg, bcs.ObjectArg):
+                argrefs.append(self.input_obj_from_objarg(arg))
             elif isinstance(arg, tuple):
                 argrefs.append(self.input_obj(*arg))
             elif isinstance(arg, bcs.Argument):
@@ -467,30 +480,42 @@ class ProgrammableTransactionBuilder:
                 amounts_arg.append(amount)
             else:
                 amounts_arg.append(self.input_pure(amount))
-        if isinstance(from_coin, bcs.Argument):
-            coin_arg = from_coin
-        else:
-            coin_arg = self.input_obj(*from_coin)
+        if isinstance(from_coin, bcs.ObjectArg):
+            from_coin = self.input_obj_from_objarg(from_coin)
+        elif isinstance(from_coin, tuple):
+            from_coin = self.input_obj(*from_coin)
         return self.command(
-            bcs.Command("SplitCoin", bcs.SplitCoin(coin_arg, amounts_arg)),
+            bcs.Command("SplitCoin", bcs.SplitCoin(from_coin, amounts_arg)),
             len(amounts_arg),
         )
 
+    @versionchanged(
+        version="0.54.0",
+        reason="Accept bcs.ObjectArg(s) support GraphQL implementation.",
+    )
     def merge_coins(
         self,
-        to_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
-        from_coins: list[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
+        to_coin: Union[
+            bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]
+        ],
+        from_coins: list[
+            Union[bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+        ],
     ) -> bcs.Argument:
         """Setup a MergeCoins command and return it's result Argument."""
         logger.debug("Creating MergeCoins transaction")
-        to_coin = (
-            to_coin if isinstance(to_coin, bcs.Argument) else self.input_obj(*to_coin)
-        )
+
+        if isinstance(to_coin, bcs.ObjectArg):
+            to_coin = self.input_obj_from_objarg(to_coin)
+        elif isinstance(to_coin, tuple):
+            to_coin = self.input_obj(*to_coin)
         from_args: list[bcs.Argument] = []
         for fcoin in from_coins:
-            from_args.append(
-                fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin)
-            )
+            if isinstance(fcoin, bcs.ObjectArg):
+                fcoin = self.input_obj_from_objarg(fcoin)
+            elif isinstance(fcoin, tuple):
+                fcoin = self.input_obj(*fcoin)
+            from_args.append(fcoin)
         return self.command(
             bcs.Command("MergeCoins", bcs.MergeCoins(to_coin, from_args))
         )
@@ -500,7 +525,9 @@ class ProgrammableTransactionBuilder:
         recipient: bcs.BuilderArg,
         object_ref: Union[
             bcs.Argument,
-            list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
+            list[
+                Union[bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+            ],
         ],
     ) -> bcs.Argument:
         """Setup a TransferObjects command and return it's result Argument."""
@@ -509,9 +536,11 @@ class ProgrammableTransactionBuilder:
         from_args: list[bcs.Argument] = []
         if isinstance(object_ref, list):
             for fcoin in object_ref:
-                from_args.append(
-                    fcoin if isinstance(fcoin, bcs.Argument) else self.input_obj(*fcoin)
-                )
+                if isinstance(fcoin, bcs.ObjectArg):
+                    fcoin = self.input_obj_from_objarg(fcoin)
+                elif isinstance(fcoin, tuple):
+                    fcoin = self.input_obj(*fcoin)
+                from_args.append(fcoin)
         else:
             from_args.append(object_ref)
         return self.command(

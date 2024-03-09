@@ -53,24 +53,30 @@ _MERGE_COINS = pgql_type.MoveArgSummary(
     ],
 )
 
-_TRANSFER_OBJECTS = [
-    pgql_type.MoveListArg(
-        pgql_type.RefType.NO_REF,
-        pgql_type.MoveObjectRefArg(
-            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+_TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
+    [],
+    [
+        pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
+        pgql_type.MoveListArg(
+            pgql_type.RefType.NO_REF,
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+            ),
         ),
-    ),
-    pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
-]
+    ],
+)
 
-_MAKE_MOVE_VEC = [
-    pgql_type.MoveVectorArg(
-        pgql_type.RefType.NO_REF,
-        pgql_type.MoveObjectRefArg(
-            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-        ),
-    )
-]
+_MAKE_MOVE_VEC = pgql_type.MoveArgSummary(
+    [],
+    [
+        pgql_type.MoveVectorArg(
+            pgql_type.RefType.NO_REF,
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+            ),
+        )
+    ],
+)
 
 
 class SuiTransaction(_SuiTransactionBase):
@@ -121,7 +127,7 @@ class SuiTransaction(_SuiTransactionBase):
     def split_coin(
         self,
         *,
-        coin: Union[str, bcs.Argument],
+        coin: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
         amounts: list[Union[int, bcs.Argument]],
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """split_coin Creates a new coin(s) with the defined amount(s), split from the provided coin.
@@ -148,19 +154,15 @@ class SuiTransaction(_SuiTransactionBase):
         :return: A result or list of results types to use in subsequent commands
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
-        ars = [coin, amounts]
-        parms = ab.build_args(self.client, ars, _SPLIT_COIN)
-        pcoin = parms[0]
-        print(pcoin)
-        pamounts = parms[1:][0]
-        print(pamounts)
-        return self.builder.split_coin(pcoin, pamounts)
+
+        parms = ab.build_args(self.client, [coin, amounts], _SPLIT_COIN)
+        return self.builder.split_coin(parms[0], parms[1:][0])
 
     def merge_coins(
         self,
         *,
-        merge_to: Union[str, bcs.Argument],
-        merge_from: list[Union[str, bcs.Argument]],
+        merge_to: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        merge_from: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]],
     ) -> bcs.Argument:
         """merge_coins Merges one or more coins to a primary coin.
 
@@ -171,17 +173,41 @@ class SuiTransaction(_SuiTransactionBase):
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        ars = [merge_to, merge_from]
-        parms = ab.build_args(self.client, ars, _MERGE_COINS)
-        pcoin = parms[0]
-        print(pcoin)
-        pamounts = parms[1:]
-        print(pamounts)
+        parms = ab.build_args(self.client, [merge_to, merge_from], _MERGE_COINS)
+        return self.builder.merge_coins(parms[0], parms[1:][0])
+
+    def transfer_objects(
+        self,
+        *,
+        transfers: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]],
+        recipient: str,
+    ) -> bcs.Argument:
+        """transfer_objects Transfers one or more objects to a recipient.
+
+        :param transfers: A list or SuiArray of objects to transfer
+        :type transfers: list[Union[str,  bcs.Argument]]
+        :param recipient: The recipient address that will receive the objects being transfered
+        :type recipient: str
+        :return: The command result. Can NOT be used as input in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        parms = ab.build_args(self.client, [recipient, transfers], _TRANSFER_OBJECTS)
+        return self.builder.transfer_objects(parms[0], parms[1:][0])
 
     def make_move_vector(
-        self, items: list[Any], item_type: Optional[str] = None
+        self,
+        *,
+        items: list[str, pgql_type.ObjectReadGQL],
+        item_type: Optional[str] = None,
     ) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
+        parms = ab.build_args(self.client, [items], _MAKE_MOVE_VEC)
+        if item_type:
+            type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
+        else:
+            type_tag = bcs.OptionalTypeTag()
+
+        return self.builder.make_move_vector(type_tag, parms[0])
 
     def move_call(
         self,
@@ -287,22 +313,6 @@ class SuiTransaction(_SuiTransactionBase):
         :param object_type: Type arguments
         :type object_type: str
         :return: Result of command which is non-reusable
-        :rtype: bcs.Argument
-        """
-
-    def transfer_objects(
-        self,
-        *,
-        transfers: list[Union[str, bcs.Argument]],
-        recipient: str,
-    ) -> bcs.Argument:
-        """transfer_objects Transfers one or more objects to a recipient.
-
-        :param transfers: A list or SuiArray of objects to transfer
-        :type transfers: list[Union[str,  bcs.Argument]]
-        :param recipient: The recipient address that will receive the objects being transfered
-        :type recipient: str
-        :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
 
