@@ -700,7 +700,7 @@ class ProtocolConfigGQL:
     protocolVersion: int
     configs: list[KeyValue]
     featureFlags: list[KeyValue]
-    constraints: Optional[TransactionConstraints] = dataclasses.field(
+    transaction_constraints: Optional[TransactionConstraints] = dataclasses.field(
         default_factory=TransactionConstraints
     )
 
@@ -719,7 +719,7 @@ class ProtocolConfigGQL:
         """."""
         # Convert configs key/val to dict of key/int
         cfg_dict: dict = {}
-        cnst_dict: dict = self.constraints.to_dict()
+        cnst_dict: dict = self.transaction_constraints.to_dict()
         # Turn to key addressable dict
         for ckv in self.configs:
             cfg_dict[ckv.key] = self._value_to_type(ckv.value)
@@ -728,12 +728,12 @@ class ProtocolConfigGQL:
         for cnst_key in cnst_dict.keys():
             if cnst_key in cfg_dict:
                 cnst_dict[cnst_key] = cfg_dict[cnst_key]
-        self.constraints = TransactionConstraints.from_dict(cnst_dict)
-        self.constraints.protocol_version = self.protocolVersion
+        self.transaction_constraints = TransactionConstraints.from_dict(cnst_dict)
+        self.transaction_constraints.protocol_version = self.protocolVersion
 
         # Set appropriate features
         feat_dict: dict = {k.key: k.value for k in self.featureFlags}
-        self.constraints.receive_objects = feat_dict["receive_objects"]
+        self.transaction_constraints.receive_objects = feat_dict["receive_objects"]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":
@@ -899,7 +899,7 @@ class MoveListArg:
     """."""
 
     ref: RefType
-    list_arg: list[Union[MoveScalarArg, MoveObjectRefArg]]
+    list_arg: Union[MoveScalarArg, MoveObjectRefArg]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

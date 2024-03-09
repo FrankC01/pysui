@@ -15,8 +15,62 @@
 
 
 from typing import Any, Callable, Optional, Union
+from functools import cache
 from pysui.sui.sui_txn.transaction import _SuiTransactionBase
 from pysui.sui.sui_types import bcs
+import pysui.sui.sui_pgql.pgql_validators as tv
+import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_pgql.pgql_types as pgql_type
+import pysui.sui.sui_pgql.pgql_txn_argb as ab
+
+# Well known constructs
+
+_TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
+_SPLIT_COIN = pgql_type.MoveArgSummary(
+    [],
+    [
+        pgql_type.MoveObjectRefArg(
+            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+        ),
+        pgql_type.MoveListArg(
+            pgql_type.RefType.NO_REF,
+            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
+        ),
+    ],
+)
+_MERGE_COINS = pgql_type.MoveArgSummary(
+    [],
+    [
+        pgql_type.MoveObjectRefArg(
+            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+        ),
+        pgql_type.MoveListArg(
+            pgql_type.RefType.NO_REF,
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+            ),
+        ),
+    ],
+)
+
+_TRANSFER_OBJECTS = [
+    pgql_type.MoveListArg(
+        pgql_type.RefType.NO_REF,
+        pgql_type.MoveObjectRefArg(
+            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+        ),
+    ),
+    pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
+]
+
+_MAKE_MOVE_VEC = [
+    pgql_type.MoveVectorArg(
+        pgql_type.RefType.NO_REF,
+        pgql_type.MoveObjectRefArg(
+            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+        ),
+    )
+]
 
 
 class SuiTransaction(_SuiTransactionBase):
@@ -40,6 +94,89 @@ class SuiTransaction(_SuiTransactionBase):
         :type deserialize_from: Union[str, bytes], optional
         """
         super().__init__(**kwargs)
+
+    @cache
+    def _function_meta_args(self, target: str) -> pgql_type.MoveArgSummary:
+        """_function_meta_args Returns the argument summary of a target sui move function
+
+        :param target: The triplet target string
+        :type target: str
+        :return: The meta function argument summary
+        :rtype: pgql_type.MoveArgSummary
+        """
+        package, package_module, package_function = (
+            tv.TypeValidator.check_target_triplet(target)
+        )
+        result = self.client.execute_query(
+            with_query_node=qn.GetFunction(
+                package=package,
+                module_name=package_module,
+                function_name=package_function,
+            )
+        )
+        if result.is_ok() and not isinstance(result.result_data, pgql_type.NoopGQL):
+            return result.result_data.arg_summary()
+        raise ValueError(f"Unresolvable target {target}")
+
+    def split_coin(
+        self,
+        *,
+        coin: Union[str, bcs.Argument],
+        amounts: list[Union[int, bcs.Argument]],
+    ) -> Union[bcs.Argument, list[bcs.Argument]]:
+        """split_coin Creates a new coin(s) with the defined amount(s), split from the provided coin.
+
+        Note: Returns the result that it can be used in subsequent commands. If only one amount
+        is provided, a standard Result can be used as a singular argument to another command.
+        But if more than 1 amount. For example  you can index to get a singular value or use the whole
+        list.
+
+        .. code-block:: python
+
+            # Transfer all coins to one recipient
+            txer = SuiTransaction(client)
+            scres = txer.split_coin(coin=primary_coin, amounts=[1000000000, 1000000000])
+            txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+
+            # OR only transfer less than all
+            txer.transfer_objects(transfers=[scres[0]],recipient=client.config.active_address)
+
+        :param coin: The coin address (object id) to split from.
+        :type coin: Union[str, bcs.Argument]
+        :param amounts: The amount or list of amounts to split the coin out to
+        :type amounts: list[Union[int, bcs.Argument]]
+        :return: A result or list of results types to use in subsequent commands
+        :rtype: Union[list[bcs.Argument],bcs.Argument]
+        """
+        ars = [coin, amounts]
+        parms = ab.build_args(self.client, ars, _SPLIT_COIN)
+        pcoin = parms[0]
+        print(pcoin)
+        pamounts = parms[1:][0]
+        print(pamounts)
+        return self.builder.split_coin(pcoin, pamounts)
+
+    def merge_coins(
+        self,
+        *,
+        merge_to: Union[str, bcs.Argument],
+        merge_from: list[Union[str, bcs.Argument]],
+    ) -> bcs.Argument:
+        """merge_coins Merges one or more coins to a primary coin.
+
+        :param merge_to: The coin to merge other coins to
+        :type merge_to: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+        :param merge_from: One or more coins to merge to primary 'merge_to' coin
+        :type merge_from: list[Union[str bcs.Argument]]
+        :return: The command result. Can not be used as input in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        ars = [merge_to, merge_from]
+        parms = ab.build_args(self.client, ars, _MERGE_COINS)
+        pcoin = parms[0]
+        print(pcoin)
+        pamounts = parms[1:]
+        print(pamounts)
 
     def make_move_vector(
         self, items: list[Any], item_type: Optional[str] = None
@@ -95,37 +232,6 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
 
-    def split_coin(
-        self,
-        *,
-        coin: Union[str, bcs.Argument],
-        amounts: list[Union[int, bcs.Argument]],
-    ) -> Union[bcs.Argument, list[bcs.Argument]]:
-        """split_coin Creates a new coin(s) with the defined amount(s), split from the provided coin.
-
-        Note: Returns the result that it can be used in subsequent commands. If only one amount
-        is provided, a standard Result can be used as a singular argument to another command.
-        But if more than 1 amount. For example  you can index to get a singular value or use the whole
-        list.
-
-        .. code-block:: python
-
-            # Transfer all coins to one recipient
-            txer = SuiTransaction(client)
-            scres = txer.split_coin(coin=primary_coin, amounts=[1000000000, 1000000000])
-            txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
-
-            # OR only transfer less than all
-            txer.transfer_objects(transfers=[scres[0]],recipient=client.config.active_address)
-
-        :param coin: The coin address (object id) to split from.
-        :type coin: Union[str, bcs.Argument]
-        :param amounts: The amount or list of amounts to split the coin out to
-        :type amounts: list[Union[int, bcs.Argument]]
-        :return: A result or list of results types to use in subsequent commands
-        :rtype: Union[list[bcs.Argument],bcs.Argument]
-        """
-
     def split_coin_equal(
         self,
         *,
@@ -162,22 +268,6 @@ class SuiTransaction(_SuiTransactionBase):
         :param coin_type: The coin type, defaults to a Sui coin type
         :type coin_type: Optional[str], optional
         :return: The command result which is a vector of coins split out and may be used in subsequent commands.
-        :rtype: bcs.Argument
-        """
-
-    def merge_coins(
-        self,
-        *,
-        merge_to: Union[str, bcs.Argument],
-        merge_from: list[Union[str, bcs.Argument]],
-    ) -> bcs.Argument:
-        """merge_coins Merges one or more coins to a primary coin.
-
-        :param merge_to: The coin to merge other coins to
-        :type merge_to: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
-        :param merge_from: One or more coins to merge to primary 'merge_to' coin
-        :type merge_from: list[Union[str bcs.Argument]]
-        :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
 

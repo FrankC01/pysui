@@ -517,7 +517,7 @@ if __name__ == "__main__":
     # do_event(client_init)
     # do_tx(client_init)
     # do_txs(client_init)
-    do_staked_sui(client_init)
+    # do_staked_sui(client_init)
     # do_latest_cp(client_init)
     # do_sequence_cp(client_init)
     # do_digest_cp(client_init)
@@ -534,7 +534,7 @@ if __name__ == "__main__":
     # do_module(client_init)
     # do_package(client_init)
     # do_dry_run(client_init)
-    # do_dry_run_kind(client_init)
+    do_dry_run_kind(client_init)
     # do_execute(client_init)
 
     ## Config

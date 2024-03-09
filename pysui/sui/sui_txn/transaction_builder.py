@@ -194,7 +194,9 @@ class PureInput:
         """Convert str to list of bytes."""
         logger.debug(f"str->pure {arg}")
         byte_list = list(bytearray(arg, encoding="utf-8"))
-        length_prefix = list(bytearray(serialize_uint32_as_uleb128(None, len(byte_list))))
+        length_prefix = list(
+            bytearray(serialize_uint32_as_uleb128(None, len(byte_list)))
+        )
         return length_prefix + byte_list
 
     @pure.register
@@ -447,9 +449,14 @@ class ProgrammableTransactionBuilder:
     @versionchanged(
         version="0.33.0", reason="Accept bcs.Argument (i.e. Result) as amount"
     )
+    @versionchanged(
+        version="0.54.0", reason="Accept bcs.ObjectArg support GraphQL implementation."
+    )
     def split_coin(
         self,
-        from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
+        from_coin: Union[
+            bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]
+        ],
         amounts: list[bcs.BuilderArg],
     ) -> bcs.Argument:
         """Setup a SplitCoin command and return it's result Argument."""

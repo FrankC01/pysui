@@ -148,6 +148,11 @@ class BaseSuiGQLClient:
         return self._rpc_config
 
     @property
+    def protocol(self) -> pgql_type.TransactionConstraints:
+        """Fetch the protocol constraint block."""
+        return self.rpc_config.protocolConfig
+
+    @property
     def url(self) -> str:
         """Fetch the active GraphQL URL."""
         return self._url

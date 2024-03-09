@@ -85,4 +85,14 @@ class TypeValidator:
         :return: List of validated object id strings
         :rtype: Union[list[str], ValueError]
         """
-        return [TypeValidator.check_object_id(x) for x in object_ids]
+        return [cls.check_object_id(x) for x in object_ids]
+
+    @classmethod
+    def check_target_triplet(
+        cls, target: str
+    ) -> Union[tuple[str, str, str], ValueError]:
+        """."""
+        if target.count("::") == 2:
+            tpars = target.split("::")
+            return cls.check_object_id(tpars[0]), tpars[1], tpars[2]
+        raise ValueError(f"Malformed target string {target}")
