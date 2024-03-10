@@ -18,6 +18,7 @@ from typing import Any, Callable, Optional, Union
 from functools import cache
 from pysui.sui.sui_txn.transaction import _SuiTransactionBase
 from pysui.sui.sui_types import bcs
+from pysui.sui.sui_txn.transaction_builder import PureInput
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -78,6 +79,16 @@ _MAKE_MOVE_VEC = pgql_type.MoveArgSummary(
     ],
 )
 
+_PUBLISH_UPGRADE = pgql_type.MoveArgSummary(
+    [],
+    [
+        pgql_type.MoveObjectRefArg(
+            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+        ),
+        pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u8"),
+    ],
+)
+
 
 class SuiTransaction(_SuiTransactionBase):
     """."""
@@ -89,6 +100,7 @@ class SuiTransaction(_SuiTransactionBase):
     _SPLIT_AND_KEEP_TUPLE: tuple = None
     _SPLIT_AND_RETURN_TUPLE: tuple = None
     _PUBLIC_TRANSFER_TUPLE: tuple = None
+    _PUBLISH_AUTHORIZE_UPGRADE_TUPLE: tuple = None
 
     def __init__(
         self,
@@ -287,23 +299,70 @@ class SuiTransaction(_SuiTransactionBase):
         self,
         *,
         project_path: str,
-        package_id: str,
-        upgrade_cap: str,
-        args_list: Optional[list[str]],
+        upgrade_cap: Union[str, pgql_type.ObjectReadGQL],
+        args_list: Optional[list[str]] = None,
     ) -> bcs.Argument:
         """publish_upgrade Authorize, publish and commit upgrade of package.
 
-        :param project_path: path to project folder
+        :param project_path: Path to move project
         :type project_path: str
-        :param package_id: The current package id that is being upgraded
-        :type package_id: str
-        :param upgrade_cap: The upgrade capability object
-        :type upgrade_cap: str
-        :param args_list: Additional `sui move build` arguments, defaults to None
+        :param upgrade_cap: Id or ObjectRead of UpgradeCap
+        :type upgrade_cap: Union[str, pgql_type.ObjectReadGQL]
+        :param args_list: Arguments for compilation of project, defaults to None
         :type args_list: Optional[list[str]], optional
-        :return: The Result Argument
+        :raises ValueError: If fetching UpgradeCap has error
+        :raises ValueError: If can't verify UpgradeCap
+        :return: Non reusable result
         :rtype: bcs.Argument
         """
+        args_list = args_list if args_list else []
+        # Compile Source
+        modules, dependencies, digest = self._compile_source(project_path, args_list)
+        # Resolve upgrade cap to ObjectRead if needed
+        if isinstance(upgrade_cap, str):
+            result = self.client.execute_query(
+                with_query_node=qn.GetObject(object_id=upgrade_cap)
+            )
+            if result.is_err():
+                raise ValueError(f"Validating upgrade cap: {result.result_string}")
+
+            upgrade_cap = result.result_data
+        # Isolate the struct type from supposed UpgradeCap
+        _, _, package_struct = tv.TypeValidator.check_target_triplet(
+            upgrade_cap.object_type
+        )
+        # If all upgradecap items check out
+        if (
+            upgrade_cap.content.keys() >= {"package", "version", "policy"}
+            and package_struct == "UpgradeCap"
+        ):
+            # Prep args
+            cap_obj_arg, policy_arg = ab.build_args(
+                self.client,
+                [upgrade_cap, upgrade_cap.content["policy"]],
+                _PUBLISH_UPGRADE,
+            )
+            # Capture input offsets to preserve location of upgrade_cap ObjectArg
+            cap_arg = len(self.builder.inputs)
+            # Authorize, publish and commit the upgrade
+            return self.builder.commit_upgrade(
+                bcs.Argument("Input", cap_arg),
+                self.builder.publish_upgrade(
+                    modules,
+                    dependencies,
+                    bcs.Address.from_str(upgrade_cap.content["package"]),
+                    self.builder.authorize_upgrade(
+                        *ab.build_args(
+                            self.client,
+                            [upgrade_cap, upgrade_cap.content["policy"]],
+                            _PUBLISH_UPGRADE,
+                        ),
+                        PureInput.as_input(digest),
+                    ),
+                ),
+            )
+        else:
+            raise ValueError(f"Not a valid upgrade cap.")
 
     def stake_coin(
         self,

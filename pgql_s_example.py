@@ -103,7 +103,14 @@ def do_all_balances(client: SuiGQLClient):
 
 def do_object(client: SuiGQLClient):
     """Fetch specific object data."""
-    handle_result(client.execute_query(with_query_node=qn.GetObject(object_id="0x6")))
+    # handle_result(client.execute_query(with_query_node=qn.GetObject(object_id="0x6")))
+    handle_result(
+        client.execute_query(
+            with_query_node=qn.GetObject(
+                object_id="0x51766f8fe011bf7906750cc9bc6ce29a9bfcb31e880e4e9efe2f8098cef97258"
+            )
+        )
+    )
 
 
 def do_past_object(client: SuiGQLClient):
@@ -508,7 +515,7 @@ if __name__ == "__main__":
     # do_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
-    # do_object(client_init)
+    do_object(client_init)
     # do_objects(client_init)
     # do_past_object(client_init)
     # do_multiple_past_object(client_init)
@@ -534,7 +541,7 @@ if __name__ == "__main__":
     # do_module(client_init)
     # do_package(client_init)
     # do_dry_run(client_init)
-    do_dry_run_kind(client_init)
+    # do_dry_run_kind(client_init)
     # do_execute(client_init)
 
     ## Config

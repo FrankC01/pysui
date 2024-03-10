@@ -590,12 +590,16 @@ class ProgrammableTransactionBuilder:
 
     def authorize_upgrade(
         self,
-        upgrade_cap: tuple[bcs.BuilderArg, bcs.ObjectArg],
+        upgrade_cap: Union[bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]],
         policy: bcs.BuilderArg,
         digest: bcs.BuilderArg,
     ) -> bcs.Argument:
         """Setup a Authorize Upgrade MoveCall and return it's result Argument."""
         logger.debug("Creating UpgradeAuthorization transaction")
+        if isinstance(upgrade_cap, bcs.ObjectArg):
+            ucap = self.input_obj_from_objarg(upgrade_cap)
+        else:
+            ucap = self.input_obj(*upgrade_cap)
         return self.command(
             bcs.Command(
                 "MoveCall",
@@ -605,7 +609,7 @@ class ProgrammableTransactionBuilder:
                     _SUI_PACAKGE_AUTHORIZE_UPGRADE,
                     [],
                     [
-                        self.input_obj(*upgrade_cap),
+                        ucap,
                         self.input_pure(policy),
                         self.input_pure(digest),
                     ],
