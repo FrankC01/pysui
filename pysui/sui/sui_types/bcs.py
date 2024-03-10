@@ -137,32 +137,37 @@ class ObjectReference(canoser.Struct):
         raise ValueError(f"{indata} is not valid")
 
 
-@versionadded(version="0.54.0", reason="Support argument inferencing")
-class ReceivingReference(canoser.Struct):
-    """ReceivingReference represents an object by it's objects reference fields."""
+# @versionadded(version="0.54.0", reason="Support argument inferencing")
+# class ReceivingReference(canoser.Struct):
+#     """ReceivingReference represents an object by it's objects reference fields."""
 
-    _fields = [
-        ("ObjectID", Address),
-        ("SequenceNumber", canoser.Uint64),
-        ("ObjectDigest", Digest),
-    ]
+#     _fields = [
+#         ("ObjectID", Address),
+#         ("SequenceNumber", canoser.Uint64),
+#         ("ObjectDigest", Digest),
+#     ]
 
-    @classmethod
-    def from_gql_ref(cls, indata: pgql_type.ObjectReadGQL) -> "ObjectReference":
-        """from_generic_ref init construct with GenericRef from ObjectRead structure.
+#     @classmethod
+#     def from_obj_ref(cls, indata: ObjectReference) -> "ReceivingReference":
+#         """Convert from ObjectReference to ReceivingReference."""
+#         return cls(indata.ObjectID, indata.SequenceNumber, indata.ObjectDigest)
 
-        :param indata: The reference information for an Object from ObjectRead
-        :type indata: GenericRef
-        :return: The instantiated BCS object
-        :rtype: SharedObjectReference
-        """
-        if isinstance(indata, pgql_type.ObjectReadGQL):
-            return cls(
-                Address.from_str(indata.object_id),
-                indata.version,
-                Digest.from_str(indata.object_digest),
-            )
-        raise ValueError(f"{indata} is not valid")
+#     @classmethod
+#     def from_gql_ref(cls, indata: pgql_type.ObjectReadGQL) -> "ReceivingReference":
+#         """from_generic_ref init construct with GenericRef from ObjectRead structure.
+
+#         :param indata: The reference information for an Object from ObjectRead
+#         :type indata: GenericRef
+#         :return: The instantiated BCS object
+#         :rtype: SharedObjectReference
+#         """
+#         if isinstance(indata, pgql_type.ObjectReadGQL):
+#             return cls(
+#                 Address.from_str(indata.object_id),
+#                 indata.version,
+#                 Digest.from_str(indata.object_digest),
+#             )
+#         raise ValueError(f"{indata} is not valid")
 
 
 class SharedObjectReference(canoser.Struct):
@@ -464,7 +469,7 @@ class ObjectArg(canoser.RustEnum):
     _enums = [
         ("ImmOrOwnedObject", ObjectReference),
         ("SharedObject", SharedObjectReference),
-        ("Receiving", ReceivingReference),
+        ("Receiving", ObjectReference),
     ]
 
 

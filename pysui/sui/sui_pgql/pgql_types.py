@@ -883,6 +883,12 @@ class MoveVectorArg:
     def from_body(cls, in_ref: str, in_type: dict) -> "MoveVectorArg":
         """ "."""
         from_vec = in_type["vector"]
+        # if isinstance(from_vec, str):
+        #     vtype = MoveScalarArg.from_str("", from_vec)
+        # elif isinstance(from_vec, dict):
+        #     ivtype = from_vec["vector"]
+        # if "datatype" in ivtype:
+        #     vtype = MoveObjectRefArg.from_body("", from_vec["datatype"])
         return cls(
             RefType.from_ref(in_ref),
             (

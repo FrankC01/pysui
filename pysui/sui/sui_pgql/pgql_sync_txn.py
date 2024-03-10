@@ -25,7 +25,7 @@ import pysui.sui.sui_pgql.pgql_txn_argb as ab
 
 # Well known constructs
 
-_TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
+# _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
 _SPLIT_COIN = pgql_type.MoveArgSummary(
     [],
     [
@@ -82,6 +82,14 @@ _MAKE_MOVE_VEC = pgql_type.MoveArgSummary(
 class SuiTransaction(_SuiTransactionBase):
     """."""
 
+    # Prebuild functions
+
+    _STAKE_REQUEST_TUPLE: tuple = None
+    _UNSTAKE_REQUEST_TUPLE: tuple = None
+    _SPLIT_AND_KEEP_TUPLE: tuple = None
+    _SPLIT_AND_RETURN_TUPLE: tuple = None
+    _PUBLIC_TRANSFER_TUPLE: tuple = None
+
     def __init__(
         self,
         **kwargs,
@@ -100,9 +108,19 @@ class SuiTransaction(_SuiTransactionBase):
         :type deserialize_from: Union[str, bytes], optional
         """
         super().__init__(**kwargs)
+        # Preload
+        self._STAKE_REQUEST_TUPLE = self._function_meta_args(self._STAKE_REQUEST_TARGET)
+        self._UNSTAKE_REQUEST_TUPLE = self._function_meta_args(
+            self._UNSTAKE_REQUEST_TARGET
+        )
+        self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
+        self._SPLIT_AND_RETURN_TUPLE = self._function_meta_args(self._SPLIT_AND_RETURN)
+        self._PUBLIC_TRANSFER_TUPLE = self._function_meta_args(self._PUBLIC_TRANSFER)
 
     @cache
-    def _function_meta_args(self, target: str) -> pgql_type.MoveArgSummary:
+    def _function_meta_args(
+        self, target: str
+    ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
         """_function_meta_args Returns the argument summary of a target sui move function
 
         :param target: The triplet target string
@@ -121,7 +139,14 @@ class SuiTransaction(_SuiTransactionBase):
             )
         )
         if result.is_ok() and not isinstance(result.result_data, pgql_type.NoopGQL):
-            return result.result_data.arg_summary()
+            mfunc: pgql_type.MoveFunctionGQL = result.result_data
+            return (
+                bcs.Address.from_str(package),
+                package_module,
+                package_function,
+                len(mfunc.returns),
+                mfunc.arg_summary(),
+            )
         raise ValueError(f"Unresolvable target {target}")
 
     def split_coin(
@@ -227,6 +252,57 @@ class SuiTransaction(_SuiTransactionBase):
         :return: The result which may or may not be used in subequent commands depending on the
             move method being called.
         :rtype: Union[bcs.Argument, list[bcs.Argument]]
+        """
+        # Validate and get target meta arguments
+        package, package_module, package_function, retcount, ars = (
+            self._function_meta_args(target)
+        )
+        type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
+        parms = ab.build_args(self.client, arguments, ars)
+        return self.builder.move_call(
+            target=package,
+            arguments=parms,
+            type_arguments=type_arguments,
+            module=package_module,
+            function=package_function,
+            res_count=retcount,
+        )
+
+    def publish(
+        self, *, project_path: str, args_list: Optional[list[str]] = None
+    ) -> bcs.Argument:
+        """publish Creates a publish command.
+
+        :param project_path: path to project folder
+        :type project_path: str
+        :param args_list: Additional `sui move build` arguments, defaults to None
+        :type args_list: Optional[list[str]], optional
+        :return: A command result (UpgradeCap) that should used in a subsequent transfer commands
+        :rtype: bcs.Argument
+        """
+        modules, dependencies, _digest = self._compile_source(project_path, args_list)
+        return self.builder.publish(modules, dependencies)
+
+    def publish_upgrade(
+        self,
+        *,
+        project_path: str,
+        package_id: str,
+        upgrade_cap: str,
+        args_list: Optional[list[str]],
+    ) -> bcs.Argument:
+        """publish_upgrade Authorize, publish and commit upgrade of package.
+
+        :param project_path: path to project folder
+        :type project_path: str
+        :param package_id: The current package id that is being upgraded
+        :type package_id: str
+        :param upgrade_cap: The upgrade capability object
+        :type upgrade_cap: str
+        :param args_list: Additional `sui move build` arguments, defaults to None
+        :type args_list: Optional[list[str]], optional
+        :return: The Result Argument
+        :rtype: bcs.Argument
         """
 
     def stake_coin(
@@ -334,41 +410,6 @@ class SuiTransaction(_SuiTransactionBase):
         :raises ValueError: If unable to fetch the from_coin
         :raises ValueError: If from_coin is invalid
         :return: The command result. Can NOT be used as input in subsequent commands.
-        :rtype: bcs.Argument
-        """
-
-    def publish(
-        self, *, project_path: str, args_list: Optional[list[str]] = None
-    ) -> bcs.Argument:
-        """publish Creates a publish command.
-
-        :param project_path: path to project folder
-        :type project_path: str
-        :param args_list: Additional `sui move build` arguments, defaults to None
-        :type args_list: Optional[list[str]], optional
-        :return: A command result (UpgradeCap) that should used in a subsequent transfer commands
-        :rtype: bcs.Argument
-        """
-
-    def publish_upgrade(
-        self,
-        *,
-        project_path: str,
-        package_id: str,
-        upgrade_cap: str,
-        args_list: Optional[list[str]],
-    ) -> bcs.Argument:
-        """publish_upgrade Authorize, publish and commit upgrade of package.
-
-        :param project_path: path to project folder
-        :type project_path: str
-        :param package_id: The current package id that is being upgraded
-        :type package_id: str
-        :param upgrade_cap: The upgrade capability object
-        :type upgrade_cap: str
-        :param args_list: Additional `sui move build` arguments, defaults to None
-        :type args_list: Optional[list[str]], optional
-        :return: The Result Argument
         :rtype: bcs.Argument
         """
 

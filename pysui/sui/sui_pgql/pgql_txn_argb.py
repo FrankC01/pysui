@@ -100,7 +100,8 @@ def _fetch_or_transpose_object(
         if expected_type.is_receiving:
             b_obj_arg = bcs.ObjectArg(
                 "Receiving",
-                bcs.ReceivingReference.from_gql_ref(object_def),
+                bcs.ObjectReference.from_gql_ref(object_def),
+                # bcs.ReceivingReference.from_gql_ref(object_def),
             )
         else:
             b_obj_arg = bcs.ObjectArg(

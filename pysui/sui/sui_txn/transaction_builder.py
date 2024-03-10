@@ -427,7 +427,9 @@ class ProgrammableTransactionBuilder:
         self,
         *,
         target: bcs.Address,
-        arguments: list[Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]]],
+        arguments: list[
+            Union[bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+        ],
         type_arguments: list[bcs.TypeTag],
         module: str,
         function: str,
@@ -439,6 +441,8 @@ class ProgrammableTransactionBuilder:
         for arg in arguments:
             if isinstance(arg, bcs.BuilderArg):
                 argrefs.append(self.input_pure(arg))
+            elif isinstance(arg, bcs.ObjectArg):
+                argrefs.append(self.input_obj_from_objarg(arg))
             elif isinstance(arg, tuple):
                 argrefs.append(self.input_obj(*arg))
             elif isinstance(arg, (bcs.Argument, bcs.OptionalU64)):
