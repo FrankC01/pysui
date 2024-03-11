@@ -100,6 +100,13 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: bcs.Optional) -> list:
+        """Convert OptionalU8 to list of bytes."""
+        logger.debug(f"Optional {arg}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
     def _(cls, arg: SuiInteger) -> list:
         """Convert int to minimal list of bytes."""
         return cls.pure(arg.value)
@@ -428,7 +435,12 @@ class ProgrammableTransactionBuilder:
         *,
         target: bcs.Address,
         arguments: list[
-            Union[bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+            Union[
+                bcs.Argument,
+                bcs.ObjectArg,
+                bcs.Optional,
+                tuple[bcs.BuilderArg, bcs.ObjectArg],
+            ]
         ],
         type_arguments: list[bcs.TypeTag],
         module: str,
@@ -443,6 +455,8 @@ class ProgrammableTransactionBuilder:
                 argrefs.append(self.input_pure(arg))
             elif isinstance(arg, bcs.ObjectArg):
                 argrefs.append(self.input_obj_from_objarg(arg))
+            elif isinstance(arg, bcs.Optional):
+                argrefs.append(self.input_pure(PureInput.as_input(arg)))
             elif isinstance(arg, tuple):
                 argrefs.append(self.input_obj(*arg))
             elif isinstance(arg, (bcs.Argument, bcs.OptionalU64)):

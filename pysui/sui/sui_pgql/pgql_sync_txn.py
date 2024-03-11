@@ -234,10 +234,17 @@ class SuiTransaction(_SuiTransactionBase):
     def make_move_vector(
         self,
         *,
-        items: list[str, pgql_type.ObjectReadGQL],
+        items: list[str, pgql_type.ObjectReadGQL, bcs.ObjectArg],
         item_type: Optional[str] = None,
     ) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
+        if all(isinstance(x, bcs.ObjectArg) for x in items):
+            if item_type:
+                type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
+            else:
+                type_tag = bcs.OptionalTypeTag()
+            return self.builder.make_move_vector(type_tag, items)
+
         parms = ab.build_args(self.client, [items], _MAKE_MOVE_VEC)
         if item_type:
             type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
@@ -367,7 +374,7 @@ class SuiTransaction(_SuiTransactionBase):
     def stake_coin(
         self,
         *,
-        coins: list[str],
+        coins: list[Union[str, pgql_type.ObjectReadGQL]],
         validator_address: str,
         amount: Optional[int] = None,
     ) -> bcs.Argument:
@@ -382,6 +389,29 @@ class SuiTransaction(_SuiTransactionBase):
         :return: The command result.
         :rtype: bcs.Argument
         """
+        # Fetch pre-build meta arg summary
+        package, package_module, package_function, retcount, ars = (
+            self._STAKE_REQUEST_TUPLE
+        )
+        # Validate arguments
+        parms = ab.build_args(
+            self.client,
+            [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
+            ars,
+        )
+        # Create a move vector of coins
+        parms[1] = self.make_move_vector(
+            items=parms[1], item_type="0x2::coin::Coin<0x2::sui::SUI>"
+        )
+        # Make the call
+        return self.builder.move_call(
+            target=package,
+            arguments=parms,
+            type_arguments=[],
+            module=package_module,
+            function=package_function,
+            res_count=retcount,
+        )
 
     def unstake_coin(self, *, staked_coin: str) -> bcs.Argument:
         """unstake_coin Unstakes a Staked Sui Coin.

@@ -48,6 +48,7 @@ class _ArgSummary:
     convert_args: list[tuple[Any, Any]] = field(default_factory=list)
 
 
+# TODO: This needs work
 def _optional_processor(
     *,
     client: SuiGQLClient,
@@ -142,15 +143,15 @@ def _scalar_argument(
     """."""
 
     match expected_type.scalar_type:
-        case "address":
+        case "address" | "signature":
             print(f"{expected_type.scalar_type} = {arg}")
             return bcs.Address.from_str, tx_builder.PureInput.as_input
         case "digest":
             print(f"{expected_type.scalar_type} = {arg}")
             return bcs.Digest.from_str, tx_builder.PureInput.as_input
         case _:
-            if not isinstance(arg, (str, int)):
-                raise ValueError("ObjectRef...Oops")
+            # if not isinstance(arg, (str, int)):
+            #     raise ValueError("ObjectRef...Oops")
             return (
                 _SCALARS.get(expected_type.scalar_type),
                 tx_builder.PureInput.as_input,

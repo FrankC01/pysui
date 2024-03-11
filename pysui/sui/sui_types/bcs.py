@@ -174,7 +174,7 @@ class SharedObjectReference(canoser.Struct):
     """SharedObjectReference represents a shared object by it's objects reference fields."""
 
     _IMMUTABLES: list[str] = [
-        hexstring_to_sui_id("0x5"),
+        # hexstring_to_sui_id("0x5"),
         hexstring_to_sui_id("0x6"),
         hexstring_to_sui_id("0x7"),
         hexstring_to_sui_id("0x8"),
@@ -511,6 +511,16 @@ class OptionalTypeTag(canoser.RustOptional):
     _type = TypeTag
 
 
+class Optional(canoser.RustOptional):
+    """Use from OptionalTypeFactor."""
+
+    _type = canoser.Struct
+
+    def to_json(self, indent=4):
+        """."""
+        json.dumps(self.to_json_serializable(), indent=indent)
+
+
 @versionadded(version="0.54.0", reason="Support argument inferencing")
 class OptionalTypeFactory:
     """Optional Optional assignment of any canoser type."""
@@ -518,17 +528,18 @@ class OptionalTypeFactory:
     @classmethod
     def as_optional(cls, in_type: Any = canoser.Struct) -> canoser.RustOptional:
         """."""
+        Optional._type = in_type.__class__
 
-        class AnOptional(canoser.RustOptional):
-            """."""
+        # class AnOptional(canoser.RustOptional):
+        #     """."""
 
-            _type = in_type.__class__
+        #     _type = in_type.__class__
 
-            def to_json(self, indent=4):
-                """."""
-                json.dumps(self.to_json_serializable(), indent=indent)
+        #     def to_json(self, indent=4):
+        #         """."""
+        #         json.dumps(self.to_json_serializable(), indent=indent)
 
-        return AnOptional(None)
+        return Optional(None)
 
 
 class ProgrammableMoveCall(canoser.Struct):
