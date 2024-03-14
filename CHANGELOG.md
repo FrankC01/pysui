@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Basic Transaction building version using GraphQL
+  - Simplified interface using basic python types for all commands (split_coin, move_call, etc.)
 - More bcs Optional types to support argument inferencing
 - Dataclass for Staked coins
 - BCS `Optional`` factory for GraphQL transaction builder

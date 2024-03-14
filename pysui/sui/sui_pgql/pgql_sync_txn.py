@@ -16,6 +16,7 @@
 
 from typing import Any, Callable, Optional, Union
 from functools import cache
+from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
 from pysui.sui.sui_txn.transaction import _SuiTransactionBase
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
@@ -128,6 +129,9 @@ class SuiTransaction(_SuiTransactionBase):
         self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
         self._SPLIT_AND_RETURN_TUPLE = self._function_meta_args(self._SPLIT_AND_RETURN)
         self._PUBLIC_TRANSFER_TUPLE = self._function_meta_args(self._PUBLIC_TRANSFER)
+        self._sig_block = SignerBlock(
+            sender=kwargs["initial_sender"] or self.client.config.active_address
+        )
 
     @cache
     def _function_meta_args(
@@ -160,6 +164,22 @@ class SuiTransaction(_SuiTransactionBase):
                 mfunc.arg_summary(),
             )
         raise ValueError(f"Unresolvable target {target}")
+
+    def _build_for_execute(
+        self,
+        gas_budget: str = "",
+        use_gas_object: Optional[Union[str, pgql_type.ObjectReadGQL]] = None,
+    ) -> Union[bcs.TransactionData, ValueError]:
+        """."""
+
+    def transaction_data(
+        self,
+        *,
+        gas_budget: Optional[str] = None,
+        use_gas_object: Optional[Union[str, pgql_type.ObjectReadGQL]] = None,
+    ) -> bcs.TransactionData:
+        """Returns the BCS TransactionKind."""
+        return self._build_for_execute(gas_budget)
 
     def split_coin(
         self,

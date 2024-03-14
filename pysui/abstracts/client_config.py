@@ -260,6 +260,11 @@ class ClientConfiguration(ABC):
             b64encode(pub_key.scheme_and_key()).decode(), CrefType.PKEY, CrefType.KPAIR
         )
 
+    @versionadded(version="0.54.0", reason="Supporting aliases")
+    def kp4add(self, addy: str) -> KeyPair:
+        """Get the keypair for a given address."""
+        return self._get_cref_value(addy, CrefType.ADDY, CrefType.KPAIR)
+
     @versionadded(version="0.41.0", reason="Supporting aliases")
     def addr4al(self, alias: str) -> AbstractType:
         """addr4al Returns an address for an alias
