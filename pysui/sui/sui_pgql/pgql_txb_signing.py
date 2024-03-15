@@ -13,12 +13,14 @@
 
 """Pysui Signing Block builder that works with GraphQL connection."""
 
-
+import base64
 from typing import Optional, Union
 from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
 from pysui.sui.sui_pgql.pgql_query import GetCoins
 from pysui.sui.sui_types import bcs
+import pysui.sui.sui_pgql.pgql_types as pgql_type
+import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_crypto import MultiSig, BaseMultiSig, SuiPublicKey
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -66,6 +68,15 @@ class _SignerBlockBase:
         """Return the current sender used in signing."""
         return self._sender
 
+    @property
+    def sender_str(self) -> str:
+        """Return the current sender used in signing."""
+        return (
+            self._sender
+            if isinstance(self._sender, str)
+            else self._sender.signing_address
+        )
+
     @sender.setter
     def sender(self, new_sender: Union[str, SigningMultiSig]):
         """Set the sender to use in signing the transaction."""
@@ -76,6 +87,17 @@ class _SignerBlockBase:
     def sponsor(self) -> Union[None, Union[str, SigningMultiSig]]:
         """Get who, if any, may be acting as payer of transaction."""
         return self._sponsor
+
+    @property
+    def sponsor_str(self) -> Union[str, None]:
+        """Return the current sender used in signing."""
+        if not self._sponsor:
+            return None
+        return (
+            self._sponsor
+            if isinstance(self._sponsor, str)
+            else self._sponsor.signing_address
+        )
 
     @sponsor.setter
     def sponsor(self, new_sponsor: Union[str, SigningMultiSig]):
@@ -255,3 +277,101 @@ class SignerBlock(_SignerBlockBase):
             merge_coin,
             gas_price,
         )
+
+    def _get_gas_objects(
+        self, client: BaseSuiGQLClient, gas_ids: list[str]
+    ) -> list[pgql_type.SuiCoinObjectGQL]:
+        """."""
+
+    def _get_all_gas_objects(
+        self, client: BaseSuiGQLClient
+    ) -> list[pgql_type.SuiCoinObjectGQL]:
+        """."""
+        payer = self.payer_address
+        coin_list: list[pgql_type.SuiCoinObjectGQL] = []
+        result = client.execute_query(with_query_node=qn.GetCoins(owner=payer))
+        while True:
+            if result.is_ok():
+                coin_list.extend(result.result_data.data)
+                if result.result_data.next_cursor.hasNextPage:
+                    result = client.execute_query(
+                        with_query_node=qn.GetCoins(
+                            owner=payer, next_page=result.result_data.next_cursor
+                        )
+                    )
+                else:
+                    break
+            else:
+                break
+        return coin_list
+
+    def _dry_run_for_budget(
+        self,
+        client: BaseSuiGQLClient,
+        tx_bytes: str,
+        active_gas_price: int,
+    ) -> int:
+        """."""
+        result = client.execute_query(
+            with_query_node=qn.DryRunTransactionKind(
+                tx_bytestr=tx_bytes,
+                tx_meta={
+                    "sender": self.sender_str,
+                    "gasPrice": active_gas_price,
+                    "gasSponsor": self.sponsor_str,
+                },
+                skip_checks=False,
+            )
+        )
+        if result.is_ok():
+            if result.result_data.transaction_block.effects["status"] == "SUCCESS":
+                c_cost: int = int(
+                    result.result_data.transaction_block.effects["gasEffects"][
+                        "gasSummary"
+                    ]["computationCost"]
+                )
+                s_cost: int = int(
+                    result.result_data.transaction_block.effects["gasEffects"][
+                        "gasSummary"
+                    ]["storageCost"]
+                )
+                return c_cost + s_cost
+            else:
+                raise ValueError(f"{result.result_data.errors}")
+        else:
+            raise ValueError(
+                f"Error running DryRunTransactionBlock: {result.result_string}"
+            )
+
+    def get_gas_data(
+        self,
+        *,
+        client: BaseSuiGQLClient,
+        budget: Optional[int] = None,
+        use_coins: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+        objects_in_use: set[str],
+        active_gas_price: int,
+        tx_kind: bcs.TransactionKind,
+    ):
+        """."""
+        # Get available coins
+        _specified_coins = True if use_coins else False
+        if use_coins:
+            if all(isinstance(x, str) for x in use_coins):
+                use_coins = self._get_gas_objects(use_coins)
+            elif not all(isinstance(x, pgql_type.SuiCoinObjectGQL) for x in use_coins):
+                raise ValueError("use_gas_objects must use same type.")
+        else:
+            use_coins = self._get_all_gas_objects(client)
+        if not budget:
+            budget = self._dry_run_for_budget(
+                client,
+                base64.b64encode(tx_kind.serialize()).decode(),
+                active_gas_price,
+            )
+        # Remove conflicts with objects in use
+        use_coins = [x for x in use_coins if x.coin_object_id not in objects_in_use]
+        # Make sure something left to pay for
+        if use_coins:
+            return budget, use_coins
+        raise ValueError("No coin objects found to fund transaction.")

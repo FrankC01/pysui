@@ -242,9 +242,10 @@ class ObjectReadGQL(PGQL_Type):
 
         The in_data is a dictionary with nested dictionaries
         """
-        if in_data.get("object"):
+        in_data = in_data["object"] if "object" in in_data else in_data
+        if in_data:
             res_dict: dict = {}
-            in_data = in_data["object"] if "object" in in_data else in_data
+
             owner = in_data.pop("owner")
             owner_kind = owner["obj_owner_kind"]
             if in_data.get("as_move_content"):

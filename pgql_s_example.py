@@ -73,6 +73,38 @@ def do_gas(client: SuiGQLClient):
         )
 
 
+def do_all_gas(client: SuiGQLClient):
+    """Fetch all coins for owner."""
+    result = handle_result(
+        client.execute_query(
+            # GetAllCoins defaults to "0x2::sui::SUI"
+            with_query_node=qn.GetCoins(
+                # owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+                owner=client.config.active_address.address
+            )
+        )
+    )
+    while result.is_ok() and result.result_data.next_cursor.hasNextPage:
+        result = handle_result(
+            client.execute_query(
+                with_query_node=qn.GetCoins(
+                    owner=client.config.active_address.address,
+                    next_page=result.result_data.next_cursor,
+                )
+            )
+        )
+
+    # if result.is_ok():
+    #     coins: ptypes.SuiCoinObjectsGQL = result.result_data
+    #     cursor: ptypes.PagingCursor = coins.next_cursor
+    #     while cursor.hasNextPage:
+    #         if result.is_ok():
+    #             coins = result.result_data
+    #             cursor = coins.next_cursor
+    #         else:
+    #             break
+
+
 def do_sysstate(client: SuiGQLClient):
     """Fetch the most current system state summary."""
     handle_result(client.execute_query(with_query_node=qn.GetLatestSuiSystemState()))
@@ -513,6 +545,7 @@ if __name__ == "__main__":
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
+    do_all_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
     # do_object(client_init)
@@ -532,7 +565,7 @@ if __name__ == "__main__":
     # do_nameservice(client_init)
     # do_owned_nameservice(client_init)
     # do_validators_apy(client_init)
-    do_validators(client_init)
+    # do_validators(client_init)
     # do_refgas(client_init)
     # do_struct(client_init)
     # do_structs(client_init)

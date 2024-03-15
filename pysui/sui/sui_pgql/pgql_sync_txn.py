@@ -13,7 +13,7 @@
 
 """Pysui Transaction builder that works with GraphQL connection."""
 
-
+import base64
 from typing import Any, Callable, Optional, Union
 from functools import cache
 from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
@@ -112,7 +112,7 @@ class SuiTransaction(_SuiTransactionBase):
         :param client: The synchronous SuiGQLClient
         :type client: SuiGQLClient
         :param initial_sender: The address of the sender of the transaction, defaults to None
-        :type initial_sender: Union[SuiAddress, SigningMultiSig], optional
+        :type initial_sender: Union[str, SigningMultiSig], optional
         :param compress_inputs: Reuse identical inputs, defaults to False
         :type compress_inputs: bool,optional
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
@@ -130,7 +130,9 @@ class SuiTransaction(_SuiTransactionBase):
         self._SPLIT_AND_RETURN_TUPLE = self._function_meta_args(self._SPLIT_AND_RETURN)
         self._PUBLIC_TRANSFER_TUPLE = self._function_meta_args(self._PUBLIC_TRANSFER)
         self._sig_block = SignerBlock(
-            sender=kwargs["initial_sender"] or self.client.config.active_address
+            sender=kwargs.get(
+                "initial_sender", self.client.config.active_address.address
+            )
         )
 
     @cache
@@ -165,21 +167,64 @@ class SuiTransaction(_SuiTransactionBase):
             )
         raise ValueError(f"Unresolvable target {target}")
 
-    def _build_for_execute(
+    def _build_txn_data(
         self,
         gas_budget: str = "",
-        use_gas_object: Optional[Union[str, pgql_type.ObjectReadGQL]] = None,
+        use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
-        """."""
+        """Generate the TransactionData structure."""
+        obj_in_use: set[str] = set(self.builder.objects_registry.keys())
+        tx_kind = self.builder.finish_for_inspect()
+        _buget, _gas_coins = self.signer_block.get_gas_data(
+            client=self.client,
+            budget=gas_budget if not gas_budget else int(gas_budget),
+            use_coins=use_gas_objects,
+            objects_in_use=obj_in_use,
+            active_gas_price=self.gas_price,
+            tx_kind=tx_kind,
+        )
 
     def transaction_data(
         self,
         *,
         gas_budget: Optional[str] = None,
-        use_gas_object: Optional[Union[str, pgql_type.ObjectReadGQL]] = None,
+        use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
     ) -> bcs.TransactionData:
-        """Returns the BCS TransactionKind."""
-        return self._build_for_execute(gas_budget)
+        """transaction_data Construct a BCS TransactionData object.
+
+        If gas_budget not provided, pysui will call DryRunTransactionBlock to calculate.
+
+        If use_gas_objects not used, pysui will determine which gas objects to use to
+        pay for the transaction.
+
+        :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
+        :type gas_budget: Optional[str], optional
+        :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
+        :type use_gas_objects: Optional[list[Union[str, pgql_type.ObjectReadGQL]]], optional
+        :return: The TransactionData BCS structure
+        :rtype: bcs.TransactionData
+        """
+        return self._build_txn_data(gas_budget, use_gas_objects)
+
+    def build(
+        self,
+        *,
+        gas_budget: Optional[str] = None,
+        use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+    ) -> str:
+        """build After creating the BCS TransactionKind, serialize to base64 string and return.
+
+        :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
+        :type gas_budget: Optional[str], optional
+        :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
+        :type use_gas_objects: Optional[list[Union[str, pgql_type.ObjectReadGQL]]], optional
+        :return: Base64 encoded transaction bytes
+        :rtype: str
+        """
+        txn_kind = self.transaction_data(
+            gas_budget=gas_budget, use_gas_objects=use_gas_objects
+        )
+        return base64.b64encode(txn_kind.serialize()).decode()
 
     def split_coin(
         self,
