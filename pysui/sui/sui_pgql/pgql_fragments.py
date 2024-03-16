@@ -65,7 +65,6 @@ class StandardCoin(PGQL_Fragment):
                 ),
                 coin_objects=schema.CoinConnection.nodes.select(
                     schema.Coin.version,
-                    schema.Coin.digest,
                     schema.Coin.hasPublicTransfer,
                     schema.Coin.previousTransactionBlock.select(
                         previous_transaction=schema.TransactionBlock.digest
@@ -82,6 +81,7 @@ class StandardCoin(PGQL_Fragment):
                     schema.Coin.contents.select(
                         schema.MoveValue.type.select(coin_type=schema.MoveType.repr)
                     ),
+                    object_digest=schema.Coin.digest,
                     balance=schema.Coin.coinBalance,
                     coin_object_id=schema.Coin.address,
                 ),

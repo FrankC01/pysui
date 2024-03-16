@@ -9,12 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Basic Transaction building version using GraphQL
+- Beta Transaction building version using GraphQL -> `from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction`
   - Simplified interface using basic python types for all commands (split_coin, move_call, etc.)
-- More bcs Optional types to support argument inferencing
-- Dataclass for Staked coins
-- BCS `Optional`` factory for GraphQL transaction builder
-- ObjectRef (ImmOrOwnedObject, SharedObject) added ingestion for ObjectReadGQL
+  - Argument inferencing will encode arguments from basic python types to expected parameters
+  - **NOTE** Not all commands implemented
+- BCS `Optional` factory for GraphQL transaction builder
+- Dataclass for GraphQL Staked coins
+- ObjectRef (ImmOrOwnedObject, SharedObject) added ingestion for ObjectReadGQL and SuiCoinObjectGQL
+- Simple GraphQL PTB demo `pgql_s_ptb.py`
 
 ### Fixed
 

@@ -257,12 +257,15 @@ def do_chain_id(client: SuiGQLClient):
 
 
 def do_tx(client: SuiGQLClient):
-    """Fetch specific transaction by it's digest."""
+    """Fetch specific transaction by it's digest.
+
+    Digest is testnet specific
+    """
 
     handle_result(
         client.execute_query(
             with_query_node=qn.GetTx(
-                digest="6GkzHKUPJaG1umRizcBFiidRKmfYAfoejwsBne43AwoN"
+                digest="CMyUnPRqz9ECAtBeL19aWDG9CdsEd5K2p5NMHTyvaoa7"
             )
         )
     )
@@ -483,7 +486,10 @@ def do_package(client: SuiGQLClient):
 
 
 def do_dry_run_kind(client: SuiGQLClient):
-    """Execute a dry run with TransactionKind where meta data is set by caller."""
+    """Execute a dry run with TransactionKind where meta data is set by caller.
+
+    This uses the legacy SyncTransaction (JSON RPC based)
+    """
     if client.chain_environment == "testnet":
         txer = SyncTransaction(client=SyncClient(client.config))
         scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
@@ -498,7 +504,10 @@ def do_dry_run_kind(client: SuiGQLClient):
 
 
 def do_dry_run(client: SuiGQLClient):
-    """Execute a dry run with TransactionData where gas and budget set by txer."""
+    """Execute a dry run with TransactionData where gas and budget set by txer.
+
+    This uses the legacy SyncTransaction (JSON RPC based)
+    """
     if client.chain_environment == "testnet":
         txer = SyncTransaction(client=SyncClient(client.config))
         scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
@@ -517,6 +526,8 @@ def do_execute(client: SuiGQLClient):
 
     The result contains the digest of the transaction which can then be queried
     for details
+
+    This uses the legacy SyncTransaction (JSON RPC based)
     """
     if client.chain_environment == "testnet":
         rpc_client = SyncClient(client.config)
@@ -545,7 +556,7 @@ if __name__ == "__main__":
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
-    do_all_gas(client_init)
+    # do_all_gas(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
     # do_object(client_init)
@@ -555,7 +566,7 @@ if __name__ == "__main__":
     # do_objects_for(client_init)
     # do_dynamics(client_init)
     # do_event(client_init)
-    # do_tx(client_init)
+    do_tx(client_init)
     # do_txs(client_init)
     # do_staked_sui(client_init)
     # do_latest_cp(client_init)

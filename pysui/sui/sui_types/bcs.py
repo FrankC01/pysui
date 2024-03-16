@@ -128,7 +128,7 @@ class ObjectReference(canoser.Struct):
         :return: The instantiated BCS object
         :rtype: SharedObjectReference
         """
-        if isinstance(indata, pgql_type.ObjectReadGQL):
+        if isinstance(indata, (pgql_type.ObjectReadGQL, pgql_type.SuiCoinObjectGQL)):
             return cls(
                 Address.from_str(indata.object_id),
                 indata.version,

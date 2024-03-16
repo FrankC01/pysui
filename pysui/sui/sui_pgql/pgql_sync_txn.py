@@ -20,6 +20,7 @@ from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
 from pysui.sui.sui_txn.transaction import _SuiTransactionBase
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
+import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -175,13 +176,23 @@ class SuiTransaction(_SuiTransactionBase):
         """Generate the TransactionData structure."""
         obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
-        _buget, _gas_coins = self.signer_block.get_gas_data(
+        gas_data: bcs.GasData = gd.get_gas_data(
+            signing=self.signer_block,
             client=self.client,
             budget=gas_budget if not gas_budget else int(gas_budget),
             use_coins=use_gas_objects,
             objects_in_use=obj_in_use,
             active_gas_price=self.gas_price,
             tx_kind=tx_kind,
+        )
+        return bcs.TransactionData(
+            "V1",
+            bcs.TransactionDataV1(
+                tx_kind,
+                bcs.Address.from_str(self.signer_block.sender_str),
+                gas_data,
+                bcs.TransactionExpiration("None"),
+            ),
         )
 
     def transaction_data(

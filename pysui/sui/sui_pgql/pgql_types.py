@@ -86,7 +86,7 @@ class SuiCoinObjectGQL(PGQL_Type):
 
     coin_type: str
     version: int
-    digest: str
+    object_digest: str
     balance: str
     previous_transaction: str
     coin_owner: str
