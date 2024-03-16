@@ -108,6 +108,27 @@ class SuiCoinObjectGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class SuiCoinFromObjectsGQL(PGQL_Type):
+    """Collection of sui coin from objects."""
+
+    data: list[SuiCoinObjectGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "SuiCoinFromObjectsGQL":
+        if in_data:
+            ser_dict: dict = {}
+            _fast_flat(in_data, ser_dict)
+            mid_list: list[dict] = []
+            for node in ser_dict["nodes"]:
+                ser_dict: dict = {}
+                _fast_flat(node, ser_dict)
+                mid_list.append(ser_dict)
+            return clz.from_dict({"data": mid_list})
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class SuiCoinObjectsGQL(PGQL_Type):
     """Collection of coin data objects."""
 

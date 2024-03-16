@@ -23,13 +23,20 @@ from pysui.sui.sui_types import bcs
 def _get_gas_objects(
     client: BaseSuiGQLClient, gas_ids: list[str]
 ) -> list[pgql_type.SuiCoinObjectGQL]:
-    """."""
+    """Retreive specific Gas Objects."""
+    result = client.execute_query(
+        with_query_node=qn.GetMultipleGasObjects(coin_object_ids=gas_ids)
+    )
+    if result.is_ok():
+        return result.result_data.data
+    else:
+        raise ValueError(f"Error retrieving coins by id {result.result_string}")
 
 
 def _get_all_gas_objects(
     signing: SignerBlock, client: BaseSuiGQLClient
 ) -> list[pgql_type.SuiCoinObjectGQL]:
-    """."""
+    """Retreive all Gas Objects."""
     payer = signing.payer_address
     coin_list: list[pgql_type.SuiCoinObjectGQL] = []
     result = client.execute_query(with_query_node=qn.GetCoins(owner=payer))
@@ -55,7 +62,7 @@ def _dry_run_for_budget(
     tx_bytes: str,
     active_gas_price: int,
 ) -> int:
-    """."""
+    """Perform a dry run when no budget specified."""
     result = client.execute_query(
         with_query_node=qn.DryRunTransactionKind(
             tx_bytestr=tx_bytes,
@@ -122,12 +129,32 @@ def get_gas_data(
     active_gas_price: int,
     tx_kind: bcs.TransactionKind,
 ) -> bcs.GasData:
-    """."""
+    """get_gas_data Builds the GasData BCS structure for the transaction data.
+
+    :param signing: The GraphQL SigningBlock
+    :type signing: SignerBlock
+    :param client: The GraphQL Client
+    :type client: BaseSuiGQLClient
+    :param objects_in_use: Objects already identified as 'in-use' in the builder
+    :type objects_in_use: set[str]
+    :param active_gas_price: Current Gas Price
+    :type active_gas_price: int
+    :param tx_kind: The TransactionKind BCS
+    :type tx_kind: bcs.TransactionKind
+    :param budget: Option budget to set for transaction, defaults to None
+    :type budget: Optional[int], optional
+    :param use_coins: Gas coins to use for paying transactions, defaults to None
+    :type use_coins: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
+    :raises ValueError: If use_coins are not either strings or SuiCoinObjectGQL objects
+    :raises ValueError: If not gas coins provided and none found
+    :return: _description_
+    :rtype: bcs.GasData
+    """
     # Get available coins
     _specified_coins = True if use_coins else False
     if use_coins:
         if all(isinstance(x, str) for x in use_coins):
-            use_coins = _get_gas_objects(use_coins)
+            use_coins = _get_gas_objects(client, use_coins)
         elif not all(isinstance(x, pgql_type.SuiCoinObjectGQL) for x in use_coins):
             raise ValueError("use_gas_objects must use same type.")
     else:
@@ -150,11 +177,4 @@ def get_gas_data(
             active_gas_price,
             budget,
         )
-        # return (
-        #     # Convert to Object references
-        #     _coins_for_budget(use_coins, budget),
-        #     bcs.Address.from_str(signing.payer_address),
-        #     active_gas_price,
-        #     budget,
-        # )
     raise ValueError("No coin objects found to fund transaction.")

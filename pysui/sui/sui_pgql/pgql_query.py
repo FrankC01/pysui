@@ -310,6 +310,53 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
         return pgql_type.ObjectReadsGQL.from_query
 
 
+class GetMultipleGasObjects(PGQL_QueryNode):
+    """Return basic Sui gas represnetation for each coin_id string."""
+
+    def __init__(self, *, coin_object_ids: list[str]):
+        """."""
+        self.coin_ids = coin_object_ids
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+
+        qres = schema.Query.objects(filter={"objectIds": self.coin_ids}).select(
+            schema.ObjectConnection.nodes.select(
+                schema.Object.asMoveObject.select(
+                    schema.MoveObject.asCoin.select(
+                        schema.Coin.version,
+                        schema.Coin.hasPublicTransfer,
+                        schema.Coin.previousTransactionBlock.select(
+                            previous_transaction=schema.TransactionBlock.digest
+                        ),
+                        schema.Coin.owner.select(
+                            DSLInlineFragment()
+                            .on(schema.AddressOwner)
+                            .select(
+                                schema.AddressOwner.owner.select(
+                                    coin_owner=schema.Owner.address
+                                )
+                            ),
+                        ),
+                        schema.Coin.contents.select(
+                            schema.MoveValue.type.select(coin_type=schema.MoveType.repr)
+                        ),
+                        object_digest=schema.Coin.digest,
+                        balance=schema.Coin.coinBalance,
+                        coin_object_id=schema.Coin.address,
+                    )
+                )
+            )
+        )
+        return dsl_gql(
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.SuiCoinFromObjectsGQL]:
+        """Return the serializer to SuiCoinFromObjectsGQL function."""
+        return pgql_type.SuiCoinFromObjectsGQL.from_query
+
+
 class GetMultipleObjects(PGQL_QueryNode):
     """Returns object data for list of object ids."""
 

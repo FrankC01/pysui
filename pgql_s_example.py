@@ -94,15 +94,20 @@ def do_all_gas(client: SuiGQLClient):
             )
         )
 
-    # if result.is_ok():
-    #     coins: ptypes.SuiCoinObjectsGQL = result.result_data
-    #     cursor: ptypes.PagingCursor = coins.next_cursor
-    #     while cursor.hasNextPage:
-    #         if result.is_ok():
-    #             coins = result.result_data
-    #             cursor = coins.next_cursor
-    #         else:
-    #             break
+
+def do_gas_ids(client: SuiGQLClient):
+    """Fetch coins by the ids."""
+    result = handle_result(
+        client.execute_query(
+            # GetAllCoins defaults to "0x2::sui::SUI"
+            with_query_node=qn.GetMultipleGasObjects(
+                coin_object_ids=[
+                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
+                    "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
+                ]
+            )
+        )
+    )
 
 
 def do_sysstate(client: SuiGQLClient):
@@ -557,6 +562,7 @@ if __name__ == "__main__":
     # do_coins_for_type(client_init)
     # do_gas(client_init)
     # do_all_gas(client_init)
+    do_gas_ids(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
     # do_object(client_init)
@@ -566,7 +572,7 @@ if __name__ == "__main__":
     # do_objects_for(client_init)
     # do_dynamics(client_init)
     # do_event(client_init)
-    do_tx(client_init)
+    # do_tx(client_init)
     # do_txs(client_init)
     # do_staked_sui(client_init)
     # do_latest_cp(client_init)

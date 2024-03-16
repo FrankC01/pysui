@@ -68,6 +68,21 @@ def transaction_dryrun(txb: SuiTransaction):
     )
 
 
+def transaction_dryrun_with_gas(txb: SuiTransaction, coin_ids: list[str]):
+    """Uses fully built TransactionData for DryRunTransaction"""
+    raw_kind = txb.transaction_data(use_gas_objects=coin_ids)
+    # Print the TransactionData BCS (pre-serialized) structure
+    print(raw_kind.to_json(indent=2))
+    # Execute the dry run
+    handle_result(
+        txb.client.execute_query(
+            with_query_node=qn.DryRunTransaction(
+                tx_bytestr=base64.b64encode(raw_kind.serialize()).decode()
+            )
+        )
+    )
+
+
 def transaction_execute(txb: SuiTransaction):
     """Uses fully built and serialized TransactionData for ExecuteTransaction."""
     tx_b64 = txb.build()
@@ -85,7 +100,7 @@ def transaction_execute(txb: SuiTransaction):
     )
 
 
-def test_tx_std(client: SuiGQLClient):
+def demo_tx_split(client: SuiGQLClient):
     """Demonstrate GraphQL Beta PTB."""
     txb = SuiTransaction(client=client)
     scoin = txb.split_coin(
@@ -98,6 +113,13 @@ def test_tx_std(client: SuiGQLClient):
     #### Uncomment the action to take
     # transaction_inspect(txb)
     # transaction_dryrun(txb)
+    transaction_dryrun_with_gas(
+        txb,
+        [
+            "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
+            "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
+        ],
+    )
     # transaction_execute(txb)
 
 
@@ -107,4 +129,4 @@ if __name__ == "__main__":
         config=SuiConfig.default_config(),
     )
     print(f"Schema version {client_init.schema_version}")
-    test_tx_std(client_init)
+    demo_tx_split(client_init)
