@@ -123,6 +123,49 @@ def demo_tx_split(client: SuiGQLClient):
     # transaction_execute(txb)
 
 
+def demo_tx_split_equal(client: SuiGQLClient):
+    """Demonstrate GraphQL Beta PTB with split coin to equal parts and keeps in owner."""
+    txb = SuiTransaction(client=client)
+    scoin = txb.split_coin_equal(
+        coin="<ENTER COID ID TO SPLIT STRING>",
+        split_count=3,
+    )
+    #### Uncomment the action to take
+    # transaction_inspect(txb)
+    transaction_dryrun(txb)
+    # transaction_dryrun_with_gas(
+    #     txb,
+    #     [
+    #         "<ENTER ONE OR MORE COIN IDS TO PAY",
+    #     ],
+    # )
+    # transaction_execute(txb)
+
+
+def demo_tx_split_distribute(client: SuiGQLClient):
+    """Demonstrate GraphQL Beta PTB with split coin to equal parts and transfer to other address (or same)."""
+    txb = SuiTransaction(client=client)
+    scoins = txb.split_coin_and_return(
+        coin="<ENTER COID ID TO SPLIT STRING>",
+        split_count=4,
+    )
+    txb.transfer_objects(
+        transfers=scoins,
+        recipient="<ENTER RECIPIENT ADDRESS STRING>",
+    )
+
+    #### Uncomment the action to take
+    # transaction_inspect(txb)
+    transaction_dryrun(txb)
+    # transaction_dryrun_with_gas(
+    #     txb,
+    #     [
+    #         "<ENTER ONE OR MORE COIN IDS TO PAY",
+    #     ],
+    # )
+    # transaction_execute(txb)
+
+
 def demo_tx_unstake(client: SuiGQLClient):
     """Demonstrate GraphQL Beta PTB with unstaking 1 coin if found."""
     owner = client.config.active_address.address
@@ -173,5 +216,7 @@ if __name__ == "__main__":
     )
     print(f"Schema version {client_init.schema_version}")
     demo_tx_split(client_init)
+    # demo_tx_split_equal(client_init)
+    # demo_tx_split_distribute(client_init)
     # demo_tx_unstake(client_init)
     # demo_tx_transfer_sui(client_init)

@@ -25,6 +25,7 @@ import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_argb as ab
+from pysui.sui.sui_types.scalars import SuiU64
 
 # Well known parameter constructs
 
@@ -142,6 +143,12 @@ class SuiTransaction(_SuiTransactionBase):
         :type deserialize_from: Union[str, bytes], optional
         """
         super().__init__(**kwargs)
+        # Force new signer block
+        self._sig_block = SignerBlock(
+            sender=kwargs.get(
+                "initial_sender", self.client.config.active_address.address
+            )
+        )
         # Preload
         self._STAKE_REQUEST_TUPLE = self._function_meta_args(self._STAKE_REQUEST_TARGET)
         self._UNSTAKE_REQUEST_TUPLE = self._function_meta_args(
@@ -150,11 +157,6 @@ class SuiTransaction(_SuiTransactionBase):
         self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
         self._SPLIT_AND_RETURN_TUPLE = self._function_meta_args(self._SPLIT_AND_RETURN)
         self._PUBLIC_TRANSFER_TUPLE = self._function_meta_args(self._PUBLIC_TRANSFER)
-        self._sig_block = SignerBlock(
-            sender=kwargs.get(
-                "initial_sender", self.client.config.active_address.address
-            )
-        )
 
     @cache
     def _function_meta_args(
@@ -308,6 +310,114 @@ class SuiTransaction(_SuiTransactionBase):
         """
         parms = ab.build_args(self.client, [merge_to, merge_from], _MERGE_COINS)
         return self.builder.merge_coins(parms[0], parms[1:][0])
+
+    def split_coin_equal(
+        self,
+        *,
+        coin: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        split_count: int,
+        coin_type: Optional[str] = "0x2::sui::SUI",
+    ) -> bcs.Argument:
+        """split_coin_equal Splits a Sui coin into equal parts and transfers to transaction signer.
+
+        :param coin: The coin to split
+        :type coin: Union[str, bcs.Argument]
+        :param split_count: The number of parts to split coin into
+        :type split_count: int
+        :param coin_type: The coin type, defaults to a Sui coin type
+        :type coin_type: Optional[str], optional
+        :return: The command result. Because all splits are automagically transferred to
+            signer, the result is not usable as input to subseqent commands.
+        :rtype: bcs.Argument
+        """
+        package, package_module, package_function, retcount, ars = (
+            self._SPLIT_AND_KEEP_TUPLE
+        )
+
+        parms = ab.build_args(self.client, [coin, split_count], ars)
+        type_arguments = [bcs.TypeTag.type_tag_from(coin_type)]
+        return self.builder.move_call(
+            target=package,
+            arguments=parms,
+            type_arguments=type_arguments,
+            module=package_module,
+            function=package_function,
+            res_count=retcount,
+        )
+
+    def split_coin_and_return(
+        self,
+        *,
+        coin: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        split_count: int,
+        coin_type: Optional[str] = "0x2::sui::SUI",
+    ) -> bcs.Argument:
+        """split_coin_and_return Splits a Sui coin into equal parts and returns array of split_count-1 for user to transfer.
+
+        :param coin: The coin to split
+        :type coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+        :param split_count: The number of parts to split coin into
+        :type split_count: Union[int, SuiInteger]
+        :param coin_type: The coin type, defaults to a Sui coin type
+        :type coin_type: Optional[str], optional
+        :return: The command result which is a vector of coins split out and may be used in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        package, package_module, package_function, retcount, ars = (
+            self._SPLIT_AND_RETURN_TUPLE
+        )
+        parms = ab.build_args(self.client, [coin, split_count], ars)
+        type_arguments = [bcs.TypeTag.type_tag_from(coin_type)]
+        result_vector = self.builder.move_call(
+            target=package,
+            arguments=parms,
+            type_arguments=type_arguments,
+            module=package_module,
+            function=package_function,
+            res_count=retcount,
+        )
+        # Adjust type if needed
+        if coin_type.count("<") == 0:
+            type_arguments = [
+                bcs.TypeTag.type_tag_from(f"0x2::coin::Coin<{coin_type}>")
+            ]
+        # We only want the new coins
+        package, package_module, package_function = (
+            tv.TypeValidator.check_target_triplet(self._VECTOR_REMOVE_INDEX)
+        )
+        package = bcs.Address.from_str(package)
+
+        nreslist: list[bcs.Argument] = []
+        for nrindex in range(split_count - 1):
+            nreslist.append(
+                self.builder.move_call(
+                    target=package,
+                    arguments=[
+                        result_vector,
+                        PureInput.as_input(SuiU64(0)),
+                    ],
+                    type_arguments=type_arguments,
+                    module=package_module,
+                    function=package_function,
+                    res_count=1,
+                )
+            )
+        package, package_module, package_function = (
+            tv.TypeValidator.check_target_triplet(self._VECTOR_DESTROY_EMPTY)
+        )
+        package = bcs.Address.from_str(package)
+        self.builder.move_call(
+            target=package,
+            arguments=[
+                result_vector,
+            ],
+            type_arguments=type_arguments,
+            module=package_module,
+            function=package_function,
+            res_count=1,
+        )
+
+        return nreslist
 
     def transfer_objects(
         self,
@@ -564,45 +674,6 @@ class SuiTransaction(_SuiTransactionBase):
             function=package_function,
             res_count=retcount,
         )
-
-    def split_coin_equal(
-        self,
-        *,
-        coin: Union[str, bcs.Argument],
-        split_count: int,
-        coin_type: Optional[str] = "0x2::sui::SUI",
-    ) -> bcs.Argument:
-        """split_coin_equal Splits a Sui coin into equal parts and transfers to transaction signer.
-
-        :param coin: The coin to split
-        :type coin: Union[str, bcs.Argument]
-        :param split_count: The number of parts to split coin into
-        :type split_count: int
-        :param coin_type: The coin type, defaults to a Sui coin type
-        :type coin_type: Optional[str], optional
-        :return: The command result. Because all splits are automagically transferred to
-            signer, the result is not usable as input to subseqent commands.
-        :rtype: bcs.Argument
-        """
-
-    def split_coin_and_return(
-        self,
-        *,
-        coin: Union[str, bcs.Argument],
-        split_count: int,
-        coin_type: Optional[str] = "0x2::sui::SUI",
-    ) -> bcs.Argument:
-        """split_coin_and_return Splits a Sui coin into equal parts and returns array of split_count-1 for user to transfer.
-
-        :param coin: The coin to split
-        :type coin: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
-        :param split_count: The number of parts to split coin into
-        :type split_count: Union[int, SuiInteger]
-        :param coin_type: The coin type, defaults to a Sui coin type
-        :type coin_type: Optional[str], optional
-        :return: The command result which is a vector of coins split out and may be used in subsequent commands.
-        :rtype: bcs.Argument
-        """
 
     def public_transfer_object(
         self,
