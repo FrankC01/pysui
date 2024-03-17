@@ -118,7 +118,6 @@ class StandardObject(PGQL_Fragment):
             .select(
                 schema.Object.bcs,
                 base_object.fragment(schema),
-                # TODO: Need to handle different owner types
                 schema.Object.owner.select(
                     DSLInlineFragment()
                     .on(schema.AddressOwner)

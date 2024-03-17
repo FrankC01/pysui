@@ -36,7 +36,7 @@ _SCALARS = {
 
 @dataclass
 class _ArgSummary:
-    """."""
+    """Summary of point-in-time internal processing."""
 
     # Orginal input arguments
     in_args: list[Any]
@@ -56,7 +56,7 @@ def _optional_processor(
     expected_type: pgql_type.MoveObjectRefArg,
     construct: Optional[tuple[Any, Any]] = None,
 ) -> Any:
-    """."""
+    """Process arguments wrapped in Move Optional."""
     if not arg:
         etr = bcs.OptionalTypeFactory.as_optional()
         return etr

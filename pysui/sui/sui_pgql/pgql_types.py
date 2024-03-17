@@ -152,52 +152,6 @@ class SuiCoinObjectsGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
-class SuiStakedCoinGQL:
-    """Staked coin object."""
-
-    poolId: str
-    version: int
-    digest: str
-    has_public_transfer: bool
-    principal: str
-    estimated_reward: str
-    activated: dict
-    requested: dict
-    status: str
-    object_id: str
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class SuiStakedCoinsGQL(PGQL_Type):
-    """Collection of staked coin objects."""
-
-    owner: str
-    staked_coins: list[SuiStakedCoinGQL]
-    next_cursor: PagingCursor
-
-    @classmethod
-    def from_query(clz, in_data: dict) -> "SuiStakedCoinsGQL":
-        """Serializes query result to list of Sui gas coin objects.
-
-        The in_data is a dictionary with 2 keys: 'cursor' and 'coin_objects'
-        """
-        if len(in_data):
-            in_data = in_data.pop("address")
-            next_cursor = in_data["stakedSuis"].pop("cursor")
-            staked_coins = in_data["stakedSuis"].pop("staked_coin")
-            return SuiStakedCoinsGQL.from_dict(
-                {
-                    "owner": in_data["address"],
-                    "stakedCoins": staked_coins,
-                    "nextCursor": next_cursor,
-                }
-            )
-        return NoopGQL.from_query()
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
 class SuiObjectOwnedShared:
     """Collection of coin data objects."""
 
@@ -229,6 +183,69 @@ class SuiObjectOwnedImmutable:
     """Collection of coin data objects."""
 
     obj_owner_kind: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiStakedCoinGQL:
+    """Staked coin object."""
+
+    poolId: str
+    version: int
+    has_public_transfer: bool
+    principal: str
+    estimated_reward: str
+    activated: dict
+    requested: dict
+    status: str
+    object_id: str
+    object_digest: str
+    object_owner: SuiObjectOwnedAddress
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "SuiStakedCoinGQL":
+        """Serializes query result to list of SuiStaked gas coin objects."""
+        if len(in_data):
+            owners_dict = in_data.pop("owner")
+            if owners_dict["obj_owner_kind"] == "AddressOwner":
+                owners_dict["address_id"] = owners_dict.pop("owner")["address_id"]
+            else:
+                raise ValueError(f"{owners_dict["obj_owner_kind"]} for StakedSui not supported")
+            in_data["object_owner"] = owners_dict
+            return SuiStakedCoinGQL.from_dict(in_data)
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiStakedCoinsGQL(PGQL_Type):
+    """Collection of staked coin objects."""
+
+    owner: str
+    staked_coins: list[SuiStakedCoinGQL]
+    next_cursor: PagingCursor
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "SuiStakedCoinsGQL":
+        """Serializes query result to list of Sui gas coin objects.
+
+        The in_data is a dictionary with 2 keys: 'cursor' and 'coin_objects'
+        """
+        if len(in_data):
+            in_data = in_data.pop("address")
+            next_cursor = in_data["stakedSuis"].pop("cursor")
+            staked_coins = [
+                SuiStakedCoinGQL.from_query(x)
+                for x in in_data["stakedSuis"].pop("staked_coin")
+            ]
+            return SuiStakedCoinsGQL.from_dict(
+                {
+                    "owner": in_data["address"],
+                    "stakedCoins": staked_coins,
+                    "nextCursor": next_cursor,
+                }
+            )
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

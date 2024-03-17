@@ -17,6 +17,7 @@ import base64
 from pysui import SuiConfig
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
@@ -27,8 +28,8 @@ def handle_result(result: SuiRpcResult) -> SuiRpcResult:
     if result.is_ok():
         if hasattr(result.result_data, "to_json"):
             print(result.result_data.to_json(indent=2))
-        else:
-            print(result.result_data)
+            return result.result_data
+        print(result.result_data)
     else:
         print(result.result_string)
         if result.result_data and hasattr(result.result_data, "to_json"):
@@ -101,7 +102,7 @@ def transaction_execute(txb: SuiTransaction):
 
 
 def demo_tx_split(client: SuiGQLClient):
-    """Demonstrate GraphQL Beta PTB."""
+    """Demonstrate GraphQL Beta PTB with split and transfer."""
     txb = SuiTransaction(client=client)
     scoin = txb.split_coin(
         coin=txb.gas,
@@ -112,15 +113,40 @@ def demo_tx_split(client: SuiGQLClient):
     )
     #### Uncomment the action to take
     # transaction_inspect(txb)
-    # transaction_dryrun(txb)
-    transaction_dryrun_with_gas(
-        txb,
-        [
-            "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-            "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
-        ],
-    )
+    transaction_dryrun(txb)
+    # transaction_dryrun_with_gas(
+    #     txb,
+    #     [
+    #         "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
+    #         "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
+    #     ],
+    # )
     # transaction_execute(txb)
+
+
+def demo_tx_unstake(client: SuiGQLClient):
+    """Demonstrate GraphQL Beta PTB with unstaking 1 coin if found."""
+    owner = client.config.active_address.address
+
+    skblk: pgql_type.SuiStakedCoinsGQL = handle_result(
+        client.execute_query(with_query_node=qn.GetDelegatedStakes(owner=owner))
+    )
+    # Only execute if staked coin found
+    if skblk.staked_coins:
+        txb = SuiTransaction(client=client)
+        txb.unstake_coin(staked_coin=skblk.staked_coins[0])
+        # transaction_inspect(txb)
+        transaction_dryrun(txb)
+        # transaction_dryrun_with_gas(
+        #     txb,
+        #     [
+        #         "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
+        #         "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
+        #     ],
+        # )
+        # transaction_execute(txb)
+    else:
+        print("No staked coins found")
 
 
 if __name__ == "__main__":
@@ -130,3 +156,4 @@ if __name__ == "__main__":
     )
     print(f"Schema version {client_init.schema_version}")
     demo_tx_split(client_init)
+    # demo_tx_unstake(client_init)

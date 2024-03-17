@@ -498,6 +498,27 @@ class SuiTransaction(_SuiTransactionBase):
         :return: The Result argument
         :rtype: bcs.Argument
         """
+        # Fetch pre-build meta arg summary
+        package, package_module, package_function, retcount, ars = (
+            self._UNSTAKE_REQUEST_TUPLE
+        )
+        # Validate arguments
+        parms = ab.build_args(
+            self.client,
+            [
+                self._SYSTEMSTATE_OBJECT.value,
+                staked_coin,
+            ],
+            ars,
+        )
+        return self.builder.move_call(
+            target=package,
+            arguments=parms,
+            type_arguments=[],
+            module=package_module,
+            function=package_function,
+            res_count=retcount,
+        )
 
     def split_coin_equal(
         self,

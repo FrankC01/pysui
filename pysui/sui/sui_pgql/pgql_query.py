@@ -695,8 +695,6 @@ class GetMultipleTx(PGQL_QueryNode):
         return pgql_type.TransactionSummariesGQL.from_query
 
 
-# TODO: Need object rep
-# TODO: When staking matures
 class GetDelegatedStakes(PGQL_QueryNode):
     """GetDelegatedStakes return all [StakedSui] coins for owner."""
 
@@ -730,13 +728,40 @@ class GetDelegatedStakes(PGQL_QueryNode):
             staked_coin=schema.StakedSuiConnection.nodes.select(
                 schema.StakedSui.poolId,
                 schema.StakedSui.version,
-                schema.StakedSui.digest,
                 schema.StakedSui.hasPublicTransfer,
                 schema.StakedSui.principal,
                 schema.StakedSui.estimatedReward,
+                schema.StakedSui.owner.select(
+                    DSLInlineFragment()
+                    .on(schema.AddressOwner)
+                    .select(
+                        schema.AddressOwner.owner.select(
+                            address_id=schema.Owner.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Shared)
+                    .select(
+                        initial_version=schema.Shared.initialSharedVersion,
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Immutable)
+                    .select(
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Parent)
+                    .select(
+                        schema.Parent.parent.select(parent_id=schema.Object.address),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                ),
                 activated=schema.StakedSui.activatedEpoch.select(schema.Epoch.epochId),
                 requested=schema.StakedSui.requestedEpoch.select(schema.Epoch.epochId),
                 status=schema.StakedSui.stakeStatus,
+                object_digest=schema.StakedSui.digest,
                 object_id=schema.StakedSui.address,
             ),
         )
