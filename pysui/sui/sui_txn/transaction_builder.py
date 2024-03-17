@@ -569,7 +569,7 @@ class ProgrammableTransactionBuilder:
         self,
         recipient: bcs.BuilderArg,
         from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
-        amount: Optional[bcs.BuilderArg] = None,
+        amount: Optional[Union[bcs.BuilderArg, bcs.Optional]] = None,
     ) -> bcs.Argument:
         """Setup a TransferObjects for Sui Coins.
 
@@ -577,8 +577,16 @@ class ProgrammableTransactionBuilder:
         """
         logger.debug("Creating TransferSui transaction")
         reciever_arg = self.input_pure(recipient)
-        if amount:
+        if amount and isinstance(amount, bcs.BuilderArg):
             coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
+        elif isinstance(amount, bcs.Optional):
+            o_amount: bcs.Optional = amount
+            if o_amount.value:
+                coin_arg = self.split_coin(
+                    from_coin=from_coin, amounts=[o_amount.value]
+                )
+            else:
+                coin_arg = from_coin
         elif isinstance(from_coin, bcs.Argument):
             coin_arg = from_coin
         else:

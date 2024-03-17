@@ -117,8 +117,7 @@ def demo_tx_split(client: SuiGQLClient):
     # transaction_dryrun_with_gas(
     #     txb,
     #     [
-    #         "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-    #         "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
+    #         "<ENTER ONE OR MORE COIN IDS TO PAY",
     #     ],
     # )
     # transaction_execute(txb)
@@ -140,13 +139,31 @@ def demo_tx_unstake(client: SuiGQLClient):
         # transaction_dryrun_with_gas(
         #     txb,
         #     [
-        #         "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-        #         "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
+        #         "<ENTER ONE OR MORE COIN IDS TO PAY",
         #     ],
         # )
         # transaction_execute(txb)
     else:
         print("No staked coins found")
+
+
+def demo_tx_transfer_sui(client: SuiGQLClient):
+    """Demonstrate GraphQL Beta PTB with transferring sui."""
+    txb = SuiTransaction(client=client)
+    txb.transfer_sui(
+        recipient="<ENTER RECIPIENT ADDRESS STRING>",
+        from_coin=txb.gas,
+        amount=100000000,
+    )
+    transaction_inspect(txb)
+    # transaction_dryrun(txb)
+    # transaction_dryrun_with_gas(
+    #     txb,
+    #     [
+    #         "<ENTER ONE OR MORE COIN IDS TO PAY",
+    #     ],
+    # )
+    # transaction_execute(txb)
 
 
 if __name__ == "__main__":
@@ -157,3 +174,4 @@ if __name__ == "__main__":
     print(f"Schema version {client_init.schema_version}")
     demo_tx_split(client_init)
     # demo_tx_unstake(client_init)
+    # demo_tx_transfer_sui(client_init)

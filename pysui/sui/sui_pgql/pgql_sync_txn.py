@@ -11,7 +11,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Pysui Transaction builder that works with GraphQL connection."""
+"""Pysui Transaction builder that leverages Sui GraphQL."""
 
 import base64
 from typing import Any, Callable, Optional, Union
@@ -26,9 +26,8 @@ import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_argb as ab
 
-# Well known constructs
+# Well known parameter constructs
 
-# _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
 _SPLIT_COIN = pgql_type.MoveArgSummary(
     [],
     [
@@ -41,6 +40,7 @@ _SPLIT_COIN = pgql_type.MoveArgSummary(
         ),
     ],
 )
+
 _MERGE_COINS = pgql_type.MoveArgSummary(
     [],
     [
@@ -65,6 +65,26 @@ _TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
             pgql_type.MoveObjectRefArg(
                 pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
             ),
+        ),
+    ],
+)
+
+_TRANSFER_SUI = pgql_type.MoveArgSummary(
+    [],
+    [
+        pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
+        pgql_type.MoveObjectRefArg(
+            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+        ),
+        pgql_type.MoveObjectRefArg(
+            pgql_type.RefType.MUT_REF,
+            "0x2",
+            "sui",
+            "SUI",
+            [pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64")],
+            True,
+            False,
+            False,
         ),
     ],
 )
@@ -211,7 +231,7 @@ class SuiTransaction(_SuiTransactionBase):
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
         :type gas_budget: Optional[str], optional
         :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
-        :type use_gas_objects: Optional[list[Union[str, pgql_type.ObjectReadGQL]]], optional
+        :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
@@ -228,7 +248,7 @@ class SuiTransaction(_SuiTransactionBase):
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
         :type gas_budget: Optional[str], optional
         :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
-        :type use_gas_objects: Optional[list[Union[str, pgql_type.ObjectReadGQL]]], optional
+        :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
@@ -261,7 +281,7 @@ class SuiTransaction(_SuiTransactionBase):
             txer.transfer_objects(transfers=[scres[0]],recipient=client.config.active_address)
 
         :param coin: The coin address (object id) to split from.
-        :type coin: Union[str, bcs.Argument]
+        :type coin: Union[str, pgql_type.ObjectReadGQL, bcs.Argument]
         :param amounts: The amount or list of amounts to split the coin out to
         :type amounts: list[Union[int, bcs.Argument]]
         :return: A result or list of results types to use in subsequent commands
@@ -280,9 +300,9 @@ class SuiTransaction(_SuiTransactionBase):
         """merge_coins Merges one or more coins to a primary coin.
 
         :param merge_to: The coin to merge other coins to
-        :type merge_to: Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]
+        :type merge_to: Union[str, pgql_type.ObjectReadGQL, bcs.Argument]
         :param merge_from: One or more coins to merge to primary 'merge_to' coin
-        :type merge_from: list[Union[str bcs.Argument]]
+        :type merge_from: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]]
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
@@ -298,7 +318,7 @@ class SuiTransaction(_SuiTransactionBase):
         """transfer_objects Transfers one or more objects to a recipient.
 
         :param transfers: A list or SuiArray of objects to transfer
-        :type transfers: list[Union[str,  bcs.Argument]]
+        :type transfers: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]]
         :param recipient: The recipient address that will receive the objects being transfered
         :type recipient: str
         :return: The command result. Can NOT be used as input in subsequent commands.
@@ -306,6 +326,30 @@ class SuiTransaction(_SuiTransactionBase):
         """
         parms = ab.build_args(self.client, [recipient, transfers], _TRANSFER_OBJECTS)
         return self.builder.transfer_objects(parms[0], parms[1:][0])
+
+    def transfer_sui(
+        self,
+        *,
+        recipient: str,
+        from_coin: Union[str, bcs.Argument],
+        amount: Optional[int] = None,
+    ) -> bcs.Argument:
+        """transfer_sui Transfers a Sui coin object to a recipient.
+
+        :param recipient: The recipient address that will receive the Sui coin being transfered
+        :type recipient: str
+        :param from_coin: The Sui coin to transfer
+        :type from_coin: Union[str, bcs.Argument]
+        :param amount: Optional amount to transfer. Entire coin if not specified, defaults to None
+        :type amount: Optional[int], optional
+        :raises ValueError: If unable to fetch the from_coin
+        :raises ValueError: If from_coin is invalid
+        :return: The command result. Can NOT be used as input in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        return self.builder.transfer_sui(
+            *ab.build_args(self.client, [recipient, from_coin, amount], _TRANSFER_SUI)
+        )
 
     def make_move_vector(
         self,
@@ -333,15 +377,15 @@ class SuiTransaction(_SuiTransactionBase):
         self,
         *,
         target: str,
-        arguments: list,
+        arguments: list[Any],
         type_arguments: Optional[list] = None,
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """move_call Creates a command to invoke a move contract call. May or may not return results.
 
         :param target: String triple in form "package_object_id::module_name::function_name"
         :type target: str
-        :param arguments: Parameters that are passed to the move function
-        :type arguments: list
+        :param arguments: Arguments that are passed to the move function
+        :type arguments: list[Any]
         :param type_arguments: Optional list of type arguments for move function generics, defaults to None
         :type type_arguments: Optional[list], optional
         :return: The result which may or may not be used in subequent commands depending on the
@@ -457,7 +501,7 @@ class SuiTransaction(_SuiTransactionBase):
         """stake_coin Stakes one or more coins to a specific validator.
 
         :param coins: One or more coins to stake.
-        :type coins: list[str]
+        :type coins: list[str, pgql_type.ObjectReadGQL]
         :param validator_address: The validator to stake coins to
         :type validator_address: str
         :param amount: Amount from coins to stake. If not stated, all coin will be staked, defaults to None
@@ -489,12 +533,13 @@ class SuiTransaction(_SuiTransactionBase):
             res_count=retcount,
         )
 
-    def unstake_coin(self, *, staked_coin: str) -> bcs.Argument:
+    def unstake_coin(
+        self, *, staked_coin: Union[str, pgql_type.SuiStakedCoinGQL]
+    ) -> bcs.Argument:
         """unstake_coin Unstakes a Staked Sui Coin.
 
         :param staked_coin: The coin being unstaked
-        :type staked_coin: str
-        :raises ValueError: If the staked coin is still in 'pending' state
+        :type staked_coin: Union[str, pgql_type.SuiStakedCoinGQL]
         :return: The Result argument
         :rtype: bcs.Argument
         """
@@ -575,27 +620,6 @@ class SuiTransaction(_SuiTransactionBase):
         :param object_type: Type arguments
         :type object_type: str
         :return: Result of command which is non-reusable
-        :rtype: bcs.Argument
-        """
-
-    def transfer_sui(
-        self,
-        *,
-        recipient: str,
-        from_coin: Union[str, bcs.Argument],
-        amount: Optional[int] = None,
-    ) -> bcs.Argument:
-        """transfer_sui Transfers a Sui coin object to a recipient.
-
-        :param recipient: The recipient address that will receive the Sui coin being transfered
-        :type recipient: str
-        :param from_coin: The Sui coin to transfer
-        :type from_coin: Union[str, bcs.Argument]
-        :param amount: Optional amount to transfer. Entire coin if not specified, defaults to None
-        :type amount: Optional[int], optional
-        :raises ValueError: If unable to fetch the from_coin
-        :raises ValueError: If from_coin is invalid
-        :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
 

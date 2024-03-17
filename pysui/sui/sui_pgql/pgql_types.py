@@ -210,7 +210,9 @@ class SuiStakedCoinGQL:
             if owners_dict["obj_owner_kind"] == "AddressOwner":
                 owners_dict["address_id"] = owners_dict.pop("owner")["address_id"]
             else:
-                raise ValueError(f"{owners_dict["obj_owner_kind"]} for StakedSui not supported")
+                raise ValueError(
+                    f"{owners_dict['obj_owner_kind']} for StakedSui not supported"
+                )
             in_data["object_owner"] = owners_dict
             return SuiStakedCoinGQL.from_dict(in_data)
         return NoopGQL.from_query()

@@ -62,15 +62,15 @@ def _optional_processor(
         return etr
 
     if isinstance(construct, tuple):
-        inner, _outer = construct
-        if inner is _object_processor:
+        inner_fn, outer_fn = construct
+        if inner_fn is _object_processor:
             inner_type = _object_processor(
                 client=client,
                 arg=arg,
                 expected_type=expected_type.type_params[0],
             )
         else:
-            inner_type = inner(arg)
+            inner_type = outer_fn(inner_fn(arg))
         etr = bcs.OptionalTypeFactory.as_optional(inner_type)
     elif construct:
         inner_type = construct(arg)
