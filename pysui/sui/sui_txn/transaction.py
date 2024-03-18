@@ -21,7 +21,7 @@ from typing import Final, Optional, Union
 import logging
 
 
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 
 from pysui import SuiAddress, ObjectID
 from pysui.sui import sui_utils
@@ -115,6 +115,7 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
 @versionchanged(
     version="0.40.1", reason="Default 'compress_inputs' on SuiTransaction to True"
 )
+@deprecated(version="0.54.0", reason="Transitioning to sui_pgql")
 class _SuiTransactionBase:
     """SuiTransaction base object."""
 

@@ -90,6 +90,16 @@ _TRANSFER_SUI = pgql_type.MoveArgSummary(
     ],
 )
 
+_PUBLIC_TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
+    [],
+    [
+        pgql_type.MoveObjectRefArg(
+            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+        ),
+        pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
+    ],
+)
+
 _MAKE_MOVE_VEC = pgql_type.MoveArgSummary(
     [],
     [
@@ -122,7 +132,6 @@ class SuiTransaction(_SuiTransactionBase):
     _UNSTAKE_REQUEST_TUPLE: tuple = None
     _SPLIT_AND_KEEP_TUPLE: tuple = None
     _SPLIT_AND_RETURN_TUPLE: tuple = None
-    _PUBLIC_TRANSFER_TUPLE: tuple = None
     _PUBLISH_AUTHORIZE_UPGRADE_TUPLE: tuple = None
 
     def __init__(
@@ -156,7 +165,6 @@ class SuiTransaction(_SuiTransactionBase):
         )
         self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
         self._SPLIT_AND_RETURN_TUPLE = self._function_meta_args(self._SPLIT_AND_RETURN)
-        self._PUBLIC_TRANSFER_TUPLE = self._function_meta_args(self._PUBLIC_TRANSFER)
 
     @cache
     def _function_meta_args(
@@ -441,7 +449,7 @@ class SuiTransaction(_SuiTransactionBase):
         self,
         *,
         recipient: str,
-        from_coin: Union[str, bcs.Argument],
+        from_coin: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
         amount: Optional[int] = None,
     ) -> bcs.Argument:
         """transfer_sui Transfers a Sui coin object to a recipient.
@@ -459,6 +467,40 @@ class SuiTransaction(_SuiTransactionBase):
         """
         return self.builder.transfer_sui(
             *ab.build_args(self.client, [recipient, from_coin, amount], _TRANSFER_SUI)
+        )
+
+    def public_transfer_object(
+        self,
+        *,
+        object_to_send: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        recipient: str,
+        object_type: str,
+    ) -> bcs.Argument:
+        """public_transfer_object Public transfer of any object with KEY and STORE Attributes.
+
+        :param object_to_send: Object being transferred
+        :type object_to_send: Union[str, bcs.Argument]
+        :param recipient: Address for recipient of object_to_send
+        :type recipient: str
+        :param object_type: Type arguments
+        :type object_type: str
+        :return: Result of command which is non-reusable
+        :rtype: bcs.Argument
+        """
+        package, package_module, package_function = (
+            tv.TypeValidator.check_target_triplet(self._PUBLIC_TRANSFER)
+        )
+        package = bcs.Address.from_str(package)
+
+        return self.builder.move_call(
+            target=package,
+            arguments=ab.build_args(
+                self.client, [object_to_send, recipient], _PUBLIC_TRANSFER_OBJECTS
+            ),
+            type_arguments=[bcs.TypeTag.type_tag_from(object_type)],
+            module=package_module,
+            function=package_function,
+            res_count=0,
         )
 
     def make_move_vector(
@@ -512,6 +554,80 @@ class SuiTransaction(_SuiTransactionBase):
             target=package,
             arguments=parms,
             type_arguments=type_arguments,
+            module=package_module,
+            function=package_function,
+            res_count=retcount,
+        )
+
+    def stake_coin(
+        self,
+        *,
+        coins: list[Union[str, pgql_type.ObjectReadGQL]],
+        validator_address: str,
+        amount: Optional[int] = None,
+    ) -> bcs.Argument:
+        """stake_coin Stakes one or more coins to a specific validator.
+
+        :param coins: One or more coins to stake.
+        :type coins: list[str, pgql_type.ObjectReadGQL]
+        :param validator_address: The validator to stake coins to
+        :type validator_address: str
+        :param amount: Amount from coins to stake. If not stated, all coin will be staked, defaults to None
+        :type amount: Optional[int], optional
+        :return: The command result.
+        :rtype: bcs.Argument
+        """
+        # Fetch pre-build meta arg summary
+        package, package_module, package_function, retcount, ars = (
+            self._STAKE_REQUEST_TUPLE
+        )
+        # Validate arguments
+        parms = ab.build_args(
+            self.client,
+            [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
+            ars,
+        )
+        # Create a move vector of coins
+        parms[1] = self.make_move_vector(
+            items=parms[1], item_type="0x2::coin::Coin<0x2::sui::SUI>"
+        )
+        # Make the call
+        return self.builder.move_call(
+            target=package,
+            arguments=parms,
+            type_arguments=[],
+            module=package_module,
+            function=package_function,
+            res_count=retcount,
+        )
+
+    def unstake_coin(
+        self, *, staked_coin: Union[str, pgql_type.SuiStakedCoinGQL]
+    ) -> bcs.Argument:
+        """unstake_coin Unstakes a Staked Sui Coin.
+
+        :param staked_coin: The coin being unstaked
+        :type staked_coin: Union[str, pgql_type.SuiStakedCoinGQL]
+        :return: The Result argument
+        :rtype: bcs.Argument
+        """
+        # Fetch pre-build meta arg summary
+        package, package_module, package_function, retcount, ars = (
+            self._UNSTAKE_REQUEST_TUPLE
+        )
+        # Validate arguments
+        parms = ab.build_args(
+            self.client,
+            [
+                self._SYSTEMSTATE_OBJECT.value,
+                staked_coin,
+            ],
+            ars,
+        )
+        return self.builder.move_call(
+            target=package,
+            arguments=parms,
+            type_arguments=[],
             module=package_module,
             function=package_function,
             res_count=retcount,
@@ -601,99 +717,6 @@ class SuiTransaction(_SuiTransactionBase):
         else:
             raise ValueError(f"Not a valid upgrade cap.")
 
-    def stake_coin(
-        self,
-        *,
-        coins: list[Union[str, pgql_type.ObjectReadGQL]],
-        validator_address: str,
-        amount: Optional[int] = None,
-    ) -> bcs.Argument:
-        """stake_coin Stakes one or more coins to a specific validator.
-
-        :param coins: One or more coins to stake.
-        :type coins: list[str, pgql_type.ObjectReadGQL]
-        :param validator_address: The validator to stake coins to
-        :type validator_address: str
-        :param amount: Amount from coins to stake. If not stated, all coin will be staked, defaults to None
-        :type amount: Optional[int], optional
-        :return: The command result.
-        :rtype: bcs.Argument
-        """
-        # Fetch pre-build meta arg summary
-        package, package_module, package_function, retcount, ars = (
-            self._STAKE_REQUEST_TUPLE
-        )
-        # Validate arguments
-        parms = ab.build_args(
-            self.client,
-            [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
-            ars,
-        )
-        # Create a move vector of coins
-        parms[1] = self.make_move_vector(
-            items=parms[1], item_type="0x2::coin::Coin<0x2::sui::SUI>"
-        )
-        # Make the call
-        return self.builder.move_call(
-            target=package,
-            arguments=parms,
-            type_arguments=[],
-            module=package_module,
-            function=package_function,
-            res_count=retcount,
-        )
-
-    def unstake_coin(
-        self, *, staked_coin: Union[str, pgql_type.SuiStakedCoinGQL]
-    ) -> bcs.Argument:
-        """unstake_coin Unstakes a Staked Sui Coin.
-
-        :param staked_coin: The coin being unstaked
-        :type staked_coin: Union[str, pgql_type.SuiStakedCoinGQL]
-        :return: The Result argument
-        :rtype: bcs.Argument
-        """
-        # Fetch pre-build meta arg summary
-        package, package_module, package_function, retcount, ars = (
-            self._UNSTAKE_REQUEST_TUPLE
-        )
-        # Validate arguments
-        parms = ab.build_args(
-            self.client,
-            [
-                self._SYSTEMSTATE_OBJECT.value,
-                staked_coin,
-            ],
-            ars,
-        )
-        return self.builder.move_call(
-            target=package,
-            arguments=parms,
-            type_arguments=[],
-            module=package_module,
-            function=package_function,
-            res_count=retcount,
-        )
-
-    def public_transfer_object(
-        self,
-        *,
-        object_to_send: Union[str, bcs.Argument],
-        recipient: str,
-        object_type: str,
-    ) -> bcs.Argument:
-        """public_transfer_object Public transfer of any object.
-
-        :param object_to_send: Object being transferred
-        :type object_to_send: Union[str, bcs.Argument]
-        :param recipient: Address for recipient of object_to_send
-        :type recipient: str
-        :param object_type: Type arguments
-        :type object_type: str
-        :return: Result of command which is non-reusable
-        :rtype: bcs.Argument
-        """
-
     def custom_upgrade(
         self,
         *,
@@ -725,3 +748,32 @@ class SuiTransaction(_SuiTransactionBase):
         :return: The result argument
         :rtype: bcs.Argument
         """
+        modules, dependencies, digest = self._compile_source(project_path, args_list)
+        # Resolve upgrade cap to ObjectRead if needed
+        if isinstance(upgrade_cap, str):
+            result = self.client.execute_query(
+                with_query_node=qn.GetObject(object_id=upgrade_cap)
+            )
+            if result.is_err():
+                raise ValueError(f"Validating upgrade cap: {result.result_string}")
+
+            upgrade_cap = result.result_data
+        # Isolate the struct type from supposed UpgradeCap
+        _, _, package_struct = tv.TypeValidator.check_target_triplet(
+            upgrade_cap.object_type
+        )
+        # If all upgradecap items check out
+        if (
+            upgrade_cap.content.keys() >= {"package", "version", "policy"}
+            and package_struct == "UpgradeCap"
+        ):
+            upgrade_ticket = authorize_upgrade_fn(self, upgrade_cap, digest)
+            # Extrack the auth_cmd cap input
+            package_id = bcs.Address.from_str(package_id)
+            # Upgrade
+            receipt = self.builder.publish_upgrade(
+                modules, dependencies, package_id, upgrade_ticket
+            )
+            return commit_upgrade_fn(self, upgrade_cap, receipt)
+        else:
+            raise ValueError(f"Not a valid upgrade cap.")

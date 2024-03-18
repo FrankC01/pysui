@@ -209,6 +209,25 @@ def demo_tx_transfer_sui(client: SuiGQLClient):
     # transaction_execute(txb)
 
 
+def demo_tx_public_transfer(client: SuiGQLClient):
+    """Demonstrate GraphQL Beta PTB with public transfer object."""
+    txb = SuiTransaction(client=client)
+    txb.public_transfer_object(
+        object_to_send="<ENTER OBJECT ID TO SEND STRING>",
+        recipient="<ENTER RECIPIENT ADDRESS STRING>",
+        object_type="<ENTER OBJECT TYPE STRING>",
+    )
+    # transaction_inspect(txb)
+    transaction_dryrun(txb)
+    # transaction_dryrun_with_gas(
+    #     txb,
+    #     [
+    #         "<ENTER ONE OR MORE COIN IDS TO PAY",
+    #     ],
+    # )
+    # transaction_execute(txb)
+
+
 if __name__ == "__main__":
     client_init = SuiGQLClient(
         write_schema=False,
@@ -218,5 +237,6 @@ if __name__ == "__main__":
     demo_tx_split(client_init)
     # demo_tx_split_equal(client_init)
     # demo_tx_split_distribute(client_init)
+    # demo_tx_public_transfer(client_init)
     # demo_tx_unstake(client_init)
     # demo_tx_transfer_sui(client_init)

@@ -17,7 +17,7 @@
 from typing import Any, Optional, Union, Callable
 import logging
 import base64
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 
 from pysui import SyncClient, SuiAddress, SuiRpcResult, ObjectID
 from pysui.sui.sui_builders.base_builder import (
@@ -65,6 +65,7 @@ if not logging.getLogger().handlers:
 
 @versionchanged(version="0.20.3", reason="Explicit support of tx.gas.")
 @versionchanged(version="0.30.0", reason="Separated sync and async SuiTransaction.")
+@deprecated(version="0.54.0", reason="Transitioning to sui_pgql")
 class SuiTransaction(_SuiTransactionBase):
     """High level transaction builder."""
 

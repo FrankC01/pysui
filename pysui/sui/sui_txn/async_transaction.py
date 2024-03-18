@@ -17,7 +17,7 @@
 import logging
 import base64
 from typing import Optional, Union, Any, Callable, Awaitable
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 
 from pysui import (
     AsyncClient,
@@ -66,6 +66,7 @@ if not logging.getLogger().handlers:
 
 
 @versionchanged(version="0.30.0", reason="Separated sync and async SuiTransaction.")
+@deprecated(version="0.54.0", reason="Transitioning to sui_pgql")
 class SuiTransactionAsync(_SuiTransactionBase):
     """."""
 
@@ -720,7 +721,7 @@ class SuiTransactionAsync(_SuiTransactionBase):
             [
                 upgrade_cap,
                 SuiU8(upgrade_cap.content.fields["policy"]),
-                digest
+                digest,
                 # bcs.Digest.from_bytes(compiled_package.package_digest),
             ]
         )

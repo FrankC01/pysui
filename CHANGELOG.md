@@ -5,14 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.54.0] - Unpublished
+## [0.54.0] - 2024-03-18
 
 ### Added
 
 - Beta Transaction building version using GraphQL -> `from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction`
   - Simplified interface using basic python types for all commands (split_coin, move_call, etc.)
   - Argument inferencing will encode arguments from basic python types to expected parameters
-  - **NOTE** Not all commands implemented
 - BCS `Optional` factory for GraphQL transaction builder
 - Dataclass for GraphQL Staked coins
 - ObjectRef (ImmOrOwnedObject, SharedObject) added ingestion for ObjectReadGQL and SuiCoinObjectGQL
