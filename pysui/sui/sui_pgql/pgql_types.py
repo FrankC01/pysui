@@ -548,6 +548,7 @@ class DryRunResultGQL(PGQL_Type):
     """DryRun result representation class."""
 
     transaction_block: TransactionResultGQL
+    results: Optional[list[dict]]
     error: Optional[str] = None
 
     @classmethod
@@ -557,9 +558,10 @@ class DryRunResultGQL(PGQL_Type):
             in_data = in_data.get("dryRun")
             if in_data:
                 dr_err = in_data.pop("error")
+                dr_res = in_data.pop("results")
                 tblock = TransactionResultGQL.from_query(in_data)
                 return DryRunResultGQL.from_dict(
-                    {"error": dr_err, "transaction_block": tblock}
+                    {"error": dr_err, "results": dr_res, "transaction_block": tblock}
                 )
         return NoopGQL.from_query()
 

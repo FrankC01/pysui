@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.55.0] - Unpublished
+
+### Added
+
+- DryRun (GraphQL) result now contains return values (if any) of transaction block
+
+### Fixed
+
+- Removed ValueError exception if the dry run transaction block status not equal to 'SUCCESS'. This dry run is
+the one invokved to obtain a budget value when none provided.
+
+### Changed
+
+### Removed
+
 ## [0.54.0] - 2024-03-18
 
 ### Added

@@ -1331,6 +1331,11 @@ class DryRunTransactionKind(PGQL_QueryNode):
             .alias("dryRun")
             .select(
                 schema.DryRunResult.error,
+                schema.DryRunResult.results.select(
+                    schema.DryRunEffect.returnValues.select(
+                        schema.DryRunReturn.type.select(schema.MoveType.repr)
+                    )
+                ),
                 transactionBlock=schema.DryRunResult.transaction.select(std_txn),
             )
         )
@@ -1361,6 +1366,11 @@ class DryRunTransaction(PGQL_QueryNode):
             .alias("dryRun")
             .select(
                 schema.DryRunResult.error,
+                schema.DryRunResult.results.select(
+                    schema.DryRunEffect.returnValues.select(
+                        schema.DryRunReturn.type.select(schema.MoveType.repr)
+                    )
+                ),
                 transactionBlock=schema.DryRunResult.transaction.select(std_txn),
             )
         )

@@ -75,20 +75,17 @@ def _dry_run_for_budget(
         )
     )
     if result.is_ok():
-        if result.result_data.transaction_block.effects["status"] == "SUCCESS":
-            c_cost: int = int(
-                result.result_data.transaction_block.effects["gasEffects"][
-                    "gasSummary"
-                ]["computationCost"]
-            )
-            s_cost: int = int(
-                result.result_data.transaction_block.effects["gasEffects"][
-                    "gasSummary"
-                ]["storageCost"]
-            )
-            return c_cost + s_cost
-        else:
-            raise ValueError(f"{result.result_data.errors}")
+        c_cost: int = int(
+            result.result_data.transaction_block.effects["gasEffects"]["gasSummary"][
+                "computationCost"
+            ]
+        )
+        s_cost: int = int(
+            result.result_data.transaction_block.effects["gasEffects"]["gasSummary"][
+                "storageCost"
+            ]
+        )
+        return c_cost + s_cost
     else:
         raise ValueError(
             f"Error running DryRunTransactionBlock: {result.result_string}"
