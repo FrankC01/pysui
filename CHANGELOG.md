@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - DryRun (GraphQL) result now contains return values (if any) of transaction block
+- ObjectReadDeletedGQL for objects that have been wrapped into other object or deleted
 
 ### Fixed
 

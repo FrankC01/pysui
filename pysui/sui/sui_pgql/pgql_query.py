@@ -321,7 +321,10 @@ class GetMultipleGasObjects(PGQL_QueryNode):
 
         qres = schema.Query.objects(filter={"objectIds": self.coin_ids}).select(
             schema.ObjectConnection.nodes.select(
-                schema.Object.asMoveObject.select(
+                schema.Object.version,
+                object_id=schema.Object.address,
+                object_kind=schema.Object.status,
+                amo=schema.Object.asMoveObject.select(
                     schema.MoveObject.asCoin.select(
                         schema.Coin.version,
                         schema.Coin.hasPublicTransfer,
@@ -343,8 +346,8 @@ class GetMultipleGasObjects(PGQL_QueryNode):
                         object_digest=schema.Coin.digest,
                         balance=schema.Coin.coinBalance,
                         coin_object_id=schema.Coin.address,
-                    )
-                )
+                    ),
+                ),
             )
         )
         return dsl_gql(

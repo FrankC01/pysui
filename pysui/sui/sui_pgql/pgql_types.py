@@ -81,6 +81,23 @@ class ErrorGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ObjectReadDeletedGQL:
+    """Return when object has been wrapped or deleted."""
+
+    version: int
+    object_id: str
+    object_kind: str
+    # bcs: Optional[str] = None
+    # object_digest: Optional[str] = None
+    # storage_rebate: Optional[str] = None
+    # prior_transaction: Optional[str] = None
+    # as_move_content: Optional[str] = None
+    # object_owner: Optional[str] = None
+    # has_public_transfer: Optional[bool] = False
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class SuiCoinObjectGQL(PGQL_Type):
     """Coin object representation class."""
 
@@ -111,7 +128,7 @@ class SuiCoinObjectGQL(PGQL_Type):
 class SuiCoinFromObjectsGQL(PGQL_Type):
     """Collection of sui coin from objects."""
 
-    data: list[SuiCoinObjectGQL]
+    data: list[Union[SuiCoinObjectGQL, ObjectReadDeletedGQL]]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SuiCoinFromObjectsGQL":
@@ -122,7 +139,12 @@ class SuiCoinFromObjectsGQL(PGQL_Type):
             for node in ser_dict["nodes"]:
                 ser_dict: dict = {}
                 _fast_flat(node, ser_dict)
-                mid_list.append(ser_dict)
+                # If fetching by ID it may not exist
+                if ser_dict.get("object_kind") == "HISTORICAL":
+                    mid_list.append(ser_dict)
+                elif ser_dict.get("object_kind") == "WRAPPED_OR_DELETED":
+                    ser_dict.pop("amo")
+                    mid_list.append(ObjectReadDeletedGQL.from_dict(ser_dict))
             return clz.from_dict({"data": mid_list})
         return NoopGQL.from_query()
 
@@ -275,7 +297,6 @@ class ObjectReadGQL(PGQL_Type):
     content: Optional[dict] = None
     owner_id: Optional[str] = None
 
-    # TODO: Need to handle different owner types
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadGQL":
         """Serializes query result to list of Sui objects.
@@ -287,30 +308,33 @@ class ObjectReadGQL(PGQL_Type):
             res_dict: dict = {}
 
             owner = in_data.pop("owner")
-            owner_kind = owner["obj_owner_kind"]
-            if in_data.get("as_move_content"):
-                contents = in_data["as_move_content"]["as_object"].pop("content")
+            if owner:
+                owner_kind = owner["obj_owner_kind"]
+                if in_data.get("as_move_content"):
+                    contents = in_data["as_move_content"]["as_object"].pop("content")
+                else:
+                    contents = None
+                # Flatten
+                _fast_flat(in_data, res_dict)
+                # Reassign
+                res_dict["content"] = contents
+                match owner_kind:
+                    case "AddressOwner":
+                        res_dict["object_owner"] = SuiObjectOwnedAddress(
+                            owner_kind, owner["owner"]["address_id"]
+                        )
+                    case "Shared":
+                        res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
+                    case "Parent":
+                        res_dict["object_owner"] = SuiObjectOwnedParent(
+                            owner_kind, owner["owner"]["parent_id"]
+                        )
+                    case "Immutable":
+                        res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
+                # Flatten dictionary
+                return ObjectReadGQL.from_dict(res_dict)
             else:
-                contents = None
-            # Flatten
-            _fast_flat(in_data, res_dict)
-            # Reassign
-            res_dict["content"] = contents
-            match owner_kind:
-                case "AddressOwner":
-                    res_dict["object_owner"] = SuiObjectOwnedAddress(
-                        owner_kind, owner["owner"]["address_id"]
-                    )
-                case "Shared":
-                    res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
-                case "Parent":
-                    res_dict["object_owner"] = SuiObjectOwnedParent(
-                        owner_kind, owner["owner"]["parent_id"]
-                    )
-                case "Immutable":
-                    res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
-            # Flatten dictionary
-            return ObjectReadGQL.from_dict(res_dict)
+                return ObjectReadDeletedGQL.from_dict(in_data)
         return NoopGQL.from_query()
 
 
