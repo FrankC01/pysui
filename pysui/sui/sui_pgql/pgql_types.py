@@ -55,7 +55,7 @@ class PagingCursor:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class NoopGQL(PGQL_Type):
-    """."""
+    """Returned when no data received from GraphQL."""
 
     next_cursor: PagingCursor
     data: list
@@ -87,13 +87,6 @@ class ObjectReadDeletedGQL:
     version: int
     object_id: str
     object_kind: str
-    # bcs: Optional[str] = None
-    # object_digest: Optional[str] = None
-    # storage_rebate: Optional[str] = None
-    # prior_transaction: Optional[str] = None
-    # as_move_content: Optional[str] = None
-    # object_owner: Optional[str] = None
-    # has_public_transfer: Optional[bool] = False
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

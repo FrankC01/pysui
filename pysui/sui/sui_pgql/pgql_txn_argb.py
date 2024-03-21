@@ -84,13 +84,15 @@ def _fetch_or_transpose_object(
     arg: Union[str, pgql_type.ObjectReadGQL],
     expected_type: pgql_type.MoveObjectRefArg,
 ) -> bcs.ObjectArg:
-    """."""
+    """Fetches and prepares an object reference to ObjectArg for BCS."""
     object_def: pgql_type.ObjectReadGQL = arg
     if isinstance(arg, str):
         result = client.execute_query(with_query_node=qn.GetObject(object_id=arg))
         if result.is_ok():
             object_def = result.result_data
-            if isinstance(object_def, pgql_type.NoopGQL):
+            if isinstance(
+                object_def, (pgql_type.NoopGQL, pgql_type.ObjectReadDeletedGQL)
+            ):
                 raise ValueError(f"{arg} object not found")
 
     if object_def.object_owner.obj_owner_kind in [
@@ -130,7 +132,7 @@ def _object_processor(
     expected_type: pgql_type.MoveObjectRefArg,
     _construct: Optional[tuple[Any, Any]] = None,
 ) -> bcs.ObjectArg:
-    """."""
+    """Process an object reference."""
     if arg:
         return _fetch_or_transpose_object(client, arg, expected_type)
     raise ValueError("Missing argument")
@@ -140,7 +142,7 @@ def _scalar_argument(
     expected_type,
     arg,
 ) -> tuple[Any, Any]:
-    """."""
+    """Prepares a scalar argument for the transaction."""
 
     match expected_type.scalar_type:
         case "address" | "signature":
@@ -159,7 +161,7 @@ def _scalar_argument(
 
 
 def _object_argument(expected_type: pgql_type.MoveObjectRefArg, arg) -> tuple[Any, Any]:
-    """."""
+    """Prepares an object argument for the transaction."""
     # If optional then get the inner type and validate
     if expected_type.is_optional:
         return _optional_processor, _argument_validate(
@@ -169,7 +171,7 @@ def _object_argument(expected_type: pgql_type.MoveObjectRefArg, arg) -> tuple[An
 
 
 def _argument_validate(expected_type: Any, arg: Any) -> Union[None, tuple[Any, Any]]:
-    """."""
+    """Argument validation and process dispatching function."""
     if isinstance(arg, bcs.Argument):
         return None
     if isinstance(expected_type, pgql_type.MoveScalarArg):
@@ -204,7 +206,7 @@ def _argument_validate(expected_type: Any, arg: Any) -> Union[None, tuple[Any, A
 def _argument_builder(
     client: SuiGQLClient, arg, arg_meta, processor_fn, constructor_fn=None
 ) -> Any:
-    """."""
+    """Convert user input argument to the BCS representation expected for transaction."""
     if processor_fn is _object_processor:
         return _object_processor(
             client=client,
@@ -263,11 +265,6 @@ def build_args(
                     in_meta = in_meta.vec_arg
                 elif isinstance(in_meta, pgql_type.MoveListArg):
                     in_meta = in_meta.list_arg
-                # in_meta = (
-                #     in_meta.vec_arg
-                #     if isinstance(in_meta, pgql_type.MoveVectorArg)
-                #     else in_meta
-                # )
                 for ilindex, inner_list in enumerate(track.convert_args[aindex]):
                     if isinstance(inner_list, bcs.Argument):
                         res_list.append(inner_list)

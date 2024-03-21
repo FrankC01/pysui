@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed ValueError exception if the dry run transaction block status not equal to 'SUCCESS'. This dry run is
 the one invokved to obtain a budget value when none provided.
+- Fixed GraphQL Protocol Configuration fetch by explictly requesting the latest known version in production.
 
 ### Changed
 
