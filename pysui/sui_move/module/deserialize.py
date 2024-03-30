@@ -145,22 +145,39 @@ _DESERIALIZE_JUMP: dict = {
     TableType.ModuleHandles: (deserialize_module_handles, "module_handles"),
     TableType.StructHandles: (deserialize_stuct_handles, "structure_handles"),
     TableType.FunctionHandles: (deserialize_function_handles, "function_handles"),
-    TableType.FunctionInstance: (deserialize_function_instantiations, "function_instantiations"),
+    TableType.FunctionInstance: (
+        deserialize_function_instantiations,
+        "function_instantiations",
+    ),
     TableType.Signatures: (deserialize_signatures, "signatures"),
     TableType.ConstantPool: (deserialize_constants, "constants"),
     TableType.Identifiers: (deserialize_identifiers, "identifiers"),
     TableType.AddressIdentifiers: (deserialize_addresses, "addresses"),
-    TableType.StructDefinitions: (deserialize_stuct_definition, "structure_definitions"),
-    TableType.StructDefInstances: (deserialize_structure_instantiations, "structure_instantiations"),
-    TableType.FunctionDefinitions: (deserialize_function_definition, "function_definitions"),
+    TableType.StructDefinitions: (
+        deserialize_stuct_definition,
+        "structure_definitions",
+    ),
+    TableType.StructDefInstances: (
+        deserialize_structure_instantiations,
+        "structure_instantiations",
+    ),
+    TableType.FunctionDefinitions: (
+        deserialize_function_definition,
+        "function_definitions",
+    ),
     TableType.FieldHandles: (deserialize_structure_field_handles, "field_handles"),
-    TableType.FieldInstances: (deserialize_structure_field_instantiations, "field_instantiations"),
+    TableType.FieldInstances: (
+        deserialize_structure_field_instantiations,
+        "field_instantiations",
+    ),
     TableType.FriendDeclarations: (deserialize_friends, "friends"),
     TableType.MetaData: (None, None),
 }
 
 
-def _deserialize_raw_type(reader: ModuleReader, table_type: TableType, collector: RawModuleContent) -> None:
+def _deserialize_raw_type(
+    reader: ModuleReader, table_type: TableType, collector: RawModuleContent
+) -> None:
     """_deserialize_raw_type invokes the deserialization handler for table_type.
 
     :param reader: Byte reader
@@ -178,7 +195,9 @@ def _deserialize_raw_type(reader: ModuleReader, table_type: TableType, collector
         raise ValueError(f"Uknown table type key {table_type.name}")
 
 
-def deserialize(reader: ModuleReader, form: Deserialize) -> Union[RawModuleContent, Exception]:
+def deserialize(
+    reader: ModuleReader, form: Deserialize
+) -> Union[RawModuleContent, Exception]:
     """deserialize decomposes a move compiled module file into constituent table parts.
 
     :param reader: Byte reader
@@ -190,7 +209,9 @@ def deserialize(reader: ModuleReader, form: Deserialize) -> Union[RawModuleConte
     :rtype: Union[RawModuleContent, Exception]
     """
     if reader.has_table(TableType.ModuleHandles):
-        contents = RawModuleContent(reader.MAGIC_WORD, reader.version, reader.self_index)
+        contents = RawModuleContent(
+            reader.MAGIC_WORD, reader.version, reader.self_index
+        )
         match form:
             case Deserialize.MODULE_HANDLES:
                 _deserialize_raw_type(reader, TableType.AddressIdentifiers, contents)
@@ -222,7 +243,9 @@ def reader_from_file(module: str) -> Union[ModuleReader, Exception]:
     return ModuleReader.read_from_file(module)
 
 
-def from_file(module: str, form: Deserialize = Deserialize.ALL) -> Union[RawModuleContent, Exception]:
+def from_file(
+    module: str, form: Deserialize = Deserialize.ALL
+) -> Union[RawModuleContent, Exception]:
     """from_file Deserialize the content of a module from file system.
 
     :param module: The sui module file path
@@ -235,7 +258,9 @@ def from_file(module: str, form: Deserialize = Deserialize.ALL) -> Union[RawModu
     return deserialize(ModuleReader.read_from_file(module), form)
 
 
-def from_base64(in_base64: str, form: Deserialize = Deserialize.ALL) -> Union[RawModuleContent, Exception]:
+def from_base64(
+    in_base64: str, form: Deserialize = Deserialize.ALL
+) -> Union[RawModuleContent, Exception]:
     """from_base64 Deserialize the content of a module base64 representation.
 
     :param in_base64: The sui module base64 string
@@ -248,18 +273,8 @@ def from_base64(in_base64: str, form: Deserialize = Deserialize.ALL) -> Union[Ra
     return deserialize(ModuleReader.read_from_base64(in_base64), form)
 
 
-# def from_base58(in_base58: str, form: Deserialize = Deserialize.ALL) -> Union[RawModuleContent, Exception]:
-#     """from_base58 Deserialize the content of a module base58 representation.
-
-#     :param in_base58: The sui module base64 string
-#     :type in_base64: str
-#     :param form: Defines how many tables to walk from module, defaults to Deserialize.ALL
-#     :type form: Deserialize, optional
-#     :return: Container of deserialized tables
-#     :rtype: Union[RawModuleContent, Exception]
-#     """
-
-
 if __name__ == "__main__":
-    deser_track = from_file("~/frankc01/sui-track/build/SuiTrack/bytecode_modules/base.mv")
+    deser_track = from_file(
+        "~/frankc01/sui-track/build/SuiTrack/bytecode_modules/base.mv"
+    )
     # print("Success")

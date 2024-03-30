@@ -32,15 +32,14 @@ def handle_result(result: SuiRpcResult) -> SuiRpcResult:
 def do_coin_meta(client: SuiGQLClient):
     """Fetch meta data about coins, includes supply."""
     # Defaults to 0x2::sui::SUI
-    handle_result(client.execute_query(with_query_node=qn.GetCoinMetaData()))
+    handle_result(client.execute_query_node(with_node=qn.GetCoinMetaData()))
 
 
 def do_coins_for_type(client: SuiGQLClient):
     """Fetch coins of specific type for owner."""
     handle_result(
-        client.execute_query(
-            # GetAllCoinsOfType requires a coin type
-            with_query_node=qn.GetCoins(
+        client.execute_query_node(
+            with_node=qn.GetCoins(
                 owner=client.config.active_address.address,
                 coin_type="0x2::sui::SUI",
             )
@@ -51,9 +50,8 @@ def do_coins_for_type(client: SuiGQLClient):
 def do_gas(client: SuiGQLClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     result = handle_result(
-        client.execute_query(
-            # GetAllCoins defaults to "0x2::sui::SUI"
-            with_query_node=qn.GetCoins(
+        client.execute_query_node(
+            with_node=qn.GetCoins(
                 # owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
                 owner=client.config.active_address.address
             )
@@ -68,9 +66,8 @@ def do_gas(client: SuiGQLClient):
 def do_all_gas(client: SuiGQLClient):
     """Fetch all coins for owner."""
     result = handle_result(
-        client.execute_query(
-            # GetAllCoins defaults to "0x2::sui::SUI"
-            with_query_node=qn.GetCoins(
+        client.execute_query_node(
+            with_node=qn.GetCoins(
                 # owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
                 owner=client.config.active_address.address
             )
@@ -78,8 +75,8 @@ def do_all_gas(client: SuiGQLClient):
     )
     while result.is_ok() and result.result_data.next_cursor.hasNextPage:
         result = handle_result(
-            client.execute_query(
-                with_query_node=qn.GetCoins(
+            client.execute_query_node(
+                with_node=qn.GetCoins(
                     owner=client.config.active_address.address,
                     next_page=result.result_data.next_cursor,
                 )
@@ -90,9 +87,8 @@ def do_all_gas(client: SuiGQLClient):
 def do_gas_ids(client: SuiGQLClient):
     """Fetch coins by the ids."""
     result = handle_result(
-        client.execute_query(
-            # GetAllCoins defaults to "0x2::sui::SUI"
-            with_query_node=qn.GetMultipleGasObjects(
+        client.execute_query_node(
+            with_node=qn.GetMultipleGasObjects(
                 coin_object_ids=[
                     "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
                     "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
@@ -104,7 +100,7 @@ def do_gas_ids(client: SuiGQLClient):
 
 def do_sysstate(client: SuiGQLClient):
     """Fetch the most current system state summary."""
-    handle_result(client.execute_query(with_query_node=qn.GetLatestSuiSystemState()))
+    handle_result(client.execute_query_node(with_node=qn.GetLatestSuiSystemState()))
 
 
 def do_all_balances(client: SuiGQLClient):
@@ -112,16 +108,14 @@ def do_all_balances(client: SuiGQLClient):
 
     Demonstrates paging as well
     """
-    result = client.execute_query(
-        with_query_node=qn.GetAllCoinBalances(
-            owner=client.config.active_address.address
-        )
+    result = client.execute_query_node(
+        with_node=qn.GetAllCoinBalances(owner=client.config.active_address.address)
     )
     handle_result(result)
     if result.is_ok():
         while result.result_data.next_cursor.hasNextPage:
-            result = client.execute_query(
-                with_query_node=qn.GetAllCoinBalances(
+            result = client.execute_query_node(
+                with_node=qn.GetAllCoinBalances(
                     owner=client.config.active_address.address,
                     next_page=result.next_cursor,
                 )
@@ -134,8 +128,8 @@ def do_object(client: SuiGQLClient):
     """Fetch specific object data."""
     # handle_result(client.execute_query(with_query_node=qn.GetObject(object_id="0x6")))
     handle_result(
-        client.execute_query(
-            with_query_node=qn.GetObject(
+        client.execute_query_node(
+            with_node=qn.GetObject(
                 object_id="0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc"
             )
         )
@@ -147,8 +141,8 @@ def do_past_object(client: SuiGQLClient):
     To run, change the objectID str and version int.
     """
     handle_result(
-        client.execute_query(
-            with_query_node=qn.GetPastObject(
+        client.execute_query_node(
+            with_node=qn.GetPastObject(
                 object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
                 version=17078252,
             )
@@ -167,8 +161,8 @@ def do_multiple_past_object(client: SuiGQLClient):
         }
     ]
     handle_result(
-        client.execute_query(
-            with_query_node=qn.GetMultiplePastObjects(for_versions=past_objects)
+        client.execute_query_node(
+            with_node=qn.GetMultiplePastObjects(for_versions=past_objects)
         )
     )
 
@@ -176,8 +170,8 @@ def do_multiple_past_object(client: SuiGQLClient):
 def do_objects(client: SuiGQLClient):
     """Fetch all objects help by owner."""
     handle_result(
-        client.execute_query(
-            with_query_node=qn.GetObjectsOwnedByAddress(
+        client.execute_query_node(
+            with_node=qn.GetObjectsOwnedByAddress(
                 owner=client.config.active_address.address
             )
         )
@@ -190,8 +184,8 @@ def do_objects_for(client: SuiGQLClient):
     These are test IDs, replace to run.
     """
     handle_result(
-        client.execute_query(
-            with_query_node=qn.GetMultipleObjects(
+        client.execute_query_node(
+            with_node=qn.GetMultipleObjects(
                 object_ids=[
                     "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
                     "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
@@ -208,8 +202,8 @@ def do_dynamics(client: SuiGQLClient):
     This is test ID, replace to run.
     """
     handle_result(
-        client.execute_query(
-            with_query_node=qn.GetDynamicFields(
+        client.execute_query_node(
+            with_node=qn.GetDynamicFields(
                 object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed"
             )
         )
@@ -218,8 +212,8 @@ def do_dynamics(client: SuiGQLClient):
 
 def do_event(client: SuiGQLClient):
     """."""
-    res = client.execute_query(
-        with_query_node=qn.GetEvents(event_filter={"sender": "0x0"})
+    res = client.execute_query_node(
+        with_node=qn.GetEvents(event_filter={"sender": "0x0"})
     )
     if res.is_ok():
         handle_result(res)
@@ -228,8 +222,8 @@ def do_event(client: SuiGQLClient):
         while True:
             in_page += 1
             if in_page < max_page and res.result_data.next_cursor:
-                res = client.execute_query(
-                    with_query_node=qn.GetEvents(
+                res = client.execute_query_node(
+                    with_node=qn.GetEvents(
                         event_filter={"sender": "0x0"},
                         next_page=res.result_data.next_cursor,
                     )
@@ -260,10 +254,8 @@ def do_tx(client: SuiGQLClient):
     """
 
     handle_result(
-        client.execute_query(
-            with_query_node=qn.GetTx(
-                digest="CMyUnPRqz9ECAtBeL19aWDG9CdsEd5K2p5NMHTyvaoa7"
-            )
+        client.execute_query_node(
+            with_node=qn.GetTx(digest="CMyUnPRqz9ECAtBeL19aWDG9CdsEd5K2p5NMHTyvaoa7")
         )
     )
 
@@ -273,7 +265,7 @@ def do_txs(client: SuiGQLClient):
 
     We loop through 3 pages.
     """
-    result = client.execute_query(with_query_node=qn.GetMultipleTx())
+    result = client.execute_query_node(with_node=qn.GetMultipleTx())
     handle_result(result)
     if result.is_ok():
         max_page = 3
@@ -281,10 +273,8 @@ def do_txs(client: SuiGQLClient):
         while True:
             in_page += 1
             if in_page < max_page and result.result_data.next_cursor:
-                result = client.execute_query(
-                    with_query_node=qn.GetMultipleTx(
-                        next_page=result.result_data.next_cursor
-                    )
+                result = client.execute_query_node(
+                    with_node=qn.GetMultipleTx(next_page=result.result_data.next_cursor)
                 )
                 handle_result(result)
             else:
@@ -297,7 +287,7 @@ def do_staked_sui(client: SuiGQLClient):
     owner = client.config.active_address.address
 
     handle_result(
-        client.execute_query(with_query_node=qn.GetDelegatedStakes(owner=owner))
+        client.execute_query_node(with_node=qn.GetDelegatedStakes(owner=owner))
     )
 
 
@@ -305,7 +295,7 @@ def do_latest_cp(client: SuiGQLClient):
     """."""
     qnode = qn.GetLatestCheckpointSequence()
     # print(qnode.query_as_string())
-    handle_result(client.execute_query(with_query_node=qnode))
+    handle_result(client.execute_query_node(with_node=qnode))
 
 
 def do_sequence_cp(client: SuiGQLClient):
@@ -313,14 +303,12 @@ def do_sequence_cp(client: SuiGQLClient):
 
     Uses the most recent checkpoint's sequence id (inefficient for example only)
     """
-    result = client.execute_query(with_query_node=qn.GetLatestCheckpointSequence())
+    result = client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
     if result.is_ok():
         cp: ptypes.CheckpointGQL = result.result_data
         handle_result(
-            client.execute_query(
-                with_query_node=qn.GetCheckpointBySequence(
-                    sequence_number=cp.sequence_number
-                )
+            client.execute_query_node(
+                with_node=qn.GetCheckpointBySequence(sequence_number=cp.sequence_number)
             )
         )
     else:
@@ -332,12 +320,12 @@ def do_digest_cp(client: SuiGQLClient):
 
     Uses the most recent checkpoint's digest (inefficient for example only)
     """
-    result = client.execute_query(with_query_node=qn.GetLatestCheckpointSequence())
+    result = client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
     if result.is_ok():
         cp: ptypes.CheckpointGQL = result.result_data
         handle_result(
-            client.execute_query(
-                with_query_node=qn.GetCheckpointByDigest(digest=cp.digest)
+            client.execute_query_node(
+                with_node=qn.GetCheckpointByDigest(digest=cp.digest)
             )
         )
     else:
@@ -346,47 +334,43 @@ def do_digest_cp(client: SuiGQLClient):
 
 def do_checkpoints(client: SuiGQLClient):
     """Get a batch of checkpoints."""
-    handle_result(client.execute_query(with_query_node=qn.GetCheckpoints()))
+    handle_result(client.execute_query_node(with_node=qn.GetCheckpoints()))
 
 
 def do_refgas(client: SuiGQLClient):
     """Fetch the most current system state summary."""
-    handle_result(client.execute_query(with_query_node=qn.GetReferenceGasPrice()))
+    handle_result(client.execute_query_node(with_node=qn.GetReferenceGasPrice()))
 
 
 def do_nameservice(client: SuiGQLClient):
     """Fetch the most current system state summary."""
     handle_result(
-        client.execute_query(with_query_node=qn.GetNameServiceAddress(name="gql-frank"))
+        client.execute_query_node(with_node=qn.GetNameServiceAddress(name="gql-frank"))
     )
 
 
 def do_owned_nameservice(client: SuiGQLClient):
     """Fetch the most current system state summary."""
     handle_result(
-        client.execute_query(
-            with_query_node=qn.GetNameServiceNames(
-                owner=client.config.active_address.address
-            )
+        client.execute_query_node(
+            with_node=qn.GetNameServiceNames(owner=client.config.active_address.address)
         )
     )
 
 
 def do_validators_apy(client: SuiGQLClient):
     """Fetch the most current validators apy and identity."""
-    handle_result(client.execute_query(with_query_node=qn.GetValidatorsApy()))
+    handle_result(client.execute_query_node(with_node=qn.GetValidatorsApy()))
 
 
 def do_validators(client: SuiGQLClient):
     """Fetch the most current validator detail."""
-    handle_result(client.execute_query(with_query_node=qn.GetCurrentValidators()))
+    handle_result(client.execute_query_node(with_node=qn.GetCurrentValidators()))
 
 
 def do_protcfg(client: SuiGQLClient):
     """Fetch the most current system state summary."""
-    handle_result(
-        client.execute_query(with_query_node=qn.GetProtocolConfig(version=30))
-    )
+    handle_result(client.execute_query_node(with_node=qn.GetProtocolConfig(version=30)))
 
 
 def do_struct(client: SuiGQLClient):
@@ -394,8 +378,8 @@ def do_struct(client: SuiGQLClient):
 
     This is a testnet object!!!
     """
-    result = client.execute_query(
-        with_query_node=qn.GetStructure(
+    result = client.execute_query_node(
+        with_node=qn.GetStructure(
             package="0x2",
             module_name="coin",
             structure_name="CoinMetadata",
@@ -410,8 +394,8 @@ def do_structs(client: SuiGQLClient):
 
     This is a testnet object!!!
     """
-    result = client.execute_query(
-        with_query_node=qn.GetStructures(
+    result = client.execute_query_node(
+        with_node=qn.GetStructures(
             package="0x2",
             module_name="coin",
         )
@@ -425,8 +409,8 @@ def do_func(client: SuiGQLClient):
 
     This is a testnet object!!!
     """
-    result = client.execute_query(
-        with_query_node=qn.GetFunction(
+    result = client.execute_query_node(
+        with_node=qn.GetFunction(
             package="0x2",
             module_name="clock",
             function_name="timestamp_ms",
@@ -443,8 +427,8 @@ def do_funcs(client: SuiGQLClient):
 
     This is a testnet object!!!
     """
-    result = client.execute_query(
-        with_query_node=qn.GetFunctions(
+    result = client.execute_query_node(
+        with_node=qn.GetFunctions(
             package="0x2",
             module_name="coin",
         )
@@ -458,8 +442,8 @@ def do_module(client: SuiGQLClient):
 
     This is a testnet object!!!
     """
-    result = client.execute_query(
-        with_query_node=qn.GetModule(
+    result = client.execute_query_node(
+        with_node=qn.GetModule(
             package="0x2",
             module_name="coin",
         )
@@ -473,8 +457,8 @@ def do_package(client: SuiGQLClient):
 
     This is a testnet object!!!
     """
-    result = client.execute_query(
-        with_query_node=qn.GetPackage(
+    result = client.execute_query_node(
+        with_node=qn.GetPackage(
             package="0x2",
         )
     )
@@ -494,8 +478,8 @@ def do_dry_run_kind(client: SuiGQLClient):
 
         tx_b64 = base64.b64encode(txer.raw_kind().serialize()).decode()
         handle_result(
-            client.execute_query(
-                with_query_node=qn.DryRunTransactionKind(tx_bytestr=tx_b64)
+            client.execute_query_node(
+                with_node=qn.DryRunTransactionKind(tx_bytestr=tx_b64)
             )
         )
 
@@ -512,9 +496,7 @@ def do_dry_run(client: SuiGQLClient):
 
         tx_b64 = base64.b64encode(txer.get_transaction_data().serialize()).decode()
         handle_result(
-            client.execute_query(
-                with_query_node=qn.DryRunTransaction(tx_bytestr=tx_b64)
-            )
+            client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=tx_b64))
         )
 
 
@@ -535,10 +517,8 @@ def do_execute(client: SuiGQLClient):
         sig_array = txer.signer_block.get_signatures(client=rpc_client, tx_bytes=tx_b64)
         rsig_array = [x.value for x in sig_array.array]
         handle_result(
-            client.execute_query(
-                with_query_node=qn.ExecuteTransaction(
-                    tx_bytestr=tx_b64, sig_array=rsig_array
-                )
+            client.execute_query_node(
+                with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=rsig_array)
             )
         )
 

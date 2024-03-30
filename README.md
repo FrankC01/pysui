@@ -4,8 +4,9 @@
 
 # pysui
 
-Python Client SDK for Sui blockchain
+[![Downloads](https://static.pepy.tech/badge/pysui/month)](https://pepy.tech/project/pysui)
 
+Python Client SDK for Sui blockchain
 
 ## pysui SDK Dependencies
 
@@ -18,7 +19,7 @@ Python Client SDK for Sui blockchain
 
 **Release-0.56.0**
 
-- Supports _SUI 1.22.x RPC API_
+- Supports _SUI 1.23.x RPC API_
 - Backwards compatable to _Sui 1.18.x RPC API_
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)

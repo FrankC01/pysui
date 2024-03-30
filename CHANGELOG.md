@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.56.0] - 2024-03-22
+## [0.56.0] - Unpublished
 
 ### Added
 
@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - SPDX-License-Identifiers
+- GraphQL support custom URL
+- GraphQL clients now have explicit execute for string, DocumentNode or QueryNode
+- Deprecating synch and asynch GraphQL client `execute_query`
 
 ### Removed
 
