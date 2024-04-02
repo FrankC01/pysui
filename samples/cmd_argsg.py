@@ -433,6 +433,39 @@ def _build_coin_cmds(subparser) -> None:
     subp.set_defaults(subcommand="split-coin-equally")
 
 
+def _build_query_cmds(subparser) -> None:
+    """GraphQL Text file execution."""
+    # Merge coin
+    subp = subparser.add_parser(
+        "gql-query",
+        help="Execute a GraphQL query.",
+    )
+    subp.add_argument(
+        "-q",
+        "--query-file",
+        required=True,
+        help="The file containing the query to execute. ",
+        action=ValidatePackageDir,
+    )
+    print_group = subp.add_mutually_exclusive_group(required=False)
+    print_group.add_argument(
+        "-j",
+        "--json",
+        required=False,
+        help="Output as json",
+        action="store_true",
+    )
+    print_group.add_argument(
+        "-p",
+        "--pretty",
+        required=False,
+        help="Output dictionary to pretty print",
+        action="store_true",
+    )
+
+    subp.set_defaults(subcommand="query")
+
+
 def _build_package_cmds(subparser) -> None:
     """Package commands."""
     # Normalized Package
@@ -623,6 +656,7 @@ def build_parser(in_args: list) -> argparse.Namespace:
     _build_coin_cmds(subparser)
     _build_transfer_cmds(subparser)
     _build_pay_cmds(subparser)
+    _build_query_cmds(subparser)
     _build_package_cmds(subparser)
     _build_tx_query_commands(subparser)
 

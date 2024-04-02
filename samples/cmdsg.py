@@ -6,6 +6,9 @@
 
 """Commands and dispath dict."""
 import argparse
+import json
+from pathlib import Path
+import pprint
 import sys
 from pysui import (
     __version__,
@@ -464,6 +467,25 @@ def sui_pay(client: SuiGQLClient, args: argparse.Namespace) -> None:
     )
 
 
+def qgl_query(client: SuiGQLClient, args: argparse.Namespace) -> None:
+    """Run a GQL Query."""
+    target: Path = args.query_file
+    try:
+        result = client.execute_query_string(string=target.read_text(encoding="utf8"))
+        if result.is_ok():
+            if args.json:
+                print(json.dumps(result.result_data, indent=2))
+            elif args.pretty:
+                # pprint.pprint(result.result_data, indent=2, compact=False)
+                pprint.pprint(result.result_data)
+            else:
+                print(result.result_data)
+        else:
+            print(result.result_data)
+    except Exception as exc:
+        print(exc.args)
+
+
 def txn_count(client: SuiGQLClient, _args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
@@ -518,6 +540,7 @@ SUI_CMD_DISPATCH = {
     "transfer-object": transfer_object,
     "transfer-sui": transfer_sui,
     "pay": sui_pay,
+    "query": qgl_query,
     "merge-coin": merge_coin,
     "split-coin": split_coin,
     "split-coin-equally": split_coin_equally,
