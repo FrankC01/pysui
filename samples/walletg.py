@@ -1,17 +1,9 @@
 #    Copyright Frank V. Castellucci
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#        http://www.apache.org/licenses/LICENSE-2.0
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
+#    SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
 
-"""Main driver primarily for demonstrating."""
+"""Main driver primarily for demonstrating using Sui GraphQL."""
 
 import argparse
 import os
@@ -25,11 +17,12 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui import SuiConfig, SyncClient
+from pysui import SuiConfig
+from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_constants import PYSUI_CLIENT_CONFIG_ENV
 
-from samples.cmd_args import build_parser
-from samples.cmds import SUI_CMD_DISPATCH
+from samples.cmd_argsg import build_parser
+from samples.cmdsg import SUI_CMD_DISPATCH
 
 
 def main():
@@ -47,13 +40,12 @@ def main():
         var_args.pop("subcommand")
         parsed = argparse.Namespace(**var_args)
         if cfg_local:
-            print(f"Using configuration from suibase localnet")
-            cfg = SuiConfig.sui_base_config()
+            raise ValueError("Local not supported for GraphQL commands")
         else:
             cfg = SuiConfig.default_config()
             print(f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}")
 
-        cmd_call(SyncClient(cfg), parsed)
+        cmd_call(SuiGQLClient(config=cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")
 
