@@ -15,6 +15,8 @@
 
 import sys
 import argparse
+import base64
+import binascii
 from pathlib import Path
 from typing import Any, Sequence
 from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
@@ -108,3 +110,24 @@ class ValidatePackageDir(argparse.Action):
         if not ppath.exists:
             parser.error(f"{str(ppath)} does not exist.")
         setattr(namespace, self.dest, ppath)
+
+
+class ValidateB64(argparse.Action):
+    """Validate base64 string."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = ...,
+    ) -> None:
+        """Validate."""
+        try:
+            if isinstance(values, list):
+                res = [base64.b64decode(x, validate=True) for x in values]
+            else:
+                res = base64.b64decode(values, validate=True)
+            setattr(namespace, self.dest, values)
+        except binascii.Error as bae:
+            parser.error(f"{values} invalide base64 string")

@@ -486,6 +486,40 @@ def qgl_query(client: SuiGQLClient, args: argparse.Namespace) -> None:
         print(exc.args)
 
 
+def dryrun_data(client: SuiGQLClient, args: argparse.Namespace) -> None:
+    """Dry run a transaction block's bytes."""
+    handle_result(
+        client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=args.txb))
+    )
+
+
+def dryrun_kind(client: SuiGQLClient, args: argparse.Namespace) -> None:
+    """Dry run a transaction block's kind bytes."""
+    options = {
+        "sender": args.sender,
+        "sponsor": args.sponsor,
+        "gasPrice": args.gas_price,
+        "gasBudget": args.budget,
+        "gasObjects": [x.value for x in args.gas_objects] if args.gas_objects else [],
+    }
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.DryRunTransactionKind(tx_bytestr=args.txb, tx_meta=options)
+        )
+    )
+
+
+def execute_txn(client: SuiGQLClient, args: argparse.Namespace) -> None:
+    """Execute a transaction block."""
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.ExecuteTransaction(
+                tx_bytestr=args.txb, sig_array=args.signatures
+            )
+        )
+    )
+
+
 def txn_count(client: SuiGQLClient, _args: argparse.Namespace) -> None:
     """Transaction information request handler."""
     result = client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
@@ -541,6 +575,9 @@ SUI_CMD_DISPATCH = {
     "transfer-sui": transfer_sui,
     "pay": sui_pay,
     "query": qgl_query,
+    "dryrun-data": dryrun_data,
+    "dryrun-kind": dryrun_kind,
+    "execute-tx": execute_txn,
     "merge-coin": merge_coin,
     "split-coin": split_coin,
     "split-coin-equally": split_coin_equally,

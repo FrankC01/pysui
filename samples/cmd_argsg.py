@@ -11,6 +11,7 @@ from samples.cmd_arg_validators import (
     ValidateAlias,
     ValidateAddress,
     ValidatePackageDir,
+    ValidateB64,
 )
 from pysui.sui.sui_types.scalars import SuiString
 
@@ -433,9 +434,9 @@ def _build_coin_cmds(subparser) -> None:
     subp.set_defaults(subcommand="split-coin-equally")
 
 
-def _build_query_cmds(subparser) -> None:
+def _build_gql_cmds(subparser) -> None:
     """GraphQL Text file execution."""
-    # Merge coin
+    # Query
     subp = subparser.add_parser(
         "gql-query",
         help="Execute a GraphQL query.",
@@ -464,6 +465,88 @@ def _build_query_cmds(subparser) -> None:
     )
 
     subp.set_defaults(subcommand="query")
+
+    # Dry Run Data
+    subp = subparser.add_parser(
+        "tx-dryrun-data",
+        help="Dry run a transaction block (TransactionData).",
+    )
+    subp.add_argument(
+        "-t",
+        "--txb",
+        required=True,
+        help="The base64 transaction block data bytes.",
+        action=ValidateB64,
+    )
+    subp.set_defaults(subcommand="dryrun-data")
+
+    # Dry Run Kind
+    subp = subparser.add_parser(
+        "tx-dryrun-kind",
+        help="Dry run a transaction block kind (TransactionKind).",
+    )
+    subp.add_argument(
+        "-t",
+        "--txb",
+        required=True,
+        help="The base64 transaction block kind bytes. ",
+        action=ValidateB64,
+    )
+    subp.add_argument(
+        "--sender",
+        required=False,
+        help="Optionally set the sender's sui address",
+        action=ValidateAddress,
+    )
+    subp.add_argument(
+        "--gas-price",
+        required=False,
+        help="Optionally set the transaction gas price (in mists)",
+        type=int,
+    )
+    subp.add_argument(
+        "--gas-objects",
+        required=False,
+        nargs="+",
+        help="Optionally set the transaction gas objects to use",
+        action=ValidateObjectID,
+    )
+    subp.add_argument(
+        "--budget",
+        required=False,
+        help="Optionally set the transactions budget (in mists)",
+        type=int,
+    )
+
+    subp.add_argument(
+        "--sponsor",
+        required=False,
+        help="Optionally set the sponsor's sui address",
+        action=ValidateAddress,
+    )
+    subp.set_defaults(subcommand="dryrun-kind")
+
+    # Execute transaction
+    subp = subparser.add_parser(
+        "execute-signed-tx",
+        help="Dry run a transaction block (TransactionData).",
+    )
+    subp.add_argument(
+        "-t",
+        "--txb",
+        required=True,
+        help="The base64 transaction block data bytes.",
+        action=ValidateB64,
+    )
+    subp.add_argument(
+        "--signatures",
+        required=True,
+        nargs="+",
+        help="A list of Base64 encoded signatures `flag || signature || pubkey` in base64",
+        action=ValidateB64,
+    )
+
+    subp.set_defaults(subcommand="execute-tx")
 
 
 def _build_package_cmds(subparser) -> None:
@@ -656,7 +739,7 @@ def build_parser(in_args: list) -> argparse.Namespace:
     _build_coin_cmds(subparser)
     _build_transfer_cmds(subparser)
     _build_pay_cmds(subparser)
-    _build_query_cmds(subparser)
+    _build_gql_cmds(subparser)
     _build_package_cmds(subparser)
     _build_tx_query_commands(subparser)
 
