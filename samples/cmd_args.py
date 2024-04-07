@@ -863,7 +863,7 @@ def _build_aliases_cmds(subparser) -> None:
     # Transaction
     subp = subparser.add_parser(
         "aliases",
-        help="[NEW] Sui Address alias management",
+        help="Sui Address alias management",
         usage="aliases subcommand [--subcommand_options]",
     )
     acmds = subp.add_subparsers(title="subcommand", required=True)

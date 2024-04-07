@@ -106,6 +106,9 @@ SUI_ADDRESS_STRING_LEN: int = 64
 SUI_KEYPAIR_LEN: int = 44
 """Length of valid key string base64 string."""
 
+SUI_BECH32_HRP: str = "suiprivkey"
+"""Private Key bech32 private key encoding human readable portion"""
+
 PRIVATE_KEY_BYTE_LEN: int = 32
 """Byte length of general private key"""
 SCHEME_PRIVATE_KEY_BYTE_LEN: int = PRIVATE_KEY_BYTE_LEN + 1

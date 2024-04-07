@@ -26,6 +26,7 @@ import pysui_fastcrypto as pfc
 
 from pysui.abstracts import KeyPair, PrivateKey, PublicKey, SignatureScheme
 from pysui.sui.sui_constants import (
+    SUI_BECH32_HRP,
     PRIVATE_KEY_BYTE_LEN,
     SCHEME_PRIVATE_KEY_BYTE_LEN,
     SUI_HEX_ADDRESS_STRING_LEN,
@@ -192,6 +193,19 @@ class SuiKeyPair(KeyPair):
     def from_b64(cls, indata: str) -> "SuiKeyPair":
         """Generate KeyPair from base64 keystring."""
         signature, pub_list, prv_list = pfc.keys_from_keystring(indata)
+        return cls.from_pfc_bytes(
+            SignatureScheme(signature),
+            bytes(pub_list),
+            bytes(prv_list),
+        )
+
+    @versionadded(version="0.57.0", reason="Support bech32 private key encoding")
+    @classmethod
+    def from_bech32(cls, indata: str) -> "KeyPair":
+        """Convert bech32 encoded string to keypair."""
+        signature, pub_list, prv_list = pfc.decode_bech32(indata, SUI_BECH32_HRP)
+        if signature == 255:
+            raise ValueError(f"Invalid HRP or variant {indata}")
         return cls.from_pfc_bytes(
             SignatureScheme(signature),
             bytes(pub_list),
@@ -599,16 +613,19 @@ def create_new_address(
     version="0.33.0",
     reason="Using pysui-fastcrypto.",
 )
+@versionchanged(version="0.57.0", reason="Support bech32 keystring encoding")
 def keypair_from_keystring(keystring: str) -> SuiKeyPair:
     """keypair_from_keystring Parse keystring to keypair.
 
-    :param keystring: base64 keystring
+    :param keystring: base64 or bech32 keystring encoding
     :type keystring: str
-    :raises SuiInvalidKeystringLength: If invalid keypair string length
+    :raises SuiInvalidKeystringLength: If base64 invalid keypair string length
     :raises NotImplementedError: If invalid keytype signature in string
     :return: keypair derived from keystring
     :rtype: KeyPair
     """
+    if keystring.startswith(SUI_BECH32_HRP):
+        return SuiKeyPair.from_bech32(keystring)
     if len(keystring) != SUI_KEYPAIR_LEN:
         raise ValueError(
             f"Invalid keystring length, found {len(keystring)} expected {SUI_KEYPAIR_LEN}"
@@ -622,7 +639,10 @@ def keypair_from_keystring(keystring: str) -> SuiKeyPair:
 )
 def load_keys_and_addresses(
     keystore_file: str,
-) -> Union[list[list[dict]], Exception,]:
+) -> Union[
+    list[list[dict]],
+    Exception,
+]:
     """load_keys_and_addresses Load keys and addresses.
 
     :param keystore_file: The current in use keystore file path

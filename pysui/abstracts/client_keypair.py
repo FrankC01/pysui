@@ -137,6 +137,11 @@ class KeyPair(ABC):
 
     @classmethod
     @abstractmethod
+    def from_bech32(cls, indata: str) -> "KeyPair":
+        """Convert bech32 encoded string to keypair."""
+
+    @classmethod
+    @abstractmethod
     def from_bytes(cls, indata: bytes) -> "KeyPair":
         """Convert bytes to keypair."""
 

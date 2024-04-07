@@ -79,16 +79,32 @@ def sui_active_address(client: SuiGQLClient, _args: argparse.Namespace) -> None:
     print(f"Active address = {client.config.active_address.address}")
 
 
-def sui_addresses(client: SuiGQLClient, _args: argparse.Namespace) -> None:
+def sui_addresses(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Print all address."""
     print()
-    print("Addresses")
-    print("---------")
+    addyt = "Addresses"
+    pubkt = "Public Key (flag + key)"
+    aliast = "Alias"
+    space = " "
+    active = "Def"
+    if args.details:
+        header_str = format(f"{space:^3s}{addyt:^72s}{pubkt:^34}{aliast:^64}")
+    else:
+        header_str = format(f"{space:^3s}{addyt:^72s}")
+    print(header_str)
+    for _ in range(0, len(header_str)):
+        print("-", end="")
+    print()
     for addy in client.config.addresses:
+        addyl = addy
         if addy == client.config.active_address:
-            print(f"{addy} <-- active")
+            addyl = f"{active:^3s}{addyl:^72s}"
         else:
-            print(addy)
+            addyl = f"{space:^3s}{addyl:^72s}"
+        if args.details:
+            alias = client.config.al4addr(addy)
+            addyl = addyl + f" {client.config.pk4al(alias)} {alias}"
+        print(addyl)
 
 
 def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:

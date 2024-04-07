@@ -23,6 +23,14 @@ def _build_read_cmds(subparser) -> None:
     subp.set_defaults(subcommand="active-address")
     # Addresses
     subp = subparser.add_parser("addresses", help="Shows all addresses")
+    subp.add_argument(
+        "-d",
+        "--details",
+        required=False,
+        help="Show additional information.",
+        action="store_true",
+    )
+
     subp.set_defaults(subcommand="addresses")
     # New address
     subp = subparser.add_parser("new-address", help="Generate new address and keypair")
@@ -697,7 +705,7 @@ def _build_aliases_cmds(subparser) -> None:
     # Transaction
     subp = subparser.add_parser(
         "aliases",
-        help="[NEW] Sui Address alias management",
+        help="Sui Address alias management",
         usage="aliases subcommand [--subcommand_options]",
     )
     acmds = subp.add_subparsers(title="subcommand", required=True)

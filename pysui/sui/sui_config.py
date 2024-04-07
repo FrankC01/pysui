@@ -615,6 +615,7 @@ class SuiConfig(ClientConfiguration):
         :type rpc_url: str
         :param prv_keys: Optional list containing either
             valid Sui keystrings (flag | private 32 byte seed) in base64 form and/or
+            valid Sui bech32 encoded keystrings 'suiprivkey1xyxy' and/or
             dictionaries for conversion from Wallet key exports::
 
                 {

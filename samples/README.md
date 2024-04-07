@@ -9,10 +9,12 @@ Samples and utilities included in both the `pysui` repo as well as when installi
 - async-sub Listens on Sui Move events
 - async-sub-txn Listens on Sui Transactions
 - Sample [Wallet](#wallet) providing equivalent functionality as `sui client ...`
+- Sample [WalletG](#walletG) providing equivalent functionality as `sui client ...`
 
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 
 - `python -m samples.wallet`
+- `python -m samples.walletg`
 - `python -m samples.async_gas`
 - `python -m samples.async_sub`
 - `python -m samples.async_sub_txn`
@@ -20,6 +22,7 @@ Samples and utilities included in both the `pysui` repo as well as when installi
 **Note:** If running from PyPi install, examples can be started directly
 
 - `wallet`
+- `walletg`
 - `async-gas`
 - `async-sub`
 - `async-sub-txn`
@@ -32,7 +35,11 @@ Example demonstrating using the `pysui` SuiAsynchClient. See [DEVELOP](../DEVELO
 
 Implementation demonstrating most SUI RPC API calls like the SUI CLI (i.e. `sui client ...`).
 
-## Run with devnet or local
+### WalletG
+
+Implementation demonstrating most commands like the SUI CLI (i.e. `sui client ...`) using Sui GraphQL RPC.
+
+## Runs with default sui configuration or user defined configurations
 
 By default, `pysui` will use the `client.yaml` configuration found in `.sui/sui_config/`. See [below](#run-local) for running
 with different configuration (e.g. Local)
@@ -40,15 +47,7 @@ with different configuration (e.g. Local)
 **NOTE**: Sample wallet uses synchronous SuiClient. I leave it up to the ambitious to
 write similar for asynchronous SuiAsynchClient
 
-### Run sample wallet app for help
-
-Depending on how you installed pysui:
-
-- `python -m samples.wallet` (from cloned repo)
-- `python samples/wallet.py` (from cloned repo)
-- `wallet` (from PyPi install)
-
-#### Output
+#### Wallet Commands
 
 ```bash
 usage: wallet.py [options] command [--command_options]
@@ -59,7 +58,7 @@ options:
 
 commands:
   {aliases,active-address,addresses,new-address,gas,object,objects,rpcapi,committee,faucet,merge-coin,split-coin,split-coin-equally,transfer-object,transfer-sui,pay,paysui,payallsui,package,publish,call,events,txns}
-    aliases             [NEW] Sui Address alias management
+    aliases             Sui Address alias management
     active-address      Shows active address
     addresses           Shows all addresses
     new-address         Generate new address and keypair
@@ -84,7 +83,40 @@ commands:
     txns                Show transaction information
 ```
 
-### Run sample wallet app for events query help
+#### WalletG Commands
+```shell
+usage: walletg.py [options] command [--command_options]
+
+options:
+  -h, --help            show this help message and exit
+  -v, --version         Show pysui SDK version
+
+commands:
+  {aliases,active-address,addresses,new-address,gas,object,objects,merge-coin,split-coin,split-coin-equally,transfer-object,transfer-sui,pay,gql-query,tx-dryrun-data,tx-dryrun-kind,execute-signed-tx,package,publish,call,txns}
+    aliases             Sui Address alias management
+    active-address      Shows active address
+    addresses           Shows all addresses
+    new-address         Generate new address and keypair
+    gas                 Shows gas objects and total mist. If owwner or alias not provided, defaults to active-address.
+    object              Show object by id
+    objects             Show all objects. If owwner or alias not provided, defaults to active-address.
+    merge-coin          Merge two coins together. If owwner or alias not provided, defaults to active-address.
+    split-coin          Split coin into one or more coins by amount. If owwner or alias not provided, defaults to active-address.
+    split-coin-equally  Split coin into one or more coins equally. If owwner or alias not provided, defaults to active-address.
+    transfer-object     Transfer an object from one address to another. If owwner or alias not provided, defaults to active-address.
+    transfer-sui        Transfer SUI 'mist(s)' to a Sui address. If owwner or alias not provided, defaults to active-address.
+    pay                 Send coin of any type to recipient(s). If owwner or alias not provided, defaults to active-address.
+    gql-query           Execute a GraphQL query.
+    tx-dryrun-data      Dry run a transaction block (TransactionData).
+    tx-dryrun-kind      Dry run a transaction block kind (TransactionKind).
+    execute-signed-tx   Dry run a transaction block (TransactionData).
+    package             Show normalized package information
+    publish             Publish a SUI package. If owwner or alias not provided, defaults to active-address.
+    call                Call a move contract function. If owwner or alias not provided, defaults to active-address.
+    txns                Show transaction information
+```
+
+### Run sample wallet app for events query help (wallet only)
 
 `wallet events -h`
 
@@ -108,7 +140,7 @@ subcommand:
     transaction         Return events emitted by the given transaction
 ```
 
-### Run sample wallet app for transaction query help
+### Run sample wallet app for transaction query help (wallet and walletg)
 
 `wallet txns -h`
 `wallet txns txnsq -h`
@@ -144,7 +176,7 @@ subcommand:
     to                  Return transaction events from recipient address.
 ```
 
-## Run Local
+## Run Local (wallet only)
 
 We've changed the abbility to operate with a local running node to rely on [sui-base](https://github.com/ChainMovers/suibase).
 
@@ -185,8 +217,16 @@ Example:
 wallet gas
 ```
 
+```bash
+walletg gas
+```
+
 Or (if running pysui from repo clone):
 
 ```bash
 python samples/wallet.py gas
+```
+
+```bash
+python samples/walletg.py gas
 ```

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.57.0] - Unpublished
+
+### Added
+
+- Support for using bech32 encoded private keys in `SuiConfig.user_config`
+
+### Fixed
+
+### Changed
+
+- Bumped pysui-fastcrypto to 0.5.0 supporting bech32 private key encoding/decoding
+
+### Removed
+
 ## [0.56.0] - 2024-04-02
 
 ### Added
