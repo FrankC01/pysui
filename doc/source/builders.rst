@@ -2,6 +2,8 @@
 Builders
 ========
 
+Note: pysui Builders are being deprecated. See the GraphQL alternative.
+
 General
 -------
 

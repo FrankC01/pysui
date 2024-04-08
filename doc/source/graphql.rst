@@ -57,8 +57,8 @@ Simple dev example
     def main(client: SuiGQLClient):
         """Fetch 0x2::sui::SUI (default) for owner."""
         # GetCoins defaults to '0x2::sui::SUI' coin type so great for owners gas listing
-        qres = client.execute_query(
-            with_query_node=qn.GetCoins(
+        qres = client.execute_query_node(
+            with_node=qn.GetCoins(
                 owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
             )
         )
@@ -87,7 +87,7 @@ copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy 
         # Initialize synchronous client (must be mainnet or testnet)
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=True)
 
-        print("Schema dumped to: `latest_schemaVERSION.graqhql`")
+        print("Schema dumped to: `testnew_schema-2024_X_Y_Z.graqhql`")
 
     if __name__ == "__main__":
         main()
@@ -102,19 +102,36 @@ returning results
 
 .. code-block:: python
 
-    def execute_query(
+    # Execute a query in a string
+    def execute_query_string(
         self,
         *,
-        with_string: Optional[str] = None,
-        with_document_node: Optional[DocumentNode] = None,
-        with_query_node: Optional[PGQL_QueryNode] = None,
+        string: str,
+        schema_constraint: Optional[Union[str, None]] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
-    ) -> Any:
+    ) -> SuiRpcResult:
 
+    # Execute a gql DocumentNode
+    def execute_document_node(
+        self,
+        *,
+        with_node: DocumentNode,
+        schema_constraint: Optional[Union[str, None]] = None,
+        encode_fn: Optional[Callable[[dict], Any]] = None,
+    ) -> SuiRpcResult:
 
-* ``with_string`` convert a GraphQL query string to a gql `DocumentNode <https://gql.readthedocs.io/en/stable/usage/basic_usage.html#>`_ and execute, returning a dictionary result by default
-* ``with_document_node`` will execute a gql DocumentNode and return a dictionary result by default
-* ``with_query_node`` will execute a ``pysui`` QueryNode and return a dictionary result if no ``encode_fn`` function is defined
+    # Execute a pysui QueryNode
+    def execute_query_node(
+        self,
+        *,
+        with_node: PGQL_QueryNode,
+        schema_constraint: Optional[Union[str, None]] = None,
+        encode_fn: Optional[Callable[[dict], Any]] = None,
+    ) -> SuiRpcResult:
+
+* ``execute_query_string`` convert a GraphQL query string to a gql `DocumentNode <https://gql.readthedocs.io/en/stable/usage/basic_usage.html#>`_ and execute, returning a dictionary result by default
+* ``execute_document_node`` will execute a gql DocumentNode and return a dictionary result if no ``encode_fn`` function is defined
+* ``execute_query_node`` will execute a ``pysui`` QueryNode and return a dictionary result if no ``encode_fn`` function is defined
 * ``encode_fn`` is an explict callable for encoding a query result that takes a dictionary and returns Any. If specified along with a ``pysui`` QueryNode, it will override the encode_fn method
 
 --------------
@@ -146,7 +163,7 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
                 }
             }
         """
-        qres = client.execute_query(with_string=_QUERY)
+        qres = client.execute_query_string(string=_QUERY)
         print(qres)
 
     if __name__ == "__main__":
@@ -173,7 +190,7 @@ using ``gql`` functions.
     def main(client: SuiGQLClient):
         """Execute a DocumentNode as result of `gql` compilation."""
         _QUERY = # Same query string as used above
-        qres = client.execute_query(with_document_node=gql(_QUERY))
+        qres = client.execute_document_node(with_node=gql(_QUERY))
         print(qres)
 
     if __name__ == "__main__":

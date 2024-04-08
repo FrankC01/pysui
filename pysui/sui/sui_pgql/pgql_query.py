@@ -458,6 +458,7 @@ class GetMultiplePastObjects(PGQL_QueryNode):
         :param history: The list of ObjectKsy dictionaries
         :type history: list[dict]
         """
+
         self.version_list = for_versions
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
