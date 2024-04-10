@@ -96,7 +96,11 @@ class BaseSuiGQLClient:
 
     _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
-    _UNIQUE_VERSIONS: list[str] = ["2024_1_3-517d6c06d0707c458c0a66bd6ff9f341c472106c"]
+    _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql"
+    _KNOWN_UNIQUE_VERSIONS: list[str] = [
+        "2024_1_3-517d6c06d0707c458c0a66bd6ff9f341c472106c",
+        "2024.2.0-ef431c7c66ab977da7833bf88221b93c3a9c0a27",
+    ]
 
     @classmethod
     def _resolve_url(cls, sui_config: SuiConfig) -> list[str, str]:
@@ -108,6 +112,9 @@ class BaseSuiGQLClient:
             case cnst.TESTNET_SUI_URL:
                 url = cls._SUI_GRAPHQL_TESTNET
                 env_prefix = "testnet"
+            case cnst.DEVNET_SUI_URL:
+                url = cls._SUI_GRAPHQL_DEVNET
+                env_prefix = "devnet"
             # Support QGL url configs
             case cls._SUI_GRAPHQL_MAINNET:
                 url = cls._SUI_GRAPHQL_MAINNET
@@ -115,6 +122,9 @@ class BaseSuiGQLClient:
             case cls._SUI_GRAPHQL_TESTNET:
                 url = cls._SUI_GRAPHQL_TESTNET
                 env_prefix = "testnet"
+            case cls._SUI_GRAPHQL_DEVNET:
+                url = cls._SUI_GRAPHQL_DEVNET
+                env_prefix = "devnet"
             case _:
                 raise ValueError(
                     f"Found {sui_config.rpc_url}. GraphQL URL is only active on testnet."
@@ -146,8 +156,6 @@ class BaseSuiGQLClient:
             fname = f"./{self._rpc_config.gqlEnvironment}_schema-{mver}.graphql"
             with open(fname, "w", encoding="utf8") as inner_file:
                 inner_file.write(print_schema(self._inner_client.schema))
-        elif mver not in self._UNIQUE_VERSIONS:
-            print(f"New version not recognized {mver}")
 
     @property
     def config(self) -> SuiConfig:

@@ -186,8 +186,7 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
                 schema.ValidatorSet.inactivePoolsSize,
                 schema.ValidatorSet.validatorCandidatesSize,
                 validators=schema.ValidatorSet.activeValidators.select(
-                    schema.ValidatorConnection.nodes.select(
-                        schema.Validator.name,
+                    validators=schema.ValidatorConnection.nodes.select(
                         schema.Validator.description,
                         schema.Validator.projectUrl,
                         schema.Validator.commissionRate,
@@ -201,9 +200,10 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
                         schema.Validator.nextEpochStake,
                         schema.Validator.nextEpochCommissionRate,
                         schema.Validator.nextEpochGasPrice,
-                        validatorAddress=schema.Validator.address.select(
-                            schema.Address.address
+                        schema.Validator.address.select(
+                            validatorAddress=schema.Address.address
                         ),
+                        validatorName=schema.Validator.name,
                     ),
                 ),
             ),
@@ -1040,9 +1040,9 @@ class GetCurrentValidators(PGQL_QueryNode):
         )
 
     @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.ValidatorSetGQL], None]:
-        """Return the serialization function for ValidatorSetGQL."""
-        return pgql_type.ValidatorSetGQL.from_query
+    def encode_fn() -> Union[Callable[[dict], pgql_type.ValidatorSetsGQL], None]:
+        """Return the serialization function for ValidatorSetsGQL."""
+        return pgql_type.ValidatorSetsGQL.from_query
 
 
 # TODO: Need object lower level properties rep

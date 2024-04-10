@@ -345,7 +345,9 @@ def do_refgas(client: SuiGQLClient):
 def do_nameservice(client: SuiGQLClient):
     """Fetch the most current system state summary."""
     handle_result(
-        client.execute_query_node(with_node=qn.GetNameServiceAddress(name="gql-frank"))
+        client.execute_query_node(
+            with_node=qn.GetNameServiceAddress(name="example.sui")
+        )
     )
 
 
@@ -533,7 +535,7 @@ if __name__ == "__main__":
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
     # do_gas(client_init)
-    do_all_gas(client_init)
+    # do_all_gas(client_init)
     # do_gas_ids(client_init)
     # do_sysstate(client_init)
     # do_all_balances(client_init)
@@ -551,7 +553,7 @@ if __name__ == "__main__":
     # do_sequence_cp(client_init)
     # do_digest_cp(client_init)
     # do_checkpoints(client_init)
-    # do_nameservice(client_init)
+    do_nameservice(client_init)
     # do_owned_nameservice(client_init)
     # do_validators_apy(client_init)
     # do_validators(client_init)

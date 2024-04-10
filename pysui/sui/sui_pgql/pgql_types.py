@@ -637,11 +637,11 @@ class TransactionSummariesGQL(PGQL_Type):
 class ValidatorGQL(PGQL_Type):
     """Validator representation class."""
 
-    name: str
+    validator_name: str
     validator_address: str
     description: str
     project_url: str
-    # staking_pool_sui_balance: str
+    staking_pool_sui_balance: str
     pending_stake: str
     pending_pool_token_withdraw: str
     pending_total_sui_withdraw: str
@@ -657,7 +657,7 @@ class ValidatorGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorGQL":
         """."""
-        in_data["validatorAddress"] = in_data["validatorAddress"]["address"]
+        in_data["validatorAddress"] = in_data["address"]["validatorAddress"]
         return ValidatorGQL.from_dict(in_data)
 
 
@@ -677,7 +677,8 @@ class ValidatorSetGQL(PGQL_Type):
     def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
         """."""
         in_data["validators"] = [
-            ValidatorGQL.from_query(v_obj) for v_obj in in_data["validators"]["nodes"]
+            ValidatorGQL.from_query(v_obj)
+            for v_obj in in_data["validators"]["validators"]
         ]
         return ValidatorSetGQL.from_dict(in_data)
 
@@ -1104,7 +1105,7 @@ class MovePackageGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
-class ValidatorGQL:
+class ValidatorFullGQL:
     """Sui ValidatorSet representation."""
 
     validator_name: str
@@ -1133,7 +1134,7 @@ class ValidatorGQL:
     staking_pool_address: Optional[str] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
+    def from_query(clz, in_data: dict) -> "ValidatorFullGQL":
         fdict: dict = {}
         _fast_flat(in_data, fdict)
         if "operatingCap" in fdict:
@@ -1145,12 +1146,12 @@ class ValidatorGQL:
         if "stakingPool" in fdict:
             fdict["staking_pool_address"] = None
             fdict.pop("stakingPool")
-        return ValidatorGQL.from_dict(fdict)
+        return ValidatorFullGQL.from_dict(fdict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
-class ValidatorSetGQL:
+class ValidatorSetsGQL:
     """Sui ValidatorSet representation."""
 
     totalStake: str
@@ -1161,18 +1162,20 @@ class ValidatorSetGQL:
     inactivePoolsId: str
     validatorCandidatesId: str
     validatorCandidatesSize: int
-    validators: list[ValidatorGQL]
+    validators: list[ValidatorFullGQL]
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
+    def from_query(clz, in_data: dict) -> "ValidatorSetsGQL":
         fdict: dict = {}
         _fast_flat(in_data, fdict)
         fdict["next_cursor"] = PagingCursor(
             fdict.pop("hasNextPage"), fdict.pop("endCursor")
         )
-        fdict["validators"] = [ValidatorGQL.from_query(x) for x in fdict["validators"]]
-        return ValidatorSetGQL.from_dict(fdict)
+        fdict["validators"] = [
+            ValidatorFullGQL.from_query(x) for x in fdict["validators"]
+        ]
+        return ValidatorSetsGQL.from_dict(fdict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
