@@ -133,7 +133,7 @@ class SuiClient(Provider):
             payload_msg["params"] = [parm_arg.filter]
         else:
             return SuiRpcResult(False, f"{parm_arg} not an accepted type")
-        # print(json.dumps(payload_msg))
+
         _is_asynch_handler = inspect.iscoroutinefunction(handler)
         logger.info(f"Handler is async -> {_is_asynch_handler}")
         logger.info("Starting listening event driver")
@@ -143,13 +143,11 @@ class SuiClient(Provider):
         if "error" in response:
             return SuiRpcResult(False, response["error"], response)
         subscription_id: int = response["result"]
-        # print(f"Subscription ID = {subscription_id}")
         keep_running = True
         event_counter = 0
         result_data: EventData = EventData(asyncio.current_task().get_name())
         try:
             while keep_running:
-                await asyncio.sleep(0.001)
                 # Get an event
                 the_event = await websock.recv()
                 logger.debug("Subscription driver RECEIVED event")
@@ -173,17 +171,13 @@ class SuiClient(Provider):
                     logger.warning(
                         f"Subscription driver KeyError occured for shutdown -> {self._in_shutdown}"
                     )
-                    return SuiRpcResult(
-                        False, f"KeyError on {kex}", result_data
-                    )
+                    return SuiRpcResult(False, f"KeyError on {kex}", result_data)
                 # Catch anyother error and exit with result data
                 except Exception as axc:
                     logger.warning(
                         f"Subscription driver Exception occured for shutdown -> {self._in_shutdown} {axc.args}"
                     )
-                    return SuiRpcResult(
-                        False, f"Exception on {axc}", result_data
-                    )
+                    return SuiRpcResult(False, f"Exception on {axc}", result_data)
 
                 if keep_running:
                     if not isinstance(keep_running, bool):
@@ -326,9 +320,7 @@ class SuiClient(Provider):
         async with self._ACCESS_LOCK:
             if not self._in_shutdown:
                 new_task: asyncio.Task = asyncio.create_task(
-                    self._subscription_listener(
-                        sbuilder, handler, continue_on_close
-                    ),
+                    self._subscription_listener(sbuilder, handler, continue_on_close),
                     name=task_name,
                 )
                 _task_name = new_task.get_name()
@@ -365,9 +357,7 @@ class SuiClient(Provider):
         async with self._ACCESS_LOCK:
             if not self._in_shutdown:
                 new_task: asyncio.Task = asyncio.create_task(
-                    self._subscription_listener(
-                        sbuilder, handler, continue_on_close
-                    ),
+                    self._subscription_listener(sbuilder, handler, continue_on_close),
                     name=task_name,
                 )
                 _task_name = new_task.get_name()
