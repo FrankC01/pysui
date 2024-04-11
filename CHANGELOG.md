@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Overlap on Validator and ValidatorSet data class
+- [PR](https://github.com/FrankC01/pysui/pull/195) - Fix typo
+- [PR](https://github.com/FrankC01/pysui/pull/196) - Remove useless sleep in subscription management
 
 ### Changed
 
