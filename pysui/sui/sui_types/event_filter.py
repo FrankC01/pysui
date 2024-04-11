@@ -193,7 +193,7 @@ class InputObjectEvent(_TransactionFilterType, SuiMap):
 
     def __init__(self, object_id: Union[str, ObjectID]):
         """Initialize query parameter."""
-        object_id = object_id if isinstance(object_id.str) else object_id.vaule
+        object_id = object_id if isinstance(object_id, str) else object_id.vaule
         super().__init__("InputObject", object_id)
 
 
@@ -202,7 +202,7 @@ class ChangedObjectEvent(_TransactionFilterType, SuiMap):
 
     def __init__(self, object_id: Union[str, ObjectID]):
         """Initialize query parameter."""
-        object_id = object_id if isinstance(object_id.str) else object_id.vaule
+        object_id = object_id if isinstance(object_id, str) else object_id.vaule
         super().__init__("ChangedObject", object_id)
 
 
