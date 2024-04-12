@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support for using bech32 encoded private keys in `SuiConfig.user_config`
 - Support using Sui GraphQL in devnet
+- Add `gql_url` argument to support setting GraphQL RPC host URL to `SuiConfig.user_config(...)`
 
 ### Fixed
 
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bumped pysui-fastcrypto to 0.5.0 supporting bech32 private key encoding/decoding
+- Persisted schema filename changed to `ENVIRONMENT_schema-YYYY.MAJOR.MINOR-PATCH.graphql` from `ENVIRONMENT_schema-YYYY_MAJOR_MINOR-PATCH.graphql`
 
 ### Removed
 

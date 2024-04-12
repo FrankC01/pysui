@@ -526,15 +526,18 @@ def do_execute(client: SuiGQLClient):
 
 
 if __name__ == "__main__":
+
+    cfg = SuiConfig.default_config()
     client_init = SuiGQLClient(
         write_schema=False,
-        config=SuiConfig.default_config(),
+        config=cfg,
     )
-    print(f"Schema version {client_init.schema_version}")
+    print(f"Schema base version {client_init.base_schema_version}")
+    print(f"Schema full version {client_init.schema_version}")
     ## QueryNodes (fetch)
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
-    # do_gas(client_init)
+    do_gas(client_init)
     # do_all_gas(client_init)
     # do_gas_ids(client_init)
     # do_sysstate(client_init)
@@ -553,7 +556,7 @@ if __name__ == "__main__":
     # do_sequence_cp(client_init)
     # do_digest_cp(client_init)
     # do_checkpoints(client_init)
-    do_nameservice(client_init)
+    # do_nameservice(client_init)
     # do_owned_nameservice(client_init)
     # do_validators_apy(client_init)
     # do_validators(client_init)

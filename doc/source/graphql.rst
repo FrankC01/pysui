@@ -15,8 +15,7 @@ know what is active in the beta.
 Subject to Change
 ====================
 
-pysui's GraphQL implementation, class names, etc. subject to change as this is only initial release. This implementation is
-not production ready and should be considered experiemental.
+pysui's GraphQL implementation, class names, etc. subject to change. This implementation is not production ready and should be considered experiemental.
 
 
 ====================
@@ -62,11 +61,11 @@ Simple dev example
                 owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
             )
         )
-        # Results are mapped to dataclasses/dataclasses-json
+        # QueryNode results are mapped to dataclasses/dataclasses-json
         print(qres.to_json(indent=2))
 
     if __name__ == "__main__":
-        # Initialize synchronous client (must be mainnet or testnet)
+        # Initialize synchronous client
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
@@ -84,10 +83,10 @@ copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy 
 
     def main():
         """Dump Sui GraphQL Schema."""
-        # Initialize synchronous client (must be mainnet or testnet)
+        # Initialize synchronous client
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=True)
 
-        print("Schema dumped to: `testnew_schema-2024_X_Y_Z.graqhql`")
+        print(f"Schema dumped to: `devnet_schema-{client_init.schema_version}.graqhql`")
 
     if __name__ == "__main__":
         main()
@@ -167,7 +166,7 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
         print(qres)
 
     if __name__ == "__main__":
-        # Initialize synchronous client (must be mainnet or testnet)
+        # Initialize synchronous client
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
@@ -194,7 +193,7 @@ using ``gql`` functions.
         print(qres)
 
     if __name__ == "__main__":
-        # Initialize synchronous client (must be mainnet or testnet)
+        # Initialize synchronous client
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 

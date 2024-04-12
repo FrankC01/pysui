@@ -13,7 +13,6 @@ from deprecated.sphinx import versionchanged, versionadded, deprecated
 from gql import Client, gql
 import httpx
 
-# TODO: Replace with HTTPX equivalents
 from gql.transport.httpx import HTTPXTransport
 from gql.transport.httpx import HTTPXAsyncTransport
 
@@ -50,9 +49,15 @@ class PGQL_QueryNode(ABC):
         return self._SCHEMA_CONSTRAINT
 
     @schema_constraint.setter
-    def schema_constraint(self, sc_name: str) -> None:
-        """Set the schema constraint."""
-        self._SCHEMA_CONSTRAINT = sc_name
+    def schema_constraint(self, sc_version: str) -> None:
+        """schema_constraint Sets the schema version constraint on the QueryNode.
+
+        The content of the string must be `YYYY.MAJOR.MINOR` (e.g. '2024.2.0')
+
+        :param sc_version: The schema version to constrain the query to.
+        :type sc_version: str
+        """
+        self._SCHEMA_CONSTRAINT = sc_version
 
     @abstractmethod
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
@@ -94,18 +99,18 @@ class PGQL_Fragment(ABC):
 class BaseSuiGQLClient:
     """Base GraphQL client."""
 
+    # TODO: Move these to constants
     _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql"
-    _KNOWN_UNIQUE_VERSIONS: list[str] = [
-        "2024_1_3-517d6c06d0707c458c0a66bd6ff9f341c472106c",
-        "2024.2.0-ef431c7c66ab977da7833bf88221b93c3a9c0a27",
-    ]
 
     @classmethod
     def _resolve_url(cls, sui_config: SuiConfig) -> list[str, str]:
         """Resolve the GraphQL RPC Url."""
-        match sui_config.rpc_url:
+        check_url = (
+            sui_config.graphql_url if sui_config.graphql_url else sui_config.rpc_url
+        )
+        match check_url:
             case cnst.MAINNET_SUI_URL:
                 url = cls._SUI_GRAPHQL_MAINNET
                 env_prefix = "mainnet"
@@ -117,18 +122,16 @@ class BaseSuiGQLClient:
                 env_prefix = "devnet"
             # Support QGL url configs
             case cls._SUI_GRAPHQL_MAINNET:
-                url = cls._SUI_GRAPHQL_MAINNET
+                url = check_url
                 env_prefix = "mainnet"
             case cls._SUI_GRAPHQL_TESTNET:
-                url = cls._SUI_GRAPHQL_TESTNET
+                url = check_url
                 env_prefix = "testnet"
             case cls._SUI_GRAPHQL_DEVNET:
-                url = cls._SUI_GRAPHQL_DEVNET
+                url = check_url
                 env_prefix = "devnet"
             case _:
-                raise ValueError(
-                    f"Found {sui_config.rpc_url}. GraphQL URL is only active on testnet."
-                )
+                raise ValueError(f"Can not resolve {check_url} to GraphQL RPC host.")
         return [url, env_prefix]
 
     def __init__(
@@ -147,13 +150,12 @@ class BaseSuiGQLClient:
         self._inner_client: Client = gql_client
         self._url: str = gql_client.transport.url
         self._version: str = version
+        self._base_version = version[: version.index("-")]
         self._schema: DSLSchema = schema
         self._rpc_config: SuiConfigGQL = rpc_config
-        mver = "_".join(self._version.split("."))
-        # TODO: When Sui begins maintaining earlier versions
-        # this will effect query choices, etc.
+        # Schema persist
         if write_schema:
-            fname = f"./{self._rpc_config.gqlEnvironment}_schema-{mver}.graphql"
+            fname = f"./{self._rpc_config.gqlEnvironment}_schema-{version}.graphql"
             with open(fname, "w", encoding="utf8") as inner_file:
                 inner_file.write(print_schema(self._inner_client.schema))
 
@@ -201,6 +203,11 @@ class BaseSuiGQLClient:
     def schema_version(self) -> str:
         """Return Sui GraphQL schema version."""
         return self._version
+
+    @property
+    def base_schema_version(self) -> str:
+        """Returns the header version (schema version without patch)"""
+        return self._base_version
 
     @property
     def schema(self) -> DSLSchema:

@@ -598,6 +598,10 @@ class SuiConfig(ClientConfiguration):
         version="0.34.0",
         reason="Add support for suibase localnet proxy",
     )
+    @versionchanged(
+        version="0.57.0",
+        reason="Add gql_url argument to support setting GraphQL RPC host URL",
+    )
     def user_config(
         cls,
         *,
