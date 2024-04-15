@@ -37,7 +37,7 @@ _QUERY = """
             requestTimeoutMs
             maxQueryPayloadSize
         }
-      protocolConfig(protocolVersion:38) {
+      protocolConfig(protocolVersion:39) {
           protocolVersion
           configs {
             key

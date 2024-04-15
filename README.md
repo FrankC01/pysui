@@ -26,9 +26,9 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.56.0 - Released 2024-04-02**
+**Release-0.57.0 - Released 2024-04-15**
 
-- Supports _SUI 1.23.x RPC API_
+- Supports _SUI 1.24.x RPC API_
 - Backwards compatable to _Sui 1.18.x RPC API_
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
@@ -50,21 +50,25 @@ from JSON RPC to GraphQL RPC.
 
 With pysui 0.50.0 we released `pysui`'s initial alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement.
 
-Note: The MystenLabs/Sui GraphQL RPC is currently only available on testnet
+Note: The MystenLabs/Sui GraphQL RPC is currently available on devnet, testnet and mainnet
 
 pysui 0.52.0 contains initial support for our February 2024 target:
 
 1. **_December 2023_**: Synchronous and asynchronous GraphQL clients (experimental) with intial 'read' queries parallel to current pysui read _Builders_. Also expose underlying GraphQL for users to craft their own queries.
 2. **_January 2024_**: Continue with GraphQL and Builder parity changes. Mysten to roll out live data to devnet, testnet and mainnet. Note, only testnet was available in Jan '24.
-3. **February 2024**: Begin deprecatating pysui Builders and existing SuiClients and enable SuiClient GraphQL 'streaming' support. Note, only testnet and mainnet are currently available in Feb '24, in addition:
+3. **February 2024**: Begin deprecatating pysui Builders and existing SuiClients and enable SuiClient GraphQL and SuiTransaction using GraphQL.
 
-  - streaming is not yet supported
   - Examples for all supported queries and mutations are in `pgql_s_example`` (Synchronous) and `pgql_a_example` (Asynchronous)
   - Demo of new pysui Transaction Builder leveraging Sui GraphQL in `pgql_s_ptb`
 
 4. Sometime in 2024: Remove Builders, obsolete SuiClients and SuiTransaction, and bump pysui to version 1.0.0.
 
 You can read pysui documentation on graphql beta [here](https://pysui.readthedocs.io/en/latest/graphql.html)
+
+#### Known Issues
+- Sui GraphQL fails fetching ProtocolConfiguration versions greater than 39
+- No subscription support at this time
+
 
 ### FULL Documentation
 

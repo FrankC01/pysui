@@ -1,0 +1,32 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=827846 to learn about workspace recommendations.
+	// Extension identifier format: ${publisher}.${name}. Example: vscode.csharp
+	// List of extensions which should be recommended for users of this workspace.
+	"recommendations": [
+		"njpwerner.autodocstring",
+		"rogalmic.bash-debug",
+		"ms-python.black-formatter",
+		"vadimcn.vscode-lldb",
+		"serayuzgur.crates",
+		"ms-vscode.makefile-tools",
+		"mikestead.dotenv",
+		"graphql.vscode-graphql-syntax",
+		"ms-toolsai.jupyter",
+		"ms-toolsai.vscode-jupyter-cell-tags",
+		"ms-toolsai.jupyter-keymap",
+		"ms-toolsai.jupyter-renderers",
+		"ms-toolsai.vscode-jupyter-slideshow",
+		"juggernautjp.less-toml",
+		"damirka.move-syntax",
+		"azemoh.one-monokai",
+		"ms-python.vscode-pylance",
+		"ms-python.pylint",
+		"ms-python.python",
+		"ms-python.debugpy",
+		"trond-snekvik.simple-rst",
+		"rust-lang.rust-analyzer",
+		"alexcvzz.vscode-sqlite"
+	],
+	// List of extensions recommended by VS Code that should not be recommended for users of this workspace.
+	"unwantedRecommendations": []
+}

@@ -103,9 +103,12 @@ class BaseSuiGQLClient:
     _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql"
+    _SCHEMA_HEADER_KEY: str = "X-Sui-RPC-Version"
 
     @classmethod
-    def _resolve_url(cls, sui_config: SuiConfig) -> list[str, str]:
+    def _resolve_url(
+        cls, sui_config: SuiConfig, schema_version: Optional[str] = None
+    ) -> list[str, str]:
         """Resolve the GraphQL RPC Url."""
         check_url = (
             sui_config.graphql_url if sui_config.graphql_url else sui_config.rpc_url
@@ -132,6 +135,7 @@ class BaseSuiGQLClient:
                 env_prefix = "devnet"
             case _:
                 raise ValueError(f"Can not resolve {check_url} to GraphQL RPC host.")
+        # TODO: When schema versions are in effect, review return
         return [url, env_prefix]
 
     def __init__(
@@ -218,7 +222,9 @@ class BaseSuiGQLClient:
         """
         return self._schema
 
-    def _qnode_pre_run(self, qnode: PGQL_QueryNode) -> Union[DocumentNode, ValueError]:
+    def _qnode_pre_run(
+        self, qnode: PGQL_QueryNode, schema_constraint: Union[str, None] = None
+    ) -> Union[DocumentNode, ValueError]:
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
             if hasattr(qnode, "owner"):
@@ -226,9 +232,13 @@ class BaseSuiGQLClient:
                     getattr(qnode, "owner"), self.config
                 )
                 setattr(qnode, "owner", resolved_owner)
+            # TODO If schema constrained than pass the correct schema
+            # to the document builder
+            if qnode.schema_constraint:
+                pass
             dnode = qnode.as_document_node(self.schema)
             if isinstance(dnode, DocumentNode):
-                return dnode
+                return dnode, qnode.schema_constraint
             else:
                 raise ValueError("QueryNode did not produce a gql DocumentNode")
         else:
@@ -242,16 +252,19 @@ class SuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         config: SuiConfig,
+        schema_version: Optional[str] = None,
         write_schema: Optional[bool] = False,
     ):
         """Sui GraphQL Client initializer."""
         # Resolve GraphQL URL
-        gurl, genv = BaseSuiGQLClient._resolve_url(config)
+        gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
         # Build Sync Client
         _iclient: Client = Client(
             transport=HTTPXTransport(
                 url=gurl,
                 verify=True,
+                http2=True,
+                timeout=120.0,
             ),
             fetch_schema_from_transport=True,
         )
@@ -360,7 +373,9 @@ class SuiGQLClient(BaseSuiGQLClient):
     ) -> SuiRpcResult:
         """."""
         try:
-            qdoc_node = self._qnode_pre_run(with_node)
+            qdoc_node, _sc_constraint = self._qnode_pre_run(
+                with_node, schema_constraint
+            )
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
@@ -424,16 +439,19 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     def __init__(
         self,
         *,
+        schema_version: Optional[str] = None,
         write_schema: Optional[bool] = False,
         config: SuiConfig,
     ):
         """Async Sui GraphQL Client initializer."""
-        gurl, genv = BaseSuiGQLClient._resolve_url(config)
+        gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
 
         _iclient: Client = Client(
             transport=HTTPXTransport(
                 url=gurl,
                 verify=True,
+                http2=True,
+                timeout=120.0,
             ),
             fetch_schema_from_transport=True,
         )
@@ -449,6 +467,9 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             gql_client=Client(
                 transport=HTTPXAsyncTransport(
                     url=gurl,
+                    verify=True,
+                    http2=True,
+                    timeout=120.0,
                 ),
                 fetch_schema_from_transport=True,
             ),
@@ -550,7 +571,9 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     ) -> SuiRpcResult:
         """."""
         try:
-            qdoc_node = self._qnode_pre_run(with_node)
+            qdoc_node, _sc_constraint = self._qnode_pre_run(
+                with_node, schema_constraint
+            )
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
