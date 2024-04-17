@@ -17,9 +17,9 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.57.0**
+**Release-0.58.0**
 
-- Supports _SUI 1.23.x RPC API_
+- Supports _SUI 1.24.x RPC API_
 - Backwards compatable to _Sui 1.18.x RPC API_
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
@@ -38,30 +38,27 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
 from JSON RPC to GraphQL RPC.
 
+Note: MystenLabs/Sui GraphQL RPC is available on devnet, testnet and mainnet
+
 ### Sui GraphQL IDEs
 
-  [Mainnet]("https://sui-mainnet.mystenlabs.com/graphql")
+  [Mainnet](https://sui-mainnet.mystenlabs.com/graphql)
 
-  [Testnet]("https://sui-testnet.mystenlabs.com/graphql")
+  [Testnet](https://sui-testnet.mystenlabs.com/graphql)
 
-  [Devnet]("https://sui-devnet.mystenlabs.com/graphql")
+  [Devnet](https://sui-devnet.mystenlabs.com/graphql)
 
 ### pysui GraphQL support
 
-With pysui 0.50.0 we released `pysui`'s initial alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement.
+With pysui 0.50.0 we released beta `pysui`'s initial alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement. We are not more stable and have Client and TransactionBuilder running against Sui GraphQL.
 
-Note: The MystenLabs/Sui GraphQL RPC is currently available on devnet, testnet and mainnet
+We continue to monitor and support changes as they evolve.
 
-pysui 0.52.0 contains initial support for our February 2024 target:
+#### Examples
 
-1. **_December 2023_**: Synchronous and asynchronous GraphQL clients (experimental) with intial 'read' queries parallel to current pysui read _Builders_. Also expose underlying GraphQL for users to craft their own queries.
-2. **_January 2024_**: Continue with GraphQL and Builder parity changes. Mysten to roll out live data to devnet, testnet and mainnet. Note, only testnet was available in Jan '24.
-3. **February 2024**: Begin deprecatating pysui Builders and existing SuiClients and enable SuiClient GraphQL and SuiTransaction using GraphQL.
-
-  - Examples for all supported queries and mutations are in `pgql_s_example`` (Synchronous) and `pgql_a_example` (Asynchronous)
-  - Demo of new pysui Transaction Builder leveraging Sui GraphQL in `pgql_s_ptb`
-
-4. Sometime in 2024: Remove Builders, obsolete SuiClients and SuiTransaction, and bump pysui to version 1.0.0.
+  - [Synchronous Client](https://github.com/FrankC01/pysui/blob/v0.57.0/pgql_s_example.py) - Examples for all supported QueryNode queries and mutations
+  - [Asynchronous Client](https://github.com/FrankC01/pysui/blob/v0.57.0/pgql_a_example.py) - Examples for all supported QueryNode queries and mutations
+  - [Synchronous TransactionBuilder](https://github.com/FrankC01/pysui/blob/v0.57.0/pgql_s_ptb.py) - Example of new pysui Transaction Builder leveraging Sui GraphQL
 
 You can read pysui documentation on graphql beta [here](https://pysui.readthedocs.io/en/latest/graphql.html)
 

@@ -11,7 +11,7 @@ module pysuidance::dancer {
     const ValueDropMismatch: u64 = 3;
 
     /// Individual account trackers
-    struct Tracker has key, store  {
+    public struct Tracker has key, store  {
         id: UID,
         initialized: bool,
         accumulator: vector<u8>,

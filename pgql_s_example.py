@@ -7,6 +7,7 @@
 
 import base64
 from pysui import SuiConfig, SuiRpcResult, SyncClient
+from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 from pysui.sui.sui_txn import SyncTransaction
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -51,10 +52,7 @@ def do_gas(client: SuiGQLClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     result = handle_result(
         client.execute_query_node(
-            with_node=qn.GetCoins(
-                # owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
-                owner=client.config.active_address.address
-            )
+            with_node=qn.GetCoins(owner=client.config.active_address.address)
         )
     )
     if result.is_ok():
@@ -67,10 +65,7 @@ def do_all_gas(client: SuiGQLClient):
     """Fetch all coins for owner."""
     result = handle_result(
         client.execute_query_node(
-            with_node=qn.GetCoins(
-                # owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
-                owner=client.config.active_address.address
-            )
+            with_node=qn.GetCoins(owner=client.config.active_address.address)
         )
     )
     while result.is_ok() and result.result_data.next_cursor.hasNextPage:
@@ -86,16 +81,23 @@ def do_all_gas(client: SuiGQLClient):
 
 def do_gas_ids(client: SuiGQLClient):
     """Fetch coins by the ids."""
-    result = handle_result(
-        client.execute_query_node(
-            with_node=qn.GetMultipleGasObjects(
-                coin_object_ids=[
-                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-                    "0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc",
-                ]
+
+    # Use coins found for active address to use to validate
+    # fetching by coin ids
+    result = client.execute_query_node(
+        with_node=qn.GetCoins(owner=client.config.active_address.address)
+    )
+    if result.is_ok() and result.result_data.data:
+        cids = [x.coin_object_id for x in result.result_data.data]
+        result = handle_result(
+            client.execute_query_node(
+                with_node=qn.GetMultipleGasObjects(coin_object_ids=cids)
             )
         )
-    )
+    elif result.is_err():
+        print(f"Error calling GraphQL {result.result_string}")
+    else:
+        print(f"Data return from call is empty {result.result_data.data}")
 
 
 def do_sysstate(client: SuiGQLClient):
@@ -125,8 +127,10 @@ def do_all_balances(client: SuiGQLClient):
 
 
 def do_object(client: SuiGQLClient):
-    """Fetch specific object data."""
-    # handle_result(client.execute_query(with_query_node=qn.GetObject(object_id="0x6")))
+    """Fetch specific object data.
+
+    To run, replace object_id with object you are interested in.
+    """
     handle_result(
         client.execute_query_node(
             with_node=qn.GetObject(
@@ -152,7 +156,7 @@ def do_past_object(client: SuiGQLClient):
 
 def do_multiple_past_object(client: SuiGQLClient):
     """Fetch a past object.
-    To run, change the objectID str and version int.
+    To run, change the objectID str and version int and add more dicts to the list.
     """
     past_objects = [
         {
@@ -250,7 +254,7 @@ def do_chain_id(client: SuiGQLClient):
 def do_tx(client: SuiGQLClient):
     """Fetch specific transaction by it's digest.
 
-    Digest is testnet specific
+    To run, replace digest value with a valid one for network you are working with
     """
 
     handle_result(
@@ -392,10 +396,7 @@ def do_struct(client: SuiGQLClient):
 
 
 def do_structs(client: SuiGQLClient):
-    """Fetch structures by package::module.
-
-    This is a testnet object!!!
-    """
+    """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetStructures(
             package="0x2",
@@ -407,10 +408,7 @@ def do_structs(client: SuiGQLClient):
 
 
 def do_func(client: SuiGQLClient):
-    """Fetch structures by package::module.
-
-    This is a testnet object!!!
-    """
+    """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetFunction(
             package="0x2",
@@ -425,10 +423,7 @@ def do_func(client: SuiGQLClient):
 
 
 def do_funcs(client: SuiGQLClient):
-    """Fetch structures by package::module.
-
-    This is a testnet object!!!
-    """
+    """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetFunctions(
             package="0x2",
@@ -440,10 +435,7 @@ def do_funcs(client: SuiGQLClient):
 
 
 def do_module(client: SuiGQLClient):
-    """Fetch a module from package.
-
-    This is a testnet object!!!
-    """
+    """Fetch a module from package."""
     result = client.execute_query_node(
         with_node=qn.GetModule(
             package="0x2",
@@ -455,10 +447,7 @@ def do_module(client: SuiGQLClient):
 
 
 def do_package(client: SuiGQLClient):
-    """Fetch a module from package.
-
-    This is a testnet object!!!
-    """
+    """Fetch a module from package."""
     result = client.execute_query_node(
         with_node=qn.GetPackage(
             package="0x2",
@@ -473,17 +462,32 @@ def do_dry_run_kind(client: SuiGQLClient):
 
     This uses the legacy SyncTransaction (JSON RPC based)
     """
-    if client.chain_environment == "testnet":
-        txer = SyncTransaction(client=SyncClient(client.config))
-        scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
-        txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    txer = SyncTransaction(client=SyncClient(client.config))
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
-        tx_b64 = base64.b64encode(txer.raw_kind().serialize()).decode()
-        handle_result(
-            client.execute_query_node(
-                with_node=qn.DryRunTransactionKind(tx_bytestr=tx_b64)
-            )
-        )
+    tx_b64 = base64.b64encode(txer.raw_kind().serialize()).decode()
+    handle_result(
+        client.execute_query_node(with_node=qn.DryRunTransactionKind(tx_bytestr=tx_b64))
+    )
+
+
+def do_dry_run_kind_new(client: SuiGQLClient):
+    """Execute a dry run with TransactionKind where meta data is set by caller.
+
+    This uses the new SuiTransaction (GraphQL RPC based)
+    """
+
+    txer = SuiTransaction(client=client)
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=scres, recipient=client.config.active_address.address
+    )
+
+    tx_b64 = base64.b64encode(txer.raw_kind().serialize()).decode()
+    handle_result(
+        client.execute_query_node(with_node=qn.DryRunTransactionKind(tx_bytestr=tx_b64))
+    )
 
 
 def do_dry_run(client: SuiGQLClient):
@@ -491,15 +495,31 @@ def do_dry_run(client: SuiGQLClient):
 
     This uses the legacy SyncTransaction (JSON RPC based)
     """
-    if client.chain_environment == "testnet":
-        txer = SyncTransaction(client=SyncClient(client.config))
-        scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
-        txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    txer = SyncTransaction(client=SyncClient(client.config))
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
-        tx_b64 = base64.b64encode(txer.get_transaction_data().serialize()).decode()
-        handle_result(
-            client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=tx_b64))
-        )
+    tx_b64 = base64.b64encode(txer.get_transaction_data().serialize()).decode()
+    handle_result(
+        client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=tx_b64))
+    )
+
+
+def do_dry_run_new(client: SuiGQLClient):
+    """Execute a dry run with TransactionData where gas and budget set by txer.
+
+    This uses the new SuiTransaction (GraphQL RPC based)
+    """
+    txer = SuiTransaction(client=client)
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=scres, recipient=client.config.active_address.address
+    )
+
+    tx_b64 = base64.b64encode(txer.transaction_data().serialize()).decode()
+    handle_result(
+        client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=tx_b64))
+    )
 
 
 def do_execute(client: SuiGQLClient):
@@ -537,7 +557,7 @@ if __name__ == "__main__":
     ## QueryNodes (fetch)
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
-    do_gas(client_init)
+    # do_gas(client_init)
     # do_all_gas(client_init)
     # do_gas_ids(client_init)
     # do_sysstate(client_init)
@@ -568,6 +588,8 @@ if __name__ == "__main__":
     # do_module(client_init)
     # do_package(client_init)
     # do_dry_run(client_init)
+    do_dry_run_new(client_init)
+    # do_dry_run_kind_new(client_init)
     # do_dry_run_kind(client_init)
     # do_execute(client_init)
 
