@@ -51,7 +51,7 @@ Simple dev example
 
     from pysui.sui.sui_pgql.clients import SuiGQLClient
     import pysui.sui.sui_pgql.pgql_query as qn
-    from pysui import SuiConfig
+    from pysui import SuiConfig,handle_result
 
     def main(client: SuiGQLClient):
         """Fetch 0x2::sui::SUI (default) for owner."""
@@ -61,8 +61,13 @@ Simple dev example
                 owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
             )
         )
-        # QueryNode results are mapped to dataclasses/dataclasses-json
-        print(qres.to_json(indent=2))
+        # 1. QueryNode results are mapped to dataclasses/dataclasses-json
+        print(qres.result_data.to_json(indent=2))
+
+        # 2. Or get the data through handle_result
+        # print(handle_result(qres).to_json(indent=2))
+
+    
 
     if __name__ == "__main__":
         # Initialize synchronous client
