@@ -49,7 +49,7 @@ Simple dev example
     #
     """Development example."""
 
-    from pysui.sui.sui_pgql.clients import SuiGQLClient
+    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
     import pysui.sui.sui_pgql.pgql_query as qn
     from pysui import SuiConfig
 
@@ -77,8 +77,7 @@ To leverage the power of Sui GraphQL one would benefit to understand the schema 
 copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy in the current directory:
 
 .. code-block:: python
-
-    from pysui.sui.sui_pgql.clients import SuiGQLClient
+    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
     from pysui import SuiConfig
 
     def main():
@@ -145,8 +144,7 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
 
     #
     """String query example."""
-
-    from pysui.sui.sui_pgql.clients import SuiGQLClient
+    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
     from pysui import SuiConfig
 
     def main(client: SuiGQLClient):
@@ -183,7 +181,7 @@ using ``gql`` functions.
     """DocumentNode query example."""
 
     from gql import gql
-    from pysui.sui.sui_pgql.clients import SuiGQLClient
+    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
     from pysui import SuiConfig
 
     def main(client: SuiGQLClient):
