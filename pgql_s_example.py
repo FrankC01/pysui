@@ -10,6 +10,7 @@ from pysui import SuiConfig, SuiRpcResult, SyncClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 from pysui.sui.sui_txn import SyncTransaction
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 
@@ -511,12 +512,16 @@ def do_dry_run_new(client: SuiGQLClient):
     This uses the new SuiTransaction (GraphQL RPC based)
     """
     txer = SuiTransaction(client=client)
-    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    txer.transfer_objects(
-        transfers=scres, recipient=client.config.active_address.address
+    lres = txer.move_call(
+        target="0x2::address::length", arguments=[], type_arguments=[]
     )
+    # scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    # txer.transfer_objects(
+    #     transfers=scres, recipient=client.config.active_address.address
+    # )
 
     tx_b64 = base64.b64encode(txer.transaction_data().serialize()).decode()
+    print(tx_b64)
     handle_result(
         client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=tx_b64))
     )
@@ -543,6 +548,27 @@ def do_execute(client: SuiGQLClient):
                 with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=rsig_array)
             )
         )
+
+
+def do_execute_new(client: SuiGQLClient):
+    """Execute a transaction.
+
+    The result contains the digest of the transaction which can then be queried
+    for details
+
+    This uses the new SuiTransaction (GraphQL RPC based)
+    """
+    txer: SuiTransaction = SuiTransaction(client=client)
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=scres, recipient=client.config.active_address.address
+    )
+    tx_b64, sig_array = txer.build_and_sign()
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+        )
+    )
 
 
 if __name__ == "__main__":
@@ -592,6 +618,7 @@ if __name__ == "__main__":
     # do_dry_run_kind_new(client_init)
     # do_dry_run_kind(client_init)
     # do_execute(client_init)
+    # do_execute_new(client_init)
 
     ## Config
     # do_chain_id(client_init)

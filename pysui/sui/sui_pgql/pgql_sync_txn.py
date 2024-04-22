@@ -259,6 +259,29 @@ class SuiTransaction(_SuiTransactionBase):
         )
         return base64.b64encode(txn_kind.serialize()).decode()
 
+    def build_and_sign(
+        self,
+        *,
+        gas_budget: Optional[str] = None,
+        use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+    ) -> tuple[str, list[str]]:
+        """build After creating the BCS TransactionKind, serialize to base64 string, create signatures and return.
+
+        :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
+        :type gas_budget: Optional[str], optional
+        :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
+        :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
+        :return: Tuple of tx_bytes (base64) and list of signatures
+        :rtype: tuple[str, list[str]]
+        """
+        txn_kind = self.transaction_data(
+            gas_budget=gas_budget, use_gas_objects=use_gas_objects
+        )
+        tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
+        sig_block: SignerBlock = self.signer_block
+        sigs = sig_block.get_signatures(config=self.client.config, tx_bytes=tx_bytes)
+        return tx_bytes, sigs
+
     def split_coin(
         self,
         *,
