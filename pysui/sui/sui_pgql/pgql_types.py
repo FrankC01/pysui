@@ -83,6 +83,41 @@ class ObjectReadDeletedGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class SuiObjectOwnedShared:
+    """Collection of coin data objects."""
+
+    obj_owner_kind: str
+    initial_version: int
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiObjectOwnedAddress:
+    """Collection of coin data objects."""
+
+    obj_owner_kind: str
+    address_id: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiObjectOwnedParent:
+    """Collection of coin data objects."""
+
+    obj_owner_kind: str
+    parent_id: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiObjectOwnedImmutable:
+    """Collection of coin data objects."""
+
+    obj_owner_kind: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class SuiCoinObjectGQL(PGQL_Type):
     """Coin object representation class."""
 
@@ -91,9 +126,15 @@ class SuiCoinObjectGQL(PGQL_Type):
     object_digest: str
     balance: str
     previous_transaction: str
-    coin_owner: str
+    # coin_owner: str
     has_public_transfer: bool
     coin_object_id: str
+    object_owner: Union[
+        SuiObjectOwnedAddress,
+        SuiObjectOwnedParent,
+        SuiObjectOwnedShared,
+        SuiObjectOwnedImmutable,
+    ]
 
     @property
     def object_id(self) -> str:
@@ -104,7 +145,23 @@ class SuiCoinObjectGQL(PGQL_Type):
     def from_query(clz, in_data: dict) -> "SuiCoinObjectGQL":
         """From raw GraphQL result data."""
         ser_dict: dict[str, Union[str, int]] = {}
+        owner = in_data.pop("owner")
+        owner_kind = owner["obj_owner_kind"]
         _fast_flat(in_data, ser_dict)
+        match owner_kind:
+            case "AddressOwner":
+                ser_dict["object_owner"] = SuiObjectOwnedAddress(
+                    owner_kind, owner["owner"]["address_id"]
+                )
+            case "Shared":
+                ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
+            case "Parent":
+                ser_dict["object_owner"] = SuiObjectOwnedParent(
+                    owner_kind, owner["owner"]["parent_id"]
+                )
+            case "Immutable":
+                ser_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
+        # ser_dict = ser_dict | res_dict
         return clz.from_dict(ser_dict)
 
 
@@ -155,41 +212,6 @@ class SuiCoinObjectsGQL(PGQL_Type):
             SuiCoinObjectGQL.from_query(i_coin) for i_coin in in_data["coin_objects"]
         ]
         return SuiCoinObjectsGQL(dlist, ncurs)
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class SuiObjectOwnedShared:
-    """Collection of coin data objects."""
-
-    obj_owner_kind: str
-    initial_version: int
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class SuiObjectOwnedAddress:
-    """Collection of coin data objects."""
-
-    obj_owner_kind: str
-    address_id: str
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class SuiObjectOwnedParent:
-    """Collection of coin data objects."""
-
-    obj_owner_kind: str
-    parent_id: str
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class SuiObjectOwnedImmutable:
-    """Collection of coin data objects."""
-
-    obj_owner_kind: str
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

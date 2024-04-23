@@ -512,13 +512,10 @@ def do_dry_run_new(client: SuiGQLClient):
     This uses the new SuiTransaction (GraphQL RPC based)
     """
     txer = SuiTransaction(client=client)
-    lres = txer.move_call(
-        target="0x2::address::length", arguments=[], type_arguments=[]
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=scres, recipient=client.config.active_address.address
     )
-    # scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    # txer.transfer_objects(
-    #     transfers=scres, recipient=client.config.active_address.address
-    # )
 
     tx_b64 = base64.b64encode(txer.transaction_data().serialize()).decode()
     print(tx_b64)
@@ -571,6 +568,44 @@ def do_execute_new(client: SuiGQLClient):
     )
 
 
+def merge_some(client: SuiGQLClient):
+    """Merge all coins in wallet."""
+
+    result = client.execute_query_node(
+        with_node=qn.GetCoins(owner=client.config.active_address.address)
+    )
+    if result.is_ok() and len(result.result_data.data) > 1:
+        txer: SuiTransaction = SuiTransaction(client=client)
+        txer.merge_coins(merge_to=txer.gas, merge_from=result.result_data.data[1:])
+        tx_b64, sig_array = txer.build_and_sign()
+        handle_result(
+            client.execute_query_node(
+                with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+            )
+        )
+
+
+def split_1_half(client: SuiGQLClient):
+    """Merge all coins in wallet."""
+
+    result = client.execute_query_node(
+        with_node=qn.GetCoins(owner=client.config.active_address.address)
+    )
+    if result.is_ok() and len(result.result_data.data) == 1:
+        amount = int(int(result.result_data.data[0].balance) / 2)
+        txer: SuiTransaction = SuiTransaction(client=client)
+        scres = txer.split_coin(coin=txer.gas, amounts=[amount])
+        txer.transfer_objects(
+            transfers=scres, recipient=client.config.active_address.address
+        )
+        tx_b64, sig_array = txer.build_and_sign()
+        handle_result(
+            client.execute_query_node(
+                with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+            )
+        )
+
+
 if __name__ == "__main__":
 
     cfg = SuiConfig.default_config()
@@ -583,7 +618,7 @@ if __name__ == "__main__":
     ## QueryNodes (fetch)
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
-    # do_gas(client_init)
+    do_gas(client_init)
     # do_all_gas(client_init)
     # do_gas_ids(client_init)
     # do_sysstate(client_init)
@@ -614,12 +649,13 @@ if __name__ == "__main__":
     # do_module(client_init)
     # do_package(client_init)
     # do_dry_run(client_init)
-    do_dry_run_new(client_init)
+    # do_dry_run_new(client_init)
     # do_dry_run_kind_new(client_init)
     # do_dry_run_kind(client_init)
     # do_execute(client_init)
     # do_execute_new(client_init)
-
+    # merge_some(client_init)
+    # split_1_half(client_init)
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)

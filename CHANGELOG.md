@@ -5,15 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.58.0] - Unpublished
+## [0.58.0] - - 2024-04-22
 
 ### Added
 
+- build_and_sign() to GraphQL SuiTransaction
+- `merge_some` and `split_1_half` examples transactions in pgql_s_example.py
+
 ### Fixed
+
+- [PR](https://github.com/FrankC01/pysui/pull/197) - Documentation
+- [PR](https://github.com/FrankC01/pysui/pull/198) - Documentation
+
 
 ### Changed
 
 - Bump support to Sui 1.24.0
+- SuiCoinObjectGQL now supports various owner types (AddressOwner, Immutable, Shared, Parent)
+
 
 ### Removed
 
