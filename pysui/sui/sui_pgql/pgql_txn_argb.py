@@ -137,10 +137,10 @@ def _scalar_argument(
 
     match expected_type.scalar_type:
         case "address" | "signature":
-            print(f"{expected_type.scalar_type} = {arg}")
+            # print(f"{expected_type.scalar_type} = {arg}")
             return bcs.Address.from_str, tx_builder.PureInput.as_input
         case "digest":
-            print(f"{expected_type.scalar_type} = {arg}")
+            # print(f"{expected_type.scalar_type} = {arg}")
             return bcs.Digest.from_str, tx_builder.PureInput.as_input
         case _:
             # if not isinstance(arg, (str, int)):
@@ -166,16 +166,16 @@ def _argument_validate(expected_type: Any, arg: Any) -> Union[None, tuple[Any, A
     if isinstance(arg, bcs.Argument):
         return None
     if isinstance(expected_type, pgql_type.MoveScalarArg):
-        print("Scalar")
+        # print("Scalar")
         return _scalar_argument(expected_type, arg)
     if isinstance(expected_type, pgql_type.MoveWitnessArg):
-        print("WitnessArg")
+        # print("WitnessArg")
         return _object_argument(expected_type, arg)
     elif isinstance(expected_type, pgql_type.MoveObjectRefArg):
-        print("ObjectRef")
+        # print("ObjectRef")
         return _object_argument(expected_type, arg)
     if isinstance(expected_type, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)):
-        print("Vector or List")
+        # print("Vector or List")
         if not isinstance(arg, list):
             raise ValueError("Vector or List...Oops")
         some_list = []

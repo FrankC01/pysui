@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- `split_coin_and_return` from GraphQL SuiTransaction. Less costly to just split and transfer
+
 ## [0.58.0] - - 2024-04-22
 
 ### Added
