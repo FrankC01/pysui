@@ -83,7 +83,7 @@ async def do_all_balances(client: AsyncSuiGQLClient):
             result = await client.execute_query_node(
                 with_node=qn.GetAllCoinBalances(
                     owner=client.config.active_address.address,
-                    next_page=result.next_cursor,
+                    next_page=result.result_data.next_cursor,
                 )
             )
             handle_result(result)

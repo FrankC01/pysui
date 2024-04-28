@@ -120,7 +120,7 @@ def do_all_balances(client: SuiGQLClient):
             result = client.execute_query_node(
                 with_node=qn.GetAllCoinBalances(
                     owner=client.config.active_address.address,
-                    next_page=result.next_cursor,
+                    next_page=result.result_data.next_cursor,
                 )
             )
             handle_result(result)
@@ -260,7 +260,7 @@ def do_tx(client: SuiGQLClient):
 
     handle_result(
         client.execute_query_node(
-            with_node=qn.GetTx(digest="CMyUnPRqz9ECAtBeL19aWDG9CdsEd5K2p5NMHTyvaoa7")
+            with_node=qn.GetTx(digest="7ZP8jboeNPu6vKx6pnx9CxmvDsXV9CKu48sv2LLCAuUj")
         )
     )
 
@@ -569,7 +569,11 @@ def do_execute_new(client: SuiGQLClient):
 
 
 def merge_some(client: SuiGQLClient):
-    """Merge all coins in wallet."""
+    """Merge some coins in wallet.
+
+    To merge all coins, ensure to use paging to gather all coins first and
+    combine them into a single list, then perform the merge.
+    """
 
     result = client.execute_query_node(
         with_node=qn.GetCoins(owner=client.config.active_address.address)
@@ -586,7 +590,11 @@ def merge_some(client: SuiGQLClient):
 
 
 def split_1_half(client: SuiGQLClient):
-    """Merge all coins in wallet."""
+    """Split the 1 coin into 2 (or more) in wallet.
+
+    If there is more than 1 coin for the address, this transaction won't be
+    submitted.
+    """
 
     result = client.execute_query_node(
         with_node=qn.GetCoins(owner=client.config.active_address.address)
@@ -618,11 +626,11 @@ if __name__ == "__main__":
     ## QueryNodes (fetch)
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
-    do_gas(client_init)
+    # do_gas(client_init)
     # do_all_gas(client_init)
     # do_gas_ids(client_init)
     # do_sysstate(client_init)
-    # do_all_balances(client_init)
+    do_all_balances(client_init)
     # do_object(client_init)
     # do_objects(client_init)
     # do_past_object(client_init)
