@@ -20,6 +20,7 @@ import functools
 from enum import IntEnum
 from typing import Type, Union, get_args
 import typing_utils
+from pysui import SuiAddress
 from deprecated.sphinx import versionchanged
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_rpc import Builder
@@ -123,30 +124,28 @@ class SuiBaseBuilder(Builder):
         self._handler_cls: Type[SuiBaseType] = handler_cls
         self._handler_func: str = handler_func
 
-    @versionchanged(
-        version="0.24.0", reason="Moved from list to dict for RPC params"
-    )
+    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
     def _pull_vars(self) -> dict:
         """Filter out private/protected var elements."""
         var_map = vars(self)
-        outparms = {}
+        vparms = []
         for key, value in var_map.items():
             if key[0] != "_":
-                outparms[key] = value
-        return outparms
+                vparms.append(value)
+        return vparms
+        # outparms = {}
+        # for key, value in var_map.items():
+        #     if key[0] != "_":
+        #         outparms[key] = value
+        # return outparms
 
-    @versionchanged(
-        version="0.24.0", reason="Moved from list to dict for RPC params"
-    )
+    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
     def _collect_parameters(self) -> dict:
         """Collect the call parameters."""
-        # TODO: Merge with `params` method when refactored or just remove abstract decl
         return self._pull_vars()
 
     @property
-    @versionchanged(
-        version="0.24.0", reason="Moved from list to dict for RPC params"
-    )
+    @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
     def params(self) -> dict:
         """Return parameters list."""
         return self._pull_vars()
@@ -217,23 +216,17 @@ class SuiBaseBuilder(Builder):
                 has_type in COERCION_FROM_TO_SETS
                 and ctype_value in COERCION_FROM_TO_SETS[has_type]
             ):
-                result_dict[ctype_key] = COERCION_FN_MAP[ctype_value](
-                    args[ctype_key]
-                )
+                result_dict[ctype_key] = COERCION_FN_MAP[ctype_value](args[ctype_key])
             # If no value in argument but type supports Optional
             elif not args[ctype_key]:
                 if has_type in COERCION_FN_MAP:
-                    result_dict[ctype_key] = COERCION_FN_MAP[has_type](
-                        ctype_key
-                    )
+                    result_dict[ctype_key] = COERCION_FN_MAP[has_type](ctype_key)
                 else:
                     raise TypeError(
                         f"{ctype_key} has no value and no coercion function. In {has_type}"
                     )
             elif has_type in COERCION_TO_FROM_SETS:
-                result_dict[ctype_key] = COERCION_FN_MAP[has_type](
-                    args[ctype_key]
-                )
+                result_dict[ctype_key] = COERCION_FN_MAP[has_type](args[ctype_key])
             else:
                 # We get here if we can't coerce type
                 raise ValueError(
@@ -289,10 +282,7 @@ def sui_builder(*includes, **kwargs):
             :return: True type as object
             :rtype: object
             """
-            if (
-                "_name" in anno.__dict__
-                and anno.__dict__["_name"] == "Optional"
-            ):
+            if "_name" in anno.__dict__ and anno.__dict__["_name"] == "Optional":
                 return get_args(anno)[0]
             return anno
 
@@ -322,22 +312,16 @@ def sui_builder(*includes, **kwargs):
             # handle default values
             if spec.defaults:
                 # if defaults:
-                for attr, val in zip(
-                    reversed(spec.args), reversed(spec.defaults)
-                ):
+                for attr, val in zip(reversed(spec.args), reversed(spec.defaults)):
                     if sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = sui_true_type(
-                            spec.annotations[attr]
-                        )
+                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
             # # handle positional arguments
             positional_attrs = spec.args[1:]
             for attr, val in zip(positional_attrs, args):
                 if sieve(attr):
                     __var_map[attr] = val
-                    __var_type_map[attr] = sui_true_type(
-                        spec.annotations[attr]
-                    )
+                    __var_type_map[attr] = sui_true_type(spec.annotations[attr])
                     # __var_type_map[attr] = spec.annotations[attr]
 
             # handle keyword args
@@ -345,9 +329,7 @@ def sui_builder(*includes, **kwargs):
                 for attr, val in kwargs.items():
                     if sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = sui_true_type(
-                            spec.annotations[attr]
-                        )
+                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
                         # __var_type_map[attr] = spec.annotations[attr]
 
             # handle keywords with defaults:
@@ -355,9 +337,7 @@ def sui_builder(*includes, **kwargs):
                 for attr, val in spec.kwonlydefaults.items():
                     if not __var_map[attr] and sieve(attr):
                         __var_map[attr] = val
-                        __var_type_map[attr] = sui_true_type(
-                            spec.annotations[attr]
-                        )
+                        __var_type_map[attr] = sui_true_type(spec.annotations[attr])
                         # __var_type_map[attr] = spec.annotations[attr]
 
             def my_set_lambda(name, coerce, self, val):
@@ -394,9 +374,7 @@ def sui_builder(*includes, **kwargs):
             # Setup the properties (getter, setter)
             myclass = self.__class__
             for _new_key, _new_val in _instance_dict.items():
-                coercer = COERCION_FN_MAP.get(
-                    __var_type_map[_new_key], lambda x: x
-                )
+                coercer = COERCION_FN_MAP.get(__var_type_map[_new_key], lambda x: x)
                 setattr(
                     myclass,
                     _new_key,

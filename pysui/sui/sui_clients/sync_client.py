@@ -98,11 +98,13 @@ class SuiClient(ClientMixin):
     def _execute(self, builder: SuiBaseBuilder) -> Union[SuiRpcResult, Exception]:
         """Execute the builder construct."""
         # Validate builder and send request
+        vres = self._validate_builder(builder)
+        # print(vres)
         try:
             result = self._client.post(
                 self.config.rpc_url,
                 headers=builder.header,
-                json=self._validate_builder(builder),
+                json=vres,
             )
             return SuiRpcResult(
                 True,

@@ -621,6 +621,7 @@ class GetTx(PGQL_QueryNode):
         """
         std_txn = frag.StandardTransaction().fragment(schema)
         tx_effects = frag.StandardTxEffects().fragment(schema)
+        std_object = frag.StandardObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
         qres = schema.Query.transactionBlock(digest=self.digest)
@@ -629,6 +630,7 @@ class GetTx(PGQL_QueryNode):
             std_txn,
             tx_effects,
             base_object,
+            std_object,
             gas_cost,
             DSLQuery(qres),
         )

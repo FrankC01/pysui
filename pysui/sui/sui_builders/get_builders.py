@@ -863,8 +863,9 @@ class GetCheckpointByDigest(_NativeTransactionBuilder):
     @property
     def params(self) -> dict:
         """."""
-        res = super().params
-        return {"id": res["cp_id"]}
+        return super().params
+        # res = super().params
+        # return {"id": res["cp_id"]}
 
 
 @versionchanged(
@@ -890,8 +891,9 @@ class GetCheckpointBySequence(_NativeTransactionBuilder):
     @property
     def params(self) -> dict:
         """."""
-        res = super().params
-        return {"id": res["cp_seq"]}
+        return super().params
+        # res = super().params
+        # return {"id": res["cp_seq"]}
 
 
 @deprecated(version="0.52.0", reason="Use QueryNode equivalent")

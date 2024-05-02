@@ -58,7 +58,9 @@ def __parm_array_list(in_array: Any, api_parm_name: str) -> list[Any]:
 
 
 @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
-def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[str, SuiRpcApiInvalidParameter]:
+def __validate_parameter(
+    build_parm: Any, api_parm: SuiApiParam
+) -> Union[str, SuiRpcApiInvalidParameter]:
     """Validate the specific parameter."""
     att = getattr(build_parm, api_parm.name)
     match api_parm.schema.type:
@@ -69,33 +71,61 @@ def __validate_parameter(build_parm: Any, api_parm: SuiApiParam) -> Union[str, S
 
     # print(f"att {api_parm.name} = {att}")
     if att is None and api_parm.required:
-        raise SuiRpcApiInvalidParameter(f"builder {build_parm} does not have attribute {api_parm.name}")
+        raise SuiRpcApiInvalidParameter(
+            f"builder {build_parm} does not have attribute {api_parm.name}"
+        )
     return att
 
 
+# def _parameter_check(api_method: SuiApi, builder: Builder) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
+#     """Perform parameter validations."""
+#     # All calls take at least 1 parameter
+#     build_parms = builder.params
+#     if len(build_parms) != len(api_method.params):
+#         raise SuiRpcApiInvalidParameter(
+#             f"API Expected {len(api_method.params)} parameters for {builder.method} but found {len(build_parms)}"
+#         )
+
+#     results = {}
+#     index = 0
+#     for bkey, bvalue in build_parms.items():
+#         api_def = api_method.params[index]
+#         if bkey == api_def.name:
+#             vres = __validate_parameter(bvalue, api_def)
+#             results[bkey] = vres
+#             index += 1
+#         else:
+#             raise SuiRpcApiInvalidParameter(f"Expected {api_method.name} found {bkey}")
+#     return results
+
+
 @versionchanged(version="0.24.0", reason="Moved from list to dict for RPC params")
-def _parameter_check(api_method: SuiApi, builder: Builder) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
+@versionchanged(
+    version="0.59.0", reason="Sui stopped supporting JSON dicts, reverting back to list"
+)
+def _parameter_check(
+    api_method: SuiApi, builder: Builder
+) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
     """Perform parameter validations."""
     # All calls take at least 1 parameter
+    parmlen = len(api_method.params)
     build_parms = builder.params
-    if len(build_parms) != len(api_method.params):
+    if len(build_parms) != parmlen:
         raise SuiRpcApiInvalidParameter(
-            f"API Expected {len(api_method.params)} parameters for {builder.method} but found {len(build_parms)}"
+            f"API Expected {parmlen} parameters for {builder.method} but found {len(build_parms)}"
         )
 
-    results = {}
+    results = []
     index = 0
-    for bkey, bvalue in build_parms.items():
-        api_def = api_method.params[index]
-        if bkey == api_def.name:
-            vres = __validate_parameter(bvalue, api_def)
-            results[bkey] = vres
-            index += 1
-        else:
-            raise SuiRpcApiInvalidParameter(f"Expected {api_method.name} found {bkey}")
+    while index < parmlen:
+        vres = __validate_parameter(build_parms[index], api_method.params[index])
+        results.append(vres)
+        index = index + 1
     return results
 
 
-def validate_api(api_method: SuiApi, builder: Builder) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
+def validate_api(
+    api_method: SuiApi, builder: Builder
+) -> Union[tuple[str, str], SuiRpcApiInvalidParameter]:
     """Validate the API parameters and arguments."""
     return _parameter_check(api_method, builder)

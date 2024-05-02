@@ -260,7 +260,7 @@ def do_tx(client: SuiGQLClient):
 
     handle_result(
         client.execute_query_node(
-            with_node=qn.GetTx(digest="7ZP8jboeNPu6vKx6pnx9CxmvDsXV9CKu48sv2LLCAuUj")
+            with_node=qn.GetTx(digest="BJYyvkTgZBuMgBx8MmgcGtBTYqYZwpFQcc2YHZq4A6Z8")
         )
     )
 
@@ -626,7 +626,7 @@ if __name__ == "__main__":
     ## QueryNodes (fetch)
     # do_coin_meta(client_init)
     # do_coins_for_type(client_init)
-    # do_gas(client_init)
+    do_gas(client_init)
     # do_all_gas(client_init)
     # do_gas_ids(client_init)
     # do_sysstate(client_init)
@@ -657,7 +657,7 @@ if __name__ == "__main__":
     # do_module(client_init)
     # do_package(client_init)
     # do_dry_run(client_init)
-    do_dry_run_new(client_init)
+    # do_dry_run_new(client_init)
     # do_dry_run_kind_new(client_init)
     # do_dry_run_kind(client_init)
     # do_execute(client_init)

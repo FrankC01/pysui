@@ -213,7 +213,8 @@ class StandardTxEffects(PGQL_Fragment):
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
         """."""
-        base_obj = BaseObject().fragment(schema)
+        # base_obj = BaseObject().fragment(schema)
+        base_obj = StandardObject().fragment(schema)
         gas_cost = GasCost().fragment(schema)
 
         return (

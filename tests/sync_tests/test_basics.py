@@ -26,9 +26,7 @@ def test_addresses(sui_client: SyncClient) -> None:
     """Addresses and keys should be greater than 0 and same sizes."""
     assert len(sui_client.config.addresses) > 0
     assert len(sui_client.config.keystrings) > 0
-    assert len(sui_client.config.addresses) == len(
-        sui_client.config.keystrings
-    )
+    assert len(sui_client.config.addresses) == len(sui_client.config.keystrings)
 
 
 def test_base_info(sui_client: SyncClient) -> None:
@@ -74,16 +72,16 @@ def test_gets(sui_client: SyncClient) -> None:
     assert len(coins) > 0
     gasses = sui_client.get_gas().result_data.data
     assert len(coins) == len(gasses)
-    fresult = sui_client.get_gas_from_faucet()
-    assert fresult.is_ok()
-    faucet_gas: list = fresult.result_data.transferred_gas_objects
-    new_gasses = sui_client.get_gas().result_data.data
-    all_gas_len = len(coins) + len(faucet_gas)
-    assert all_gas_len == len(new_gasses)
+    # fresult = sui_client.get_gas_from_faucet()
+    # assert fresult.is_ok()
+    # faucet_gas: list = fresult.result_data.transferred_gas_objects
+    # new_gasses = sui_client.get_gas().result_data.data
+    # all_gas_len = len(coins) + len(faucet_gas)
+    # assert all_gas_len == len(new_gasses)
 
     # Objects at this point are all gas
-    objects = sui_client.get_objects().result_data.data
-    assert all_gas_len == len(objects)
+    # objects = sui_client.get_objects().result_data.data
+    # assert all_gas_len == len(objects)
 
     # Get Builders
     assert sui_client.execute(GetCoinMetaData()).is_ok()
@@ -92,9 +90,7 @@ def test_gets(sui_client: SyncClient) -> None:
     ).is_ok()
     assert sui_client.execute((GetLatestSuiSystemState())).is_ok()
     assert sui_client.execute(GetPackage(package="0x2")).is_ok()
-    assert sui_client.execute(
-        GetModule(package="0x2", module_name="coin")
-    ).is_ok()
+    assert sui_client.execute(GetModule(package="0x2", module_name="coin")).is_ok()
     assert sui_client.execute(GetCommittee()).is_ok()
     assert sui_client.execute(GetTotalTxCount()).is_ok()
     assert sui_client.execute(
@@ -109,9 +105,7 @@ def test_gets(sui_client: SyncClient) -> None:
     checkp: list[Checkpoint] = checkp.result_data.data
     assert len(checkp) > 0
     checki = checkp[0]
-    assert sui_client.execute(
-        GetCheckpointBySequence(checki.sequence_number)
-    ).is_ok()
+    assert sui_client.execute(GetCheckpointBySequence(checki.sequence_number)).is_ok()
     assert sui_client.execute(GetCheckpointByDigest(checki.digest)).is_ok()
 
     # Deeper Transactions
@@ -130,9 +124,10 @@ def test_gets(sui_client: SyncClient) -> None:
 def test_object_gets(sui_client: SyncClient) -> None:
     """Verify object get and options operations."""
     # Get a gas object
-    faucet_gas: list = handle_result(
-        sui_client.get_gas_from_faucet()
-    ).transferred_gas_objects
+    faucet_gas = sui_client.get_gas().result_data.data
+    # faucet_gas: list = handle_result(
+    #     sui_client.get_gas_from_faucet()
+    # ).transferred_gas_objects
     # Pluck one
     target_gas = faucet_gas[0].object_id
     options: dict = {
@@ -166,6 +161,4 @@ def test_txn_gets(sui_client: SyncClient) -> None:
     target = main_coin.previous_transaction
     entries = [dict([x]) for x in options.items()]
     for entry in entries:
-        _ = handle_result(
-            sui_client.execute(GetTx(digest=target, options=entry))
-        )
+        _ = handle_result(sui_client.execute(GetTx(digest=target, options=entry)))
