@@ -177,6 +177,9 @@ class StandardObject(PGQL_Fragment):
                         ),
                     ),
                 ),
+                as_move_package=schema.Object.asMovePackage.select(
+                    bcs=schema.MovePackage.bcs
+                ),
             )
         )
 

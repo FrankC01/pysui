@@ -23,6 +23,7 @@ from gql.dsl import (
 from graphql import DocumentNode, print_ast, GraphQLSchema
 from graphql.error.syntax_error import GraphQLSyntaxError
 from graphql.utilities.print_schema import print_schema
+from graphql.language.printer import print_ast
 
 
 from pysui import SuiConfig, SuiRpcResult
@@ -222,16 +223,25 @@ class BaseSuiGQLClient:
         """
         return self._schema
 
+    def _qnode_owner(self, qnode: PGQL_QueryNode):
+        """."""
+        if hasattr(qnode, "owner"):
+            resolved_owner = TypeValidator.check_owner(
+                getattr(qnode, "owner"), self.config
+            )
+            setattr(qnode, "owner", resolved_owner)
+
     def _qnode_pre_run(
         self, qnode: PGQL_QueryNode, schema_constraint: Union[str, None] = None
     ) -> Union[DocumentNode, ValueError]:
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
-            if hasattr(qnode, "owner"):
-                resolved_owner = TypeValidator.check_owner(
-                    getattr(qnode, "owner"), self.config
-                )
-                setattr(qnode, "owner", resolved_owner)
+            self._qnode_owner(qnode)
+            # if hasattr(qnode, "owner"):
+            #     resolved_owner = TypeValidator.check_owner(
+            #         getattr(qnode, "owner"), self.config
+            #     )
+            #     setattr(qnode, "owner", resolved_owner)
             # TODO If schema constrained than pass the correct schema
             # to the document builder
             if qnode.schema_constraint:
@@ -243,6 +253,14 @@ class BaseSuiGQLClient:
                 raise ValueError("QueryNode did not produce a gql DocumentNode")
         else:
             raise ValueError("Not a valid PGQL_QueryNode")
+
+    @versionadded(version="0.60.0", reason="Support query inspection")
+    def query_node_to_string(
+        self, qnode: PGQL_QueryNode, schema_constraint: Union[str, None] = None
+    ) -> str:
+        """."""
+        self._qnode_owner(qnode)
+        return print_ast(qnode.as_document_node(self.schema))
 
 
 class SuiGQLClient(BaseSuiGQLClient):

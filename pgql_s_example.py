@@ -135,7 +135,7 @@ def do_object(client: SuiGQLClient):
     handle_result(
         client.execute_query_node(
             with_node=qn.GetObject(
-                object_id="0x18de17501278b65f469d12c031180bd0175291f8381820111a577531b70ea6fc"
+                object_id="0x030d1254ab0d83a37397cb2df80341cc1862347da3c48e00c701edbc75f7c7bb"
             )
         )
     )

@@ -321,6 +321,9 @@ class ObjectReadGQL(PGQL_Type):
                     contents = in_data["as_move_content"]["as_object"].pop("content")
                 else:
                     contents = None
+                    if in_data.get("as_move_package"):
+                        in_data.pop("as_move_package")
+                        in_data["object_type"] = "Package"
                 # Flatten
                 _fast_flat(in_data, res_dict)
                 # Reassign
