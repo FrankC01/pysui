@@ -843,6 +843,7 @@ class MoveStructuresGQL:
     """Sui collection of MoveStuctures."""
 
     structures: list[MoveStructureGQL]
+    next_cursor: Optional[PagingCursor]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MoveStructuresGQL":
@@ -850,9 +851,20 @@ class MoveStructuresGQL:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
             _fast_flat(in_data, fdict)
-            return MoveStructuresGQL.from_dict(
-                {"structures": [MoveStructureGQL.from_query(x) for x in fdict["nodes"]]}
-            )
+            _fast_flat(in_data, fdict)
+            if "hasNextPage" in fdict:
+                fdict["next_cursor"] = PagingCursor(
+                    fdict.pop("hasNextPage"), fdict.pop("endCursor")
+                )
+            else:
+                fdict["next_cursor"] = None
+            fdict["structures"] = [
+                MoveStructureGQL.from_query(x) for x in fdict["nodes"]
+            ]
+            return MoveStructuresGQL.from_dict(fdict)
+            # return MoveStructuresGQL.from_dict(
+            #     {"structures": [MoveStructureGQL.from_query(x) for x in fdict["nodes"]]}
+            # )
         return NoopGQL.from_query()
 
 
@@ -961,12 +973,6 @@ class MoveVectorArg:
     def from_body(cls, in_ref: str, in_type: dict) -> "MoveVectorArg":
         """ "."""
         from_vec = in_type["vector"]
-        # if isinstance(from_vec, str):
-        #     vtype = MoveScalarArg.from_str("", from_vec)
-        # elif isinstance(from_vec, dict):
-        #     ivtype = from_vec["vector"]
-        # if "datatype" in ivtype:
-        #     vtype = MoveObjectRefArg.from_body("", from_vec["datatype"])
         return cls(
             RefType.from_ref(in_ref),
             (
@@ -1066,6 +1072,7 @@ class MoveFunctionsGQL:
     """Sui MoveFunction representation."""
 
     functions: list[MoveFunctionGQL]
+    next_cursor: Optional[PagingCursor]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MoveFunctionsGQL":
@@ -1074,9 +1081,14 @@ class MoveFunctionsGQL:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
             _fast_flat(in_data, fdict)
-            return MoveFunctionsGQL.from_dict(
-                {"functions": [MoveFunctionGQL.from_query(x) for x in fdict["nodes"]]}
-            )
+            if "hasNextPage" in fdict:
+                fdict["next_cursor"] = PagingCursor(
+                    fdict.pop("hasNextPage"), fdict.pop("endCursor")
+                )
+            else:
+                fdict["next_cursor"] = None
+            fdict["functions"] = [MoveFunctionGQL.from_query(x) for x in fdict["nodes"]]
+            return MoveFunctionsGQL.from_dict(fdict)
         return NoopGQL.from_query()
 
 
@@ -1086,8 +1098,8 @@ class MoveModuleGQL:
     """Sui MoveModule representation."""
 
     module_name: str
-    module_structures: MoveStructuresGQL
-    module_functions: MoveFunctionsGQL
+    module_structures: Optional[MoveStructuresGQL]
+    module_functions: Optional[MoveFunctionsGQL]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MoveModuleGQL":
@@ -1097,6 +1109,8 @@ class MoveModuleGQL:
             _fast_flat(in_data, fdict)
             if "structure_list" in fdict:
                 fdict["module_structures"] = []
+            if "function_list" in fdict:
+                fdict["module_functions"] = []
             # fdict["module_structures"] = fdict.get("module_structures", [])
             fdict["module_structures"] = MoveStructuresGQL.from_query(
                 {"nodes": fdict["module_structures"]}
@@ -1104,6 +1118,7 @@ class MoveModuleGQL:
             fdict["module_functions"] = MoveFunctionsGQL.from_query(
                 {"nodes": fdict["module_functions"]}
             )
+
             return MoveModuleGQL.from_dict(fdict)
         return NoopGQL.from_query()
 
@@ -1116,12 +1131,16 @@ class MovePackageGQL:
     package_id: str
     package_version: int
     modules: list[MoveModuleGQL]
+    next_cursor: PagingCursor
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MovePackageGQL":
         if in_data.get("object"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
+            fdict["next_cursor"] = PagingCursor(
+                fdict.pop("hasNextPage"), fdict.pop("endCursor")
+            )
             fdict["modules"] = [MoveModuleGQL.from_query(x) for x in fdict["nodes"]]
             fdict.pop("nodes")
             return MovePackageGQL.from_dict(fdict)
@@ -1217,8 +1236,8 @@ class ValidatorApyGQL:
 class ValidatorApysGQL:
     """Sui ValidatorApy representation."""
 
-    next_cursor: PagingCursor
     validators_apy: list[ValidatorApyGQL]
+    next_cursor: PagingCursor
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorApysGQL":

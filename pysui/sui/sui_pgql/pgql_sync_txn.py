@@ -245,7 +245,7 @@ class SuiTransaction(_SuiTransactionBase):
         gas_budget: Optional[str] = None,
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
     ) -> str:
-        """build After creating the BCS TransactionKind, serialize to base64 string and return.
+        """build After creating the BCS TransactionData, serialize to base64 string and return.
 
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
         :type gas_budget: Optional[str], optional
@@ -254,10 +254,10 @@ class SuiTransaction(_SuiTransactionBase):
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
-        txn_kind = self.transaction_data(
+        txn_data = self.transaction_data(
             gas_budget=gas_budget, use_gas_objects=use_gas_objects
         )
-        return base64.b64encode(txn_kind.serialize()).decode()
+        return base64.b64encode(txn_data.serialize()).decode()
 
     def build_and_sign(
         self,
@@ -503,14 +503,14 @@ class SuiTransaction(_SuiTransactionBase):
     def stake_coin(
         self,
         *,
-        coins: list[Union[str, pgql_type.ObjectReadGQL]],
+        coins: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]],
         validator_address: str,
         amount: Optional[int] = None,
     ) -> bcs.Argument:
         """stake_coin Stakes one or more coins to a specific validator.
 
         :param coins: One or more coins to stake.
-        :type coins: list[str, pgql_type.ObjectReadGQL]
+        :type coins: list[str, pgql_type.ObjectReadGQL, bcs.Argument]
         :param validator_address: The validator to stake coins to
         :type validator_address: str
         :param amount: Amount from coins to stake. If not stated, all coin will be staked, defaults to None

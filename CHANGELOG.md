@@ -11,13 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `query_node_to_string` to pysui GraphQL clients
 - Package object_type discriminator in ObjectReadGQL
+- `do_stake`` to GraphQL sample
 
 ### Fixed
 
 ### Changed
 
-### Removed
+- Cursor on MovePackageGQL for modules enabled in query node GetPackage
+- Cursor through all modules for `do_package` in sample
+- Cursor on MoveFunctionsGQL enabled in query node GetFunctions
+- Cursor on MoveStructuresGQL enabled in query node GetStructures
+- Enabled cursor in query node GetValidatorsApy
 
+### Removed
 
 ## [0.59.0] - 2024-05-02
 
@@ -30,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- GetTx querynode includes richer object changes effects content.
+- GetTx querynode includes richer effects for object changes content.
 
 ### Removed
 

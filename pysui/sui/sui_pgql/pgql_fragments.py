@@ -497,6 +497,7 @@ class MoveModule(PGQL_Fragment):
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
         """."""
+        pg_cursor = PageCursor().fragment(schema)
         struc = MoveStructure().fragment(schema)
         func = MoveFunction().fragment(schema)
         return (
@@ -505,10 +506,16 @@ class MoveModule(PGQL_Fragment):
             .select(
                 schema.MoveModule.name.alias("module_name"),
                 schema.MoveModule.structs.alias("structure_list").select(
-                    module_structures=schema.MoveStructConnection.nodes.select(struc)
+                    schema.MoveStructConnection.pageInfo.select(pg_cursor).alias(
+                        "cursor"
+                    ),
+                    module_structures=schema.MoveStructConnection.nodes.select(struc),
                 ),
                 schema.MoveModule.functions.alias("function_list").select(
-                    module_functions=schema.MoveFunctionConnection.nodes.select(func)
+                    schema.MoveFunctionConnection.pageInfo.select(pg_cursor).alias(
+                        "cursor"
+                    ),
+                    module_functions=schema.MoveFunctionConnection.nodes.select(func),
                 ),
             )
         )

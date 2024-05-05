@@ -10,7 +10,6 @@ from pysui import SuiConfig, SuiRpcResult, SyncClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 from pysui.sui.sui_txn import SyncTransaction
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 
@@ -440,7 +439,7 @@ def do_module(client: SuiGQLClient):
     result = client.execute_query_node(
         with_node=qn.GetModule(
             package="0x2",
-            module_name="coin",
+            module_name="prover",
         )
     )
     if result.is_ok():
@@ -448,14 +447,25 @@ def do_module(client: SuiGQLClient):
 
 
 def do_package(client: SuiGQLClient):
-    """Fetch a module from package."""
+    """Fetch a module from package.
+
+    The cursor, if used, applies to the modules listing
+    """
     result = client.execute_query_node(
         with_node=qn.GetPackage(
             package="0x2",
         )
     )
-    if result.is_ok():
-        print(result.result_data.to_json(indent=2))
+    while result.is_ok():
+        sui_package: ptypes.MovePackageGQL = handle_result(result).result_data
+        if sui_package.next_cursor.hasNextPage:
+            result = client.execute_query_node(
+                with_node=qn.GetPackage(
+                    package=sui_package.package_id, next_page=sui_package.next_cursor
+                )
+            )
+        else:
+            break
 
 
 def do_dry_run_kind(client: SuiGQLClient):
@@ -614,6 +624,36 @@ def split_1_half(client: SuiGQLClient):
         )
 
 
+def do_stake(client: SuiGQLClient):
+    """Stake some coinage.
+
+    This uses a testnet validator (Blockscope.net). For different environment
+    or different validator change the vaddress
+    """
+    vaddress = "0x44b1b319e23495995fc837dafd28fc6af8b645edddff0fc1467f1ad631362c23"
+    txer: SuiTransaction = SuiTransaction(client=client)
+    # Take 1 Sui from gas
+    stake_coin_split = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    # Stake the coin
+    txer.stake_coin(
+        coins=[stake_coin_split],
+        validator_address=vaddress,
+    )
+    # Uncomment to dry run
+    # handle_result(
+    #     client.execute_query_node(
+    #         with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
+    #     )
+    # )
+    # Execute the stake
+    tx_b64, sig_array = txer.build_and_sign()
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+        )
+    )
+
+
 if __name__ == "__main__":
 
     cfg = SuiConfig.default_config()
@@ -664,6 +704,7 @@ if __name__ == "__main__":
     # do_execute_new(client_init)
     # merge_some(client_init)
     # split_1_half(client_init)
+    # do_stake(client_init)
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)

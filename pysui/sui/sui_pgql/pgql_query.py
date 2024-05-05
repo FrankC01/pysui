@@ -972,7 +972,6 @@ class GetNameServiceNames(PGQL_QueryNode):
         )
 
 
-# TODO: Handle Cursor
 class GetValidatorsApy(PGQL_QueryNode):
     """Return the validator APY."""
 
@@ -984,17 +983,23 @@ class GetValidatorsApy(PGQL_QueryNode):
         """."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
+        elif self.next_page:
+            avals_q = schema.ValidatorSet.activeValidators(
+                after=self.next_page.endCursor
+            )
+        else:
+            avals_q = schema.ValidatorSet.activeValidators
 
-        pg_cursor = frag.PageCursor()
+        pg_cursor = frag.PageCursor().fragment(schema)
         return dsl_gql(
-            pg_cursor.fragment(schema),
+            pg_cursor,
             DSLQuery(
                 schema.Query.checkpoint.select(
                     schema.Checkpoint.epoch.select(
                         schema.Epoch.validatorSet.select(
-                            schema.ValidatorSet.activeValidators.select(
+                            avals_q.select(
                                 cursor=schema.ValidatorConnection.pageInfo.select(
-                                    pg_cursor.fragment(schema)
+                                    pg_cursor
                                 ),
                                 validators_apy=schema.ValidatorConnection.nodes.select(
                                     schema.Validator.name,
@@ -1025,6 +1030,7 @@ class GetCurrentValidators(PGQL_QueryNode):
         """."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
+
         pg_cursor = frag.PageCursor().fragment(schema)
         val = frag.Validator().fragment(schema)
         valset = frag.ValidatorSet().fragment(schema)
@@ -1047,7 +1053,6 @@ class GetCurrentValidators(PGQL_QueryNode):
         return pgql_type.ValidatorSetsGQL.from_query
 
 
-# TODO: Need object lower level properties rep
 class GetStructure(PGQL_QueryNode):
     """GetStructure When executed, returns a module's structure representation."""
 
@@ -1100,6 +1105,7 @@ class GetStructures(PGQL_QueryNode):
         *,
         package: str,
         module_name: str,
+        next_page: Optional[pgql_type.PagingCursor] = None,
     ) -> None:
         """QueryNode initializer.
 
@@ -1110,21 +1116,33 @@ class GetStructures(PGQL_QueryNode):
         """
         self.package = package
         self.module = module_name
+        self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""
-        struc = frag.MoveStructure()
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+        elif self.next_page:
+            struct_q = schema.MoveModule.structs(after=self.next_page.endCursor)
+        else:
+            struct_q = schema.MoveModule.structs
+
+        struc = frag.MoveStructure().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
 
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
                 schema.MovePackage.module(name=self.module).select(
-                    schema.MoveModule.structs.select(
-                        schema.MoveStructConnection.nodes.select(struc.fragment(schema))
+                    struct_q.select(
+                        schema.MoveStructConnection.pageInfo.select(pg_cursor).alias(
+                            "cursor"
+                        ),
+                        schema.MoveStructConnection.nodes.select(struc),
                     )
                 )
             )
         )
-        return dsl_gql(struc.fragment(schema), DSLQuery(qres))
+        return dsl_gql(struc, pg_cursor, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveStructuresGQL], None]:
@@ -1132,7 +1150,6 @@ class GetStructures(PGQL_QueryNode):
         return pgql_type.MoveStructuresGQL.from_query
 
 
-# TODO: Need object lower parameters and type parameters properties rep
 class GetFunction(PGQL_QueryNode):
     """GetFunction When executed, returns a module's function information."""
 
@@ -1174,7 +1191,13 @@ class GetFunction(PGQL_QueryNode):
 class GetFunctions(PGQL_QueryNode):
     """GetFunctions When executed, returns all module's functions information."""
 
-    def __init__(self, *, package: str, module_name: str) -> None:
+    def __init__(
+        self,
+        *,
+        package: str,
+        module_name: str,
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ) -> None:
         """QueryNode initializer.
 
         :param package: object_id of package to query
@@ -1184,23 +1207,32 @@ class GetFunctions(PGQL_QueryNode):
         """
         self.package = package
         self.module = module_name
+        self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""
-        func = frag.MoveFunction()
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+        elif self.next_page:
+            func_q = schema.MoveModule.functions(after=self.next_page.endCursor)
+        else:
+            func_q = schema.MoveModule.functions
 
+        func = frag.MoveFunction().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
                 schema.MovePackage.module(name=self.module).select(
-                    schema.MoveModule.functions.select(
-                        schema.MoveFunctionConnection.nodes.select(
-                            func.fragment(schema)
-                        )
+                    func_q.select(
+                        schema.MoveFunctionConnection.pageInfo.select(pg_cursor).alias(
+                            "cursor"
+                        ),
+                        schema.MoveFunctionConnection.nodes.select(func),
                     )
                 )
             )
         )
-        return dsl_gql(func.fragment(schema), DSLQuery(qres))
+        return dsl_gql(func, pg_cursor, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveFunctionsGQL], None]:
@@ -1227,19 +1259,21 @@ class GetModule(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""
-        func = frag.MoveFunction()
-        struc = frag.MoveStructure()
-        mod = frag.MoveModule()
+        func = frag.MoveFunction().fragment(schema)
+        struc = frag.MoveStructure().fragment(schema)
+        mod = frag.MoveModule().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
 
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
-                schema.MovePackage.module(name=self.module).select(mod.fragment(schema))
+                schema.MovePackage.module(name=self.module).select(mod)
             )
         )
         return dsl_gql(
-            func.fragment(schema),
-            struc.fragment(schema),
-            mod.fragment(schema),
+            pg_cursor,
+            func,
+            struc,
+            mod,
             DSLQuery(qres),
         )
 
@@ -1252,25 +1286,40 @@ class GetModule(PGQL_QueryNode):
 class GetPackage(PGQL_QueryNode):
     """GetPackage When executed, return structured representations of the package."""
 
-    def __init__(self, *, package: str) -> None:
+    def __init__(
+        self, *, package: str, next_page: Optional[pgql_type.PagingCursor] = None
+    ) -> None:
         """__init__ Initialize GetPackage object."""
         self.package = package
+        self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+        elif self.next_page:
+            mod_q = schema.MovePackage.modules(after=self.next_page.endCursor)
+        else:
+            mod_q = schema.MovePackage.modules
+        pg_cursor = frag.PageCursor().fragment(schema)
         func = frag.MoveFunction().fragment(schema)
         struc = frag.MoveStructure().fragment(schema)
         mod = frag.MoveModule().fragment(schema)
+
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
                 schema.MovePackage.address.alias("package_id"),
                 schema.MovePackage.version.alias("package_version"),
-                schema.MovePackage.modules.select(
-                    schema.MoveModuleConnection.nodes.select(mod)
+                mod_q.select(
+                    schema.MoveModuleConnection.pageInfo.select(pg_cursor).alias(
+                        "cursor"
+                    ),
+                    schema.MoveModuleConnection.nodes.select(mod),
                 ),
             )
         )
         return dsl_gql(
+            pg_cursor,
             func,
             struc,
             mod,
@@ -1317,6 +1366,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
         """."""
         std_txn = frag.StandardTransaction().fragment(schema)
         base_obj = frag.BaseObject().fragment(schema)
+        standard_obj = frag.StandardObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
         tx_effects = frag.StandardTxEffects().fragment(schema)
 
@@ -1337,7 +1387,9 @@ class DryRunTransactionKind(PGQL_QueryNode):
                 transactionBlock=schema.DryRunResult.transaction.select(std_txn),
             )
         )
-        return dsl_gql(base_obj, gas_cost, std_txn, tx_effects, DSLQuery(qres))
+        return dsl_gql(
+            base_obj, standard_obj, gas_cost, std_txn, tx_effects, DSLQuery(qres)
+        )
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
@@ -1356,6 +1408,7 @@ class DryRunTransaction(PGQL_QueryNode):
         """."""
         std_txn = frag.StandardTransaction().fragment(schema)
         base_obj = frag.BaseObject().fragment(schema)
+        standard_obj = frag.StandardObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
         tx_effects = frag.StandardTxEffects().fragment(schema)
 
@@ -1372,7 +1425,9 @@ class DryRunTransaction(PGQL_QueryNode):
                 transactionBlock=schema.DryRunResult.transaction.select(std_txn),
             )
         )
-        return dsl_gql(base_obj, gas_cost, std_txn, tx_effects, DSLQuery(qres))
+        return dsl_gql(
+            base_obj, standard_obj, gas_cost, std_txn, tx_effects, DSLQuery(qres)
+        )
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
