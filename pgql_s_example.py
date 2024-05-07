@@ -172,7 +172,7 @@ def do_multiple_past_object(client: SuiGQLClient):
 
 
 def do_objects(client: SuiGQLClient):
-    """Fetch all objects help by owner."""
+    """Fetch all objects held by owner."""
     handle_result(
         client.execute_query_node(
             with_node=qn.GetObjectsOwnedByAddress(
