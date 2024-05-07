@@ -98,7 +98,7 @@ async def do_object(client: AsyncSuiGQLClient):
 
 
 async def do_objects(client: AsyncSuiGQLClient):
-    """Fetch all objects help by owner."""
+    """Fetch all objects hold by owner."""
     handle_result(
         await client.execute_query_node(
             with_node=qn.GetObjectsOwnedByAddress(
