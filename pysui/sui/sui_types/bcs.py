@@ -14,6 +14,7 @@
 """Sui BCS Types."""
 
 import binascii
+import copy
 from typing import Any, Union
 import json
 import canoser
@@ -73,6 +74,60 @@ class Digest(canoser.Struct):
     def from_bytes(cls, indata: bytes) -> "Digest":
         """Digest from bytes."""
         return cls(list(indata))
+
+
+@versionadded(version="0.60.0", reason="Handle Sting, etc.")
+class VariableArrayU8(canoser.Struct):
+    """Variable length array"""
+
+    _fields = [("Array", [])]
+
+
+class Variable(canoser.Struct):
+    """."""
+
+    _fields = []
+
+    @classmethod
+    def bcs_var_length_field(
+        cls, base_class: canoser.Struct, ready_data: list[int]
+    ) -> "Variable":
+        """."""
+        deep_copy = copy.deepcopy(Variable)
+        deep_copy._fields.append(("Data", [base_class, len(ready_data), False]))
+        return deep_copy(ready_data)
+
+    @classmethod
+    def encode(cls, obj):
+        return bytes(obj.Data)
+
+    @classmethod
+    def decode(cls, cursor):
+        return super().decode(cursor)
+
+
+class ArrayVar(canoser.Struct):
+    """."""
+
+    _fields = []
+
+    @classmethod
+    def bcs_array_for(cls, *, base_class, ready_data: list, depth: int = 0):
+        """."""
+        deep_copy = copy.deepcopy(ArrayVar)
+        field_def: tuple[str, list] = ()
+        type_list = base_class
+        data_list = ready_data
+        if depth:
+            for _ in range(depth):
+                type_list = [copy.deepcopy(type_list)]
+            for _ in range(depth - 1):
+                data_list = [copy.deepcopy(data_list)]
+            field_def = ("Array", type_list)
+        else:
+            field_def = ("Array", [type_list])
+        deep_copy._fields.append(field_def)
+        return deep_copy(data_list)
 
 
 class BuilderArg(canoser.RustEnum):

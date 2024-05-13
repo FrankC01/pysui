@@ -12,7 +12,6 @@ import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
-from pysui.sui.sui_txresults.complex_tx import TxInspectionResult
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -46,49 +45,40 @@ def transaction_inspect(txb: SuiTransaction):
     )
 
 
-def transaction_dryrun(txb: SuiTransaction):
+def transaction_dryrun(txer: SuiTransaction):
     """Uses fully built TransactionData for DryRunTransaction"""
-    raw_kind = txb.transaction_data()
+    raw_kind = txer.transaction_data()
     # Print the TransactionData BCS (pre-serialized) structure
     print(raw_kind.to_json(indent=2))
     # Execute the dry run
     handle_result(
-        txb.client.execute_query(
-            with_query_node=qn.DryRunTransaction(
-                tx_bytestr=base64.b64encode(raw_kind.serialize()).decode()
-            )
+        txer.client.execute_query_node(
+            with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
         )
     )
 
 
-def transaction_dryrun_with_gas(txb: SuiTransaction, coin_ids: list[str]):
+def transaction_dryrun_with_gas(txer: SuiTransaction, coin_ids: list[str]):
     """Uses fully built TransactionData for DryRunTransaction"""
-    raw_kind = txb.transaction_data(use_gas_objects=coin_ids)
+    raw_kind = txer.transaction_data(use_gas_objects=coin_ids)
     # Print the TransactionData BCS (pre-serialized) structure
     print(raw_kind.to_json(indent=2))
     # Execute the dry run
     handle_result(
-        txb.client.execute_query(
-            with_query_node=qn.DryRunTransaction(
-                tx_bytestr=base64.b64encode(raw_kind.serialize()).decode()
-            )
+        txer.client.execute_query_node(
+            with_node=qn.DryRunTransaction(tx_bytestr=txer.build(coin_ids))
         )
     )
 
 
-def transaction_execute(txb: SuiTransaction):
+def transaction_execute(txer: SuiTransaction):
     """Uses fully built and serialized TransactionData for ExecuteTransaction."""
-    tx_b64 = txb.build()
     # Still returns legacy SuiSignature array
-    sig_array = txb.signer_block.get_signatures(
-        config=txb.client.config, tx_bytes=tx_b64
-    )
+    tx_b64, sig_array = txer.build_and_sign()
     # Execute the transaction
     handle_result(
-        txb.client.execute_query(
-            with_query_node=qn.ExecuteTransaction(
-                tx_bytestr=tx_b64, sig_array=[x.value for x in sig_array]
-            )
+        txer.client.execute_query_node(
+            with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
         )
     )
 
@@ -104,8 +94,8 @@ def demo_tx_split(client: SuiGQLClient):
         transfers=[scoin], recipient=client.config.active_address.address
     )
     #### Uncomment the action to take
-    # transaction_inspect(txb)
-    transaction_dryrun(txb)
+    transaction_inspect(txb)
+    # transaction_dryrun(txb)
     # transaction_dryrun_with_gas(
     #     txb,
     #     [
@@ -220,15 +210,38 @@ def demo_tx_public_transfer(client: SuiGQLClient):
     # transaction_execute(txb)
 
 
+def demo_tx_publish(client: SuiGQLClient):
+    """Demonstrate publishing a package."""
+    txb = SuiTransaction(client=client)
+    upg_cap = txb.publish(project_path="<ENTER SUI MOVE PROJECT PATH>")
+    txb.transfer_objects(
+        transfers=[upg_cap], recipient=client.config.active_address.address
+    )
+
+    transaction_inspect(txb)
+    # transaction_dryrun(txb)
+    # transaction_dryrun_with_gas(
+    #     txb,
+    #     [
+    #         "<ENTER ONE OR MORE COIN IDS TO PAY",
+    #     ],
+    # )
+    # transaction_execute(txb)
+
+
 if __name__ == "__main__":
     client_init = SuiGQLClient(
         write_schema=False,
         config=SuiConfig.default_config(),
     )
     print(f"Schema version {client_init.schema_version}")
-    demo_tx_split(client_init)
-    # demo_tx_split_equal(client_init)
-    # demo_tx_split_distribute(client_init)
-    # demo_tx_public_transfer(client_init)
-    # demo_tx_unstake(client_init)
-    # demo_tx_transfer_sui(client_init)
+    try:
+        # demo_tx_split(client_init)
+        # demo_tx_split_equal(client_init)
+        # demo_tx_split_distribute(client_init)
+        # demo_tx_public_transfer(client_init)
+        demo_tx_unstake(client_init)
+        # demo_tx_transfer_sui(client_init)
+        # demo_tx_publish(client_init)
+    except ValueError as ve:
+        print(ve.args)

@@ -442,6 +442,80 @@ async def do_execute(client: AsyncSuiGQLClient):
         )
 
 
+async def do_stake(client: AsyncSuiGQLClient):
+    """Stake some coinage.
+
+    This uses a testnet validator (Blockscope.net). For different environment
+    or different validator change the vaddress
+    """
+    vaddress = "0x44b1b319e23495995fc837dafd28fc6af8b645edddff0fc1467f1ad631362c23"
+    rpc_client = AsyncClient(client.config)
+    txer = AsyncTransaction(client=rpc_client)
+
+    # Take 1 Sui from gas
+    stake_coin_split = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    # Stake the coin
+    await txer.stake_coin(
+        coins=[stake_coin_split],
+        validator_address=vaddress,
+    )
+    # Uncomment to dry run
+    tx_data = await txer.get_transaction_data()
+    tx_b64 = base64.b64encode(tx_data.serialize()).decode()
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.DryRunTransaction(tx_bytestr=tx_b64)
+        )
+    )
+    # Uncomment to execute the stake
+    # tx_b64 = await txer.deferred_execution(run_verification=True)
+    # print(tx_b64)
+    # sig_array = txer.signer_block.get_signatures(client=rpc_client, tx_bytes=tx_b64)
+    # rsig_array = [x.value for x in sig_array.array]
+    # handle_result(
+    #     await client.execute_query_node(
+    #         with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=rsig_array)
+    #     )
+    # )
+
+
+async def do_unstake(client: AsyncSuiGQLClient):
+    """Unstake first Staked Sui if address has any."""
+
+    owner = client.config.active_address.address
+    result = await client.execute_query_node(
+        with_node=qn.GetDelegatedStakes(owner=owner)
+    )
+    if result.is_ok() and result.result_data.staked_coins:
+        rpc_client = AsyncClient(client.config)
+        txer = AsyncTransaction(client=rpc_client)
+
+        # Unstake the first staked coin
+        await txer.unstake_coin(
+            staked_coin=result.result_data.staked_coins[0].object_id
+        )
+        # Uncomment to dry run
+        tx_data = await txer.get_transaction_data()
+        tx_b64 = base64.b64encode(tx_data.serialize()).decode()
+        handle_result(
+            await client.execute_query_node(
+                with_node=qn.DryRunTransaction(tx_bytestr=tx_b64)
+            )
+        )
+        # Uncomment to execute the stake
+        # tx_b64 = await txer.deferred_execution(run_verification=True)
+        # print(tx_b64)
+        # sig_array = txer.signer_block.get_signatures(client=rpc_client, tx_bytes=tx_b64)
+        # rsig_array = [x.value for x in sig_array.array]
+        # handle_result(
+        #     await client.execute_query_node(
+        #         with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=rsig_array)
+        #     )
+        # )
+    else:
+        print(f"No staked Sui for {owner}")
+
+
 async def main():
     """."""
     client_init = AsyncSuiGQLClient(
@@ -480,6 +554,8 @@ async def main():
     # await do_package(client_init)
     # await do_dry_run(client_init)
     # await do_execute(client_init)
+    # await do_stake(client_init)
+    # await do_unstake(client_init)
     ## Config
     # await do_chain_id(client_init)
     # await do_configs(client_init)

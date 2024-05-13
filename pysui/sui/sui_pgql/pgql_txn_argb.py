@@ -5,11 +5,11 @@
 """Pysui Transaction argument builder that works with GraphQL connection."""
 
 from typing import Any, Optional, Union
+from functools import partial
 from dataclasses import dataclass, field
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-from pysui import SuiConfig
 
 import pysui.sui.sui_types as suit
 from pysui.sui.sui_types import bcs
@@ -63,6 +63,11 @@ def _optional_processor(
         else:
             inner_type = outer_fn(inner_fn(arg))
         etr = bcs.OptionalTypeFactory.as_optional(inner_type)
+    elif isinstance(construct, list):
+        for index, vconstruct in enumerate(construct):
+            convert, encode = vconstruct
+            inner_type = encode(convert(arg))
+            etr = bcs.OptionalTypeFactory.as_optional(inner_type)
     elif construct:
         inner_type = construct(arg)
         etr = bcs.OptionalTypeFactory.as_optional(inner_type)
@@ -129,55 +134,92 @@ def _object_processor(
     raise ValueError("Missing argument")
 
 
+def pass_through(arg: Any) -> Any:
+    """Emulate 'identity'."""
+    return arg
+
+
 def _scalar_argument(
-    expected_type,
-    arg,
+    expected_type, arg, in_optional: bool = False, in_vector: bool = False
 ) -> tuple[Any, Any]:
     """Prepares a scalar argument for the transaction."""
 
-    match expected_type.scalar_type:
-        case "address" | "signature":
-            # print(f"{expected_type.scalar_type} = {arg}")
-            return bcs.Address.from_str, tx_builder.PureInput.as_input
-        case "digest":
-            # print(f"{expected_type.scalar_type} = {arg}")
-            return bcs.Digest.from_str, tx_builder.PureInput.as_input
-        case _:
-            # if not isinstance(arg, (str, int)):
-            #     raise ValueError("ObjectRef...Oops")
-            return (
-                _SCALARS.get(expected_type.scalar_type),
-                tx_builder.PureInput.as_input,
-            )
+    # Validate arg matches expectation
+    if arg:
+        if _SCALARS.get(expected_type.scalar_type) and not isinstance(arg, int):
+            raise ValueError(f"Expected int and found {arg.__class__}")
+        elif not isinstance(arg, str):
+            raise ValueError(f"Expected str found {arg.__class__}")
+
+    if in_optional:
+        match expected_type.scalar_type:
+            case "address" | "signature" | "ID":
+                return (bcs.Address.from_str, bcs.Address)
+            case "digest":
+                return (bcs.Digest.from_str, bcs.Digest)
+            case "String":
+                return (
+                    tx_builder.PureInput.pure,
+                    partial(bcs.Variable.bcs_var_length_field, bcs.U8),
+                )
+                # return (tx_builder.PureInput.pure, bcs.VariableArrayU8)
+    else:
+        match expected_type.scalar_type:
+            case "address" | "signature" | "ID":
+                # print(f"{expected_type.scalar_type} = {arg}")
+                return bcs.Address.from_str, tx_builder.PureInput.as_input
+            case "digest":
+                # print(f"{expected_type.scalar_type} = {arg}")
+                return bcs.Digest.from_str, tx_builder.PureInput.as_input
+            case "String":
+                # return (tx_builder.PureInput.pure, bcs.VariableArrayU8)
+                return (
+                    tx_builder.PureInput.pure,
+                    partial(bcs.Variable.bcs_var_length_field, bcs.U8),
+                )
+            case _:
+                # if not isinstance(arg, (str, int)):
+                #     raise ValueError("ObjectRef...Oops")
+                return (
+                    _SCALARS.get(expected_type.scalar_type),
+                    tx_builder.PureInput.as_input,
+                )
 
 
-def _object_argument(expected_type: pgql_type.MoveObjectRefArg, arg) -> tuple[Any, Any]:
+def _object_argument(
+    expected_type: pgql_type.MoveObjectRefArg,
+    arg,
+    in_optional: bool = False,
+    in_vector: bool = False,
+) -> tuple[Any, Any]:
     """Prepares an object argument for the transaction."""
     # If optional then get the inner type and validate
     if expected_type.is_optional:
         return _optional_processor, _argument_validate(
-            expected_type.type_params[0], arg
+            expected_type.type_params[0], arg, True, in_vector
         )
     return _object_processor, None
 
 
-def _argument_validate(expected_type: Any, arg: Any) -> Union[None, tuple[Any, Any]]:
+def _argument_validate(
+    expected_type: Any, arg: Any, in_optional: bool = False, in_vector: bool = False
+) -> Union[None, tuple[Any, Any]]:
     """Argument validation and process dispatching function."""
     if isinstance(arg, bcs.Argument):
         return None
     if isinstance(expected_type, pgql_type.MoveScalarArg):
         # print("Scalar")
-        return _scalar_argument(expected_type, arg)
+        return _scalar_argument(expected_type, arg, in_optional, in_vector)
     if isinstance(expected_type, pgql_type.MoveWitnessArg):
         # print("WitnessArg")
-        return _object_argument(expected_type, arg)
+        return _object_argument(expected_type, arg, in_optional)
     elif isinstance(expected_type, pgql_type.MoveObjectRefArg):
         # print("ObjectRef")
-        return _object_argument(expected_type, arg)
+        return _object_argument(expected_type, arg, in_optional)
     if isinstance(expected_type, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)):
         # print("Vector or List")
         if not isinstance(arg, list):
-            raise ValueError("Vector or List...Oops")
+            raise ValueError("Expected list type argument...")
         some_list = []
         inner_type = (
             expected_type.list_arg
@@ -188,7 +230,9 @@ def _argument_validate(expected_type: Any, arg: Any) -> Union[None, tuple[Any, A
             if isinstance(inner_arg, bcs.Argument):
                 some_list.append(inner_arg)
             else:
-                some_list.append(_argument_validate(inner_type, inner_arg))
+                some_list.append(
+                    _argument_validate(inner_type, inner_arg, in_optional, True)
+                )
         return some_list
 
     raise ValueError(f"Unhhandled type {type(expected_type)}")

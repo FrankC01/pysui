@@ -251,6 +251,13 @@ class PureInput:
 
     @pure.register
     @classmethod
+    def _(cls, arg: bcs.Variable) -> list:
+        """Convert bcs,Variable to list of bytes."""
+        logger.debug(f"bcs.Variable->pure {arg.to_json()}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
     def _(cls, arg: list) -> list:
         """."""
         logger.debug(f"list->pure {arg}")
@@ -462,6 +469,8 @@ class ProgrammableTransactionBuilder:
             elif isinstance(arg, (bcs.Argument, bcs.OptionalU64)):
                 argrefs.append(arg)
             elif isinstance(arg, list):
+                argrefs.append(self.input_pure(PureInput.as_input(arg)))
+            elif isinstance(arg, bcs.Variable):
                 argrefs.append(self.input_pure(PureInput.as_input(arg)))
             else:
                 raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")

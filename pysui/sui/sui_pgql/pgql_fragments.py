@@ -543,12 +543,10 @@ class Validator(PGQL_Fragment):
                 ),
                 schema.Validator.stakingPoolSuiBalance,
                 schema.Validator.stakingPoolActivationEpoch,
-                schema.Validator.stakingPool.select(
-                    schema.MoveObject.address.alias("staking_pool_address")
-                ),
+                schema.Validator.stakingPoolId.alias("staking_pool_address"),
                 schema.Validator.exchangeRatesSize,
-                schema.Validator.exchangeRates.select(
-                    schema.MoveObject.address.alias("exchange_rates_address")
+                schema.Validator.exchangeRatesTable.select(
+                    schema.Owner.address.alias("exchange_rates_address")
                 ),
                 schema.Validator.rewardsPool,
                 schema.Validator.poolTokenBalance,

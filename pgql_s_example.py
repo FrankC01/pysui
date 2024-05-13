@@ -243,6 +243,11 @@ def do_configs(client: SuiGQLClient):
     print(client.rpc_config.to_json(indent=2))
 
 
+def do_service_config(client: SuiGQLClient):
+    """Fetch the GraphQL, Protocol and System configurations."""
+    print(client.rpc_config.serviceConfig.to_json(indent=2))
+
+
 def do_chain_id(client: SuiGQLClient):
     """Fetch the current environment chain_id.
 
@@ -411,9 +416,9 @@ def do_func(client: SuiGQLClient):
     """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetFunction(
-            package="0x2",
-            module_name="clock",
-            function_name="timestamp_ms",
+            package="0x1",
+            module_name="ascii",
+            function_name="all_characters_printable",
         )
     )
     if result.is_ok():
@@ -426,8 +431,8 @@ def do_funcs(client: SuiGQLClient):
     """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetFunctions(
-            package="0x2",
-            module_name="coin",
+            package="0x1",
+            module_name="ascii",
         )
     )
     if result.is_ok():
@@ -640,18 +645,44 @@ def do_stake(client: SuiGQLClient):
         validator_address=vaddress,
     )
     # Uncomment to dry run
-    # handle_result(
-    #     client.execute_query_node(
-    #         with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
-    #     )
-    # )
-    # Execute the stake
-    tx_b64, sig_array = txer.build_and_sign()
     handle_result(
         client.execute_query_node(
-            with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+            with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
         )
     )
+    # Uncomment to Execute the stake
+    # tx_b64, sig_array = txer.build_and_sign()
+    # handle_result(
+    #     client.execute_query_node(
+    #         with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+    #     )
+    # )
+
+
+def do_unstake(client: SuiGQLClient):
+    """Unstake first Staked Sui if address has any."""
+
+    owner = client.config.active_address.address
+    result = client.execute_query_node(with_node=qn.GetDelegatedStakes(owner=owner))
+    if result.is_ok() and result.result_data.staked_coins:
+        txer: SuiTransaction = SuiTransaction(client=client)
+        # Unstake the first staked coin
+        txer.unstake_coin(staked_coin=result.result_data.staked_coins[0])
+        # Uncomment to dry run
+        handle_result(
+            client.execute_query_node(
+                with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
+            )
+        )
+        # Uncomment to Execute the unstake
+        # tx_b64, sig_array = txer.build_and_sign()
+        # handle_result(
+        #     client.execute_query_node(
+        #         with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+        #     )
+        # )
+    else:
+        print(f"No staked Sui for {owner}")
 
 
 if __name__ == "__main__":
@@ -705,8 +736,10 @@ if __name__ == "__main__":
     # merge_some(client_init)
     # split_1_half(client_init)
     # do_stake(client_init)
+    # do_unstake(client_init)
     ## Config
     # do_chain_id(client_init)
     # do_configs(client_init)
+    # do_service_config(client_init)
     # do_protcfg(client_init)
     client_init.client.close_sync()

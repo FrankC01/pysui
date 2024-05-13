@@ -485,6 +485,7 @@ class SuiTransaction(_SuiTransactionBase):
             move method being called.
         :rtype: Union[bcs.Argument, list[bcs.Argument]]
         """
+        type_arguments = type_arguments if type_arguments else []
         # Validate and get target meta arguments
         package, package_module, package_function, retcount, ars = (
             self._function_meta_args(target)

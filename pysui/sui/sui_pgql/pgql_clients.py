@@ -103,7 +103,7 @@ class BaseSuiGQLClient:
     # TODO: Move these to constants
     _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
-    _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql"
+    _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql/stable"
     _SCHEMA_HEADER_KEY: str = "X-Sui-RPC-Version"
 
     @classmethod
@@ -328,7 +328,9 @@ class SuiGQLClient(BaseSuiGQLClient):
 
         except texc.TransportQueryError as gte:
             return SuiRpcResult(
-                False, "TransportQueryError", pgql_type.ErrorGQL.from_query(gte.errors)
+                False,
+                f"TransportQueryError {gte.errors}",
+                pgql_type.ErrorGQL.from_query(gte.errors),
             )
         except (
             httpx.HTTPError,

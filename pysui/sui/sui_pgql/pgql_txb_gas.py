@@ -44,7 +44,7 @@ def _get_all_gas_objects(
             else:
                 break
         else:
-            break
+            raise ValueError(f"Execute query error: {result.result_string}")
     return coin_list
 
 

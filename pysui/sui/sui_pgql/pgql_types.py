@@ -932,6 +932,11 @@ class MoveObjectRefArg:
         ref_type: RefType = (
             in_ref if isinstance(in_ref, RefType) else RefType.from_ref(in_ref)
         )
+        if in_type["type"] == "String" or in_type["type"] == "ID":
+            return MoveScalarArg.from_str(in_ref, in_type["type"])
+        ref_type: RefType = (
+            in_ref if isinstance(in_ref, RefType) else RefType.from_ref(in_ref)
+        )
         inner_type = in_type.get("typeParameters")
         has_type = bool(inner_type)
         inner_list = []
@@ -943,9 +948,16 @@ class MoveObjectRefArg:
                     if "typeParameter" in inner_t:
                         inner_list.append(inner_t["typeParameter"])
                     else:
-                        inner_list.append(
-                            MoveObjectRefArg.from_body(ref_type, inner_t["datatype"])
-                        )
+                        if "vector" in inner_t:
+                            inner_list.append(
+                                MoveVectorArg.from_body(ref_type, inner_t)
+                            )
+                        else:
+                            inner_list.append(
+                                MoveObjectRefArg.from_body(
+                                    ref_type, inner_t["datatype"]
+                                )
+                            )
                 else:
                     inner_list.append(MoveScalarArg.from_str("", inner_t))
 
@@ -1081,14 +1093,17 @@ class MoveFunctionsGQL:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
             _fast_flat(in_data, fdict)
-            if "hasNextPage" in fdict:
-                fdict["next_cursor"] = PagingCursor(
-                    fdict.pop("hasNextPage"), fdict.pop("endCursor")
-                )
-            else:
-                fdict["next_cursor"] = None
-            fdict["functions"] = [MoveFunctionGQL.from_query(x) for x in fdict["nodes"]]
-            return MoveFunctionsGQL.from_dict(fdict)
+            if fdict.get("nodes"):
+                if "hasNextPage" in fdict:
+                    fdict["next_cursor"] = PagingCursor(
+                        fdict.pop("hasNextPage"), fdict.pop("endCursor")
+                    )
+                else:
+                    fdict["next_cursor"] = None
+                fdict["functions"] = [
+                    MoveFunctionGQL.from_query(x) for x in fdict["nodes"]
+                ]
+                return MoveFunctionsGQL.from_dict(fdict)
         return NoopGQL.from_query()
 
 
@@ -1184,12 +1199,9 @@ class ValidatorFullGQL:
         if "operatingCap" in fdict:
             fdict["operating_cap_address"] = None
             fdict.pop("operatingCap")
-        if "exchangeRate" in fdict:
-            fdict["exchange_rates_address"] = None
-            fdict.pop("exchangeRate")
-        if "stakingPool" in fdict:
-            fdict["staking_pool_address"] = None
-            fdict.pop("stakingPool")
+        # if "exchangeRate" in fdict:
+        #     fdict["exchange_rates_address"] = None
+        #     fdict.pop("exchangeRate")
         return ValidatorFullGQL.from_dict(fdict)
 
 

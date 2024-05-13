@@ -11,7 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `query_node_to_string` to pysui GraphQL clients
 - Package object_type discriminator in ObjectReadGQL
-- `do_stake`` to GraphQL sample
+- `do_stake` and `do_unstake` in GraphQL samples
+- Support for `0x1::string::String` move call parms:
+  - `&String` (e.g. `args=["foo"]`)
+  - `Option<String>` (e.g. `args=["foo"]` or `args=[None]`)
+  - `vector<String>` (e.g. `args=[["foo","bar"]]`)
 
 ### Fixed
 
