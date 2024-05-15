@@ -19,16 +19,16 @@ Python Client SDK for Sui blockchain
 
 **Release-0.60.0**
 
-- Supports _SUI 1.25.x RPC API_
+- Supports _SUI 1.26.x RPC API_
 - Backwards compatable to _Sui 1.18.x RPC API_
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.59.0 - Released 2024-05-02**
+**Release-0.59.0 - Released 2024-05-15**
 
-- Supports _SUI 1.24.x RPC API_
+- Supports _SUI 1.26.x RPC API_
 - Backwards compatable to _Sui 1.18.x RPC API_
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
@@ -46,7 +46,7 @@ Note: MystenLabs/Sui GraphQL RPC is available on devnet, testnet and mainnet
 
   [Testnet](https://sui-testnet.mystenlabs.com/graphql)
 
-  [Devnet](https://sui-devnet.mystenlabs.com/graphql)
+  [Devnet](https://sui-devnet.mystenlabs.com/graphql/stable)
 
 ### pysui GraphQL support
 
@@ -56,9 +56,9 @@ We continue to monitor and support changes as they evolve.
 
 #### Examples
 
-  - [Synchronous Client](https://github.com/FrankC01/pysui/blob/v0.57.0/pgql_s_example.py) - Examples for all supported QueryNode queries and mutations
-  - [Asynchronous Client](https://github.com/FrankC01/pysui/blob/v0.57.0/pgql_a_example.py) - Examples for all supported QueryNode queries and mutations
-  - [Synchronous TransactionBuilder](https://github.com/FrankC01/pysui/blob/v0.57.0/pgql_s_ptb.py) - Example of new pysui Transaction Builder leveraging Sui GraphQL
+  - [Synchronous Client](https://github.com/FrankC01/pysui/blob/v0.59.0/pgql_s_example.py) - Examples for all supported QueryNode queries and mutations
+  - [Asynchronous Client](https://github.com/FrankC01/pysui/blob/v0.59.0/pgql_a_example.py) - Examples for all supported QueryNode queries and mutations
+  - [Synchronous TransactionBuilder](https://github.com/FrankC01/pysui/blob/v0.59.0/pgql_s_ptb.py) - Example of new pysui Transaction Builder leveraging Sui GraphQL
 
 You can read pysui documentation on graphql beta [here](https://pysui.readthedocs.io/en/latest/graphql.html)
 

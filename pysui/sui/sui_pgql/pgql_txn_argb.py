@@ -146,8 +146,9 @@ def _scalar_argument(
 
     # Validate arg matches expectation
     if arg:
-        if _SCALARS.get(expected_type.scalar_type) and not isinstance(arg, int):
-            raise ValueError(f"Expected int and found {arg.__class__}")
+        if _SCALARS.get(expected_type.scalar_type):
+            if not isinstance(arg, int):
+                raise ValueError(f"Expected int and found {arg.__class__}")
         elif not isinstance(arg, str):
             raise ValueError(f"Expected str found {arg.__class__}")
 

@@ -308,7 +308,8 @@ class SuiGQLClient(BaseSuiGQLClient):
     def _execute(
         self,
         node: DocumentNode,
-        schema_constraint: Optional[Union[str, None]],
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """_execute Execute a GQL Document Node
@@ -346,6 +347,10 @@ class SuiGQLClient(BaseSuiGQLClient):
                 "GraphQLSyntaxError",
                 pgql_type.ErrorGQL.from_query(gqe.formatted),
             )
+        except TypeError as te:
+            return SuiRpcResult(
+                False, "TypeError", pgql_type.ErrorGQL.from_query(te.args)
+            )
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
@@ -356,12 +361,15 @@ class SuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         string: str,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         if isinstance(string, str):
-            return self._execute(gql(string), schema_constraint, encode_fn)
+            return self._execute(
+                gql(string), schema_constraint, with_headers, encode_fn
+            )
         else:
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
@@ -372,12 +380,13 @@ class SuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         with_node: DocumentNode,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         if isinstance(with_node, DocumentNode):
-            return self._execute(with_node, schema_constraint, encode_fn)
+            return self._execute(with_node, schema_constraint, with_headers, encode_fn)
         else:
             return SuiRpcResult(False, "Not a valid gql DocumentNode", with_node)
 
@@ -388,7 +397,8 @@ class SuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         with_node: PGQL_QueryNode,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
@@ -399,58 +409,11 @@ class SuiGQLClient(BaseSuiGQLClient):
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
-            return self._execute(qdoc_node, schema_constraint, encode_fn)
+            return self._execute(qdoc_node, schema_constraint, with_headers, encode_fn)
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
-
-    @deprecated(
-        version="0.56.0",
-        reason="Use explicit execute for type (str,DocumentNode,PGQL_QueryNode. This will be deleted in version 0.60.0)",
-    )
-    def execute_query(
-        self,
-        *,
-        with_string: Optional[str] = None,
-        with_document_node: Optional[DocumentNode] = None,
-        with_query_node: Optional[PGQL_QueryNode] = None,
-        encode_fn: Optional[Callable[[dict], Any]] = None,
-    ) -> SuiRpcResult:
-        """Executes a GraphQL query and returns raw result.
-
-        with_string and with_document_node and with_query_node are mutually exclusive.
-        with_string takes precedence, then with_document_node then with_query_node. If none is
-        specific an error is returned.
-
-        :param with_string: A python string query, defaults to None
-        :type with_string: Optional[str], optional
-        :param with_document_node: A gql DocumentNode query, defaults to None
-        :type with_document_node: Optional[DocumentNode], optional
-        :param with_query_node: A pysui GraphQL QueryNode, defaults to None
-        :type with_query_node: Optional[PGQL_QueryNode], optional
-        :param encode_fn: Encoding function taking dict as arg and returning Any, defaults to None
-            This can be used on any 'with_' option. If used in addition to with_query_node it
-            will override the builder property of same name if defined
-        :type encode_fn: Optional[Callable[[dict], Any]], optional
-        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
-        :rtype: SuiRpcResult
-        """
-
-        if with_string:
-            return self.execute_query_string(string=with_string, encode_fn=encode_fn)
-        elif with_document_node:
-            return self.execute_document_node(
-                with_node=with_document_node, encode_fn=encode_fn
-            )
-        elif with_query_node:
-            return self.execute_query_node(
-                with_node=with_query_node, encode_fn=encode_fn
-            )
-        return SuiRpcResult(
-            False,
-            "Call requires python str, gql.DocumentNode, or PGQL_QueryNode types",
-        )
 
 
 class AsyncSuiGQLClient(BaseSuiGQLClient):
@@ -505,7 +468,8 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     async def _execute(
         self,
         node: DocumentNode,
-        schema_constraint: Optional[Union[str, None]],
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """_execute Execute a GQL Document Node
@@ -544,6 +508,10 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
                 "GraphQLSyntaxError",
                 pgql_type.ErrorGQL.from_query(gqe.formatted),
             )
+        except TypeError as te:
+            return SuiRpcResult(
+                False, "TypeError", pgql_type.ErrorGQL.from_query(te.args)
+            )
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
@@ -554,12 +522,15 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         string: str,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         if isinstance(string, str):
-            return await self._execute(gql(string), schema_constraint, encode_fn)
+            return await self._execute(
+                gql(string), schema_constraint, with_headers, encode_fn
+            )
         else:
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
@@ -570,12 +541,15 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         with_node: DocumentNode,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         if isinstance(with_node, DocumentNode):
-            return await self._execute(with_node, schema_constraint, encode_fn)
+            return await self._execute(
+                with_node, schema_constraint, with_headers, encode_fn
+            )
         else:
             return SuiRpcResult(False, "Not a valid gql DocumentNode", with_node)
 
@@ -586,7 +560,8 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         with_node: PGQL_QueryNode,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
@@ -597,56 +572,10 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
-            return await self._execute(qdoc_node, schema_constraint, encode_fn)
+            return await self._execute(
+                qdoc_node, schema_constraint, with_headers, encode_fn
+            )
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
-
-    @deprecated(
-        version="0.56.0",
-        reason="Use explicit execute for type (str,DocumentNode,PGQL_QueryNode. This will be deleted in version 0.60.0)",
-    )
-    async def execute_query(
-        self,
-        *,
-        with_string: Optional[str] = None,
-        with_document_node: Optional[DocumentNode] = None,
-        with_query_node: Optional[PGQL_QueryNode] = None,
-        encode_fn: Optional[Callable[[dict], Any]] = None,
-    ) -> SuiRpcResult:
-        """Executes a GraphQL query and returns raw result.
-
-        with_string and with_document_node and with_query_node are mutually exclusive.
-        with_string takes precedence, then with_document_node then with_query_node. If none is
-        specific an error is returned.
-
-        :param with_string: A python string query, defaults to None
-        :type with_string: Optional[str], optional
-        :param with_document_node: A gql DocumentNode query, defaults to None
-        :type with_document_node: Optional[DocumentNode], optional
-        :param with_query_node: A pysui GraphQL QueryNode, defaults to None
-        :type with_query_node: Optional[PGQL_QueryNode], optional
-        :param encode_fn: Encode function taking dict as arg and returning Any, defaults to None
-            This can be used on any 'with_' option. If used in addition to with_query_node it
-            will override the builder property of same name if defined
-        :type encode_fn: Optional[Callable[[dict], Any]], optional
-        :return: Raw result (dict) or type returned defined by serialization function
-        :rtype: Any
-        """
-        if with_string:
-            return await self.execute_query_string(
-                schema_constraint=with_string, encode_fn=encode_fn
-            )
-        elif with_document_node:
-            return await self.execute_document_node(
-                with_node=with_document_node, encode_fn=encode_fn
-            )
-        elif with_query_node:
-            return await self.execute_query_node(
-                with_node=with_query_node, encode_fn=encode_fn
-            )
-        return SuiRpcResult(
-            False,
-            "Call requires python str, gql.DocumentNode, or PGQL_QueryNode types",
-        )

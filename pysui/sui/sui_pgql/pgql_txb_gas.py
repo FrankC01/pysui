@@ -16,8 +16,8 @@ def _get_gas_objects(
     client: BaseSuiGQLClient, gas_ids: list[str]
 ) -> list[pgql_type.SuiCoinObjectGQL]:
     """Retreive specific Gas Objects."""
-    result = client.execute_query(
-        with_query_node=qn.GetMultipleGasObjects(coin_object_ids=gas_ids)
+    result = client.execute_query_node(
+        with_node=qn.GetMultipleGasObjects(coin_object_ids=gas_ids)
     )
     if result.is_ok():
         return result.result_data.data
@@ -31,13 +31,13 @@ def _get_all_gas_objects(
     """Retreive all Gas Objects."""
     payer = signing.payer_address
     coin_list: list[pgql_type.SuiCoinObjectGQL] = []
-    result = client.execute_query(with_query_node=qn.GetCoins(owner=payer))
+    result = client.execute_query_node(with_node=qn.GetCoins(owner=payer))
     while True:
         if result.is_ok():
             coin_list.extend(result.result_data.data)
             if result.result_data.next_cursor.hasNextPage:
-                result = client.execute_query(
-                    with_query_node=qn.GetCoins(
+                result = client.execute_query_node(
+                    with_node=qn.GetCoins(
                         owner=payer, next_page=result.result_data.next_cursor
                     )
                 )
@@ -55,8 +55,8 @@ def _dry_run_for_budget(
     active_gas_price: int,
 ) -> int:
     """Perform a dry run when no budget specified."""
-    result = client.execute_query(
-        with_query_node=qn.DryRunTransactionKind(
+    result = client.execute_query_node(
+        with_node=qn.DryRunTransactionKind(
             tx_bytestr=tx_bytes,
             tx_meta={
                 "sender": signing.sender_str,

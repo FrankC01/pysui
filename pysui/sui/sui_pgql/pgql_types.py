@@ -1047,9 +1047,11 @@ class MoveFunctionGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MoveFunctionGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-        return MoveFunctionGQL.from_dict(fdict)
+        if in_data.get("object"):
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            return MoveFunctionGQL.from_dict(fdict)
+        return NoopGQL.from_query()
 
     def arg_summary(self) -> MoveArgSummary:
         """Summarize the function's arguments."""

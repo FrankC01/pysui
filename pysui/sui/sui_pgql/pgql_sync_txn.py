@@ -172,8 +172,8 @@ class SuiTransaction(_SuiTransactionBase):
         package, package_module, package_function = (
             tv.TypeValidator.check_target_triplet(target)
         )
-        result = self.client.execute_query(
-            with_query_node=qn.GetFunction(
+        result = self.client.execute_query_node(
+            with_node=qn.GetFunction(
                 package=package,
                 module_name=package_module,
                 function_name=package_function,

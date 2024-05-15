@@ -1,9 +1,5 @@
 /// Base module for sui
 module pysuidance::dancer {
-    use sui::transfer;
-    use std::vector;
-    use sui::object::{Self, UID};
-    use sui::tx_context::{Self, TxContext};
 
     /// Does not contain value
     const DoesNotExist: u64 = 2;
