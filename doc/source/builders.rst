@@ -2,7 +2,7 @@
 Builders
 ========
 
-Note: pysui Builders are being deprecated. See the GraphQL alternative.
+Note: pysui Builders are deprecated. See the GraphQL alternative.
 
 General
 -------

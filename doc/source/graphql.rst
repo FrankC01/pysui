@@ -45,6 +45,7 @@ Simple dev example
 ====================
 
 .. code-block:: python
+    :linenos:
 
     #
     """Development example."""
@@ -67,8 +68,6 @@ Simple dev example
         # 2. Or get the data through handle_result
         # print(handle_result(qres).to_json(indent=2))
 
-    
-
     if __name__ == "__main__":
         # Initialize synchronous client
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
@@ -82,6 +81,8 @@ To leverage the power of Sui GraphQL one would benefit to understand the schema 
 copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy in the current directory:
 
 .. code-block:: python
+    :linenos:
+
     from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
     from pysui import SuiConfig
 
@@ -89,8 +90,39 @@ copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy 
         """Dump Sui GraphQL Schema."""
         # Initialize synchronous client
         client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=True)
+        print(f"Schema dumped to: {client_init.schema_version}.graqhql`")
 
-        print(f"Schema dumped to: `devnet_schema-{client_init.schema_version}.graqhql`")
+    if __name__ == "__main__":
+        main()
+
+----------------------------
+HTTP Client Headers
+----------------------------
+
+You can set global HTTP client headers at the creation of the SuiGQLClient and you can override/extend them
+with each query execution. If used at query execution it is merged/update with the global.
+
+If not provided at construction, it defaults to ``{"headers":None}``
+
+.. code-block:: python
+    :emphasize-lines: 8,15
+
+    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+    from pysui import SuiConfig
+    import pysui.sui.sui_pgql.pgql_query as qn
+
+    def main():
+        """Set global headers to include in the RPC calls."""
+        # Initialize synchronous client with default headers
+        client = SuiGQLClient(config=SuiConfig.default_config(),default_header={"headers": {"from": "youremail@acme.org"}})
+        print(client.client_headers)
+        # Use different 'from' in headers for this one call
+        qres = client.execute_query_node(
+            with_node=qn.GetCoins(
+                owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+            ),
+            with_headers={"headers":{"from": "otheremail@coyote.org"
+        )
 
     if __name__ == "__main__":
         main()
@@ -110,7 +142,8 @@ returning results
         self,
         *,
         string: str,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
 
@@ -119,7 +152,8 @@ returning results
         self,
         *,
         with_node: DocumentNode,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
 
@@ -128,7 +162,8 @@ returning results
         self,
         *,
         with_node: PGQL_QueryNode,
-        schema_constraint: Optional[Union[str, None]] = None,
+        schema_constraint: Optional[str] = None,
+        with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
 
