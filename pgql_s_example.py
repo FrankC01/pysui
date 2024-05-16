@@ -692,8 +692,9 @@ if __name__ == "__main__":
         write_schema=True,
         config=cfg,
     )
-    print(f"Schema base version {client_init.base_schema_version}")
-    print(f"Schema full version {client_init.schema_version}")
+    print(f"Chain environment   '{client_init.chain_environment}'")
+    print(f"Schema base version '{client_init.base_schema_version}'")
+    print(f"Schema full version '{client_init.schema_version}'")
     try:
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)

@@ -163,24 +163,23 @@ def _scalar_argument(
                     tx_builder.PureInput.pure,
                     partial(bcs.Variable.bcs_var_length_field, bcs.U8),
                 )
-                # return (tx_builder.PureInput.pure, bcs.VariableArrayU8)
+            case _:
+                return (
+                    _SCALARS.get(expected_type.scalar_type),
+                    tx_builder.PureInput.as_input,
+                )
     else:
         match expected_type.scalar_type:
             case "address" | "signature" | "ID":
-                # print(f"{expected_type.scalar_type} = {arg}")
                 return bcs.Address.from_str, tx_builder.PureInput.as_input
             case "digest":
-                # print(f"{expected_type.scalar_type} = {arg}")
                 return bcs.Digest.from_str, tx_builder.PureInput.as_input
             case "String":
-                # return (tx_builder.PureInput.pure, bcs.VariableArrayU8)
                 return (
                     tx_builder.PureInput.pure,
                     partial(bcs.Variable.bcs_var_length_field, bcs.U8),
                 )
             case _:
-                # if not isinstance(arg, (str, int)):
-                #     raise ValueError("ObjectRef...Oops")
                 return (
                     _SCALARS.get(expected_type.scalar_type),
                     tx_builder.PureInput.as_input,

@@ -148,6 +148,7 @@ class BaseSuiGQLClient:
         schema: DSLSchema,
         rpc_config: SuiConfigGQL,
         write_schema: Optional[bool] = False,
+        default_header: Optional[dict] = None,
     ):
         """."""
 
@@ -158,6 +159,7 @@ class BaseSuiGQLClient:
         self._base_version = version[: version.index("-")]
         self._schema: DSLSchema = schema
         self._rpc_config: SuiConfigGQL = rpc_config
+        self._default_header = default_header if default_header else {"headers": None}
         # Schema persist
         if write_schema:
             fname = f"./{self._rpc_config.gqlEnvironment}_schema-{version}.graphql"
@@ -213,6 +215,10 @@ class BaseSuiGQLClient:
     def base_schema_version(self) -> str:
         """Returns the header version (schema version without patch)"""
         return self._base_version
+
+    @property
+    def client_headers(self) -> dict:
+        return self._default_header.copy()
 
     @property
     def schema(self) -> DSLSchema:
@@ -272,6 +278,7 @@ class SuiGQLClient(BaseSuiGQLClient):
         config: SuiConfig,
         schema_version: Optional[str] = None,
         write_schema: Optional[bool] = False,
+        default_header: Optional[dict] = None,
     ):
         """Sui GraphQL Client initializer."""
         # Resolve GraphQL URL
@@ -300,6 +307,7 @@ class SuiGQLClient(BaseSuiGQLClient):
             schema=_schema,
             rpc_config=_rpc_config,
             write_schema=write_schema,
+            default_header=default_header,
         )
 
     @versionadded(
@@ -317,14 +325,19 @@ class SuiGQLClient(BaseSuiGQLClient):
         :param node: GQL DocumentNode
         :type node: DocumentNode
         :param schema_constraint: Should run against specific schema
-        :type schema_constraint: Optional[Union[str, None]]
+        :type schema_constraint: Optional[str]
+        :param with_headers: Add extra arguments for http client headers
+        :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
         try:
-            sres = self.client.execute(node)
+            # hdr = {}
+            hdr = self.client_headers
+            hdr = hdr if not with_headers else hdr.update(with_headers)
+            sres = self.client.execute(node, extra_args=hdr)
             return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
 
         except texc.TransportQueryError as gte:
@@ -422,9 +435,10 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     def __init__(
         self,
         *,
+        config: SuiConfig,
         schema_version: Optional[str] = None,
         write_schema: Optional[bool] = False,
-        config: SuiConfig,
+        default_header: Optional[dict] = None,
     ):
         """Async Sui GraphQL Client initializer."""
         gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
@@ -460,6 +474,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             schema=_schema,
             rpc_config=_rpc_config,
             write_schema=write_schema,
+            default_header=default_header,
         )
 
     @versionadded(
@@ -478,14 +493,18 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         :type node: DocumentNode
         :param schema_constraint: Should run against specific schema
         :type schema_constraint: Optional[Union[str, None]]
+        :param with_headers: Add extra arguments for http client headers
+        :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
         try:
+            hdr = self.client_headers
+            hdr = hdr if not with_headers else hdr.update(with_headers)
             async with self.client as aclient:
-                sres = await aclient.execute(node)
+                sres = await aclient.execute(node, extra_args=hdr)
                 return SuiRpcResult(
                     True, None, sres if not encode_fn else encode_fn(sres)
                 )

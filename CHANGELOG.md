@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.61.0] - Unpublished
+
+### Added
+
+- Added passing optional global HTTP client headers in SuiGQLClient constructor.
+  - Accepts a dict (e.g. `{"headers":{"...":...}}` )
+  - If not provided, defaults to `{"headers":None}` (see next)
+- Added `client_headers` to GraphQL clients (read only, produces copy)
+- Added `with_headers` to client `execute...` methods.
+  - During execution, merges provided with global headers:
+  ```python
+    hdr = self.client_headers
+    hdr = hdr if not with_headers else hdr.update(with_headers)
+  ```
+
+### Fixed
+
+### Changed
+
+- Bumped dataclasses-json to 0.6.6
+
+### Removed
+
 ## [0.60.0] - 2024-05-15
 
 ### Added
