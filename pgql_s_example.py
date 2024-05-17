@@ -68,15 +68,25 @@ def do_all_gas(client: SuiGQLClient):
             with_node=qn.GetCoins(owner=client.config.active_address.address)
         )
     )
-    while result.is_ok() and result.result_data.next_cursor.hasNextPage:
-        result = handle_result(
-            client.execute_query_node(
-                with_node=qn.GetCoins(
-                    owner=client.config.active_address.address,
-                    next_page=result.result_data.next_cursor,
+    tcoins = 0
+    tbalance = 0
+    while result.is_ok():
+        coins: ptypes.SuiCoinObjectsGQL = result.result_data
+        tcoins += len(coins.data)
+        tbalance += sum([int(x.balance) for x in coins.data])
+        if result.result_data.next_cursor.hasNextPage:
+            result = handle_result(
+                client.execute_query_node(
+                    with_node=qn.GetCoins(
+                        owner=client.config.active_address.address,
+                        next_page=result.result_data.next_cursor,
+                    )
                 )
             )
-        )
+        else:
+            break
+    print(f"Total coins: {tcoins}")
+    print(f"Total mists: {tbalance}")
 
 
 def do_gas_ids(client: SuiGQLClient):
@@ -289,6 +299,25 @@ def do_txs(client: SuiGQLClient):
             else:
                 break
         print("DONE")
+
+
+def do_object_change_txs(client: SuiGQLClient):
+    """Fetch all transactions where object changes."""
+    for_object = "REPLACE WITH TARGET OBJECT_ID"
+    result = client.execute_query_node(with_node=qn.GetObjectTx(object_id=for_object))
+    while result.is_ok():
+        txs: ptypes.TransactionSummariesGQL = result.result_data
+        for tx in txs.data:
+            print(f"Digest: {tx.digest} timestamp: {tx.timestamp}")
+        if txs.next_cursor.hasNextPage:
+            result = client.execute_query_node(
+                with_node=qn.GetObjectTx(
+                    object_id=for_object,
+                    next_page=txs.next_cursor,
+                )
+            )
+        else:
+            break
 
 
 def do_staked_sui(client: SuiGQLClient):
@@ -689,7 +718,7 @@ if __name__ == "__main__":
 
     cfg = SuiConfig.default_config()
     client_init = SuiGQLClient(
-        write_schema=True,
+        write_schema=False,
         config=cfg,
     )
     print(f"Chain environment   '{client_init.chain_environment}'")
@@ -699,7 +728,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
@@ -713,6 +742,7 @@ if __name__ == "__main__":
         # do_event(client_init)
         # do_tx(client_init)
         # do_txs(client_init)
+        do_object_change_txs(client_init)
         # do_staked_sui(client_init)
         # do_latest_cp(client_init)
         # do_sequence_cp(client_init)

@@ -224,6 +224,27 @@ async def do_txs(client: AsyncSuiGQLClient):
         print("DONE")
 
 
+async def do_object_change_txs(client: AsyncSuiGQLClient):
+    """Fetch all transactions where object changes."""
+    for_object = "REPLACE WITH TARGET OBJECT_ID"
+    result = await client.execute_query_node(
+        with_node=qn.GetObjectTx(object_id=for_object)
+    )
+    while result.is_ok():
+        txs: ptypes.TransactionSummariesGQL = result.result_data
+        for tx in txs.data:
+            print(f"Digest: {tx.digest} timestamp: {tx.timestamp}")
+        if txs.next_cursor.hasNextPage:
+            result = await client.execute_query_node(
+                with_node=qn.GetObjectTx(
+                    object_id=for_object,
+                    next_page=txs.next_cursor,
+                )
+            )
+        else:
+            break
+
+
 async def do_staked_sui(client: AsyncSuiGQLClient):
     """."""
     owner = client.config.active_address.address
@@ -541,6 +562,7 @@ async def main():
         # await do_event(client_init)
         # await do_tx(client_init)
         # await do_txs(client_init)
+        # await do_object_change_txs(client_init)
         # await do_staked_sui(client_init)
         # await do_latest_cp(client_init)
         # await do_sequence_cp(client_init)

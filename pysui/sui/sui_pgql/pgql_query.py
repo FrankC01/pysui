@@ -693,6 +693,59 @@ class GetMultipleTx(PGQL_QueryNode):
         return pgql_type.TransactionSummariesGQL.from_query
 
 
+class GetObjectTx(PGQL_QueryNode):
+    """GetTxs returns multiple transaction summaries where object_id was changed and is controlled by paging."""
+
+    def __init__(
+        self, *, object_id: str, next_page: Optional[pgql_type.PagingCursor] = None
+    ) -> None:
+        """QueryNode initializer.
+
+        :param object_id: The object to search transaction changes on
+        :type object_id: str
+        :param next_page: _description_, defaults to None
+        :type next_page: Optional[pgql_type.PagingCursor], optional
+        """
+        self.next_page = next_page
+        self.object_id = object_id
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Builds the GQL DocumentNode
+
+        :return: The transactions query DocumentNode
+        :rtype: DocumentNode
+        """
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
+        qres = schema.Query.transactionBlocks(filter={"changedObject": self.object_id})
+        if self.next_page:
+            qres(after=self.next_page.endCursor)
+
+        pg_cursor = frag.PageCursor().fragment(schema)
+
+        qres.select(
+            cursor=schema.TransactionBlockConnection.pageInfo.select(pg_cursor),
+            tx_blocks=schema.TransactionBlockConnection.nodes.select(
+                schema.TransactionBlock.digest,
+                schema.TransactionBlock.effects.select(
+                    schema.TransactionBlockEffects.status,
+                    schema.TransactionBlockEffects.timestamp,
+                    schema.TransactionBlockEffects.errors,
+                ),
+            ),
+        )
+        return dsl_gql(
+            pg_cursor,
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionSummariesGQL], None]:
+        """Return the serializer to TransactionSummariesGQL function."""
+        return pgql_type.TransactionSummariesGQL.from_query
+
+
 class GetDelegatedStakes(PGQL_QueryNode):
     """GetDelegatedStakes return all [StakedSui] coins for owner."""
 

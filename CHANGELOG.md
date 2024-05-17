@@ -9,16 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added passing optional global HTTP client headers in SuiGQLClient constructor.
+- `GetObjectTx`` query node that fetches all transactions where specific object has changes
+  - Added `do_object_change_txs` function to synch and asynch graphql samples
+- Passing optional global HTTP client headers in SuiGQLClient constructor.
   - Accepts a dict (e.g. `{"headers":{"...":...}}` )
   - If not provided, defaults to `{"headers":None}` (see next)
-- Added `client_headers` to GraphQL clients (read only, produces copy)
-- Added `with_headers` to client `execute...` methods.
+- `client_headers` property to GraphQL clients (read only, produces copy)
+- `with_headers` argument to client `execute...` methods.
   - During execution, merges provided with global headers:
   ```python
     hdr = self.client_headers
     hdr = hdr if not with_headers else hdr.update(with_headers)
   ```
+
 
 ### Fixed
 
