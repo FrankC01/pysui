@@ -62,6 +62,55 @@ async def do_gas(client: AsyncSuiGQLClient):
         )
 
 
+async def do_all_gas(client: AsyncSuiGQLClient):
+    """Fetch all coins for owner."""
+    result = handle_result(
+        await client.execute_query_node(
+            with_node=qn.GetCoins(owner=client.config.active_address.address)
+        )
+    )
+    tcoins = 0
+    tbalance = 0
+    while result.is_ok():
+        coins: ptypes.SuiCoinObjectsGQL = result.result_data
+        tcoins += len(coins.data)
+        tbalance += sum([int(x.balance) for x in coins.data])
+        if result.result_data.next_cursor.hasNextPage:
+            result = handle_result(
+                await client.execute_query_node(
+                    with_node=qn.GetCoins(
+                        owner=client.config.active_address.address,
+                        next_page=result.result_data.next_cursor,
+                    )
+                )
+            )
+        else:
+            break
+    print(f"Total coins: {tcoins}")
+    print(f"Total mists: {tbalance}")
+
+
+async def do_gas_ids(client: AsyncSuiGQLClient):
+    """Fetch coins by the ids."""
+
+    # Use coins found for active address to use to validate
+    # fetching by coin ids
+    result = await client.execute_query_node(
+        with_node=qn.GetCoins(owner=client.config.active_address.address)
+    )
+    if result.is_ok() and result.result_data.data:
+        cids = [x.coin_object_id for x in result.result_data.data]
+        result = handle_result(
+            await client.execute_query_node(
+                with_node=qn.GetMultipleGasObjects(coin_object_ids=cids)
+            )
+        )
+    elif result.is_err():
+        print(f"Error calling GraphQL {result.result_string}")
+    else:
+        print(f"Data return from call is empty {result.result_data.data}")
+
+
 async def do_sysstate(client: AsyncSuiGQLClient):
     """Fetch the most current system state summary."""
     handle_result(
@@ -550,7 +599,9 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
+        await do_all_gas(client_init)
+        # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
         # await do_all_balances(client_init)
         # await do_object(client_init)
@@ -585,7 +636,7 @@ async def main():
         # await do_chain_id(client_init)
         # await do_configs(client_init)
         # await do_protcfg(client_init)
-        await client_init.client.close_async()
+        await client_init.close()
     except ValueError as ve:
         print(ve)
 

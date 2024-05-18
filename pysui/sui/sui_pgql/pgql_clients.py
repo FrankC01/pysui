@@ -8,6 +8,7 @@
 
 from abc import ABC, abstractmethod
 import logging
+import asyncio
 from typing import Callable, Any, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from gql import Client, gql
@@ -243,11 +244,6 @@ class BaseSuiGQLClient:
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
             self._qnode_owner(qnode)
-            # if hasattr(qnode, "owner"):
-            #     resolved_owner = TypeValidator.check_owner(
-            #         getattr(qnode, "owner"), self.config
-            #     )
-            #     setattr(qnode, "owner", resolved_owner)
             # TODO If schema constrained than pass the correct schema
             # to the document builder
             if qnode.schema_constraint:
@@ -458,6 +454,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             qstr, fndeser = pgql_config()
             _rpc_config = fndeser(session.execute(gql(qstr)))
             _rpc_config.gqlEnvironment = genv
+        _iclient.close_sync()
 
         super().__init__(
             sui_config=config,
@@ -476,6 +473,16 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             write_schema=write_schema,
             default_header=default_header,
         )
+        self._session = None
+        self._slock = asyncio.Semaphore()
+
+    @property
+    def session(self) -> Any:
+        return self._session
+
+    async def close(self) -> None:
+        """Close the connection."""
+        await self.client.close_async()
 
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
@@ -501,13 +508,20 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         :rtype: SuiRpcResult
         """
         try:
-            hdr = self.client_headers
-            hdr = hdr if not with_headers else hdr.update(with_headers)
-            async with self.client as aclient:
-                sres = await aclient.execute(node, extra_args=hdr)
+            async with self._slock:
+                if not self.session:
+                    self._session = await self.client.connect_async(reconnecting=True)
+                hdr = self.client_headers
+                hdr = hdr if not with_headers else hdr.update(with_headers)
+                sres = await self.session.execute(node, extra_args=hdr)
                 return SuiRpcResult(
                     True, None, sres if not encode_fn else encode_fn(sres)
                 )
+            # async with self.client as aclient:
+            #     sres = await aclient.execute(node, extra_args=hdr)
+            #     return SuiRpcResult(
+            #         True, None, sres if not encode_fn else encode_fn(sres)
+            #     )
 
         except texc.TransportQueryError as gte:
             return SuiRpcResult(

@@ -303,7 +303,7 @@ def do_txs(client: SuiGQLClient):
 
 def do_object_change_txs(client: SuiGQLClient):
     """Fetch all transactions where object changes."""
-    for_object = "REPLACE WITH TARGET OBJECT_ID"
+    for_object = "0x0e1ad0ba7367da50bc07fa997f77757f4acb577d540d98cc1e5f48f023cb47ef"
     result = client.execute_query_node(with_node=qn.GetObjectTx(object_id=for_object))
     while result.is_ok():
         txs: ptypes.TransactionSummariesGQL = result.result_data

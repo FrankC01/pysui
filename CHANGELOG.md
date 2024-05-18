@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     hdr = self.client_headers
     hdr = hdr if not with_headers else hdr.update(with_headers)
   ```
+- Single permanent reconnecting async session for `AsyncSuiGQLClient`
 
 
 ### Fixed
