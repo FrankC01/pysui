@@ -294,6 +294,15 @@ async def do_object_change_txs(client: AsyncSuiGQLClient):
             break
 
 
+async def do_tx_kind(client: AsyncSuiGQLClient):
+    """Fetch the PTB details from transaction."""
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.GetTxKind(digest="ENTER TRANSACTION DIGESST HERE")
+        )
+    )
+
+
 async def do_staked_sui(client: AsyncSuiGQLClient):
     """."""
     owner = client.config.active_address.address
@@ -614,6 +623,7 @@ async def main():
         # await do_tx(client_init)
         # await do_txs(client_init)
         # await do_object_change_txs(client_init)
+        # await do_tx_kind(client_init)
         # await do_staked_sui(client_init)
         # await do_latest_cp(client_init)
         # await do_sequence_cp(client_init)

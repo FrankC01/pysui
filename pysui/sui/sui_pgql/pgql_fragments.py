@@ -62,13 +62,6 @@ class StandardCoin(PGQL_Fragment):
                         previous_transaction=schema.TransactionBlock.digest
                     ),
                     schema.Coin.owner.select(
-                        # DSLInlineFragment()
-                        # .on(schema.AddressOwner)
-                        # .select(
-                        #     schema.AddressOwner.owner.select(
-                        #         coin_owner=schema.Owner.address
-                        #     )
-                        # ),
                         DSLInlineFragment()
                         .on(schema.AddressOwner)
                         .select(
@@ -196,9 +189,6 @@ class StandardEvent(PGQL_Fragment):
                 schema.Event.sendingModule.select(
                     schema.MoveModule.package.select(
                         package_id=schema.MovePackage.address
-                        # schema.MovePackage.asObject.select(
-                        #     package_id=schema.Object.location,
-                        # )
                     ),
                     module_name=schema.MoveModule.name,
                 ),
@@ -296,95 +286,269 @@ class StandardTransaction(PGQL_Fragment):
                     ),
                 ),
                 schema.TransactionBlock.effects.select(tx_effects),
-                #     schema.TransactionBlockEffects.status,
-                #     schema.TransactionBlockEffects.errors,
-                #     schema.TransactionBlockEffects.timestamp,
-                #     schema.TransactionBlockEffects.balanceChanges.select(
-                #         schema.BalanceChangeConnection.nodes.select(
-                #             schema.BalanceChange.coinType.select(
-                #                 coin_type=schema.MoveType.repr
-                #             ),
-                #             balance_change=schema.BalanceChange.amount,
-                #             change_to=schema.BalanceChange.owner.select(
-                #                 object_id=schema.Owner.address
-                #             ),
-                #         )
-                #     ),
-                #     schema.TransactionBlockEffects.gasEffects.select(
-                #         schema.GasEffects.gasObject.select(
-                #             gas_object_id=schema.Object.address,
-                #         ),
-                #         schema.GasEffects.gasSummary.select(gas_cost.fragment(schema)),
-                #     ),
-                #     schema.TransactionBlockEffects.objectChanges.select(
-                #         schema.ObjectChangeConnection.nodes.select(
-                #             address=schema.ObjectChange.address,
-                #             deleted=schema.ObjectChange.idDeleted,
-                #             created=schema.ObjectChange.idCreated,
-                #             input_state=schema.ObjectChange.inputState.select(
-                #                 base_obj.fragment(schema)
-                #             ),
-                #             output_state=schema.ObjectChange.outputState.select(
-                #                 base_obj.fragment(schema)
-                #             ),
-                #         )
-                #     ),
-                #     schema.TransactionBlockEffects.checkpoint.select(
-                #         schema.Checkpoint.sequenceNumber,
-                #         schema.Checkpoint.networkTotalTransactions,
-                #         schema.Checkpoint.timestamp,
-                #         schema.Checkpoint.epoch.select(
-                #             schema.Epoch.epochId,
-                #             schema.Epoch.startTimestamp,
-                #             schema.Epoch.endTimestamp,
-                #         ),
-                #     ),
-                # ),
-                # txn_kind=schema.TransactionBlock.kind.select(
-                #     DSLInlineFragment()
-                #     .on(schema.ProgrammableTransactionBlock)
-                #     .select(
-                #         inputs=schema.ProgrammableTransactionBlock.inputs.select(
-                #             DSLInlineFragment()
-                #             .on(schema.TransactionInputConnection)
-                #             .select(
-                #                 schema.TransactionInputConnection.nodes.select(
-                #                     DSLInlineFragment()
-                #                     .on(schema.Pure)
-                #                     .select(
-                #                         schema.Pure.bytes,
-                #                         DSLMetaField("__typename"),
-                #                     ),
-                #                     DSLInlineFragment()
-                #                     .on(schema.OwnedOrImmutable)
-                #                     .select(
-                #                         schema.OwnedOrImmutable.address,
-                #                         schema.OwnedOrImmutable.version,
-                #                         schema.OwnedOrImmutable.digest,
-                #                         DSLMetaField("__typename"),
-                #                     ),
-                #                     DSLInlineFragment()
-                #                     .on(schema.SharedInput)
-                #                     .select(
-                #                         schema.SharedInput.address,
-                #                         schema.SharedInput.initialSharedVersion,
-                #                         schema.SharedInput.mutable,
-                #                         DSLMetaField("__typename"),
-                #                     ),
-                #                     DSLInlineFragment()
-                #                     .on(schema.Receiving)
-                #                     .select(
-                #                         schema.Receiving.address,
-                #                         schema.Receiving.version,
-                #                         schema.Receiving.digest,
-                #                         DSLMetaField("__typename"),
-                #                     ),
-                #                 )
-                #             ),
-                #         ),
-                #     ),
-                #     txn_kind=DSLMetaField("__typename"),
-                # ),
+            )
+        )
+
+
+class ProgrammableTxKind(PGQL_Fragment):
+    """Details of the ProgrammableTransaction type commands."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        return (
+            DSLFragment("PrgTxKind")
+            .on(schema.ProgrammableTransactionBlock)
+            .select(
+                schema.ProgrammableTransactionBlock.inputs.select(
+                    DSLInlineFragment()
+                    .on(schema.TransactionInputConnection)
+                    .select(
+                        schema.TransactionInputConnection.nodes.select(
+                            DSLInlineFragment()
+                            .on(schema.OwnedOrImmutable)
+                            .select(
+                                schema.OwnedOrImmutable.address,
+                                schema.OwnedOrImmutable.version,
+                                schema.OwnedOrImmutable.digest,
+                            ),
+                            DSLInlineFragment()
+                            .on(schema.Pure)
+                            .select(
+                                schema.Pure.bytes,
+                            ),
+                            DSLInlineFragment()
+                            .on(schema.SharedInput)
+                            .select(
+                                schema.SharedInput.address,
+                                schema.SharedInput.initialSharedVersion,
+                                schema.SharedInput.mutable,
+                            ),
+                            DSLInlineFragment()
+                            .on(schema.Receiving)
+                            .select(
+                                schema.Receiving.address,
+                                schema.Receiving.version,
+                                schema.Receiving.digest,
+                            ),
+                            DSLMetaField("__typename"),
+                        )
+                    ),
+                ),
+                schema.ProgrammableTransactionBlock.transactions.select(
+                    DSLInlineFragment()
+                    .on(schema.ProgrammableTransactionConnection)
+                    .select(
+                        schema.ProgrammableTransactionConnection.nodes.select(
+                            DSLMetaField("__typename"),
+                            # Merge Coins
+                            DSLInlineFragment()
+                            .on(schema.MergeCoinsTransaction)
+                            .select(
+                                schema.MergeCoinsTransaction.coin.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                                schema.MergeCoinsTransaction.coins.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                            ),
+                            # Split Coins
+                            DSLInlineFragment()
+                            .on(schema.SplitCoinsTransaction)
+                            .select(
+                                schema.SplitCoinsTransaction.coin.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                                schema.SplitCoinsTransaction.amounts.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                            ),
+                            # Transfer Objects
+                            DSLInlineFragment()
+                            .on(schema.TransferObjectsTransaction)
+                            .select(
+                                schema.TransferObjectsTransaction.inputs.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                                schema.TransferObjectsTransaction.address.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                            ),
+                            # Move Call
+                            DSLInlineFragment()
+                            .on(schema.MoveCallTransaction)
+                            .select(
+                                schema.MoveCallTransaction.package,
+                                schema.MoveCallTransaction.module,
+                                schema.MoveCallTransaction.functionName,
+                                schema.MoveCallTransaction.typeArguments.select(
+                                    schema.MoveType.repr
+                                ),
+                                schema.MoveCallTransaction.arguments.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                            ),
+                            # Publish
+                            DSLInlineFragment()
+                            .on(schema.PublishTransaction)
+                            .select(
+                                schema.PublishTransaction.modules,
+                                schema.PublishTransaction.dependencies,
+                            ),
+                            # Upgrade
+                            DSLInlineFragment()
+                            .on(schema.UpgradeTransaction)
+                            .select(
+                                schema.UpgradeTransaction.modules,
+                                schema.UpgradeTransaction.dependencies,
+                                schema.UpgradeTransaction.currentPackage,
+                                schema.UpgradeTransaction.upgradeTicket.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                            ),
+                            # Make Move Vec
+                            DSLInlineFragment()
+                            .on(schema.MakeMoveVecTransaction)
+                            .select(
+                                schema.MakeMoveVecTransaction.type.alias(
+                                    "vector_type"
+                                ).select(schema.MoveType.repr),
+                                schema.MakeMoveVecTransaction.elements.select(
+                                    DSLMetaField("__typename"),
+                                    DSLInlineFragment()
+                                    .on(schema.Input)
+                                    .select(input_index=schema.Input.ix),
+                                    DSLInlineFragment()
+                                    .on(schema.Result)
+                                    .select(
+                                        schema.Result.cmd,
+                                        result_index=schema.Result.ix,
+                                    ),
+                                    DSLInlineFragment()
+                                    .on(schema.GasCoin)
+                                    .select(schema.GasCoin._),
+                                ),
+                            ),
+                        )
+                    )
+                ),
+            )
+        )
+
+
+class StandardTransactionKind(PGQL_Fragment):
+    """Details a transactions kind. Supports ProgrammableTransaction type only."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        prg_kind = ProgrammableTxKind().fragment(schema)
+        return (
+            DSLFragment("TxKind")
+            .on(schema.TransactionBlock)
+            .select(
+                schema.TransactionBlock.kind.select(
+                    DSLInlineFragment()
+                    .on(schema.ProgrammableTransactionBlock)
+                    .select(prg_kind),
+                    tx_kind=DSLMetaField("__typename"),
+                )
             )
         )
 

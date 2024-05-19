@@ -746,6 +746,25 @@ class GetObjectTx(PGQL_QueryNode):
         return pgql_type.TransactionSummariesGQL.from_query
 
 
+class GetTxKind(PGQL_QueryNode):
+    """Gets details of Transaction kind."""
+
+    def __init__(self, digest: str):
+        """QueryNode initializer."""
+        self.digest = digest
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Builds the GQL DocumentNode
+
+        :return: The transaction query DocumentNode for specific digest
+        :rtype: DocumentNode
+        """
+        tx_kind = frag.StandardTransactionKind().fragment(schema)
+        prg_kind = frag.ProgrammableTxKind().fragment(schema)
+        qres = schema.Query.transactionBlock(digest=self.digest).select(tx_kind)
+        return dsl_gql(prg_kind, tx_kind, DSLQuery(qres))
+
+
 class GetDelegatedStakes(PGQL_QueryNode):
     """GetDelegatedStakes return all [StakedSui] coins for owner."""
 

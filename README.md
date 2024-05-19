@@ -38,7 +38,8 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
 from JSON RPC to GraphQL RPC.
 
-Note: MystenLabs/Sui GraphQL RPC is available on devnet, testnet and mainnet
+Note: MystenLabs/Sui GraphQL RPC is available on devnet, testnet and mainnet. Note that devnet beta is still quite fragile and
+we recommend using testnet beta.
 
 ### Sui GraphQL IDEs
 
@@ -50,7 +51,7 @@ Note: MystenLabs/Sui GraphQL RPC is available on devnet, testnet and mainnet
 
 ### pysui GraphQL support
 
-With pysui 0.50.0 we released beta `pysui`'s initial alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement. We are not more stable and have Client and TransactionBuilder running against Sui GraphQL.
+With pysui 0.50.0 we released beta `pysui`'s beta alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement. We are not yet stable and have Client and TransactionBuilder running against Sui GraphQL.
 
 We continue to monitor and support changes as they evolve.
 

@@ -320,8 +320,17 @@ def do_object_change_txs(client: SuiGQLClient):
             break
 
 
+def do_tx_kind(client: SuiGQLClient):
+    """Fetch the PTB details from transaction."""
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.GetTxKind(digest="ENTER TRANSACTION DIGESST HERE")
+        )
+    )
+
+
 def do_staked_sui(client: SuiGQLClient):
-    """."""
+    """Retreive Staked Coins."""
     owner = client.config.active_address.address
 
     handle_result(
@@ -725,10 +734,11 @@ if __name__ == "__main__":
     print(f"Schema base version '{client_init.base_schema_version}'")
     print(f"Schema full version '{client_init.schema_version}'")
     try:
+        # print()
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        # do_gas(client_init)
+        do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
@@ -742,7 +752,8 @@ if __name__ == "__main__":
         # do_event(client_init)
         # do_tx(client_init)
         # do_txs(client_init)
-        do_object_change_txs(client_init)
+        # do_object_change_txs(client_init)
+        do_tx_kind(client_init)
         # do_staked_sui(client_init)
         # do_latest_cp(client_init)
         # do_sequence_cp(client_init)
