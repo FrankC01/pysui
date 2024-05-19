@@ -306,7 +306,11 @@ class GetMultipleGasObjects(PGQL_QueryNode):
     """Return basic Sui gas represnetation for each coin_id string."""
 
     def __init__(self, *, coin_object_ids: list[str]):
-        """."""
+        """QueryNode initializer.
+
+        :param coin_object_ids: list of object ids to fetch
+        :type coin_object_ids: list[str]
+        """
         self.coin_ids = coin_object_ids
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
@@ -447,12 +451,12 @@ class GetMultiplePastObjects(PGQL_QueryNode):
     """
 
     def __init__(self, *, for_versions: list[dict]):
-        """__init__ Initialize QueryNode to fetch object information give a list of object keys.
+        """QueryNode initializer to fetch past object information for a list of object keys.
 
         Where each `dict` (key) is of construct:
         {
-            objectId:str,
-            version:int
+            objectId:str, # Object id
+            version:int   # Previous version id to fetch
         }
 
         :param history: The list of ObjectKsy dictionaries
@@ -494,7 +498,7 @@ class GetDynamicFields(PGQL_QueryNode):
         object_id: str,
         next_page: Optional[pgql_type.PagingCursor] = None,
     ) -> None:
-        """QueryNode initializer.
+        """QueryNode initializer to featch dynamic fields.
 
         :param object_id: The object id that holds dynamic fields
         :type object_id: str
@@ -567,7 +571,7 @@ class GetEvents(PGQL_QueryNode):
         event_filter: dict,
         next_page: Optional[pgql_type.PagingCursor] = None,
     ) -> None:
-        """QueryNode initializer
+        """QueryNode initializer to query chain events emitted by modules.
 
         :param event_filter: Filter key/values aligned to Sui GraphQL schema's EventFilter
         :type event_filter: str
@@ -606,7 +610,7 @@ class GetTx(PGQL_QueryNode):
     """GetTx When executed, return the transaction response object."""
 
     def __init__(self, *, digest: str) -> None:
-        """Initialize QueryNode.
+        """QueryNode initializer to fetch a transaction by digest id.
 
         :param digest: The transaction digest to fetch
         :type digest: str
@@ -647,9 +651,9 @@ class GetMultipleTx(PGQL_QueryNode):
     def __init__(
         self, *, next_page: Optional[pgql_type.PagingCursor] = None, **qfilter
     ) -> None:
-        """QueryNode initializer.
+        """QueryNode initializer to fetch multiple transactions by filter parameters.
 
-        :param next_page: _description_, defaults to None
+        :param next_page: Pagination curosr, defaults to None
         :type next_page: Optional[pgql_type.PagingCursor], optional
         :param qfilter: 0 or more TransactionBlockFilter key/value to apply to criteria
         :rtype qfilter: dict
@@ -761,8 +765,15 @@ class GetTxKind(PGQL_QueryNode):
         """
         tx_kind = frag.StandardTransactionKind().fragment(schema)
         prg_kind = frag.ProgrammableTxKind().fragment(schema)
-        qres = schema.Query.transactionBlock(digest=self.digest).select(tx_kind)
+        qres = schema.Query.transactionBlock(digest=self.digest).select(
+            schema.TransactionBlock.digest, tx_kind
+        )
         return dsl_gql(prg_kind, tx_kind, DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionKindGQL], None]:
+        """Return the serializer to TransactionKindGQL function."""
+        return pgql_type.TransactionKindGQL.from_query
 
 
 class GetDelegatedStakes(PGQL_QueryNode):
@@ -1536,129 +1547,3 @@ class ExecuteTransaction(PGQL_QueryNode):
     def encode_fn() -> Union[Callable[[dict], pgql_type.ExecutionResultGQL], None]:
         """Return the serialization Execution result function."""
         return pgql_type.ExecutionResultGQL.from_query
-
-
-#############################
-# TBD
-#############################
-
-
-############################
-# Not supported in GraphQL #
-############################
-
-
-class GetAllCoins:
-    """GetAllCoins Returns all Coin objects owned by an address."""
-
-    def __init__(
-        self, *, owner: Any, cursor: Optional[Any] = None, limit: Optional[Any] = None
-    ):
-        """QueryNode initializer."""
-        raise NotImplemented("Deprecated in pysui GraphQL, use GetCoins instead.")
-
-
-class GetCoinTypeBalance:
-    """GetCoinTypeBalance Return the total coin balance for a coin type."""
-
-    def __init__(self, *, owner: Any, coin_type: Optional[Any] = None):
-        """."""
-        raise NotImplemented(
-            "Deprecated in pysui GraphQL, use GetAllCoinBalances instead."
-        )
-
-
-class GetTotalSupply:
-    """Return the total supply for a given coin type (eg. 0x2::sui::SUI)."""
-
-    def __init__(self, *, coin_type: Optional[Any] = None):
-        """."""
-        raise NotImplemented(
-            "Deprecated in pysui GraphQL, use GetCoinMetaData instead."
-        )
-
-
-class GetFunctionArgs:
-    """GetFunction When executed, returns the argument types of a Move function."""
-
-    def __init__(self, *, package: str, module: str, function: str) -> None:
-        """__init__ Initialize GetModule object.
-
-        :param package: ObjectID of package to query
-        :type package: ObjectID
-        :param module: Name of module from package containing function_name to fetch
-        :type module: SuiString
-        :param function: Name of module's function to fetch arguments for
-        :type function: SuiString
-        """
-        raise NotImplemented(
-            "Deprecated in pysui GraphQL, use GetFunction instead and extract 'parameters' property."
-        )
-
-
-class GetTotalTxCount:
-    """GetTotalTxCount When executed, return the total number of transactions known to the server."""
-
-    def __init__(self) -> None:
-        """Initialize builder."""
-        raise NotImplemented(
-            "Deprecated in pysui GraphQL. Use property `network_total_transactions` from GetLatestCheckpointSequence"
-        )
-
-
-class QueryEvents:
-    """QueryEvents returns a list of events for a specified query criteria."""
-
-    def __init__(self) -> None:
-        """Initialize builder."""
-        raise NotImplemented("Deprecated in pysui GraphQL. Use use GetEvents")
-
-
-class QueryTransactions:
-    """QueryTransactions returns a list of transactions for a specified query criteria.."""
-
-    def __init__(self) -> None:
-        """Initialize builder."""
-        raise NotImplemented("Deprecated in pysui GraphQL. Use use GetTx")
-
-
-class GetChainID:
-    """Return the chain's identifier."""
-
-    def __init__(self) -> None:
-        """QueryNode initializer.."""
-        raise NotImplemented(
-            "Deprecated in pysui GraphQL. Use property SuiGQLClient.chain_id"
-        )
-
-
-class GetStakesByIds:
-    """GetStakesById return all [DelegatedStake] coins identified. If a Stake was withdrawn its status will be Unstaked."""
-
-    def __init__(self) -> None:
-        """QueryNode initializer.."""
-        raise NotImplemented("Deprecated in pysui GraphQL. Use property GetObjects")
-
-
-class GetRpcAPI:
-    """GetRpcAPI When executed, returns full list of SUI node RPC API supported."""
-
-    def __init__(self) -> None:
-        """Initialize builder."""
-        raise NotImplemented("Deprecated in pysui GraphQL.")
-
-
-class GetLoadedChildObjects:
-    """Returns the child object versions loaded by the object runtime particularly dynamic fields."""
-
-    def __init__(self, *, digest: str):
-        """QueryNode initializer."""
-        raise NotImplemented("Deprecated in pysui GraphQL.")
-
-
-class GetCommittee:
-    """GetCommittee When executed, returns information on committee (collection of nodes)."""
-
-    def __init__(self, *, digest: str):
-        """QueryNode initializer."""
-        raise NotImplemented("Deprecated in pysui GraphQL.")

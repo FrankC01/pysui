@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `GetTxKind` query node for fetching PTB details from transaction
+- `GetTxKind` query node for fetching transaction type details (currently only ProgrammableTransactionBlock type supported)
   - Added `do_tx_kind` function to synch and asynch graphql samples
 - `GetObjectTx`` query node that fetches all transactions where specific object has changes
   - Added `do_object_change_txs` function to synch and asynch graphql samples

@@ -753,7 +753,7 @@ if __name__ == "__main__":
         # do_tx(client_init)
         # do_txs(client_init)
         # do_object_change_txs(client_init)
-        do_tx_kind(client_init)
+        # do_tx_kind(client_init)
         # do_staked_sui(client_init)
         # do_latest_cp(client_init)
         # do_sequence_cp(client_init)

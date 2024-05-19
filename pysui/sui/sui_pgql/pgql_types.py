@@ -659,6 +659,182 @@ class TransactionSummariesGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class OwnedOrImmutableInputGQL:
+    """ProgrammableTransactionBlock input class."""
+
+    address: str
+    version: int
+    digest: str
+    input_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SharedObjectInputGQL:
+    """ProgrammableTransactionBlock input class."""
+
+    address: str
+    initial_shared_version: int
+    mutable: bool
+    input_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class PureInputGQL:
+    """ProgrammableTransactionBlock input class."""
+
+    base64_bytes: str
+    input_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ArgInputRefGQL:
+    """ProgrammableTransactionBlock argument reference class."""
+
+    input_index: int
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ArgResultRefGQL:
+    """ProgrammableTransactionBlock argument reference class."""
+
+    cmd: int
+    result_index: Optional[int]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ArgGasCoinRefGQL:
+    """ProgrammableTransactionBlock argument reference class."""
+
+    gas_ref: Any
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class TransactionMoveCallGQL:
+    """ProgrammableTransactionBlock transaction representation class."""
+
+    package: str
+    module: str
+    function_name: str
+    arguments: list[Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]]
+    tx_typename: str
+    typeArguments: Optional[list[dict]]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class TransactioTransferObjectslGQL:
+    """ProgrammableTransactionBlock transaction representation class."""
+
+    inputs: list[Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]]
+    address: Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]
+    tx_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class TransactionSplitCoinsGQL:
+    """ProgrammableTransactionBlock transaction representation class."""
+
+    coin: Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]
+    amounts: list[Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]]
+    tx_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class TransactionMergeCoinsGQL:
+    """ProgrammableTransactionBlock transaction representation class."""
+
+    coin: Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]
+    coins: list[Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]]
+    tx_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class TransactionPublishGQL:
+    """ProgrammableTransactionBlock transaction representation class."""
+
+    modules: list[str]
+    dependencies: list[str]
+    tx_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class TransactionUpgradeGQL:
+    """ProgrammableTransactionBlock transaction representation class."""
+
+    modules: list[str]
+    dependencies: list[str]
+    current_package: str
+    upgrade_ticket: Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]
+    tx_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class TransactionMakeMoveVecGQL:
+    """ProgrammableTransactionBlock transaction representation class."""
+
+    vector_type: dict
+    elements: list[Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]]
+    tx_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ProgrammableTransactionBlockGQL:
+    """ProgrammableTransactionBlock kind representation class."""
+
+    inputs: list[Union[OwnedOrImmutableInputGQL, SharedObjectInputGQL, PureInputGQL]]
+    transactions: list[
+        Union[
+            TransactionMoveCallGQL,
+            TransactioTransferObjectslGQL,
+            TransactionSplitCoinsGQL,
+            TransactionMergeCoinsGQL,
+            TransactionPublishGQL,
+            TransactionUpgradeGQL,
+            TransactionMakeMoveVecGQL,
+        ]
+    ]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class TransactionKindGQL(PGQL_Type):
+    """Transaction kind representation class."""
+
+    digest: str
+    kind: Union[ProgrammableTransactionBlockGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "TransactionKindGQL":
+        """."""
+        tx_block = in_data.get("transactionBlock") if in_data else None
+        if tx_block:
+            tx_type = tx_block["kind"].pop("tx_kind")
+            match tx_type:
+                case "ProgrammableTransactionBlock":
+                    tx_block["kind"]["inputs"] = tx_block["kind"]["inputs"]["nodes"]
+                    tx_block["kind"]["transactions"] = tx_block["kind"]["transactions"][
+                        "nodes"
+                    ]
+                case _:
+                    raise ValueError(f"{tx_type} not handled in data model.")
+            return TransactionKindGQL.from_dict(tx_block)
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class ValidatorGQL(PGQL_Type):
     """Validator representation class."""
 

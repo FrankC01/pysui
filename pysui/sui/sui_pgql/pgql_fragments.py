@@ -315,7 +315,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                             DSLInlineFragment()
                             .on(schema.Pure)
                             .select(
-                                schema.Pure.bytes,
+                                schema.Pure.bytes.alias("base64_bytes"),
                             ),
                             DSLInlineFragment()
                             .on(schema.SharedInput)
@@ -331,7 +331,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                 schema.Receiving.version,
                                 schema.Receiving.digest,
                             ),
-                            DSLMetaField("__typename"),
+                            DSLMetaField("__typename").alias("input_typename"),
                         )
                     ),
                 ),
@@ -340,7 +340,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                     .on(schema.ProgrammableTransactionConnection)
                     .select(
                         schema.ProgrammableTransactionConnection.nodes.select(
-                            DSLMetaField("__typename"),
+                            DSLMetaField("__typename").alias("tx_typename"),
                             # Merge Coins
                             DSLInlineFragment()
                             .on(schema.MergeCoinsTransaction)
@@ -358,7 +358,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                                 schema.MergeCoinsTransaction.coins.select(
                                     DSLMetaField("__typename"),
@@ -373,7 +373,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                             ),
                             # Split Coins
@@ -393,7 +393,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                                 schema.SplitCoinsTransaction.amounts.select(
                                     DSLMetaField("__typename"),
@@ -408,7 +408,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                             ),
                             # Transfer Objects
@@ -428,7 +428,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                                 schema.TransferObjectsTransaction.address.select(
                                     DSLMetaField("__typename"),
@@ -443,7 +443,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                             ),
                             # Move Call
@@ -469,7 +469,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                             ),
                             # Publish
@@ -499,7 +499,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                             ),
                             # Make Move Vec
@@ -522,7 +522,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                                     ),
                                     DSLInlineFragment()
                                     .on(schema.GasCoin)
-                                    .select(schema.GasCoin._),
+                                    .select(schema.GasCoin._.alias("gas_ref")),
                                 ),
                             ),
                         )
