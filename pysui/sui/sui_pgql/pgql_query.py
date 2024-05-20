@@ -766,7 +766,11 @@ class GetTxKind(PGQL_QueryNode):
         tx_kind = frag.StandardTransactionKind().fragment(schema)
         prg_kind = frag.ProgrammableTxKind().fragment(schema)
         qres = schema.Query.transactionBlock(digest=self.digest).select(
-            schema.TransactionBlock.digest, tx_kind
+            schema.TransactionBlock.digest,
+            schema.TransactionBlock.effects.select(
+                schema.TransactionBlockEffects.timestamp
+            ),
+            tx_kind,
         )
         return dsl_gql(prg_kind, tx_kind, DSLQuery(qres))
 

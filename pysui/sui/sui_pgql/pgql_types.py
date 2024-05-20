@@ -565,6 +565,7 @@ class TransactionResultGQL(PGQL_Type):
     expiration: Union[dict, None]
     gas_input: dict
     effects: dict
+    transaction_kind: str
     digest: Optional[str] = ""
     sender: Optional[dict] = dataclasses.field(default_factory=dict)
 
@@ -572,7 +573,9 @@ class TransactionResultGQL(PGQL_Type):
     def from_query(clz, in_data: dict) -> "TransactionResultGQL":
         """."""
         if in_data.get("transactionBlock"):
-            return TransactionResultGQL.from_dict(in_data.pop("transactionBlock"))
+            txblock = in_data.pop("transactionBlock")
+            txblock["transaction_kind"] = txblock.pop("kind")["tx_kind"]
+            return TransactionResultGQL.from_dict(txblock)
         return NoopGQL.from_query()
 
 
@@ -813,6 +816,7 @@ class TransactionKindGQL(PGQL_Type):
     """Transaction kind representation class."""
 
     digest: str
+    timestamp: str
     kind: Union[ProgrammableTransactionBlockGQL]
 
     @classmethod
@@ -821,6 +825,7 @@ class TransactionKindGQL(PGQL_Type):
         tx_block = in_data.get("transactionBlock") if in_data else None
         if tx_block:
             tx_type = tx_block["kind"].pop("tx_kind")
+            tx_block["timestamp"] = tx_block.pop("effects")["timestamp"]
             match tx_type:
                 case "ProgrammableTransactionBlock":
                     tx_block["kind"]["inputs"] = tx_block["kind"]["inputs"]["nodes"]

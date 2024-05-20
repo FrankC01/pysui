@@ -269,6 +269,9 @@ class StandardTransaction(PGQL_Fragment):
             .on(schema.TransactionBlock)
             .select(
                 schema.TransactionBlock.digest,
+                schema.TransactionBlock.kind.select(
+                    DSLMetaField("__typename").alias("tx_kind")
+                ),
                 schema.TransactionBlock.sender.select(
                     submitter_address=schema.Address.address
                 ),
