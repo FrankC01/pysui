@@ -301,10 +301,15 @@ def do_txs(client: SuiGQLClient):
         print("DONE")
 
 
-def do_object_change_txs(client: SuiGQLClient):
-    """Fetch all transactions where object changes."""
-    for_object = "0x0e1ad0ba7367da50bc07fa997f77757f4acb577d540d98cc1e5f48f023cb47ef"
-    result = client.execute_query_node(with_node=qn.GetObjectTx(object_id=for_object))
+def do_filter_txs(client: SuiGQLClient):
+    """Fetch all transactions matching filter.
+
+    See Sui GraphQL schema for TransactionBlockFilter options.
+    """
+    obj_filter = {
+        "changedObject": "0x0e1ad0ba7367da50bc07fa997f77757f4acb577d540d98cc1e5f48f023cb47ef"
+    }
+    result = client.execute_query_node(with_node=qn.GetFilteredTx(tx_filter=obj_filter))
     while result.is_ok():
         txs: ptypes.TransactionSummariesGQL = result.result_data
         for tx in txs.data:
@@ -312,7 +317,7 @@ def do_object_change_txs(client: SuiGQLClient):
         if txs.next_cursor.hasNextPage:
             result = client.execute_query_node(
                 with_node=qn.GetObjectTx(
-                    object_id=for_object,
+                    tx_filter=obj_filter,
                     next_page=txs.next_cursor,
                 )
             )
@@ -738,7 +743,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
@@ -752,7 +757,7 @@ if __name__ == "__main__":
         # do_event(client_init)
         # do_tx(client_init)
         # do_txs(client_init)
-        # do_object_change_txs(client_init)
+        do_filter_txs(client_init)
         # do_tx_kind(client_init)
         # do_staked_sui(client_init)
         # do_latest_cp(client_init)

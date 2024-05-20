@@ -273,11 +273,16 @@ async def do_txs(client: AsyncSuiGQLClient):
         print("DONE")
 
 
-async def do_object_change_txs(client: AsyncSuiGQLClient):
-    """Fetch all transactions where object changes."""
-    for_object = "REPLACE WITH TARGET OBJECT_ID"
+async def do_filter_txs(client: AsyncSuiGQLClient):
+    """Fetch all transactions matching filter.
+
+    See Sui GraphQL schema for TransactionBlockFilter options.
+    """
+    obj_filter = {
+        "changedObject": "0x0e1ad0ba7367da50bc07fa997f77757f4acb577d540d98cc1e5f48f023cb47ef"
+    }
     result = await client.execute_query_node(
-        with_node=qn.GetObjectTx(object_id=for_object)
+        with_node=qn.GetFilteredTx(tx_filter=obj_filter)
     )
     while result.is_ok():
         txs: ptypes.TransactionSummariesGQL = result.result_data
@@ -286,7 +291,7 @@ async def do_object_change_txs(client: AsyncSuiGQLClient):
         if txs.next_cursor.hasNextPage:
             result = await client.execute_query_node(
                 with_node=qn.GetObjectTx(
-                    object_id=for_object,
+                    tx_filter=obj_filter,
                     next_page=txs.next_cursor,
                 )
             )
@@ -609,7 +614,7 @@ async def main():
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
         # await do_gas(client_init)
-        await do_all_gas(client_init)
+        # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
         # await do_all_balances(client_init)
@@ -622,7 +627,7 @@ async def main():
         # await do_event(client_init)
         # await do_tx(client_init)
         # await do_txs(client_init)
-        # await do_object_change_txs(client_init)
+        await do_filter_txs(client_init)
         # await do_tx_kind(client_init)
         # await do_staked_sui(client_init)
         # await do_latest_cp(client_init)

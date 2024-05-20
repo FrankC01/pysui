@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `GetTxKind` query node for fetching transaction type details (currently only ProgrammableTransactionBlock type supported)
   - Added `do_tx_kind` function to synch and asynch graphql samples
-- `GetObjectTx`` query node that fetches all transactions where specific object has changes
-  - Added `do_object_change_txs` function to synch and asynch graphql samples
+- `GetFilteredTx`` query node that fetches all transactions with TransactionBlockFilter set
+  - Added `do_filter_txs` function to synch and asynch graphql samples
 - Passing optional global HTTP client headers in SuiGQLClient constructor.
   - Accepts a dict (e.g. `{"headers":{"...":...}}` )
   - If not provided, defaults to `{"headers":None}` (see next)

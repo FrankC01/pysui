@@ -697,21 +697,21 @@ class GetMultipleTx(PGQL_QueryNode):
         return pgql_type.TransactionSummariesGQL.from_query
 
 
-class GetObjectTx(PGQL_QueryNode):
-    """GetTxs returns multiple transaction summaries where object_id was changed and is controlled by paging."""
+class GetFilteredTx(PGQL_QueryNode):
+    """GetTxs returns all transactions with TransactionBlockFilter set and is controlled by paging."""
 
     def __init__(
-        self, *, object_id: str, next_page: Optional[pgql_type.PagingCursor] = None
+        self, *, tx_filter: dict, next_page: Optional[pgql_type.PagingCursor] = None
     ) -> None:
         """QueryNode initializer.
 
-        :param object_id: The object to search transaction changes on
-        :type object_id: str
+        :param tx_filter: TransactionBlockFilter dict
+        :type tx_filter: dict
         :param next_page: _description_, defaults to None
         :type next_page: Optional[pgql_type.PagingCursor], optional
         """
         self.next_page = next_page
-        self.object_id = object_id
+        self.filter = tx_filter
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """Builds the GQL DocumentNode
@@ -722,7 +722,7 @@ class GetObjectTx(PGQL_QueryNode):
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
-        qres = schema.Query.transactionBlocks(filter={"changedObject": self.object_id})
+        qres = schema.Query.transactionBlocks(filter=self.filter)
         if self.next_page:
             qres(after=self.next_page.endCursor)
 
