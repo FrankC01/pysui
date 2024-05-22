@@ -51,9 +51,11 @@ we recommend using testnet beta.
 
 ### pysui GraphQL support
 
+**Note**: Functionality of pysui GraphQl should be considered beta, use in production is at your own risk.
+
 With pysui 0.50.0 we released beta `pysui`'s beta alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement. We are not yet stable and have Client and TransactionBuilder running against Sui GraphQL.
 
-We continue to monitor and support changes as they evolve.
+We continue to monitor and support changes from MystenLabs as they occur.
 
 #### Examples
 

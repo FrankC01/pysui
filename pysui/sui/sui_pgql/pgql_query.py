@@ -732,6 +732,7 @@ class GetFilteredTx(PGQL_QueryNode):
             cursor=schema.TransactionBlockConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionBlockConnection.nodes.select(
                 schema.TransactionBlock.digest,
+                schema.TransactionBlock.kind.select(tx_kind=DSLMetaField("__typename")),
                 schema.TransactionBlock.effects.select(
                     schema.TransactionBlockEffects.status,
                     schema.TransactionBlockEffects.timestamp,
@@ -765,6 +766,8 @@ class GetTxKind(PGQL_QueryNode):
         """
         tx_kind = frag.StandardTransactionKind().fragment(schema)
         prg_kind = frag.ProgrammableTxKind().fragment(schema)
+        ccp_kind = frag.ConsensusCommitPrologueKind().fragment(schema)
+
         qres = schema.Query.transactionBlock(digest=self.digest).select(
             schema.TransactionBlock.digest,
             schema.TransactionBlock.effects.select(
@@ -772,7 +775,7 @@ class GetTxKind(PGQL_QueryNode):
             ),
             tx_kind,
         )
-        return dsl_gql(prg_kind, tx_kind, DSLQuery(qres))
+        return dsl_gql(prg_kind, tx_kind, ccp_kind, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionKindGQL], None]:

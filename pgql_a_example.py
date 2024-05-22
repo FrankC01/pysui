@@ -278,9 +278,7 @@ async def do_filter_txs(client: AsyncSuiGQLClient):
 
     See Sui GraphQL schema for TransactionBlockFilter options.
     """
-    obj_filter = {
-        "changedObject": "0x0e1ad0ba7367da50bc07fa997f77757f4acb577d540d98cc1e5f48f023cb47ef"
-    }
+    obj_filter = {"changedObject": "ENTER OBJECT_ID HERE"}
     result = await client.execute_query_node(
         with_node=qn.GetFilteredTx(tx_filter=obj_filter)
     )
@@ -290,7 +288,7 @@ async def do_filter_txs(client: AsyncSuiGQLClient):
             print(f"Digest: {tx.digest} timestamp: {tx.timestamp}")
         if txs.next_cursor.hasNextPage:
             result = await client.execute_query_node(
-                with_node=qn.GetObjectTx(
+                with_node=qn.GetFilteredTx(
                     tx_filter=obj_filter,
                     next_page=txs.next_cursor,
                 )

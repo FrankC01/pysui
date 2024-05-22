@@ -631,6 +631,7 @@ class TransactionSummaryGQL(PGQL_Type):
     digest: str
     status: str
     timestamp: str
+    tx_kind: str
     errors: Optional[Any] = dataclasses.field(default_factory=list)
 
     @classmethod
@@ -812,12 +813,59 @@ class ProgrammableTransactionBlockGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ConsensusCommitPrologueTransactionGQL:
+    """ConsensusCommitPrologueTransaction kind representation class."""
+
+    epoch: dict
+    consensus_round: int
+    commit_timestamp: str
+    consensus_commit_digest: Optional[str]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class GenesisTransactionGQL:
+    """GenesisTransaction kind representation class."""
+
+    objects: dict
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class AuthenticatorStateUpdateTransactionGQL:
+    """AuthenticatorStateUpdateTransaction kind representation class."""
+
+    epoch: dict
+    consensus_round: int
+    authenticator_obj_initial_shared_version: int
+    new_active_jwks: dict
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class RandomnessStateUpdateTransactionGQL:
+    """AuthenticatorStateUpdateTransaction kind representation class."""
+
+    epoch: dict
+    randomness_round: int
+    random_bytes: str
+    new_active_jwks: dict
+    randomness_obj_initial_shared_version: int
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class TransactionKindGQL(PGQL_Type):
     """Transaction kind representation class."""
 
     digest: str
     timestamp: str
-    kind: Union[ProgrammableTransactionBlockGQL]
+    transaction_kind: str
+    kind: Union[
+        ProgrammableTransactionBlockGQL,
+        GenesisTransactionGQL,
+        ConsensusCommitPrologueTransactionGQL,
+    ]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionKindGQL":
@@ -826,12 +874,15 @@ class TransactionKindGQL(PGQL_Type):
         if tx_block:
             tx_type = tx_block["kind"].pop("tx_kind")
             tx_block["timestamp"] = tx_block.pop("effects")["timestamp"]
+            tx_block["transaction_kind"] = tx_type
             match tx_type:
                 case "ProgrammableTransactionBlock":
                     tx_block["kind"]["inputs"] = tx_block["kind"]["inputs"]["nodes"]
                     tx_block["kind"]["transactions"] = tx_block["kind"]["transactions"][
                         "nodes"
                     ]
+                case "GenesisTransaction" | "ConsensusCommitPrologueTransaction":
+                    pass
                 case _:
                     raise ValueError(f"{tx_type} not handled in data model.")
             return TransactionKindGQL.from_dict(tx_block)

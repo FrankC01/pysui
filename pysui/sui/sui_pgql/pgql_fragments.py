@@ -535,6 +535,87 @@ class ProgrammableTxKind(PGQL_Fragment):
         )
 
 
+class ConsensusCommitPrologueKind(PGQL_Fragment):
+    """Details of consensus commit transaction."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+
+        return (
+            DSLFragment("ConsensusTxKind")
+            .on(schema.ConsensusCommitPrologueTransaction)
+            .select(
+                schema.ConsensusCommitPrologueTransaction.epoch.select(
+                    schema.Epoch.epochId
+                ),
+                schema.ConsensusCommitPrologueTransaction.round.alias("consensusRound"),
+                schema.ConsensusCommitPrologueTransaction.commitTimestamp,
+                schema.ConsensusCommitPrologueTransaction.consensusCommitDigest,
+            )
+        )
+
+
+class AuthenticatorStateUpdateTransactionKind(PGQL_Fragment):
+    """Details of AuthenticatorStateUpdateTransaction.
+
+    Not used by any pysui QueryNode but available to those creating them.
+    """
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+
+        return (
+            DSLFragment("AuthenticatorStakeUpdateTxKind")
+            .on(schema.AuthenticatorStateUpdateTransaction)
+            .select(
+                schema.AuthenticatorStateUpdateTransaction.epoch.select(
+                    schema.Epoch.epochId
+                ),
+                schema.AuthenticatorStateUpdateTransaction.round.alias(
+                    "consensusRound"
+                ),
+                schema.AuthenticatorStateUpdateTransaction.authenticatorObjInitialSharedVersion,
+                schema.AuthenticatorStateUpdateTransaction.newActiveJwks.select(
+                    schema.ActiveJwkConnection.nodes.select(
+                        schema.ActiveJwk.iss,
+                        schema.ActiveJwk.kid,
+                        schema.ActiveJwk.kty,
+                        schema.ActiveJwk.e,
+                        schema.ActiveJwk.n,
+                        schema.ActiveJwk.alg,
+                        schema.ActiveJwk.epoch.select(schema.Epoch.epochId),
+                    )
+                ),
+            )
+        )
+
+
+class RandomnessStateUpdateTransactionKind(PGQL_Fragment):
+    """Details of RandomnessStateUpdateTransaction.
+
+    Not used by any pysui QueryNode but available to those creating them.
+    """
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+
+        return (
+            DSLFragment("RandomnessStateUpdateTxKind")
+            .on(schema.RandomnessStateUpdateTransaction)
+            .select(
+                schema.RandomnessStateUpdateTransaction.epoch.select(
+                    schema.Epoch.epochId
+                ),
+                schema.RandomnessStateUpdateTransaction.randomnessRound,
+                schema.RandomnessStateUpdateTransaction.randomBytes,
+                schema.RandomnessStateUpdateTransaction.randomnessObjInitialSharedVersion,
+            )
+        )
+
+
 class StandardTransactionKind(PGQL_Fragment):
     """Details a transactions kind. Supports ProgrammableTransaction type only."""
 
@@ -542,6 +623,7 @@ class StandardTransactionKind(PGQL_Fragment):
     def fragment(self, schema: DSLSchema) -> DSLFragment:
         """."""
         prg_kind = ProgrammableTxKind().fragment(schema)
+        ccp_kind = ConsensusCommitPrologueKind().fragment(schema)
         return (
             DSLFragment("TxKind")
             .on(schema.TransactionBlock)
@@ -550,6 +632,16 @@ class StandardTransactionKind(PGQL_Fragment):
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransactionBlock)
                     .select(prg_kind),
+                    DSLInlineFragment()
+                    .on(schema.ConsensusCommitPrologueTransaction)
+                    .select(ccp_kind),
+                    DSLInlineFragment()
+                    .on(schema.GenesisTransaction)
+                    .select(
+                        schema.GenesisTransaction.objects.select(
+                            schema.ObjectConnection.nodes.select(schema.Object.address)
+                        )
+                    ),
                     tx_kind=DSLMetaField("__typename"),
                 )
             )

@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `GetTxKind` query node for fetching transaction type details (currently only ProgrammableTransactionBlock type supported)
+- `GetTxKind` query node for fetching transaction type details
+  - Only ProgrammableTransactionBlock, ConsensusCommitPrologueTransaction, and GenesisTransaction kinds supported
   - Added `do_tx_kind` function to synch and asynch graphql samples
 - `GetFilteredTx`` query node that fetches all transactions with TransactionBlockFilter set
   - Added `do_filter_txs` function to synch and asynch graphql samples

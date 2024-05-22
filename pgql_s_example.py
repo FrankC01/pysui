@@ -306,17 +306,15 @@ def do_filter_txs(client: SuiGQLClient):
 
     See Sui GraphQL schema for TransactionBlockFilter options.
     """
-    obj_filter = {
-        "changedObject": "0x0e1ad0ba7367da50bc07fa997f77757f4acb577d540d98cc1e5f48f023cb47ef"
-    }
+    obj_filter = {"changedObject": "ENTER OBJECT_ID HERE"}
     result = client.execute_query_node(with_node=qn.GetFilteredTx(tx_filter=obj_filter))
     while result.is_ok():
         txs: ptypes.TransactionSummariesGQL = result.result_data
         for tx in txs.data:
-            print(f"Digest: {tx.digest} timestamp: {tx.timestamp}")
+            print(f"Kind: {tx.tx_kind} Digest: {tx.digest} timestamp: {tx.timestamp}")
         if txs.next_cursor.hasNextPage:
             result = client.execute_query_node(
-                with_node=qn.GetObjectTx(
+                with_node=qn.GetFilteredTx(
                     tx_filter=obj_filter,
                     next_page=txs.next_cursor,
                 )
@@ -327,11 +325,8 @@ def do_filter_txs(client: SuiGQLClient):
 
 def do_tx_kind(client: SuiGQLClient):
     """Fetch the PTB details from transaction."""
-    handle_result(
-        client.execute_query_node(
-            with_node=qn.GetTxKind(digest="ENTER TRANSACTION DIGESST HERE")
-        )
-    )
+    qnode = qn.GetTxKind(digest="ENTER TRANSACTION DIGESST HERE")
+    handle_result(client.execute_query_node(with_node=qnode))
 
 
 def do_staked_sui(client: SuiGQLClient):
@@ -739,7 +734,7 @@ if __name__ == "__main__":
     print(f"Schema base version '{client_init.base_schema_version}'")
     print(f"Schema full version '{client_init.schema_version}'")
     try:
-        # print()
+        print()
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
