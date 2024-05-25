@@ -234,6 +234,11 @@ async def do_configs(client: AsyncSuiGQLClient):
     print(client.rpc_config.to_json(indent=2))
 
 
+async def do_service_config(client: AsyncSuiGQLClient):
+    """Fetch the GraphQL, Protocol and System configurations."""
+    print(client.rpc_config.serviceConfig.to_json(indent=2))
+
+
 async def do_chain_id(client: AsyncSuiGQLClient):
     """Fetch the current environment chain_id.
 
@@ -608,6 +613,7 @@ async def main():
     print(f"Schema base version '{client_init.base_schema_version}'")
     print(f"Schema full version '{client_init.schema_version}'")
     try:
+        print()
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
@@ -648,6 +654,7 @@ async def main():
         ## Config
         # await do_chain_id(client_init)
         # await do_configs(client_init)
+        # await do_service_config(client_init)
         # await do_protcfg(client_init)
         await client_init.close()
     except ValueError as ve:

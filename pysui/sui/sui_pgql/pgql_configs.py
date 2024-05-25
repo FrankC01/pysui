@@ -51,11 +51,78 @@ _QUERY = """
     }
 """
 
+# TODO: Make primary when changes moved through mainnet
+_QUERYE = """
+
+    query {
+        chainIdentifier
+        checkpoints (last: 1) {
+            nodes {
+                sequenceNumber
+                timestamp
+                epoch {
+                        referenceGasPrice
+                    }
+            }
+        }
+        serviceConfig {
+            availableVersions
+            enabledFeatures
+            maxQueryDepth
+            maxQueryNodes
+            maxOutputNodes
+            maxDbQueryCost
+            defaultPageSize
+            maxPageSize
+            mutationTimeoutMs
+            requestTimeoutMs
+            maxQueryPayloadSize
+            maxTypeArgumentDepth
+            maxTypeNodes
+            maxMoveValueDepth
+        }
+      protocolConfig(protocolVersion:44) {
+          protocolVersion
+          configs {
+            key
+            value
+          }
+          featureFlags {
+            key
+            value
+          }
+        }
+    }
+"""
+
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ServiceConfigGQL:
     """Sui GraphQL service controls."""
+
+    enabledFeatures: list[str]
+    maxQueryDepth: int
+    maxQueryNodes: int
+    maxOutputNodes: int
+    defaultPageSize: int
+    maxDbQueryCost: int
+    maxPageSize: int
+    requestTimeoutMs: int
+    maxQueryPayloadSize: int
+
+
+# TODO: Make primary when changes moved through mainnet
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ServiceConfigGQLE:
+    """Sui GraphQL service controls."""
+
+    availableVersions: list[str]
+    mutationTimeoutMs: int
+    maxTypeArgumentDepth: int
+    maxTypeNodes: int
+    maxMoveValueDepth: int
 
     enabledFeatures: list[str]
     maxQueryDepth: int
@@ -103,6 +170,25 @@ class SuiConfigGQL:
         return SuiConfigGQL.from_dict(in_data)
 
 
-def pgql_config() -> tuple[str, Callable]:
+# TODO: Make primary when changes moved through mainnet
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiConfigGQLE:
+    chainIdentifier: str
+    serviceConfig: ServiceConfigGQLE
+    protocolConfig: pgql_type.ProtocolConfigGQL
+    checkpoints: CheckpointConnectionGQL
+    gqlEnvironment: Optional[str] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "SuiConfigGQLE":
+        """."""
+        return SuiConfigGQLE.from_dict(in_data)
+
+
+def pgql_config(env: str) -> tuple[str, Callable]:
     """."""
+    match env:
+        case "devnet":
+            return _QUERYE, SuiConfigGQLE.from_query
     return _QUERY, SuiConfigGQL.from_query

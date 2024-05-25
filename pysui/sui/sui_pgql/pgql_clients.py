@@ -292,7 +292,7 @@ class SuiGQLClient(BaseSuiGQLClient):
         with _iclient as session:
             _version: str = session.transport.response_headers["x-sui-rpc-version"]
             _schema: DSLSchema = DSLSchema(_iclient.schema)
-            qstr, fndeser = pgql_config()
+            qstr, fndeser = pgql_config(genv)
             _rpc_config = fndeser(session.execute(gql(qstr)))
             _rpc_config.gqlEnvironment = genv
 
@@ -451,7 +451,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         with _iclient as session:
             _version: str = session.transport.response_headers["x-sui-rpc-version"]
             _schema: DSLSchema = DSLSchema(_iclient.schema)
-            qstr, fndeser = pgql_config()
+            qstr, fndeser = pgql_config(genv)
             _rpc_config = fndeser(session.execute(gql(qstr)))
             _rpc_config.gqlEnvironment = genv
         _iclient.close_sync()
@@ -482,7 +482,10 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
     async def close(self) -> None:
         """Close the connection."""
-        await self.client.close_async()
+        if self._session:
+            await self._session.close_async()
+        else:
+            await self.client.close_async()
 
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"

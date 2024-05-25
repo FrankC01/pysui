@@ -32,8 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Document updates
-
 - Bumped dataclasses-json to 0.6.6
+- Sui binary support range 1.20.x -> 1.27.x
 
 ### Removed
 
