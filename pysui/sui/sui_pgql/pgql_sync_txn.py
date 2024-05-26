@@ -615,8 +615,8 @@ class SuiTransaction(_SuiTransactionBase):
         modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
-            result = self.client.execute_query(
-                with_query_node=qn.GetObject(object_id=upgrade_cap)
+            result = self.client.execute_query_node(
+                with_node=qn.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")
@@ -693,8 +693,8 @@ class SuiTransaction(_SuiTransactionBase):
         modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
-            result = self.client.execute_query(
-                with_query_node=qn.GetObject(object_id=upgrade_cap)
+            result = self.client.execute_query_node(
+                with_node=qn.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")

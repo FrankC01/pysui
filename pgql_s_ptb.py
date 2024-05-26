@@ -37,8 +37,8 @@ def transaction_inspect(txb: SuiTransaction):
     print(raw_kind.to_json(indent=2))
     # Execute the dry run
     handle_result(
-        txb.client.execute_query(
-            with_query_node=qn.DryRunTransactionKind(
+        txb.client.execute_query_node(
+            with_node=qn.DryRunTransactionKind(
                 tx_bytestr=base64.b64encode(raw_kind.serialize()).decode()
             )
         )
@@ -153,14 +153,14 @@ def demo_tx_unstake(client: SuiGQLClient):
     owner = client.config.active_address.address
 
     skblk: pgql_type.SuiStakedCoinsGQL = handle_result(
-        client.execute_query(with_query_node=qn.GetDelegatedStakes(owner=owner))
+        client.execute_query_node(with_node=qn.GetDelegatedStakes(owner=owner))
     )
     # Only execute if staked coin found
     if skblk.staked_coins:
         txb = SuiTransaction(client=client)
         txb.unstake_coin(staked_coin=skblk.staked_coins[0])
-        # transaction_inspect(txb)
-        transaction_dryrun(txb)
+        transaction_inspect(txb)
+        # transaction_dryrun(txb)
         # transaction_dryrun_with_gas(
         #     txb,
         #     [
@@ -236,11 +236,12 @@ if __name__ == "__main__":
     )
     print(f"Schema version {client_init.schema_version}")
     try:
+        print()
         # demo_tx_split(client_init)
         # demo_tx_split_equal(client_init)
         # demo_tx_split_distribute(client_init)
         # demo_tx_public_transfer(client_init)
-        demo_tx_unstake(client_init)
+        # demo_tx_unstake(client_init)
         # demo_tx_transfer_sui(client_init)
         # demo_tx_publish(client_init)
     except ValueError as ve:

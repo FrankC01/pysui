@@ -51,6 +51,9 @@ def _optional_processor(
     if not arg:
         etr = bcs.OptionalTypeFactory.as_optional()
         return etr
+    elif isinstance(arg, list) and arg[0] is None:
+        etr = bcs.OptionalTypeFactory.as_optional()
+        return etr
 
     if isinstance(construct, tuple):
         inner_fn, outer_fn = construct

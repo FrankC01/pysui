@@ -258,11 +258,11 @@ class BaseSuiGQLClient:
 
     @versionadded(version="0.60.0", reason="Support query inspection")
     def query_node_to_string(
-        self, qnode: PGQL_QueryNode, schema_constraint: Union[str, None] = None
+        self, *, query_node: PGQL_QueryNode, schema_constraint: Union[str, None] = None
     ) -> str:
         """."""
-        self._qnode_owner(qnode)
-        return print_ast(qnode.as_document_node(self.schema))
+        self._qnode_owner(query_node)
+        return print_ast(query_node.as_document_node(self.schema))
 
 
 class SuiGQLClient(BaseSuiGQLClient):
