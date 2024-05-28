@@ -71,7 +71,7 @@ Legacy
     )
 
 New
-------
+---
 
 .. code-block:: python
     :linenos:
@@ -91,3 +91,93 @@ New
             "0x2::sui::SUI",
         ],
     )
+
+===================
+DryRun Transaction
+===================
+
+Before executing a transaction for debugging and general insight into how the transaction may perform, you
+can execute a DryRun:
+
+DryRun Lite
+-----------
+A lite weight dryrun just uses the TransactionKind (transaction before all gas is reconcilled). The query node to
+use in this case is ``DryRunTransactionKind``. If no options are provided, Sui will provide defautls. See the
+DryRunTransactionKind documentation.
+
+.. code-block:: python
+    :linenos:
+
+    def dry_run_kind(txn:SuiTransaction):
+        """Uses defaults for DryRunTransactionKind."""
+        raw_kind = txer.raw_kind()
+        raw_kind_ser = base64.b64encode(raw_kind.serialize().decode())
+
+        # Print the TransactionType BCS (pre-serialized) structure
+        # print(raw_kind.to_json(indent=2))
+        # print(raw_kind_ser)
+
+        # Execute the dry run for kind
+        result = txer.client.execute_query_node(
+            with_node=qn.DryRunTransactionKind(tx_bytestr=raw_kind_ser)
+        )
+
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)
+
+DryRun Full
+-----------
+The full dryrun is basiscally a fully built transaction without signatures, but
+is dryrun for inspection
+
+.. code-block:: python
+    :linenos:
+
+    def dry_run(txn:SuiTransaction):
+        """Uses fully built TransactionData for DryRunTransaction"""
+        raw_kind = txer.raw_kind()
+        # Print the TransactionData BCS (pre-serialized) structure
+        # print(raw_kind.to_json(indent=2))
+
+        # Execute the dry run
+        result =
+            txn.client.execute_query_node(
+                with_node=qn.DryRunTransaction(tx_bytestr=txn.build())
+            )
+
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)
+
+===================
+Execute Transaction
+===================
+
+When it comes time to execute a transaction, both the bytecode of the transaction and signatures are
+required:
+
+.. code-block:: python
+    :linenos:
+
+    def transaction_execute(txn: SuiTransaction):
+        """Uses fully built and serialized TransactionData for ExecuteTransaction."""
+        raw_kind = txn.raw_kind()
+        # Print the TransactionData BCS (pre-serialized) structure
+        # print(raw_kind.to_json(indent=2))
+
+        # Build and sign to get the base64 transaction bytes and list of signatures
+        tx_b64, sig_array = txer.build_and_sign()
+        # Execute the transaction
+        result = txer.client.execute_query_node(
+            with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array))
+
+        if result.is_ok():
+            # Unlike JSON RPC, the GraphRPC transaction execution just returns
+            # Status and the transaction digest. You can then take the transaction digest
+            # and then execute the GetTx for details.
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)

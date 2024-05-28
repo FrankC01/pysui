@@ -26,10 +26,10 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.60.0 - Released 2024-05-15**
+**Release-0.61.0 - Released 2024-05-28**
 
-- Supports _SUI 1.26.x RPC API_
-- Backwards compatable to _Sui 1.18.x RPC API_
+- Supports _SUI 1.27.x RPC API_
+- Backwards compatable to _Sui 1.20.x RPC API_
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
@@ -39,7 +39,7 @@ MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/is
 from JSON RPC to GraphQL RPC.
 
 Note: MystenLabs/Sui GraphQL RPC is available on devnet, testnet and mainnet. Note that devnet beta is still quite fragile and
-we recommend using testnet beta.
+we recommend using testnet beta. We are tracking a few failures we are monitoring [Isssues](https://github.com/FrankC01/pysui/issues?q=is%3Aissue+is%3Aopen++Sui+GraphQL+RPC).
 
 ### Sui GraphQL IDEs
 
