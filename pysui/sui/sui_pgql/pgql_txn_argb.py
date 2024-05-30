@@ -86,7 +86,7 @@ def _fetch_or_transpose_object(
     """Fetches and prepares an object reference to ObjectArg for BCS."""
     object_def: pgql_type.ObjectReadGQL = arg
     if isinstance(arg, str):
-        result = client.execute_query(with_query_node=qn.GetObject(object_id=arg))
+        result = client.execute_query_node(with_node=qn.GetObject(object_id=arg))
         if result.is_ok():
             object_def = result.result_data
             if isinstance(
@@ -103,7 +103,6 @@ def _fetch_or_transpose_object(
             b_obj_arg = bcs.ObjectArg(
                 "Receiving",
                 bcs.ObjectReference.from_gql_ref(object_def),
-                # bcs.ReceivingReference.from_gql_ref(object_def),
             )
         else:
             b_obj_arg = bcs.ObjectArg(
