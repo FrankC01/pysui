@@ -620,6 +620,10 @@ class SuiTransaction(_SuiTransactionBase):
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")
+            elif isinstance(result.result_data, pgql_type.NoopGQL):
+                raise ValueError(
+                    f"Fetching upgrade cap {upgrade_cap} returned no data."
+                )
 
             upgrade_cap = result.result_data
         # Isolate the struct type from supposed UpgradeCap

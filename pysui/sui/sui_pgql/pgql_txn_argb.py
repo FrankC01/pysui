@@ -149,7 +149,9 @@ def _scalar_argument(
     # Validate arg matches expectation
     if arg:
         if _SCALARS.get(expected_type.scalar_type):
-            if not isinstance(arg, int):
+            if isinstance(arg, str) and expected_type.scalar_type == "u8":
+                pass
+            elif not isinstance(arg, int):
                 raise ValueError(f"Expected int and found {arg.__class__}")
         elif not isinstance(arg, str):
             raise ValueError(f"Expected str found {arg.__class__}")
@@ -182,6 +184,17 @@ def _scalar_argument(
                     partial(bcs.Variable.bcs_var_length_field, bcs.U8),
                 )
             case _:
+                if isinstance(arg, str) and expected_type.scalar_type == "u8":
+                    return (
+                        tx_builder.PureInput.pure,
+                        partial(bcs.Variable.bcs_var_length_field, bcs.U8),
+                    )
+
+                    # return (
+                    #     pass_through,
+                    #     tx_builder.PureInput.as_input,
+                    # )
+
                 return (
                     _SCALARS.get(expected_type.scalar_type),
                     tx_builder.PureInput.as_input,
@@ -220,7 +233,9 @@ def _argument_validate(
         return _object_argument(expected_type, arg, in_optional)
     if isinstance(expected_type, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)):
         # print("Vector or List")
-        if not isinstance(arg, list):
+        if isinstance(arg, str):
+            pass
+        elif not isinstance(arg, list):
             raise ValueError("Expected list type argument...")
         some_list = []
         inner_type = (
@@ -228,13 +243,16 @@ def _argument_validate(
             if isinstance(expected_type, pgql_type.MoveListArg)
             else expected_type.vec_arg
         )
-        for inner_arg in arg:
-            if isinstance(inner_arg, bcs.Argument):
-                some_list.append(inner_arg)
-            else:
-                some_list.append(
-                    _argument_validate(inner_type, inner_arg, in_optional, True)
-                )
+        if isinstance(arg, str):
+            some_list.append(_argument_validate(inner_type, arg, in_optional, True))
+        else:
+            for inner_arg in arg:
+                if isinstance(inner_arg, bcs.Argument):
+                    some_list.append(inner_arg)
+                else:
+                    some_list.append(
+                        _argument_validate(inner_type, inner_arg, in_optional, True)
+                    )
         return some_list
 
     raise ValueError(f"Unhhandled type {type(expected_type)}")
@@ -302,9 +320,15 @@ def build_args(
                     in_meta = in_meta.vec_arg
                 elif isinstance(in_meta, pgql_type.MoveListArg):
                     in_meta = in_meta.list_arg
+
                 for ilindex, inner_list in enumerate(track.convert_args[aindex]):
                     if isinstance(inner_list, bcs.Argument):
                         res_list.append(inner_list)
+                    elif isinstance(in_arg, str):
+                        res_list = _argument_builder(
+                            client, in_arg, in_meta, *inner_list
+                        )
+                        break
                     else:
                         res_list.append(
                             _argument_builder(
