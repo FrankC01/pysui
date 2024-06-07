@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/212) GraphQL GetPackage and GetFunction fail converting to dataclass
 - [bug](https://github.com/FrankC01/pysui/issues/210) Passing str doesn't convert to vector<u8> (GraphQL SuiTransaction)
 - Fixed handling case of unresolvable UpgradeCap fetch in GraphQL SuiTransaction `publish_upgrade``
 - Regression in arg processor for GraphQL Transaction building

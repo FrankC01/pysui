@@ -1279,7 +1279,7 @@ class MoveFunctionGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "MoveFunctionGQL":
-        if in_data.get("object"):
+        if in_data.get("object") or in_data.get("function_name"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
             return MoveFunctionGQL.from_dict(fdict)
