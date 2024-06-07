@@ -368,7 +368,6 @@ class SuiConfig(ClientConfiguration):
             If not provide, alias will be generated
         :type alias: Optional[str], optional
         :raises NotImplementedError: When providing unregognized scheme
-        :raises ValueError: If recovered keypair/address already exists
         :return: The input mnemonic string and the new keypair associated SuiAddress
         :rtype: tuple[str, SuiAddress]
         """
@@ -384,7 +383,8 @@ class SuiConfig(ClientConfiguration):
                     scheme, mnemonics, derivation_path
                 )
                 if address.address in self.addresses:
-                    raise ValueError(f"Address {address.address} already exists.")
+                    # already exists, nothing more to do
+                    return mnem, address
                 # Valid Sui base64 keystring
                 kpstr = keypair.serialize()
                 # Valid type encoded base64 Sui public key
