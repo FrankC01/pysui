@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [PR](https://github.com/FrankC01/pysui/pull/211) Return address instead of failing when address already exists
+
 ### Removed
 
 ## [0.61.0] - 2024-05-28
