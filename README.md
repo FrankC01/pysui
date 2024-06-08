@@ -26,7 +26,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.61.0 - Released 2024-05-28**
+**Release-0.62.0 - Released 2024-06-08**
 
 - Supports _SUI 1.27.x RPC API_
 - Backwards compatable to _Sui 1.20.x RPC API_
