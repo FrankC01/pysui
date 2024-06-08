@@ -58,8 +58,8 @@ def transaction_execute(
     )
     # Execute the transaction
     handle_result(
-        txb.client.execute_query(
-            with_query_node=qn.ExecuteTransaction(
+        txb.client.execute_query_node(
+            with_node=qn.ExecuteTransaction(
                 tx_bytestr=tx_b64, sig_array=[x.value for x in sig_array]
             )
         )
