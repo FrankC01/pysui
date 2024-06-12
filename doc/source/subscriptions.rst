@@ -20,7 +20,7 @@ In ``pysui`` there are *two* core modules specifically defined for subscriptions
 Event Filters
 ~~~~~~~~~~~~~
 
-When using the :py:class:`~pysui.sui.sui_builders.subscription_builders.SubscribeEvent` bulder, you can provide an optional ``event_filter``.
+When using the :py:class:`~pysui.sui.sui_builders.subscription_builders.SubscribeEvent` builder, you can provide an optional ``event_filter``.
 If you do not provide a filter, **all** Event types will be received.
 
 | Filters supports a logical **connective**: ``if antecedent then consequent``,
@@ -43,7 +43,7 @@ nest filters. For example (some details omitted):
 Transaction Filters
 ~~~~~~~~~~~~~~~~~~~
 
-When using the :py:class:`~pysui.sui.sui_builders.subscription_builders.SubscribeTransaction` bulder, you must provide a ``transaction_filter``.
+When using the :py:class:`~pysui.sui.sui_builders.subscription_builders.SubscribeTransaction` builder, you must provide a ``transaction_filter``.
 
 Filters are those with the suffix ``Filter`` in :ref:`subscription-filters`. For example (some details omitted):
 
