@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Serialization of **pysui GraphQL SuiTransaction** to **Sui Wallet JSON standard** (_schema version 2_)
+
 ### Fixed
+
+- [PR](https://github.com/FrankC01/pysui/pull/213) Fix typos
 
 ### Changed
 

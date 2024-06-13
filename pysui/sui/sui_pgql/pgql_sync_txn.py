@@ -140,9 +140,8 @@ class SuiTransaction(_SuiTransactionBase):
         :type compress_inputs: bool,optional
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
-        :param deserialize_from: Will rehydrate SuiTransaction state from serialized base64 str or bytes, defaults to None
-        :type deserialize_from: Union[str, bytes], optional
         """
+        kwargs["deserialize_from"] = None
         super().__init__(**kwargs)
         # Force new signer block
         self._sig_block = SignerBlock(
@@ -194,6 +193,7 @@ class SuiTransaction(_SuiTransactionBase):
         self,
         gas_budget: str = "",
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+        txn_expires_after: Optional[int] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
         """Generate the TransactionData structure."""
         obj_in_use: set[str] = set(self.builder.objects_registry.keys())
@@ -213,7 +213,11 @@ class SuiTransaction(_SuiTransactionBase):
                 tx_kind,
                 bcs.Address.from_str(self.signer_block.sender_str),
                 gas_data,
-                bcs.TransactionExpiration("None"),
+                bcs.TransactionExpiration(
+                    "None"
+                    if not txn_expires_after
+                    else bcs.TransactionExpiration("Epoch", txn_expires_after)
+                ),
             ),
         )
 
@@ -222,6 +226,7 @@ class SuiTransaction(_SuiTransactionBase):
         *,
         gas_budget: Optional[str] = None,
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+        txn_expires_after: Optional[int] = None,
     ) -> bcs.TransactionData:
         """transaction_data Construct a BCS TransactionData object.
 
@@ -234,16 +239,19 @@ class SuiTransaction(_SuiTransactionBase):
         :type gas_budget: Optional[str], optional
         :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
         :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
+        :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
+        :type txn_expires_after: Optional[int],optional
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
-        return self._build_txn_data(gas_budget, use_gas_objects)
+        return self._build_txn_data(gas_budget, use_gas_objects, txn_expires_after)
 
     def build(
         self,
         *,
         gas_budget: Optional[str] = None,
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+        txn_expires_after: Optional[int] = None,
     ) -> str:
         """build After creating the BCS TransactionData, serialize to base64 string and return.
 
@@ -251,11 +259,15 @@ class SuiTransaction(_SuiTransactionBase):
         :type gas_budget: Optional[str], optional
         :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
         :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
+        :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
+        :type txn_expires_after: Optional[int],optional
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
         txn_data = self.transaction_data(
-            gas_budget=gas_budget, use_gas_objects=use_gas_objects
+            gas_budget=gas_budget,
+            use_gas_objects=use_gas_objects,
+            txn_expires_after=txn_expires_after,
         )
         return base64.b64encode(txn_data.serialize()).decode()
 
@@ -264,6 +276,7 @@ class SuiTransaction(_SuiTransactionBase):
         *,
         gas_budget: Optional[str] = None,
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+        txn_expires_after: Optional[int] = None,
     ) -> tuple[str, list[str]]:
         """build After creating the BCS TransactionKind, serialize to base64 string, create signatures and return.
 
@@ -271,11 +284,15 @@ class SuiTransaction(_SuiTransactionBase):
         :type gas_budget: Optional[str], optional
         :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
         :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
+        :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
+        :type txn_expires_after: Optional[int],optional
         :return: Tuple of tx_bytes (base64) and list of signatures
         :rtype: tuple[str, list[str]]
         """
         txn_kind = self.transaction_data(
-            gas_budget=gas_budget, use_gas_objects=use_gas_objects
+            gas_budget=gas_budget,
+            use_gas_objects=use_gas_objects,
+            txn_expires_after=txn_expires_after,
         )
         tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
         sig_block: SignerBlock = self.signer_block

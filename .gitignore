@@ -14,13 +14,15 @@ Move.lock
 # logs
 *.log*
 
-# Sandboxing
+# Temporary Spikes
 temp*.py
 temp*.json
 temp_sub.py
 out*
 protocol.json
 backup/
+ser_deser_txn.py
+ser_sample.json
 *_schema-*.graphql
 
 

@@ -538,7 +538,7 @@ class ObjectArg(canoser.RustEnum):
 class CallArg(canoser.RustEnum):
     """CallArg represents an argument (parameters) of a MoveCall.
 
-    Pure type is for scalares, or native, values.
+    Pure type is for scalars, or native, values.
     """
 
     _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
