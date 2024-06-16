@@ -549,7 +549,7 @@ class ProgrammableTransactionBuilder:
 
     def transfer_objects(
         self,
-        recipient: bcs.BuilderArg,
+        recipient: Union[bcs.BuilderArg, bcs.Argument],
         object_ref: Union[
             bcs.Argument,
             list[
@@ -559,7 +559,12 @@ class ProgrammableTransactionBuilder:
     ) -> bcs.Argument:
         """Setup a TransferObjects command and return it's result Argument."""
         logger.debug("Creating TransferObjects transaction")
-        receiver_arg = self.input_pure(recipient)
+        receiver_arg = (
+            recipient
+            if isinstance(recipient, bcs.Argument)
+            else self.input_pure(recipient)
+        )
+        # receiver_arg = self.input_pure(recipient)
         from_args: list[bcs.Argument] = []
         if isinstance(object_ref, list):
             for fcoin in object_ref:

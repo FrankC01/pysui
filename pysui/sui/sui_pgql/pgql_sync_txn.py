@@ -189,6 +189,12 @@ class SuiTransaction(_SuiTransactionBase):
             )
         raise ValueError(f"Unresolvable target {target}")
 
+    def target_function_summary(
+        self, target: str
+    ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
+        """Returns the argument summary of a target sui move function."""
+        return self._function_meta_args(target)
+
     def _build_txn_data(
         self,
         gas_budget: str = "",

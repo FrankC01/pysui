@@ -64,7 +64,7 @@ class SuiGasCoinArg:
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
 class SuiCallArgIndex:
-    """GasCoin as argument."""
+    """Input index as argument."""
 
     index: int
 
@@ -72,7 +72,7 @@ class SuiCallArgIndex:
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
 class SuiCmdResultIndex:
-    """GasCoin as argument."""
+    """Command index as argument."""
 
     result: int
 

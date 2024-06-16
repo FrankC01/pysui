@@ -426,7 +426,7 @@ def _serialize_commands(builder: ProgrammableTransactionBuilder) -> list:
         match cmd.enum_name:
             case "MoveCall":
                 mcall: bcs.ProgrammableMoveCall = cmd.value
-                addy = bytearray(mcall.Package.Address).hex()
+                addy = "0x" + bytearray(mcall.Package.Address).hex()
                 args = _argument_types(mcall.Arguments)
                 tags = _type_tags(mcall.Type_Arguments)
                 cmds.commands.append(
@@ -472,15 +472,19 @@ def _serialize_commands(builder: ProgrammableTransactionBuilder) -> list:
             case "Publish":
                 pblsh: bcs.Publish = cmd.value
                 modules = [base64.b64encode(bytes(x)).decode() for x in pblsh.Modules]
-                dependencies = [bytearray(x.Address).hex() for x in pblsh.Dependents]
+                dependencies = [
+                    "0x" + bytearray(x.Address).hex() for x in pblsh.Dependents
+                ]
                 cmds.commands.append(
                     PublishCommand(PublishPayload(modules, dependencies))
                 )
             case "Upgrade":
                 upgrd: bcs.Upgrade = cmd.value
                 modules = [base64.b64encode(bytes(x)).decode() for x in upgrd.Modules]
-                dependencies = [bytearray(x.Address).hex() for x in upgrd.Dependents]
-                addy = bytearray(upgrd.Package.Address).hex()
+                dependencies = [
+                    "0x" + bytearray(x.Address).hex() for x in upgrd.Dependents
+                ]
+                addy = "0x" + bytearray(upgrd.Package.Address).hex()
                 cmds.commands.append(
                     UpgradeCommand(
                         UpgradePayload(

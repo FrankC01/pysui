@@ -5,11 +5,14 @@
 
 """Pysui DeSertializtion from Sui Wallet JSON standard to pysui GraphQL SuiTransaction."""
 
+import base64
 from typing import Any, Optional
 import functools as ft
 
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
+from pysui.sui.sui_txn.transaction_builder import ProgrammableTransactionBuilder
+import pysui.sui.sui_types.bcs as bcs
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as tn
 import pysui.sui.sui_pgql.pgql_wallet_deser as deser
@@ -72,7 +75,7 @@ def _resolve_inputs(client: SuiGQLClient, unresolved: list[tuple[int, Any]]) -> 
             raise ValueError("Misalignment")
         objcarg = {"object_id": item.object_id}
         if isinstance(item.object_owner, tn.SuiObjectOwnedAddress):
-            objcarg["ref_type"] = "Imm"
+            objcarg["ref_type"] = "ImmOrOwnedObject"
             objcarg["digest"] = item.object_digest
             objcarg["version"] = item.version
         elif isinstance(item.object_owner, tn.SuiObjectOwnedShared):
@@ -86,23 +89,200 @@ def _resolve_inputs(client: SuiGQLClient, unresolved: list[tuple[int, Any]]) -> 
     return resobjs
 
 
-def _resolve_unresolved(client, inputs: list) -> list:
+def _resolve_unresolved(client: SuiGQLClient, wallet: deser.SuiBuilder) -> None:
     """."""
     if unp := list(
-        filter(ft.partial(_is_unresolved, (deser.SuiUnresolvedPureCallArg)), inputs)
+        filter(
+            ft.partial(_is_unresolved, (deser.SuiUnresolvedPureCallArg)), wallet.inputs
+        )
     ):
         raise ValueError(f"pysui does not support Unresolved pures. Found {unp}")
 
     unresobj: list[tuple[int, deser.SuiUnresolvedObjectCallArg]] = []
-    for idx, item in enumerate(inputs):
+    for idx, item in enumerate(wallet.inputs):
         if isinstance(item, deser.SuiUnresolvedObjectCallArg):
             unresobj.append((idx, item))
     if unresobj:
         result: list[deser.SuiObjectCallArg] = _resolve_inputs(client, unresobj)
         for inidx, replacement in result:
-            inputs[inidx] = replacement
+            wallet.inputs[inidx] = replacement
 
-    return inputs
+
+def _resolve_object_check(txer: SuiTransaction, wallet: deser.SuiBuilder) -> None:
+    """Pre-process that checks for Receiving or Optional object argument.
+
+    If one is found, take the index of the argument and adjust the input type
+
+    :param txer: The transaction being built
+    :type txer: SuiTransaction
+    :param wallet: The Sui Wallet construct
+    :type wallet: deser.SuiBuilder
+    """
+    for cmd in wallet.commands:
+        if isinstance(cmd, deser.SuiMoveCall):
+            target = cmd.package + "::" + cmd.module + "::" + cmd.function
+            _, _, _, _, arguments = txer.target_function_summary(target)
+            # Check for Receiving object argument type
+            receiving_input_index: list[int] = []
+            optional_input_index: list[int] = []
+            argsgql: tn.MoveArgSummary = arguments
+            for idx, arg in enumerate(argsgql.arg_list):
+                if isinstance(arg, tn.MoveObjectRefArg):
+                    if arg.is_receiving:
+                        receiving_input_index.append(idx)
+                    elif arg.is_optional:
+                        optional_input_index.append(idx)
+            # Adjust the inputs offset to Receiving
+            for arg_indx in receiving_input_index:
+                input_type = cmd.arguments[arg_indx]
+                if isinstance(input_type, deser.SuiCallArgIndex) and isinstance(
+                    wallet.inputs[input_type.index], deser.SuiObjectCallArg
+                ):
+                    wallet.inputs[input_type.index.index]["ref_type"] = "Receiving"
+            # Adjust the inputs offset to Optional
+            for arg_indx in optional_input_index:
+                input_type = cmd.arguments[arg_indx]
+                if isinstance(input_type, deser.SuiCallArgIndex) and isinstance(
+                    wallet.inputs[input_type.index], deser.SuiObjectCallArg
+                ):
+                    wallet.inputs[input_type.index.index]["ref_type"] = "Optional"
+
+
+def _build_inputs(txer: SuiTransaction, wallet: deser.SuiBuilder) -> list[bcs.Argument]:
+    """."""
+    txbuilder: ProgrammableTransactionBuilder = txer.builder
+    argrefs: list[bcs.Argument] = []
+    for input in wallet.inputs:
+        if isinstance(input, deser.SuiPureCallArg):
+            argrefs.append(
+                txbuilder.input_pure(
+                    bcs.BuilderArg("Pure", list(base64.b64decode(input.pure_bytes)))
+                )
+            )
+
+        elif isinstance(input, deser.SuiObjectCallArg):
+            addy = bcs.Address.from_str(input.object_id)
+            match input.ref_type:
+                case "ImmOrOwnedObject" | "Receiving":
+                    objarg = bcs.ObjectArg(
+                        input.ref_type,
+                        bcs.ObjectReference(
+                            addy,
+                            int(input.version),
+                            bcs.Digest.from_str(input.digest),
+                        ),
+                    )
+                    barg = bcs.BuilderArg("Object", addy)
+                    argrefs.append(txbuilder.input_obj(barg, objarg))
+                case "Shared":
+                    objarg = bcs.ObjectArg(
+                        "SharedObject",
+                        bcs.SharedObjectReference(
+                            addy, int(input.version), input.mutable
+                        ),
+                    )
+                    barg = bcs.BuilderArg("Object", addy)
+                    argrefs.append(txbuilder.input_obj(barg, objarg))
+                case _:
+                    raise ValueError(f"Unhandled Object Type {input}")
+        else:
+            raise ValueError(f"Unknown input type {input}")
+    return argrefs
+
+
+def _arg_for_input(
+    ref: Any, txer: SuiTransaction, arg: list[bcs.Argument], crefs: list[bcs.Argument]
+) -> bcs.Argument:
+    """."""
+    result: bcs.Argument = None
+    if isinstance(ref, deser.SuiCallArgIndex):
+        result = arg[ref.index]
+    elif isinstance(ref, deser.SuiCmdResultIndex):
+        result = crefs[ref.result]
+    elif isinstance(ref, deser.SuiCmdNestedResultIndex):
+        result = bcs.Argument("NestedResult", tuple(ref.nested_result))
+    elif isinstance(ref, deser.SuiGasCoinArg):
+        result = txer.gas
+    return result
+
+
+def _build_commands(
+    txer: SuiTransaction, wallet: deser.SuiBuilder, args: list[bcs.Argument]
+) -> None:
+    """."""
+    cmdrefs: list = []
+    txbuilder: ProgrammableTransactionBuilder = txer.builder
+    for cmd in wallet.commands:
+        if isinstance(cmd, deser.SuiMoveCall):
+            cmdrefs.append(
+                txbuilder.move_call(
+                    target=bcs.Address.from_str(cmd.package),
+                    module=cmd.module,
+                    function=cmd.function,
+                    arguments=[
+                        _arg_for_input(x, txer, args, cmdrefs) for x in cmd.arguments
+                    ],
+                    type_arguments=[
+                        bcs.TypeTag.type_tag_from(x) for x in cmd.type_arguments
+                    ],
+                )
+            )
+        elif isinstance(cmd, deser.SuiSplitCoins):
+            cmdrefs.append(
+                txbuilder.split_coin(
+                    from_coin=_arg_for_input(cmd.coin, txer, args, cmdrefs),
+                    amounts=[
+                        _arg_for_input(x, txer, args, cmdrefs) for x in cmd.amounts
+                    ],
+                )
+            )
+
+        elif isinstance(cmd, deser.SuiTransferObjects):
+            cmdrefs.append(
+                txbuilder.transfer_objects(
+                    recipient=_arg_for_input(cmd.address, txer, args, cmdrefs),
+                    object_ref=[
+                        _arg_for_input(x, txer, args, cmdrefs) for x in cmd.objects
+                    ],
+                )
+            )
+            # txbuilder.transfer_objects()
+        elif isinstance(cmd, deser.SuiMergeCoins):
+            cmdrefs.append(
+                txbuilder.merge_coins(
+                    to_coin=_arg_for_input(cmd.destination, txer, args, cmdrefs),
+                    from_coins=[
+                        _arg_for_input(x, txer, args, cmdrefs) for x in cmd.sources
+                    ],
+                )
+            )
+        elif isinstance(cmd, deser.SuiMakeMoveVec):
+            cmdrefs.append(
+                txbuilder.make_move_vector(
+                    items=[
+                        _arg_for_input(x, txer, args, cmdrefs) for x in cmd.elements
+                    ],
+                    vtype=bcs.OptionalTypeTag(
+                        bcs.TypeTag.type_tag_from(cmd.vec_type[0])
+                    ),
+                )
+            )
+        elif isinstance(cmd, deser.SuiPublish):
+            cmdrefs.append(
+                txbuilder.publish(
+                    [list(base64.b64decode(x)) for x in cmd.modules],
+                    [bcs.Address.from_str(x) for x in cmd.dependencies],
+                )
+            )
+        elif isinstance(cmd, deser.SuiUpgrade):
+            cmdrefs.append(
+                txbuilder.publish_upgrade(
+                    [list(base64.b64decode(x)) for x in cmd.modules],
+                    [bcs.Address.from_str(x) for x in cmd.dependencies],
+                    bcs.Address.from_str(cmd.package),
+                    _arg_for_input(cmd.ticket, txer, args, cmdrefs),
+                )
+            )
 
 
 def deserialize_to_transaction(
@@ -113,12 +293,14 @@ def deserialize_to_transaction(
     client: SuiGQLClient = kwargs["client"]
 
     # Manage Unresolved
-    [print(x.to_json(indent=2)) for x in wallet.inputs]
-    wallet.inputs = _resolve_unresolved(client, wallet.inputs)
-    [print(x.to_json(indent=2)) for x in wallet.inputs]
+    _resolve_unresolved(client, wallet)
+    # [print(x.to_json(indent=2)) for x in wallet.inputs]
+    # Commands and Receiving Adjustments
+    sui_txn = SuiTransaction(**kwargs)
+    _resolve_object_check(sui_txn, wallet)
+    _build_commands(sui_txn, wallet, _build_inputs(sui_txn, wallet))
     # Manage substitutes
     # Manage Addresses
     # Manage $Intents
-    # sui_txn = SuiTransaction(**kwargs)
 
-    return wallet.expiration, None
+    return wallet.expiration, sui_txn

@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Serialization of **pysui GraphQL SuiTransaction** to **Sui Wallet JSON standard** (_schema version 2_)
+  - `pgql_wallet_ser.serialize_to_wallet_standard`
+- Deserialization of **Sui Wallet JSON standard** (_schema version 2_) to dataclasses
+  - `pgql_wallet_deser.deserialize_from_wallet_standard`
+- Deserialization of **Sui Wallet JSON standard** (_schema version 2_) to **pysui GraphQL SuiTransaction**
+  - `pgql_wallet2txn_deser.deserialize_to_transaction`
+
 
 ### Fixed
 
@@ -17,7 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+
 ### Removed
+
+- GetLoadedChildObjects as Sui 1.28.0 removed RPC "sui_getLoadedChildObjects"
 
 ## [0.62.1] - 2024-06-08
 

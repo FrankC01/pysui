@@ -922,23 +922,6 @@ class DynamicFields(DataClassJsonMixin):
 
 
 @dataclass
-class LoadedChildObject(DataClassJsonMixin):
-    """From sui_getLoadedChildObjects."""
-
-    object_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    sequence_number: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-
-
-@dataclass
-class LoadedChildObjectsResponse(DataClassJsonMixin):
-    """From sui_getLoadedChildObjects."""
-
-    loaded_child_objects: list[LoadedChildObject] = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-
-
-@dataclass
 class ValidatorApy(DataClassJsonMixin):
     """From suix_getValidatorsApy."""
 
