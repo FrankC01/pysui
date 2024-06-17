@@ -314,12 +314,12 @@ def _serialize_inputs(
                 if unrealize_objs:
                     call_args.inputs.append(UnResObj(UnresolvedObject=OIDStr(obj_id)))
                 else:
-                    digest = base58.b58encode(
-                        bytearray(objref.ObjectDigest.Digest)
-                    ).decode()
                     # digest = base64.b64encode(objref.ObjectDigest.serialize()).decode()
                     match objarg.enum_name:
                         case "ImmOrOwnedObject":
+                            digest = base58.b58encode(
+                                bytearray(objref.ObjectDigest.Digest)
+                            ).decode()
                             call_args.inputs.append(
                                 Object(
                                     ImmObject(
@@ -332,6 +332,9 @@ def _serialize_inputs(
                                 )
                             )
                         case "Receiving":
+                            digest = base58.b58encode(
+                                bytearray(objref.ObjectDigest.Digest)
+                            ).decode()
                             call_args.inputs.append(
                                 Object(
                                     RecievingObject(
@@ -399,6 +402,7 @@ def _type_tags(ttags: list[bcs.TypeTag]) -> list[str]:
                 + "::"
                 + strtag.module
                 + "::"
+                + strtag.name
             )
             if strtag.type_parameters:
 
@@ -409,7 +413,7 @@ def _type_tags(ttags: list[bcs.TypeTag]) -> list[str]:
                     + ">"
                 )
             else:
-                tags.append(addy + strtag.name)
+                tags.append(addy)
         # TODO: Make recursive
         elif tag.enum_name == "Vector":
             pass

@@ -6,7 +6,7 @@
 """Pysui DeSertializtion from Sui Wallet JSON standard to pysui GraphQL SuiTransaction."""
 
 import base64
-from typing import Any, Optional
+from typing import Any, Optional, Union
 import functools as ft
 
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
@@ -80,7 +80,7 @@ def _resolve_inputs(client: SuiGQLClient, unresolved: list[tuple[int, Any]]) -> 
             objcarg["version"] = item.version
         elif isinstance(item.object_owner, tn.SuiObjectOwnedShared):
             objcarg["ref_type"] = "Shared"
-            objcarg["initial_shared_version"] = item.initial_version
+            objcarg["initial_shared_version"] = item.object_owner.initial_version
             objcarg["mutable"] = True
         else:
             raise ValueError(f"Object owner not recognized {item.object_owner}")
@@ -178,7 +178,7 @@ def _build_inputs(txer: SuiTransaction, wallet: deser.SuiBuilder) -> list[bcs.Ar
                     objarg = bcs.ObjectArg(
                         "SharedObject",
                         bcs.SharedObjectReference(
-                            addy, int(input.version), input.mutable
+                            addy, int(input.initial_shared_version), input.mutable
                         ),
                     )
                     barg = bcs.BuilderArg("Object", addy)
@@ -257,14 +257,15 @@ def _build_commands(
                 )
             )
         elif isinstance(cmd, deser.SuiMakeMoveVec):
+            vtag = bcs.OptionalTypeTag()
+            if cmd.vec_type:
+                vtag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(cmd.vec_type[0]))
             cmdrefs.append(
                 txbuilder.make_move_vector(
                     items=[
                         _arg_for_input(x, txer, args, cmdrefs) for x in cmd.elements
                     ],
-                    vtype=bcs.OptionalTypeTag(
-                        bcs.TypeTag.type_tag_from(cmd.vec_type[0])
-                    ),
+                    vtype=vtag,
                 )
             )
         elif isinstance(cmd, deser.SuiPublish):
@@ -286,21 +287,45 @@ def _build_commands(
 
 
 def deserialize_to_transaction(
-    *, wallet_json: str, substitutions: Optional[dict] = None, **kwargs
-) -> tuple[int, SuiTransaction]:
-    """Deserialize from the Sui Wallet Transaction Standard to pysui GraphQL SuiTransaction."""
+    *, wallet_json: str, **kwargs
+) -> tuple[int, SuiTransaction, Union[deser.SuiGasData, None]]:
+    """Deserializes a Sui Transaction to a pysui SuiTransaction (GraphQL).
+
+    Notes:
+
+    1. If there are UnresolvedPure this will fail.
+    2. $Intents are ignored.
+    3. If the 'sender' or 'gas owner' are not resolvable this will fail.
+
+    :param wallet_json: _description_
+    :type wallet_json: str
+    :param \**kwargs: The keywords passed to instantiating SuiTranaaction
+    :type \**kwargs: dict
+    :return: A tuple of expiration epoch (if any), the SuiTransaction and optional Sponsor dataclass
+    :rtype: tuple[int, SuiTransaction, Union[deser.SuiGasData, None]]
+    """
     wallet: deser.SuiBuilder = deser.SuiBuilder.from_json(wallet_json)
     client: SuiGQLClient = kwargs["client"]
-
-    # Manage Unresolved
-    _resolve_unresolved(client, wallet)
-    # [print(x.to_json(indent=2)) for x in wallet.inputs]
-    # Commands and Receiving Adjustments
     sui_txn = SuiTransaction(**kwargs)
-    _resolve_object_check(sui_txn, wallet)
-    _build_commands(sui_txn, wallet, _build_inputs(sui_txn, wallet))
-    # Manage substitutes
-    # Manage Addresses
-    # Manage $Intents
+    sponsor: deser.SuiGasData = None
 
-    return wallet.expiration, sui_txn
+    try:
+        # Manage Unresolved
+        _resolve_unresolved(client, wallet)
+        # Hydrate objects and Receiving adjustments
+        _resolve_object_check(sui_txn, wallet)
+        # Commands
+        _build_commands(sui_txn, wallet, _build_inputs(sui_txn, wallet))
+        # Validate sender and sponsors
+        # Use config key resolutions
+        if wallet.sender:
+            _ = client.config.kp4add(wallet.sender)
+        if wallet.gas_data:
+            sponsor = wallet.gas_data
+            if sponsor.owner:
+                _ = client.config.kp4add(sponsor.owner)
+    except ValueError as ve:
+        sui_txn = None
+        raise ve
+
+    return wallet.expiration, sui_txn, sponsor
