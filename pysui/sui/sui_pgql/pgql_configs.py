@@ -42,7 +42,91 @@ _QUERY = """
             maxTypeNodes
             maxMoveValueDepth
         }
+      protocolConfig {
+          protocolVersion
+          configs {
+            key
+            value
+          }
+          featureFlags {
+            key
+            value
+          }
+        }
+    }
+"""
+
+_QUERY_44 = """
+
+    query {
+        chainIdentifier
+        checkpoints (last: 1) {
+            nodes {
+                sequenceNumber
+                timestamp
+                epoch {
+                        referenceGasPrice
+                    }
+            }
+        }
+        serviceConfig {
+            availableVersions
+            enabledFeatures
+            maxQueryDepth
+            maxQueryNodes
+            maxOutputNodes
+            maxDbQueryCost
+            defaultPageSize
+            maxPageSize
+            mutationTimeoutMs
+            requestTimeoutMs
+            maxQueryPayloadSize
+            maxTypeArgumentDepth
+            maxTypeNodes
+            maxMoveValueDepth
+        }
       protocolConfig(protocolVersion:44) {
+          protocolVersion
+          configs {
+            key
+            value
+          }
+          featureFlags {
+            key
+            value
+          }
+        }
+    }
+"""
+
+_QUERY_39 = """
+
+    query {
+        chainIdentifier
+        checkpoints (last: 1) {
+            nodes {
+                sequenceNumber
+                timestamp
+                epoch {
+                        referenceGasPrice
+                    }
+            }
+        }
+        serviceConfig {
+            enabledFeatures
+            maxQueryDepth
+            maxQueryNodes
+            maxOutputNodes
+            maxDbQueryCost
+            defaultPageSize
+            maxPageSize
+            requestTimeoutMs
+            maxQueryPayloadSize
+            maxTypeArgumentDepth
+            maxTypeNodes
+            maxMoveValueDepth
+        }
+      protocolConfig(protocolVersion:39) {
           protocolVersion
           configs {
             key
@@ -62,8 +146,6 @@ _QUERY = """
 class ServiceConfigGQL:
     """Sui GraphQL service controls."""
 
-    availableVersions: list[str]
-    mutationTimeoutMs: int
     maxTypeArgumentDepth: int
     maxTypeNodes: int
     maxMoveValueDepth: int
@@ -77,6 +159,8 @@ class ServiceConfigGQL:
     maxPageSize: int
     requestTimeoutMs: int
     maxQueryPayloadSize: int
+    availableVersions: Optional[list[str]] = dataclasses.field(default_factory=list)
+    mutationTimeoutMs: Optional[int] = dataclasses.field(default=None)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -115,6 +199,14 @@ class SuiConfigGQL:
         return SuiConfigGQL.from_dict(in_data)
 
 
-def pgql_config(env: str) -> tuple[str, Callable]:
+def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable]:
     """."""
-    return _QUERY, SuiConfigGQL.from_query
+    _squery = _QUERY
+    if env is not "devnet":
+        _squery = _QUERY_44
+        if sversion:
+            _ym = sversion.split(".")
+            if _ym[0] == "2024" and int(_ym[1]) < 4:
+                _squery = _QUERY_39
+    return _squery, SuiConfigGQL.from_query
+    # return _QUERY, SuiConfigGQL.from_query

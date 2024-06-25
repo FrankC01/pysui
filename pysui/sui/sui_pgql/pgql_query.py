@@ -985,11 +985,11 @@ class GetProtocolConfig(PGQL_QueryNode):
         self.version = version
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        std_prot_cfg = frag.StandardProtocolConfig()
+        std_prot_cfg = frag.StandardProtocolConfig().fragment(schema)
         qres = schema.Query.protocolConfig(protocolVersion=self.version).select(
-            std_prot_cfg.fragment(schema)
+            std_prot_cfg
         )
-        return dsl_gql(std_prot_cfg.fragment(schema), DSLQuery(qres))
+        return dsl_gql(std_prot_cfg, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.ProtocolConfigGQL], None]:

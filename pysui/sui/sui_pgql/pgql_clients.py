@@ -12,25 +12,29 @@ import asyncio
 from typing import Callable, Any, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from gql import Client, gql
+from gql.client import ReconnectingAsyncClientSession
+
 import httpx
 
-from gql.transport.httpx import HTTPXTransport
 from gql.transport.httpx import HTTPXAsyncTransport
 
 from gql.transport import exceptions as texc
 from gql.dsl import (
     DSLSchema,
 )
-from graphql import DocumentNode, print_ast, GraphQLSchema
+from graphql import DocumentNode, print_ast
 from graphql.error.syntax_error import GraphQLSyntaxError
 from graphql.utilities.print_schema import print_schema
 from graphql.language.printer import print_ast
+
+# from graphql.language.printer import print_ast
 
 
 from pysui import SuiConfig, SuiRpcResult
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
+import pysui.sui.sui_pgql.pgql_schema as scm
 import pysui.sui.sui_constants as cnst
 
 # Standard library logging setup
@@ -98,6 +102,10 @@ class PGQL_Fragment(ABC):
     """Base Fragment class."""
 
 
+@versionchanged(
+    version="0.64.0",
+    reason="BREAKING previous properteries now take schema version option",
+)
 class BaseSuiGQLClient:
     """Base GraphQL client."""
 
@@ -105,7 +113,6 @@ class BaseSuiGQLClient:
     _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql/stable"
-    _SCHEMA_HEADER_KEY: str = "X-Sui-RPC-Version"
 
     @classmethod
     def _resolve_url(
@@ -144,91 +151,108 @@ class BaseSuiGQLClient:
         self,
         *,
         sui_config: SuiConfig,
-        gql_client: Client,
-        version: str,
-        schema: DSLSchema,
-        rpc_config: SuiConfigGQL,
+        schema: scm.Schema,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
     ):
         """."""
 
         self._sui_config: SuiConfig = sui_config
-        self._inner_client: Client = gql_client
-        self._url: str = gql_client.transport.url
-        self._version: str = version
-        self._base_version = version[: version.index("-")]
-        self._schema: DSLSchema = schema
-        self._rpc_config: SuiConfigGQL = rpc_config
-        self._default_header = default_header if default_header else {"headers": None}
+        self._schema: scm.Schema = schema
+        self._default_header = default_header if default_header else {}
         # Schema persist
         if write_schema:
-            fname = f"./{self._rpc_config.gqlEnvironment}_schema-{version}.graphql"
+            def_config: dict[str, Any] = schema.schema_set[schema.default_version]
+            def_env = def_config[scm.Schema.RPC_CFG].gqlEnvironment
+            def_schm = def_config[scm.Schema.DSCHEMA]
+            fname = f"./{def_env}_schema-{def_config[scm.Schema.BUILD]}.graphql"
             with open(fname, "w", encoding="utf8") as inner_file:
-                inner_file.write(print_schema(self._inner_client.schema))
+                inner_file.write(print_schema(getattr(def_schm, "_schema")))
 
     @property
     def config(self) -> SuiConfig:
-        """Fetch the graphql client."""
+        """Fetch the active Sui configuration."""
         return self._sui_config
 
-    @property
-    def current_gas_price(self) -> int:
+    def current_gas_price(self, for_version: Optional[str] = None) -> int:
         """Fetch the current epoch gas price."""
-        return int(self._rpc_config.checkpoints.nodes[0].reference_gas_price)
+        def_config: dict[str, Any] = self._schema.schema_set[
+            for_version or self._schema.default_version
+        ]
+        return int(
+            def_config[scm.Schema.RPC_CFG].checkpoints.nodes[0].reference_gas_price
+        )
 
-    @property
-    def rpc_config(self) -> SuiConfigGQL:
+    def rpc_config(self, for_version: Optional[str] = None) -> SuiConfigGQL:
         """Fetch the graphql configuration."""
-        return self._rpc_config
+        def_config: dict[str, Any] = self._schema.schema_set[
+            for_version or self._schema.default_version
+        ]
+        return def_config[scm.Schema.RPC_CFG]
 
-    @property
-    def protocol(self) -> pgql_type.TransactionConstraints:
+    def protocol(
+        self, for_version: Optional[str] = None
+    ) -> pgql_type.TransactionConstraints:
         """Fetch the protocol constraint block."""
-        return self.rpc_config.protocolConfig
+        def_config = self.rpc_config(for_version)
+        return def_config.protocolConfig
 
-    @property
-    def url(self) -> str:
+    def url(self, for_version: Optional[str] = None) -> str:
         """Fetch the active GraphQL URL."""
-        return self._url
+        def_config: dict[str, Any] = self._schema.schema_set[
+            for_version or self._schema.default_version
+        ]
+        return def_config[scm.Schema.GURL]
 
-    @property
-    def client(self) -> Client:
+    def client(self, for_version: Optional[str] = None) -> Client:
         """Fetch the graphql client."""
-        return self._inner_client
+        def_config: dict[str, Any] = self._schema.schema_set[
+            for_version or self._schema.default_version
+        ]
+        return def_config[scm.Schema.GCLIENT]
 
-    @property
-    def chain_id(self) -> str:
+    async def async_client(
+        self, for_version: Optional[str] = None
+    ) -> ReconnectingAsyncClientSession:
+        """Fetch the graphql async client."""
+        def_config: dict[str, Any] = self._schema.schema_set[
+            for_version or self._schema.default_version
+        ]
+        if session := def_config.get(scm.Schema.ASYNCSESS):
+            return session
+        def_config[scm.Schema.ASYNCSESS] = await def_config[
+            scm.Schema.GCLIENT
+        ].connect_async(reconnecting=True)
+        return def_config[scm.Schema.ASYNCSESS]
+
+    def chain_id(self, for_version: Optional[str] = None) -> str:
         """Fetch the chain identifier."""
-        return self._rpc_config.chainIdentifier
+        return self.rpc_config(for_version).chainIdentifier
 
     @property
     def chain_environment(self) -> str:
         """Fetch which environment (testnet, devenet) operating with."""
-        return self._rpc_config.gqlEnvironment
+        return self.rpc_config().gqlEnvironment
 
-    @property
-    def schema_version(self) -> str:
-        """Return Sui GraphQL schema version."""
-        return self._version
+    def schema_version(self, for_version: Optional[str] = None) -> str:
+        """Returns Sui GraphQL schema long version."""
+        def_config: dict[str, Any] = self._schema.schema_set[
+            for_version or self._schema.default_version
+        ]
+
+        return def_config[scm.Schema.BUILD]
 
     @property
     def base_schema_version(self) -> str:
-        """Returns the header version (schema version without patch)"""
-        return self._base_version
+        """Returns the default schema version (schema version without patch)"""
+        return self._schema.default_version
 
-    @property
-    def client_headers(self) -> dict:
-        return self._default_header.copy()
-
-    @property
-    def schema(self) -> DSLSchema:
-        """schema Return the DSLSchema for configuration
-
-        :return: DSLSchema for Sui Schema version associated with connection.
-        :rtype: DSLSchema
-        """
-        return self._schema
+    def schema(self, for_version: Optional[str] = None) -> DSLSchema:
+        """Return the specific DSLSchema for configuration"""
+        def_config: dict[str, Any] = self._schema.schema_set[
+            for_version or self._schema.default_version
+        ]
+        return def_config[scm.Schema.DSCHEMA]
 
     def _qnode_owner(self, qnode: PGQL_QueryNode):
         """."""
@@ -244,13 +268,11 @@ class BaseSuiGQLClient:
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
             self._qnode_owner(qnode)
-            # TODO If schema constrained than pass the correct schema
-            # to the document builder
-            if qnode.schema_constraint:
-                pass
-            dnode = qnode.as_document_node(self.schema)
+            dnode_sc = qnode.schema_constraint
+            dnode_sc = dnode_sc or schema_constraint
+            dnode = qnode.as_document_node(self.schema(dnode_sc))
             if isinstance(dnode, DocumentNode):
-                return dnode, qnode.schema_constraint
+                return dnode, dnode_sc
             else:
                 raise ValueError("QueryNode did not produce a gql DocumentNode")
         else:
@@ -262,7 +284,7 @@ class BaseSuiGQLClient:
     ) -> str:
         """."""
         self._qnode_owner(query_node)
-        return print_ast(query_node.as_document_node(self.schema))
+        return print_ast(query_node.as_document_node(self.schema(schema_constraint)))
 
 
 class SuiGQLClient(BaseSuiGQLClient):
@@ -279,29 +301,9 @@ class SuiGQLClient(BaseSuiGQLClient):
         """Sui GraphQL Client initializer."""
         # Resolve GraphQL URL
         gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
-        # Build Sync Client
-        _iclient: Client = Client(
-            transport=HTTPXTransport(
-                url=gurl,
-                verify=True,
-                http2=True,
-                timeout=120.0,
-            ),
-            fetch_schema_from_transport=True,
-        )
-        with _iclient as session:
-            _version: str = session.transport.response_headers["x-sui-rpc-version"]
-            _schema: DSLSchema = DSLSchema(_iclient.schema)
-            qstr, fndeser = pgql_config(genv)
-            _rpc_config = fndeser(session.execute(gql(qstr)))
-            _rpc_config.gqlEnvironment = genv
-
         super().__init__(
             sui_config=config,
-            gql_client=_iclient,
-            version=_version,
-            schema=_schema,
-            rpc_config=_rpc_config,
+            schema=scm.load_schema_cache(gurl, genv, schema_version),
             write_schema=write_schema,
             default_header=default_header,
         )
@@ -330,10 +332,9 @@ class SuiGQLClient(BaseSuiGQLClient):
         :rtype: SuiRpcResult
         """
         try:
-            # hdr = {}
-            hdr = self.client_headers
-            hdr = hdr if not with_headers else hdr.update(with_headers)
-            sres = self.client.execute(node, extra_args=hdr)
+            sres = self.client(schema_constraint).execute(
+                node, extra_args=with_headers or self._default_header
+            )
             return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
 
         except texc.TransportQueryError as gte:
@@ -418,7 +419,8 @@ class SuiGQLClient(BaseSuiGQLClient):
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
-            return self._execute(qdoc_node, schema_constraint, with_headers, encode_fn)
+
+            return self._execute(qdoc_node, _sc_constraint, with_headers, encode_fn)
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
@@ -438,42 +440,23 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     ):
         """Async Sui GraphQL Client initializer."""
         gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
-
-        _iclient: Client = Client(
-            transport=HTTPXTransport(
-                url=gurl,
-                verify=True,
-                http2=True,
-                timeout=120.0,
-            ),
-            fetch_schema_from_transport=True,
-        )
-        with _iclient as session:
-            _version: str = session.transport.response_headers["x-sui-rpc-version"]
-            _schema: DSLSchema = DSLSchema(_iclient.schema)
-            qstr, fndeser = pgql_config(genv)
-            _rpc_config = fndeser(session.execute(gql(qstr)))
-            _rpc_config.gqlEnvironment = genv
-        _iclient.close_sync()
-
-        super().__init__(
-            sui_config=config,
-            gql_client=Client(
+        scm_mgr: scm.Schema = scm.load_schema_cache(gurl, genv, schema_version)
+        for _sver, sblock in scm_mgr.schema_set.items():
+            sblock[scm.Schema.GCLIENT].close_sync()
+            sblock[scm.Schema.GCLIENT] = Client(
                 transport=HTTPXAsyncTransport(
-                    url=gurl,
+                    url=sblock[scm.Schema.GURL],
                     verify=True,
                     http2=True,
                     timeout=120.0,
                 ),
-                fetch_schema_from_transport=True,
-            ),
-            version=_version,
-            schema=_schema,
-            rpc_config=_rpc_config,
+            )
+        super().__init__(
+            sui_config=config,
+            schema=scm_mgr,
             write_schema=write_schema,
             default_header=default_header,
         )
-        self._session = None
         self._slock = asyncio.Semaphore()
 
     @property
@@ -482,10 +465,8 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
     async def close(self) -> None:
         """Close the connection."""
-        if self._session:
-            await self._session.close_async()
-        else:
-            await self.client.close_async()
+        aclient = self.client()
+        await aclient.close_async()
 
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
@@ -512,19 +493,14 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         """
         try:
             async with self._slock:
-                if not self.session:
-                    self._session = await self.client.connect_async(reconnecting=True)
-                hdr = self.client_headers
-                hdr = hdr if not with_headers else hdr.update(with_headers)
-                sres = await self.session.execute(node, extra_args=hdr)
+                _session = await self.async_client(for_version=schema_constraint)
+                sres = await _session.execute(
+                    node, extra_args=with_headers or self._default_header
+                )
+
                 return SuiRpcResult(
                     True, None, sres if not encode_fn else encode_fn(sres)
                 )
-            # async with self.client as aclient:
-            #     sres = await aclient.execute(node, extra_args=hdr)
-            #     return SuiRpcResult(
-            #         True, None, sres if not encode_fn else encode_fn(sres)
-            #     )
 
         except texc.TransportQueryError as gte:
             return SuiRpcResult(
@@ -534,6 +510,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             httpx.HTTPError,
             httpx.InvalidURL,
             httpx.CookieConflict,
+            httpx.UnsupportedProtocol,
         ) as hexc:
             return SuiRpcResult(
                 False, f"HTTPX error: {hexc.__class__.__name__}", vars(hexc)
@@ -608,9 +585,11 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
+
             return await self._execute(
-                qdoc_node, schema_constraint, with_headers, encode_fn
+                qdoc_node, _sc_constraint, with_headers, encode_fn
             )
+
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)

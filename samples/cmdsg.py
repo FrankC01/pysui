@@ -150,7 +150,7 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
         if gas_result.result_data.next_cursor.hasNextPage:
             gas_result = client.execute_query_node(
                 with_node=qn.GetCoins(
-                    owner=for_owner,
+                    owner=for_owner.address,
                     next_page=gas_result.result_data.next_cursor,
                 )
             )

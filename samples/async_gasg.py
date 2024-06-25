@@ -97,13 +97,17 @@ def print_gas(gasses: SuiCoinObjects) -> int:
     :rtype: int
     """
     total: int = 0
-    for gas_result in gasses:
-        total += int(gas_result.balance)
-        print(
-            f"{gas_result.coin_object_id} has {int(gas_result.balance):12} -> {int(gas_result.balance)/SUI_COIN_DENOMINATOR:.8f}"
-        )
-    print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
-    print()
+    try:
+        for gas_result in gasses:
+            total += int(gas_result.balance)
+            print(
+                f"{gas_result.coin_object_id} has {int(gas_result.balance):12} -> {int(gas_result.balance)/SUI_COIN_DENOMINATOR:.8f}"
+            )
+        print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
+        print()
+    except TypeError:
+        total = 0
+
     return total
 
 

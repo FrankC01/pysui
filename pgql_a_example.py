@@ -610,8 +610,8 @@ async def main():
         config=SuiConfig.default_config(),
     )
     print(f"Chain environment   '{client_init.chain_environment}'")
-    print(f"Schema base version '{client_init.base_schema_version}'")
-    print(f"Schema full version '{client_init.schema_version}'")
+    print(f"Default schema base version '{client_init.base_schema_version}'")
+    print(f"Default schema build version '{client_init.schema_version()}'")
     try:
         print()
         ## QueryNodes (fetch)

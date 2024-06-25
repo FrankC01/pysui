@@ -250,12 +250,12 @@ def do_event(client: SuiGQLClient):
 
 def do_configs(client: SuiGQLClient):
     """Fetch the GraphQL, Protocol and System configurations."""
-    print(client.rpc_config.to_json(indent=2))
+    print(client.rpc_config().to_json(indent=2))
 
 
 def do_service_config(client: SuiGQLClient):
     """Fetch the GraphQL, Protocol and System configurations."""
-    print(client.rpc_config.serviceConfig.to_json(indent=2))
+    print(client.rpc_config().serviceConfig.to_json(indent=2))
 
 
 def do_chain_id(client: SuiGQLClient):
@@ -263,7 +263,7 @@ def do_chain_id(client: SuiGQLClient):
 
     Demonstrates overriding serialization
     """
-    print(client.chain_id)
+    print(client.chain_id())
 
 
 def do_tx(client: SuiGQLClient):
@@ -731,14 +731,14 @@ if __name__ == "__main__":
         config=cfg,
     )
     print(f"Chain environment   '{client_init.chain_environment}'")
-    print(f"Schema base version '{client_init.base_schema_version}'")
-    print(f"Schema full version '{client_init.schema_version}'")
+    print(f"Default schema base version '{client_init.base_schema_version}'")
+    print(f"Default schema build version '{client_init.schema_version()}'")
     try:
         print()
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
@@ -787,4 +787,4 @@ if __name__ == "__main__":
         # do_protcfg(client_init)
     except Exception as ex:
         print(ex.args)
-    client_init.client.close_sync()
+    client_init.client().close_sync()

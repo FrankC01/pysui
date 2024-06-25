@@ -7,20 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.64.0] - Unpublished
 
+**BREAKING CHANGES**
+
 ### Added
+
+- GraphQL default and override schema usage (*testnet and mainnet only, devnet does not support*)
+  - Sui introduced support for multiple concurrent GraphQL schemas
+  - pysui suports setting the default schema at client init
+  - pysui supports overriding the default schema at execution requests
+  - pysui QueryNodes can define schema specific versions
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/216) walletg gas command
+
 ### Changed
 
+- [BREAKING](https://github.com/FrankC01/pysui/issues/216) pysui GraphQL clients replaced properties with functions taking optional versions
+- [BREAKING](https://github.com/FrankC01/pysui/issues/215) GraphQL SuiTransaction `txer.build_and_sign()` returns a dict now
+
 ### Removed
-
-
-## [0.62.1] - 2024-06-08
-
-### Added
-
-- `availableVersions` list and `mutationTimeoutMs` to ServiceConfigGQL
 
 ## [0.63.0] - 2024-06-18
 
@@ -32,7 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pgql_wallet_deser.deserialize_from_wallet_standard`
 - Deserialization of **Sui Wallet JSON standard** (_schema version 2_) to **pysui GraphQL SuiTransaction**
   - `pgql_wallet2txn_deser.deserialize_to_transaction`
-
 
 ### Fixed
 
