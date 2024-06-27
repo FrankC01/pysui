@@ -177,10 +177,16 @@ class _SuiTransactionBase:
         )
         self._merge_gas = merge_gas_budget
         self._executed = False
-        self.constraints: TransactionConstraints = (
-            client.protocol.transaction_constraints
-        )
-        self._current_gas_price = client.current_gas_price
+        if isinstance(client, BaseSuiGQLClient):
+            self.constraints: TransactionConstraints = (
+                client.protocol().transaction_constraints
+            )
+            self._current_gas_price = client.current_gas_price()
+        else:
+            self.constraints: TransactionConstraints = (
+                client.protocol.transaction_constraints
+            )
+            self._current_gas_price = client.current_gas_price
         if deserialize_from:
             if isinstance(deserialize_from, str):
                 deserialize_from = base64.b64decode(deserialize_from)

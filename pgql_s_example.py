@@ -613,12 +613,8 @@ def do_execute_new(client: SuiGQLClient):
     txer.transfer_objects(
         transfers=scres, recipient=client.config.active_address.address
     )
-    tx_b64, sig_array = txer.build_and_sign()
-    handle_result(
-        client.execute_query_node(
-            with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
-        )
-    )
+    txdict = txer.build_and_sign()
+    handle_result(client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict)))
 
 
 def merge_some(client: SuiGQLClient):
@@ -634,11 +630,9 @@ def merge_some(client: SuiGQLClient):
     if result.is_ok() and len(result.result_data.data) > 1:
         txer: SuiTransaction = SuiTransaction(client=client)
         txer.merge_coins(merge_to=txer.gas, merge_from=result.result_data.data[1:])
-        tx_b64, sig_array = txer.build_and_sign()
+        txdict = txer.build_and_sign()
         handle_result(
-            client.execute_query_node(
-                with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
-            )
+            client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
         )
 
 
@@ -659,11 +653,9 @@ def split_1_half(client: SuiGQLClient):
         txer.transfer_objects(
             transfers=scres, recipient=client.config.active_address.address
         )
-        tx_b64, sig_array = txer.build_and_sign()
+        txdict = txer.build_and_sign()
         handle_result(
-            client.execute_query_node(
-                with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
-            )
+            client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
         )
 
 
@@ -688,11 +680,11 @@ def do_stake(client: SuiGQLClient):
             with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
         )
     )
-    # Uncomment to Execute the stake
-    # tx_b64, sig_array = txer.build_and_sign()
+    # Uncomment to Execute the unstake
+    # txdict = txer.build_and_sign()
     # handle_result(
     #     client.execute_query_node(
-    #         with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+    #         with_node=qn.ExecuteTransaction(**txdict)
     #     )
     # )
 
@@ -713,10 +705,10 @@ def do_unstake(client: SuiGQLClient):
             )
         )
         # Uncomment to Execute the unstake
-        # tx_b64, sig_array = txer.build_and_sign()
+        # txdict = txer.build_and_sign()
         # handle_result(
         #     client.execute_query_node(
-        #         with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
+        #         with_node=qn.ExecuteTransaction(**txdict)
         #     )
         # )
     else:
@@ -738,7 +730,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        # do_gas(client_init)
+        do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)

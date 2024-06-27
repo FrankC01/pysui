@@ -112,7 +112,7 @@ class BaseSuiGQLClient:
     # TODO: Move these to constants
     _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
     _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
-    _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql/stable"
+    _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql/beta"
 
     @classmethod
     def _resolve_url(
