@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [BREAKING](https://github.com/FrankC01/pysui/issues/216) pysui GraphQL clients replaced properties with functions taking optional versions
 - [BREAKING](https://github.com/FrankC01/pysui/issues/215) GraphQL SuiTransaction `txer.build_and_sign()` returns a dict now
+- Updated `pgql_s_example.py`
+- Updated `pgql_s_ptb.py`
+- Updated `pgql_a_example.py`
 
 ### Removed
 

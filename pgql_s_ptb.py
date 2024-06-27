@@ -74,12 +74,10 @@ def transaction_dryrun_with_gas(txer: SuiTransaction, coin_ids: list[str]):
 def transaction_execute(txer: SuiTransaction):
     """Uses fully built and serialized TransactionData for ExecuteTransaction."""
     # Still returns legacy SuiSignature array
-    tx_b64, sig_array = txer.build_and_sign()
+    tdict = txer.build_and_sign()
     # Execute the transaction
     handle_result(
-        txer.client.execute_query_node(
-            with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array)
-        )
+        txer.client.execute_query_node(with_node=qn.ExecuteTransaction(**tdict))
     )
 
 
@@ -234,7 +232,8 @@ if __name__ == "__main__":
         write_schema=False,
         config=SuiConfig.default_config(),
     )
-    print(f"Schema version {client_init.schema_version}")
+    print(f"Default schema base version '{client_init.base_schema_version}'")
+    print(f"Default schema build version '{client_init.schema_version()}'")
     try:
         print()
         # demo_tx_split(client_init)
