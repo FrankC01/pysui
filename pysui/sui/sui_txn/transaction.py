@@ -528,6 +528,9 @@ class _SuiTransactionBase:
         version="0.35.0",
         reason="Option to omit sender/sponsor",
     )
+    @deprecated(
+        version="0.64.0", reason="Use GraphQL serialize_to_wallet_standard function"
+    )
     def serialize(self, include_sender_sponsor: Optional[bool] = True) -> bytes:
         """."""
         tbuilder = self._serialize(include_sender_sponsor)
@@ -537,6 +540,9 @@ class _SuiTransactionBase:
     @versionadded(
         version="0.32.0",
         reason="DeSerialize transaction builder state",
+    )
+    @deprecated(
+        version="0.64.0", reason="Use GraphQL deserialize_to_transaction function"
     )
     def deserialize(self, state_ser: bytes):
         """."""
