@@ -9,8 +9,9 @@ import asyncio
 import base64
 
 from pysui import SuiConfig, SuiRpcResult, AsyncClient
+from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 from pysui.sui.sui_txn import AsyncTransaction
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient, SuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 
@@ -492,41 +493,34 @@ async def do_package(client: AsyncSuiGQLClient):
 
 async def do_dry_run(client: AsyncSuiGQLClient):
     """Execute a dry run."""
-    if client.chain_environment == "testnet":
-        txer = AsyncTransaction(client=AsyncClient(client.config))
-        scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
-        await txer.transfer_objects(
-            transfers=scres, recipient=client.config.active_address
-        )
 
-        tx_data = await txer.get_transaction_data()
-        tx_b64 = base64.b64encode(tx_data.serialize()).decode()
-        handle_result(
-            await client.execute_query_node(
-                with_node=qn.DryRunTransaction(tx_bytestr=tx_b64)
-            )
+    # Use synchronous transaction builder
+    txer = SuiTransaction(client=SuiGQLClient(config=client.config))
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=scres, recipient=client.config.active_address.address
+    )
+
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
         )
+    )
 
 
 async def do_execute(client: AsyncSuiGQLClient):
     """Execute a transaction."""
-    if client.chain_environment == "testnet":
-        rpc_client = AsyncClient(client.config)
-        txer = AsyncTransaction(client=rpc_client)
-        scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
-        await txer.transfer_objects(
-            transfers=scres, recipient=client.config.active_address
+    # Use synchronous transaction builder
+    txer = SuiTransaction(client=SuiGQLClient(config=client.config))
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    txer.transfer_objects(
+        transfers=scres, recipient=client.config.active_address.address
+    )
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.ExecuteTransaction(**txer.build_and_sign())
         )
-        tx_b64 = await txer.deferred_execution(run_verification=True)
-        print(tx_b64)
-        sig_array = txer.signer_block.get_signatures(client=rpc_client, tx_bytes=tx_b64)
-        rsig_array = [x.value for x in sig_array.array]
-        print(rsig_array)
-        handle_result(
-            await client.execute_query_node(
-                with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=rsig_array)
-            )
-        )
+    )
 
 
 async def do_stake(client: AsyncSuiGQLClient):
@@ -536,32 +530,26 @@ async def do_stake(client: AsyncSuiGQLClient):
     or different validator change the vaddress
     """
     vaddress = "0x44b1b319e23495995fc837dafd28fc6af8b645edddff0fc1467f1ad631362c23"
-    rpc_client = AsyncClient(client.config)
-    txer = AsyncTransaction(client=rpc_client)
+    # Use synchronous transaction builder
+    txer = SuiTransaction(client=SuiGQLClient(config=client.config))
 
     # Take 1 Sui from gas
-    stake_coin_split = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    stake_coin_split = txer.split_coin(coin=txer.gas, amounts=[1000000000])
     # Stake the coin
-    await txer.stake_coin(
+    txer.stake_coin(
         coins=[stake_coin_split],
         validator_address=vaddress,
     )
     # Uncomment to dry run
-    tx_data = await txer.get_transaction_data()
-    tx_b64 = base64.b64encode(tx_data.serialize()).decode()
     handle_result(
         await client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=tx_b64)
+            with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
         )
     )
     # Uncomment to execute the stake
-    # tx_b64 = await txer.deferred_execution(run_verification=True)
-    # print(tx_b64)
-    # sig_array = txer.signer_block.get_signatures(client=rpc_client, tx_bytes=tx_b64)
-    # rsig_array = [x.value for x in sig_array.array]
     # handle_result(
     #     await client.execute_query_node(
-    #         with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=rsig_array)
+    #         with_node=qn.ExecuteTransaction(**txer.build_and_sign())
     #     )
     # )
 
@@ -574,31 +562,25 @@ async def do_unstake(client: AsyncSuiGQLClient):
         with_node=qn.GetDelegatedStakes(owner=owner)
     )
     if result.is_ok() and result.result_data.staked_coins:
-        rpc_client = AsyncClient(client.config)
-        txer = AsyncTransaction(client=rpc_client)
+        # Use synchronous transaction builder
+        txer = SuiTransaction(client=SuiGQLClient(config=client.config))
 
         # Unstake the first staked coin
-        await txer.unstake_coin(
-            staked_coin=result.result_data.staked_coins[0].object_id
-        )
+        txer.unstake_coin(staked_coin=result.result_data.staked_coins[0].object_id)
         # Uncomment to dry run
-        tx_data = await txer.get_transaction_data()
-        tx_b64 = base64.b64encode(tx_data.serialize()).decode()
         handle_result(
             await client.execute_query_node(
-                with_node=qn.DryRunTransaction(tx_bytestr=tx_b64)
+                with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
             )
         )
+
         # Uncomment to execute the stake
-        # tx_b64 = await txer.deferred_execution(run_verification=True)
-        # print(tx_b64)
-        # sig_array = txer.signer_block.get_signatures(client=rpc_client, tx_bytes=tx_b64)
-        # rsig_array = [x.value for x in sig_array.array]
         # handle_result(
         #     await client.execute_query_node(
-        #         with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=rsig_array)
+        #         with_node=qn.ExecuteTransaction(**txer.build_and_sign())
         #     )
         # )
+
     else:
         print(f"No staked Sui for {owner}")
 
@@ -656,7 +638,6 @@ async def main():
         # await do_configs(client_init)
         # await do_service_config(client_init)
         # await do_protcfg(client_init)
-        await client_init.close()
     except ValueError as ve:
         print(ve)
 
