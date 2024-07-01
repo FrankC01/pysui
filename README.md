@@ -59,9 +59,9 @@ We continue to monitor and support changes from MystenLabs as they occur.
 
 #### Examples
 
-  - [Synchronous Client](https://github.com/FrankC01/pysui/blob/v0.59.0/pgql_s_example.py) - Examples for all supported QueryNode queries and mutations
-  - [Asynchronous Client](https://github.com/FrankC01/pysui/blob/v0.59.0/pgql_a_example.py) - Examples for all supported QueryNode queries and mutations
-  - [Synchronous TransactionBuilder](https://github.com/FrankC01/pysui/blob/v0.59.0/pgql_s_ptb.py) - Example of new pysui Transaction Builder leveraging Sui GraphQL
+  - [Synchronous Client](https://github.com/FrankC01/pysui/blob/v0.65.0/pgql_s_example.py) - Examples for all supported QueryNode queries and mutations
+  - [Asynchronous Client](https://github.com/FrankC01/pysui/blob/v0.65.0/pgql_a_example.py) - Examples for all supported QueryNode queries and mutations
+  - [Synchronous TransactionBuilder](https://github.com/FrankC01/pysui/blob/v0.65.0/pgql_s_ptb.py) - Example of new pysui Transaction Builder leveraging Sui GraphQL
 
 You can read pysui documentation on graphql beta [here](https://pysui.readthedocs.io/en/latest/graphql.html)
 
