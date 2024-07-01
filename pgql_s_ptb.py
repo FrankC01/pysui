@@ -32,15 +32,12 @@ def handle_result(result: SuiRpcResult) -> SuiRpcResult:
 
 def transaction_inspect(txb: SuiTransaction):
     """Uses defaults for DryRunTransaction and just the TransactionKind"""
-    raw_kind = txb.raw_kind()
     # Print the TransactionType BCS (pre-serialized) structure
-    print(raw_kind.to_json(indent=2))
+    print(txb.raw_kind().to_json(indent=2))
     # Execute the dry run
     handle_result(
         txb.client.execute_query_node(
-            with_node=qn.DryRunTransactionKind(
-                tx_bytestr=base64.b64encode(raw_kind.serialize()).decode()
-            )
+            with_node=qn.DryRunTransactionKind(tx_bytestr=txb.build_for_dryrun())
         )
     )
 
@@ -73,11 +70,11 @@ def transaction_dryrun_with_gas(txer: SuiTransaction, coin_ids: list[str]):
 
 def transaction_execute(txer: SuiTransaction):
     """Uses fully built and serialized TransactionData for ExecuteTransaction."""
-    # Still returns legacy SuiSignature array
-    tdict = txer.build_and_sign()
     # Execute the transaction
     handle_result(
-        txer.client.execute_query_node(with_node=qn.ExecuteTransaction(**tdict))
+        txer.client.execute_query_node(
+            with_node=qn.ExecuteTransaction(**txer.build_and_sign())
+        )
     )
 
 
@@ -110,30 +107,6 @@ def demo_tx_split_equal(client: SuiGQLClient):
         coin="<ENTER COID ID TO SPLIT STRING>",
         split_count=3,
     )
-    #### Uncomment the action to take
-    # transaction_inspect(txb)
-    transaction_dryrun(txb)
-    # transaction_dryrun_with_gas(
-    #     txb,
-    #     [
-    #         "<ENTER ONE OR MORE COIN IDS TO PAY",
-    #     ],
-    # )
-    # transaction_execute(txb)
-
-
-def demo_tx_split_distribute(client: SuiGQLClient):
-    """Demonstrate GraphQL Beta PTB with split coin to equal parts and transfer to other address (or same)."""
-    txb = SuiTransaction(client=client)
-    scoins = txb.split_coin_and_return(
-        coin="<ENTER COID ID TO SPLIT STRING>",
-        split_count=4,
-    )
-    txb.transfer_objects(
-        transfers=scoins,
-        recipient="<ENTER RECIPIENT ADDRESS STRING>",
-    )
-
     #### Uncomment the action to take
     # transaction_inspect(txb)
     transaction_dryrun(txb)
@@ -235,10 +208,9 @@ if __name__ == "__main__":
     print(f"Default schema base version '{client_init.base_schema_version}'")
     print(f"Default schema build version '{client_init.schema_version()}'")
     try:
-        print()
-        # demo_tx_split(client_init)
+        # print()
+        demo_tx_split(client_init)
         # demo_tx_split_equal(client_init)
-        # demo_tx_split_distribute(client_init)
         # demo_tx_public_transfer(client_init)
         # demo_tx_unstake(client_init)
         # demo_tx_transfer_sui(client_init)

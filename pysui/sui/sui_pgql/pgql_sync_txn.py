@@ -9,8 +9,7 @@ import base64
 from typing import Any, Callable, Optional, Union
 from functools import cache
 from deprecated.sphinx import versionchanged, versionadded, deprecated
-from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
-from pysui.sui.sui_txn.transaction import _SuiTransactionBase
+from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
@@ -124,7 +123,7 @@ class SuiTransaction(_SuiTransactionBase):
     _STAKE_REQUEST_TUPLE: tuple = None
     _UNSTAKE_REQUEST_TUPLE: tuple = None
     _SPLIT_AND_KEEP_TUPLE: tuple = None
-    _SPLIT_AND_RETURN_TUPLE: tuple = None
+    # _SPLIT_AND_RETURN_TUPLE: tuple = None
     _PUBLISH_AUTHORIZE_UPGRADE_TUPLE: tuple = None
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
@@ -144,21 +143,14 @@ class SuiTransaction(_SuiTransactionBase):
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
         """
-        kwargs["deserialize_from"] = None
         super().__init__(**kwargs)
-        # Force new signer block
-        self._sig_block = SignerBlock(
-            sender=kwargs.get(
-                "initial_sender", self.client.config.active_address.address
-            )
-        )
         # Preload
         self._STAKE_REQUEST_TUPLE = self._function_meta_args(self._STAKE_REQUEST_TARGET)
         self._UNSTAKE_REQUEST_TUPLE = self._function_meta_args(
             self._UNSTAKE_REQUEST_TARGET
         )
         self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
-        self._SPLIT_AND_RETURN_TUPLE = self._function_meta_args(self._SPLIT_AND_RETURN)
+        # self._SPLIT_AND_RETURN_TUPLE = self._function_meta_args(self._SPLIT_AND_RETURN)
 
     @cache
     def _function_meta_args(
@@ -310,8 +302,9 @@ class SuiTransaction(_SuiTransactionBase):
             txn_expires_after=txn_expires_after,
         )
         tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
-        sig_block: SignerBlock = self.signer_block
-        sigs = sig_block.get_signatures(config=self.client.config, tx_bytes=tx_bytes)
+        sigs = self.signer_block.get_signatures(
+            config=self.client.config, tx_bytes=tx_bytes
+        )
         return {self._BUILD_BYTE_STR: tx_bytes, self._SIG_ARRAY: sigs}
 
     def split_coin(

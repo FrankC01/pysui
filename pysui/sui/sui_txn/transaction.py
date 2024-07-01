@@ -1,13 +1,5 @@
 #    Copyright Frank V. Castellucci
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#        http://www.apache.org/licenses/LICENSE-2.0
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
+#    SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
 
@@ -31,7 +23,6 @@ from pysui.sui.sui_builders.base_builder import (
     sui_builder,
 )
 from pysui.sui.sui_clients.common import ClientMixin
-from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
 from pysui.sui.sui_txn.signing_ms import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
 from pysui.sui.sui_txn.txn_deser import (
@@ -65,15 +56,6 @@ if not logging.getLogger().handlers:
 class _DebugInspectTransaction(_NativeTransactionBuilder):
     """_DebugInspectTransaction added for malformed inspection results."""
 
-    # _DEFAULT_INSPECT_TX_ADDITIONL_ARGS: Final[dict] = {
-    #     "gasBudget": SuiNullType(),
-    #     "gasObjects": SuiNullType(),
-    #     "items": SuiNullType(),
-    #     "gasSponsor": SuiNullType(),
-    #     "showRawTxnDataAndEffects": SuiNullType(),
-    #     "skipChecks": SuiNullType(),
-    # }
-
     @sui_builder()
     def __init__(
         self,
@@ -99,8 +81,6 @@ class _DebugInspectTransaction(_NativeTransactionBuilder):
         """
         super().__init__(
             "sui_devInspectTransactionBlock",
-            # handler_cls=TxInspectionResult,
-            # handler_func="factory",
         )
 
         if additional_args is None or isinstance(additional_args, SuiNullType):
@@ -161,7 +141,7 @@ class _SuiTransactionBase:
     def __init__(
         self,
         *,
-        client: Union[ClientMixin, BaseSuiGQLClient],
+        client: ClientMixin,
         compress_inputs: bool = True,
         initial_sender: Union[SuiAddress, SigningMultiSig] = None,
         merge_gas_budget: bool = False,
@@ -177,16 +157,10 @@ class _SuiTransactionBase:
         )
         self._merge_gas = merge_gas_budget
         self._executed = False
-        if isinstance(client, BaseSuiGQLClient):
-            self.constraints: TransactionConstraints = (
-                client.protocol().transaction_constraints
-            )
-            self._current_gas_price = client.current_gas_price()
-        else:
-            self.constraints: TransactionConstraints = (
-                client.protocol.transaction_constraints
-            )
-            self._current_gas_price = client.current_gas_price
+        self.constraints: TransactionConstraints = (
+            client.protocol.transaction_constraints
+        )
+        self._current_gas_price = client.current_gas_price
         if deserialize_from:
             if isinstance(deserialize_from, str):
                 deserialize_from = base64.b64decode(deserialize_from)
