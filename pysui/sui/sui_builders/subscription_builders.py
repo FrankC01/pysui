@@ -13,13 +13,19 @@
 
 """Sui Builders: For subscriptions and filters."""
 
+from deprecated.sphinx import versionadded, deprecated
 from pysui.abstracts.client_types import SuiBaseType
-from pysui.sui.sui_types.event_filter import _EventFilterType, _TransactionFilterType, AllFilter
+from pysui.sui.sui_types.event_filter import (
+    _EventFilterType,
+    _TransactionFilterType,
+    AllFilter,
+)
 from pysui.sui.sui_types.collections import SuiMap
 from pysui.sui.sui_builders.base_builder import _NativeTransactionBuilder
 from pysui.sui.sui_txresults.complex_tx import SubscribedEvent, SubscribedTransaction
 
 
+@deprecated(version="0.65.0", reason="Sui dropping JSON RPC subscriptions.")
 class SubscribeEvent(_NativeTransactionBuilder):
     """Parameter argument for suix_subscribeEvent."""
 
@@ -37,12 +43,16 @@ class SubscribeEvent(_NativeTransactionBuilder):
         :type event_filter: _EventFilterType, optional
         :raises AttributeError: If event_filters is not of type _EventFilterType
         """
-        super().__init__("suix_subscribeEvent", handler_cls=SubscribedEvent, handler_func="from_dict")
+        super().__init__(
+            "suix_subscribeEvent", handler_cls=SubscribedEvent, handler_func="from_dict"
+        )
         if event_filter:
             if isinstance(event_filter, _EventFilterType):
                 self.filter = event_filter
             else:
-                raise AttributeError(f"Invalid argument {event_filter}. Expected subclass of _EventFilterType")
+                raise AttributeError(
+                    f"Invalid argument {event_filter}. Expected subclass of _EventFilterType"
+                )
         else:
             self.filter = AllFilter(filters=[])
 
@@ -56,6 +66,7 @@ class SubscribeEvent(_NativeTransactionBuilder):
         return [self.filter]
 
 
+@deprecated(version="0.65.0", reason="Sui dropping JSON RPC subscriptions.")
 class SubscribeTransaction(_NativeTransactionBuilder):
     """Parameter argument for suix_subscribeTransaction."""
 
@@ -65,12 +76,18 @@ class SubscribeTransaction(_NativeTransactionBuilder):
         txn_filter: _TransactionFilterType,
     ) -> None:
         """."""
-        super().__init__("suix_subscribeTransaction", handler_cls=SubscribedTransaction, handler_func="from_dict")
+        super().__init__(
+            "suix_subscribeTransaction",
+            handler_cls=SubscribedTransaction,
+            handler_func="from_dict",
+        )
         if txn_filter:
             if isinstance(txn_filter, _TransactionFilterType):
                 self.filter = txn_filter
             else:
-                raise AttributeError(f"Invalid argument {txn_filter}. Expected subclass of _TransactionFilterType")
+                raise AttributeError(
+                    f"Invalid argument {txn_filter}. Expected subclass of _TransactionFilterType"
+                )
         else:
             raise AttributeError("Expected 'txn_filter' not found")
 

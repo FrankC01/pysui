@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [change](https://github.com/FrankC01/pysui/issues/218) GraphQL remove SuiTransaction legacy dependency
+- Deprecated Event and Transaction subscriptions
 
 ### Removed
 

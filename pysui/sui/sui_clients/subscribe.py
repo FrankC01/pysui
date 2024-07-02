@@ -20,7 +20,7 @@ import json
 import inspect
 from typing import Any, Callable, Optional, Union
 import warnings
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 from websockets.client import connect as ws_connect
 from websockets.exceptions import ConnectionClosed, ConnectionClosedError
 from websockets.client import WebSocketClientProtocol
@@ -69,6 +69,7 @@ class EventData:
         return self._name
 
 
+@deprecated(version="0.65.0", reason="Sui dropping JSON RPC subscriptions.")
 class SuiClient(Provider):
     """A provider for managing subscriptions of Events or Transactions."""
 

@@ -529,6 +529,7 @@ class SubscribedEventParms(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
+@deprecated(version="0.65.0", reason="Sui dropping JSON RPC subscriptions.")
 class SubscribedEvent(SuiTxReturnType, DataClassJsonMixin):
     """From suix_subscribeEvents."""
 
@@ -554,6 +555,7 @@ class SubscribedTransactionParms(SuiTxReturnType, DataClassJsonMixin):
     version="0.20.0",
     reason="Sui RPC API 1.0.0 reintroduced subscribe to transactions.",
 )
+@deprecated(version="0.65.0", reason="Sui dropping JSON RPC subscriptions.")
 class SubscribedTransaction(SuiTxReturnType, DataClassJsonMixin):
     """From suix_subscribeTransactions."""
 
