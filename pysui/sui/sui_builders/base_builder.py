@@ -21,7 +21,7 @@ from enum import IntEnum
 from typing import Type, Union, get_args
 import typing_utils
 from pysui import SuiAddress
-from deprecated.sphinx import versionchanged
+from deprecated.sphinx import versionchanged, deprecated
 from pysui.abstracts.client_types import SuiBaseType
 from pysui.abstracts.client_rpc import Builder
 from pysui.sui.sui_types.scalars import SuiNullType
@@ -32,6 +32,9 @@ from pysui.sui.sui_utils import (
 )
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiRequestType(IntEnum):
     """SuiRequestType Defines the type of request being made when invoking `sui_executeTransaction`.
 
@@ -57,6 +60,9 @@ class SuiRequestType(IntEnum):
         return self.as_str()
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiTransactionBuilderMode(IntEnum):
     """SuiTransactionBuilderMode Defines the mode of the transaction.
 
@@ -92,6 +98,9 @@ class SuiTransactionBuilderMode(IntEnum):
         return self.as_str()
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiBaseBuilder(Builder):
     """Base Sui API Builder Class.
 
@@ -235,6 +244,9 @@ class SuiBaseBuilder(Builder):
         return result_dict
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 def sui_builder(*includes, **kwargs):
     """sui_builder Decorator to use in Builders."""
 
@@ -392,6 +404,9 @@ def sui_builder(*includes, **kwargs):
     return _autoargs
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class _NativeTransactionBuilder(SuiBaseBuilder):
     """Builders for simple single parameter transactions."""
 

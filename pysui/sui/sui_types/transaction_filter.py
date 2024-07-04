@@ -1,13 +1,5 @@
 #    Copyright Frank V. Castellucci
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#        http://www.apache.org/licenses/LICENSE-2.0
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
+#    SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
 
@@ -15,7 +7,7 @@
 
 
 from typing import Final, Optional, Union
-from deprecated.sphinx import versionadded
+from deprecated.sphinx import versionadded, deprecated
 
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import SuiMap
@@ -32,6 +24,9 @@ DEFAULT_GET_TX_OPTIONS: Final[dict] = {
 }
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 def _validate_options(options: dict) -> Union[dict, None]:
     """."""
     if options:
@@ -39,16 +34,20 @@ def _validate_options(options: dict) -> Union[dict, None]:
         inbound_set = set(options.keys())
         diff_set = inbound_set - standard_set
         if diff_set:
-            raise ValueError(
-                f"Options are not valid for QueryTransaction {diff_set}"
-            )
+            raise ValueError(f"Options are not valid for QueryTransaction {diff_set}")
     return options
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class _TransactionFilterType:
     """Base class for identifying valid filters."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class CheckpointQuery(_TransactionFilterType, SuiMap):
     """Query by checkpoint."""
 
@@ -58,6 +57,9 @@ class CheckpointQuery(_TransactionFilterType, SuiMap):
         self.map["options"] = _validate_options(options)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class MoveFunctionQuery(_TransactionFilterType, SuiMap):
     """Query by move function."""
 
@@ -82,20 +84,22 @@ class MoveFunctionQuery(_TransactionFilterType, SuiMap):
         self.map["options"] = _validate_options(options)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class InputObjectQuery(_TransactionFilterType, SuiMap):
     """Query by input object."""
 
-    def __init__(
-        self, object_id: Union[str, ObjectID], options: Optional[dict] = None
-    ):
+    def __init__(self, object_id: Union[str, ObjectID], options: Optional[dict] = None):
         """Initialize query parameter."""
-        object_id = (
-            object_id if isinstance(object_id, str) else object_id.value
-        )
+        object_id = object_id if isinstance(object_id, str) else object_id.value
         super().__init__("filter", {"InputObject": object_id})
         self.map["options"] = _validate_options(options)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class ChangedObjectQuery(_TransactionFilterType, SuiMap):
     """Query by changed object, including created, mutated and unwrapped objects."""
 
@@ -103,37 +107,40 @@ class ChangedObjectQuery(_TransactionFilterType, SuiMap):
         self, object_id: Union[str, ObjectID], options: Optional[dict] = None
     ) -> None:
         """Initialize query parameter."""
-        object_id = (
-            object_id if isinstance(object_id, str) else object_id.value
-        )
+        object_id = object_id if isinstance(object_id, str) else object_id.value
         super().__init__("filter", {"ChangedObject": object_id})
         self.map["options"] = _validate_options(options)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class FromAddressQuery(_TransactionFilterType, SuiMap):
     """Query by sender address."""
 
-    def __init__(
-        self, address: Union[str, SuiAddress], options: Optional[dict] = None
-    ):
+    def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
         """Initialize query parameter."""
         address = address if isinstance(address, str) else address.address
         super().__init__("filter", {"FromAddress": address})
         self.map["options"] = _validate_options(options)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class ToAddressQuery(_TransactionFilterType, SuiMap):
     """Query by recipient address."""
 
-    def __init__(
-        self, address: Union[str, SuiAddress], options: Optional[dict] = None
-    ):
+    def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
         """Initialize query parameter."""
         address = address if isinstance(address, str) else address.address
         super().__init__("filter", {"ToAddress": address})
         self.map["options"] = _validate_options(options)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class FromAndToAddressQuery(_TransactionFilterType, SuiMap):
     """Query by sender and recipient address."""
 
@@ -145,13 +152,9 @@ class FromAndToAddressQuery(_TransactionFilterType, SuiMap):
     ):
         """Initialize query parameter."""
         from_address = (
-            from_address
-            if isinstance(from_address, str)
-            else from_address.address
+            from_address if isinstance(from_address, str) else from_address.address
         )
-        to_address = (
-            to_address if isinstance(to_address, str) else to_address.address
-        )
+        to_address = to_address if isinstance(to_address, str) else to_address.address
         super().__init__(
             "filter",
             {"FromAndToAddress": {"from": from_address, "to": to_address}},
@@ -159,21 +162,23 @@ class FromAndToAddressQuery(_TransactionFilterType, SuiMap):
         self.map["options"] = _validate_options(options)
 
 
-@versionadded(
-    version="0.31.0", reason="New filter supported in Sui RPC API 1.5.0"
+@versionadded(version="0.31.0", reason="New filter supported in Sui RPC API 1.5.0")
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
 )
 class FromOrToAddressQuery(_TransactionFilterType, SuiMap):
     """Query by sender or recipient address, requires indexer."""
 
-    def __init__(
-        self, address: Union[str, SuiAddress], options: Optional[dict] = None
-    ):
+    def __init__(self, address: Union[str, SuiAddress], options: Optional[dict] = None):
         """Initialize query parameter."""
         address = address if isinstance(address, str) else address.address
         super().__init__("filter", {"FromOrToAddress": {"addr": address}})
         self.map["options"] = _validate_options(options)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class TransactionKindQuery(_TransactionFilterType, SuiMap):
     """Query by transaction kind."""
 
@@ -183,8 +188,9 @@ class TransactionKindQuery(_TransactionFilterType, SuiMap):
         self.map["options"] = _validate_options(options)
 
 
-@versionadded(
-    version="0.31.0", reason="New filter supported in Sui RPC API 1.6.0"
+@versionadded(version="0.31.0", reason="New filter supported in Sui RPC API 1.6.0")
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
 )
 class TransactionKindInQuery(_TransactionFilterType, SuiMap):
     """Query by transactions of any given kind in the input, requires indexer."""

@@ -41,6 +41,9 @@ from pysui.sui import sui_utils
 
 
 @versionchanged(version="0.51.0", reason="added 'showRawEffects' to options flag")
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class ExecuteTransaction(_NativeTransactionBuilder):
     """Submit a signed transaction to Sui."""
 
@@ -85,6 +88,9 @@ class ExecuteTransaction(_NativeTransactionBuilder):
             self.options = sui_utils.as_sui_map(options)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class DryRunTransaction(_NativeTransactionBuilder):
     """Dry run a signed transaction to Sui."""
 
@@ -102,6 +108,9 @@ class DryRunTransaction(_NativeTransactionBuilder):
         )
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class InspectTransaction(_NativeTransactionBuilder):
     """InspectTransaction when executed, return dev-inpsect results of the transaction.
 
@@ -149,6 +158,9 @@ class InspectTransaction(_NativeTransactionBuilder):
             self.additional_args = sui_utils.as_sui_map(additional_args)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class _MoveCallTransactionBuilder(SuiBaseBuilder):
     """Builders that must be processed, signed then executed."""
 

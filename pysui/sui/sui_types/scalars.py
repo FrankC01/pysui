@@ -1,13 +1,5 @@
 #    Copyright Frank V. Castellucci
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#        http://www.apache.org/licenses/LICENSE-2.0
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
+#    SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
 
@@ -15,9 +7,13 @@
 
 import math
 from typing import Union
+from deprecated.sphinx import deprecated
 from pysui.abstracts import SuiScalarType
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiNullType(SuiScalarType):
     """SuiNullType A null type.
 
@@ -86,6 +82,9 @@ class SuiNullType(SuiScalarType):
         return self.value
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiString(SuiScalarType):
     """Sui String type."""
 
@@ -218,6 +217,9 @@ class SuiString(SuiScalarType):
         return self.value
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiTxBytes(SuiString):
     """Sui Base64 tx_bytes string."""
 
@@ -227,6 +229,9 @@ class SuiTxBytes(SuiString):
         return str(self)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiSignature(SuiString):
     """Sui Base64 signature."""
 
@@ -241,6 +246,9 @@ class SuiSignature(SuiString):
         return str(self)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiTransactionDigest(SuiString):
     """Sui Base58 digest."""
 
@@ -250,6 +258,9 @@ class SuiTransactionDigest(SuiString):
         return str(self)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class ObjectID(SuiString):
     """Sui Object id type."""
 
@@ -338,6 +349,9 @@ class ObjectID(SuiString):
         return self.value
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiBoolean(SuiScalarType):
     """Sui Bool type."""
 
@@ -347,6 +361,9 @@ class SuiBoolean(SuiScalarType):
         return self.value
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiInteger(SuiScalarType):
     """Sui Number type."""
 
@@ -552,12 +569,3 @@ class SuiU256(SuiIntegerType):
         """."""
         assert int(val) <= self._MAX_VAL
         self.value = int(val)
-
-
-if __name__ == "__main__":
-    print(SuiIntegerType.to_best_fit_integer_type(5).type_tag_name)
-    print(
-        SuiIntegerType.to_best_fit_integer_type(
-            0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-        ).type_tag_name
-    )

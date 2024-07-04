@@ -1,24 +1,23 @@
 #    Copyright Frank V. Castellucci
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#        http://www.apache.org/licenses/LICENSE-2.0
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
+#    SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
 
-
 """Sui Exceptions."""
 
+from deprecated.sphinx import deprecated
 
+
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiException(Exception):
     """Base Exception."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiFileNotFound(SuiException):
     """Exception for file missing."""
 
@@ -26,10 +25,16 @@ class SuiFileNotFound(SuiException):
 # Config file exceptions
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiConfigFileError(SuiException):
     """Config file errors."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiKeystoreFileError(SuiException):
     """Keystore file errors."""
 
@@ -37,6 +42,9 @@ class SuiKeystoreFileError(SuiException):
 # Address exceptions
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiInvalidAddress(SuiException):
     """Invalid Sui address."""
 
@@ -44,10 +52,16 @@ class SuiInvalidAddress(SuiException):
 # Keystring exceptions
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiKeystoreAddressError(SuiException):
     """Keystore file errors."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiInvalidKeystringLength(SuiException):
     """Invalid Keystring Length Exception."""
 
@@ -56,6 +70,9 @@ class SuiInvalidKeystringLength(SuiException):
         self.args = (f"Invalid keystring length of {msg}",)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiNoKeyPairs(SuiException):
     """Exception for missing keypairs."""
 
@@ -64,6 +81,9 @@ class SuiNoKeyPairs(SuiException):
         self.args = ("No keypairs found",)
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiInvalidKeyPair(SuiException):
     """Invalid KeyPair Exception."""
 
@@ -71,6 +91,9 @@ class SuiInvalidKeyPair(SuiException):
 # Signing exceptions
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiNotComplexTransaction(SuiException):
     """Exception for attempting to sign a simple transaction."""
 
@@ -82,10 +105,16 @@ class SuiNotComplexTransaction(SuiException):
 # RPC API Discover Corruptions
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiApiDefinitionInvalid(SuiException):
     """Corrupted Schema Exception."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiParamSchemaInvalid(SuiException):
     """Corrupted Schema Exception."""
 
@@ -93,14 +122,23 @@ class SuiParamSchemaInvalid(SuiException):
 # RPC API exceptions
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiRpcApiNotAvailable(SuiException):
     """Non active or non-existing RPC API method exception."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiRpcApiMalformed(SuiException):
     """Sui Method malformed."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiRpcApiInvalidParameter(SuiException):
     """Sui Method invalid parameter."""
 
@@ -108,6 +146,9 @@ class SuiRpcApiInvalidParameter(SuiException):
 # RPC API exceptions
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiRpcApiError(SuiException):
     """For RPC error returns."""
 
@@ -115,13 +156,22 @@ class SuiRpcApiError(SuiException):
 # Publish exceptions
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiPackageBuildFail(SuiException):
     """For publishing."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiMiisingBuildFolder(SuiException):
     """For publishing."""
 
 
+@deprecated(
+    version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
+)
 class SuiMiisingModuleByteCode(SuiException):
     """For publishing."""
