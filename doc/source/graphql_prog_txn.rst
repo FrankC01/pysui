@@ -21,7 +21,7 @@ Legacy
 .. code-block:: python
     :linenos:
 
-    from pysui import SyncClient, SuiConfig
+    from pysui import SuiConfig, SyncClient
     from pysui.sui.sui_txn import SyncTransaction
 
     client = SyncClient(SuiConfig.default_config())
@@ -33,11 +33,10 @@ New
 .. code-block:: python
     :linenos:
 
-    from pysui import SuiConfig
-    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+    from pysui import SuiConfig, SyncGqlClient
     from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 
-    client = SuiGQLClient(config=SuiConfig.default_config()) # Keyword argument
+    client = SyncGqlClient(config=SuiConfig.default_config()) # Keyword argument
     txn = SuiTransaction(client=client)
 
 ===============
@@ -169,10 +168,10 @@ required:
         # print(raw_kind.to_json(indent=2))
 
         # Build and sign to get the base64 transaction bytes and list of signatures
-        tx_b64, sig_array = txer.build_and_sign()
+        tx_dict = txer.build_and_sign()
         # Execute the transaction
         result = txer.client.execute_query_node(
-            with_node=qn.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sig_array))
+            with_node=qn.ExecuteTransaction(**tx_dict)
 
         if result.is_ok():
             # Unlike JSON RPC, the GraphRPC transaction execution just returns

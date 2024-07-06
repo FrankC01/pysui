@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- SyncGqlClient and AsyncGqlClient to pysui package init as aliases
+
 ### Fixed
 
 ### Changed

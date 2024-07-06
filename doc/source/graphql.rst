@@ -50,11 +50,11 @@ Simple dev example
     #
     """Development example."""
 
-    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+    from pysui import SuiConfig, handle_result, SyncGqlClient
     import pysui.sui.sui_pgql.pgql_query as qn
-    from pysui import SuiConfig,handle_result
 
-    def main(client: SuiGQLClient):
+
+    def main(client: SyncGqlClient):
         """Fetch 0x2::sui::SUI (default) for owner."""
         # GetCoins defaults to '0x2::sui::SUI' coin type so great for owners gas listing
         qres = client.execute_query_node(
@@ -70,7 +70,7 @@ Simple dev example
 
     if __name__ == "__main__":
         # Initialize synchronous client
-        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
+        client_init = SyncGqlClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
 ------
@@ -83,13 +83,12 @@ copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy 
 .. code-block:: python
     :linenos:
 
-    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-    from pysui import SuiConfig
+    from pysui import SuiConfig, SyncGqlClient
 
     def main():
         """Dump Sui GraphQL Schema."""
         # Initialize synchronous client
-        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=True)
+        client_init = SyncGqlClient(config=SuiConfig.default_config(),write_schema=True)
         print(f"Schema dumped to: {client_init.schema_version}.graqhql`")
 
     if __name__ == "__main__":
@@ -107,14 +106,13 @@ If not provided at construction, it defaults to ``{"headers":None}``
 .. code-block:: python
     :emphasize-lines: 8,15
 
-    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-    from pysui import SuiConfig
+    from pysui import SuiConfig, SyncGqlClient
     import pysui.sui.sui_pgql.pgql_query as qn
 
     def main():
         """Set global headers to include in the RPC calls."""
         # Initialize synchronous client with default headers
-        client = SuiGQLClient(config=SuiConfig.default_config(),default_header={"headers": {"from": "youremail@acme.org"}})
+        client = SyncGqlClient(config=SuiConfig.default_config(),default_header={"headers": {"from": "youremail@acme.org"}})
         print(client.client_headers)
         # Use different 'from' in headers for this one call
         qres = client.execute_query_node(
@@ -184,10 +182,9 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
 
     #
     """String query example."""
-    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-    from pysui import SuiConfig
+    from pysui import SuiConfig, SyncGqlClient
 
-    def main(client: SuiGQLClient):
+    def main(client: SyncGqlClient):
         """Execute a static string query."""
         _QUERY = """
             query {
@@ -205,7 +202,7 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
 
     if __name__ == "__main__":
         # Initialize synchronous client
-        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
+        client_init = SyncGqlClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
 -----------------------
@@ -221,10 +218,9 @@ using ``gql`` functions.
     """DocumentNode query example."""
 
     from gql import gql
-    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-    from pysui import SuiConfig
+    from pysui import SuiConfig, SyncGqlClient
 
-    def main(client: SuiGQLClient):
+    def main(client: SyncGqlClient):
         """Execute a DocumentNode as result of `gql` compilation."""
         _QUERY = # Same query string as used above
         qres = client.execute_document_node(with_node=gql(_QUERY))
@@ -232,7 +228,7 @@ using ``gql`` functions.
 
     if __name__ == "__main__":
         # Initialize synchronous client
-        client_init = SuiGQLClient(config=SuiConfig.default_config(),write_schema=False)
+        client_init = SyncGqlClient(config=SuiConfig.default_config(),write_schema=False)
         main(client_init)
 
 -----------------------

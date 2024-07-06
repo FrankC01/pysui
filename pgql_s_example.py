@@ -6,10 +6,10 @@
 """Sample module for incremental buildout of Sui GraphQL RPC for Pysui 1.0.0."""
 
 import base64
-from pysui import SuiConfig, SuiRpcResult, SyncClient
+from pysui import SuiConfig, SuiRpcResult, SyncClient, SyncGqlClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 from pysui.sui.sui_txn import SyncTransaction
-from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 
@@ -30,13 +30,13 @@ def handle_result(result: SuiRpcResult) -> SuiRpcResult:
     return result
 
 
-def do_coin_meta(client: SuiGQLClient):
+def do_coin_meta(client: SyncGqlClient):
     """Fetch meta data about coins, includes supply."""
     # Defaults to 0x2::sui::SUI
     handle_result(client.execute_query_node(with_node=qn.GetCoinMetaData()))
 
 
-def do_coins_for_type(client: SuiGQLClient):
+def do_coins_for_type(client: SyncGqlClient):
     """Fetch coins of specific type for owner."""
     handle_result(
         client.execute_query_node(
@@ -48,7 +48,7 @@ def do_coins_for_type(client: SuiGQLClient):
     )
 
 
-def do_gas(client: SuiGQLClient):
+def do_gas(client: SyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     result = handle_result(
         client.execute_query_node(
@@ -61,7 +61,7 @@ def do_gas(client: SuiGQLClient):
         )
 
 
-def do_all_gas(client: SuiGQLClient):
+def do_all_gas(client: SyncGqlClient):
     """Fetch all coins for owner."""
     result = handle_result(
         client.execute_query_node(
@@ -89,7 +89,7 @@ def do_all_gas(client: SuiGQLClient):
     print(f"Total mists: {tbalance}")
 
 
-def do_gas_ids(client: SuiGQLClient):
+def do_gas_ids(client: SyncGqlClient):
     """Fetch coins by the ids."""
 
     # Use coins found for active address to use to validate
@@ -110,12 +110,12 @@ def do_gas_ids(client: SuiGQLClient):
         print(f"Data return from call is empty {result.result_data.data}")
 
 
-def do_sysstate(client: SuiGQLClient):
+def do_sysstate(client: SyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(client.execute_query_node(with_node=qn.GetLatestSuiSystemState()))
 
 
-def do_all_balances(client: SuiGQLClient):
+def do_all_balances(client: SyncGqlClient):
     """Fetch all coin types for active address and total balances.
 
     Demonstrates paging as well
@@ -136,7 +136,7 @@ def do_all_balances(client: SuiGQLClient):
         print("DONE")
 
 
-def do_object(client: SuiGQLClient):
+def do_object(client: SyncGqlClient):
     """Fetch specific object data.
 
     To run, replace object_id with object you are interested in.
@@ -150,7 +150,7 @@ def do_object(client: SuiGQLClient):
     )
 
 
-def do_past_object(client: SuiGQLClient):
+def do_past_object(client: SyncGqlClient):
     """Fetch a past object.
     To run, change the objectID str and version int.
     """
@@ -164,7 +164,7 @@ def do_past_object(client: SuiGQLClient):
     )
 
 
-def do_multiple_past_object(client: SuiGQLClient):
+def do_multiple_past_object(client: SyncGqlClient):
     """Fetch a past object.
     To run, change the objectID str and version int and add more dicts to the list.
     """
@@ -181,7 +181,7 @@ def do_multiple_past_object(client: SuiGQLClient):
     )
 
 
-def do_objects(client: SuiGQLClient):
+def do_objects(client: SyncGqlClient):
     """Fetch all objects held by owner."""
     handle_result(
         client.execute_query_node(
@@ -192,7 +192,7 @@ def do_objects(client: SuiGQLClient):
     )
 
 
-def do_objects_for(client: SuiGQLClient):
+def do_objects_for(client: SyncGqlClient):
     """Fetch specific objects by their ids.
 
     These are test IDs, replace to run.
@@ -210,7 +210,7 @@ def do_objects_for(client: SuiGQLClient):
     )
 
 
-def do_dynamics(client: SuiGQLClient):
+def do_dynamics(client: SyncGqlClient):
     """Get objects dynamic field and dynamic object fields.
 
     This is test ID, replace to run.
@@ -224,7 +224,7 @@ def do_dynamics(client: SuiGQLClient):
     )
 
 
-def do_event(client: SuiGQLClient):
+def do_event(client: SyncGqlClient):
     """."""
     res = client.execute_query_node(
         with_node=qn.GetEvents(event_filter={"sender": "0x0"})
@@ -248,17 +248,17 @@ def do_event(client: SuiGQLClient):
         print("DONE")
 
 
-def do_configs(client: SuiGQLClient):
+def do_configs(client: SyncGqlClient):
     """Fetch the GraphQL, Protocol and System configurations."""
     print(client.rpc_config().to_json(indent=2))
 
 
-def do_service_config(client: SuiGQLClient):
+def do_service_config(client: SyncGqlClient):
     """Fetch the GraphQL, Protocol and System configurations."""
     print(client.rpc_config().serviceConfig.to_json(indent=2))
 
 
-def do_chain_id(client: SuiGQLClient):
+def do_chain_id(client: SyncGqlClient):
     """Fetch the current environment chain_id.
 
     Demonstrates overriding serialization
@@ -266,7 +266,7 @@ def do_chain_id(client: SuiGQLClient):
     print(client.chain_id())
 
 
-def do_tx(client: SuiGQLClient):
+def do_tx(client: SyncGqlClient):
     """Fetch specific transaction by it's digest.
 
     To run, replace digest value with a valid one for network you are working with
@@ -279,7 +279,7 @@ def do_tx(client: SuiGQLClient):
     )
 
 
-def do_txs(client: SuiGQLClient):
+def do_txs(client: SyncGqlClient):
     """Fetch transactions.
 
     We loop through 3 pages.
@@ -301,7 +301,7 @@ def do_txs(client: SuiGQLClient):
         print("DONE")
 
 
-def do_filter_txs(client: SuiGQLClient):
+def do_filter_txs(client: SyncGqlClient):
     """Fetch all transactions matching filter.
 
     See Sui GraphQL schema for TransactionBlockFilter options.
@@ -323,13 +323,13 @@ def do_filter_txs(client: SuiGQLClient):
             break
 
 
-def do_tx_kind(client: SuiGQLClient):
+def do_tx_kind(client: SyncGqlClient):
     """Fetch the PTB details from transaction."""
     qnode = qn.GetTxKind(digest="ENTER TRANSACTION DIGESST HERE")
     handle_result(client.execute_query_node(with_node=qnode))
 
 
-def do_staked_sui(client: SuiGQLClient):
+def do_staked_sui(client: SyncGqlClient):
     """Retreive Staked Coins."""
     owner = client.config.active_address.address
 
@@ -338,14 +338,14 @@ def do_staked_sui(client: SuiGQLClient):
     )
 
 
-def do_latest_cp(client: SuiGQLClient):
+def do_latest_cp(client: SyncGqlClient):
     """."""
     qnode = qn.GetLatestCheckpointSequence()
     # print(qnode.query_as_string())
     handle_result(client.execute_query_node(with_node=qnode))
 
 
-def do_sequence_cp(client: SuiGQLClient):
+def do_sequence_cp(client: SyncGqlClient):
     """Fetch a checkpoint by checkpoint sequence number.
 
     Uses the most recent checkpoint's sequence id (inefficient for example only)
@@ -362,7 +362,7 @@ def do_sequence_cp(client: SuiGQLClient):
         print(result.result_string)
 
 
-def do_digest_cp(client: SuiGQLClient):
+def do_digest_cp(client: SyncGqlClient):
     """Fetch a checkpoint by checkpoint digest.
 
     Uses the most recent checkpoint's digest (inefficient for example only)
@@ -379,17 +379,17 @@ def do_digest_cp(client: SuiGQLClient):
         print(result.result_string)
 
 
-def do_checkpoints(client: SuiGQLClient):
+def do_checkpoints(client: SyncGqlClient):
     """Get a batch of checkpoints."""
     handle_result(client.execute_query_node(with_node=qn.GetCheckpoints()))
 
 
-def do_refgas(client: SuiGQLClient):
+def do_refgas(client: SyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(client.execute_query_node(with_node=qn.GetReferenceGasPrice()))
 
 
-def do_nameservice(client: SuiGQLClient):
+def do_nameservice(client: SyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(
         client.execute_query_node(
@@ -398,7 +398,7 @@ def do_nameservice(client: SuiGQLClient):
     )
 
 
-def do_owned_nameservice(client: SuiGQLClient):
+def do_owned_nameservice(client: SyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(
         client.execute_query_node(
@@ -407,22 +407,22 @@ def do_owned_nameservice(client: SuiGQLClient):
     )
 
 
-def do_validators_apy(client: SuiGQLClient):
+def do_validators_apy(client: SyncGqlClient):
     """Fetch the most current validators apy and identity."""
     handle_result(client.execute_query_node(with_node=qn.GetValidatorsApy()))
 
 
-def do_validators(client: SuiGQLClient):
+def do_validators(client: SyncGqlClient):
     """Fetch the most current validator detail."""
     handle_result(client.execute_query_node(with_node=qn.GetCurrentValidators()))
 
 
-def do_protcfg(client: SuiGQLClient):
+def do_protcfg(client: SyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(client.execute_query_node(with_node=qn.GetProtocolConfig(version=30)))
 
 
-def do_struct(client: SuiGQLClient):
+def do_struct(client: SyncGqlClient):
     """Fetch structure by package::module::struct_name.
 
     This is a testnet object!!!
@@ -438,7 +438,7 @@ def do_struct(client: SuiGQLClient):
         print(result.result_data.to_json(indent=2))
 
 
-def do_structs(client: SuiGQLClient):
+def do_structs(client: SyncGqlClient):
     """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetStructures(
@@ -450,7 +450,7 @@ def do_structs(client: SuiGQLClient):
         print(result.result_data.to_json(indent=2))
 
 
-def do_func(client: SuiGQLClient):
+def do_func(client: SyncGqlClient):
     """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetFunction(
@@ -465,7 +465,7 @@ def do_func(client: SuiGQLClient):
         print(mv_fn.arg_summary().to_json(indent=2))
 
 
-def do_funcs(client: SuiGQLClient):
+def do_funcs(client: SyncGqlClient):
     """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetFunctions(
@@ -477,7 +477,7 @@ def do_funcs(client: SuiGQLClient):
         print(result.result_data.to_json(indent=2))
 
 
-def do_module(client: SuiGQLClient):
+def do_module(client: SyncGqlClient):
     """Fetch a module from package."""
     result = client.execute_query_node(
         with_node=qn.GetModule(
@@ -489,7 +489,7 @@ def do_module(client: SuiGQLClient):
         print(result.result_data.to_json(indent=2))
 
 
-def do_package(client: SuiGQLClient):
+def do_package(client: SyncGqlClient):
     """Fetch a module from package.
 
     The cursor, if used, applies to the modules listing
@@ -511,7 +511,7 @@ def do_package(client: SuiGQLClient):
             break
 
 
-def do_dry_run_kind(client: SuiGQLClient):
+def do_dry_run_kind(client: SyncGqlClient):
     """Execute a dry run with TransactionKind where meta data is set by caller.
 
     This uses the legacy SyncTransaction (JSON RPC based)
@@ -526,7 +526,7 @@ def do_dry_run_kind(client: SuiGQLClient):
     )
 
 
-def do_dry_run_kind_new(client: SuiGQLClient):
+def do_dry_run_kind_new(client: SyncGqlClient):
     """Execute a dry run with TransactionKind where meta data is set by caller.
 
     This uses the new SuiTransaction (GraphQL RPC based)
@@ -544,7 +544,7 @@ def do_dry_run_kind_new(client: SuiGQLClient):
     )
 
 
-def do_dry_run(client: SuiGQLClient):
+def do_dry_run(client: SyncGqlClient):
     """Execute a dry run with TransactionData where gas and budget set by txer.
 
     This uses the legacy SyncTransaction (JSON RPC based)
@@ -559,7 +559,7 @@ def do_dry_run(client: SuiGQLClient):
     )
 
 
-def do_dry_run_new(client: SuiGQLClient):
+def do_dry_run_new(client: SyncGqlClient):
     """Execute a dry run with TransactionData where gas and budget set by txer.
 
     This uses the new SuiTransaction (GraphQL RPC based)
@@ -577,7 +577,7 @@ def do_dry_run_new(client: SuiGQLClient):
     )
 
 
-def do_execute(client: SuiGQLClient):
+def do_execute(client: SyncGqlClient):
     """Execute a transaction.
 
     The result contains the digest of the transaction which can then be queried
@@ -600,7 +600,7 @@ def do_execute(client: SuiGQLClient):
         )
 
 
-def do_execute_new(client: SuiGQLClient):
+def do_execute_new(client: SyncGqlClient):
     """Execute a transaction.
 
     The result contains the digest of the transaction which can then be queried
@@ -617,7 +617,7 @@ def do_execute_new(client: SuiGQLClient):
     handle_result(client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict)))
 
 
-def merge_some(client: SuiGQLClient):
+def merge_some(client: SyncGqlClient):
     """Merge some coins in wallet.
 
     To merge all coins, ensure to use paging to gather all coins first and
@@ -636,7 +636,7 @@ def merge_some(client: SuiGQLClient):
         )
 
 
-def split_1_half(client: SuiGQLClient):
+def split_1_half(client: SyncGqlClient):
     """Split the 1 coin into 2 (or more) in wallet.
 
     If there is more than 1 coin for the address, this transaction won't be
@@ -659,7 +659,7 @@ def split_1_half(client: SuiGQLClient):
         )
 
 
-def do_stake(client: SuiGQLClient):
+def do_stake(client: SyncGqlClient):
     """Stake some coinage.
 
     This uses a testnet validator (Blockscope.net). For different environment
@@ -689,7 +689,7 @@ def do_stake(client: SuiGQLClient):
     # )
 
 
-def do_unstake(client: SuiGQLClient):
+def do_unstake(client: SyncGqlClient):
     """Unstake first Staked Sui if address has any."""
 
     owner = client.config.active_address.address
@@ -718,7 +718,7 @@ def do_unstake(client: SuiGQLClient):
 if __name__ == "__main__":
 
     cfg = SuiConfig.default_config()
-    client_init = SuiGQLClient(
+    client_init = SyncGqlClient(
         write_schema=False,
         config=cfg,
     )
