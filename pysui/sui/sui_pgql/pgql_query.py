@@ -461,6 +461,7 @@ class GetMultiplePastObjects(PGQL_QueryNode):
 
         :param history: The list of ObjectKsy dictionaries
         :type history: list[dict]
+
         """
 
         self.version_list = for_versions
@@ -1447,6 +1448,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
             gasBudget: The budget to use. Defaults to max gas budget
             gasSponsor: The Sui address string of the sponsor, defaults to the sender
         }
+
         """
         self.tx_data = tx_bytestr
         self.tx_meta = tx_meta if tx_meta else {}
