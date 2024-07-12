@@ -6,7 +6,7 @@
 """Sui Configuration Group."""
 
 import dataclasses
-from typing import Optional
+from typing import Optional, Union
 import dataclasses_json
 
 
@@ -47,42 +47,70 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
     address_list: Optional[list[str]] = dataclasses.field(default_factory=list)
     profiles: Optional[list[Profile]] = dataclasses.field(default_factory=list)
 
-    def set_active_profile(self, *, change_to: str) -> Profile:
-        """Set the using profile to change_to."""
-        # Validate it exists
-        _res = next(
-            filter(lambda prf: prf.profile_name == change_to, self.profiles),
-            -1,
+    def _profile_exists(self, *, profile_name: str) -> Union[Profile, bool]:
+        """Check if a profile, by name, exists."""
+        return next(
+            filter(lambda prf: prf.profile_name == profile_name, self.profiles), False
         )
-        if _res == -1:
-            raise ValueError(
-                f"{change_to} profile does not exist in group {self.group_name}"
-            )
-        self.using_profile = change_to
 
-    def set_active_address(self, *, change_to: str) -> str:
+    def _alias_exists(self, *, alias_name: str) -> Union[ProfileAlias, bool]:
+        """Check if an alias, by name, exists."""
+        return next(
+            filter(lambda ally: ally.alias == alias_name, self.alias_list), False
+        )
+
+    @property
+    def active_address(self) -> str:
+        """Return the active address."""
+        return self.using_address
+
+    @active_address.setter
+    def active_address(self, change_to: str) -> str:
         """Set the using address to change_to."""
         _ = self.address_list.index(change_to)
         self.using_address = change_to
+        return change_to
+
+    @property
+    def active_alias(self) -> str:
+        """Return the alias associated to the using (active) address."""
+        adex = self.address_list.index(self.using_address)
+        return self.alias_list[adex].alias
+
+    @active_alias.setter
+    def active_alias(self, change_to: str) -> str:
+        """Change the alias that is active."""
+        # Find the index of the change_to alias
+        _res = self._alias_exists(alias_name=change_to)
+        if _res:
+            aliindx = self.alias_list.index(_res)
+            self.using_address = self.address_list[aliindx]
+            return _res.alias
+        raise ValueError(f"Alias {change_to} not found in group")
 
     @property
     def active_profile(self) -> Profile:
         """Gets the active profile."""
-        _res = next(
-            filter(lambda prf: prf.profile_name == self.using_profile, self.profiles),
-            -1,
-        )
-        if _res == -1:
-            raise ValueError(f"Profile {self.using_profile} not found in group")
-        return _res
+        _res = self._profile_exists(profile_name=self.using_profile)
+        if _res:
+            return _res
+        raise ValueError(f"Profile {self.using_profile} not found in group")
+
+    @active_profile.setter
+    def active_profile(self, change_to: str) -> Profile:
+        """Set the using Profile to change_to."""
+        # Validate it exists
+        _res = self._profile_exists(profile_name=change_to)
+        if _res:
+            self.using_profile = change_to
+            return _res
+        raise ValueError(f"{change_to} profile does not exist")
 
     def add_profile(self, *, new_prf: Profile, make_active: bool = False):
         """Add profile to list after validating name"""
-        _res = next(
-            filter(lambda x: x.profile_name == new_prf.profile_name, self.profiles), -1
-        )
-        if _res != -1:
+        _res = self._profile_exists(profile_name=new_prf.profile_name)
+        if _res:
             raise ValueError(f"Profile {new_prf.profile_name} already exists.")
         self.profiles.append(new_prf)
         if make_active:
-            self.set_active_profile(change_to=new_prf.profile_name)
+            self.active_profile = new_prf.profile_name

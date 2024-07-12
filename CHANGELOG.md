@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - SyncGqlClient and AsyncGqlClient as aliases in `pysui.__init__`
 
+
 ### Fixed
 
 ### Changed

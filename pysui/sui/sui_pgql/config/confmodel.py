@@ -31,13 +31,15 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         default_factory=list
     )
 
-    def _group_exists(self, *, group_name: str) -> Union[prfgrp.ProfileGroup, int]:
+    def _group_exists(self, *, group_name: str) -> Union[prfgrp.ProfileGroup, bool]:
         """Check if a group, by name, exists."""
-        return next(filter(lambda grp: grp.group_name == group_name, self.groups), -1)
+        return next(
+            filter(lambda grp: grp.group_name == group_name, self.groups), False
+        )
 
     def has_group(self, *, group_name: str) -> bool:
         """Test for group existence."""
-        return self._group_exists(group_name=group_name) != -1
+        return self._group_exists(group_name=group_name)
 
     def remove_group(self, *, group_name: str) -> None:
         """Remove a group from the group list."""
@@ -51,16 +53,26 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
     def get_group(self, *, group_name: str) -> prfgrp.ProfileGroup:
         """Test for group existence."""
         _res = self._group_exists(group_name=group_name)
-        if _res == -1:
+        if not _res:
             raise ValueError(f"{group_name} does not exist.")
         return _res
 
     @property
     def active_group(self) -> prfgrp.ProfileGroup:
         """Returns the active group."""
-        if (_res := self._group_exists(group_name=self.group_active)) == -1:
-            raise ValueError("No active group set")
-        return _res
+        _res = self._group_exists(group_name=self.group_active)
+        if _res:
+            return _res
+        raise ValueError("No active group set")
+
+    @active_group.setter
+    def active_group(self, group_str: str) -> prfgrp.ProfileGroup:
+        """Sets the active group."""
+        _res = self._group_exists(group_name=group_str)
+        if _res:
+            self.group_active = group_str
+            return _res
+        raise ValueError(f"{group_str} does not exist")
 
     @property
     def active_address(self) -> str:
@@ -102,9 +114,11 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
             _updated = True
 
         # If group doesn't exist, create it
-        if (_res := self._group_exists(group_name=gql_rpc_group_name)) == -1:
+        _res = self._group_exists(group_name=gql_rpc_group_name)
+        if not _res:
             # Get keys, aliases and addresses from rpc
-            if (_suigrp := self._group_exists(group_name=json_rpc_group_name)) == -1:
+            _suigrp = self._group_exists(group_name=json_rpc_group_name)
+            if not _suigrp:
                 raise ValueError(f"{json_rpc_group_name} group does not exist.")
             if _suigrp.using_profile in list(_GQL_DEFAULTS.keys()):
                 _using_profile = _suigrp.using_profile
@@ -131,7 +145,8 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         """."""
         # If group doesn't exist, create it
         _updated = False
-        if (_res := self._group_exists(group_name=group.group_name)) == -1:
+        _res = self._group_exists(group_name=group.group_name)
+        if not _res:
             self.groups.append(group)
             self.group_active = group.group_name if make_active else self.group_active
             _updated = True

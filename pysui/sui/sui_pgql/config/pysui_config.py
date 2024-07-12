@@ -23,7 +23,7 @@ class PysuiConfiguration:
         self,
         *,
         from_cfg_path: str = None,
-        group_name: str = None,
+        group_name: Optional[str] = "sui_gql_config",
         profile_name: Optional[str] = None,
         address: Optional[str] = None,
         alias: Optional[str] = None,
@@ -106,6 +106,11 @@ class PysuiConfiguration:
         return self._model.active_group.using_address
 
     @property
+    def active_address_alias(self) -> str:
+        """Returns the active groups active address."""
+        return self._model.active_group.active_alias
+
+    @property
     def url(self) -> str:
         """Returns the active groups active profile url"""
         return self._model.active_group.active_profile.url
@@ -128,23 +133,31 @@ class PysuiConfiguration:
         """Activate specific aspects of configuration."""
         # Track changes for persist
         _changes: bool = False
-        # Default to active group
-        _group = self._model.active_group
-        # Update active if group name says so
-        if group_name and (_group.group_name != group_name):
-            # Ensure we have the target group
-            _group = self._model.get_group(group_name=group_name)
-            # if self._model.active_group.group_name != _group.group_name:
-            self._model.group_active = _group.group_name
-            _changes = True
+
+        # If group specified and it's not the active
+        if group_name and self._model.group_active != group_name:
+            # If  it exists and is not already the active group then set it
+            if _group := self._model.has_group(group_name=group_name):
+                self._model.active_group = group_name
+                _changes = True
+            else:
+                raise ValueError(f"{group_name} does not exist")
+        else:
+            _group = self._model.active_group
+
         # Change profile, checks if it exists
-        if profile_name:
-            _group.set_active_profile(change_to=profile_name)
+        if profile_name and _group.using_profile != profile_name:
+            _group.active_profile = profile_name
+            _changes = True
 
         # Change activte address, checks if exists
-        if address:
-            _group.set_active_address(change_to=address)
-        elif alias:
-            pass
+        if address and _group.active_address != address:
+            _group.active_address = address
+            _changes = True
+        # Else try alias
+        elif alias and _group.active_alias != alias:
+            _group.active_alias = alias
+            _changes = True
+
         if _changes and persist:
             self._write_model()

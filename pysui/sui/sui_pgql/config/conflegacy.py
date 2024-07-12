@@ -9,6 +9,7 @@ import json
 import dataclasses
 from typing import Optional
 from pathlib import Path
+import hashlib
 import dataclasses_json
 import yaml
 
@@ -18,6 +19,7 @@ from pysui.sui.sui_pgql.config.confgroup import (
     ProfileAlias,
     Profile,
 )
+from pysui.sui.sui_crypto import keypair_from_keystring
 
 _DEVNET_SUI_URL: str = "https://fullnode.devnet.sui.io:443"
 _DEVNET_FAUCET_URL: str = "https://faucet.devnet.sui.io/v1/gas"
@@ -57,6 +59,15 @@ class ConfigSui(dataclasses_json.DataClassJsonMixin):
     envs: list[ConfigEnv]
 
 
+def address_str_from_keystring(indata: str) -> str:
+    """From a 44 char keypair string create an address string."""
+    #   Check address is legit keypair
+
+    _kp = keypair_from_keystring(indata).to_bytes()
+    digest = _kp[0:33] if _kp[0] == 0 else _kp[0:34]
+    return format(f"0x{hashlib.blake2b(digest, digest_size=32).hexdigest()}")
+
+
 def load_client_yaml(client_file: Path, json_rpc_group: str) -> ProfileGroup:
     """."""
     _client_yaml = client_file / "client.yaml"
@@ -84,6 +95,12 @@ def load_client_yaml(client_file: Path, json_rpc_group: str) -> ProfileGroup:
             _prf.faucet_status_url = _TESTNET_FAUCET_STATUS_URL
         _prf_list.append(_prf)
 
+    _prf_keys: list[ProfileKey] = []
+    _prf_addy: list[str] = []
+    for prvkey in json.loads(keyfile.read_text(encoding="utf8")):
+        _prf_keys.append(ProfileKey.from_dict({"private_key_base64": prvkey}))
+        _prf_addy.append(address_str_from_keystring(prvkey))
+
     # Build sui_config group
     prg_group = ProfileGroup(
         json_rpc_group,
@@ -93,11 +110,8 @@ def load_client_yaml(client_file: Path, json_rpc_group: str) -> ProfileGroup:
             ProfileAlias.from_dict(x)
             for x in json.loads(_client_alias.read_text(encoding="utf8"))
         ],
-        [
-            ProfileKey.from_dict({"private_key_base64": x})
-            for x in json.loads(keyfile.read_text(encoding="utf8"))
-        ],
-        [],  # TODO: Convert prv keys to addresses
+        _prf_keys,
+        _prf_addy,
         _prf_list,
     )
     return prg_group
