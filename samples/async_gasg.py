@@ -39,7 +39,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui import SuiConfig, SuiAddress
+from pysui import PysuiConfiguration
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -111,16 +111,15 @@ def print_gas(gasses: SuiCoinObjects) -> int:
     return total
 
 
-async def get_all_gas(client: AsyncSuiGQLClient) -> dict[SuiAddress, list[SuiGas]]:
+async def get_all_gas(client: AsyncSuiGQLClient) -> dict[str, list[SuiGas]]:
     """get_all_gas Gets all SuiGas for each address in configuration.
 
     :param client: Asynchronous Sui Client
-    :type client: SuiAsynchClient
+    :type client: AsyncSuiGQLClient
     :return: Dictionary of all gas objects for each address
-    :rtype: dict[SuiAddress, list[SuiGas]]
+    :rtype: dict[str, list[SuiGas]]
     """
-    config: SuiConfig = client.config
-    addys = [x for x in config.addresses]
+    addys = [x for x in client.config.model.active_group.address_list]
 
     addy_list = [_get_all_gas_objects(client, x) for x in addys]
     gresult = await asyncio.gather(*addy_list, return_exceptions=True)
@@ -132,12 +131,7 @@ async def get_all_gas(client: AsyncSuiGQLClient) -> dict[SuiAddress, list[SuiGas
 
 async def main_run(client: AsyncSuiGQLClient):
     """Main Asynchronous entry point."""
-    config: SuiConfig = client.config
-    # owned_objects = asyncio.create_task(client.get_objects())
     gasses = asyncio.create_task(get_all_gas(client))
-    # print(f"Getting owned objects for: {config.active_address}")
-    # result = await owned_objects
-    # object_stats(result.result_data)
     result = await gasses
     grand_total: int = 0
     for key, value in result.items():
@@ -156,10 +150,10 @@ def main():
     arg_line = sys.argv[1:].copy()
     # Handle a different client.yaml than default
     if arg_line and arg_line[0] == "--local":
-        cfg = SuiConfig.sui_base_config()
-    else:
-        cfg = SuiConfig.default_config()
-    arpc = AsyncSuiGQLClient(config=cfg)
+        raise ValueError("--local is invalid for GraphQL")
+    arpc = AsyncSuiGQLClient(
+        pysui_config=PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+    )
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

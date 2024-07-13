@@ -63,7 +63,7 @@ class _SuiTransactionBase:
         )
         self.client = client
         self._sig_block = SignerBlock(
-            sender=initial_sender or client.config.active_address.address
+            sender=initial_sender or client.config.active_address
         )
         self._merge_gas = merge_gas_budget
         self._executed = False

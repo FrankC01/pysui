@@ -6,7 +6,7 @@
 """Sample module for pysui beta Transaction Builder leveraging Sui GraphQL."""
 
 import base64
-from pysui import SuiConfig, SyncGqlClient
+from pysui import SuiConfig, SyncGqlClient, PysuiConfiguration
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -84,9 +84,7 @@ def demo_tx_split(client: SyncGqlClient):
         coin=txb.gas,
         amounts=[100000000],
     )
-    txb.transfer_objects(
-        transfers=[scoin], recipient=client.config.active_address.address
-    )
+    txb.transfer_objects(transfers=[scoin], recipient=client.config.active_address)
     #### Uncomment the action to take
     transaction_inspect(txb)
     # transaction_dryrun(txb)
@@ -120,7 +118,7 @@ def demo_tx_split_equal(client: SyncGqlClient):
 
 def demo_tx_unstake(client: SyncGqlClient):
     """Demonstrate GraphQL Beta PTB with unstaking 1 coin if found."""
-    owner = client.config.active_address.address
+    owner = client.config.active_address
 
     skblk: pgql_type.SuiStakedCoinsGQL = handle_result(
         client.execute_query_node(with_node=qn.GetDelegatedStakes(owner=owner))
@@ -184,9 +182,7 @@ def demo_tx_publish(client: SyncGqlClient):
     """Demonstrate publishing a package."""
     txb = SuiTransaction(client=client)
     upg_cap = txb.publish(project_path="<ENTER SUI MOVE PROJECT PATH>")
-    txb.transfer_objects(
-        transfers=[upg_cap], recipient=client.config.active_address.address
-    )
+    txb.transfer_objects(transfers=[upg_cap], recipient=client.config.active_address)
 
     transaction_inspect(txb)
     # transaction_dryrun(txb)
@@ -202,7 +198,9 @@ def demo_tx_publish(client: SyncGqlClient):
 if __name__ == "__main__":
     client_init = SyncGqlClient(
         write_schema=False,
-        config=SuiConfig.default_config(),
+        pysui_config=PysuiConfiguration(
+            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP
+        ),
     )
     print(f"Default schema base version '{client_init.base_schema_version}'")
     print(f"Default schema build version '{client_init.schema_version()}'")

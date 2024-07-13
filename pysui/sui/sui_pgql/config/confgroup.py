@@ -8,6 +8,7 @@
 import dataclasses
 from typing import Optional, Union
 import dataclasses_json
+from pysui.sui.sui_crypto import keypair_from_keystring, SuiKeyPair
 
 
 @dataclasses.dataclass
@@ -58,6 +59,10 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         return next(
             filter(lambda ally: ally.alias == alias_name, self.alias_list), False
         )
+
+    def _address_exists(self, *, address: str) -> Union[str, bool]:
+        """Check if address is valid."""
+        return next(filter(lambda addy: addy == address, self.address_list), False)
 
     @property
     def active_address(self) -> str:
@@ -113,6 +118,14 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             self.using_profile = change_to
             return _res
         raise ValueError(f"{change_to} profile does not exist")
+
+    def address_keypair(self, address: str) -> SuiKeyPair:
+        """."""
+        _res = self._address_exists(address=address)
+        if _res:
+            return keypair_from_keystring(
+                self.key_list[self.address_list.index(_res)].private_key_base64
+            )
 
     def add_profile(self, *, new_prf: Profile, make_active: bool = False):
         """Add profile to list after validating name"""

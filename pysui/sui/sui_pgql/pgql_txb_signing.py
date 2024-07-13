@@ -6,7 +6,7 @@
 """Pysui Signing Block builder that works with GraphQL connection."""
 
 from typing import Optional, Union
-from pysui.sui.sui_config import SuiConfig
+from pysui import PysuiConfiguration
 from pysui.sui.sui_crypto import MultiSig, BaseMultiSig, SuiPublicKey
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -123,12 +123,17 @@ class SignerBlock:
             result_list.append(self._sponsor)
         return result_list
 
-    def get_signatures(self, *, config: SuiConfig, tx_bytes: str) -> list[str]:
+    def get_signatures(self, *, config: PysuiConfiguration, tx_bytes: str) -> list[str]:
         """Get all the signatures needed for the transaction."""
         sig_list: list[str] = []
         for signer in self._get_potential_signatures():
             if isinstance(signer, str):
-                sig_list.append(config.kp4add(signer).new_sign_secure(tx_bytes))
+
+                sig_list.append(
+                    config.model.active_group.address_keypair(signer).new_sign_secure(
+                        tx_bytes
+                    )
+                )
             else:
                 if signer._can_sign_msg:
                     sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
