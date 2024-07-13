@@ -7,7 +7,9 @@
 
 import re
 from typing import Union
-from pysui import SuiConfig
+from deprecated.sphinx import versionchanged
+
+from pysui import PysuiConfiguration
 from pysui.sui.sui_constants import SUI_HEX_ADDRESS_STRING_LEN
 
 # owner lengths
@@ -19,16 +21,19 @@ class TypeValidator:
 
     __partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{1,64}")
 
+    @versionchanged(version="0.65.0", reason="BREAKING: Uses PysuiConfiguration")
     @classmethod
-    def check_owner(cls, owner: str, config: SuiConfig) -> Union[str, ValueError]:
+    def check_owner(
+        cls, owner: str, config: PysuiConfiguration
+    ) -> Union[str, ValueError]:
         """check_owner Validates owner is well formed Sui Address.
 
         Owner may be an alias or a string with 0x prefix and up to 64 hex characters
 
         :param owner: Input data string to validate
         :type owner: str
-        :param config: The active SuiConfiguraiton for alias checking
-        :type config: SuiConfig
+        :param config: The active PysuiConfiguraiton for alias checking
+        :type config: PysuiConfiguration
         :raises ValueError: If not alias and string length not valid for address
         :raises ValueError: Malformed Sui address string
         :return: Validated owner address string
@@ -37,7 +42,8 @@ class TypeValidator:
         inlen = len(owner)
         assert isinstance(owner, str), "Owner should be str"
         try:
-            return config.addr4al(owner).address
+            return config.model.active_group.address_for_alias(owner)
+            # return config.addr4al(owner).address
         except ValueError:
             pass
         if inlen < 3 or inlen > SUI_HEX_ADDRESS_STRING_LEN:

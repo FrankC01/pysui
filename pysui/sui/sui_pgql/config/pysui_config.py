@@ -101,6 +101,11 @@ class PysuiConfiguration:
                 self._write_model()
 
     @property
+    def model(self) -> PysuiConfigModel:
+        """."""
+        return self._model
+
+    @property
     def active_address(self) -> str:
         """Returns the active groups active address."""
         return self._model.active_group.using_address
@@ -111,9 +116,24 @@ class PysuiConfiguration:
         return self._model.active_group.active_alias
 
     @property
+    def active_env(self) -> str:
+        """Returns the active groups active profile name."""
+        return self._model.active_group.using_profile
+
+    @property
     def url(self) -> str:
-        """Returns the active groups active profile url"""
+        """Returns the active groups active profile url."""
         return self._model.active_group.active_profile.url
+
+    @property
+    def faucet_url(self) -> str:
+        """Returns the active groups active profile faucet url."""
+        return self._model.active_group.active_profile.faucet_urls
+
+    @property
+    def faucet_status_url(self) -> str:
+        """Returns the active groups active profile faucet status url."""
+        return self._model.active_group.active_profile.faucet_status_url
 
     @property
     def config_path(self) -> str:

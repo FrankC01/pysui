@@ -7,7 +7,7 @@
 
 import asyncio
 
-from pysui import SuiConfig, SuiRpcResult, AsyncGqlClient, SyncGqlClient
+from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient, SyncGqlClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -41,7 +41,7 @@ async def do_coins_for_type(client: AsyncGqlClient):
     handle_result(
         await client.execute_query_node(
             with_node=qn.GetCoins(
-                owner=client.config.active_address.address,
+                owner=client.config.active_address,
                 coin_type="0x2::sui::SUI",
             )
         )
@@ -52,7 +52,7 @@ async def do_gas(client: AsyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     result = handle_result(
         await client.execute_query_node(
-            with_node=qn.GetCoins(owner=client.config.active_address.address)
+            with_node=qn.GetCoins(owner=client.config.active_address)
         )
     )
     if result.is_ok():
@@ -65,7 +65,7 @@ async def do_all_gas(client: AsyncGqlClient):
     """Fetch all coins for owner."""
     result = handle_result(
         await client.execute_query_node(
-            with_node=qn.GetCoins(owner=client.config.active_address.address)
+            with_node=qn.GetCoins(owner=client.config.active_address)
         )
     )
     tcoins = 0
@@ -78,7 +78,7 @@ async def do_all_gas(client: AsyncGqlClient):
             result = handle_result(
                 await client.execute_query_node(
                     with_node=qn.GetCoins(
-                        owner=client.config.active_address.address,
+                        owner=client.config.active_address,
                         next_page=result.result_data.next_cursor,
                     )
                 )
@@ -95,7 +95,7 @@ async def do_gas_ids(client: AsyncGqlClient):
     # Use coins found for active address to use to validate
     # fetching by coin ids
     result = await client.execute_query_node(
-        with_node=qn.GetCoins(owner=client.config.active_address.address)
+        with_node=qn.GetCoins(owner=client.config.active_address)
     )
     if result.is_ok() and result.result_data.data:
         cids = [x.coin_object_id for x in result.result_data.data]
@@ -123,14 +123,14 @@ async def do_all_balances(client: AsyncGqlClient):
     Demonstrates paging as well
     """
     result = await client.execute_query_node(
-        with_node=qn.GetAllCoinBalances(owner=client.config.active_address.address)
+        with_node=qn.GetAllCoinBalances(owner=client.config.active_address)
     )
     handle_result(result)
     if result.is_ok():
         while result.result_data.next_cursor.hasNextPage:
             result = await client.execute_query_node(
                 with_node=qn.GetAllCoinBalances(
-                    owner=client.config.active_address.address,
+                    owner=client.config.active_address,
                     next_page=result.result_data.next_cursor,
                 )
             )
@@ -149,9 +149,7 @@ async def do_objects(client: AsyncGqlClient):
     """Fetch all objects held by owner."""
     handle_result(
         await client.execute_query_node(
-            with_node=qn.GetObjectsOwnedByAddress(
-                owner=client.config.active_address.address
-            )
+            with_node=qn.GetObjectsOwnedByAddress(owner=client.config.active_address)
         )
     )
 
@@ -312,7 +310,7 @@ async def do_tx_kind(client: AsyncGqlClient):
 
 async def do_staked_sui(client: AsyncGqlClient):
     """."""
-    owner = client.config.active_address.address
+    owner = client.config.active_address
     handle_result(
         await client.execute_query_node(with_node=qn.GetDelegatedStakes(owner=owner))
     )
@@ -376,7 +374,7 @@ async def do_owned_nameservice(client: AsyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(
         await client.execute_query_node(
-            with_node=qn.GetNameServiceNames(owner=client.config.active_address.address)
+            with_node=qn.GetNameServiceNames(owner=client.config.active_address)
         )
     )
 
@@ -495,9 +493,7 @@ async def do_dry_run(client: AsyncGqlClient):
     # Use synchronous transaction builder
     txer = SuiTransaction(client=SyncGqlClient(config=client.config))
     scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    txer.transfer_objects(
-        transfers=scres, recipient=client.config.active_address.address
-    )
+    txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
     handle_result(
         await client.execute_query_node(
@@ -511,9 +507,7 @@ async def do_execute(client: AsyncGqlClient):
     # Use synchronous transaction builder
     txer = SuiTransaction(client=SyncGqlClient(config=client.config))
     scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    txer.transfer_objects(
-        transfers=scres, recipient=client.config.active_address.address
-    )
+    txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     handle_result(
         await client.execute_query_node(
             with_node=qn.ExecuteTransaction(**txer.build_and_sign())
@@ -555,7 +549,7 @@ async def do_stake(client: AsyncGqlClient):
 async def do_unstake(client: AsyncGqlClient):
     """Unstake first Staked Sui if address has any."""
 
-    owner = client.config.active_address.address
+    owner = client.config.active_address
     result = await client.execute_query_node(
         with_node=qn.GetDelegatedStakes(owner=owner)
     )
@@ -587,7 +581,9 @@ async def main():
     """."""
     client_init = AsyncGqlClient(
         write_schema=False,
-        config=SuiConfig.default_config(),
+        pysui_config=PysuiConfiguration(
+            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP
+        ),
     )
     print(f"Chain environment   '{client_init.chain_environment}'")
     print(f"Default schema base version '{client_init.base_schema_version}'")

@@ -30,7 +30,7 @@ from graphql.language.printer import print_ast
 # from graphql.language.printer import print_ast
 
 
-from pysui import SuiConfig, SuiRpcResult
+from pysui import SuiConfig, SuiRpcResult, PysuiConfiguration
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
@@ -109,55 +109,20 @@ class PGQL_Fragment(ABC):
 class BaseSuiGQLClient:
     """Base GraphQL client."""
 
-    # TODO: Move these to constants
-    _SUI_GRAPHQL_MAINNET: str = "https://sui-mainnet.mystenlabs.com/graphql"
-    _SUI_GRAPHQL_TESTNET: str = "https://sui-testnet.mystenlabs.com/graphql"
-    _SUI_GRAPHQL_DEVNET: str = "https://sui-devnet.mystenlabs.com/graphql/beta"
-
-    @classmethod
-    def _resolve_url(
-        cls, sui_config: SuiConfig, schema_version: Optional[str] = None
-    ) -> list[str, str]:
-        """Resolve the GraphQL RPC Url."""
-        check_url = (
-            sui_config.graphql_url if sui_config.graphql_url else sui_config.rpc_url
-        )
-        match check_url:
-            case cnst.MAINNET_SUI_URL:
-                url = cls._SUI_GRAPHQL_MAINNET
-                env_prefix = "mainnet"
-            case cnst.TESTNET_SUI_URL:
-                url = cls._SUI_GRAPHQL_TESTNET
-                env_prefix = "testnet"
-            case cnst.DEVNET_SUI_URL:
-                url = cls._SUI_GRAPHQL_DEVNET
-                env_prefix = "devnet"
-            # Support QGL url configs
-            case cls._SUI_GRAPHQL_MAINNET:
-                url = check_url
-                env_prefix = "mainnet"
-            case cls._SUI_GRAPHQL_TESTNET:
-                url = check_url
-                env_prefix = "testnet"
-            case cls._SUI_GRAPHQL_DEVNET:
-                url = check_url
-                env_prefix = "devnet"
-            case _:
-                raise ValueError(f"Can not resolve {check_url} to GraphQL RPC host.")
-        # TODO: When schema versions are in effect, review return
-        return [url, env_prefix]
-
+    @versionchanged(
+        version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
+    )
     def __init__(
         self,
         *,
-        sui_config: SuiConfig,
+        pysui_config: PysuiConfiguration,
         schema: scm.Schema,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
     ):
         """."""
 
-        self._sui_config: SuiConfig = sui_config
+        self._pysui_config: PysuiConfiguration = pysui_config
         self._schema: scm.Schema = schema
         self._default_header = default_header if default_header else {}
         # Schema persist
@@ -169,10 +134,13 @@ class BaseSuiGQLClient:
             with open(fname, "w", encoding="utf8") as inner_file:
                 inner_file.write(print_schema(getattr(def_schm, "_schema")))
 
+    @versionchanged(
+        version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
+    )
     @property
-    def config(self) -> SuiConfig:
-        """Fetch the active Sui configuration."""
-        return self._sui_config
+    def config(self) -> PysuiConfiguration:
+        """Fetch the Pysui configuration."""
+        return self._pysui_config
 
     def current_gas_price(self, for_version: Optional[str] = None) -> int:
         """Fetch the current epoch gas price."""
@@ -290,19 +258,25 @@ class BaseSuiGQLClient:
 class SuiGQLClient(BaseSuiGQLClient):
     """Synchronous pysui GraphQL client."""
 
+    @versionchanged(
+        version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
+    )
     def __init__(
         self,
         *,
-        config: SuiConfig,
+        pysui_config: PysuiConfiguration,
         schema_version: Optional[str] = None,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
     ):
         """Sui GraphQL Client initializer."""
         # Resolve GraphQL URL
-        gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
+        pysui_config.make_active(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        gurl = pysui_config.url
+        genv = pysui_config.active_env
+        # gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
         super().__init__(
-            sui_config=config,
+            pysui_config=pysui_config,
             schema=scm.load_schema_cache(gurl, genv, schema_version),
             write_schema=write_schema,
             default_header=default_header,
@@ -430,16 +404,21 @@ class SuiGQLClient(BaseSuiGQLClient):
 class AsyncSuiGQLClient(BaseSuiGQLClient):
     """Asynchronous pysui GraphQL client."""
 
+    @versionchanged(
+        version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
+    )
     def __init__(
         self,
         *,
-        config: SuiConfig,
+        pysui_config: PysuiConfiguration,
         schema_version: Optional[str] = None,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
     ):
         """Async Sui GraphQL Client initializer."""
-        gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
+        pysui_config.make_active(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        gurl = pysui_config.url
+        genv = pysui_config.active_env
         scm_mgr: scm.Schema = scm.load_schema_cache(gurl, genv, schema_version)
         for _sver, sblock in scm_mgr.schema_set.items():
             sblock[scm.Schema.GCLIENT].close_sync()
@@ -452,7 +431,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
                 ),
             )
         super().__init__(
-            sui_config=config,
+            pysui_config=pysui_config,
             schema=scm_mgr,
             write_schema=write_schema,
             default_header=default_header,
