@@ -5,6 +5,7 @@
 
 """Sui Legacy Configuration (JSON RPC) setup."""
 
+import base64
 import json
 import dataclasses
 from typing import Optional
@@ -59,13 +60,18 @@ class ConfigSui(dataclasses_json.DataClassJsonMixin):
     envs: list[ConfigEnv]
 
 
-def address_str_from_keystring(indata: str) -> str:
-    """From a 44 char keypair string create an address string."""
-    #   Check address is legit keypair
-
+def address_and_alias_from_keystring(
+    indata: str, calias: list[ProfileAlias]
+) -> tuple[str, ProfileAlias]:
+    """From a 44 char keypair string create an address string and return matched alias."""
     _kp = keypair_from_keystring(indata).to_bytes()
     digest = _kp[0:33] if _kp[0] == 0 else _kp[0:34]
-    return format(f"0x{hashlib.blake2b(digest, digest_size=32).hexdigest()}")
+    pubkey = base64.b64encode(digest).decode()
+    alias = next(filter(lambda pa: pa.public_key_base64 == pubkey, calias), False)
+    if alias:
+        addy = format(f"0x{hashlib.blake2b(digest, digest_size=32).hexdigest()}")
+        return addy, alias
+    raise ValueError(f"{pubkey} not found in alias list")
 
 
 def load_client_yaml(client_file: Path, json_rpc_group: str) -> ProfileGroup:
@@ -95,21 +101,30 @@ def load_client_yaml(client_file: Path, json_rpc_group: str) -> ProfileGroup:
             _prf.faucet_status_url = _TESTNET_FAUCET_STATUS_URL
         _prf_list.append(_prf)
 
+    _alias_cache = [
+        ProfileAlias.from_dict(x)
+        for x in json.loads(_client_alias.read_text(encoding="utf8"))
+    ]
+
     _prf_keys: list[ProfileKey] = []
     _prf_addy: list[str] = []
+    _prf_alias: list[ProfileAlias] = []
     for prvkey in json.loads(keyfile.read_text(encoding="utf8")):
         _prf_keys.append(ProfileKey.from_dict({"private_key_base64": prvkey}))
-        _prf_addy.append(address_str_from_keystring(prvkey))
+        addy, ally = address_and_alias_from_keystring(prvkey, _alias_cache)
+        _prf_addy.append(addy)
+        _prf_alias.append(ally)
 
     # Build sui_config group
     prg_group = ProfileGroup(
         json_rpc_group,
         cfg_sui.active_env,
         cfg_sui.active_address,
-        [
-            ProfileAlias.from_dict(x)
-            for x in json.loads(_client_alias.read_text(encoding="utf8"))
-        ],
+        _prf_alias,
+        # [
+        #     ProfileAlias.from_dict(x)
+        #     for x in json.loads(_client_alias.read_text(encoding="utf8"))
+        # ],
         _prf_keys,
         _prf_addy,
         _prf_list,

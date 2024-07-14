@@ -94,7 +94,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
             _updated = True
         if sui_config.exists():
             # If group doesn't exist, create it
-            if (_res := self._group_exists(group_name=json_rpc_group_name)) == -1:
+            if not self._group_exists(group_name=json_rpc_group_name):
                 sui_group = load_client_yaml(sui_config, json_rpc_group_name)
                 self.groups.append(sui_group)
                 _updated = True

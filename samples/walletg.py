@@ -17,7 +17,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui import SuiConfig
+from pysui import PysuiConfiguration
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_constants import PYSUI_CLIENT_CONFIG_ENV
 
@@ -42,10 +42,10 @@ def main():
         if cfg_local:
             raise ValueError("Local not supported for GraphQL commands")
         else:
-            cfg = SuiConfig.default_config()
-            print(f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}")
+            cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+            # print(f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}")
 
-        cmd_call(SuiGQLClient(config=cfg), parsed)
+        cmd_call(SuiGQLClient(pysui_config=cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")
 

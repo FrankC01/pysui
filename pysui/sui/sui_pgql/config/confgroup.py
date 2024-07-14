@@ -101,6 +101,22 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return self.address_list[aliindx]
         raise ValueError(f"Alias {alias} not found in group")
 
+    def alias_for_address(self, address: str) -> ProfileAlias:
+        """Get alias associated with address."""
+        _res = self._address_exists(address=address)
+        if _res:
+            adindex = self.address_list.index(_res)
+            return self.alias_list[adindex]
+        raise ValueError(f"Address {address} not found in group")
+
+    def alias_name_for_address(self, address: str) -> str:
+        """Get alias associated with address."""
+        _res = self._address_exists(address=address)
+        if _res:
+            adindex = self.address_list.index(_res)
+            return self.alias_list[adindex].alias
+        raise ValueError(f"Address {address} not found in group")
+
     @property
     def active_profile(self) -> Profile:
         """Gets the active profile."""

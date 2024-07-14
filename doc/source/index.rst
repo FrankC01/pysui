@@ -24,6 +24,7 @@ Welcome to pysui's documentation!
    builders
    graphql
    graphql_prog_txn
+   graphql_pyconfig
    aliases
    multi_sig
    prog_txn

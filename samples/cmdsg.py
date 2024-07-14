@@ -10,12 +10,8 @@ import json
 from pathlib import Path
 import pprint
 import sys
-from pysui import (
-    __version__,
-    SyncClient,
-    SuiRpcResult,
-    SuiAddress,
-)
+from pysui import __version__, SuiRpcResult, SuiAddress, PysuiConfiguration
+
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -76,7 +72,7 @@ def sdk_version(_client: SuiGQLClient, _args: argparse.Namespace) -> None:
 def sui_active_address(client: SuiGQLClient, _args: argparse.Namespace) -> None:
     """Print active address."""
     print()
-    print(f"Active address = {client.config.active_address.address}")
+    print(f"Active address = {client.config.active_address}")
 
 
 def sui_addresses(client: SuiGQLClient, args: argparse.Namespace) -> None:
@@ -87,23 +83,26 @@ def sui_addresses(client: SuiGQLClient, args: argparse.Namespace) -> None:
     aliast = "Alias"
     space = " "
     active = "Def"
+
     if args.details:
-        header_str = format(f"{space:^3s}{addyt:^72s}{pubkt:^34}{aliast:^64}")
+        header_str = format(f"{space:^3s}{addyt:^73s}{pubkt:55}{aliast:34}")
     else:
         header_str = format(f"{space:^3s}{addyt:^72s}")
     print(header_str)
     for _ in range(0, len(header_str)):
         print("-", end="")
     print()
-    for addy in client.config.addresses:
+    pcfg: PysuiConfiguration = client.config
+    pgrp = pcfg.model.active_group
+    for addy in pgrp.address_list:
         addyl = addy
-        if addy == client.config.active_address:
+        if addy == pcfg.active_address:
             addyl = f"{active:^3s}{addyl:^72s}"
         else:
             addyl = f"{space:^3s}{addyl:^72s}"
         if args.details:
-            alias = client.config.al4addr(addy)
-            addyl = addyl + f" {client.config.pk4al(alias)} {alias}"
+            palias = pgrp.alias_for_address(addy)
+            addyl = addyl + f" {palias.public_key_base64:54s} {palias.alias}"
         print(addyl)
 
 
@@ -135,22 +134,21 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
 
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner
+        for_owner = args.owner.address
     elif args.alias:
-        for_owner = client.config.addr4al(args.alias)
+        pcfg: PysuiConfiguration = client.config
+        for_owner = pcfg.model.active_group.address_for_alias(args.alias)
     else:
         for_owner = client.config.active_address
 
     all_gas = []
-    gas_result = client.execute_query_node(
-        with_node=qn.GetCoins(owner=for_owner.address)
-    )
+    gas_result = client.execute_query_node(with_node=qn.GetCoins(owner=for_owner))
     while gas_result.is_ok():
         all_gas.extend(gas_result.result_data.data)
         if gas_result.result_data.next_cursor.hasNextPage:
             gas_result = client.execute_query_node(
                 with_node=qn.GetCoins(
-                    owner=for_owner.address,
+                    owner=for_owner,
                     next_page=gas_result.result_data.next_cursor,
                 )
             )
@@ -551,7 +549,7 @@ def txn_txn(client: SuiGQLClient, args: argparse.Namespace) -> None:
     handle_result(result)
 
 
-def alias_list(client: SyncClient, args: argparse.Namespace) -> None:
+def alias_list(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """List address aliases."""
     print()
     for alias in client.config.aliases:
@@ -560,7 +558,7 @@ def alias_list(client: SyncClient, args: argparse.Namespace) -> None:
         print(f"PublicKey:  {client.config.pk4al(alias)}\n")
 
 
-def alias_rename(client: SyncClient, args: argparse.Namespace) -> None:
+def alias_rename(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """List address aliases."""
     print()
     try:
