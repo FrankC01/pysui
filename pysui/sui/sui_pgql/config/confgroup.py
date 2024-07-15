@@ -5,10 +5,12 @@
 
 """Sui Configuration Group."""
 
+import base64
+import hashlib
 import dataclasses
 from typing import Optional, Union
 import dataclasses_json
-from pysui.sui.sui_crypto import keypair_from_keystring, SuiKeyPair
+import pysui.sui.sui_crypto as crypto
 
 
 @dataclasses.dataclass
@@ -64,6 +66,13 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         """Check if address is valid."""
         return next(filter(lambda addy: addy == address, self.address_list), False)
 
+    def _key_exists(self, *, key_string: str) -> Union[ProfileKey, bool]:
+        """Check if key string exists."""
+        return next(
+            filter(lambda pkey: pkey.private_key_base64 == key_string, self.key_list),
+            False,
+        )
+
     @property
     def active_address(self) -> str:
         """Return the active address."""
@@ -93,7 +102,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return _res.alias
         raise ValueError(f"Alias {change_to} not found in group")
 
-    def address_for_alias(self, alias: str) -> str:
+    def address_for_alias(self, *, alias: str) -> str:
         """Get address associated with alias."""
         _res = self._alias_exists(alias_name=alias)
         if _res:
@@ -101,7 +110,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return self.address_list[aliindx]
         raise ValueError(f"Alias {alias} not found in group")
 
-    def alias_for_address(self, address: str) -> ProfileAlias:
+    def alias_for_address(self, *, address: str) -> ProfileAlias:
         """Get alias associated with address."""
         _res = self._address_exists(address=address)
         if _res:
@@ -109,13 +118,25 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return self.alias_list[adindex]
         raise ValueError(f"Address {address} not found in group")
 
-    def alias_name_for_address(self, address: str) -> str:
+    def alias_name_for_address(self, *, address: str) -> str:
         """Get alias associated with address."""
         _res = self._address_exists(address=address)
         if _res:
             adindex = self.address_list.index(_res)
             return self.alias_list[adindex].alias
         raise ValueError(f"Address {address} not found in group")
+
+    def replace_alias_name(self, *, from_alias: str, to_alias: str) -> str:
+        """Replace alias name and return associated address."""
+        _res = self._alias_exists(alias_name=from_alias)
+        if _res:
+            _rese = self._alias_exists(alias_name=to_alias)
+            if not _rese:
+                aliindx = self.alias_list.index(_res)
+                _res.alias = to_alias
+                return self.address_list[aliindx]
+            raise ValueError(f"Alias {to_alias} already exists")
+        raise ValueError(f"Alias {from_alias} not found in group")
 
     @property
     def active_profile(self) -> Profile:
@@ -135,13 +156,52 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return _res
         raise ValueError(f"{change_to} profile does not exist")
 
-    def address_keypair(self, address: str) -> SuiKeyPair:
-        """."""
+    def address_keypair(self, *, address: str) -> crypto.SuiKeyPair:
+        """Fetch an addresses KeyPair."""
         _res = self._address_exists(address=address)
         if _res:
-            return keypair_from_keystring(
+            return crypto.keypair_from_keystring(
                 self.key_list[self.address_list.index(_res)].private_key_base64
             )
+
+    def add_keypair_and_parts(
+        self,
+        *,
+        new_alias: str,
+        new_keypair: crypto.SuiKeyPair,
+        make_active: Optional[bool] = False,
+    ) -> str:
+        """Add a new keypair with associated address and alias."""
+        _new_keystr = new_keypair.serialize()
+        if not self._key_exists(key_string=_new_keystr):
+            if self._alias_exists(alias_name=new_alias):
+                raise ValueError(
+                    f"Alias {new_alias} already exist attempting new key and address."
+                )
+            # ProfileKey Entry
+            _prvk_entry = ProfileKey(_new_keystr)
+            # Generate artifacts
+            _pkey_bytes = new_keypair.to_bytes()
+            _digest = _pkey_bytes[0:33] if _pkey_bytes[0] == 0 else _pkey_bytes[0:34]
+            # ProfileAlias Entry
+            _alias_entry = ProfileAlias(
+                new_alias,
+                base64.b64encode(new_keypair.public_key.scheme_and_key()).decode(),
+            )
+            _new_addy = format(
+                f"0x{hashlib.blake2b(_digest, digest_size=32).hexdigest()}"
+            )
+            # Populate group
+            self.address_list.append(_new_addy)
+            self.key_list.append(_prvk_entry)
+            self.alias_list.append(_alias_entry)
+
+            if make_active:
+                self.using_address = _new_addy
+            return _new_addy
+        raise ValueError(
+            f"Private keystring {_new_keystr} already exists attempting new key and address.."
+        )
 
     def add_profile(self, *, new_prf: Profile, make_active: bool = False):
         """Add profile to list after validating name"""

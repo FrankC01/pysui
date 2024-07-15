@@ -51,7 +51,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
                 self.group_active = self.groups[0].group_name
 
     def get_group(self, *, group_name: str) -> prfgrp.ProfileGroup:
-        """Test for group existence."""
+        """Get a group or throw exception if doesn't exist."""
         _res = self._group_exists(group_name=group_name)
         if not _res:
             raise ValueError(f"{group_name} does not exist.")

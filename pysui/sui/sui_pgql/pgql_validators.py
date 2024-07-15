@@ -42,8 +42,7 @@ class TypeValidator:
         inlen = len(owner)
         assert isinstance(owner, str), "Owner should be str"
         try:
-            return config.model.active_group.address_for_alias(owner)
-            # return config.addr4al(owner).address
+            return config.address_for_alias(alias_name=owner)
         except ValueError:
             pass
         if inlen < 3 or inlen > SUI_HEX_ADDRESS_STRING_LEN:
