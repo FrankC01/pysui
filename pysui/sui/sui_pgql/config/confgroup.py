@@ -281,6 +281,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
 
             if make_active:
                 self.using_address = new_address
+            return new_address
 
         raise ValueError(
             f"Private keystring {new_key.private_key_base64} already exists attempting new key and address.."

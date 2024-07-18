@@ -5,12 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.65.0] - Unpublished
+## [0.65.0] - 2024-07-18
 
-**BREAKING CHANGES**
+**BREAKING CHANGES to GraphQL support**
 
 ### Added
 
+- [PysuiConfiguration](https://pysui.readthedocs.io/en/latest/graphql_pyconfig.html)
 
 ### Fixed
 
@@ -18,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - *BREAKING* SuiConfig is no longer used to instantiate a GraphQL client, instead
   use PysuiConfiguration
+- Updated GraphQL client to use PysuiConfiguration
+- Updated GraphQL transaction builder to use PysuiConfiguration
+- Updated GraphQL samples to use PysuiConfiguration
+- Updated `walletg` and `async_gasg` to use PysuiConfiguration
 - PysuiConfiguration, SyncGqlClient and AsyncGqlClient as aliases in `pysui.__init__`
 - [change](https://github.com/FrankC01/pysui/issues/218) GraphQL remove SuiTransaction legacy dependency
 - Deprecated Event and Transaction subscriptions and subscription Client

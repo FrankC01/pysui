@@ -19,6 +19,8 @@ Python Client SDK for Sui blockchain
 
 **Release-0.65.0**
 
+**_BREAKING CHANGES to GraphQL support_**
+
 - Supports _SUI 1.29.x RPC API_
 - Backwards compatable to _Sui 1.21.x RPC API_
 
@@ -26,9 +28,11 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.64.0 - Released 2024-06-28**
+**Release-0.65.0 - Released 2024-07-18**
 
-- Supports _SUI 1.28.x RPC API_
+**_BREAKING CHANGES to GraphQL support_**
+
+- Supports _SUI 1.29.x RPC API_
 - Backwards compatable to _Sui 1.21.x RPC API_
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
@@ -61,7 +65,7 @@ We continue to monitor and support changes from MystenLabs as they occur.
 
   - **_pgql_s_example_** - Synchronous examples for all supported QueryNode queries and mutations
   - **_pgql_a_example_** - Asynchronous examples for all supported QueryNode queries and mutations
-  - **_pgql_s_ptr_** - Example of new pysui Transaction Builder leveraging Sui GraphQL
+  - **_pgql_s_ptb_** - Example of new pysui Transaction Builder leveraging Sui GraphQL
 
 You can read pysui documentation on graphql beta [here](https://pysui.readthedocs.io/en/latest/graphql.html)
 
