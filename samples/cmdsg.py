@@ -582,10 +582,11 @@ def txn_txn(client: SuiGQLClient, args: argparse.Namespace) -> None:
 def alias_list(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """List address aliases."""
     print()
-    agroup = client.config.active_group
-    for alias_obj in agroup.alias_list:
+    for alias_obj in client.config.active_group.alias_list:
         print(f"Alias:      {alias_obj.alias}")
-        print(f"Address:    {agroup.address_for_alias(alias_obj.alias)}")
+        print(
+            f"Address:    {client.config.address_for_alias(alias_name=alias_obj.alias)}"
+        )
         print(f"PublicKey:  {alias_obj.public_key_base64}\n")
 
 
@@ -593,7 +594,7 @@ def alias_rename(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """List address aliases."""
     print()
     try:
-        client.config.address_for_alias(args.existing)
+        client.config.address_for_alias(alias_name=args.existing)
     except ValueError as ve:
         print(ve.args)
         return

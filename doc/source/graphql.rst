@@ -50,7 +50,7 @@ Simple dev example
     #
     """Development example."""
 
-    from pysui import SuiConfig, handle_result, SyncGqlClient
+    from pysui import PysuiConfiguration, handle_result, SyncGqlClient
     import pysui.sui.sui_pgql.pgql_query as qn
 
 
@@ -70,7 +70,8 @@ Simple dev example
 
     if __name__ == "__main__":
         # Initialize synchronous client
-        client_init = SyncGqlClient(config=SuiConfig.default_config(),write_schema=False)
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
+        client_init = SyncGqlClient(pysui_config=cfg,write_schema=False)
         main(client_init)
 
 ------
@@ -83,13 +84,14 @@ copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy 
 .. code-block:: python
     :linenos:
 
-    from pysui import SuiConfig, SyncGqlClient
+    from pysui import PysuiConfiguration, SyncGqlClient
 
     def main():
         """Dump Sui GraphQL Schema."""
         # Initialize synchronous client
-        client_init = SyncGqlClient(config=SuiConfig.default_config(),write_schema=True)
-        print(f"Schema dumped to: {client_init.schema_version}.graqhql`")
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
+        client_init = SyncGqlClient(pysui_config=cfg,write_schema=True)
+        print(f"Schema dumped to: {client_init.base_schema_version}.graqhql`")
 
     if __name__ == "__main__":
         main()
@@ -106,13 +108,14 @@ If not provided at construction, it defaults to ``{"headers":None}``
 .. code-block:: python
     :emphasize-lines: 8,15
 
-    from pysui import SuiConfig, SyncGqlClient
+    from pysui import PysuiConfiguration, SyncGqlClient
     import pysui.sui.sui_pgql.pgql_query as qn
 
     def main():
         """Set global headers to include in the RPC calls."""
         # Initialize synchronous client with default headers
-        client = SyncGqlClient(config=SuiConfig.default_config(),default_header={"headers": {"from": "youremail@acme.org"}})
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
+        client_init = SyncGqlClient(pysui_config=cfg,default_header={"headers": {"from": "youremail@acme.org"}})
         print(client.client_headers)
         # Use different 'from' in headers for this one call
         qres = client.execute_query_node(
@@ -182,7 +185,7 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
 
     #
     """String query example."""
-    from pysui import SuiConfig, SyncGqlClient
+    from pysui import PysuiConfiguration, SyncGqlClient
 
     def main(client: SyncGqlClient):
         """Execute a static string query."""
@@ -202,7 +205,8 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
 
     if __name__ == "__main__":
         # Initialize synchronous client
-        client_init = SyncGqlClient(config=SuiConfig.default_config(),write_schema=False)
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
+        client_init = SyncGqlClient(pysui_config=cfg)
         main(client_init)
 
 -----------------------
@@ -218,7 +222,7 @@ using ``gql`` functions.
     """DocumentNode query example."""
 
     from gql import gql
-    from pysui import SuiConfig, SyncGqlClient
+    from pysui import PysuiConfiguration, SyncGqlClient
 
     def main(client: SyncGqlClient):
         """Execute a DocumentNode as result of `gql` compilation."""
@@ -228,7 +232,8 @@ using ``gql`` functions.
 
     if __name__ == "__main__":
         # Initialize synchronous client
-        client_init = SyncGqlClient(config=SuiConfig.default_config(),write_schema=False)
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
+        client_init = SyncGqlClient(pysui_config=cfg)
         main(client_init)
 
 -----------------------

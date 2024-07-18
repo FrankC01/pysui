@@ -10,6 +10,7 @@ from typing import Optional, Union
 from pathlib import Path
 import dataclasses_json
 
+
 import pysui.sui.sui_pgql.config.confgroup as prfgrp
 from pysui.sui.sui_pgql.config.conflegacy import load_client_yaml
 
@@ -118,23 +119,41 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         if not _res:
             # Get keys, aliases and addresses from rpc
             _suigrp = self._group_exists(group_name=json_rpc_group_name)
-            if not _suigrp:
-                raise ValueError(f"{json_rpc_group_name} group does not exist.")
-            if _suigrp.using_profile in list(_GQL_DEFAULTS.keys()):
-                _using_profile = _suigrp.using_profile
-            else:
-                _using_profile = "testnet"
-            self.groups.append(
-                prfgrp.ProfileGroup(
-                    gql_rpc_group_name,
-                    _using_profile,
-                    _suigrp.using_address,
-                    _suigrp.alias_list.copy(),
-                    _suigrp.key_list.copy(),
-                    _suigrp.address_list.copy(),
-                    [prfgrp.Profile(k, v) for k, v in _GQL_DEFAULTS.items()],
+            if _suigrp:
+                if _suigrp.using_profile in list(_GQL_DEFAULTS.keys()):
+                    _using_profile = _suigrp.using_profile
+                else:
+                    _using_profile = "testnet"
+                self.groups.append(
+                    prfgrp.ProfileGroup(
+                        gql_rpc_group_name,
+                        _using_profile,
+                        _suigrp.using_address,
+                        _suigrp.alias_list.copy(),
+                        _suigrp.key_list.copy(),
+                        _suigrp.address_list.copy(),
+                        [prfgrp.Profile(k, v) for k, v in _GQL_DEFAULTS.items()],
+                    )
                 )
-            )
+            else:
+                _mnem, new_addy, prf_key, prf_alias = (
+                    prfgrp.ProfileGroup.new_keypair_parts(
+                        alias="Primary",
+                        alias_list=[],
+                    )
+                )
+                self.groups.append(
+                    prfgrp.ProfileGroup(
+                        gql_rpc_group_name,
+                        "testnet",
+                        new_addy,
+                        [prf_alias],
+                        [prf_key],
+                        [new_addy],
+                        [prfgrp.Profile(k, v) for k, v in _GQL_DEFAULTS.items()],
+                    )
+                )
+
             _updated = True
 
         return _updated

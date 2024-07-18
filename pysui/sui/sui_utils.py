@@ -116,6 +116,22 @@ def _compile_project(
     raise SuiPackageBuildFail(result.stdout)
 
 
+def _compile_projectg(
+    sui_bin_str: str, path_to_package: Path, args_list: list[str]
+) -> Union[Path, SuiException]:
+    """_compile_projectg Compiles a sui move project in GraohQL environment."""
+    mbs = _SUI_BUILD.copy()
+    mbs.extend(args_list)
+    mbs.append("-p")
+    mbs.append(path_to_package)
+
+    mbs.insert(0, sui_bin_str)
+    result = subprocess.run(mbs, capture_output=True, text=True)
+    if result.returncode == 0:
+        return path_to_package
+    raise SuiPackageBuildFail(result.stdout)
+
+
 def _module_bytes(module: Path) -> Union[ModuleReader, OSError]:
     """Fetch the module reader for this module."""
     return deser.reader_from_file(str(module))
@@ -195,6 +211,38 @@ def publish_build(
         raise ValueError(f"Configuration does not support publishing")
     # Compile the package
     path_to_package = _compile_project(path_to_package, args_list)
+    # Find the build folder
+    build_path = path_to_package.joinpath("build")
+    if not build_path.exists():
+        raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
+    # Get the project folder
+    build_subdir = [
+        x for x in os.scandir(build_path) if x.is_dir() and x.name != "locks"
+    ]
+    if len(build_subdir) > 1:
+        raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
+    # Finally, get the module(s) bytecode folder
+    byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
+    if not byte_modules.exists():
+        raise SuiMiisingBuildFolder(
+            f"No bytecode_modules folder found for {path_to_package}/build"
+        )
+
+    # Construct initial package
+    cpackage = _build_dep_info(build_subdir[0].path)
+    # Set module bytes as base64 strings and generate package digest
+    _package_digest(cpackage, _modules_bytes(byte_modules))
+    return cpackage
+
+
+def publish_buildg(
+    sui_bin_path_str: str,
+    path_to_package: Path,
+    args_list: list[str],
+) -> Union[CompiledPackage, Exception]:
+    """Build and collect module base64 strings and dependencies ObjectIDs."""
+    # Compile the package
+    path_to_package = _compile_projectg(sui_bin_path_str, path_to_package, args_list)
     # Find the build folder
     build_path = path_to_package.joinpath("build")
     if not build_path.exists():

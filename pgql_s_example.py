@@ -708,7 +708,9 @@ def do_unstake(client: SyncGqlClient):
 if __name__ == "__main__":
 
     #
-    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+    cfg = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP  # , profile_name="testnet"
+    )
     client_init = SyncGqlClient(
         write_schema=False,
         pysui_config=cfg,
@@ -721,7 +723,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)

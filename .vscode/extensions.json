@@ -7,7 +7,6 @@
 		"rogalmic.bash-debug",
 		"ms-python.black-formatter",
 		"vadimcn.vscode-lldb",
-		"serayuzgur.crates",
 		"ms-vscode.makefile-tools",
 		"mikestead.dotenv",
 		"graphql.vscode-graphql-syntax",

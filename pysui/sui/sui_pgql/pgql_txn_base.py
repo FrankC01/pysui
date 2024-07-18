@@ -24,7 +24,7 @@ from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.scalars import SuiString
-from pysui.sui.sui_utils import publish_build
+from pysui.sui.sui_utils import publish_buildg
 
 # Standard library logging setup
 logger = logging.getLogger("pysui.gql_transaction")
@@ -230,7 +230,8 @@ class _SuiTransactionBase:
         """
         src_path = Path(os.path.expanduser(project_path))
         args_list = args_list if args_list else []
-        compiled_package = publish_build(
+        compiled_package = publish_buildg(
+            self.client.config.model.sui_binary,
             src_path,
             args_list,
         )

@@ -33,10 +33,11 @@ New
 .. code-block:: python
     :linenos:
 
-    from pysui import SuiConfig, SyncGqlClient
+    from pysui import PysuiConfiguration, SyncGqlClient
     from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 
-    client = SyncGqlClient(config=SuiConfig.default_config()) # Keyword argument
+    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
+    client = SyncGqlClient(pysui_config=cfg)
     txn = SuiTransaction(client=client)
 
 ===============

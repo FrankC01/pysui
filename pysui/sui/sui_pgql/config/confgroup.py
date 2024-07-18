@@ -10,7 +10,10 @@ import hashlib
 import dataclasses
 from typing import Optional, Union
 import dataclasses_json
+from pysui.abstracts.client_keypair import SignatureScheme
 import pysui.sui.sui_crypto as crypto
+import pysui.sui.sui_utils as utils
+from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
 
 
 @dataclasses.dataclass
@@ -164,43 +167,123 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
                 self.key_list[self.address_list.index(_res)].private_key_base64
             )
 
+    @staticmethod
+    def _alias_check_or_gen(
+        *,
+        aliases: Optional[list[str]] = None,
+        word_counts: Optional[int] = 12,
+        alias: Optional[str] = None,
+        current_iter: Optional[int] = 0,
+    ) -> str:
+        """_alias_check_or_gen If alias is provided, checks if unique otherwise creates one or more.
+
+        :param aliases: List of existing aliases, defaults to None
+        :type aliases: list[str], optional
+        :param word_counts: Words count used for mnemonic phrase, defaults to 12
+        :type word_counts: Optional[int], optional
+        :param alias: An inbound alias, defaults to None
+        :type alias: Optional[str], optional
+        :param current_iter: Internal recursion count, defaults to 0
+        :type current_iter: Optional[int], optional
+        :return: An aliases
+        :rtype: str
+        """
+        if not alias:
+            parts = list(
+                utils.partition(
+                    crypto.gen_mnemonic_phrase(word_counts).split(" "),
+                    int(word_counts / 2),
+                )
+            )
+            alias_names = [k + "-" + v for k, v in zip(*parts)]
+
+            # alias_names = self._alias_gen_batch(word_counts=word_counts)
+            # Find a unique part if just_one
+            if not aliases:
+                alias = alias_names[0]
+            else:
+                for alias_name in alias_names:
+                    if alias_name not in aliases:
+                        # Found one
+                        alias = alias_name
+                        break
+            # If all match (unlikely), try unless threshold
+            if not alias:
+                if current_iter > 2:
+                    raise ValueError("Unable to find unique alias")
+                else:
+                    alias = ProfileGroup._alias_check_or_gen(
+                        aliases=aliases,
+                        word_counts=word_counts,
+                        current_iter=current_iter + 1,
+                    )
+        else:
+            if alias in aliases:
+                raise ValueError(f"Alias {alias} already exists.")
+            if not (SUI_MIN_ALIAS_LEN <= len(alias) <= SUI_MAX_ALIAS_LEN):
+                raise ValueError(
+                    f"Invalid alias string length, must be betwee {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
+                )
+        return alias
+
+    @staticmethod
+    def new_keypair_parts(
+        *,
+        of_keytype: Optional[SignatureScheme] = SignatureScheme.ED25519,
+        word_counts: Optional[int] = 12,
+        derivation_path: Optional[str] = None,
+        alias: Optional[str] = None,
+        alias_list: list[ProfileAlias],
+    ) -> tuple[str, str, ProfileKey, ProfileAlias]:
+        """."""
+        mnem, keypair = crypto.create_new_keypair(
+            scheme=of_keytype,
+            word_counts=word_counts,
+            derv_path=derivation_path,
+        )
+        _new_keystr = keypair.serialize()
+        _new_prf_key = ProfileKey(_new_keystr)
+        # Generate artifacts
+        _pkey_bytes = keypair.to_bytes()
+        _digest = _pkey_bytes[0:33] if _pkey_bytes[0] == 0 else _pkey_bytes[0:34]
+        # ProfileAlias Entry
+        if not alias:
+            alias = ProfileGroup._alias_check_or_gen(
+                aliases=alias_list, alias=alias, word_counts=word_counts
+            )
+
+        _new_alias = ProfileAlias(
+            alias,
+            base64.b64encode(keypair.public_key.scheme_and_key()).decode(),
+        )
+        _new_addy = format(f"0x{hashlib.blake2b(_digest, digest_size=32).hexdigest()}")
+        return mnem, _new_addy, _new_prf_key, _new_alias
+
     def add_keypair_and_parts(
         self,
         *,
-        new_alias: str,
-        new_keypair: crypto.SuiKeyPair,
+        new_address: str,
+        new_alias: ProfileAlias,
+        new_key: ProfileKey,
         make_active: Optional[bool] = False,
     ) -> str:
         """Add a new keypair with associated address and alias."""
-        _new_keystr = new_keypair.serialize()
-        if not self._key_exists(key_string=_new_keystr):
-            if self._alias_exists(alias_name=new_alias):
+
+        if not self._key_exists(key_string=new_key.private_key_base64):
+            if self._alias_exists(alias_name=new_alias.alias):
                 raise ValueError(
-                    f"Alias {new_alias} already exist attempting new key and address."
+                    f"Alias {new_alias.alias} already exist attempting new key and address."
                 )
-            # ProfileKey Entry
-            _prvk_entry = ProfileKey(_new_keystr)
-            # Generate artifacts
-            _pkey_bytes = new_keypair.to_bytes()
-            _digest = _pkey_bytes[0:33] if _pkey_bytes[0] == 0 else _pkey_bytes[0:34]
-            # ProfileAlias Entry
-            _alias_entry = ProfileAlias(
-                new_alias,
-                base64.b64encode(new_keypair.public_key.scheme_and_key()).decode(),
-            )
-            _new_addy = format(
-                f"0x{hashlib.blake2b(_digest, digest_size=32).hexdigest()}"
-            )
             # Populate group
-            self.address_list.append(_new_addy)
-            self.key_list.append(_prvk_entry)
-            self.alias_list.append(_alias_entry)
+            self.address_list.append(new_address)
+            self.key_list.append(new_key)
+            self.alias_list.append(new_alias)
 
             if make_active:
-                self.using_address = _new_addy
-            return _new_addy
+                self.using_address = new_address
+
         raise ValueError(
-            f"Private keystring {_new_keystr} already exists attempting new key and address.."
+            f"Private keystring {new_key.private_key_base64} already exists attempting new key and address.."
         )
 
     def add_profile(self, *, new_prf: Profile, make_active: bool = False):

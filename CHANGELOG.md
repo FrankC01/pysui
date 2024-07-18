@@ -11,13 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- SyncGqlClient and AsyncGqlClient as aliases in `pysui.__init__`
-
 
 ### Fixed
 
 ### Changed
 
+- *BREAKING* SuiConfig is no longer used to instantiate a GraphQL client, instead
+  use PysuiConfiguration
+- PysuiConfiguration, SyncGqlClient and AsyncGqlClient as aliases in `pysui.__init__`
 - [change](https://github.com/FrankC01/pysui/issues/218) GraphQL remove SuiTransaction legacy dependency
 - Deprecated Event and Transaction subscriptions and subscription Client
 - Deprecate all Builders

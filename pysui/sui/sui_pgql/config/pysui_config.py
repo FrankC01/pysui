@@ -10,12 +10,7 @@ import platform
 from pathlib import Path
 from typing import Optional
 
-import pysui.sui.sui_crypto as crypto
-import pysui.sui.sui_utils as utils
-
 from pysui.abstracts.client_keypair import SignatureScheme
-from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
-
 from pysui.sui.sui_pgql.config.confgroup import ProfileGroup
 from pysui.sui.sui_pgql.config.confmodel import PysuiConfigModel
 
@@ -223,65 +218,6 @@ class PysuiConfiguration:
         if _changes and persist:
             self._write_model()
 
-    def _alias_check_or_gen(
-        self,
-        *,
-        aliases: Optional[list[str]] = None,
-        word_counts: Optional[int] = 12,
-        alias: Optional[str] = None,
-        current_iter: Optional[int] = 0,
-    ) -> str:
-        """_alias_check_or_gen If alias is provided, checks if unique otherwise creates one or more.
-
-        :param aliases: List of existing aliases, defaults to None
-        :type aliases: list[str], optional
-        :param word_counts: Words count used for mnemonic phrase, defaults to 12
-        :type word_counts: Optional[int], optional
-        :param alias: An inbound alias, defaults to None
-        :type alias: Optional[str], optional
-        :param current_iter: Internal recursion count, defaults to 0
-        :type current_iter: Optional[int], optional
-        :return: An aliases
-        :rtype: str
-        """
-        if not alias:
-            parts = list(
-                utils.partition(
-                    crypto.gen_mnemonic_phrase(word_counts).split(" "),
-                    int(word_counts / 2),
-                )
-            )
-            alias_names = [k + "-" + v for k, v in zip(*parts)]
-
-            # alias_names = self._alias_gen_batch(word_counts=word_counts)
-            # Find a unique part if just_one
-            if not aliases:
-                alias = alias_names[0]
-            else:
-                for alias_name in alias_names:
-                    if alias_name not in aliases:
-                        # Found one
-                        alias = alias_name
-                        break
-            # If all match (unlikely), try unless threshold
-            if not alias:
-                if current_iter > 2:
-                    raise ValueError("Unable to find unique alias")
-                else:
-                    alias = self._alias_check_or_gen(
-                        aliases=aliases,
-                        word_counts=word_counts,
-                        current_iter=current_iter + 1,
-                    )
-        else:
-            if alias in aliases:
-                raise ValueError(f"Alias {alias} already exists.")
-            if not (SUI_MIN_ALIAS_LEN <= len(alias) <= SUI_MAX_ALIAS_LEN):
-                raise ValueError(
-                    f"Invalid alias string length, must be betwee {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
-                )
-        return alias
-
     def new_keypair(
         self,
         *,
@@ -305,19 +241,18 @@ class PysuiConfiguration:
                 | SignatureScheme.SECP256K1
                 | SignatureScheme.SECP256R1
             ):
-                # First, early check alias given or create new one
-                _aliases = [x.alias for x in _group.alias_list]
-                alias = self._alias_check_or_gen(
-                    aliases=_aliases, alias=alias, word_counts=word_counts
-                )
-                # Generate the new key and address
-                mnem, keypair = crypto.create_new_keypair(
-                    scheme=of_keytype,
+                mnem, new_addy, prf_key, prf_alias = ProfileGroup.new_keypair_parts(
+                    of_keytype=of_keytype,
                     word_counts=word_counts,
-                    derv_path=derivation_path,
+                    derivation_path=derivation_path,
+                    alias=alias,
+                    alias_list=_group.alias_list,
                 )
                 new_addy = _group.add_keypair_and_parts(
-                    new_alias=alias, new_keypair=keypair, make_active=make_active
+                    new_address=new_addy,
+                    new_alias=prf_alias,
+                    new_key=prf_key,
+                    make_active=make_active,
                 )
                 if make_active and _group.group_name != self.active_group.group_name:
                     self._model.active_group = _group.group_name
