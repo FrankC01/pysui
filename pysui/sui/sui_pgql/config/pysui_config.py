@@ -20,6 +20,7 @@ class PysuiConfiguration:
 
     SUI_JSON_RPC_GROUP: str = "sui_json_config"
     SUI_GQL_RPC_GROUP: str = "sui_gql_config"
+    SUI_USER_GROUP: str = "user"
 
     def __init__(
         self,
@@ -31,7 +32,21 @@ class PysuiConfiguration:
         alias: Optional[str] = None,
         persist: Optional[bool] = False,
     ):
-        """Initialize configuration."""
+        """PysuiConfiguration initialization.
+
+        :param from_cfg_path: Where to read/write PysuiConfig.json, defaults to '~/.pysui'
+        :type from_cfg_path: str, optional
+        :param group_name: Sets the active ProfileGroup, defaults to "sui_gql_config"
+        :type group_name: Optional[str], optional
+        :param profile_name: Sets the active Profile, defaults to None
+        :type profile_name: Optional[str], optional
+        :param address: Sets the active address, defaults to None
+        :type address: Optional[str], optional
+        :param alias: Sets the active address via alias name (precedence is address argument), defaults to None
+        :type alias: Optional[str], optional
+        :param persist: Indicates wheter to persist any changes made above, defaults to False
+        :type persist: Optional[bool], optional
+        """
         # Get the base configuration folder and profile file
         self._config_root = Path(from_cfg_path or "~/.pysui").expanduser()
         # _ecfgdir = Path(self._config_root).expanduser()
@@ -48,23 +63,27 @@ class PysuiConfiguration:
             self._model: PysuiConfigModel = PysuiConfigModel.from_json(
                 self._config_file.read_text(encoding="utf8")
             )
-        # Determine if sui binaries installed
-        if platform.system() == "Windows":
-            _bcfg = Path("~/.cargo/bin/sui.exe").expanduser()
-        else:
-            _bcfg = Path("~/.cargo/bin/sui").expanduser()
-        # Initialize from sui config if found
-        self.refresh_legacy(replace=False)
-        # Set if not exist, don't overwrite
+        # Set up user group if not exist, don't overwrite
         self.model.add_group(
-            group=ProfileGroup("user", "", "", [], [], [], []), make_active=False
+            group=ProfileGroup(self.SUI_USER_GROUP, "", "", [], [], [], []),
+            make_active=False,
         )
-        if self._model.initialize_gql_rpc(
-            sui_binary=_bcfg,
-            gql_rpc_group_name=self.SUI_GQL_RPC_GROUP,
-            json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
-        ):
-            self._write_model()
+        # Determine if sui binaries installed
+        # if platform.system() == "Windows":
+        #     _bcfg = Path("~/.cargo/bin/sui.exe").expanduser()
+        # else:
+        #     _bcfg = Path("~/.cargo/bin/sui").expanduser()
+        # Initialize from sui config if found
+        if not self._model.has_group(group_name=self.SUI_JSON_RPC_GROUP):
+            self.rebuild_from_sui_client(
+                rebuild_gql=not self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP)
+            )
+        # if self._model.initialize_gql_rpc(
+        #     sui_binary=_bcfg,
+        #     gql_rpc_group_name=self.SUI_GQL_RPC_GROUP,
+        #     json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
+        # ):
+        #     self._write_model()
         # Make active as per arguments
         self.make_active(
             group_name=group_name,
@@ -82,28 +101,45 @@ class PysuiConfiguration:
         """."""
         return self._model.to_json(**kwargs)
 
-    def refresh_legacy(self, *, replace: bool = True):
-        """Refresh from legacy Sui JSON RPC client yaml."""
+    def rebuild_from_sui_client(
+        self,
+        *,
+        rebuild_gql: bool = False,
+        persist: bool = True,
+    ):
+        """Delete existing JSON SUI_JSON_RPC_GROUP group and regenerate from sui binary configuration."
+
+        :param rebuild_gql: Delete and rebuild the SUI_GQL_RPC_GROUP, defaults to False
+        :type rebuild_gql: bool, optional
+        :param persist: Persist updated PysuiConfiguration, defaults to True
+        :type persist: bool, optional
+        """
         # Determine if sui configuration installed
         _scfg = Path("~/.sui/sui_config").expanduser()
         if _scfg.exists():
             # If exists legacy group, remove it
             if self._model.has_group(group_name=self.SUI_JSON_RPC_GROUP):
-                if replace:
-                    self._model.remove_group(group_name=self.SUI_JSON_RPC_GROUP)
-                else:
-                    return
+                self._model.remove_group(group_name=self.SUI_JSON_RPC_GROUP)
             # Determine if sui binaries installed
             if platform.system() == "Windows":
                 _bcfg = Path("~/.cargo/bin/sui.exe").expanduser()
             else:
                 _bcfg = Path("~/.cargo/bin/sui").expanduser()
-            _needs_write_json = self._model.initialize_json_rpc(
+            _ = self._model.initialize_json_rpc(
                 sui_config=_scfg,
                 sui_binary=_bcfg,
                 json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
             )
-            if _needs_write_json:
+            if rebuild_gql:
+                if self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP):
+                    self._model.remove_group(group_name=self.SUI_GQL_RPC_GROUP)
+                _ = self._model.initialize_gql_rpc(
+                    sui_binary=_bcfg,
+                    gql_rpc_group_name=self.SUI_GQL_RPC_GROUP,
+                    json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
+                )
+
+            if persist:
                 self._write_model()
 
     @property
@@ -148,7 +184,7 @@ class PysuiConfiguration:
 
     @property
     def config_path(self) -> str:
-        """Return configuration breadcrump path."""
+        """Return configuration breadcrumb path."""
         _group = self.active_group
         return f"{_group.group_name}.{_group.active_profile.profile_name}"
 
@@ -235,31 +271,29 @@ class PysuiConfiguration:
         if in_group and in_group != _group.group_name:
             _group = self._model.get_group(group_name=in_group)
 
-        match of_keytype:
-            case (
-                SignatureScheme.ED25519
-                | SignatureScheme.SECP256K1
-                | SignatureScheme.SECP256R1
-            ):
-                mnem, new_addy, prf_key, prf_alias = ProfileGroup.new_keypair_parts(
-                    of_keytype=of_keytype,
-                    word_counts=word_counts,
-                    derivation_path=derivation_path,
-                    alias=alias,
-                    alias_list=_group.alias_list,
-                )
-                new_addy = _group.add_keypair_and_parts(
-                    new_address=new_addy,
-                    new_alias=prf_alias,
-                    new_key=prf_key,
-                    make_active=make_active,
-                )
-                if make_active and _group.group_name != self.active_group.group_name:
-                    self._model.active_group = _group.group_name
-                if persist:
-                    self._write_model()
-                return mnem, new_addy
-            case _:
-                raise NotImplementedError(
-                    f"{of_keytype}: Not recognized as valid keypair scheme."
-                )
+        if of_keytype in [
+            SignatureScheme.ED25519,
+            SignatureScheme.SECP256K1,
+            SignatureScheme.SECP256R1,
+        ]:
+            mnem, new_addy, prf_key, prf_alias = ProfileGroup.new_keypair_parts(
+                of_keytype=of_keytype,
+                word_counts=word_counts,
+                derivation_path=derivation_path,
+                alias=alias,
+                alias_list=_group.alias_list,
+            )
+            new_addy = _group.add_keypair_and_parts(
+                new_address=new_addy,
+                new_alias=prf_alias,
+                new_key=prf_key,
+                make_active=make_active,
+            )
+            if make_active and _group.group_name != self.active_group.group_name:
+                self._model.active_group = _group.group_name
+            if persist:
+                self._write_model()
+            return mnem, new_addy
+        raise NotImplementedError(
+            f"{of_keytype}: Not recognized as valid keypair scheme."
+        )

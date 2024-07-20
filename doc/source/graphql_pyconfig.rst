@@ -75,5 +75,76 @@ active address and keypair (ed25519), an alias of 'Primary', and will make 'test
 
 The location of the ``sui`` binary will be captured, if present, enabling Move project compiling.
 
-PysuiConfiguration Method Summaries
-===================================
+Changing PysuiConfig Active
+===========================
+Defaults of what is considered 'active' is whatever was last persisted but can be
+changed at runtime.
+
+At PysuiConfig Construction
+----------------------------
+
+* from_cfg_path (str) - Controls where PysuiConfiguration reads/writes ``PysuiConfig.json``
+* group_name (str) - Sets the ``active_group`` for the session, for example:
+
+.. code-block:: python
+    :linenos:
+
+    # Set group to builtin Sui's GraphQL RPC group
+    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
+
+    # Set group to builtin 'user' group
+    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_USER_GROUP)
+
+    # Set group to other user defined group
+    cfg = PysuiConfiguration(group_name="Primary Group")
+
+* profile_name (str) - Sets which profile is active of the current ``active_group``. It is the equivalent of ``sui client switch --env``:
+
+.. code-block:: python
+    :linenos:
+
+    # Set group to builtin Sui's GraphQL RPC group
+    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP, profile_name="mainnet" )
+
+* address or alias (str) - Sets which Sui address is active using either and explicit address or an alias. It is the equivalent of ``sui client switch --address``:
+
+.. code-block:: python
+    :linenos:
+
+    # Set group to builtin Sui's GraphQL RPC group
+    cfg = PysuiConfiguration(alias="Primary")
+
+* persist (bool) - Controls whether to persist any changes made above to ``PysuiConfig.json``. If not set to True the changes are in memory only.
+
+After Construction
+------------------
+Changing what is active after PysuiConfiguration has been constructed is done through the ``PysuiConfig.make_active(...)`` method.
+It takes the same arguments as the constructor with the exception of the ``from_cfg_path``.
+
+**NOTE** If changing the active group and or profile after you've constructed a client will require creating a new
+client. Changing the active address will not require recreating a client.
+
+.. code-block:: python
+    :linenos:
+
+    # Set group to builtin Sui's GraphQL RPC group
+    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP, profile_name="mainnet" )
+    client = SyncGqlClient(pysui_config=cfg)
+
+    # Changing active profile
+    client.config.make_active(profile_name="testnet")
+    client = SyncGqlClient(pysui_config=cfg)
+
+Rebuilding from ``client.yaml``
+===============================
+Depending on use of the Sui command line ``sui client ...`` it may be desierable to reconstruct the PysuiConfiguration
+``sui_json_config`` group again or for the first time.
+
+**WARNING** This is a destructive call that will delete the existing ``sui_json_config`` group if it exists as well as
+the ``sui_gql_config`` if you so choose.
+
+The following shows the method defaults
+
+.. code-block:: python
+
+    cfg.rebuild_from_sui_client(rebuild_gql: bool = False,persist: bool = True)
