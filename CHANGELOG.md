@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- On PysuiConfiguration:
+  - `new_profile` creates equivalant of Sui CLI new-env
+  - `update_profile` updates profile values
+
 ### Fixed
+
+- Coin deserialization failed when previousTransactionBlock has been pruned
 
 ### Changed
 

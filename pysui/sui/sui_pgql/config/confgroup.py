@@ -159,6 +159,13 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return _res
         raise ValueError(f"{change_to} profile does not exist")
 
+    def get_profile(self, profile_name: str) -> Profile:
+        """Attempt to fetch a profile considered available."""
+        _res = self._profile_exists(profile_name=profile_name)
+        if _res:
+            return _res
+        raise ValueError(f"{profile_name} profile does not exist")
+
     def address_keypair(self, *, address: str) -> crypto.SuiKeyPair:
         """Fetch an addresses KeyPair."""
         _res = self._address_exists(address=address)

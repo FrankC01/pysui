@@ -148,3 +148,91 @@ The following shows the method defaults
 .. code-block:: python
 
     cfg.rebuild_from_sui_client(rebuild_gql: bool = False,persist: bool = True)
+
+
+Bottom Up Changes
+=================
+
+Profile
+-------
+A Profile is the equivalent of what sui CLI calls 'env' (a.k.a. environment). It encapsulate
+a unique name and relevant url information such as the primary endpoint, faucet and faucet status urls.
+
+**WARNING** All methods support an optional ``persist`` flag argument. Keep in mind that this will persist *any*
+changes that may have occured previouos where the ``persist`` flag was set to False. If you want changes to be
+ephemeral only set this to False.
+
+The following methods are available on the PysuiConfiguration instance.
+
+Creating a new Profile
+~~~~~~~~~~~~~~~~~~~~~~
+Create a new profile in an explicit group or, default, the active group. Will raise an exception if the
+explicit group *does not* exist, or the profile (with profile_name) *does* exist.
+
+.. code-block:: python
+
+    def new_profile(
+        self,
+        *,
+        profile_name: str,
+        url: str,
+        faucet_url: Optional[str] = None,
+        faucet_status_url: Optional[str] = None,
+        make_active: Optional[bool] = False,
+        in_group: Optional[str] = None,
+        persist: Optional[bool] = True,
+    )
+
+Update Existing
+~~~~~~~~~~~~~~~
+Update an existing profile in an explicit group or, default, the active group. Will raise an exception if the
+explicit group or the profile (with profile_name) *does not* exist.
+
+
+.. code-block:: python
+
+    def update_profile(
+        self,
+        *,
+        profile_name: str,
+        url: str,
+        faucet_url: Optional[str] = None,
+        faucet_status_url: Optional[str] = None,
+        in_group: Optional[str] = None,
+        persist: Optional[bool] = True,
+    )
+
+ProfileGroup
+------------
+In addition to Profiles the ProfileGroup manages the addresses, aliases for addresses and private keys.
+
+**WARNING** All methods support an optional ``persist`` flag argument. Keep in mind that this will persist *any*
+changes that may have occured previouos where the ``persist`` flag was set to False. If you want changes to be
+ephemeral only, set this to False.
+
+The following methods are available on the PysuiConfiguration instance.
+
+Creating a new Group
+~~~~~~~~~~~~~~~~~~~~
+We're working on it....
+
+Creating a new Keypair
+~~~~~~~~~~~~~~~~~~~~~~
+Create a new keypair of type and add to an explict group or, default, the active group. Will raise an exception
+if the explicit group does *not* exist or the optional alias *does* exist.
+
+Returns the mnemonic string and address string upon success.
+
+.. code-block:: python
+
+    def new_keypair(
+        self,
+        *,
+        of_keytype: SignatureScheme,
+        in_group: Optional[str] = None,
+        word_counts: Optional[int] = 12,
+        derivation_path: Optional[str] = None,
+        make_active: Optional[bool] = False,
+        alias: Optional[str] = None,
+        persist: Optional[bool] = True,
+    )

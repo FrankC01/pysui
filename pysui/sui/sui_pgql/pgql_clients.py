@@ -335,7 +335,7 @@ class SuiGQLClient(BaseSuiGQLClient):
             return SuiRpcResult(
                 False, "TypeError", pgql_type.ErrorGQL.from_query(te.args)
             )
-        except ValueError as ve:
+        except (Exception, ValueError) as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )

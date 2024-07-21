@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from pysui.abstracts.client_keypair import SignatureScheme
-from pysui.sui.sui_pgql.config.confgroup import ProfileGroup
+from pysui.sui.sui_pgql.config.confgroup import ProfileGroup, Profile
 from pysui.sui.sui_pgql.config.confmodel import PysuiConfigModel
 
 
@@ -68,22 +68,11 @@ class PysuiConfiguration:
             group=ProfileGroup(self.SUI_USER_GROUP, "", "", [], [], [], []),
             make_active=False,
         )
-        # Determine if sui binaries installed
-        # if platform.system() == "Windows":
-        #     _bcfg = Path("~/.cargo/bin/sui.exe").expanduser()
-        # else:
-        #     _bcfg = Path("~/.cargo/bin/sui").expanduser()
         # Initialize from sui config if found
         if not self._model.has_group(group_name=self.SUI_JSON_RPC_GROUP):
             self.rebuild_from_sui_client(
                 rebuild_gql=not self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP)
             )
-        # if self._model.initialize_gql_rpc(
-        #     sui_binary=_bcfg,
-        #     gql_rpc_group_name=self.SUI_GQL_RPC_GROUP,
-        #     json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
-        # ):
-        #     self._write_model()
         # Make active as per arguments
         self.make_active(
             group_name=group_name,
@@ -196,23 +185,6 @@ class PysuiConfiguration:
         """Return the alias for the address in current group."""
         return self.active_group.alias_for_address(address=address)
 
-    def rename_alias(
-        self,
-        *,
-        existing_alias: str,
-        new_alias: str,
-        in_group: Optional[str] = None,
-        persist: Optional[bool] = False,
-    ) -> str:
-        """Rename an alias in a group, default to active_group."""
-        _group = self.active_group
-        if in_group and in_group != _group.group_name:
-            _group = self._model.get_group(group_name=in_group)
-
-        _res = _group.replace_alias_name(from_alias=existing_alias, to_alias=new_alias)
-        if _res and persist:
-            self._write_model()
-
     def make_active(
         self,
         *,
@@ -267,9 +239,11 @@ class PysuiConfiguration:
     ) -> tuple[str, str]:
         """Creates a new keypair returning generated passphrase and associated address."""
         # Resolve group
-        _group = self.active_group
-        if in_group and in_group != _group.group_name:
-            _group = self._model.get_group(group_name=in_group)
+        _group = (
+            self._model.get_group(group_name=in_group)
+            if in_group
+            else self.active_group
+        )
 
         if of_keytype in [
             SignatureScheme.ED25519,
@@ -297,3 +271,101 @@ class PysuiConfiguration:
         raise NotImplementedError(
             f"{of_keytype}: Not recognized as valid keypair scheme."
         )
+
+    def new_profile(
+        self,
+        *,
+        profile_name: str,
+        url: str,
+        faucet_url: Optional[str] = None,
+        faucet_status_url: Optional[str] = None,
+        make_active: Optional[bool] = False,
+        in_group: Optional[str] = None,
+        persist: Optional[bool] = True,
+    ):
+        """Adds a new profile to exiting or named group, equivelant of `sui client new-env`.
+
+        :param profile_name: The name of the new profile, exception if exists
+        :type porfile_name: str
+        :param url: The url reference for the profile
+        :type url: str
+        :param faucet_url: The faucet url reference for the profile, defaults to None
+        :type faucet_url: Optional[str], optional
+        :param faucet_status_url: The faucet status url reference for the profile, defaults to None
+        :type faucet_status_url: Optional[str], optional
+        :param make_active: Sets this as the groups active_profile, defaults to False
+        :type make_active: Optional[bool], optional
+        :param in_group: Group to add new profile, defaults to active_group or excepts if not exists
+        :type in_group: Optional[str], optional
+        :param persist: Persist updates to PysuiConfig.json, defaults to True
+        :type persist: Optional[bool], optional
+        """
+        _group = (
+            self._model.get_group(group_name=in_group)
+            if in_group
+            else self.active_group
+        )
+        _group.add_profile(
+            new_prf=Profile(profile_name, url, faucet_url, faucet_status_url),
+            make_active=make_active,
+        )
+        if persist:
+            self._write_model()
+
+    def update_profile(
+        self,
+        *,
+        profile_name: str,
+        url: Optional[str] = None,
+        faucet_url: Optional[str] = None,
+        faucet_status_url: Optional[str] = None,
+        in_group: Optional[str] = None,
+        persist: Optional[bool] = True,
+    ):
+        """Updates and exiting profile.
+
+        :param profile_name: The name of the existing profile, exception if not exists
+        :type porfile_name: str
+        :param url: The url reference for the profile, defaults to None
+        :type url: Optional[str], optional
+        :param faucet_url: The faucet url reference for the profile, defaults to None
+        :type faucet_url: Optional[str], optional
+        :param faucet_status_url: The faucet status url reference for the profile, defaults to None
+        :type faucet_status_url: Optional[str], optional
+        :param make_active: Sets this as the groups active_profile, defaults to False
+        :type make_active: Optional[bool], optional
+        :param in_group: Group to add new profile, defaults to active_group or excepts if not exists
+        :type in_group: Optional[str], optional
+        :param persist: Persist updates to PysuiConfig.json, defaults to True
+        :type persist: Optional[bool], optional
+        """
+        _group = (
+            self._model.get_group(group_name=in_group)
+            if in_group
+            else self.active_group
+        )
+        _prf = _group.get_profile(profile_name)
+        _prf.url = url or _prf.url
+        _prf.faucet_url = faucet_url or _prf.faucet_url
+        _prf.faucet_status_url = faucet_status_url or _prf.faucet_status_url
+        if persist:
+            self._write_model()
+
+    def rename_alias(
+        self,
+        *,
+        existing_alias: str,
+        new_alias: str,
+        in_group: Optional[str] = None,
+        persist: Optional[bool] = True,
+    ) -> str:
+        """Rename an alias in a group, default to active_group."""
+        _group = (
+            self._model.get_group(group_name=in_group)
+            if in_group
+            else self.active_group
+        )
+
+        _res = _group.replace_alias_name(from_alias=existing_alias, to_alias=new_alias)
+        if _res and persist:
+            self._write_model()

@@ -125,7 +125,6 @@ class SuiCoinObjectGQL(PGQL_Type):
     version: int
     object_digest: str
     balance: str
-    previous_transaction: str
     # coin_owner: str
     has_public_transfer: bool
     coin_object_id: str
@@ -135,6 +134,7 @@ class SuiCoinObjectGQL(PGQL_Type):
         SuiObjectOwnedShared,
         SuiObjectOwnedImmutable,
     ]
+    previous_transaction: Optional[str] = dataclasses.field(default="")
 
     @property
     def object_id(self) -> str:
@@ -208,9 +208,12 @@ class SuiCoinObjectsGQL(PGQL_Type):
         # Get cursor
         in_data = in_data.pop("qres").pop("coins")
         ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
-        dlist: list[SuiCoinObjectGQL] = [
-            SuiCoinObjectGQL.from_query(i_coin) for i_coin in in_data["coin_objects"]
-        ]
+        dlist: list[SuiCoinObjectGQL] = []
+        for i_coin in in_data["coin_objects"]:
+            dlist.append(SuiCoinObjectGQL.from_query(i_coin))
+        # dlist: list[SuiCoinObjectGQL] = [
+        #     SuiCoinObjectGQL.from_query(i_coin) for i_coin in in_data["coin_objects"]
+        # ]
         return SuiCoinObjectsGQL(dlist, ncurs)
 
 
