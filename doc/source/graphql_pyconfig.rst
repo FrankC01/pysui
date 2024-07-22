@@ -212,10 +212,6 @@ ephemeral only, set this to False.
 
 The following methods are available on the PysuiConfiguration instance.
 
-Creating a new Group
-~~~~~~~~~~~~~~~~~~~~
-We're working on it....
-
 Creating a new Keypair
 ~~~~~~~~~~~~~~~~~~~~~~
 Create a new keypair of type and add to an explict group or, default, the active group. Will raise an exception
@@ -236,3 +232,38 @@ Returns the mnemonic string and address string upon success.
         alias: Optional[str] = None,
         persist: Optional[bool] = True,
     )
+
+Adding Keys to Greoup
+~~~~~~~~~~~~~~~~~~~~~
+If you do not want to generate new keys you can import existing keys into a group.
+
+.. code-block:: python
+
+    def add_keys(
+        self,
+        *,
+        key_block: list[dict[str, str]],
+        in_group: Optional[str] = None,
+        persist: Optional[bool] = True,
+    ) -> list[str]
+
+The ``key_block`` is a list of dictionaries containing the base64 or bech32 keystring and an optional
+alias, for example:
+
+.. code-block:: python
+
+    def populate_keys(cfg:PysuiConfiguration):
+        """Add some keys to existing group."""
+        block=[
+            {"keystring":"ANlIGCd0ZdkpLGEsRTDzRF4q96ZQAJfuaU+G0/L93+I2","alias":"Foo"},
+            {"keystring":"AJj3zoXJMl2Eax5vw29na0w4DxO6PrMl3Zrrf1X/b9z4","alias":"Bar"},
+            {"keystring":"AATnunevLZEyy9MFNQAWRESwhMmJucte+Gh5WjSOXC58","alias":None},
+        ]
+        addresses = cfg.add_keys(key_block=block, persist=False)
+
+If no alias is provided, one will be generated. Keystrings and aliases are checked for collisions.
+If successful, addresses for the added keys are returned.
+
+Creating a new Group
+~~~~~~~~~~~~~~~~~~~~
+We're working on it....

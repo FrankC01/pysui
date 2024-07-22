@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Optional
 
 from pysui.abstracts.client_keypair import SignatureScheme
-from pysui.sui.sui_pgql.config.confgroup import ProfileGroup, Profile
 from pysui.sui.sui_pgql.config.confmodel import PysuiConfigModel
+import pysui.sui.sui_pgql.config.confgroup as cfg_group
 
 
 class PysuiConfiguration:
@@ -65,7 +65,7 @@ class PysuiConfiguration:
             )
         # Set up user group if not exist, don't overwrite
         self.model.add_group(
-            group=ProfileGroup(self.SUI_USER_GROUP, "", "", [], [], [], []),
+            group=cfg_group.ProfileGroup(self.SUI_USER_GROUP, "", "", [], [], [], []),
             make_active=False,
         )
         # Initialize from sui config if found
@@ -137,7 +137,7 @@ class PysuiConfiguration:
         return self._model
 
     @property
-    def active_group(self) -> ProfileGroup:
+    def active_group(self) -> cfg_group.ProfileGroup:
         """Return the active group."""
         return self._model.active_group
 
@@ -226,6 +226,15 @@ class PysuiConfiguration:
         if _changes and persist:
             self._write_model()
 
+    def keypair_for_address(self, *, address: str, in_group: Optional[str] = None):
+        """Returnn the SuiKeyPair for an address."""
+        _group = (
+            self._model.get_group(group_name=in_group)
+            if in_group
+            else self.active_group
+        )
+        return _group.keypair_for_address(address=address)
+
     def new_keypair(
         self,
         *,
@@ -250,12 +259,14 @@ class PysuiConfiguration:
             SignatureScheme.SECP256K1,
             SignatureScheme.SECP256R1,
         ]:
-            mnem, new_addy, prf_key, prf_alias = ProfileGroup.new_keypair_parts(
-                of_keytype=of_keytype,
-                word_counts=word_counts,
-                derivation_path=derivation_path,
-                alias=alias,
-                alias_list=_group.alias_list,
+            mnem, new_addy, prf_key, prf_alias = (
+                cfg_group.ProfileGroup.new_keypair_parts(
+                    of_keytype=of_keytype,
+                    word_counts=word_counts,
+                    derivation_path=derivation_path,
+                    alias=alias,
+                    alias_list=_group.alias_list,
+                )
             )
             new_addy = _group.add_keypair_and_parts(
                 new_address=new_addy,
@@ -271,6 +282,42 @@ class PysuiConfiguration:
         raise NotImplementedError(
             f"{of_keytype}: Not recognized as valid keypair scheme."
         )
+
+    def add_keys(
+        self,
+        *,
+        key_block: list[dict[str, str]],
+        in_group: Optional[str] = None,
+        persist: Optional[bool] = True,
+    ) -> list[str]:
+        """Add one or more keys to a group. Each dict has k/v:
+
+            {
+                "key_string": str # Either a base64 or bech32 private key
+                "alias": str     # Optional alias, one will be generated otherwise
+            }
+
+        :param key_block: List of key construct dictionaries
+        :type key_block: list[dict]
+        :param in_group: Group to add new profile, defaults to active_group or excepts if not exists
+        :type in_group: Optional[str]
+        :param persist: Persist updates to PysuiConfig.json, defaults to True
+        :type persist: Optional[bool], optional
+        :return: List of addresses derived from keys
+        :rtype: list[str]
+        """
+        _group = (
+            self._model.get_group(group_name=in_group)
+            if in_group
+            else self.active_group
+        )
+
+        addies: list[str] = _group.add_keys(keys=key_block)
+
+        if persist:
+            self._write_model()
+
+        return addies
 
     def new_profile(
         self,
@@ -306,7 +353,7 @@ class PysuiConfiguration:
             else self.active_group
         )
         _group.add_profile(
-            new_prf=Profile(profile_name, url, faucet_url, faucet_status_url),
+            new_prf=cfg_group.Profile(profile_name, url, faucet_url, faucet_status_url),
             make_active=make_active,
         )
         if persist:

@@ -166,13 +166,14 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return _res
         raise ValueError(f"{profile_name} profile does not exist")
 
-    def address_keypair(self, *, address: str) -> crypto.SuiKeyPair:
+    def keypair_for_address(self, *, address: str) -> crypto.SuiKeyPair:
         """Fetch an addresses KeyPair."""
         _res = self._address_exists(address=address)
         if _res:
             return crypto.keypair_from_keystring(
                 self.key_list[self.address_list.index(_res)].private_key_base64
             )
+        raise ValueError(f"Keypair for address: {address} does not exist.")
 
     @staticmethod
     def _alias_check_or_gen(
@@ -293,6 +294,50 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         raise ValueError(
             f"Private keystring {new_key.private_key_base64} already exists attempting new key and address.."
         )
+
+    def add_keys(self, *, keys: list[dict[str, str]]) -> list[str]:
+        """Add in a block of keys w/alias (or generate).
+
+        Produces addresses from provided key
+        """
+        addies: list[str] = []
+        _pfkey: list[ProfileKey] = []
+        _pfalias: list[ProfileAlias] = []
+        _alias_list = [x.alias for x in self.alias_list]
+        for key in keys:
+            # Set key and address
+            _kp = crypto.keypair_from_keystring(key["key_string"])
+            _kstr = _kp.serialize()
+            _res = self._key_exists(key_string=_kstr)
+            if _res:
+                raise ValueError(f"Key string {_kstr} already exists.")
+            _pfkey.append(ProfileKey(_kstr))
+            _pkey_bytes = _kp.to_bytes()
+            _digest = _pkey_bytes[0:33] if _pkey_bytes[0] == 0 else _pkey_bytes[0:34]
+            addies.append(
+                format(f"0x{hashlib.blake2b(_digest, digest_size=32).hexdigest()}")
+            )
+            # Set alias for key
+            _alias = key.get("alias", None)
+            if not _alias:
+                _alias = ProfileGroup._alias_check_or_gen(aliases=_alias_list)
+            else:
+                _res = self._alias_exists(alias_name=_alias)
+                if _res:
+                    raise ValueError(
+                        f"{_alias} associated to {key['key_string']} exists"
+                    )
+            _pfalias.append(
+                ProfileAlias(
+                    _alias, base64.b64encode(_kp.public_key.scheme_and_key()).decode()
+                )
+            )
+
+        # Extend the group
+        self.key_list.extend(_pfkey)
+        self.address_list.extend(addies)
+        self.alias_list.extend(_pfalias)
+        return addies
 
     def add_profile(self, *, new_prf: Profile, make_active: bool = False):
         """Add profile to list after validating name"""
