@@ -255,9 +255,9 @@ alias, for example:
     def populate_keys(cfg:PysuiConfiguration):
         """Add some keys to existing group."""
         block=[
-            {"keystring":"ANlIGCd0ZdkpLGEsRTDzRF4q96ZQAJfuaU+G0/L93+I2","alias":"Foo"},
-            {"keystring":"AJj3zoXJMl2Eax5vw29na0w4DxO6PrMl3Zrrf1X/b9z4","alias":"Bar"},
-            {"keystring":"AATnunevLZEyy9MFNQAWRESwhMmJucte+Gh5WjSOXC58","alias":None},
+            {"key_string":"ANlIGCd0ZdkpLGEsRTDzRF4q96ZQAJfuaU+G0/L93+I2","alias":"Foo"},
+            {"key_string":"AJj3zoXJMl2Eax5vw29na0w4DxO6PrMl3Zrrf1X/b9z4","alias":"Bar"},
+            {"key_string":"AATnunevLZEyy9MFNQAWRESwhMmJucte+Gh5WjSOXC58","alias":None},
         ]
         addresses = cfg.add_keys(key_block=block, persist=False)
 
@@ -266,4 +266,55 @@ If successful, addresses for the added keys are returned.
 
 Creating a new Group
 ~~~~~~~~~~~~~~~~~~~~
-We're working on it....
+Create a new group will raise an exception if the group_name group *does* exist.
+
+.. code-block:: python
+
+    def new_group(
+        self,
+        *,
+        group_name: str,
+        profile_block: list[dict[str, str]],
+        key_block: list[dict[str, str]],
+        active_address_index: int,
+        make_group_active: Optional[bool] = False,
+        persist: Optional[bool] = True,
+    ) -> list[str]
+
+The following is an example of creating a fictional group:
+
+.. code-block:: python
+
+    def add_new_group(cfg: PysuiConfiguration):
+        """."""
+        key_blocks = [
+            {"key_string": "ANlIGCd0ZdkpLGEsRTDzRF4q96ZQAJfuaU+G0/L93+I2", "alias": "Foo"},
+            {"key_string": "AJj3zoXJMl2Eax5vw29na0w4DxO6PrMl3Zrrf1X/b9z4", "alias": "Bar"},
+            {"key_string": "AATnunevLZEyy9MFNQAWRESwhMmJucte+Gh5WjSOXC58", "alias": None},
+        ]
+        profile_blocks = [
+            {
+                "profile_name": "dev_only",
+                "url": "https://dev.fictional.com",
+                "faucet_url": None,
+                "faucet_status_url": None,
+                "make_active": False,
+            },
+            {
+                "profile_name": "test_only",
+                "url": "https://test.fictional.com",
+                "faucet_url": None,
+                "faucet_status_url": None,
+                "make_active": True,
+            },
+        ]
+        addies = cfg.new_group(
+            group_name="emphemeral_group",
+            key_block=key_blocks,
+            profile_block=profile_blocks,
+            active_address_index=0,
+            make_group_active=True,
+            persist=False,
+        )
+        for addy in addies:
+            print(f"Address: {addy}")

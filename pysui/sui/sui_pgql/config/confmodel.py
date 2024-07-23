@@ -175,3 +175,20 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
             self.group_active = group.group_name if make_active else self.group_active
             _updated = True
         return _updated
+
+    def remove_group(self, *, group_name: str):
+        """Remove group from model."""
+        _res = self._group_exists(group_name=group_name)
+        if _res:
+            _gindex = self.groups.index(_res)
+            # Adjuest active group if the one being removed is it
+            if _res.group_name == self.group_active:
+                if _gindex:
+                    self.group_active = self.groups[0].group_name
+                elif len(self.groups) > 1:
+                    self.group_active = self.groups[1].group_name
+                else:
+                    self.group_active = ""
+            self.groups.pop(_gindex)
+            return
+        raise ValueError(f"Group {group_name} not found.")

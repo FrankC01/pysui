@@ -270,8 +270,6 @@ class SuiGQLClient(BaseSuiGQLClient):
         default_header: Optional[dict] = None,
     ):
         """Sui GraphQL Client initializer."""
-        # Resolve GraphQL URL
-        pysui_config.make_active(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         gurl = pysui_config.url
         genv = pysui_config.active_env
         # gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
@@ -416,7 +414,6 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         default_header: Optional[dict] = None,
     ):
         """Async Sui GraphQL Client initializer."""
-        pysui_config.make_active(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         gurl = pysui_config.url
         genv = pysui_config.active_env
         scm_mgr: scm.Schema = scm.load_schema_cache(gurl, genv, schema_version)

@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - On PysuiConfiguration:
-  - `add_keys` adds a collection of keys and optional aliases
+  - `new_group` - creates a new PysuiConfiguration group
+  - `add_keys` adds a collection of keys and optional aliases to a group
   - `new_profile` creates equivalant of Sui CLI new-env
   - `update_profile` updates profile values
 

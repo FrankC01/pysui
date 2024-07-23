@@ -185,6 +185,15 @@ class PysuiConfiguration:
         """Return the alias for the address in current group."""
         return self.active_group.alias_for_address(address=address)
 
+    def keypair_for_address(self, *, address: str, in_group: Optional[str] = None):
+        """Returnn the SuiKeyPair for an address."""
+        _group = (
+            self._model.get_group(group_name=in_group)
+            if in_group
+            else self.active_group
+        )
+        return _group.keypair_for_address(address=address)
+
     def make_active(
         self,
         *,
@@ -193,7 +202,7 @@ class PysuiConfiguration:
         address: Optional[str] = None,
         alias: Optional[str] = None,
         persist: Optional[bool] = True,
-    ):
+    ) -> "PysuiConfiguration":
         """Activate specific aspects of configuration."""
         # Track changes for persist
         _changes: bool = False
@@ -225,15 +234,58 @@ class PysuiConfiguration:
 
         if _changes and persist:
             self._write_model()
+        return self
 
-    def keypair_for_address(self, *, address: str, in_group: Optional[str] = None):
-        """Returnn the SuiKeyPair for an address."""
-        _group = (
-            self._model.get_group(group_name=in_group)
-            if in_group
-            else self.active_group
+    def new_group(
+        self,
+        *,
+        group_name: str,
+        profile_block: list[dict[str, str]],
+        key_block: list[dict[str, str]],
+        active_address_index: int,
+        make_group_active: Optional[bool] = False,
+        persist: Optional[bool] = True,
+    ) -> list[str]:
+        """."""
+        if self._model.has_group(group_name=group_name):
+            raise ValueError(f"{group_name} already exists")
+        # Create and add an empty group
+        self.model.add_group(
+            group=cfg_group.ProfileGroup(group_name, "", "", [], [], [], []),
+            make_active=make_group_active,
         )
-        return _group.keypair_for_address(address=address)
+        if make_group_active and (self.active_group.group_name != group_name):
+            self.model.remove_group(group_name=group_name)
+            raise ValueError(f"Failed to make {group_name} active. Aborting new_group")
+
+        # Get the group
+        _group = self.model.get_group(group_name=group_name)
+
+        # Add key block
+        addies: list[str] = self.add_keys(
+            key_block=key_block, in_group=group_name, persist=False
+        )
+        if len(addies) != len(key_block):
+            self.model.remove_group(group_name=group_name)
+            raise ValueError(
+                f"Failed to added keyblock {key_block}. Aborting new_group"
+            )
+
+        # Add profile block
+        if profile_block:
+            for pblock in profile_block:
+                self.new_profile(in_group=group_name, persist=False, **pblock)
+            if len(self.model.get_group(group_name=group_name).profiles) != len(
+                profile_block
+            ):
+                self.model.remove_group(group_name=group_name)
+                raise ValueError(
+                    f"Failed to add profile_block {profile_block}. Aborting new_group."
+                )
+        _group.active_address = addies[active_address_index]
+        if persist:
+            self._write_model()
+        return addies
 
     def new_keypair(
         self,
