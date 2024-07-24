@@ -17,8 +17,9 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui import PysuiConfiguration
-from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+from pysui import PysuiConfiguration, SyncGqlClient
+
+# from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_constants import PYSUI_CLIENT_CONFIG_ENV
 
 from samples.cmd_argsg import build_parser
@@ -31,8 +32,7 @@ def main():
     cfg_local: bool = False
     # Handle a different client.yaml than default
     if arg_line and arg_line[0] == "--local":
-        cfg_local = True
-        arg_line = arg_line[1:]
+        raise ValueError("--local is invalid for GraphQL")
     parsed = build_parser(arg_line)
     cmd_call = SUI_CMD_DISPATCH.get(parsed.subcommand, None)
     if cmd_call:
@@ -43,9 +43,8 @@ def main():
             raise ValueError("Local not supported for GraphQL commands")
         else:
             cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-            # print(f"Using configuration from {os.environ[PYSUI_CLIENT_CONFIG_ENV]}")
 
-        cmd_call(SuiGQLClient(pysui_config=cfg), parsed)
+        cmd_call(SyncGqlClient(pysui_config=cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")
 

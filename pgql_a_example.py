@@ -579,16 +579,16 @@ async def do_unstake(client: AsyncGqlClient):
 
 async def main():
     """."""
-    client_init = AsyncGqlClient(
-        write_schema=False,
-        pysui_config=PysuiConfiguration(
-            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP
-        ),
-    )
-    print(f"Chain environment   '{client_init.chain_environment}'")
-    print(f"Default schema base version '{client_init.base_schema_version}'")
-    print(f"Default schema build version '{client_init.schema_version()}'")
     try:
+        client_init = AsyncGqlClient(
+            write_schema=False,
+            pysui_config=PysuiConfiguration(
+                group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP
+            ),
+        )
+        print(f"Chain environment   '{client_init.chain_environment}'")
+        print(f"Default schema base version '{client_init.base_schema_version}'")
+        print(f"Default schema build version '{client_init.schema_version()}'")
         print()
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)

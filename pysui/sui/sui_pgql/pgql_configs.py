@@ -113,6 +113,7 @@ _QUERY_39 = """
             }
         }
         serviceConfig {
+            availableVersions
             enabledFeatures
             maxQueryDepth
             maxQueryNodes
@@ -200,7 +201,8 @@ class SuiConfigGQL:
 
 
 def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable]:
-    """."""
+    """Get the configuration for Sui GraphQL."""
+    # TODO: Temporary Sui devnet bug workaround
     _squery = _QUERY
     if env is not "devnet":
         _squery = _QUERY_44

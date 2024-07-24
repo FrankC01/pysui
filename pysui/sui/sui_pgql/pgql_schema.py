@@ -94,10 +94,16 @@ def load_schema_cache(
 ) -> Schema:
     """."""
     schema_mgr: Schema = None
+    # TODO: Temporary Sui devnet bug workaround
+    if genv != "devnet":
+        _furl = gurl + "/" + default_version if default_version else gurl
+    else:
+        _furl = gurl
+
     # Initialize the base
     _init_client: Client = Client(
         transport=HTTPXTransport(
-            url=gurl,
+            url=_furl,
             verify=True,
             http2=True,
             timeout=120.0,
