@@ -256,7 +256,7 @@ alias, for example:
         """Add some keys to existing group."""
         block=[
             {"key_string":"ANlIGCd0ZdkpLGEsRTDzRF4q96ZQAJfuaU+G0/L93+I2","alias":"Foo"},
-            {"key_string":"AJj3zoXJMl2Eax5vw29na0w4DxO6PrMl3Zrrf1X/b9z4","alias":"Bar"},
+            {"key_string":"suiprivkey1qr3n55qy9v27a6lkwdp3jx2kcg7k3mndtsv2afsdnh086yjfntmsvgpkypq","alias":"Bar"},
             {"key_string":"AATnunevLZEyy9MFNQAWRESwhMmJucte+Gh5WjSOXC58","alias":None},
         ]
         addresses = cfg.add_keys(key_block=block, persist=False)
@@ -286,10 +286,10 @@ The following is an example of creating a fictional group:
 .. code-block:: python
 
     def add_new_group(cfg: PysuiConfiguration):
-        """."""
+        """Build a unique group."""
         key_blocks = [
             {"key_string": "ANlIGCd0ZdkpLGEsRTDzRF4q96ZQAJfuaU+G0/L93+I2", "alias": "Foo"},
-            {"key_string": "AJj3zoXJMl2Eax5vw29na0w4DxO6PrMl3Zrrf1X/b9z4", "alias": "Bar"},
+            {"key_string": "suiprivkey1qr3n55qy9v27a6lkwdp3jx2kcg7k3mndtsv2afsdnh086yjfntmsvgpkypq", "alias": "Bar"},
             {"key_string": "AATnunevLZEyy9MFNQAWRESwhMmJucte+Gh5WjSOXC58", "alias": None},
         ]
         profile_blocks = [
