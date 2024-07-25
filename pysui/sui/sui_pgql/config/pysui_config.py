@@ -246,7 +246,45 @@ class PysuiConfiguration:
         make_group_active: Optional[bool] = False,
         persist: Optional[bool] = True,
     ) -> list[str]:
-        """."""
+        """Create a unique new group.
+
+        A profile is defined by a dict with the following k/v pairs
+
+        {
+            "profile_name": str,
+
+            "url": str,
+
+            "faucet_url": str | None,
+
+            "faucet_status_url": str | None,
+
+            "make_active": bool
+        }
+
+        A key is defined by a dict with following k/v pairs
+
+        {
+            "key_string": str # Either a base64 or bech32 private key
+
+            "alias": str     # Optional alias, one will be generated otherwise
+        }
+
+        :param group_name: The name of the new group, fails if already exists
+        :type group_name: str
+        :param profile_block: A list of profile dicts
+        :type profile_block: list[dict[str, str]]
+        :param key_block: A list of key dicts
+        :type key_block: list[dict[str, str]]
+        :param active_address_index: The index of the address to make as active_address for group
+        :type active_address_index: int
+        :param make_group_active: Sets the group to the configurations active_group, defaults to False
+        :type make_group_active: Optional[bool], optional
+        :param persist: Persist updates to PysuiConfig.json, defaults to True
+        :type persist: Optional[bool], optional
+        :return: The list of addresses generated from the key_block
+        :rtype: list[str]
+        """
         if self._model.has_group(group_name=group_name):
             raise ValueError(f"{group_name} already exists")
         # Create and add an empty group
@@ -298,7 +336,26 @@ class PysuiConfiguration:
         alias: Optional[str] = None,
         persist: Optional[bool] = True,
     ) -> tuple[str, str]:
-        """Creates a new keypair returning generated passphrase and associated address."""
+        """new_keypair _summary_
+
+        :param of_keytype: Identifies whether new key is ed25519, secp256k1 or secp256r1
+        :type of_keytype: SignatureScheme
+        :param in_group: _description_, defaults to None
+        :type in_group: Optional[str], optional
+        :param word_counts: count of words to generate mnemonic phrase, defaults to 12
+        :type word_counts: int, optional
+        :param derivation_path: The derivation path for key, specific to Signature scheme,
+            defaults to root path of scheme
+        :type derivation_path: str, optional
+        :param make_active: Make the result address the active_address, defaults to False
+        :type make_active: Optional[bool], optional
+        :param alias: Provide an alias for the new address, will be generated if None
+        :type alias: Optional[str], optional
+        :param persist: Persist updates to PysuiConfig.json, defaults to True
+        :type persist: Optional[bool], optional
+        :return: The mnemonic phrase generated for the key and the new address
+        :rtype: tuple[str, str]
+        """
         # Resolve group
         _group = (
             self._model.get_group(group_name=in_group)
@@ -331,9 +388,7 @@ class PysuiConfiguration:
             if persist:
                 self._write_model()
             return mnem, new_addy
-        raise NotImplementedError(
-            f"{of_keytype}: Not recognized as valid keypair scheme."
-        )
+        raise ValueError(f"{of_keytype}: Not recognized as valid keypair scheme.")
 
     def add_keys(
         self,
@@ -344,10 +399,10 @@ class PysuiConfiguration:
     ) -> list[str]:
         """Add one or more keys to a group. Each dict has k/v:
 
-            {
-                "key_string": str # Either a base64 or bech32 private key
-                "alias": str     # Optional alias, one will be generated otherwise
-            }
+        {
+            "key_string": str # Either a base64 or bech32 private key
+            "alias": str     # Optional alias, one will be generated otherwise
+        }
 
         :param key_block: List of key construct dictionaries
         :type key_block: list[dict]
@@ -458,7 +513,19 @@ class PysuiConfiguration:
         in_group: Optional[str] = None,
         persist: Optional[bool] = True,
     ) -> str:
-        """Rename an alias in a group, default to active_group."""
+        """Rename an alias.
+
+        :param existing_alias: The name of the existing alias address association, fails if not found
+        :type existing_alias: str
+        :param new_alias: The new name to set to address association, fails if already exists
+        :type new_alias: str
+        :param in_group: Group if different than active_group, defaults to active_group or excepts if not exists
+        :type in_group: Optional[str], optional
+        :param persist: Persist updates to PysuiConfig.json, defaults to True
+        :type persist: Optional[bool], optional
+        :return: The address associated to the new alias
+        :rtype: str
+        """
         _group = (
             self._model.get_group(group_name=in_group)
             if in_group
@@ -468,3 +535,4 @@ class PysuiConfiguration:
         _res = _group.replace_alias_name(from_alias=existing_alias, to_alias=new_alias)
         if _res and persist:
             self._write_model()
+        return _res

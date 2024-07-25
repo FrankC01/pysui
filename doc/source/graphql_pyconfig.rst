@@ -318,3 +318,34 @@ The following is an example of creating a fictional group:
         )
         for addy in addies:
             print(f"Address: {addy}")
+
+FAQ
+===
+
+Changing a configuration when in use by a pysui GraphQL client
+--------------------------------------------------------------
+
+Generally not a good idea especially changing the active_group or active_profile. You can however
+change the following safely:
+
+#. Change the active address to one that exists in the current active_group
+#. Add a new group without making it active
+#. Add a new profile
+#. Add new keys
+#. Create a new keypair
+
+Two simultaneous clients using unique profiles
+----------------------------------------------
+
+As each GraphQL url may have different scheme versions you don't want to switch the
+active profile as noted earlier. However you can create two instances of PysuiConfiguration. For example:
+
+.. code-block:: python
+
+    # First client points to devnet
+    devnet_cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,profile_name="devnet")
+    devnet_client = SyncGqlClient(pysui_config=cfg,write_schema=False)
+
+    # Next client points to testnet
+    testnet_cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,profile_name="testnet")
+    testnet_client = SyncGqlClient(pysui_config=cfg,write_schema=False)
