@@ -130,9 +130,9 @@ class SignerBlock:
             if isinstance(signer, str):
 
                 sig_list.append(
-                    config.active_group.address_keypair(address=signer).new_sign_secure(
-                        tx_bytes
-                    )
+                    config.active_group.keypair_for_address(
+                        address=signer
+                    ).new_sign_secure(tx_bytes)
                 )
             else:
                 if signer._can_sign_msg:
