@@ -116,7 +116,7 @@ class KeyPair(ABC):
     @property
     @abstractmethod
     def private_key(self) -> Union[PrivateKey, None]:
-        """Get the keypair public key."""
+        """Get the keypair private key."""
 
     @abstractmethod
     def new_sign_secure(self, tx_data: str) -> Union[AbstractType, str]:
