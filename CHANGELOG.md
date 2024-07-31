@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Coin deserialization failed when previousTransactionBlock has been pruned
+- Validate GraphQL schema existence before adding to available list
 
 ### Changed
 

@@ -204,7 +204,7 @@ def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable
     """Get the configuration for Sui GraphQL."""
     # TODO: Temporary Sui devnet bug workaround
     _squery = _QUERY
-    if env is not "devnet":
+    if env != "devnet":
         _squery = _QUERY_44
         if sversion:
             _ym = sversion.split(".")
