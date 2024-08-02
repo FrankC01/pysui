@@ -42,7 +42,7 @@ _QUERY = """
             maxTypeNodes
             maxMoveValueDepth
         }
-      protocolConfig {
+      protocolConfig(protocolVersion:44) {
           protocolVersion
           configs {
             key
