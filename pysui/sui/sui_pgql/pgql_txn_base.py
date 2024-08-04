@@ -235,13 +235,12 @@ class _SuiTransactionBase:
             src_path,
             args_list,
         )
-        modules = list(map(self._to_bytes_from_str, compiled_package.compiled_modules))
         dependencies = [
             bcs.Address.from_str(x if isinstance(x, str) else x.value)
             for x in compiled_package.dependencies
         ]
         digest = bcs.Digest.from_bytes(compiled_package.package_digest)
-        return modules, dependencies, digest
+        return compiled_package.compiled_modules, dependencies, digest
 
 
 if __name__ == "__main__":

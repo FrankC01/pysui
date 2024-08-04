@@ -39,9 +39,6 @@ from pysui.sui.sui_constants import (
     DEFAULT_SUI_BINARY_PATH,
 )
 
-import pysui.sui_move.module.deserialize as deser
-from pysui.sui_move.bin_reader.module_reader import ModuleReader
-
 from pysui.sui.sui_types.scalars import (
     SuiString,
     ObjectID,
@@ -57,7 +54,6 @@ from pysui.sui.sui_types.collections import BatchParameter, SuiArray, SuiMap
 from pysui.sui.sui_excepts import (
     SuiException,
     SuiMiisingBuildFolder,
-    SuiMiisingModuleByteCode,
     SuiPackageBuildFail,
 )
 from pysui.sui.sui_txresults.single_tx import ObjectRead, ObjectReadData
@@ -71,18 +67,18 @@ _SUI_BUILD: list[str] = ["move", "build"]
 
 
 @dataclass
-@versionchanged(
-    version="0.17.0",
-    reason="Added the package digest that matches chain digest.",
+@versionadded(
+    version="0.66.0",
+    reason="Uses raw bytes from modules.",
 )
-class CompiledPackage:
+class CompiledPackageRaw:
     """Ease of compilation information dataclass."""
 
     project_name: str
     project_id: str
     project_source_digest: bytes
     dependencies: list[str]
-    compiled_modules: list[SuiString] = None
+    compiled_modules: list[bytes] = None
     package_digest: bytes = None
 
 
@@ -132,24 +128,7 @@ def _compile_projectg(
     raise SuiPackageBuildFail(result.stdout)
 
 
-def _module_bytes(module: Path) -> Union[ModuleReader, OSError]:
-    """Fetch the module reader for this module."""
-    return deser.reader_from_file(str(module))
-
-
-def _modules_bytes(
-    module_path: Path,
-) -> Union[list[ModuleReader], SuiMiisingModuleByteCode, OSError]:
-    """."""
-    mod_list = list(module_path.glob("*.mv"))
-    if not mod_list:
-        raise SuiMiisingModuleByteCode(f"{module_path} is empty")
-    # Open and get the bytes representation of same
-    result_list: list[ModuleReader] = [_module_bytes(module) for module in mod_list]
-    return result_list
-
-
-def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
+def _build_dep_info(build_path: str) -> Union[CompiledPackageRaw, Exception]:
     """Fetch details about build."""
     build_info = Path(build_path).joinpath("BuildInfo.yaml")
     if build_info.exists():
@@ -163,7 +142,7 @@ def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
         for key, value in inner_dep.items():
             if key != pname:
                 dep_ids.append(f"0x{value}")
-        return CompiledPackage(
+        return CompiledPackageRaw(
             pname,
             pindent,
             binascii.unhexlify(build_info_dict["source_digest"]),
@@ -172,30 +151,29 @@ def _build_dep_info(build_path: str) -> Union[CompiledPackage, Exception]:
     raise ValueError("Corrupt publish build information")
 
 
-@versionadded(
-    version="0.20.0",
-    reason="Sui move build introduced hashing the modules first.",
-)
-def _package_digest(package: CompiledPackage, readers: list[ModuleReader]) -> None:
-    """Converts compiled module bytes for publishing and digest calculation."""
-    mod_strs: list = []
-    all_bytes: list = []
-    # Get the bytes for digest and string for publishing
-    for mod_bytes in readers:
-        mr_bytes = mod_bytes.reader.getvalue()
-        hasher = hashlib.blake2b(digest_size=32)
-        hasher.update(mr_bytes)
-        all_bytes.append(hasher.digest())
-        mod_strs.append(SuiString(base64.b64encode(mr_bytes).decode()))
-    for dep_str in package.dependencies:
-        all_bytes.append(binascii.unhexlify(dep_str[2:]))
+def _package_digestg(package: CompiledPackageRaw, module_path: Path) -> None:
+    """Captures compiled module bytes for publishing and digest calculation."""
 
-    all_bytes.sort()
+    mod_bytes: list[bytes] = []
+    all_digests: list[bytes] = []
+
+    mod_list = list(module_path.glob("*.mv"))
+    if not mod_list:
+        raise ValueError(f"{module_path} is empty")
+    for mmod in mod_list:
+        binfile = mmod.read_bytes()
+        hasher = hashlib.blake2b(digest_size=32)
+        hasher.update(binfile)
+        all_digests.append(hasher.digest())
+        mod_bytes.append(list(binfile))
+    for dep_str in package.dependencies:
+        all_digests.append(binascii.unhexlify(dep_str[2:]))
+    all_digests.sort()
     hasher = hashlib.blake2b(digest_size=32)
-    for bblock in all_bytes:
+    for bblock in all_digests:
         hasher.update(bblock)
     package.package_digest = hasher.digest()
-    package.compiled_modules = mod_strs
+    package.compiled_modules = mod_bytes
 
 
 @versionchanged(
@@ -205,7 +183,7 @@ def _package_digest(package: CompiledPackage, readers: list[ModuleReader]) -> No
 def publish_build(
     path_to_package: Path,
     args_list: list[str],
-) -> Union[CompiledPackage, Exception]:
+) -> Union[CompiledPackageRaw, Exception]:
     """Build and collect module base64 strings and dependencies ObjectIDs."""
     if os.environ[PYSUI_EXEC_ENV] == EMPEHMERAL_PATH:
         raise ValueError(f"Configuration does not support publishing")
@@ -222,8 +200,8 @@ def publish_build(
     if len(build_subdir) > 1:
         raise SuiMiisingBuildFolder(f"No build folder found in {path_to_package}")
     # Finally, get the module(s) bytecode folder
-    byte_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
-    if not byte_modules.exists():
+    move_modules = Path(build_subdir[0]).joinpath("bytecode_modules")
+    if not move_modules.exists():
         raise SuiMiisingBuildFolder(
             f"No bytecode_modules folder found for {path_to_package}/build"
         )
@@ -231,7 +209,7 @@ def publish_build(
     # Construct initial package
     cpackage = _build_dep_info(build_subdir[0].path)
     # Set module bytes as base64 strings and generate package digest
-    _package_digest(cpackage, _modules_bytes(byte_modules))
+    _package_digestg(cpackage, move_modules)
     return cpackage
 
 
@@ -239,7 +217,7 @@ def publish_buildg(
     sui_bin_path_str: str,
     path_to_package: Path,
     args_list: list[str],
-) -> Union[CompiledPackage, Exception]:
+) -> Union[CompiledPackageRaw, Exception]:
     """Build and collect module base64 strings and dependencies ObjectIDs."""
     # Compile the package
     path_to_package = _compile_projectg(sui_bin_path_str, path_to_package, args_list)
@@ -263,7 +241,7 @@ def publish_buildg(
     # Construct initial package
     cpackage = _build_dep_info(build_subdir[0].path)
     # Set module bytes as base64 strings and generate package digest
-    _package_digest(cpackage, _modules_bytes(byte_modules))
+    _package_digestg(cpackage, byte_modules)
     return cpackage
 
 

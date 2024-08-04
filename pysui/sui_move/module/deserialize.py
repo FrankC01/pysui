@@ -51,6 +51,8 @@ from pysui.sui_move.module.base_deserializers import (
     deserialize_friends,
 )
 
+from deprecated.sphinx import deprecated
+
 
 class Deserialize(IntEnum):
     """Deserialize degree of deserialization invariants."""
@@ -195,6 +197,7 @@ def _deserialize_raw_type(
         raise ValueError(f"Uknown table type key {table_type.name}")
 
 
+@deprecated(version="0.66.0", reason="Module utilities not supported.")
 def deserialize(
     reader: ModuleReader, form: Deserialize
 ) -> Union[RawModuleContent, Exception]:
@@ -232,6 +235,7 @@ def deserialize(
     raise ValueError("No module byte code defined in file")
 
 
+@deprecated(version="0.66.0", reason="Module utilities not supported.")
 def reader_from_file(module: str) -> Union[ModuleReader, Exception]:
     """reader_from_file Returns a module reader for module.
 
@@ -243,6 +247,7 @@ def reader_from_file(module: str) -> Union[ModuleReader, Exception]:
     return ModuleReader.read_from_file(module)
 
 
+@deprecated(version="0.66.0", reason="Module utilities not supported.")
 def from_file(
     module: str, form: Deserialize = Deserialize.ALL
 ) -> Union[RawModuleContent, Exception]:
@@ -258,6 +263,7 @@ def from_file(
     return deserialize(ModuleReader.read_from_file(module), form)
 
 
+@deprecated(version="0.66.0", reason="Module utilities not supported.")
 def from_base64(
     in_base64: str, form: Deserialize = Deserialize.ALL
 ) -> Union[RawModuleContent, Exception]:
@@ -271,10 +277,3 @@ def from_base64(
     :rtype: Union[RawModuleContent, Exception]
     """
     return deserialize(ModuleReader.read_from_base64(in_base64), form)
-
-
-if __name__ == "__main__":
-    deser_track = from_file(
-        "~/frankc01/sui-track/build/SuiTrack/bytecode_modules/base.mv"
-    )
-    # print("Success")
