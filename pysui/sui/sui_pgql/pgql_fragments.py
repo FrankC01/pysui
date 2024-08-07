@@ -269,6 +269,7 @@ class StandardTransaction(PGQL_Fragment):
             .on(schema.TransactionBlock)
             .select(
                 schema.TransactionBlock.digest,
+                schema.TransactionBlock.signatures,
                 schema.TransactionBlock.kind.select(
                     DSLMetaField("__typename").alias("tx_kind")
                 ),

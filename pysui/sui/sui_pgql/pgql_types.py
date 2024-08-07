@@ -569,6 +569,7 @@ class TransactionResultGQL(PGQL_Type):
     gas_input: dict
     effects: dict
     transaction_kind: str
+    signatures: list[str]
     digest: Optional[str] = ""
     sender: Optional[dict] = dataclasses.field(default_factory=dict)
 
@@ -632,6 +633,7 @@ class ExecutionResultGQL(PGQL_Type):
 @dataclasses.dataclass
 class TransactionSummaryGQL(PGQL_Type):
     digest: str
+    signatures: list[str]
     status: str
     timestamp: str
     tx_kind: str

@@ -680,6 +680,7 @@ class GetMultipleTx(PGQL_QueryNode):
             cursor=schema.TransactionBlockConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionBlockConnection.nodes.select(
                 schema.TransactionBlock.digest,
+                schema.TransactionBlock.signatures,
                 schema.TransactionBlock.effects.select(
                     schema.TransactionBlockEffects.status,
                     schema.TransactionBlockEffects.timestamp,
@@ -733,6 +734,7 @@ class GetFilteredTx(PGQL_QueryNode):
             cursor=schema.TransactionBlockConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionBlockConnection.nodes.select(
                 schema.TransactionBlock.digest,
+                schema.TransactionBlock.signatures,
                 schema.TransactionBlock.kind.select(tx_kind=DSLMetaField("__typename")),
                 schema.TransactionBlock.effects.select(
                     schema.TransactionBlockEffects.status,
