@@ -290,7 +290,6 @@ class ObjectReadGQL(PGQL_Type):
     version: int  # Yes
     object_id: str  # Yes
     object_digest: str  # Yes
-    previous_transaction_digest: str  # Yes
     object_kind: str  # Yes
 
     storage_rebate: str  # Yes
@@ -302,10 +301,12 @@ class ObjectReadGQL(PGQL_Type):
         SuiObjectOwnedShared,
         SuiObjectOwnedImmutable,
     ]
+
     has_public_transfer: Optional[bool] = False  # Yes
     object_type: Optional[str] = None
     content: Optional[dict] = None
     owner_id: Optional[str] = None
+    previous_transaction_digest: Optional[str] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadGQL":

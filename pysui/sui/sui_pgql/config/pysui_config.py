@@ -194,6 +194,21 @@ class PysuiConfiguration:
         )
         return _group.keypair_for_address(address=address)
 
+    def profile_names(self, *, in_group: Optional[str] = None) -> list[str]:
+        """Return the profiles in a group. Default to active group."""
+        # If group specified and it's not the active
+        if in_group and self._model.group_active != in_group:
+            # If  it exists and is not already the active group then set it
+            if _group := self._model.has_group(group_name=in_group):
+                self._model.active_group = in_group
+                _changes = True
+            else:
+                raise ValueError(f"{in_group} does not exist")
+        else:
+            _group = self.active_group
+
+        return _group.profile_names
+
     def make_active(
         self,
         *,

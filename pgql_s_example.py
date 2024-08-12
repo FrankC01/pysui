@@ -271,7 +271,7 @@ def do_tx(client: SyncGqlClient):
 
     handle_result(
         client.execute_query_node(
-            with_node=qn.GetTx(digest="BJYyvkTgZBuMgBx8MmgcGtBTYqYZwpFQcc2YHZq4A6Z8")
+            with_node=qn.GetTx(digest="CqKm8efZcFJAFkfsygHmE8kHzWQJNPygSz8zmMginmHa")
         )
     )
 
@@ -595,6 +595,26 @@ def split_1_half(client: SyncGqlClient):
         )
 
 
+def split_any_half(client: SyncGqlClient):
+    """Split the 1st coin in wallet to another another equal to 1/2 in wallet.
+
+    This will only run if there is more than 1 coin in wallet.
+    """
+
+    result = client.execute_query_node(
+        with_node=qn.GetCoins(owner=client.config.active_address)
+    )
+    if result.is_ok() and len(result.result_data.data) > 1:
+        amount = int(int(result.result_data.data[0].balance) / 2)
+        txer: SuiTransaction = SuiTransaction(client=client)
+        scres = txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
+        txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+        txdict = txer.build_and_sign()
+        handle_result(
+            client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+        )
+
+
 def do_stake(client: SyncGqlClient):
     """Stake some coinage.
 
@@ -657,13 +677,17 @@ if __name__ == "__main__":
     client_init: SyncGqlClient = None
     try:
         cfg = PysuiConfiguration(
-            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP  # , profile_name="testnet"
+            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+            # profile_name="devnet",
+            # persist=True,
         )
         client_init = SyncGqlClient(write_schema=False, pysui_config=cfg)
         print(f"Chain environment   '{client_init.chain_environment}'")
         print(f"Default schema base version '{client_init.base_schema_version}'")
         print(f"Default schema build version '{client_init.schema_version()}'")
         print()
+        # for pname in cfg.profile_names():
+        #     print(pname)
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
@@ -703,6 +727,7 @@ if __name__ == "__main__":
         # do_dry_run_kind_new(client_init)
         # do_execute_new(client_init)
         # merge_some(client_init)
+        # split_any_half(client_init)
         # split_1_half(client_init)
         # do_stake(client_init)
         # do_unstake(client_init)

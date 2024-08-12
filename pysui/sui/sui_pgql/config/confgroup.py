@@ -159,6 +159,11 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return _res
         raise ValueError(f"{change_to} profile does not exist")
 
+    @property
+    def profile_names(self) -> list[str]:
+        """Fetch the names of the profiles in group."""
+        return [x.profile_name for x in self.profiles]
+
     def get_profile(self, profile_name: str) -> Profile:
         """Attempt to fetch a profile considered available."""
         _res = self._profile_exists(profile_name=profile_name)
