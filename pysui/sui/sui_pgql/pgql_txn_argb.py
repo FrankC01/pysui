@@ -4,9 +4,11 @@
 
 """Pysui Transaction argument builder that works with GraphQL connection."""
 
+import itertools
 from typing import Any, Optional, Union
 from functools import partial
 from dataclasses import dataclass, field
+import canoser.int_type as cint
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -14,6 +16,7 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_types as suit
 from pysui.sui.sui_types import bcs
 import pysui.sui.sui_txn.transaction_builder as tx_builder
+from pysui.sui.sui_utils import serialize_uint32_as_uleb128
 
 _SCALARS = {
     "u8": suit.SuiU8,
@@ -22,6 +25,15 @@ _SCALARS = {
     "u64": suit.SuiU64,
     "u128": suit.SuiU128,
     "u256": suit.SuiU256,
+}
+
+_SCALARS_BCS = {
+    "u8": bcs.U8,
+    "u16": bcs.U16,
+    "u32": bcs.U32,
+    "u64": bcs.U64,
+    "u128": bcs.U128,
+    "u256": bcs.U256,
 }
 
 
@@ -141,6 +153,77 @@ def pass_through(arg: Any) -> Any:
     return arg
 
 
+def _bytes_converter(
+    scalar_class: cint.IntType, in_optional: bool, bytes_arg: bytes
+) -> list[bytes]:
+    """Convert bytes to vector of type driven by scalar class."""
+    bcount = scalar_class.byte_lens
+    bitr = iter(bytes_arg)
+    silist: list[int] = []
+    while ilist := list(itertools.islice(bitr, bcount)):
+        silist.append(sum(ilist))
+    return silist
+
+
+def _canbt(arg: Any, expected_type: Any, in_optional: bool) -> tuple[Any, Any]:
+    """."""
+    match expected_type.scalar_type:
+        case "address" | "signature" | "ID":
+            return bcs.Address.from_str, pass_through
+        case "digest":
+            return bcs.Digest.from_str, tx_builder.PureInput.as_input
+        case "String":
+            return (
+                tx_builder.PureInput.pure,
+                partial(bcs.Variable.bcs_var_length_field, bcs.U8),
+            )
+        case _:
+            if isinstance(arg, str) and expected_type.scalar_type == "u8":
+                return (
+                    tx_builder.PureInput.pure,
+                    partial(bcs.Variable.bcs_var_length_field, bcs.U8),
+                )
+            elif isinstance(arg, bytes):
+                return (
+                    partial(pass_through),
+                    # tx_builder.PureInput.pure,
+                    partial(
+                        bcs.Variable.bcs_var_length_encoded_field,
+                        _SCALARS_BCS.get(expected_type.scalar_type),
+                        partial(
+                            _bytes_converter,
+                            _SCALARS_BCS.get(expected_type.scalar_type),
+                            in_optional,
+                        ),
+                    ),
+                )
+                # if in_optional:
+                #     return (
+                #         partial(
+                #             _bytes_converter,
+                #             _SCALARS_BCS.get(expected_type.scalar_type),
+                #             in_optional,
+                #         ),
+                #         partial(
+                #             bcs.Variable.bcs_var_length_field,
+                #             _SCALARS_BCS.get(expected_type.scalar_type),
+                #         ),
+                #     )
+                # return (
+                #     partial(
+                #         _bytes_converter,
+                #         _SCALARS_BCS.get(expected_type.scalar_type),
+                #         in_optional,
+                #     ),
+                #     pass_through,
+                # )
+
+            return (
+                _SCALARS.get(expected_type.scalar_type),
+                tx_builder.PureInput.as_input,
+            )
+
+
 def _scalar_argument(
     expected_type, arg, in_optional: bool = False, in_vector: bool = False
 ) -> tuple[Any, Any]:
@@ -151,54 +234,14 @@ def _scalar_argument(
         if _SCALARS.get(expected_type.scalar_type):
             if isinstance(arg, str) and expected_type.scalar_type == "u8":
                 pass
+            elif isinstance(arg, bytes):
+                pass
             elif not isinstance(arg, int):
                 raise ValueError(f"Expected int and found {arg.__class__}")
         elif not isinstance(arg, str):
             raise ValueError(f"Expected str found {arg.__class__}")
 
-    if in_optional:
-        match expected_type.scalar_type:
-            case "address" | "signature" | "ID":
-                return (bcs.Address.from_str, bcs.Address)
-            case "digest":
-                return (bcs.Digest.from_str, bcs.Digest)
-            case "String":
-                return (
-                    tx_builder.PureInput.pure,
-                    partial(bcs.Variable.bcs_var_length_field, bcs.U8),
-                )
-            case _:
-                return (
-                    _SCALARS.get(expected_type.scalar_type),
-                    tx_builder.PureInput.as_input,
-                )
-    else:
-        match expected_type.scalar_type:
-            case "address" | "signature" | "ID":
-                return bcs.Address.from_str, tx_builder.PureInput.as_input
-            case "digest":
-                return bcs.Digest.from_str, tx_builder.PureInput.as_input
-            case "String":
-                return (
-                    tx_builder.PureInput.pure,
-                    partial(bcs.Variable.bcs_var_length_field, bcs.U8),
-                )
-            case _:
-                if isinstance(arg, str) and expected_type.scalar_type == "u8":
-                    return (
-                        tx_builder.PureInput.pure,
-                        partial(bcs.Variable.bcs_var_length_field, bcs.U8),
-                    )
-
-                    # return (
-                    #     pass_through,
-                    #     tx_builder.PureInput.as_input,
-                    # )
-
-                return (
-                    _SCALARS.get(expected_type.scalar_type),
-                    tx_builder.PureInput.as_input,
-                )
+    return _canbt(arg, expected_type, in_optional)
 
 
 def _object_argument(
@@ -233,7 +276,11 @@ def _argument_validate(
         return _object_argument(expected_type, arg, in_optional)
     if isinstance(expected_type, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)):
         # print("Vector or List")
-        if isinstance(arg, str):
+        if in_optional and not arg:
+            return arg
+        elif not arg:
+            raise ValueError("Excepted str, bytes or list")
+        if isinstance(arg, (str, bytes)):
             pass
         elif not isinstance(arg, list):
             raise ValueError("Expected list type argument...")
@@ -243,7 +290,7 @@ def _argument_validate(
             if isinstance(expected_type, pgql_type.MoveListArg)
             else expected_type.vec_arg
         )
-        if isinstance(arg, str):
+        if isinstance(arg, (str, bytes)):
             some_list.append(_argument_validate(inner_type, arg, in_optional, True))
         else:
             for inner_arg in arg:
@@ -278,6 +325,31 @@ def _argument_builder(
     if constructor_fn:
         return constructor_fn(processor_fn(arg))
     return arg
+
+
+def _list_arg_builder(
+    client: SuiGQLClient, in_meta: any, convert_args: list, arg: list
+) -> list:
+    """."""
+    res_list = []
+    if isinstance(in_meta, pgql_type.MoveVectorArg):
+        in_meta = in_meta.vec_arg
+    elif isinstance(in_meta, pgql_type.MoveListArg):
+        in_meta = in_meta.list_arg
+    if isinstance(
+        in_meta, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)
+    ) and isinstance(arg, list):
+        res_list.append(_list_arg_builder(client, in_meta, convert_args[0], arg[0]))
+    else:
+        convert_args = convert_args[0]
+        if isinstance(arg, bcs.Argument):
+            res_list.append(arg)
+        elif isinstance(arg, (str, bytes)):
+            res_list.append(_argument_builder(client, arg, in_meta, *convert_args))
+        else:
+            res_list.append(_argument_builder(client, arg, in_meta, *convert_args))
+
+    return res_list
 
 
 def build_args(
@@ -320,22 +392,34 @@ def build_args(
                     in_meta = in_meta.vec_arg
                 elif isinstance(in_meta, pgql_type.MoveListArg):
                     in_meta = in_meta.list_arg
-
-                for ilindex, inner_list in enumerate(track.convert_args[aindex]):
-                    if isinstance(inner_list, bcs.Argument):
-                        res_list.append(inner_list)
-                    elif isinstance(in_arg, str):
-                        res_list = _argument_builder(
-                            client, in_arg, in_meta, *inner_list
+                if isinstance(
+                    in_meta, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)
+                ) and isinstance(in_arg, list):
+                    res_list.append(
+                        _list_arg_builder(
+                            client,
+                            in_meta,
+                            track.convert_args[aindex][0],
+                            in_arg[0],
                         )
-                        break
-                    else:
-                        res_list.append(
-                            _argument_builder(
-                                client, in_arg[ilindex], in_meta, *inner_list
+                    )
+                    track.out_args[aindex] = res_list
+                else:
+                    for ilindex, inner_list in enumerate(track.convert_args[aindex]):
+                        if isinstance(inner_list, bcs.Argument):
+                            res_list.append(inner_list)
+                        elif isinstance(in_arg, (str, bytes)):
+                            res_list = _argument_builder(
+                                client, in_arg, in_meta, *inner_list
                             )
-                        )
-                track.out_args[aindex] = res_list
+                            break
+                        else:
+                            res_list.append(
+                                _argument_builder(
+                                    client, in_arg[ilindex], in_meta, *inner_list
+                                )
+                            )
+                    track.out_args[aindex] = res_list
             else:
                 outer, inner = track.convert_args[aindex]
                 track.out_args[aindex] = _argument_builder(

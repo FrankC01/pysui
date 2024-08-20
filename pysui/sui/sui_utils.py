@@ -289,6 +289,21 @@ def sui_base_get_config() -> tuple[Path, Path, Union[Path, None]]:
     return local_cfg, sui_exec_path, alias_file
 
 
+# Serialize helper
+def serialize_uint32_as_uleb128(value: int) -> bytes:
+    """."""
+    ret = bytearray()
+    while value >= 0x80:
+        # Write 7 (lowest) bits of data and set the 8th bit to 1.
+        byte = value & 0x7F
+        ret.append(byte | 0x80)
+        value >>= 7
+
+    # Write the remaining bits of data and set the highest bit to 0.
+    ret.append(value)
+    return bytes(ret)
+
+
 # Iteration helpers - lists
 
 

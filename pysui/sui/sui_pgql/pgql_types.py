@@ -570,7 +570,7 @@ class TransactionResultGQL(PGQL_Type):
     gas_input: dict
     effects: dict
     transaction_kind: str
-    signatures: list[str]
+    signatures: Optional[list[str]] = None
     digest: Optional[str] = ""
     sender: Optional[dict] = dataclasses.field(default_factory=dict)
 
@@ -1217,12 +1217,18 @@ class MoveVectorArg:
     """."""
 
     ref: RefType
-    vec_arg: Union[MoveScalarArg, MoveObjectRefArg]
+    vec_arg: Union["MoveVectorArg", MoveScalarArg, MoveObjectRefArg]
 
     @classmethod
     def from_body(cls, in_ref: str, in_type: dict) -> "MoveVectorArg":
         """ "."""
-        from_vec = in_type["vector"]
+        from_vec: dict = in_type["vector"]
+        if not isinstance(from_vec,str):
+            if ivec := from_vec.get("vector"):
+                if isinstance(ivec, dict) and ivec.get("vector"):
+                    return cls(RefType.from_ref(in_ref), cls.from_body(in_ref, from_vec))
+                else:
+                    from_vec = ivec
         return cls(
             RefType.from_ref(in_ref),
             (

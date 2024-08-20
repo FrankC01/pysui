@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/226) Encoding of bytes argument
 - [bug](https://github.com/FrankC01/pysui/issues/224) When previous txn digest not present
+- Handling exception for unsupported schema version query at initiatlization of client
 
 ### Changed
 

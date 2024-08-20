@@ -15,6 +15,7 @@
 
 import binascii
 import copy
+import uuid
 from typing import Any, Union
 import json
 import canoser
@@ -93,13 +94,19 @@ class Variable(canoser.Struct):
         cls, base_class: canoser.Struct, ready_data: list[int]
     ) -> "Variable":
         """."""
-        deep_copy = copy.deepcopy(Variable)
-        deep_copy._fields.append(("Data", [base_class, len(ready_data), False]))
-        return deep_copy(ready_data)
+        new_class = type(f"a{uuid.uuid4()}", (Variable,), {"_fields": []})
+        new_class._fields.append(("Data", [base_class, len(ready_data), False]))
+        return new_class(ready_data)
 
     @classmethod
-    def encode(cls, obj):
-        return bytes(obj.Data)
+    def bcs_var_length_encoded_field(
+        cls, base_class: canoser.Struct, encoder: Any, ready_data: list[int]
+    ) -> "Variable":
+        """."""
+        res = encoder(ready_data)
+        new_class = type(f"a{uuid.uuid4()}", (Variable,), {"_fields": []})
+        new_class._fields.append(("Data", [base_class, len(res), True]))
+        return new_class(res)
 
     @classmethod
     def decode(cls, cursor):

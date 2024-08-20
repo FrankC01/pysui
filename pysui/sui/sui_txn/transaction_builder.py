@@ -37,6 +37,7 @@ from pysui.sui.sui_types.scalars import (
     SuiU64,
     SuiU8,
 )
+from pysui.sui.sui_utils import serialize_uint32_as_uleb128
 
 # Well known aliases
 _SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
@@ -49,21 +50,6 @@ logger = logging.getLogger("pysui.transaction_builder")
 if not logging.getLogger().handlers:
     logger.addHandler(logging.NullHandler())
     logger.propagate = False
-
-
-# Command aliases
-def serialize_uint32_as_uleb128(cls, value: int) -> bytes:
-    """."""
-    ret = bytearray()
-    while value >= 0x80:
-        # Write 7 (lowest) bits of data and set the 8th bit to 1.
-        byte = value & 0x7F
-        ret.append(byte | 0x80)
-        value >>= 7
-
-    # Write the remaining bits of data and set the highest bit to 0.
-    ret.append(value)
-    return bytes(ret)
 
 
 @versionchanged(version="0.17.0", reason="Support bool arguments")
@@ -201,9 +187,7 @@ class PureInput:
         """Convert str to list of bytes."""
         logger.debug(f"str->pure {arg}")
         byte_list = list(bytearray(arg, encoding="utf-8"))
-        length_prefix = list(
-            bytearray(serialize_uint32_as_uleb128(None, len(byte_list)))
-        )
+        length_prefix = list(bytearray(serialize_uint32_as_uleb128(len(byte_list))))
         return length_prefix + byte_list
 
     @pure.register
@@ -262,7 +246,7 @@ class PureInput:
         """."""
         logger.debug(f"list->pure {arg}")
         stage_list = [PureInput.pure(x) for x in arg]
-        res_list = list(serialize_uint32_as_uleb128(None, len(stage_list)))
+        res_list = list(serialize_uint32_as_uleb128(len(stage_list)))
         for stage_pure in stage_list:
             res_list.extend(stage_pure)
         return res_list

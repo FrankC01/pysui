@@ -492,6 +492,11 @@ class SuiIntegerType:
                 return sclz(value)
         raise ValueError(f"Unable to resolve type to hold {byte_count} bytes")
 
+    @classmethod
+    def byte_count(clz) -> int:
+        """Return count of bytes for class"""
+        return getattr(clz, "_BYTE_COUNT")
+
 
 class SuiU8(SuiIntegerType):
     """."""
