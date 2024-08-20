@@ -33,17 +33,14 @@ def main():
     # Handle a different client.yaml than default
     if arg_line and arg_line[0] == "--local":
         raise ValueError("--local is invalid for GraphQL")
-    parsed = build_parser(arg_line)
+    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+    parsed = build_parser(arg_line, cfg)
     cmd_call = SUI_CMD_DISPATCH.get(parsed.subcommand, None)
+    cfg.make_active(profile_name=parsed.profile_name, persist=False)
     if cmd_call:
         var_args = vars(parsed)
         var_args.pop("subcommand")
         parsed = argparse.Namespace(**var_args)
-        if cfg_local:
-            raise ValueError("Local not supported for GraphQL commands")
-        else:
-            cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-
         cmd_call(SyncGqlClient(pysui_config=cfg), parsed)
     else:
         print(f"Unable to resolve function for {parsed.subcommand}")

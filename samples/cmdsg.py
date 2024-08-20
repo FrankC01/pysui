@@ -56,18 +56,11 @@ def transaction_execute(
     *, txb: SuiTransaction, use_gas_objects: list[str] = None, gas_budget: str = None
 ):
     """Uses fully built and serialized TransactionData for ExecuteTransaction."""
-    tx_b64 = txb.build(use_gas_objects=use_gas_objects, gas_budget=gas_budget)
-    # Still returns legacy SuiSignature array
-    sig_array = txb.signer_block.get_signatures(
-        config=txb.client.config, tx_bytes=tx_b64
-    )
+    # Build and sign
+    txdict = txb.build_and_sign(use_gas_objects=use_gas_objects, gas_budget=gas_budget)
     # Execute the transaction
     handle_result(
-        txb.client.execute_query_node(
-            with_node=qn.ExecuteTransaction(
-                tx_bytestr=tx_b64, sig_array=[x.value for x in sig_array]
-            )
-        )
+        txb.client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
     )
 
 

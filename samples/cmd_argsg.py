@@ -13,6 +13,7 @@ from samples.cmd_arg_validators import (
     ValidatePackageDir,
     ValidateB64,
 )
+from pysui import PysuiConfiguration
 from pysui.sui.sui_types.scalars import SuiString
 
 
@@ -731,16 +732,35 @@ def _build_aliases_cmds(subparser) -> None:
     asubp.set_defaults(subcommand="rename-aliases")
 
 
-def build_parser(in_args: list) -> argparse.Namespace:
-    """Build the argument parser structure."""
-    # Base menu
+def _base_parser(pconfig: PysuiConfiguration) -> argparse.ArgumentParser:
+    """Basic parser setting for all commands."""
     parser = argparse.ArgumentParser(
-        add_help=True, usage="%(prog)s [options] command [--command_options]"
+        add_help=True,
+        usage="%(prog)s [options] command [--command_options]",
+        description="",
+    )
+    parser.add_argument(
+        # "-p",
+        "--profile",
+        dest="profile_name",
+        choices=pconfig.profile_names(),
+        default=pconfig.active_env,
+        required=False,
+        help=f"The GraphQL profile representing target GraphQL node. Default to '{pconfig.active_env}'",
     )
     parser.add_argument(
         "-v", "--version", help="Show pysui SDK version", action="store_true"
     )
     parser.set_defaults(subcommand="version")
+
+    return parser
+
+
+def build_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespace:
+    """Build the argument parser structure."""
+    # Base menu
+    parser = _base_parser(pconfig)
+
     subparser = parser.add_subparsers(title="commands")
     _build_aliases_cmds(subparser)
     _build_read_cmds(subparser)
