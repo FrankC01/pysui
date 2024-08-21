@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.67.0] - Unpublished
+## [0.67.0] - 2024-08-21
 
 ### Added
 
@@ -16,9 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- [bug](https://github.com/FrankC01/pysui/issues/226) Encoding of bytes argument
-- [bug](https://github.com/FrankC01/pysui/issues/224) When previous txn digest not present
-- Handling exception for unsupported schema version query at initiatlization of client
+- [bug](https://github.com/FrankC01/pysui/issues/226) Encoding of bytes argument (GraphQL)
+- [bug](https://github.com/FrankC01/pysui/issues/224) When previous txn digest not present (GraphQL)
+- Handling exception for unsupported schema version query at initiatlization of client (GraphQL)
 
 ### Changed
 

@@ -677,7 +677,7 @@ if __name__ == "__main__":
     try:
         cfg = PysuiConfiguration(
             group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
-            profile_name="testnet",
+            # profile_name="testnet",
             # persist=True,
         )
         client_init = SyncGqlClient(write_schema=False, pysui_config=cfg)
@@ -690,7 +690,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        # do_gas(client_init)
+        do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)

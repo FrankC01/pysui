@@ -165,12 +165,18 @@ def _bytes_converter(
     return silist
 
 
-def _canbt(arg: Any, expected_type: Any, in_optional: bool) -> tuple[Any, Any]:
+def _canbt(
+    arg: Any, expected_type: Any, in_optional: bool, in_vector
+) -> tuple[Any, Any]:
     """."""
     match expected_type.scalar_type:
         case "address" | "signature" | "ID":
-            return bcs.Address.from_str, pass_through
+            if in_vector:
+                return bcs.Address.from_str, pass_through
+            return bcs.Address.from_str, tx_builder.PureInput.as_input
         case "digest":
+            if in_vector:
+                return bcs.Digest.from_str, pass_through
             return bcs.Digest.from_str, tx_builder.PureInput.as_input
         case "String":
             return (
@@ -241,7 +247,7 @@ def _scalar_argument(
         elif not isinstance(arg, str):
             raise ValueError(f"Expected str found {arg.__class__}")
 
-    return _canbt(arg, expected_type, in_optional)
+    return _canbt(arg, expected_type, in_optional, in_vector)
 
 
 def _object_argument(

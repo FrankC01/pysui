@@ -26,7 +26,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.66.0 - Released 2024-08-04**
+**Release-0.67.0 - Released 2024-08-21**
 
 **_BREAKING CHANGES to GraphQL support_**
 
