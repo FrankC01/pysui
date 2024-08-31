@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.68.0] - Unpublished
 
+**BREAKING CHANGES to GraphQL multi-schema support and Mysten URL available**
+
 ### Added
 
 - Docs for native types used in transaction builder arguments
@@ -16,8 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bump version 0.68.0
+- Mysten GraphQL removed `devnet-beta` url and only supports:
+  - https://sui-mainnet.mystenlabs.com/graphql
+  - https://sui-testnet.mystenlabs.com/graphql
+  - https://sui-devnet.mystenlabs.com/graphql
 
 ### Removed
+
+- Support for Sui GraphQL multi-schema removed from providers.
 
 ## [0.67.0] - 2024-08-21
 

@@ -1262,18 +1262,16 @@ class GetFunction(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""
-        func = frag.MoveFunction()
+        func = frag.MoveFunction().fragment(schema)
 
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
                 schema.MovePackage.module(name=self.module).select(
-                    schema.MoveModule.function(name=self.function).select(
-                        func.fragment(schema)
-                    )
+                    schema.MoveModule.function(name=self.function).select(func)
                 )
             )
         )
-        return dsl_gql(func.fragment(schema), DSLQuery(qres))
+        return dsl_gql(func, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveFunctionGQL], None]:
