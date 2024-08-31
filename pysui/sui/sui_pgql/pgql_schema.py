@@ -89,17 +89,10 @@ class Schema:
             self._present_schemas.remove(schema_key)
 
 
-def load_schema_cache(
-    gurl: str, genv: str, default_version: Optional[str] = None
-) -> Schema:
+def load_schema_cache(gurl: str, genv: str) -> Schema:
     """."""
     schema_mgr: Schema = None
-    # TODO: Temporary Sui devnet bug workaround
-    if not genv.startswith("devnet"):
-        _furl = gurl + "/" + default_version if default_version else gurl
-    else:
-        _furl = gurl
-
+    _furl = gurl = gurl
     # Initialize the base
     _init_client: Client = Client(
         transport=HTTPXTransport(
@@ -118,69 +111,9 @@ def load_schema_cache(
         _schema: DSLSchema = DSLSchema(_init_client.schema)
         qstr, fndeser = pgql_config(genv, _base_version)
         _rpc_config: SuiConfigGQL = fndeser(session.execute(gql(qstr)))
-        schema_mgr = Schema(
-            _rpc_config.serviceConfig.availableVersions,
-            default_version if default_version else _base_version,
-        )
+        schema_mgr = Schema(_rpc_config.serviceConfig.availableVersions, _base_version)
         _rpc_config.gqlEnvironment = genv
-        if genv != "devnet":
-            _url = gurl + "/" + _base_version
-        else:
-            _url = gurl
         schema_mgr._cache_schema_set(
-            _url, _init_client, _base_version, _long_version, _schema, _rpc_config
+            _furl, _init_client, _base_version, _long_version, _schema, _rpc_config
         )
-
-    if genv.startswith("devnet"):
         return schema_mgr
-
-    while schema_mgr._present_schemas:
-        _scm_ver = list(schema_mgr._present_schemas)[0]
-        _url = gurl + "/" + _scm_ver
-        _iclient: Client = Client(
-            transport=HTTPXTransport(
-                url=_url,
-                verify=True,
-                http2=True,
-                timeout=120.0,
-            ),
-            fetch_schema_from_transport=True,
-        )
-
-        try:
-            with _iclient as session:
-                # session.fetch_schema()
-                _long_version = session.transport.response_headers[
-                    Schema.SCHEMA_HEADER_SCHEMA_KEY
-                ]
-                _base_version = ".".join(_long_version.split(".")[:2])
-                _schema: DSLSchema = DSLSchema(_iclient.schema)
-                qstr, fndeser = pgql_config(genv, _base_version)
-                try:
-                    _rpc_config = fndeser(session.execute(gql(qstr)))
-                    _rpc_config.gqlEnvironment = genv
-                    schema_mgr._cache_schema_set(
-                        _url,
-                        _iclient,
-                        _base_version,
-                        _long_version,
-                        _schema,
-                        _rpc_config,
-                    )
-                except (
-                    httpx.HTTPError,
-                    texc.TransportQueryError,
-                    texc.TransportServerError,
-                ) as gte:
-                    schema_mgr._present_schemas.remove(_base_version)
-                    schema_mgr._all_versions.remove(_base_version)
-
-        except (
-            httpx.HTTPError,
-            texc.TransportQueryError,
-            texc.TransportServerError,
-        ) as gte:
-            schema_mgr._present_schemas.remove(_scm_ver)
-            schema_mgr._all_versions.remove(_scm_ver)
-
-    return schema_mgr

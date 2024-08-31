@@ -109,9 +109,6 @@ class PGQL_Fragment(ABC):
 class BaseSuiGQLClient:
     """Base GraphQL client."""
 
-    @versionchanged(
-        version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
-    )
     def __init__(
         self,
         *,
@@ -261,11 +258,14 @@ class SuiGQLClient(BaseSuiGQLClient):
     @versionchanged(
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
+    @deprecated(
+        version="0.68.0",
+        reason="BREAKING `schema_version` no longer supported for selecting base schema, argument removed.",
+    )
     def __init__(
         self,
         *,
         pysui_config: PysuiConfiguration,
-        schema_version: Optional[str] = None,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
     ):
@@ -275,7 +275,7 @@ class SuiGQLClient(BaseSuiGQLClient):
         # gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
         super().__init__(
             pysui_config=pysui_config,
-            schema=scm.load_schema_cache(gurl, genv, schema_version),
+            schema=scm.load_schema_cache(gurl, genv),
             write_schema=write_schema,
             default_header=default_header,
         )
@@ -405,18 +405,21 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     @versionchanged(
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
+    @versionchanged(
+        version="0.68.0",
+        reason="BREAKING schema_version no longer supported for selecting base schema, argument removed",
+    )
     def __init__(
         self,
         *,
         pysui_config: PysuiConfiguration,
-        schema_version: Optional[str] = None,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
     ):
         """Async Sui GraphQL Client initializer."""
         gurl = pysui_config.url
         genv = pysui_config.active_env
-        scm_mgr: scm.Schema = scm.load_schema_cache(gurl, genv, schema_version)
+        scm_mgr: scm.Schema = scm.load_schema_cache(gurl, genv)
         for _sver, sblock in scm_mgr.schema_set.items():
             sblock[scm.Schema.GCLIENT].close_sync()
             sblock[scm.Schema.GCLIENT] = Client(
