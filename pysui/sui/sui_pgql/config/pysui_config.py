@@ -73,6 +73,10 @@ class PysuiConfiguration:
             self.rebuild_from_sui_client(
                 rebuild_gql=not self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP)
             )
+        # Fixup GQL
+        if not self._model.version:
+            self._model.gql_version_fixup(group_name=self.SUI_GQL_RPC_GROUP)
+
         # Make active as per arguments
         self.make_active(
             group_name=group_name,

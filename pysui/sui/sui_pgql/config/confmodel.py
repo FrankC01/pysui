@@ -15,17 +15,19 @@ import pysui.sui.sui_pgql.config.confgroup as prfgrp
 from pysui.sui.sui_pgql.config.conflegacy import load_client_yaml
 
 _GQL_DEFAULTS: dict = {
-    "devnet_beta": "https://sui-devnet.mystenlabs.com/graphql/beta",
-    "devnet": "https://sui-devnet.mystenlabs.com/graphql/stable",
+    "devnet": "https://sui-devnet.mystenlabs.com/graphql",
     "testnet": "https://sui-testnet.mystenlabs.com/graphql",
     "mainnet": "https://sui-mainnet.mystenlabs.com/graphql",
 }
+
+_CURRENT_CONFIG_VERSION: str = "1.0.0"
 
 
 @dataclasses.dataclass
 class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
     """pysui configuration in memory model."""
 
+    version: Optional[str] = dataclasses.field(default="")
     sui_binary: Optional[str] = dataclasses.field(default="")
     group_active: Optional[str] = dataclasses.field(default="")
     groups: Optional[list[prfgrp.ProfileGroup]] = dataclasses.field(
@@ -89,7 +91,6 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
     ) -> bool:
         """Initialize group from sui configuration client.yaml."""
         _updated = False
-
         if sui_binary.exists() and not self.sui_binary:
             self.sui_binary = f"{sui_binary}"
             _updated = True
@@ -98,6 +99,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
             if not self._group_exists(group_name=json_rpc_group_name):
                 sui_group = load_client_yaml(sui_config, json_rpc_group_name)
                 self.groups.append(sui_group)
+                self.version = _CURRENT_CONFIG_VERSION
                 _updated = True
         return _updated
 
@@ -118,6 +120,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         _res = self._group_exists(group_name=gql_rpc_group_name)
         if not _res:
             # Get keys, aliases and addresses from rpc
+            self.version = _CURRENT_CONFIG_VERSION
             _suigrp = self._group_exists(group_name=json_rpc_group_name)
             if _suigrp:
                 if _suigrp.using_profile in list(_GQL_DEFAULTS.keys()):
@@ -155,8 +158,19 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
                 )
 
             _updated = True
-
         return _updated
+
+    def gql_version_fixup(
+        self,
+        *,
+        group_name: str,
+    ):
+        """Called when no version set so was pre-initialized."""
+        gql_group = self.get_group(group_name=group_name)
+        gql_prof = gql_group.get_profile(profile_name="devnet")
+        gql_prof.url = _GQL_DEFAULTS["devnet"]
+        gql_group.remove_profile(profile_name="devnet_beta")
+        self.version = _CURRENT_CONFIG_VERSION
 
     def add_group(
         self, *, group: prfgrp.ProfileGroup, make_active: bool, overwrite: bool = False

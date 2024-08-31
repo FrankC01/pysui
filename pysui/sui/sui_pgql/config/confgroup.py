@@ -352,3 +352,12 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         self.profiles.append(new_prf)
         if make_active:
             self.active_profile = new_prf.profile_name
+
+    def remove_profile(self, *, profile_name: str):
+        """Remove a profile after validating name."""
+        prf_names = self.profile_names
+        if profile_name in prf_names:
+            self.profiles = [x for x in self.profiles if x.profile_name != profile_name]
+            prf_names = self.profile_names
+            if self.using_profile not in prf_names:
+                self.using_profile = prf_names[0]
