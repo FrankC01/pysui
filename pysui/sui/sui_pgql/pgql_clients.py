@@ -258,10 +258,6 @@ class SuiGQLClient(BaseSuiGQLClient):
     @versionchanged(
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
-    @deprecated(
-        version="0.68.0",
-        reason="BREAKING `schema_version` no longer supported for selecting base schema, argument removed.",
-    )
     def __init__(
         self,
         *,
@@ -404,10 +400,6 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
     @versionchanged(
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
-    )
-    @versionchanged(
-        version="0.68.0",
-        reason="BREAKING schema_version no longer supported for selecting base schema, argument removed",
     )
     def __init__(
         self,

@@ -99,7 +99,7 @@ _QUERY_44 = """
     }
 """
 
-_QUERY_39 = """
+_QUERY_DEVNET7 = """
 
     query {
         chainIdentifier
@@ -121,13 +121,14 @@ _QUERY_39 = """
             maxDbQueryCost
             defaultPageSize
             maxPageSize
+            mutationTimeoutMs
             requestTimeoutMs
             maxQueryPayloadSize
             maxTypeArgumentDepth
             maxTypeNodes
             maxMoveValueDepth
         }
-      protocolConfig(protocolVersion:39) {
+      protocolConfig {
           protocolVersion
           configs {
             key
@@ -203,12 +204,8 @@ class SuiConfigGQL:
 def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable]:
     """Get the configuration for Sui GraphQL."""
     # TODO: Temporary Sui devnet bug workaround
-    _squery = _QUERY
+    _squery = _QUERY_DEVNET7
     if env != "devnet":
         _squery = _QUERY_44
-        if sversion:
-            _ym = sversion.split(".")
-            if _ym[0] == "2024" and int(_ym[1]) < 4:
-                _squery = _QUERY_39
     return _squery, SuiConfigGQL.from_query
     # return _QUERY, SuiConfigGQL.from_query

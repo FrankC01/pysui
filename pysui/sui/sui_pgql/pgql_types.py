@@ -1026,6 +1026,8 @@ class ProtocolConfigGQL:
             if isinstance(v, bool):
                 return v
             if isinstance(v, str):
+                if v == "true" or v == "false":
+                    return v
                 if v.count("."):
                     return float(v)
                 return int(v, base=0)
@@ -1223,10 +1225,12 @@ class MoveVectorArg:
     def from_body(cls, in_ref: str, in_type: dict) -> "MoveVectorArg":
         """ "."""
         from_vec: dict = in_type["vector"]
-        if not isinstance(from_vec,str):
+        if not isinstance(from_vec, str):
             if ivec := from_vec.get("vector"):
                 if isinstance(ivec, dict) and ivec.get("vector"):
-                    return cls(RefType.from_ref(in_ref), cls.from_body(in_ref, from_vec))
+                    return cls(
+                        RefType.from_ref(in_ref), cls.from_body(in_ref, from_vec)
+                    )
                 else:
                     from_vec = ivec
         return cls(

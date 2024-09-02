@@ -21,7 +21,7 @@ Python Client SDK for Sui blockchain
 
 **_BREAKING CHANGES to GraphQL multi-schema support_**
 
-- Supports _SUI 1.32.x RPC API_
+- Supports _SUI 1.33.x RPC API_
 - Backwards compatable to _Sui 1.21.x RPC API_
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
