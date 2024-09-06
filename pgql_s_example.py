@@ -681,7 +681,7 @@ if __name__ == "__main__":
             # persist=True,
         )
         client_init = SyncGqlClient(write_schema=False, pysui_config=cfg)
-        print(f"Chain environment   '{client_init.chain_environment}'")
+        print(f"Active chain profile   '{client_init.chain_environment}'")
         print(f"Default schema base version '{client_init.base_schema_version}'")
         print(f"Default schema build version '{client_init.schema_version()}'")
         print()

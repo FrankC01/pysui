@@ -85,7 +85,7 @@ _QUERY_44 = """
             maxTypeNodes
             maxMoveValueDepth
         }
-      protocolConfig(protocolVersion:44) {
+      protocolConfig {
           protocolVersion
           configs {
             key
@@ -127,6 +127,7 @@ _QUERY_DEVNET7 = """
             maxTypeArgumentDepth
             maxTypeNodes
             maxMoveValueDepth
+            maxTransactionPayloadSize
         }
       protocolConfig {
           protocolVersion
@@ -163,6 +164,7 @@ class ServiceConfigGQL:
     maxQueryPayloadSize: int
     availableVersions: Optional[list[str]] = dataclasses.field(default_factory=list)
     mutationTimeoutMs: Optional[int] = dataclasses.field(default=None)
+    maxTransactionPayloadSize: Optional[int] = dataclasses.field(default=None)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -208,4 +210,4 @@ def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable
     if env != "devnet":
         _squery = _QUERY_44
     return _squery, SuiConfigGQL.from_query
-    # return _QUERY, SuiConfigGQL.from_query
+    # return _QUERY_DEVNET7, SuiConfigGQL.from_query

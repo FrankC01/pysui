@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bump version 0.68.0
+- On PysuiConfiguration, renamed `active_env` property to `active_profile`
 - Mysten GraphQL removed `devnet-beta` url and only supports:
   - https://sui-mainnet.mystenlabs.com/graphql
   - https://sui-testnet.mystenlabs.com/graphql
@@ -25,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Support for Sui GraphQL multi-schema removed from providers.
+- Support for Sui GraphQL multi-schema removed from providers and Sui GraphQL clients.
 
 ## [0.67.0] - 2024-08-21
 

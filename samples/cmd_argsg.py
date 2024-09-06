@@ -744,9 +744,9 @@ def _base_parser(pconfig: PysuiConfiguration) -> argparse.ArgumentParser:
         "--profile",
         dest="profile_name",
         choices=pconfig.profile_names(),
-        default=pconfig.active_env,
+        default=pconfig.active_profile,
         required=False,
-        help=f"The GraphQL profile representing target GraphQL node. Default to '{pconfig.active_env}'",
+        help=f"The GraphQL profile representing target GraphQL node. Default to '{pconfig.active_profile}'",
     )
     parser.add_argument(
         "-v", "--version", help="Show pysui SDK version", action="store_true"

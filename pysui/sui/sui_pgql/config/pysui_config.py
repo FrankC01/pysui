@@ -156,9 +156,9 @@ class PysuiConfiguration:
         return self.active_group.active_alias
 
     @property
-    def active_env(self) -> str:
+    def active_profile(self) -> str:
         """Returns the active groups active profile name."""
-        return self.active_group.using_profile
+        return self.active_group.active_profile.profile_name
 
     @property
     def url(self) -> str:

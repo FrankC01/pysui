@@ -113,21 +113,20 @@ class BaseSuiGQLClient:
         self,
         *,
         pysui_config: PysuiConfiguration,
-        schema: scm.Schema,
+        schema: scm.NewSchema,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
     ):
         """."""
 
         self._pysui_config: PysuiConfiguration = pysui_config
-        self._schema: scm.Schema = schema
+        self._schema: scm.NewSchema = schema
         self._default_header = default_header if default_header else {}
         # Schema persist
         if write_schema:
-            def_config: dict[str, Any] = schema.schema_set[schema.default_version]
-            def_env = def_config[scm.Schema.RPC_CFG].gqlEnvironment
-            def_schm = def_config[scm.Schema.DSCHEMA]
-            fname = f"./{def_env}_schema-{def_config[scm.Schema.BUILD]}.graphql"
+            def_env = self._schema.rpc_config.gqlEnvironment
+            def_schm = self._schema.dsl_schema
+            fname = f"./{def_env}_schema-{self._schema.build_version}.graphql"
             with open(fname, "w", encoding="utf8") as inner_file:
                 inner_file.write(print_schema(getattr(def_schm, "_schema")))
 
@@ -141,54 +140,29 @@ class BaseSuiGQLClient:
 
     def current_gas_price(self, for_version: Optional[str] = None) -> int:
         """Fetch the current epoch gas price."""
-        def_config: dict[str, Any] = self._schema.schema_set[
-            for_version or self._schema.default_version
-        ]
-        return int(
-            def_config[scm.Schema.RPC_CFG].checkpoints.nodes[0].reference_gas_price
-        )
+        return self._schema.rpc_config.checkpoints.nodes[0].reference_gas_price
 
-    def rpc_config(self, for_version: Optional[str] = None) -> SuiConfigGQL:
+    def rpc_config(self) -> SuiConfigGQL:
         """Fetch the graphql configuration."""
-        def_config: dict[str, Any] = self._schema.schema_set[
-            for_version or self._schema.default_version
-        ]
-        return def_config[scm.Schema.RPC_CFG]
+        return self._schema.rpc_config
 
     def protocol(
         self, for_version: Optional[str] = None
     ) -> pgql_type.TransactionConstraints:
         """Fetch the protocol constraint block."""
-        def_config = self.rpc_config(for_version)
-        return def_config.protocolConfig
+        return self._schema.rpc_config.protocolConfig
 
-    def url(self, for_version: Optional[str] = None) -> str:
+    def url(self) -> str:
         """Fetch the active GraphQL URL."""
-        def_config: dict[str, Any] = self._schema.schema_set[
-            for_version or self._schema.default_version
-        ]
-        return def_config[scm.Schema.GURL]
+        return self._schema._graph_url
 
-    def client(self, for_version: Optional[str] = None) -> Client:
+    def client(self) -> Client:
         """Fetch the graphql client."""
-        def_config: dict[str, Any] = self._schema.schema_set[
-            for_version or self._schema.default_version
-        ]
-        return def_config[scm.Schema.GCLIENT]
+        return self._schema.client
 
-    async def async_client(
-        self, for_version: Optional[str] = None
-    ) -> ReconnectingAsyncClientSession:
+    async def async_client(self) -> ReconnectingAsyncClientSession:
         """Fetch the graphql async client."""
-        def_config: dict[str, Any] = self._schema.schema_set[
-            for_version or self._schema.default_version
-        ]
-        if session := def_config.get(scm.Schema.ASYNCSESS):
-            return session
-        def_config[scm.Schema.ASYNCSESS] = await def_config[
-            scm.Schema.GCLIENT
-        ].connect_async(reconnecting=True)
-        return def_config[scm.Schema.ASYNCSESS]
+        return await self._schema.async_client
 
     def chain_id(self, for_version: Optional[str] = None) -> str:
         """Fetch the chain identifier."""
@@ -201,23 +175,16 @@ class BaseSuiGQLClient:
 
     def schema_version(self, for_version: Optional[str] = None) -> str:
         """Returns Sui GraphQL schema long version."""
-        def_config: dict[str, Any] = self._schema.schema_set[
-            for_version or self._schema.default_version
-        ]
-
-        return def_config[scm.Schema.BUILD]
+        return self._schema.build_version
 
     @property
     def base_schema_version(self) -> str:
         """Returns the default schema version (schema version without patch)"""
-        return self._schema.default_version
+        return self._schema.base_version
 
-    def schema(self, for_version: Optional[str] = None) -> DSLSchema:
+    def schema(self) -> DSLSchema:
         """Return the specific DSLSchema for configuration"""
-        def_config: dict[str, Any] = self._schema.schema_set[
-            for_version or self._schema.default_version
-        ]
-        return def_config[scm.Schema.DSCHEMA]
+        return self._schema.dsl_schema
 
     def _qnode_owner(self, qnode: PGQL_QueryNode):
         """."""
@@ -227,29 +194,23 @@ class BaseSuiGQLClient:
             )
             setattr(qnode, "owner", resolved_owner)
 
-    def _qnode_pre_run(
-        self, qnode: PGQL_QueryNode, schema_constraint: Union[str, None] = None
-    ) -> Union[DocumentNode, ValueError]:
+    def _qnode_pre_run(self, qnode: PGQL_QueryNode) -> Union[DocumentNode, ValueError]:
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
             self._qnode_owner(qnode)
-            dnode_sc = qnode.schema_constraint
-            dnode_sc = dnode_sc or schema_constraint
-            dnode = qnode.as_document_node(self.schema(dnode_sc))
+            dnode = qnode.as_document_node(self.schema())
             if isinstance(dnode, DocumentNode):
-                return dnode, dnode_sc
+                return dnode
             else:
                 raise ValueError("QueryNode did not produce a gql DocumentNode")
         else:
             raise ValueError("Not a valid PGQL_QueryNode")
 
     @versionadded(version="0.60.0", reason="Support query inspection")
-    def query_node_to_string(
-        self, *, query_node: PGQL_QueryNode, schema_constraint: Union[str, None] = None
-    ) -> str:
+    def query_node_to_string(self, *, query_node: PGQL_QueryNode) -> str:
         """."""
         self._qnode_owner(query_node)
-        return print_ast(query_node.as_document_node(self.schema(schema_constraint)))
+        return print_ast(query_node.as_document_node(self.schema()))
 
 
 class SuiGQLClient(BaseSuiGQLClient):
@@ -267,11 +228,11 @@ class SuiGQLClient(BaseSuiGQLClient):
     ):
         """Sui GraphQL Client initializer."""
         gurl = pysui_config.url
-        genv = pysui_config.active_env
+        genv = pysui_config.active_profile
         # gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
         super().__init__(
             pysui_config=pysui_config,
-            schema=scm.load_schema_cache(gurl, genv),
+            schema=scm.NewSchema(gql_url=gurl, gql_env=genv),
             write_schema=write_schema,
             default_header=default_header,
         )
@@ -282,7 +243,6 @@ class SuiGQLClient(BaseSuiGQLClient):
     def _execute(
         self,
         node: DocumentNode,
-        schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
@@ -300,7 +260,7 @@ class SuiGQLClient(BaseSuiGQLClient):
         :rtype: SuiRpcResult
         """
         try:
-            sres = self.client(schema_constraint).execute(
+            sres = self.client().execute(
                 node, extra_args=with_headers or self._default_header
             )
             return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
@@ -339,15 +299,12 @@ class SuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         string: str,
-        schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         if isinstance(string, str):
-            return self._execute(
-                gql(string), schema_constraint, with_headers, encode_fn
-            )
+            return self._execute(gql(string), with_headers, encode_fn)
         else:
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
@@ -358,13 +315,12 @@ class SuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         with_node: DocumentNode,
-        schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         if isinstance(with_node, DocumentNode):
-            return self._execute(with_node, schema_constraint, with_headers, encode_fn)
+            return self._execute(with_node, with_headers, encode_fn)
         else:
             return SuiRpcResult(False, "Not a valid gql DocumentNode", with_node)
 
@@ -375,20 +331,16 @@ class SuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         with_node: PGQL_QueryNode,
-        schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         try:
-            qdoc_node, _sc_constraint = self._qnode_pre_run(
-                with_node, schema_constraint
-            )
+            qdoc_node = self._qnode_pre_run(with_node)
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
-
-            return self._execute(qdoc_node, _sc_constraint, with_headers, encode_fn)
+            return self._execute(qdoc_node, with_headers, encode_fn)
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
@@ -409,19 +361,11 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         default_header: Optional[dict] = None,
     ):
         """Async Sui GraphQL Client initializer."""
-        gurl = pysui_config.url
-        genv = pysui_config.active_env
-        scm_mgr: scm.Schema = scm.load_schema_cache(gurl, genv)
-        for _sver, sblock in scm_mgr.schema_set.items():
-            sblock[scm.Schema.GCLIENT].close_sync()
-            sblock[scm.Schema.GCLIENT] = Client(
-                transport=HTTPXAsyncTransport(
-                    url=sblock[scm.Schema.GURL],
-                    verify=True,
-                    http2=True,
-                    timeout=120.0,
-                ),
-            )
+        scm_mgr: scm.NewSchema = scm.NewSchema(
+            gql_url=pysui_config.url, gql_env=pysui_config.active_profile
+        )
+        scm_mgr.set_async_client()
+
         super().__init__(
             pysui_config=pysui_config,
             schema=scm_mgr,
@@ -436,8 +380,9 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
     async def close(self) -> None:
         """Close the connection."""
-        aclient = self.client()
-        await aclient.close_async()
+        await self._schema._async_client.close_async()
+        # aclient = self.async_client()
+        # await aclient.close_async()
 
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
@@ -445,7 +390,6 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     async def _execute(
         self,
         node: DocumentNode,
-        schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
@@ -464,7 +408,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         """
         try:
             async with self._slock:
-                _session = await self.async_client(for_version=schema_constraint)
+                _session = await self.async_client()
                 sres = await _session.execute(
                     node, extra_args=with_headers or self._default_header
                 )
@@ -506,15 +450,12 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         string: str,
-        schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         if isinstance(string, str):
-            return await self._execute(
-                gql(string), schema_constraint, with_headers, encode_fn
-            )
+            return await self._execute(gql(string), with_headers, encode_fn)
         else:
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
@@ -525,15 +466,12 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         with_node: DocumentNode,
-        schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         if isinstance(with_node, DocumentNode):
-            return await self._execute(
-                with_node, schema_constraint, with_headers, encode_fn
-            )
+            return await self._execute(with_node, with_headers, encode_fn)
         else:
             return SuiRpcResult(False, "Not a valid gql DocumentNode", with_node)
 
@@ -544,22 +482,16 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         self,
         *,
         with_node: PGQL_QueryNode,
-        schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
         """."""
         try:
-            qdoc_node, _sc_constraint = self._qnode_pre_run(
-                with_node, schema_constraint
-            )
+            qdoc_node = self._qnode_pre_run(with_node)
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
-
-            return await self._execute(
-                qdoc_node, _sc_constraint, with_headers, encode_fn
-            )
+            return await self._execute(qdoc_node, with_headers, encode_fn)
 
         except ValueError as ve:
             return SuiRpcResult(

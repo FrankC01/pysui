@@ -586,7 +586,7 @@ async def main():
                 group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP
             ),
         )
-        print(f"Chain environment   '{client_init.chain_environment}'")
+        print(f"Active chain profile   '{client_init.chain_environment}'")
         print(f"Default schema base version '{client_init.base_schema_version}'")
         print(f"Default schema build version '{client_init.schema_version()}'")
         print()
