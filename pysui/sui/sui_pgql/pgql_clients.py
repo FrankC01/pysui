@@ -113,14 +113,14 @@ class BaseSuiGQLClient:
         self,
         *,
         pysui_config: PysuiConfiguration,
-        schema: scm.NewSchema,
+        schema: scm.Schema,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
     ):
         """."""
 
         self._pysui_config: PysuiConfiguration = pysui_config
-        self._schema: scm.NewSchema = schema
+        self._schema: scm.Schema = schema
         self._default_header = default_header if default_header else {}
         # Schema persist
         if write_schema:
@@ -162,7 +162,7 @@ class BaseSuiGQLClient:
 
     async def async_client(self) -> ReconnectingAsyncClientSession:
         """Fetch the graphql async client."""
-        return await self._schema.async_client
+        return await self._schema.async_session
 
     def chain_id(self, for_version: Optional[str] = None) -> str:
         """Fetch the chain identifier."""
@@ -232,7 +232,7 @@ class SuiGQLClient(BaseSuiGQLClient):
         # gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
         super().__init__(
             pysui_config=pysui_config,
-            schema=scm.NewSchema(gql_url=gurl, gql_env=genv),
+            schema=scm.Schema(gql_url=gurl, gql_env=genv),
             write_schema=write_schema,
             default_header=default_header,
         )
@@ -361,7 +361,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         default_header: Optional[dict] = None,
     ):
         """Async Sui GraphQL Client initializer."""
-        scm_mgr: scm.NewSchema = scm.NewSchema(
+        scm_mgr: scm.Schema = scm.Schema(
             gql_url=pysui_config.url, gql_env=pysui_config.active_profile
         )
         scm_mgr.set_async_client()
