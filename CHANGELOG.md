@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- `sui_move` package. Obsoleted move binarie readers/parsers
 
 ## [0.66.0] - 2024-08-04
 
