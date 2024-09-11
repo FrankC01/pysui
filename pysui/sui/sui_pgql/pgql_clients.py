@@ -47,24 +47,6 @@ if not logging.getLogger().handlers:
 class PGQL_QueryNode(ABC):
     """Base query class."""
 
-    _SCHEMA_CONSTRAINT: str = None
-
-    @property
-    def schema_constraint(self) -> Union[str, None]:
-        """Retreive schema constraint"""
-        return self._SCHEMA_CONSTRAINT
-
-    @schema_constraint.setter
-    def schema_constraint(self, sc_version: str) -> None:
-        """schema_constraint Sets the schema version constraint on the QueryNode.
-
-        The content of the string must be `YYYY.MAJOR.MINOR` (e.g. '2024.2.0')
-
-        :param sc_version: The schema version to constrain the query to.
-        :type sc_version: str
-        """
-        self._SCHEMA_CONSTRAINT = sc_version
-
     @abstractmethod
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """Returns a gql DocumentNode ready to execute.
@@ -138,7 +120,7 @@ class BaseSuiGQLClient:
         """Fetch the Pysui configuration."""
         return self._pysui_config
 
-    def current_gas_price(self, for_version: Optional[str] = None) -> int:
+    def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
         return self._schema.rpc_config.checkpoints.nodes[0].reference_gas_price
 

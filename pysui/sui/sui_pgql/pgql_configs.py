@@ -113,7 +113,6 @@ _QUERY_DEVNET7 = """
             }
         }
         serviceConfig {
-            availableVersions
             enabledFeatures
             maxQueryDepth
             maxQueryNodes
@@ -173,12 +172,12 @@ class CheckpointNodeGQL:
     sequenceNumber: int
     timestamp: str
     epoch: Any
-    reference_gas_price: Optional[str] = None
+    reference_gas_price: Optional[int] = None
 
     def __post_init__(self):
         """."""
         if "referenceGasPrice" in self.epoch:
-            self.reference_gas_price = self.epoch["referenceGasPrice"]
+            self.reference_gas_price = int(self.epoch["referenceGasPrice"])
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -207,7 +206,7 @@ def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable
     """Get the configuration for Sui GraphQL."""
     # TODO: Temporary Sui devnet bug workaround
     _squery = _QUERY_DEVNET7
-    if env != "devnet":
+    if env == "mainnet":
         _squery = _QUERY_44
     return _squery, SuiConfigGQL.from_query
     # return _QUERY_DEVNET7, SuiConfigGQL.from_query

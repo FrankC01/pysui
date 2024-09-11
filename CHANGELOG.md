@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- GraphQL DryRun gas price expects int (Uint53)
+
 ### Changed
 
 - Bump version 0.68.0
