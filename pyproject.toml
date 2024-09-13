@@ -44,12 +44,8 @@ dynamic = ["version", "readme"]
 
 
 [project.scripts]
-wallet = "samples.wallet:main"
-walletg = "samples.walletg:main"
-async-gas = "samples.async_gas:main"
-async-gasg = "samples.async_gasg:main"
-async-sub = "samples.async_sub:main"
-async-sub-txn = "samples.async_sub_txn:main"
+wallet = "samples.walletg:main"
+async-gas = "samples.async_gasg:main"
 
 [tool.setuptools.packages.find]
 

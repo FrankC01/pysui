@@ -772,3 +772,15 @@ def build_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespa
     _build_tx_query_commands(subparser)
 
     return parser.parse_args(in_args if in_args else ["--help"])
+
+
+def build_async_gas_parser(
+    in_args: list, pconfig: PysuiConfiguration
+) -> argparse.Namespace:
+    """Build the argument parser structure."""
+    # Base menu
+    parser = _base_parser(pconfig)
+    parser.add_help = True
+    parser.usage = "%(prog)s [options]"
+    parser.description = "Gather all gas for all objects"
+    return parser.parse_args(in_args)

@@ -12,49 +12,6 @@ import dataclasses_json
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
-# TODO: Temporary Protocol Config hack, remove when ready
-_QUERY = """
-
-    query {
-        chainIdentifier
-        checkpoints (last: 1) {
-            nodes {
-                sequenceNumber
-                timestamp
-                epoch {
-                        referenceGasPrice
-                    }
-            }
-        }
-        serviceConfig {
-            availableVersions
-            enabledFeatures
-            maxQueryDepth
-            maxQueryNodes
-            maxOutputNodes
-            maxDbQueryCost
-            defaultPageSize
-            maxPageSize
-            mutationTimeoutMs
-            requestTimeoutMs
-            maxQueryPayloadSize
-            maxTypeArgumentDepth
-            maxTypeNodes
-            maxMoveValueDepth
-        }
-      protocolConfig(protocolVersion:44) {
-          protocolVersion
-          configs {
-            key
-            value
-          }
-          featureFlags {
-            key
-            value
-          }
-        }
-    }
-"""
 
 _QUERY_44 = """
 
@@ -70,7 +27,6 @@ _QUERY_44 = """
             }
         }
         serviceConfig {
-            availableVersions
             enabledFeatures
             maxQueryDepth
             maxQueryNodes
@@ -127,6 +83,8 @@ _QUERY_DEVNET7 = """
             maxTypeNodes
             maxMoveValueDepth
             maxTransactionPayloadSize
+            maxTransactionIds
+            maxScanLimit
         }
       protocolConfig {
           protocolVersion
@@ -161,9 +119,10 @@ class ServiceConfigGQL:
     maxPageSize: int
     requestTimeoutMs: int
     maxQueryPayloadSize: int
-    availableVersions: Optional[list[str]] = dataclasses.field(default_factory=list)
     mutationTimeoutMs: Optional[int] = dataclasses.field(default=None)
     maxTransactionPayloadSize: Optional[int] = dataclasses.field(default=None)
+    maxTransactionIds: Optional[int] = dataclasses.field(default=None)
+    maxScanLimit: Optional[int] = dataclasses.field(default=None)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -209,4 +168,3 @@ def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable
     if env == "mainnet":
         _squery = _QUERY_44
     return _squery, SuiConfigGQL.from_query
-    # return _QUERY_DEVNET7, SuiConfigGQL.from_query

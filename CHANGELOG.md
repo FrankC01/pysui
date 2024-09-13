@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.68.0] - Unpublished
 
-**BREAKING CHANGES to GraphQL multi-schema support and Mysten URL available**
+**BREAKING CHANGES to GraphQL multi-schema support and Mysten URL availability**
+**BREAKING CHANGES Removed pysui legacy sample apps: wallet, async-gas, async-sub, async-sub-txn**
+**BREAKING CHANGES Renamed pysui GraphQL sample apps: walletg to wallet, async-gasg to async-gas**
+
 
 ### Added
 

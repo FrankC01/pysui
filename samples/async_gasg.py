@@ -31,7 +31,6 @@ import pathlib
 import sys
 import json
 
-
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 PARENT = PROJECT_DIR.parent
 
@@ -39,7 +38,10 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui import PysuiConfiguration
+from samples.cmd_argsg import build_async_gas_parser
+
+
+from pysui import PysuiConfiguration, __version__
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -145,15 +147,24 @@ async def main_run(client: AsyncSuiGQLClient):
     await client.close()
 
 
+def sdk_version():
+    """Dispay version(s)."""
+    print(f"pysui SDK version: {__version__}")
+
+
 def main():
     """Setup asynch loop and run."""
     arg_line = sys.argv[1:].copy()
     # Handle a different client.yaml than default
     if arg_line and arg_line[0] == "--local":
         raise ValueError("--local is invalid for GraphQL")
-    arpc = AsyncSuiGQLClient(
-        pysui_config=PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-    )
+    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+    parsed = build_async_gas_parser(arg_line, cfg)
+    cfg.make_active(profile_name=parsed.profile_name, persist=False)
+    if parsed.version:
+        sdk_version()
+        return
+    arpc = AsyncSuiGQLClient(pysui_config=cfg)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

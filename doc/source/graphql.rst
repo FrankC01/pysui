@@ -96,6 +96,61 @@ copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy 
     if __name__ == "__main__":
         main()
 
+---------------------
+Service Configuration
+---------------------
+
+A Sui GraphQL node may vary in it's configuraiton. When pysui initializes a client, the assoicated
+node configuration is captured and can be accessed via:
+
+.. code-block:: python
+    :linenos:
+
+    from pysui import PysuiConfiguration, SyncGqlClient
+
+    def main():
+        """Dump GraphQL node configuration."""
+        # Initialize synchronous client
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
+        client_init = SyncGqlClient(pysui_config=cfg,write_schema=True)
+        print(client.rpc_config().serviceConfig.to_json(indent=2)
+
+    if __name__ == "__main__":
+        main()
+
+
+At the time of this writing, the results for the Mysten Sui `devnet` GraphQL node:
+
+.. code-block:: json
+    :linenos:
+
+    {
+    "maxTypeArgumentDepth": 16,
+    "maxTypeNodes": 256,
+    "maxMoveValueDepth": 128,
+    "enabledFeatures": [
+        "ANALYTICS",
+        "COINS",
+        "DYNAMIC_FIELDS",
+        "NAME_SERVICE",
+        "SUBSCRIPTIONS",
+        "SYSTEM_STATE",
+        "MOVE_REGISTRY"
+    ],
+    "maxQueryDepth": 18,
+    "maxQueryNodes": 500,
+    "maxOutputNodes": 100000,
+    "defaultPageSize": 5,
+    "maxDbQueryCost": 20000,
+    "maxPageSize": 10,
+    "requestTimeoutMs": 15000,
+    "maxQueryPayloadSize": 5000,
+    "mutationTimeoutMs": 74000,
+    "maxTransactionPayloadSize": 174763,
+    "maxTransactionIds": 1000,
+    "maxScanLimit": 100000000
+    }
+
 ----------------------------
 HTTP Client Headers
 ----------------------------

@@ -134,7 +134,7 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
 
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
@@ -190,7 +190,7 @@ def sui_package(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Get a package object."""
     result: SuiRpcResult = client.execute_query_node(
         with_node=qn.GetPackage(
-            package=args.id.value,
+            package=args.id,
         )
     )
 
@@ -206,14 +206,12 @@ def sui_object(client: SuiGQLClient, args: argparse.Namespace) -> None:
     if args.version:
         sobject = client.execute_query_node(
             with_node=qn.GetPastObject(
-                object_id=args.id.value,
+                object_id=args.id,
                 version=args.version,
             )
         )
     else:
-        sobject = client.execute_query_node(
-            with_node=qn.GetObject(object_id=args.id.value)
-        )
+        sobject = client.execute_query_node(with_node=qn.GetObject(object_id=args.id))
 
     if sobject.is_ok():
         print("Object")
@@ -246,7 +244,7 @@ def sui_objects(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Show specific Sui object."""
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
@@ -298,16 +296,14 @@ def transfer_object(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
         for_owner = client.config.active_address
 
     txn = SuiTransaction(client=client, initial_sender=for_owner)
-    txn.transfer_objects(
-        transfers=[args.transfer.value], recipient=args.recipient.address
-    )
+    txn.transfer_objects(transfers=[args.transfer], recipient=args.recipient)
 
     transaction_execute(
         txb=txn,
@@ -320,7 +316,7 @@ def transfer_sui(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Transfer gas object."""
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
@@ -328,8 +324,8 @@ def transfer_sui(client: SuiGQLClient, args: argparse.Namespace) -> None:
 
     txn = SuiTransaction(client=client, initial_sender=for_owner)
     txn.transfer_sui(
-        recipient=args.recipient.address,
-        from_coin=args.takes.value,
+        recipient=args.recipient,
+        from_coin=args.takes,
         amount=int(args.mists),
     )
     transaction_execute(
@@ -343,16 +339,14 @@ def merge_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Merge two coins together."""
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
         for_owner = client.config.active_address
     # print(args)
     txn = SuiTransaction(client=client, initial_sender=for_owner)
-    txn.merge_coins(
-        merge_to=args.primary_coin.value, merge_from=[args.coin_to_merge.value]
-    )
+    txn.merge_coins(merge_to=args.primary_coin, merge_from=[args.coin_to_merge])
     transaction_execute(
         txb=txn,
         gas_budget=args.budget,
@@ -364,7 +358,7 @@ def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Split coin into amounts."""
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
@@ -373,7 +367,7 @@ def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
     # print(args)
     txn = SuiTransaction(client=client, initial_sender=for_owner)
     coins = txn.split_coin(
-        coin=args.coin_object_id.value, amounts=[int(x) for x in args.mists]
+        coin=args.coin_object_id, amounts=[int(x) for x in args.mists]
     )
     if not isinstance(coins, list):
         txn.transfer_objects(transfers=[coins], recipient=for_owner)
@@ -390,7 +384,7 @@ def split_coin_equally(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Split coin equally across counts."""
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
@@ -398,9 +392,7 @@ def split_coin_equally(client: SuiGQLClient, args: argparse.Namespace) -> None:
 
     # print(args)
     txn = SuiTransaction(client=client, initial_sender=for_owner)
-    txn.split_coin_equal(
-        coin=args.coin_object_id.value, split_count=int(args.split_count)
-    )
+    txn.split_coin_equal(coin=args.coin_object_id, split_count=int(args.split_count))
     transaction_execute(
         txb=txn,
         gas_budget=args.budget,
@@ -412,7 +404,7 @@ def publish(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Publish a sui package."""
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
@@ -439,30 +431,24 @@ def move_call(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Invoke a Sui move smart contract function."""
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
         for_owner = client.config.active_address
 
-    target = (
-        args.package_object_id.value
-        + "::"
-        + args.module.value
-        + "::"
-        + args.function.value
-    )
+    target = args.package_object_id + "::" + args.module + "::" + args.function
     if args.args:
         arguments = []
         for arg in args.args:
             if hasattr(arg, "value"):
-                arguments.append(arg.value)
+                arguments.append(arg)
             else:
                 arguments.append(arg)
     else:
         arguments = []
     if args.type_arguments:
-        type_arguments = [x.value for x in args.type_arguments if x.value]
+        type_arguments = [x for x in args.type_arguments if x]
     else:
         type_arguments = []
 
@@ -481,7 +467,7 @@ def sui_pay(client: SuiGQLClient, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
     for_owner: str = None
     if args.owner:
-        for_owner = args.owner.address
+        for_owner = args.owner
     elif args.alias:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
@@ -491,9 +477,9 @@ def sui_pay(client: SuiGQLClient, args: argparse.Namespace) -> None:
     if len(args.input_coins) == len(args.mists) == len(args.recipients):
         for x in range(len(args.input_coins)):
             i_coin = txn.split_coin(
-                coin=args.input_coins[x].value, amounts=[int(args.mists[x])]
+                coin=args.input_coins[x], amounts=[int(args.mists[x])]
             )
-            txn.transfer_objects(transfers=i_coin, recipient=args.recipients[x].address)
+            txn.transfer_objects(transfers=i_coin, recipient=args.recipients[x])
     else:
         print("Lengths of --input-coins, --amounts and --recipients must be equal.")
         return
@@ -537,7 +523,7 @@ def dryrun_kind(client: SuiGQLClient, args: argparse.Namespace) -> None:
         "sponsor": args.sponsor,
         "gasPrice": args.gas_price,
         "gasBudget": args.budget,
-        "gasObjects": [x.value for x in args.gas_objects] if args.gas_objects else [],
+        "gasObjects": [x for x in args.gas_objects] if args.gas_objects else [],
     }
     handle_result(
         client.execute_query_node(

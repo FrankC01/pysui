@@ -232,9 +232,7 @@ class SuiGQLClient(BaseSuiGQLClient):
 
         :param node: GQL DocumentNode
         :type node: DocumentNode
-        :param schema_constraint: Should run against specific schema
-        :type schema_constraint: Optional[str]
-        :param with_headers: Add extra arguments for http client headers
+        :param with_headers: Add extra arguments for http client headers, default to None
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
@@ -284,7 +282,17 @@ class SuiGQLClient(BaseSuiGQLClient):
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
-        """."""
+        """execute_query_string Executes a GraphQL query string.
+
+        :param string: Well formed GraphQL query string
+        :type string: str
+        :param with_headers: Add extra arguments for http client headers, default to None
+        :type with_headers: Optional[dict]
+        :param encode_fn: Encoding function, defaults to None
+        :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
+        :rtype: SuiRpcResult
+        """
         if isinstance(string, str):
             return self._execute(gql(string), with_headers, encode_fn)
         else:
@@ -300,7 +308,17 @@ class SuiGQLClient(BaseSuiGQLClient):
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
-        """."""
+        """execute_document_node Executes a gql DocumentNode.
+
+        :param with_node: The gql GraphQL DocumentNode
+        :type with_node: DocumentNode
+        :param with_headers: Add extra arguments for http client headers, default to None
+        :type with_headers: Optional[dict]
+        :param encode_fn: Encoding function, defaults to None
+        :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
+        :rtype: SuiRpcResult
+        """
         if isinstance(with_node, DocumentNode):
             return self._execute(with_node, with_headers, encode_fn)
         else:
@@ -316,7 +334,17 @@ class SuiGQLClient(BaseSuiGQLClient):
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
-        """."""
+        """execute_query_node Execute a pysui GraphQL QueryNode.
+
+        :param with_node: The QueryNode for execution
+        :type with_node: PGQL_QueryNode
+        :param with_headers: Add extra arguments for http client headers, default to None
+        :type with_headers: Optional[dict]
+        :param encode_fn: Encoding function, defaults to None
+        :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
+        :rtype: SuiRpcResult
+        """
         try:
             qdoc_node = self._qnode_pre_run(with_node)
             if isinstance(qdoc_node, PGQL_NoOp):
@@ -375,12 +403,10 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
-        """_execute Execute a GQL Document Node
+        """_execute Execute a GQL Document Node.
 
         :param node: GQL DocumentNode
         :type node: DocumentNode
-        :param schema_constraint: Should run against specific schema
-        :type schema_constraint: Optional[Union[str, None]]
         :param with_headers: Add extra arguments for http client headers
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
@@ -435,7 +461,17 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
-        """."""
+        """execute_query_string Executes a GraphQL query string.
+
+        :param string: Well formed GraphQL query string
+        :type string: str
+        :param with_headers: Add extra arguments for http client headers, default to None
+        :type with_headers: Optional[dict]
+        :param encode_fn: Encoding function, defaults to None
+        :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
+        :rtype: SuiRpcResult
+        """
         if isinstance(string, str):
             return await self._execute(gql(string), with_headers, encode_fn)
         else:
@@ -451,7 +487,17 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
-        """."""
+        """execute_document_node Executes a gql DocumentNode.
+
+        :param with_node: The gql GraphQL DocumentNode
+        :type with_node: DocumentNode
+        :param with_headers: Add extra arguments for http client headers, default to None
+        :type with_headers: Optional[dict]
+        :param encode_fn: Encoding function, defaults to None
+        :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
+        :rtype: SuiRpcResult
+        """
         if isinstance(with_node, DocumentNode):
             return await self._execute(with_node, with_headers, encode_fn)
         else:
@@ -467,7 +513,17 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
     ) -> SuiRpcResult:
-        """."""
+        """execute_query_node Execute a pysui GraphQL QueryNode.
+
+        :param with_node: The QueryNode for execution
+        :type with_node: PGQL_QueryNode
+        :param with_headers: Add extra arguments for http client headers, default to None
+        :type with_headers: Optional[dict]
+        :param encode_fn: Encoding function, defaults to None
+        :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
+        :rtype: SuiRpcResult
+        """
         try:
             qdoc_node = self._qnode_pre_run(with_node)
             if isinstance(qdoc_node, PGQL_NoOp):

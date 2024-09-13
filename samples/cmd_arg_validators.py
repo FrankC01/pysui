@@ -20,15 +20,7 @@ import binascii
 from pathlib import Path
 from typing import Any, Sequence
 from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
-from pysui.sui.sui_types import ObjectID, SuiInteger, SuiAddress
-
-
-def check_positive(value: str) -> int:
-    """Check argument for positive integers."""
-    ivalue = int(value)
-    if ivalue < 0:
-        raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")
-    return SuiInteger(ivalue)
+from pysui.sui.sui_types.address import valid_sui_address
 
 
 class ValidateAlias(argparse.Action):
@@ -63,14 +55,15 @@ class ValidateAddress(argparse.Action):
         option_string: str | None = ...,
     ) -> None:
         """Validate."""
-        try:
-            if isinstance(values, list):
-                values = [SuiAddress(v) for v in values]
-            else:
-                values = SuiAddress(values)
-        except ValueError:
-            parser.error(f"'{values}' is not valid address.")
-            sys.exit(-1)
+        if isinstance(values, list):
+            for va in values:
+                if not valid_sui_address(va):
+                    parser.error(f"'{values}' contains invlaid Sui address.")
+                    sys.exit(-1)
+        else:
+            if not valid_sui_address(values):
+                parser.error(f"'{values}' is not a valid Sui address.")
+                sys.exit(-1)
         setattr(namespace, self.dest, values)
 
 
@@ -85,13 +78,15 @@ class ValidateObjectID(argparse.Action):
         option_string: str | None = ...,
     ) -> None:
         """Validate."""
-        try:
-            if isinstance(values, list):
-                values = [ObjectID(v) for v in values]
-            else:
-                values = ObjectID(values)
-        except ValueError:
-            parser.error(f"'{values}' is not valid address.")
+        if isinstance(values, list):
+            for va in values:
+                if not valid_sui_address(va):
+                    parser.error(f"'{values}' contains invlaid Sui address.")
+                    sys.exit(-1)
+        else:
+            if not valid_sui_address(values):
+                parser.error(f"'{values}' is not a valid Sui address.")
+                sys.exit(-1)
         setattr(namespace, self.dest, values)
 
 
