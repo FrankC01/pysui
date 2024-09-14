@@ -17,9 +17,7 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.68.0**
-
-**_BREAKING CHANGES to GraphQL multi-schema support and removal of legacy samples_**
+**Release-0.69.0**
 
 - Supports _SUI 1.33.x RPC API_ and _SUI 1.33.x GRAPHQL_
 - Backwards compatable to _Sui 1.28.x RPC API_ and _2024.7.0 GraphQL schema_
@@ -28,7 +26,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.67.0 - Released 2024-09-14**
+**Release-0.68.0 - Released 2024-09-14**
 
 **_BREAKING CHANGES to GraphQL multi-schema support and removal of legacy samples_**
 
@@ -51,7 +49,7 @@ we recommend using testnet or mainnet beta for stability. We are tracking a few 
 
   [Testnet](https://sui-testnet.mystenlabs.com/graphql)
 
-  [Devnet](https://sui-devnet.mystenlabs.com/graphql/stable)
+  [Devnet](https://sui-devnet.mystenlabs.com/graphql)
 
 ### pysui GraphQL support
 
@@ -70,7 +68,6 @@ We continue to monitor and support changes from MystenLabs as they occur.
 You can read pysui documentation on graphql beta [here](https://pysui.readthedocs.io/en/latest/graphql.html)
 
 #### Known Issues
-- Sui GraphQL fails fetching ProtocolConfiguration versions greater than 39
 - No subscription support at this time
 
 
