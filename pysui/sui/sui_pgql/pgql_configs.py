@@ -12,50 +12,7 @@ import dataclasses_json
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
-
-_QUERY_44 = """
-
-    query {
-        chainIdentifier
-        checkpoints (last: 1) {
-            nodes {
-                sequenceNumber
-                timestamp
-                epoch {
-                        referenceGasPrice
-                    }
-            }
-        }
-        serviceConfig {
-            enabledFeatures
-            maxQueryDepth
-            maxQueryNodes
-            maxOutputNodes
-            maxDbQueryCost
-            defaultPageSize
-            maxPageSize
-            mutationTimeoutMs
-            requestTimeoutMs
-            maxQueryPayloadSize
-            maxTypeArgumentDepth
-            maxTypeNodes
-            maxMoveValueDepth
-        }
-      protocolConfig {
-          protocolVersion
-          configs {
-            key
-            value
-          }
-          featureFlags {
-            key
-            value
-          }
-        }
-    }
-"""
-
-_QUERY_DEVNET7 = """
+_QUERY = """
 
     query {
         chainIdentifier
@@ -163,8 +120,4 @@ class SuiConfigGQL:
 
 def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable]:
     """Get the configuration for Sui GraphQL."""
-    # TODO: Temporary Sui devnet bug workaround
-    _squery = _QUERY_DEVNET7
-    if env == "mainnet":
-        _squery = _QUERY_44
-    return _squery, SuiConfigGQL.from_query
+    return _QUERY, SuiConfigGQL.from_query

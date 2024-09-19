@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bump version 0.69.0
+- GraphQL Schema updates for fields in `serviceConfig`
 
 ### Removed
 
