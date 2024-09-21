@@ -575,11 +575,11 @@ class GetEvents(PGQL_QueryNode):
         """QueryNode initializer to query chain events emitted by modules.
 
         :param event_filter: Filter key/values aligned to Sui GraphQL schema's EventFilter
-        :type event_filter: str
+        :type event_filter: dict
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
         """
-        self.event_filter = event_filter or {}
+        self.event_filter = event_filter
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
