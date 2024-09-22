@@ -8,7 +8,7 @@
 import asyncio
 
 from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient, SyncGqlClient
-from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
+from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
@@ -491,26 +491,48 @@ async def do_dry_run(client: AsyncGqlClient):
     """Execute a dry run."""
 
     # Use synchronous transaction builder
-    txer = SuiTransaction(client=SyncGqlClient(config=client.config))
-    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
+    scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
     handle_result(
         await client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
+            with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
         )
     )
 
 
+async def do_split_any_half(client: AsyncGqlClient):
+    """Split the 1st coin in wallet to another another equal to 1/2 in wallet.
+
+    This will only run if there is more than 1 coin in wallet.
+    """
+
+    result = await client.execute_query_node(
+        with_node=qn.GetCoins(owner=client.config.active_address)
+    )
+    if result.is_ok() and len(result.result_data.data) > 1:
+        amount = int(int(result.result_data.data[0].balance) / 2)
+        txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
+        scres = await txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
+        await txer.transfer_objects(
+            transfers=scres, recipient=client.config.active_address
+        )
+        handle_result(
+            await client.execute_query_node(
+                with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+            )
+        )
+
+
 async def do_execute(client: AsyncGqlClient):
     """Execute a transaction."""
-    # Use synchronous transaction builder
-    txer = SuiTransaction(client=SyncGqlClient(config=client.config))
-    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
+    scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     handle_result(
         await client.execute_query_node(
-            with_node=qn.ExecuteTransaction(**txer.build_and_sign())
+            with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
         )
     )
 
@@ -522,26 +544,25 @@ async def do_stake(client: AsyncGqlClient):
     or different validator change the vaddress
     """
     vaddress = "0x44b1b319e23495995fc837dafd28fc6af8b645edddff0fc1467f1ad631362c23"
-    # Use synchronous transaction builder
-    txer = SuiTransaction(client=SyncGqlClient(config=client.config))
+    txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
 
     # Take 1 Sui from gas
-    stake_coin_split = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    stake_coin_split = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     # Stake the coin
-    txer.stake_coin(
+    await txer.stake_coin(
         coins=[stake_coin_split],
         validator_address=vaddress,
     )
     # Uncomment to dry run
     handle_result(
         await client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
+            with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
         )
     )
     # Uncomment to execute the stake
     # handle_result(
     #     await client.execute_query_node(
-    #         with_node=qn.ExecuteTransaction(**txer.build_and_sign())
+    #         with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
     #     )
     # )
 
@@ -554,15 +575,16 @@ async def do_unstake(client: AsyncGqlClient):
         with_node=qn.GetDelegatedStakes(owner=owner)
     )
     if result.is_ok() and result.result_data.staked_coins:
-        # Use synchronous transaction builder
-        txer = SuiTransaction(client=SyncGqlClient(config=client.config))
+        txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
 
         # Unstake the first staked coin
-        txer.unstake_coin(staked_coin=result.result_data.staked_coins[0].object_id)
+        await txer.unstake_coin(
+            staked_coin=result.result_data.staked_coins[0].object_id
+        )
         # Uncomment to dry run
         handle_result(
             await client.execute_query_node(
-                with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
+                with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
             )
         )
 
@@ -590,6 +612,7 @@ async def main():
         print(f"Default schema base version '{client_init.base_schema_version}'")
         print(f"Default schema build version '{client_init.schema_version()}'")
         print()
+
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
@@ -624,6 +647,7 @@ async def main():
         # await do_module(client_init)
         # await do_package(client_init)
         # await do_dry_run(client_init)
+        # await do_split_any_half(client_init)
         # await do_execute(client_init)
         # await do_stake(client_init)
         # await do_unstake(client_init)

@@ -12,5 +12,5 @@
 # -*- coding: utf-8 -*-
 
 # Read in command line and posting to PyPi
-__version__ = "0.69.0"
+__version__ = "0.70.0"
 """Pysui Version."""
