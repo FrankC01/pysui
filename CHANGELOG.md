@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.69.0] - Unpublished
+## [0.69.0] - 2024-09-22
 
 ### Added
 
@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bump version 0.69.0
 - GraphQL Schema updates for fields in `serviceConfig`
+- Validate with 1.35.0 JSON RPC Schema
+- Validate with 1.34.0 GraphQL Schema
 
 ### Removed
 
