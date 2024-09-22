@@ -22,6 +22,7 @@ from pysui.sui.sui_txresults.single_tx import (
 from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
 from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
+import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_utils import publish_buildg
@@ -45,6 +46,119 @@ class _SuiTransactionBase:
     _SPLIT_AND_KEEP: str = "0x2::pay::divide_and_keep"
     _PUBLIC_TRANSFER: str = "0x2::transfer::public_transfer"
     _PAY_GAS: int = 4000000
+    _SPLIT_COIN = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+            ),
+            pgql_type.MoveListArg(
+                pgql_type.RefType.NO_REF,
+                pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
+            ),
+        ],
+    )
+
+    _MERGE_COINS = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+            ),
+            pgql_type.MoveListArg(
+                pgql_type.RefType.NO_REF,
+                pgql_type.MoveObjectRefArg(
+                    pgql_type.RefType.MUT_REF,
+                    "0x2",
+                    "sui",
+                    "SUI",
+                    [],
+                    False,
+                    False,
+                    False,
+                ),
+            ),
+        ],
+    )
+
+    _TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
+            pgql_type.MoveListArg(
+                pgql_type.RefType.NO_REF,
+                pgql_type.MoveObjectRefArg(
+                    pgql_type.RefType.MUT_REF,
+                    "0x2",
+                    "sui",
+                    "SUI",
+                    [],
+                    False,
+                    False,
+                    False,
+                ),
+            ),
+        ],
+    )
+
+    _TRANSFER_SUI = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+            ),
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF,
+                "0x2",
+                "sui",
+                "SUI",
+                [pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64")],
+                True,
+                False,
+                False,
+            ),
+        ],
+    )
+
+    _PUBLIC_TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+            ),
+            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
+        ],
+    )
+
+    _MAKE_MOVE_VEC = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveVectorArg(
+                pgql_type.RefType.NO_REF,
+                pgql_type.MoveObjectRefArg(
+                    pgql_type.RefType.MUT_REF,
+                    "0x2",
+                    "sui",
+                    "SUI",
+                    [],
+                    False,
+                    False,
+                    False,
+                ),
+            )
+        ],
+    )
+
+    _PUBLISH_UPGRADE = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
+            ),
+            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u8"),
+        ],
+    )
 
     def __init__(
         self,
