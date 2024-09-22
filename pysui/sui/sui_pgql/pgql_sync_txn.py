@@ -9,7 +9,9 @@ import base64
 from typing import Any, Callable, Optional, Union
 from functools import cache
 from deprecated.sphinx import versionchanged, versionadded, deprecated
-from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase
+from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
+
+# import pysui.sui.sui_pgql.pgql_txn_base._SuiTransactionBase as txbase
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
@@ -17,105 +19,11 @@ import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_argb as ab
-from pysui.sui.sui_types.scalars import SuiU64
 
 # Well known parameter constructs
 
-_SPLIT_COIN = pgql_type.MoveArgSummary(
-    [],
-    [
-        pgql_type.MoveObjectRefArg(
-            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-        ),
-        pgql_type.MoveListArg(
-            pgql_type.RefType.NO_REF,
-            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
-        ),
-    ],
-)
 
-_MERGE_COINS = pgql_type.MoveArgSummary(
-    [],
-    [
-        pgql_type.MoveObjectRefArg(
-            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-        ),
-        pgql_type.MoveListArg(
-            pgql_type.RefType.NO_REF,
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-            ),
-        ),
-    ],
-)
-
-_TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
-    [],
-    [
-        pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
-        pgql_type.MoveListArg(
-            pgql_type.RefType.NO_REF,
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-            ),
-        ),
-    ],
-)
-
-_TRANSFER_SUI = pgql_type.MoveArgSummary(
-    [],
-    [
-        pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
-        pgql_type.MoveObjectRefArg(
-            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-        ),
-        pgql_type.MoveObjectRefArg(
-            pgql_type.RefType.MUT_REF,
-            "0x2",
-            "sui",
-            "SUI",
-            [pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64")],
-            True,
-            False,
-            False,
-        ),
-    ],
-)
-
-_PUBLIC_TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
-    [],
-    [
-        pgql_type.MoveObjectRefArg(
-            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-        ),
-        pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
-    ],
-)
-
-_MAKE_MOVE_VEC = pgql_type.MoveArgSummary(
-    [],
-    [
-        pgql_type.MoveVectorArg(
-            pgql_type.RefType.NO_REF,
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-            ),
-        )
-    ],
-)
-
-_PUBLISH_UPGRADE = pgql_type.MoveArgSummary(
-    [],
-    [
-        pgql_type.MoveObjectRefArg(
-            pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-        ),
-        pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u8"),
-    ],
-)
-
-
-class SuiTransaction(_SuiTransactionBase):
+class SuiTransaction(txbase):
     """."""
 
     # Prebuild functions
@@ -338,7 +246,7 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
 
-        parms = ab.build_args(self.client, [coin, amounts], _SPLIT_COIN)
+        parms = ab.build_args(self.client, [coin, amounts], txbase._SPLIT_COIN)
         return self.builder.split_coin(parms[0], parms[1:][0])
 
     def merge_coins(
@@ -356,7 +264,7 @@ class SuiTransaction(_SuiTransactionBase):
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = ab.build_args(self.client, [merge_to, merge_from], _MERGE_COINS)
+        parms = ab.build_args(self.client, [merge_to, merge_from], txbase._MERGE_COINS)
         return self.builder.merge_coins(parms[0], parms[1:][0])
 
     def split_coin_equal(
@@ -408,7 +316,9 @@ class SuiTransaction(_SuiTransactionBase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = ab.build_args(self.client, [recipient, transfers], _TRANSFER_OBJECTS)
+        parms = ab.build_args(
+            self.client, [recipient, transfers], txbase._TRANSFER_OBJECTS
+        )
         return self.builder.transfer_objects(parms[0], parms[1:][0])
 
     def transfer_sui(
@@ -432,7 +342,9 @@ class SuiTransaction(_SuiTransactionBase):
         :rtype: bcs.Argument
         """
         return self.builder.transfer_sui(
-            *ab.build_args(self.client, [recipient, from_coin, amount], _TRANSFER_SUI)
+            *ab.build_args(
+                self.client, [recipient, from_coin, amount], txbase._TRANSFER_SUI
+            )
         )
 
     def public_transfer_object(
@@ -461,7 +373,9 @@ class SuiTransaction(_SuiTransactionBase):
         return self.builder.move_call(
             target=package,
             arguments=ab.build_args(
-                self.client, [object_to_send, recipient], _PUBLIC_TRANSFER_OBJECTS
+                self.client,
+                [object_to_send, recipient],
+                txbase._PUBLIC_TRANSFER_OBJECTS,
             ),
             type_arguments=[bcs.TypeTag.type_tag_from(object_type)],
             module=package_module,
@@ -483,7 +397,7 @@ class SuiTransaction(_SuiTransactionBase):
                 type_tag = bcs.OptionalTypeTag()
             return self.builder.make_move_vector(type_tag, items)
 
-        parms = ab.build_args(self.client, [items], _MAKE_MOVE_VEC)
+        parms = ab.build_args(self.client, [items], txbase._MAKE_MOVE_VEC)
         if item_type:
             type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
         else:
@@ -664,7 +578,7 @@ class SuiTransaction(_SuiTransactionBase):
             cap_obj_arg, policy_arg = ab.build_args(
                 self.client,
                 [upgrade_cap, upgrade_cap.content["policy"]],
-                _PUBLISH_UPGRADE,
+                txbase._PUBLISH_UPGRADE,
             )
             # Capture input offsets to preserve location of upgrade_cap ObjectArg
             cap_arg = len(self.builder.inputs)
@@ -679,7 +593,7 @@ class SuiTransaction(_SuiTransactionBase):
                         *ab.build_args(
                             self.client,
                             [upgrade_cap, upgrade_cap.content["policy"]],
-                            _PUBLISH_UPGRADE,
+                            txbase._PUBLISH_UPGRADE,
                         ),
                         PureInput.as_input(digest),
                     ),
