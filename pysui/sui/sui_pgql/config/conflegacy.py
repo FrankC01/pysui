@@ -75,7 +75,7 @@ def address_and_alias_from_keystring(
 
 
 def load_client_yaml(client_file: Path, json_rpc_group: str) -> ProfileGroup:
-    """."""
+    """Return a ProfileGroup built from sui client.yaml."""
     _client_yaml = client_file / "client.yaml"
     _client_alias = client_file / "sui.aliases"
     # Check client.yaml and sui.aliases

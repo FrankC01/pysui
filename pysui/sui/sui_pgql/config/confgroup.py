@@ -248,7 +248,21 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         alias: Optional[str] = None,
         alias_list: list[ProfileAlias],
     ) -> tuple[str, str, ProfileKey, ProfileAlias]:
-        """."""
+        """new_keypair_parts Creates a new keypair of type, returning aspects of new key.
+
+        :param alias_list: A list of existing aliases to avoid colliding with
+        :type alias_list: list[ProfileAlias]
+        :param of_keytype: The type of key to create, defaults to SignatureScheme.ED25519
+        :type of_keytype: Optional[SignatureScheme], optional
+        :param word_counts: Number of mnemonic words to use for seed, defaults to 12
+        :type word_counts: Optional[int], optional
+        :param derivation_path: Applicable derivation path, defaults to None
+        :type derivation_path: Optional[str], optional
+        :param alias: Preferred alias name, defaults to None
+        :type alias: Optional[str], optional
+        :return: the mnemonics, address derived from key, private key and alias
+        :rtype: tuple[str, str, ProfileKey, ProfileAlias]
+        """
         mnem, keypair = crypto.create_new_keypair(
             scheme=of_keytype,
             word_counts=word_counts,
@@ -345,7 +359,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         return addies
 
     def add_profile(self, *, new_prf: Profile, make_active: bool = False):
-        """Add profile to list after validating name"""
+        """Add profile to list after validating name."""
         _res = self._profile_exists(profile_name=new_prf.profile_name)
         if _res:
             raise ValueError(f"Profile {new_prf.profile_name} already exists.")

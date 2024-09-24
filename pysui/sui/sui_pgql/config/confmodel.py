@@ -175,7 +175,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
     def add_group(
         self, *, group: prfgrp.ProfileGroup, make_active: bool, overwrite: bool = False
     ) -> bool:
-        """."""
+        """Add a new group to the model."""
         # If group doesn't exist, create it
         _updated = False
         _res = self._group_exists(group_name=group.group_name)

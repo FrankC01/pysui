@@ -56,7 +56,7 @@ def do_gas(client: SyncGqlClient):
     )
     if result.is_ok():
         print(
-            f"Total coins in page: {len(result.result_data.data)} has more: {result.result_data.next_cursor.hasNextPage}"
+            f"Total coins in page: {len(result.result_data.data)} \nhas more: {result.result_data.next_cursor.hasNextPage}"
         )
 
 

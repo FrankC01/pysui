@@ -91,7 +91,7 @@ class PysuiConfiguration:
         self._config_file.write_text(self.to_json(indent=2))
 
     def to_json(self, *_cmds, **kwargs) -> str:
-        """."""
+        """Return JSON formatted representation of PysuiConfiguration."""
         return self._model.to_json(**kwargs)
 
     def rebuild_from_sui_client(
@@ -137,7 +137,7 @@ class PysuiConfiguration:
 
     @property
     def model(self) -> PysuiConfigModel:
-        """."""
+        """Return underlying model."""
         return self._model
 
     @property
