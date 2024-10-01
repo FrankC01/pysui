@@ -25,6 +25,7 @@ Welcome to pysui's documentation!
    graphql
    graphql_prog_txn
    graphql_pyconfig
+   graphql_qnodes
    aliases
    multi_sig
    prog_txn
