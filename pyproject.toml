@@ -46,6 +46,7 @@ dynamic = ["version", "readme"]
 [project.scripts]
 wallet = "samples.walletg:main"
 async-gas = "samples.async_gasg:main"
+sgqls = "samples.sgqls:main"
 
 [tool.setuptools.packages.find]
 

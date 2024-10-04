@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/230) Asynch PTB
 - `gen_doc_qnode` added to refresh QueryNode documentation (link table)
+- `sgqls` script to persist Sui GraphQL schemas. See `sgqls -h` or `python samples/sgqls.py -h`
 
 ### Fixed
 
