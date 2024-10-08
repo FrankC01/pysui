@@ -5,26 +5,31 @@ Samples and utilities included in both the `pysui` repo as well as when installi
 
 ## Examples:
 
-- async-gas collects and prints all gas for all addresses found in configuration
-- Sample [WalletG](#walletG) providing equivalent functionality as `sui client ...`
-
-**Note:** If running from cloned repo, examples are started with `python -m ....`
-
-- `python -m samples.walletg`
-- `python -m samples.async_gasg`
-
-**Note:** If running from PyPi install, examples can be started directly
-
-- `wallet`
-- `async-gas`
-
 ### Async Gas
 
 Example demonstrating using the `pysui` asynchronus client. See [DEVELOP](../DEVELOP.md)
 
+### Sui GraphQL Schemas
+
+Example that takes one or more GraphQL nodes and writes schemas to folder
+
 ### WalletG
 
 Implementation demonstrating most commands like the SUI CLI (i.e. `sui client ...`) using Sui GraphQL RPC.
+
+
+**Note:** If running from cloned repo, examples are started with `python -m ....`
+
+- `python -m samples.async_gasg`
+- `python -m samples.sgqls`
+- `python -m samples.walletg`
+
+**Note:** If running from PyPi install, examples can be started directly
+
+- `async-gas`
+- `sgqls`
+- `wallet`
+
 
 #### WalletG Commands
 ```shell
@@ -117,59 +122,4 @@ subcommand:
     mutated             Return transaction events for the mutate object.
     from                Return transaction events from sender address.
     to                  Return transaction events from recipient address.
-```
-
-## Run Local (wallet only)
-
-We've changed the abbility to operate with a local running node to rely on [sui-base](https://github.com/ChainMovers/suibase).
-
-After you've cloned and installed `suibase` you can add the `--local` flag as shown below
-
-Note that this is different if you are swiitching between `envs` using the standard sui configuration.
-
-### Running with `sui-base`
-
-1. Change to your home folder `cd ~/`
-2. `git clone git@github.com:ChainMovers/suibase.git`
-3. `cd suibase`
-4. `./install`
-5. `localnet start` <= This will download sui source code and start a local node (devnet level)
-6. Finally, add the `--local` switch to the command line `pysui` wallet or other samples
-
-Example:
-
-```bash
-wallet --local gas
-```
-
-Or (if running pysui from repo clone):
-
-```bash
-python samples/wallet.py --local gas
-```
-
-### Running with standard sui configuration
-
-If your standard configuration has `envs` that include `localnet`
-
-1. `sui client switch --env localnet
-
-Example:
-
-```bash
-wallet gas
-```
-
-```bash
-walletg gas
-```
-
-Or (if running pysui from repo clone):
-
-```bash
-python samples/wallet.py gas
-```
-
-```bash
-python samples/walletg.py gas
 ```
