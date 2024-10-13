@@ -564,7 +564,7 @@ class GetDynamicFields(PGQL_QueryNode):
 
 
 class GetEvents(PGQL_QueryNode):
-    """GetEvents When executed, return list of events for a specified transaction block."""
+    """GetEvents When executed, return list of events for the filter choice."""
 
     def __init__(
         self,
@@ -572,7 +572,26 @@ class GetEvents(PGQL_QueryNode):
         event_filter: dict,
         next_page: Optional[pgql_type.PagingCursor] = None,
     ) -> None:
-        """QueryNode initializer to query chain events emitted by modules.
+        """QueryNode initializer to query chain events of type defined by event_filter.
+
+        Choice is one key/value pair of:
+            {
+                'sender': 'SOME_SUI_ACCOUNT'
+            },
+            {
+                'transactionDigest': 'SOME_SUI_TX_DIGEST'
+            },
+            {
+                'emittingModule': 'FULLY QUALIFIED MODULE'
+            },
+            {
+                'eventType': 'FULLY QUALIFED EVENT TYPE'
+            }
+
+        Example filter:
+          {
+              "eventType": "0x3::validator::StakingRequestEvent"
+          }
 
         :param event_filter: Filter key/values aligned to Sui GraphQL schema's EventFilter
         :type event_filter: dict

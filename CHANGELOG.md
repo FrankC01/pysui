@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.71.0] - Unpublished
+
+### Added
+
+### Fixed
+
+- EventGQL type `sender` declaration
+- [bug](https://github.com/FrankC01/pysui/issues/231) to fixup after including this release:
+  - Delete the previous configuration `rm -rf ~/.pysui` or whatever you may have initially located it
+  - Restart the app/script that was previously failing
+
+### Changed
+
+- GetEvents inline docs
+
+### Removed
+
+
 ## [0.70.0] - 2024-10-08
 
 ### Added

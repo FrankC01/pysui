@@ -166,10 +166,13 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         group_name: str,
     ):
         """Called when no version set so was pre-initialized."""
-        gql_group = self.get_group(group_name=group_name)
-        gql_prof = gql_group.get_profile(profile_name="devnet")
-        gql_prof.url = _GQL_DEFAULTS["devnet"]
-        gql_group.remove_profile(profile_name="devnet_beta")
+        try:
+            gql_group = self.get_group(group_name=group_name)
+            gql_prof = gql_group.get_profile(profile_name="devnet")
+            gql_prof.url = _GQL_DEFAULTS["devnet"]
+            gql_group.remove_profile(profile_name="devnet_beta")
+        except:
+            pass
         self.version = _CURRENT_CONFIG_VERSION
 
     def add_group(

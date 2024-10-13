@@ -73,6 +73,8 @@ class PysuiConfiguration:
             self.rebuild_from_sui_client(
                 rebuild_gql=not self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP)
             )
+            self._config_file.write_text(self._model.to_json(indent=2))
+
         # Fixup GQL
         if not self._model.version:
             self._model.gql_version_fixup(group_name=self.SUI_GQL_RPC_GROUP)
@@ -109,6 +111,7 @@ class PysuiConfiguration:
         """
         # Determine if sui configuration installed
         _scfg = Path("~/.sui/sui_config").expanduser()
+        _bcfg = Path("~/.cargo/bin/sui").expanduser()
         if _scfg.exists():
             # If exists legacy group, remove it
             if self._model.has_group(group_name=self.SUI_JSON_RPC_GROUP):
@@ -134,6 +137,14 @@ class PysuiConfiguration:
 
             if persist:
                 self._write_model()
+        else:
+            if self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP):
+                self._model.remove_group(group_name=self.SUI_GQL_RPC_GROUP)
+            _ = self._model.initialize_gql_rpc(
+                sui_binary=_bcfg,
+                gql_rpc_group_name=self.SUI_GQL_RPC_GROUP,
+                json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
+            )
 
     @property
     def model(self) -> PysuiConfigModel:

@@ -385,7 +385,7 @@ class EventGQL(PGQL_Type):
     event_type: str
     timestamp: str
     json: str
-    sender: Optional[str]
+    sender: Optional[dict]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "EventGQL":

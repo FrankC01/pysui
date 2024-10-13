@@ -140,13 +140,11 @@ def do_object(client: SyncGqlClient):
 
     To run, replace object_id with object you are interested in.
     """
-    handle_result(
-        client.execute_query_node(
-            with_node=qn.GetObject(
-                object_id="0x030d1254ab0d83a37397cb2df80341cc1862347da3c48e00c701edbc75f7c7bb"
-            )
-        )
+    gobj = qn.GetObject(
+        object_id="0xcf994611fd4c48e277ce3ffd4d4364c914af2c3cbb05f7bf6facd371de688630"
     )
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(client.execute_query_node(with_node=gobj))
 
 
 def do_past_object(client: SyncGqlClient):
@@ -224,7 +222,9 @@ def do_dynamics(client: SyncGqlClient):
 def do_event(client: SyncGqlClient):
     """."""
     res = client.execute_query_node(
-        with_node=qn.GetEvents(event_filter={"sender": "0x0"})
+        with_node=qn.GetEvents(
+            event_filter={"eventType": "0x3::validator::StakingRequestEvent"}
+        )
     )
     if res.is_ok():
         handle_result(res)
@@ -515,7 +515,7 @@ def do_dry_run_kind_new(client: SyncGqlClient):
     """
 
     txer = SuiTransaction(client=client)
-    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000, 1000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
     tx_b64 = base64.b64encode(txer.raw_kind().serialize()).decode()
@@ -549,7 +549,7 @@ def do_execute_new(client: SyncGqlClient):
     This uses the new SuiTransaction (GraphQL RPC based)
     """
     txer: SuiTransaction = SuiTransaction(client=client)
-    scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000, 1000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     txdict = txer.build_and_sign()
     handle_result(client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict)))
