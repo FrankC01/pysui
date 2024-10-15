@@ -101,15 +101,6 @@ class SuiObjectOwnedAddress:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
-class SuiObjectOwnedParent:
-    """Collection of coin data objects."""
-
-    obj_owner_kind: str
-    parent_id: str
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
 class SuiObjectOwnedImmutable:
     """Collection of coin data objects."""
 
@@ -130,7 +121,6 @@ class SuiCoinObjectGQL(PGQL_Type):
     coin_object_id: str
     object_owner: Union[
         SuiObjectOwnedAddress,
-        SuiObjectOwnedParent,
         SuiObjectOwnedShared,
         SuiObjectOwnedImmutable,
     ]
@@ -155,10 +145,6 @@ class SuiCoinObjectGQL(PGQL_Type):
                 )
             case "Shared":
                 ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
-            case "Parent":
-                ser_dict["object_owner"] = SuiObjectOwnedParent(
-                    owner_kind, owner["owner"]["parent_id"]
-                )
             case "Immutable":
                 ser_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
         # ser_dict = ser_dict | res_dict
@@ -297,7 +283,6 @@ class ObjectReadGQL(PGQL_Type):
 
     object_owner: Union[
         SuiObjectOwnedAddress,
-        SuiObjectOwnedParent,
         SuiObjectOwnedShared,
         SuiObjectOwnedImmutable,
     ]
@@ -339,10 +324,6 @@ class ObjectReadGQL(PGQL_Type):
                         )
                     case "Shared":
                         res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
-                    case "Parent":
-                        res_dict["object_owner"] = SuiObjectOwnedParent(
-                            owner_kind, owner["owner"]["parent_id"]
-                        )
                     case "Immutable":
                         res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
                 # Flatten dictionary
@@ -382,7 +363,7 @@ class EventGQL(PGQL_Type):
 
     package_id: str
     module_name: str
-    event_type: str
+    # event_type: str
     timestamp: str
     json: str
     sender: Optional[dict]
@@ -394,8 +375,8 @@ class EventGQL(PGQL_Type):
         to_merge: dict = {}
         _fast_flat(in_mod_id, to_merge)
         in_data |= to_merge
-        in_data["json"] = json.dumps(in_data["json"])
-        in_data["event_type"] = in_data.pop("type")["event_type"]
+        in_data["json"] = json.dumps(in_data["contents"]["json"])
+        # in_data["event_type"] = in_data.pop("type")["event_type"]
         # in_data["sender"] = [x["address"] for x in in_data["sender"]]
         return EventGQL.from_dict(in_data)
 

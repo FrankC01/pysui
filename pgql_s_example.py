@@ -49,11 +49,8 @@ def do_coins_for_type(client: SyncGqlClient):
 
 def do_gas(client: SyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
-    result = handle_result(
-        client.execute_query_node(
-            with_node=qn.GetCoins(owner=client.config.active_address)
-        )
-    )
+    coins_node = qn.GetCoins(owner=client.config.active_address)
+    result = handle_result(client.execute_query_node(with_node=coins_node))
     if result.is_ok():
         print(
             f"Total coins in page: {len(result.result_data.data)} \nhas more: {result.result_data.next_cursor.hasNextPage}"
@@ -141,7 +138,7 @@ def do_object(client: SyncGqlClient):
     To run, replace object_id with object you are interested in.
     """
     gobj = qn.GetObject(
-        object_id="0xcf994611fd4c48e277ce3ffd4d4364c914af2c3cbb05f7bf6facd371de688630"
+        object_id="0x04cc525490ed375c21d1ec17841cb3b8363b463613b8673ce4620c4b885acb02"
     )
     # print(client.query_node_to_string(query_node=gobj))
     handle_result(client.execute_query_node(with_node=gobj))
@@ -154,7 +151,7 @@ def do_past_object(client: SyncGqlClient):
     handle_result(
         client.execute_query_node(
             with_node=qn.GetPastObject(
-                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
+                object_id="0x04cc525490ed375c21d1ec17841cb3b8363b463613b8673ce4620c4b885acb02",
                 version=17078252,
             )
         )
@@ -228,7 +225,7 @@ def do_event(client: SyncGqlClient):
     )
     if res.is_ok():
         handle_result(res)
-        max_page = 2
+        max_page = 3
         in_page = 0
         while True:
             in_page += 1
@@ -690,7 +687,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)

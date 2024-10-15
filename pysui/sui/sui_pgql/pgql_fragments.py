@@ -81,14 +81,6 @@ class StandardCoin(PGQL_Fragment):
                         .select(
                             obj_owner_kind=DSLMetaField("__typename"),
                         ),
-                        DSLInlineFragment()
-                        .on(schema.Parent)
-                        .select(
-                            schema.Parent.parent.select(
-                                parent_id=schema.Object.address
-                            ),
-                            obj_owner_kind=DSLMetaField("__typename"),
-                        ),
                     ),
                     schema.Coin.contents.select(
                         schema.MoveValue.type.select(coin_type=schema.MoveType.repr)
@@ -150,12 +142,12 @@ class StandardObject(PGQL_Fragment):
                     .select(
                         obj_owner_kind=DSLMetaField("__typename"),
                     ),
-                    DSLInlineFragment()
-                    .on(schema.Parent)
-                    .select(
-                        schema.Parent.parent.select(parent_id=schema.Object.address),
-                        obj_owner_kind=DSLMetaField("__typename"),
-                    ),
+                    # DSLInlineFragment()
+                    # .on(schema.Parent)
+                    # .select(
+                    #     schema.Parent.parent.select(parent_id=schema.Object.address),
+                    #     obj_owner_kind=DSLMetaField("__typename"),
+                    # ),
                 ),
                 storage_rebate=schema.Object.storageRebate,
                 prior_transaction=schema.Object.previousTransactionBlock.select(
@@ -192,10 +184,9 @@ class StandardEvent(PGQL_Fragment):
                     ),
                     module_name=schema.MoveModule.name,
                 ),
-                schema.Event.type.select(event_type=schema.MoveType.repr),
                 schema.Event.sender.select(schema.Address.address),
                 schema.Event.timestamp,
-                schema.Event.json,
+                schema.Event.contents.select(schema.MoveValue.json),
             )
         )
 
