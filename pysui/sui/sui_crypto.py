@@ -19,6 +19,7 @@ import base64
 import binascii
 import hashlib
 import json
+from enum import IntEnum
 from typing import Optional, Union
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 import pysui_fastcrypto as pfc
@@ -51,6 +52,23 @@ from pysui.sui.sui_types.bcs import (
 from pysui.sui.sui_types.scalars import SuiTxBytes
 
 
+class IntentScope(IntEnum):
+    TransactionData = 0  # Used for a user signature on a transaction data.
+    TransactionEffects = 1  # Used for an authority signature on transaction effects.
+    CheckpointSummary = 2  # Used for an authority signature on a checkpoint summary.
+    PersonalMessage = 3  # Used for a user signature on a personal message.
+    SenderSignedTransaction = (
+        4  # Used for an authority signature on a user signed transaction.
+    )
+    ProofOfPossession = 5  # Used as a signature representing an authority's proof of possession of its authority protocol key.
+    HeaderDigest = 6  # Used for narwhal authority signature on header digest.
+    BridgeEventUnused = (
+        7  # for bridge purposes but it's currently not included in messages.
+    )
+    ConsensusBlock = 8  # Used for consensus authority signature on block's digest.
+    DiscoveryPeers = 9  # Used for reporting peer addresses in discovery.
+
+
 class SuiPublicKey(PublicKey):
     """SuiPublicKey Sui Basic public key."""
 
@@ -78,7 +96,23 @@ class SuiPrivateKey(PrivateKey):
             self.scheme,
             self.key_bytes,
             tx_data,
-            [0, 0, 0],
+            [IntentScope.TransactionData, 0, 0],
+        )
+
+    @versionadded(version="0.71.0", reason="Signing personal messages")
+    def sign_secure_personal_message(self, tx_data: str) -> list:
+        """sign_secure_personal_message for exchange/
+
+        :param tx_data: Base64 encoded message
+        :type tx_data: str
+        :return: Signed message as list of u8 bytes
+        :rtype: list
+        """
+        return pfc.sign_digest(
+            self.scheme,
+            self.key_bytes,
+            tx_data,
+            [IntentScope.PersonalMessage, 0, 0],
         )
 
     @versionadded(version="0.33.0", reason="Hide private key")
@@ -119,9 +153,16 @@ class SuiKeyPair(KeyPair):
         sig = bytearray(self.private_key.sign_secure(tx_data))
         return SuiSignature(base64.b64encode(sig).decode())
 
+    @versionadded(version="0.71.0", reason="Personal message with intent.")
+    def sign_personal_message(self, message: str) -> str:
+        """."""
+        assert self.private_key, "Can not sign with invalid private key"
+        sig = bytearray(self.private_key.sign_secure_personal_message(message))
+        return base64.b64encode(sig).decode()
+
     @versionchanged(version="0.34.0", reason="Added to sign arbirary messages")
     def sign_message(self, message: str) -> str:
-        """Sign arbitrary message, returning it's base64 raw signature."""
+        """Sign arbitrary base64 encoded message, returning a base64 signed message."""
         return pfc.sign_message(self.scheme, self.private_key.key_bytes, message)
 
     @versionchanged(version="0.34.0", reason="Added to verify signature of message")

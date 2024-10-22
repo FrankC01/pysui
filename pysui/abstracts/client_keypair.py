@@ -124,7 +124,11 @@ class KeyPair(ABC):
 
     @abstractmethod
     def sign_message(self, message: str) -> str:
-        """Sign arbitrary message, returning it's base64 raw signature."""
+        """Sign arbitrary base64 encoded message, returning a base64 signed message."""
+
+    @abstractmethod
+    def sign_personal_message(self, message: str) -> str:
+        """Sign arbitrary base64 encoded message with intent, returning a base64 signed personal message."""
 
     @abstractmethod
     def verify_signature(self, message: str, signature: str) -> bool:

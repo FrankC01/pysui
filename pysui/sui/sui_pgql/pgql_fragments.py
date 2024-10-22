@@ -81,6 +81,12 @@ class StandardCoin(PGQL_Fragment):
                         .select(
                             obj_owner_kind=DSLMetaField("__typename"),
                         ),
+                        DSLInlineFragment()
+                        .on(schema.Parent)
+                        .select(
+                            schema.Parent.parent.select(parent_id=schema.Owner.address),
+                            obj_owner_kind=DSLMetaField("__typename"),
+                        ),
                     ),
                     schema.Coin.contents.select(
                         schema.MoveValue.type.select(coin_type=schema.MoveType.repr)
@@ -142,12 +148,12 @@ class StandardObject(PGQL_Fragment):
                     .select(
                         obj_owner_kind=DSLMetaField("__typename"),
                     ),
-                    # DSLInlineFragment()
-                    # .on(schema.Parent)
-                    # .select(
-                    #     schema.Parent.parent.select(parent_id=schema.Object.address),
-                    #     obj_owner_kind=DSLMetaField("__typename"),
-                    # ),
+                    DSLInlineFragment()
+                    .on(schema.Parent)
+                    .select(
+                        schema.Parent.parent.select(parent_id=schema.Owner.address),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
                 ),
                 storage_rebate=schema.Object.storageRebate,
                 prior_transaction=schema.Object.previousTransactionBlock.select(

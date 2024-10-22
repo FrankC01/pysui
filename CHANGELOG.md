@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/235) Signing personal message with intent added
+
 ### Fixed
 
 - EventGQL type `sender` declaration
@@ -19,8 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - GetEvents inline docs
-- GraphQL schema removed Parent from coin_owner enumeration in StandardCoin fragment
-- GraphQL schema removed Parent from object_owner enumeration in StandardObject fragment
 - GraphQL schema removed event type from event enumeration in StandardEvent fragment
 
 ### Removed
