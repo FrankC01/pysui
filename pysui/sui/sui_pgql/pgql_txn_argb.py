@@ -189,6 +189,12 @@ def _canbt(
                     tx_builder.PureInput.pure,
                     partial(bcs.Variable.bcs_var_length_field, bcs.U8),
                 )
+            elif isinstance(arg, bool) and expected_type.scalar_type == "bool":
+                return (
+                    tx_builder.PureInput.pure,
+                    partial(bcs.Variable.bcs_var_length_field, bcs.U8),
+                )
+
             elif isinstance(arg, bytes):
                 return (
                     partial(pass_through),
@@ -244,6 +250,8 @@ def _scalar_argument(
                 pass
             elif not isinstance(arg, int):
                 raise ValueError(f"Expected int and found {arg.__class__}")
+        elif isinstance(arg, bool):
+            pass
         elif not isinstance(arg, str):
             raise ValueError(f"Expected str found {arg.__class__}")
 
