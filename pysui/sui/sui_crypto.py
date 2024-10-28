@@ -100,14 +100,21 @@ class SuiPrivateKey(PrivateKey):
         )
 
     @versionadded(version="0.71.0", reason="Signing personal messages")
-    def sign_secure_personal_message(self, tx_data: str) -> list:
-        """sign_secure_personal_message for exchange/
+    def sign_secure_personal_message(self, message: str) -> list:
+        """sign_secure_personal_message for exchange.
+
+        This method length encodes the message and prefixes with PersonalMessage intent.
 
         :param tx_data: Base64 encoded message
         :type tx_data: str
         :return: Signed message as list of u8 bytes
         :rtype: list
         """
+        from pysui.sui.sui_txn.transaction_builder import PureInput
+
+        tx_data = base64.b64encode(
+            bytes(PureInput.pure(list(base64.b64decode(message))))
+        ).decode("utf-8")
         return pfc.sign_digest(
             self.scheme,
             self.key_bytes,
@@ -161,13 +168,14 @@ class SuiKeyPair(KeyPair):
         return base64.b64encode(sig).decode()
 
     @versionchanged(version="0.34.0", reason="Added to sign arbirary messages")
+    @deprecated(version="0.71.0", reason="Use sign_personal_message instead")
     def sign_message(self, message: str) -> str:
         """Sign arbitrary base64 encoded message, returning a base64 signed message."""
         return pfc.sign_message(self.scheme, self.private_key.key_bytes, message)
 
     @versionchanged(version="0.34.0", reason="Added to verify signature of message")
     def verify_signature(self, message: str, sig: str) -> bool:
-        """Sign arbitrary message, returning it's base64 raw signature."""
+        """Verify arbitrary message (base64) with signature (base64), returning bool."""
         return pfc.verify(self.scheme, self.private_key.key_bytes, message, sig)
 
     def serialize_to_bytes(self) -> bytes:

@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- [enhancement](https://github.com/FrankC01/pysui/issues/235) Signing personal message with intent added
+- [enhancement](https://github.com/FrankC01/pysui/issues/235) Signing personal message with intent added to
+SuiKeyPair as `sign_personal_message`
 
 ### Fixed
 
@@ -17,13 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [bug](https://github.com/FrankC01/pysui/issues/231) to fixup after including this release:
   - Delete the previous configuration `rm -rf ~/.pysui` or whatever you may have initially located it
   - Restart the app/script that was previously failing
+- [bug](https://github.com/FrankC01/pysui/issues/237) GraphQL argument validator was not handling bool
 
 ### Changed
 
 - GetEvents inline docs
 - GraphQL schema removed event type from event enumeration in StandardEvent fragment
+- Deprecated `sign_message` on sui_crypto SuiKeyPair
 
 ### Removed
+
+
 
 
 ## [0.70.0] - 2024-10-08

@@ -30,6 +30,7 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
+_INTENT_LENGTH: int = 3
 
 
 class Address(canoser.Struct):
@@ -77,6 +78,17 @@ class Digest(canoser.Struct):
         return cls(list(indata))
 
 
+class Intent(canoser.Struct):
+    """Intent prefix."""
+
+    _fields = [("Intent", canoser.ArrayT(canoser.Uint8, _INTENT_LENGTH, False))]
+
+    @classmethod
+    def from_list(cls, indata: list) -> "Intent":
+        """Intent from list."""
+        return cls(indata)
+
+
 @versionadded(version="0.60.0", reason="Handle Sting, etc.")
 class VariableArrayU8(canoser.Struct):
     """Variable length array"""
@@ -111,6 +123,12 @@ class Variable(canoser.Struct):
     @classmethod
     def decode(cls, cursor):
         return super().decode(cursor)
+
+
+class IntentMessage(canoser.Struct):
+    """Intent and message."""
+
+    _fields = [("Intent", Intent), ("Message", Variable)]
 
 
 class ArrayVar(canoser.Struct):
