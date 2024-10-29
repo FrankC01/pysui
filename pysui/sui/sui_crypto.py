@@ -173,7 +173,25 @@ class SuiKeyPair(KeyPair):
         """Sign arbitrary base64 encoded message, returning a base64 signed message."""
         return pfc.sign_message(self.scheme, self.private_key.key_bytes, message)
 
+    @versionadded(version="0.71.0", reason="Verify personal message with intent.")
+    def verify_personal_message(self, message: str, sig: str) -> bool:
+        """Verify the personal message with IntentMessage."""
+        from pysui.sui.sui_txn.transaction_builder import PureInput
+
+        # Hash the message with intent
+        intent_msg = bytearray([IntentScope.PersonalMessage, 0, 0])
+        intent_msg.extend(PureInput.pure(list(base64.b64decode(message))))
+        hd1 = hashlib.blake2b(intent_msg, digest_size=32).digest()
+        sigbytes = bytes(list(base64.b64decode(sig))[1:65])
+        return pfc.verify(
+            self.scheme,
+            self.private_key.key_bytes,
+            base64.b64encode(hd1).decode(),
+            base64.b64encode(sigbytes).decode(),
+        )
+
     @versionchanged(version="0.34.0", reason="Added to verify signature of message")
+    @deprecated(version="0.71.0", reason="Use verify_personal_message instead")
     def verify_signature(self, message: str, sig: str) -> bool:
         """Verify arbitrary message (base64) with signature (base64), returning bool."""
         return pfc.verify(self.scheme, self.private_key.key_bytes, message, sig)
