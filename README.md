@@ -22,18 +22,16 @@ Python Client SDK for Sui blockchain
 **Note**: A new GraphQL schema change breaks usage on mainnet. Waiting for schema change to be
 deployed there before releasing.
 
-- Supports _SUI 1.37.x JSON RPC API_, _SUI 1.36.x GRAPHQL (devnet,testnet)_
+- Supports _SUI 1.37.x JSON RPC API_, _SUI 1.36.x GRAPHQL_
 - JSON RPC API backwards compatable to _Sui 1.30.x_
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.70.0 - Released 2024-10-08**
+**Release-0.71.0 - Released 2024-10-30**
 
-**_BREAKING CHANGES to GraphQL multi-schema support and removal of legacy samples_**
-
-- Supports _SUI 1.36.x JSON RPC API_ and _SUI 1.36.x GRAPHQL_
+- Supports _SUI 1.37.x JSON RPC API_ and _SUI 1.36.x GRAPHQL_
 - JSON RPC API nackwards compatable to _Sui 1.30.x_
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
