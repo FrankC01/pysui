@@ -306,18 +306,19 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    @versionchanged(version="0.72.0", reason="Support recipient passed as Argument")
     async def transfer_objects(
         self,
         *,
         transfers: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]],
-        recipient: str,
+        recipient: Union[str, bcs.Argument],
     ) -> bcs.Argument:
         """transfer_objects Transfers one or more objects to a recipient.
 
         :param transfers: A list or SuiArray of objects to transfer
         :type transfers: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]]
         :param recipient: The recipient address that will receive the objects being transfered
-        :type recipient: str
+        :type recipient: Union[str, bcs.Argument]
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """

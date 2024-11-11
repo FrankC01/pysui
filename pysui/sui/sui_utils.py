@@ -361,6 +361,11 @@ def b64str_to_list(indata: str) -> list[int]:
     return [int(x) for x in b64bytes]
 
 
+def from_list_to_b58str(indata: list) -> str:
+    """From list to b58 string."""
+    return base58.b58encode(bytearray(indata)).decode("utf-8")
+
+
 def b58str_to_list(indata: str) -> list[int]:
     """b58str_to_list convert a base58 string into a list of ints.
 

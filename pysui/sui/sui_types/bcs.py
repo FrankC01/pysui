@@ -1,17 +1,9 @@
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
 #    Copyright Frank V. Castellucci
-#    You may obtain a copy of the License at
-#        http://www.apache.org/licenses/LICENSE-2.0
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
+#    SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
 
-"""Sui BCS Types."""
+"""Core Sui BCS Types."""
 
 import binascii
 import copy
@@ -25,7 +17,12 @@ from pysui.abstracts.client_keypair import PublicKey, SignatureScheme
 from pysui.sui.sui_txresults.common import GenericRef
 from pysui.sui.sui_txresults.single_tx import ObjectRead
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_utils import b58str_to_list, hexstring_to_list, hexstring_to_sui_id
+from pysui.sui.sui_utils import (
+    b58str_to_list,
+    hexstring_to_list,
+    hexstring_to_sui_id,
+    from_list_to_b58str,
+)
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 _ADDRESS_LENGTH: int = 32
@@ -65,6 +62,10 @@ class Digest(canoser.Struct):
     """Digest represents a transaction or object base58 value as list of ints."""
 
     _fields = [("Digest", canoser.ArrayT(canoser.Uint8, _DIGEST_LENGTH))]
+
+    def to_digest_str(self) -> str:
+        """Convert bytes to base58 digest str."""
+        return from_list_to_b58str(self.Digest)
 
     @classmethod
     def from_str(cls, indata: str) -> "Digest":
@@ -222,39 +223,6 @@ class ObjectReference(canoser.Struct):
                 Digest.from_str(indata.object_digest),
             )
         raise ValueError(f"{indata} is not valid")
-
-
-# @versionadded(version="0.54.0", reason="Support argument inferencing")
-# class ReceivingReference(canoser.Struct):
-#     """ReceivingReference represents an object by it's objects reference fields."""
-
-#     _fields = [
-#         ("ObjectID", Address),
-#         ("SequenceNumber", canoser.Uint64),
-#         ("ObjectDigest", Digest),
-#     ]
-
-#     @classmethod
-#     def from_obj_ref(cls, indata: ObjectReference) -> "ReceivingReference":
-#         """Convert from ObjectReference to ReceivingReference."""
-#         return cls(indata.ObjectID, indata.SequenceNumber, indata.ObjectDigest)
-
-#     @classmethod
-#     def from_gql_ref(cls, indata: pgql_type.ObjectReadGQL) -> "ReceivingReference":
-#         """from_generic_ref init construct with GenericRef from ObjectRead structure.
-
-#         :param indata: The reference information for an Object from ObjectRead
-#         :type indata: GenericRef
-#         :return: The instantiated BCS object
-#         :rtype: SharedObjectReference
-#         """
-#         if isinstance(indata, pgql_type.ObjectReadGQL):
-#             return cls(
-#                 Address.from_str(indata.object_id),
-#                 indata.version,
-#                 Digest.from_str(indata.object_digest),
-#             )
-#         raise ValueError(f"{indata} is not valid")
 
 
 class SharedObjectReference(canoser.Struct):

@@ -1130,6 +1130,7 @@ class SuiTransaction(_SuiTransactionBase):
             type_arguments=[obj_type_tag],
         )
 
+    @versionchanged(version="0.72.0", reason="Support recipient passed as Argument")
     def transfer_objects(
         self,
         *,
@@ -1137,7 +1138,7 @@ class SuiTransaction(_SuiTransactionBase):
             list[Union[str, ObjectID, ObjectRead, SuiCoinObject, bcs.Argument]],
             SuiArray,
         ],
-        recipient: Union[ObjectID, SuiAddress],
+        recipient: Union[ObjectID, SuiAddress, bcs.Argument],
     ) -> bcs.Argument:
         """transfer_objects Transfers one or more objects to a recipient.
 
@@ -1152,7 +1153,9 @@ class SuiTransaction(_SuiTransactionBase):
         assert isinstance(
             transfers, (list, SuiArray, bcs.Argument)
         ), "Unsupported trasfers collection type"
-        assert isinstance(recipient, (ObjectID, SuiAddress)), "invalid recipient type"
+        assert isinstance(
+            recipient, (ObjectID, SuiAddress, bcs.Argument)
+        ), "invalid recipient type"
         if isinstance(transfers, (list, SuiArray)):
             transfers = transfers if isinstance(transfers, list) else transfers.array
             coerced_transfers: list = []
@@ -1166,9 +1169,12 @@ class SuiTransaction(_SuiTransactionBase):
                 else:
                     coerced_transfers.append(txfer)
             transfers = self._resolve_arguments(coerced_transfers)
-        return self.builder.transfer_objects(
-            tx_builder.PureInput.as_input(recipient), transfers
+        recipient = (
+            tx_builder.PureInput.as_input(recipient)
+            if not isinstance(recipient, bcs.Argument)
+            else recipient
         )
+        return self.builder.transfer_objects(recipient, transfers)
 
     def transfer_sui(
         self,

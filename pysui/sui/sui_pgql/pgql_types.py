@@ -609,6 +609,7 @@ class ExecutionResultGQL(PGQL_Type):
     status: str
     lamport_version: int
     digest: str
+    bcs: str
     errors: Optional[list[str]] = None
 
     @classmethod

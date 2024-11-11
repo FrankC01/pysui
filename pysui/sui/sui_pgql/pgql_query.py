@@ -1567,6 +1567,7 @@ class ExecuteTransaction(PGQL_QueryNode):
                 schema.TransactionBlockEffects.transactionBlock.select(
                     schema.TransactionBlock.digest
                 ),
+                schema.TransactionBlockEffects.bcs,
             ),
         )
         return dsl_gql(DSLMutation(qres))

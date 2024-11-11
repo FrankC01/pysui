@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.72.0] - Unpublished
+
+### Added
+
+- GraphQL: Transaction execution adds BCS in result (Base64 encoded bcs serialization of the on-chain transaction effects.)
+- GraphQL: bcs_txne.py BCS Definition for V1 and V2 TransactionEffects
+
+### Fixed
+
+### Changed
+
+- [change](https://github.com/FrankC01/pysui/issues/239)
+  - JSON RPC: Sync and Async transactions accept Argument as recipient in `transfer_objects`
+  - GraphQL: Sync and Async transactions accept Argument as recipient in `transfer_objects`
+
+### Removed
+
 ## [0.71.0] - 2024-10-30
 
 ### Added
