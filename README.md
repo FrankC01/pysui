@@ -26,10 +26,10 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.71.0 - Released 2024-10-30**
+**Release-0.72.0 - Released 2024-11-13**
 
-- Supports _SUI 1.37.x JSON RPC API_ and _SUI 1.36.x GRAPHQL_
-- JSON RPC API nackwards compatable to _Sui 1.30.x_
+- Supports _SUI 1.38.x JSON RPC API_, _SUI 1.37.x GRAPHQL_
+- JSON RPC API backwards compatable to _Sui 1.31.x_
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
