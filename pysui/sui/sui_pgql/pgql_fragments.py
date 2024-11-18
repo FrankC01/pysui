@@ -6,8 +6,9 @@
 """QueryNode generators."""
 
 from functools import cache
+from typing import Any
 from pysui.sui.sui_pgql.pgql_clients import PGQL_Fragment
-from gql.dsl import DSLFragment, DSLInlineFragment, DSLMetaField, DSLSchema
+from gql.dsl import DSLFragment, DSLInlineFragment, DSLMetaField, DSLSchema, DSLField
 
 
 class GasCost(PGQL_Fragment):
@@ -826,7 +827,7 @@ class ValidatorSet(PGQL_Fragment):
     """ValidatorSet reusable fragment."""
 
     @cache
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(self, schema: DSLSchema, active_vals: DSLField) -> DSLFragment:
         """."""
         pg_cursor = PageCursor()
         vals = Validator()
@@ -842,7 +843,7 @@ class ValidatorSet(PGQL_Fragment):
                 schema.ValidatorSet.inactivePoolsId,
                 schema.ValidatorSet.validatorCandidatesId,
                 schema.ValidatorSet.validatorCandidatesSize,
-                schema.ValidatorSet.activeValidators.select(
+                active_vals.select(
                     cursor=schema.ValidatorConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),

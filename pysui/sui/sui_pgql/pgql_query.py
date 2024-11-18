@@ -1130,7 +1130,6 @@ class GetValidatorsApy(PGQL_QueryNode):
         return pgql_type.ValidatorApysGQL.from_query
 
 
-# TODO: Handle Cursor
 class GetCurrentValidators(PGQL_QueryNode):
     """Return the set of validators from the current Epoch."""
 
@@ -1143,9 +1142,13 @@ class GetCurrentValidators(PGQL_QueryNode):
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
+        active_vals = schema.ValidatorSet.activeValidators
+        if self.next_page:
+            active_vals(after=self.next_page.endCursor)
+
         pg_cursor = frag.PageCursor().fragment(schema)
         val = frag.Validator().fragment(schema)
-        valset = frag.ValidatorSet().fragment(schema)
+        valset = frag.ValidatorSet().fragment(schema, active_vals)
         return dsl_gql(
             valset,
             pg_cursor,

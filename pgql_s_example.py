@@ -411,6 +411,27 @@ def do_validators(client: SyncGqlClient):
     handle_result(client.execute_query_node(with_node=qn.GetCurrentValidators()))
 
 
+def do_all_validators(client: SyncGqlClient):
+    """Fetch all validators and show name and data."""
+    all_vals: list[ptypes.ValidatorFullGQL] = []
+    valres = client.execute_query_node(with_node=qn.GetCurrentValidators())
+    while valres.is_ok():
+        all_vals.extend(valres.result_data.validators)
+        if valres.result_data.next_cursor.hasNextPage:
+            valres = client.execute_query_node(
+                with_node=qn.GetCurrentValidators(
+                    next_page=valres.result_data.next_cursor,
+                )
+            )
+        else:
+            break
+    print(f"Total validators {len(all_vals)}")
+    for val in all_vals:
+        print(
+            f"Address: {val.validator_address} Apy: {val.apy} Name: {val.validator_name}"
+        )
+
+
 def do_protcfg(client: SyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(client.execute_query_node(with_node=qn.GetProtocolConfig(version=30)))
@@ -712,6 +733,7 @@ if __name__ == "__main__":
         # do_owned_nameservice(client_init)
         # do_validators_apy(client_init)
         # do_validators(client_init)
+        # do_all_validators(client_init)
         # do_refgas(client_init)
         # do_struct(client_init)
         # do_structs(client_init)
