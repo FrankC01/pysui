@@ -184,7 +184,7 @@ class AsyncInMemoryCache(AbstractAsyncCache):
 
 
 class AsyncObjectCache(AsyncInMemoryCache):
-    """Concrete asycn object cache."""
+    """Concrete async object cache."""
 
     def __init__(self):
 
