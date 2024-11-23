@@ -20,7 +20,7 @@ class AsyncCachingTransactionExecutor:
         """."""
         self._client: AsyncGqlClient = client
         self._lastdigest: str = None
-        self._cache: AsyncObjectCache = AsyncObjectCache()
+        self.cache: AsyncObjectCache = AsyncObjectCache()
 
     async def reset(self):
         """Reset the cache."""
@@ -41,6 +41,8 @@ class AsyncCachingTransactionExecutor:
 
     async def apply_effects(self, effects: bcs.TransactionEffects):
         """."""
+        self._lastdigest = effects.value.transactionDigest.to_digest_str()
+        await self.cache.applyEffects(effects)
 
     async def wait_for_last_transaction(self):
         """."""
