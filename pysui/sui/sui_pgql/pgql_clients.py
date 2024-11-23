@@ -535,3 +535,37 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
+
+    @versionadded(version="0.73.0", reason="Execution of transaction changes.")
+    async def wait_for_transaction(
+        self, digest: str, timeout: int = 60, poll_interval: int = 2
+    ) -> SuiRpcResult:
+        """wait_for_transaction Wait for a transaction block result to be available over the API.
+
+        :param digest: The digest of the transaction to get effects on
+        :type digest: str
+        :param timeout: timeout interval in seconds, defaults to 60
+        :type timeout: int, optional
+        :param poll_interval: poll interval wait in seconds, defaults to 2
+        :type poll_interval: int, optional
+        :raises Exception: If effects are not retrieved
+        :return: Standard Sui Result
+        :rtype: SuiRpcResult
+        """
+        import pysui.sui.sui_pgql.pgql_query as qn
+
+        timeout_signal = asyncio.Event()
+
+        async def timeout_task():
+            await asyncio.sleep(timeout)
+            timeout_signal.set()
+
+        asyncio.create_task(timeout_task())
+
+        while not timeout_signal.is_set():
+            try:
+                return await self.execute_query_node(with_node=qn.GetTx(digest=digest))
+            except Exception as _e:
+                await asyncio.wait_for(asyncio.sleep(poll_interval), timeout=timeout)
+
+        raise Exception("Unexpected error while waiting for transaction block.")
