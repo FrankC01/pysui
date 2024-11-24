@@ -18,7 +18,7 @@ import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-import pysui.sui.sui_pgql.pgql_txn_argb as ab
+import pysui.sui.sui_pgql.pgql_txn_argb as argbase
 
 # Well known parameter constructs
 
@@ -58,7 +58,7 @@ class SuiTransaction(txbase):
             self._UNSTAKE_REQUEST_TARGET
         )
         self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
-        # self._SPLIT_AND_RETURN_TUPLE = self._function_meta_args(self._SPLIT_AND_RETURN)
+        self._argparse = argbase.ResolvingArgParser(self.client)
 
     @cache
     def _function_meta_args(
@@ -246,7 +246,8 @@ class SuiTransaction(txbase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
 
-        parms = ab.build_args(self.client, [coin, amounts], txbase._SPLIT_COIN)
+        parms = self._argparse.build_args([coin, amounts], txbase._SPLIT_COIN)
+        # parms = ab.build_args(self.client, [coin, amounts], txbase._SPLIT_COIN)
         return self.builder.split_coin(parms[0], parms[1:][0])
 
     def merge_coins(
@@ -264,7 +265,8 @@ class SuiTransaction(txbase):
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = ab.build_args(self.client, [merge_to, merge_from], txbase._MERGE_COINS)
+        parms = self._argparse.build_args([merge_to, merge_from], txbase._MERGE_COINS)
+        # parms = ab.build_args(self.client, [merge_to, merge_from], txbase._MERGE_COINS)
         return self.builder.merge_coins(parms[0], parms[1:][0])
 
     def split_coin_equal(
@@ -290,7 +292,8 @@ class SuiTransaction(txbase):
             self._SPLIT_AND_KEEP_TUPLE
         )
 
-        parms = ab.build_args(self.client, [coin, split_count], ars)
+        parms = self._argparse.build_args([coin, split_count], ars)
+        # parms = ab.build_args(self.client, [coin, split_count], ars)
         type_arguments = [bcs.TypeTag.type_tag_from(coin_type)]
         return self.builder.move_call(
             target=package,
@@ -317,9 +320,12 @@ class SuiTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = ab.build_args(
-            self.client, [recipient, transfers], txbase._TRANSFER_OBJECTS
+        parms = self._argparse.build_args(
+            [recipient, transfers], txbase._TRANSFER_OBJECTS
         )
+        # parms = ab.build_args(
+        #     self.client, [recipient, transfers], txbase._TRANSFER_OBJECTS
+        # )
         return self.builder.transfer_objects(parms[0], parms[1:][0])
 
     def transfer_sui(
@@ -342,9 +348,14 @@ class SuiTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
+        # return self.builder.transfer_sui(
+        #     *ab.build_args(
+        #         self.client, [recipient, from_coin, amount], txbase._TRANSFER_SUI
+        #     )
+        # )
         return self.builder.transfer_sui(
-            *ab.build_args(
-                self.client, [recipient, from_coin, amount], txbase._TRANSFER_SUI
+            *self._argparse.build_args(
+                [recipient, from_coin, amount], txbase._TRANSFER_SUI
             )
         )
 
@@ -370,13 +381,13 @@ class SuiTransaction(txbase):
             tv.TypeValidator.check_target_triplet(self._PUBLIC_TRANSFER)
         )
         package = bcs.Address.from_str(package)
-
+        # parms = self._argparse.build_args(
+        #     [object_to_send, recipient], txbase._PUBLIC_TRANSFER_OBJECTS
+        # )
         return self.builder.move_call(
             target=package,
-            arguments=ab.build_args(
-                self.client,
-                [object_to_send, recipient],
-                txbase._PUBLIC_TRANSFER_OBJECTS,
+            arguments=self._argparse.build_args(
+                [object_to_send, recipient], txbase._PUBLIC_TRANSFER_OBJECTS
             ),
             type_arguments=[bcs.TypeTag.type_tag_from(object_type)],
             module=package_module,
@@ -397,8 +408,8 @@ class SuiTransaction(txbase):
             else:
                 type_tag = bcs.OptionalTypeTag()
             return self.builder.make_move_vector(type_tag, items)
-
-        parms = ab.build_args(self.client, [items], txbase._MAKE_MOVE_VEC)
+        parms = self._argparse.build_args([items], txbase._MAKE_MOVE_VEC)
+        # parms = ab.build_args(self.client, [items], txbase._MAKE_MOVE_VEC)
         if item_type:
             type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
         else:
@@ -431,7 +442,8 @@ class SuiTransaction(txbase):
             self._function_meta_args(target)
         )
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
-        parms = ab.build_args(self.client, arguments, ars)
+        parms = self._argparse.build_args(arguments, ars)
+        # parms = ab.build_args(self.client, arguments, ars)
         return self.builder.move_call(
             target=package,
             arguments=parms,
@@ -464,11 +476,14 @@ class SuiTransaction(txbase):
             self._STAKE_REQUEST_TUPLE
         )
         # Validate arguments
-        parms = ab.build_args(
-            self.client,
-            [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
-            ars,
+        parms = self._argparse.build_args(
+            [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address], ars
         )
+        # parms = ab.build_args(
+        #     self.client,
+        #     [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
+        #     ars,
+        # )
         # Create a move vector of coins
         parms[1] = self.make_move_vector(
             items=parms[1], item_type="0x2::coin::Coin<0x2::sui::SUI>"
@@ -498,14 +513,22 @@ class SuiTransaction(txbase):
             self._UNSTAKE_REQUEST_TUPLE
         )
         # Validate arguments
-        parms = ab.build_args(
-            self.client,
+        parms = self._argparse.build_args(
             [
                 self._SYSTEMSTATE_OBJECT.value,
                 staked_coin,
             ],
             ars,
         )
+
+        # parms = ab.build_args(
+        #     self.client,
+        #     [
+        #         self._SYSTEMSTATE_OBJECT.value,
+        #         staked_coin,
+        #     ],
+        #     ars,
+        # )
         return self.builder.move_call(
             target=package,
             arguments=parms,
@@ -576,7 +599,7 @@ class SuiTransaction(txbase):
             and package_struct == "UpgradeCap"
         ):
             # Prep args
-            cap_obj_arg, policy_arg = ab.build_args(
+            cap_obj_arg, policy_arg = self._argparse.build_args(
                 self.client,
                 [upgrade_cap, upgrade_cap.content["policy"]],
                 txbase._PUBLISH_UPGRADE,
@@ -584,6 +607,10 @@ class SuiTransaction(txbase):
             # Capture input offsets to preserve location of upgrade_cap ObjectArg
             cap_arg = len(self.builder.inputs)
             # Authorize, publish and commit the upgrade
+            # parms = self._argparse.build_args(
+            #     [upgrade_cap, upgrade_cap.content["policy"]], txbase._PUBLISH_UPGRADE
+            # )
+
             return self.builder.commit_upgrade(
                 bcs.Argument("Input", cap_arg),
                 self.builder.publish_upgrade(
@@ -591,8 +618,7 @@ class SuiTransaction(txbase):
                     dependencies,
                     bcs.Address.from_str(upgrade_cap.content["package"]),
                     self.builder.authorize_upgrade(
-                        *ab.build_args(
-                            self.client,
+                        *self._argparse.build_args(
                             [upgrade_cap, upgrade_cap.content["policy"]],
                             txbase._PUBLISH_UPGRADE,
                         ),
