@@ -330,7 +330,12 @@ class ProgrammableTransactionBuilder:
         return bcs.Argument("Input", out_index)
 
     @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
-    def input_obj(self, key: bcs.BuilderArg, object_arg: bcs.ObjectArg) -> bcs.Argument:
+    @versionchanged(version="0.73.0", reason="Support unresolved object types")
+    def input_obj(
+        self,
+        key: bcs.BuilderArg,
+        object_arg: Union[bcs.ObjectArg, bcs.UnresolvedObjectArg],
+    ) -> bcs.Argument:
         """."""
         logger.debug("Adding object input")
         out_index = len(self.inputs)
@@ -347,11 +352,17 @@ class ProgrammableTransactionBuilder:
                         return bcs.Argument("Input", e_index)
                     e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
+            self.objects_registry[key.value.to_address_str()] = object_arg.enum_name
+        elif key.enum_name == "Unresolved" and isinstance(
+            object_arg, bcs.UnresolvedObjectArg
+        ):
+            self.inputs[key] = bcs.CallArg("UnresolvedObject", object_arg)
+            self.objects_registry[key.value] = object_arg
         else:
             raise ValueError(
                 f"Expected Object builder arg and ObjectArg, found {key.enum_name} and {type(object_arg)}"
             )
-        self.objects_registry[key.value.to_address_str()] = object_arg.enum_name
+        # self.objects_registry[key.value.to_address_str()] = object_arg.enum_name
         # self.objects_registry.add(key.value.to_address_str())
         logger.debug(f"New object input created at index {out_index}")
         return bcs.Argument("Input", out_index)
@@ -361,6 +372,14 @@ class ProgrammableTransactionBuilder:
         """."""
         oval: bcs.Address = object_arg.value.ObjectID
         barg = bcs.BuilderArg("Object", oval)
+        return self.input_obj(barg, object_arg)
+
+    @versionadded(version="0.73.0", reason="Support stand-alone Unresolved objects")
+    def input_obj_from_unresolved_object(
+        self, object_arg: bcs.UnresolvedObjectArg
+    ) -> bcs.Argument:
+        """."""
+        barg = bcs.BuilderArg("Unresolved", object_arg.ObjectStr)
         return self.input_obj(barg, object_arg)
 
     def command(
@@ -537,7 +556,12 @@ class ProgrammableTransactionBuilder:
         object_ref: Union[
             bcs.Argument,
             list[
-                Union[bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+                Union[
+                    bcs.Argument,
+                    bcs.ObjectArg,
+                    bcs.UnresolvedObjectArg,
+                    tuple[bcs.BuilderArg, bcs.ObjectArg],
+                ]
             ],
         ],
     ) -> bcs.Argument:
@@ -554,6 +578,8 @@ class ProgrammableTransactionBuilder:
             for fcoin in object_ref:
                 if isinstance(fcoin, bcs.ObjectArg):
                     fcoin = self.input_obj_from_objarg(fcoin)
+                elif isinstance(fcoin, bcs.UnresolvedObjectArg):
+                    fcoin = self.input_obj_from_unresolved_object(fcoin)
                 elif isinstance(fcoin, tuple):
                     fcoin = self.input_obj(*fcoin)
                 from_args.append(fcoin)

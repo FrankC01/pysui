@@ -14,6 +14,7 @@ import pysui.sui.sui_types.bcs as bcs
 import pysui.sui.sui_types.bcs_txne as bcst
 from .caching_exec import AsyncCachingTransactionExecutor
 from .queue import SerialQueue
+from .caching_txn import CachingTransaction
 
 
 def _get_gascoin_from_effects(effects: bcst.TransactionEffects) -> bcs.ObjectReference:
@@ -46,6 +47,13 @@ class SerialTransactionExecutor:
         )
         self._default_gas_budget: int = default_gas_budget or 50_000_000
 
+    async def new_transaction(
+        self,
+        **kwargs,
+    ) -> CachingTransaction:
+        """."""
+        return CachingTransaction(**kwargs)
+
     async def _cache_gas_coin(self, effects: bcst.TransactionEffects):
         """Retrive gas coin information from effects."""
         if effects.enum_name != "V2":
@@ -64,10 +72,10 @@ class SerialTransactionExecutor:
             return_exceptions=True,
         )
 
-    async def _build_transaction(self, txn):
+    async def _build_transaction(self, txn: CachingTransaction):
         gcoin = await self._cache.cache.getCustom("gasCoin")
 
-    async def buildTransaction(self, txn):
+    async def buildTransaction(self, txn: CachingTransaction):
         """."""
         return self._queue.run_task(partialmethod(self._build_transaction, txn))
 

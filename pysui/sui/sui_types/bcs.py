@@ -156,22 +156,6 @@ class ArrayVar(canoser.Struct):
         return deep_copy(data_list)
 
 
-class BuilderArg(canoser.RustEnum):
-    """BuilderArg objects are generated in the TransactionBuilder."""
-
-    _enums = [
-        ("Object", Address),
-        ("Pure", [canoser.Uint8]),
-        ("ForcedNonUniquePure", None),
-    ]
-
-    def __hash__(self) -> int:
-        """Override hash to use builder arg as key in dict."""
-        # hself = hash(str(self))
-        # return hself
-        return id(self)
-
-
 class ObjectReference(canoser.Struct):
     """ObjectReference represents an object by it's objects reference fields."""
 
@@ -528,13 +512,59 @@ class ObjectArg(canoser.RustEnum):
     ]
 
 
+class UnresolvedObjectArg(canoser.Struct):
+    """Unresolved call argument for ObjectTypes."""
+
+    _fields = [
+        ("ObjectStr", str),
+        ("IsOptional", bool),
+        ("IsReceiving", bool),
+        ("RefType", U8),
+        ("TypeStr", str),
+    ]
+
+    @classmethod
+    def from_object_ref_type(
+        cls, arg: str, ref: pgql_type.MoveObjectRefArg
+    ) -> "UnresolvedObjectArg":
+        """."""
+        return cls(
+            arg,
+            ref.is_optional,
+            ref.is_receiving,
+            ref.ref_type,
+            f"{ref.type_package}::{ref.type_module}::{ref.type_struct}",
+        )
+
+
+class BuilderArg(canoser.RustEnum):
+    """BuilderArg objects are generated in the TransactionBuilder."""
+
+    _enums = [
+        ("Object", Address),
+        ("Pure", [canoser.Uint8]),
+        ("ForcedNonUniquePure", None),
+        ("Unresolved", str),
+    ]
+
+    def __hash__(self) -> int:
+        """Override hash to use builder arg as key in dict."""
+        # hself = hash(str(self))
+        # return hself
+        return id(self)
+
+
 class CallArg(canoser.RustEnum):
     """CallArg represents an argument (parameters) of a MoveCall.
 
     Pure type is for scalars, or native, values.
     """
 
-    _enums = [("Pure", [canoser.Uint8]), ("Object", ObjectArg)]
+    _enums = [
+        ("Pure", [canoser.Uint8]),
+        ("Object", ObjectArg),
+        ("UnresolvedObject", UnresolvedObjectArg),
+    ]
 
 
 class GasData(canoser.Struct):

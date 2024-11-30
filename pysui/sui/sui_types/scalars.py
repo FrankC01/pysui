@@ -216,6 +216,11 @@ class SuiString(SuiScalarType):
         """Alias for transactions."""
         return self.value
 
+    @property
+    def epoch(self) -> str:
+        """Alias for transactions."""
+        return self.value
+
 
 @deprecated(
     version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"

@@ -527,7 +527,7 @@ class AsyncSuiTransaction(txbase):
         #     ars,
         # )
         # Validate arguments
-        parms = await self._argparse.async_build_argsbuild_args(
+        parms = await self._argparse.async_build_args(
             [
                 self._SYSTEMSTATE_OBJECT.value,
                 staked_coin,
@@ -604,21 +604,15 @@ class AsyncSuiTransaction(txbase):
             and package_struct == "UpgradeCap"
         ):
             # Prep args
-            # cap_obj_arg, policy_arg = ab.build_args(
-            #     self._sclient,
-            #     [upgrade_cap, upgrade_cap.content["policy"]],
-            #     txbase._PUBLISH_UPGRADE,
-            # )
-            cap_obj_arg, policy_arg = self._argparse.async_build_argsbuild_args(
+            cap_obj_arg, policy_arg = await self._argparse.async_build_args(
                 [upgrade_cap, upgrade_cap.content["policy"]],
                 txbase._PUBLISH_UPGRADE,
             )
             # Capture input offsets to preserve location of upgrade_cap ObjectArg
             cap_arg = len(self.builder.inputs)
             # Authorize, publish and commit the upgrade
-            parms = await self._argparse.async_build_argsbuild_args(
-                [upgrade_cap, upgrade_cap.content["policy"]],
-                txbase._PUBLISH_UPGRADE,
+            auth_cmd = self.builder.authorize_upgrade(
+                cap_obj_arg, policy_arg, PureInput.as_input(digest)
             )
             return self.builder.commit_upgrade(
                 bcs.Argument("Input", cap_arg),
@@ -626,10 +620,7 @@ class AsyncSuiTransaction(txbase):
                     modules,
                     dependencies,
                     bcs.Address.from_str(upgrade_cap.content["package"]),
-                    self.builder.authorize_upgrade(
-                        *parms,
-                        PureInput.as_input(digest),
-                    ),
+                    auth_cmd,
                 ),
             )
         else:

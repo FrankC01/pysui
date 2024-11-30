@@ -6,6 +6,7 @@
 
 from abc import ABC, abstractmethod
 import itertools
+import inspect
 from typing import Any, Optional, Union
 from functools import partial, partialmethod
 from dataclasses import dataclass, field
@@ -221,6 +222,20 @@ class BaseArgParser(ABC):
 
         raise ValueError(f"Unhhandled type {type(expected_type)}")
 
+    def _gen_summary(self, in_args, meta_args, arglen) -> _ArgSummary:
+        """."""
+        track = _ArgSummary(
+            in_args=in_args,
+            out_args=[None] * arglen,
+            func_args=meta_args.arg_list,
+            convert_args=[None] * arglen,
+        )
+        for aindex in range(arglen):
+            track.convert_args[aindex] = self._argument_validate(
+                track.func_args[aindex], track.in_args[aindex]
+            )
+        return track
+
     @abstractmethod
     def build_args(
         self,
@@ -235,20 +250,6 @@ class ResolvingArgParser(BaseArgParser):
 
     def __init__(self, client):
         self._client = client
-
-    def _gen_summary(self, in_args, meta_args, arglen) -> _ArgSummary:
-        """."""
-        track = _ArgSummary(
-            in_args=in_args,
-            out_args=[None] * arglen,
-            func_args=meta_args.arg_list,
-            convert_args=[None] * arglen,
-        )
-        for aindex in range(arglen):
-            track.convert_args[aindex] = self._argument_validate(
-                track.func_args[aindex], track.in_args[aindex]
-            )
-        return track
 
     def _fetch_or_transpose_object(
         self,
@@ -351,17 +352,19 @@ class ResolvingArgParser(BaseArgParser):
         self, arg, arg_meta, processor_fn, constructor_fn=None
     ) -> Any:
         """Convert user input argument to the BCS representation expected for transaction."""
-        if processor_fn is self._object_processor:
-            return self._object_processor(
-                arg=arg,
-                expected_type=arg_meta,
-            )
-        if processor_fn is self._optional_processor:
-            return self._optional_processor(
-                arg=arg,
-                expected_type=arg_meta,
-                construct=constructor_fn,
-            )
+        if inspect.ismethod(processor_fn):
+            return processor_fn(arg=arg, expected_type=arg_meta)
+        # if processor_fn is self._object_processor:
+        #     return self._object_processor(
+        #         arg=arg,
+        #         expected_type=arg_meta,
+        #     )
+        # if processor_fn is self._optional_processor:
+        #     return self._optional_processor(
+        #         arg=arg,
+        #         expected_type=arg_meta,
+        #         construct=constructor_fn,
+        #     )
         if constructor_fn:
             return constructor_fn(processor_fn(arg))
         return arg
@@ -539,17 +542,21 @@ class ResolvingArgParser(BaseArgParser):
         self, arg, arg_meta, processor_fn, constructor_fn=None
     ) -> Any:
         """Convert user input argument to the BCS representation expected for transaction."""
-        if processor_fn is self._async_object_processor:
-            return await self._async_object_processor(
-                arg=arg,
-                expected_type=arg_meta,
-            )
-        if processor_fn is self._async_optional_processor:
-            return await self._async_optional_processor(
-                arg=arg,
-                expected_type=arg_meta,
-                construct=constructor_fn,
-            )
+        # TODO: Check with Aysnc object resolvers
+        if inspect.isawaitable(processor_fn):
+            return await processor_fn(arg=arg, expected_type=arg_meta)
+            # return processor_fn()
+        # if processor_fn is self._async_object_processor:
+        #     return await self._async_object_processor(
+        #         arg=arg,
+        #         expected_type=arg_meta,
+        #     )
+        # if processor_fn is self._async_optional_processor:
+        #     return await self._async_optional_processor(
+        #         arg=arg,
+        #         expected_type=arg_meta,
+        #         construct=constructor_fn,
+        #     )
         if constructor_fn:
             return constructor_fn(processor_fn(arg))
         return arg
@@ -566,15 +573,21 @@ class ResolvingArgParser(BaseArgParser):
         if isinstance(
             in_meta, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)
         ) and isinstance(arg, list):
-            res_list.append(self._list_arg_builder(in_meta, convert_args[0], arg[0]))
+            res_list.append(
+                await self._async_list_arg_builder(in_meta, convert_args[0], arg[0])
+            )
         else:
             convert_args = convert_args[0]
             if isinstance(arg, bcs.Argument):
                 res_list.append(arg)
             elif isinstance(arg, (str, bytes)):
-                res_list.append(self._argument_builder(arg, in_meta, *convert_args))
+                res_list.append(
+                    await self._async_argument_builder(arg, in_meta, *convert_args)
+                )
             else:
-                res_list.append(self._argument_builder(arg, in_meta, *convert_args))
+                res_list.append(
+                    await self._async_argument_builder(arg, in_meta, *convert_args)
+                )
 
         return res_list
 
@@ -655,6 +668,311 @@ class ResolvingArgParser(BaseArgParser):
         alen = len(in_args)
         if alen == len(meta_args.arg_list):
             track = self._gen_summary(in_args, meta_args, alen)
+            await self._async_arg_builder(track, alen)
+            return track.out_args
+        raise ValueError(
+            f"Invalid arg count. Target:{len(meta_args.arg_list)} Source:{len(in_args)}"
+        )
+
+
+class UnResolvingArgParser(BaseArgParser):
+    """Argument parser that resolves objects."""
+
+    def __init__(self, client):
+        self._client = client
+
+    def build_args(self, in_args, meta_args) -> list:
+        """build_args Validates and prepares arguments for transaction execution
+
+        :param in_args: The list of pre-processed arguments
+        :type in_args: list
+        :param meta_args: The meta move function argument type list
+        :type meta_args: pgql_type.MoveArgSummary
+        :raises ValueError: If the provided arg count and expected don't match
+        :return: The list of post processed arguments
+        :rtype: list
+        """
+        raise NotImplementedError("Only async_build_args valid for UnResolvingParser")
+
+    # TODO: Replace with UnrealizedObject wrapper
+    async def _async_fetch_or_transpose_object(
+        self,
+        arg: str,
+        expected_type: pgql_type.MoveObjectRefArg,
+    ) -> bcs.ObjectArg:
+        """Generates unresolve object references for caching."""
+        return bcs.UnresolvedObjectArg.from_object_ref_type(arg, expected_type)
+        # return bcs.UnresolvedObjectArg(arg, expected_type)
+        object_def: pgql_type.ObjectReadGQL = arg
+        if isinstance(arg, str):
+            result = await self._client.execute_query_node(
+                with_node=qn.GetObject(object_id=arg)
+            )
+            if result.is_ok():
+                object_def = result.result_data
+                if isinstance(
+                    object_def, (pgql_type.NoopGQL, pgql_type.ObjectReadDeletedGQL)
+                ):
+                    raise ValueError(f"{arg} object not found")
+
+        if object_def.object_owner.obj_owner_kind in [
+            "AddressOwner",
+            "Immutable",
+            "Parent",
+        ]:
+            if expected_type.is_receiving:
+                b_obj_arg = bcs.ObjectArg(
+                    "Receiving",
+                    bcs.ObjectReference.from_gql_ref(object_def),
+                )
+            else:
+                b_obj_arg = bcs.ObjectArg(
+                    "ImmOrOwnedObject",
+                    bcs.ObjectReference.from_gql_ref(object_def),
+                )
+            return b_obj_arg
+
+        if object_def.object_owner.obj_owner_kind == "Shared":
+            b_obj_arg = bcs.ObjectArg(
+                "SharedObject",
+                bcs.SharedObjectReference.from_gql_ref(
+                    object_def,
+                    expected_type.ref_type == pgql_type.RefType.MUT_REF,
+                ),
+            )
+            return b_obj_arg
+        raise ValueError(
+            f"Unknown owner kind {object_def.object_owner.obj_owner_kind }"
+        )
+
+    async def _async_object_processor(
+        self,
+        *,
+        arg: Any,
+        expected_type: pgql_type.MoveObjectRefArg,
+        _construct: Optional[tuple[Any, Any]] = None,
+    ) -> bcs.ObjectArg:
+        """Process an object reference."""
+        if arg:
+            return await self._async_fetch_or_transpose_object(arg, expected_type)
+        raise ValueError("Missing argument")
+
+    # TODO: This needs work
+    async def _async_optional_processor(
+        self,
+        *,
+        arg: Any,
+        expected_type: pgql_type.MoveObjectRefArg,
+        construct: Optional[tuple[Any, Any]] = None,
+    ) -> Any:
+        """Process arguments wrapped in Move Optional."""
+        if not arg:
+            etr = bcs.OptionalTypeFactory.as_optional()
+            return etr
+        elif isinstance(arg, list) and arg[0] is None:
+            etr = bcs.OptionalTypeFactory.as_optional()
+            return etr
+
+        if isinstance(construct, tuple):
+            inner_fn, outer_fn = construct
+            if inspect.isawaitable(inner_fn):
+                inner_type = await self._async_object_processor(
+                    arg=arg,
+                    expected_type=expected_type.type_params[0],
+                )
+            else:
+                inner_type = outer_fn(inner_fn(arg))
+            etr = bcs.OptionalTypeFactory.as_optional(inner_type)
+        elif isinstance(construct, list):
+            for index, vconstruct in enumerate(construct):
+                convert, encode = vconstruct
+                inner_type = encode(convert(arg))
+                etr = bcs.OptionalTypeFactory.as_optional(inner_type)
+        elif construct:
+            inner_type = construct(arg)
+            etr = bcs.OptionalTypeFactory.as_optional(inner_type)
+        etr.value = inner_type
+        return etr
+
+    async def _async_argument_builder(
+        self, arg, arg_meta, processor_fn, constructor_fn=None
+    ) -> Any:
+        """Convert user input argument to the BCS representation expected for transaction."""
+        if inspect.iscoroutinefunction(processor_fn):
+            # if inspect.isawaitable(processor_fn):
+            return await processor_fn(arg=arg, expected_type=arg_meta)
+        if constructor_fn:
+            return constructor_fn(processor_fn(arg))
+        return arg
+
+    async def _async_list_arg_builder(
+        self, in_meta: any, convert_args: list, arg: list
+    ) -> list:
+        """."""
+        res_list = []
+        if isinstance(in_meta, pgql_type.MoveVectorArg):
+            in_meta = in_meta.vec_arg
+        elif isinstance(in_meta, pgql_type.MoveListArg):
+            in_meta = in_meta.list_arg
+        if isinstance(
+            in_meta, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)
+        ) and isinstance(arg, list):
+            res_list.append(
+                await self._async_list_arg_builder(in_meta, convert_args[0], arg[0])
+            )
+        else:
+            convert_args = convert_args[0]
+            if isinstance(arg, bcs.Argument):
+                res_list.append(arg)
+            elif isinstance(arg, (str, bytes)):
+                res_list.append(
+                    await self._async_argument_builder(arg, in_meta, *convert_args)
+                )
+            else:
+                res_list.append(
+                    await self._async_argument_builder(arg, in_meta, *convert_args)
+                )
+
+        return res_list
+
+    async def _async_arg_builder(self, track: _ArgSummary, arglen: int):
+        """."""
+        for aindex in range(arglen):
+            in_arg = track.in_args[aindex]
+            in_meta = track.func_args[aindex]
+            if not track.convert_args[aindex] and isinstance(
+                track.in_args[aindex], bcs.Argument
+            ):
+                track.out_args[aindex] = track.in_args[aindex]
+            elif isinstance(track.convert_args[aindex], list):
+                res_list = []
+                if isinstance(in_meta, pgql_type.MoveVectorArg):
+                    in_meta = in_meta.vec_arg
+                elif isinstance(in_meta, pgql_type.MoveListArg):
+                    in_meta = in_meta.list_arg
+                if isinstance(
+                    in_meta, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)
+                ) and isinstance(in_arg, list):
+                    res_list.append(
+                        await self._async_list_arg_builder(
+                            in_meta,
+                            track.convert_args[aindex][0],
+                            in_arg[0],
+                        )
+                    )
+                    track.out_args[aindex] = res_list
+                else:
+                    for ilindex, inner_list in enumerate(track.convert_args[aindex]):
+                        if isinstance(inner_list, bcs.Argument):
+                            res_list.append(inner_list)
+                        elif isinstance(in_arg, (str, bytes)):
+                            res_list = await self._async_argument_builder(
+                                self._client, in_arg, in_meta, *inner_list
+                            )
+                            break
+                        else:
+                            res_list.append(
+                                await self._async_argument_builder(
+                                    in_arg[ilindex],
+                                    in_meta,
+                                    *inner_list,
+                                )
+                            )
+                    track.out_args[aindex] = res_list
+            else:
+                outer, inner = track.convert_args[aindex]
+                track.out_args[aindex] = await self._async_argument_builder(
+                    in_arg, in_meta, outer, inner
+                )
+
+    async def _async_object_argument(
+        self,
+        expected_type: pgql_type.MoveObjectRefArg,
+        arg,
+        in_optional: bool = False,
+        in_vector: bool = False,
+    ) -> tuple[Any, Any]:
+        """Prepares an object argument for the transaction."""
+        # If optional then get the inner type and validate
+        if expected_type.is_optional:
+            return self._optional_processor, await self._argument_validate(
+                expected_type.type_params[0], arg, True, in_vector
+            )
+
+        return self._async_object_processor, None
+
+    async def _argument_validate(
+        self,
+        expected_type: Any,
+        arg: Any,
+        in_optional: bool = False,
+        in_vector: bool = False,
+    ) -> Union[None, tuple[Any, Any]]:
+        """Argument validation and process dispatching function."""
+        if isinstance(arg, bcs.Argument):
+            return None
+        if isinstance(expected_type, pgql_type.MoveScalarArg):
+            # print("Scalar")
+            return self._scalar_argument(expected_type, arg, in_optional, in_vector)
+        if isinstance(expected_type, pgql_type.MoveWitnessArg):
+            # print("WitnessArg")
+            return self._object_argument(expected_type, arg, in_optional)
+        elif isinstance(expected_type, pgql_type.MoveObjectRefArg):
+            # print("ObjectRef")
+            return await self._async_object_argument(expected_type, arg, in_optional)
+        if isinstance(expected_type, (pgql_type.MoveVectorArg, pgql_type.MoveListArg)):
+            # print("Vector or List")
+            if in_optional and not arg:
+                return arg
+            elif not arg:
+                raise ValueError("Excepted str, bytes or list")
+            if isinstance(arg, (str, bytes)):
+                pass
+            elif not isinstance(arg, list):
+                raise ValueError("Expected list type argument...")
+            some_list = []
+            inner_type = (
+                expected_type.list_arg
+                if isinstance(expected_type, pgql_type.MoveListArg)
+                else expected_type.vec_arg
+            )
+            if isinstance(arg, (str, bytes)):
+                some_list.append(
+                    self._argument_validate(inner_type, arg, in_optional, True)
+                )
+            else:
+                for inner_arg in arg:
+                    if isinstance(inner_arg, bcs.Argument):
+                        some_list.append(inner_arg)
+                    else:
+                        some_list.append(
+                            await self._argument_validate(
+                                inner_type, inner_arg, in_optional, True
+                            )
+                        )
+            return some_list
+
+        raise ValueError(f"Unhhandled type {type(expected_type)}")
+
+    async def _async_gen_summary(self, in_args, meta_args, arglen) -> _ArgSummary:
+        """."""
+        track = _ArgSummary(
+            in_args=in_args,
+            out_args=[None] * arglen,
+            func_args=meta_args.arg_list,
+            convert_args=[None] * arglen,
+        )
+        for aindex in range(arglen):
+            track.convert_args[aindex] = await self._argument_validate(
+                track.func_args[aindex], track.in_args[aindex]
+            )
+        return track
+
+    async def async_build_args(self, in_args, meta_args) -> list:
+        """Async build arguments."""
+        alen = len(in_args)
+        if alen == len(meta_args.arg_list):
+            track = await self._async_gen_summary(in_args, meta_args, alen)
             await self._async_arg_builder(track, alen)
             return track.out_args
         raise ValueError(
