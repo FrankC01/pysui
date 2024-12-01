@@ -11,14 +11,14 @@ from typing import Any, Optional, Union
 from functools import partial, partialmethod
 from dataclasses import dataclass, field
 import canoser.int_type as cint
-from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+from pysui.sui.sui_common.txb_pure import PureInput
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 import pysui.sui.sui_types as suit
 from pysui.sui.sui_types import bcs
 import pysui.sui.sui_txn.transaction_builder as tx_builder
-from pysui.sui.sui_utils import serialize_uint32_as_uleb128
+
 
 _SCALARS = {
     "u8": suit.SuiU8,
@@ -87,32 +87,32 @@ class BaseArgParser(ABC):
             case "address" | "signature" | "ID":
                 if in_vector:
                     return bcs.Address.from_str, pass_through
-                return bcs.Address.from_str, tx_builder.PureInput.as_input
+                return bcs.Address.from_str, PureInput.as_input
             case "digest":
                 if in_vector:
                     return bcs.Digest.from_str, pass_through
-                return bcs.Digest.from_str, tx_builder.PureInput.as_input
+                return bcs.Digest.from_str, PureInput.as_input
             case "String":
                 return (
-                    tx_builder.PureInput.pure,
+                    PureInput.pure,
                     partial(bcs.Variable.bcs_var_length_field, bcs.U8),
                 )
             case _:
                 if isinstance(arg, str) and expected_type.scalar_type == "u8":
                     return (
-                        tx_builder.PureInput.pure,
+                        PureInput.pure,
                         partial(bcs.Variable.bcs_var_length_field, bcs.U8),
                     )
                 elif isinstance(arg, bool) and expected_type.scalar_type == "bool":
                     return (
-                        tx_builder.PureInput.pure,
+                        PureInput.pure,
                         partial(bcs.Variable.bcs_var_length_field, bcs.U8),
                     )
 
                 elif isinstance(arg, bytes):
                     return (
                         partial(pass_through),
-                        # tx_builder.PureInput.pure,
+                        # PureInput.pure,
                         partial(
                             bcs.Variable.bcs_var_length_encoded_field,
                             _SCALARS_BCS.get(expected_type.scalar_type),
@@ -126,7 +126,7 @@ class BaseArgParser(ABC):
 
                 return (
                     _SCALARS.get(expected_type.scalar_type),
-                    tx_builder.PureInput.as_input,
+                    PureInput.as_input,
                 )
 
     def _scalar_argument(
@@ -519,7 +519,8 @@ class ResolvingArgParser(BaseArgParser):
 
         if isinstance(construct, tuple):
             inner_fn, outer_fn = construct
-            if inner_fn is self._object_processor:
+            if inspect.iscoroutine(inner_fn):
+                # if inner_fn is self._object_processor:
                 inner_type = await self._async_object_processor(
                     arg=arg,
                     expected_type=expected_type.type_params[0],
@@ -543,7 +544,7 @@ class ResolvingArgParser(BaseArgParser):
     ) -> Any:
         """Convert user input argument to the BCS representation expected for transaction."""
         # TODO: Check with Aysnc object resolvers
-        if inspect.isawaitable(processor_fn):
+        if inspect.iscoroutine(processor_fn):
             return await processor_fn(arg=arg, expected_type=arg_meta)
             # return processor_fn()
         # if processor_fn is self._async_object_processor:
@@ -676,7 +677,7 @@ class ResolvingArgParser(BaseArgParser):
 
 
 class UnResolvingArgParser(BaseArgParser):
-    """Argument parser that resolves objects."""
+    """Argument parser that does not resolves objects."""
 
     def __init__(self, client):
         self._client = client
@@ -702,48 +703,47 @@ class UnResolvingArgParser(BaseArgParser):
     ) -> bcs.ObjectArg:
         """Generates unresolve object references for caching."""
         return bcs.UnresolvedObjectArg.from_object_ref_type(arg, expected_type)
-        # return bcs.UnresolvedObjectArg(arg, expected_type)
-        object_def: pgql_type.ObjectReadGQL = arg
-        if isinstance(arg, str):
-            result = await self._client.execute_query_node(
-                with_node=qn.GetObject(object_id=arg)
-            )
-            if result.is_ok():
-                object_def = result.result_data
-                if isinstance(
-                    object_def, (pgql_type.NoopGQL, pgql_type.ObjectReadDeletedGQL)
-                ):
-                    raise ValueError(f"{arg} object not found")
+        # object_def: pgql_type.ObjectReadGQL = arg
+        # if isinstance(arg, str):
+        #     result = await self._client.execute_query_node(
+        #         with_node=qn.GetObject(object_id=arg)
+        #     )
+        #     if result.is_ok():
+        #         object_def = result.result_data
+        #         if isinstance(
+        #             object_def, (pgql_type.NoopGQL, pgql_type.ObjectReadDeletedGQL)
+        #         ):
+        #             raise ValueError(f"{arg} object not found")
 
-        if object_def.object_owner.obj_owner_kind in [
-            "AddressOwner",
-            "Immutable",
-            "Parent",
-        ]:
-            if expected_type.is_receiving:
-                b_obj_arg = bcs.ObjectArg(
-                    "Receiving",
-                    bcs.ObjectReference.from_gql_ref(object_def),
-                )
-            else:
-                b_obj_arg = bcs.ObjectArg(
-                    "ImmOrOwnedObject",
-                    bcs.ObjectReference.from_gql_ref(object_def),
-                )
-            return b_obj_arg
+        # if object_def.object_owner.obj_owner_kind in [
+        #     "AddressOwner",
+        #     "Immutable",
+        #     "Parent",
+        # ]:
+        #     if expected_type.is_receiving:
+        #         b_obj_arg = bcs.ObjectArg(
+        #             "Receiving",
+        #             bcs.ObjectReference.from_gql_ref(object_def),
+        #         )
+        #     else:
+        #         b_obj_arg = bcs.ObjectArg(
+        #             "ImmOrOwnedObject",
+        #             bcs.ObjectReference.from_gql_ref(object_def),
+        #         )
+        #     return b_obj_arg
 
-        if object_def.object_owner.obj_owner_kind == "Shared":
-            b_obj_arg = bcs.ObjectArg(
-                "SharedObject",
-                bcs.SharedObjectReference.from_gql_ref(
-                    object_def,
-                    expected_type.ref_type == pgql_type.RefType.MUT_REF,
-                ),
-            )
-            return b_obj_arg
-        raise ValueError(
-            f"Unknown owner kind {object_def.object_owner.obj_owner_kind }"
-        )
+        # if object_def.object_owner.obj_owner_kind == "Shared":
+        #     b_obj_arg = bcs.ObjectArg(
+        #         "SharedObject",
+        #         bcs.SharedObjectReference.from_gql_ref(
+        #             object_def,
+        #             expected_type.ref_type == pgql_type.RefType.MUT_REF,
+        #         ),
+        #     )
+        #     return b_obj_arg
+        # raise ValueError(
+        #     f"Unknown owner kind {object_def.object_owner.obj_owner_kind }"
+        # )
 
     async def _async_object_processor(
         self,
@@ -775,14 +775,15 @@ class UnResolvingArgParser(BaseArgParser):
 
         if isinstance(construct, tuple):
             inner_fn, outer_fn = construct
-            if inspect.isawaitable(inner_fn):
+            if inspect.iscoroutine(inner_fn):
                 inner_type = await self._async_object_processor(
                     arg=arg,
                     expected_type=expected_type.type_params[0],
                 )
             else:
                 inner_type = outer_fn(inner_fn(arg))
-            etr = bcs.OptionalTypeFactory.as_optional(inner_type)
+            etr = bcs.OptionalTypeFactory.as_unresolved_optional(inner_type)
+            # etr = bcs.OptionalTypeFactory.as_optional(inner_type)
         elif isinstance(construct, list):
             for index, vconstruct in enumerate(construct):
                 convert, encode = vconstruct

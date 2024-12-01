@@ -28,10 +28,7 @@ from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_utils import publish_buildg
 
 # Standard library logging setup
-logger = logging.getLogger("pysui.gql_transaction")
-if not logging.getLogger().handlers:
-    logger.addHandler(logging.NullHandler())
-    logger.propagate = False
+logger = logging.getLogger()
 
 
 class _SuiTransactionBase:

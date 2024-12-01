@@ -606,6 +606,16 @@ class Optional(canoser.RustOptional):
         json.dumps(self.to_json_serializable(), indent=indent)
 
 
+class UnresolvedOptional(canoser.RustOptional):
+    """Use from OptionalTypeFactor."""
+
+    _type = canoser.Struct
+
+    def to_json(self, indent=4):
+        """."""
+        json.dumps(self.to_json_serializable(), indent=indent)
+
+
 @versionadded(version="0.54.0", reason="Support argument inferencing")
 class OptionalTypeFactory:
     """Optional Optional assignment of any canoser type."""
@@ -625,6 +635,14 @@ class OptionalTypeFactory:
         #         json.dumps(self.to_json_serializable(), indent=indent)
 
         return Optional(None)
+
+    @classmethod
+    def as_unresolved_optional(
+        cls, in_type: Any = canoser.Struct
+    ) -> canoser.RustOptional:
+        """."""
+        UnresolvedOptional._type = in_type.__class__
+        return UnresolvedOptional(None)
 
 
 class ProgrammableMoveCall(canoser.Struct):

@@ -60,9 +60,9 @@ class SerialTransactionExecutor:
             return None
         gascoin = _get_gascoin_from_effects(effects)
         if gascoin:
-            self._cache.cache.setCustom("gasCoin", gascoin)
+            await self._cache.cache.setCustom("gasCoin", gascoin)
         else:
-            self._cache.cache.deleteCustom("gasCoin")
+            await self._cache.cache.deleteCustom("gasCoin")
 
     async def apply_effects(self, effects: bcst.TransactionEffects):
         """Apply transaction effects."""
