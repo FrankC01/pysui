@@ -7,6 +7,7 @@
 from abc import ABC, abstractmethod
 import itertools
 import inspect
+from inspect import signature
 from typing import Any, Optional, Union
 from functools import partial, partialmethod
 from dataclasses import dataclass, field
@@ -58,22 +59,22 @@ def pass_through(arg: Any) -> Any:
     return arg
 
 
+def _bytes_converter(
+    scalar_class: cint.IntType,
+    in_optional: bool,
+    bytes_arg: bytes,
+) -> list[bytes]:
+    """Convert bytes to vector of type driven by scalar class."""
+    bcount = scalar_class.byte_lens
+    bitr = iter(bytes_arg)
+    silist: list[int] = []
+    while ilist := list(itertools.islice(bitr, bcount)):
+        silist.append(sum(ilist))
+    return silist
+
+
 class BaseArgParser(ABC):
     """Base transaction argument processor."""
-
-    def _bytes_converter(
-        self,
-        scalar_class: cint.IntType,
-        in_optional: bool,
-        bytes_arg: bytes,
-    ) -> list[bytes]:
-        """Convert bytes to vector of type driven by scalar class."""
-        bcount = scalar_class.byte_lens
-        bitr = iter(bytes_arg)
-        silist: list[int] = []
-        while ilist := list(itertools.islice(bitr, bcount)):
-            silist.append(sum(ilist))
-        return silist
 
     def _pure_generate(
         self,
@@ -116,8 +117,8 @@ class BaseArgParser(ABC):
                         partial(
                             bcs.Variable.bcs_var_length_encoded_field,
                             _SCALARS_BCS.get(expected_type.scalar_type),
-                            partialmethod(
-                                self._bytes_converter,
+                            partial(
+                                _bytes_converter,
                                 _SCALARS_BCS.get(expected_type.scalar_type),
                                 in_optional,
                             ),
@@ -251,10 +252,11 @@ class ResolvingArgParser(BaseArgParser):
     def __init__(self, client):
         self._client = client
 
-    def _fetch_or_transpose_object(
+    def fetch_or_transpose_object(
         self,
         arg: Union[str, pgql_type.ObjectReadGQL],
-        expected_type: pgql_type.MoveObjectRefArg,
+        is_receiving: bool,
+        is_mutable: bool,
     ) -> bcs.ObjectArg:
         """Fetches and prepares an object reference to ObjectArg for BCS."""
         object_def: pgql_type.ObjectReadGQL = arg
@@ -274,7 +276,7 @@ class ResolvingArgParser(BaseArgParser):
             "Immutable",
             "Parent",
         ]:
-            if expected_type.is_receiving:
+            if is_receiving:
                 b_obj_arg = bcs.ObjectArg(
                     "Receiving",
                     bcs.ObjectReference.from_gql_ref(object_def),
@@ -291,7 +293,7 @@ class ResolvingArgParser(BaseArgParser):
                 "SharedObject",
                 bcs.SharedObjectReference.from_gql_ref(
                     object_def,
-                    expected_type.ref_type == pgql_type.RefType.MUT_REF,
+                    is_mutable,
                 ),
             )
             return b_obj_arg
@@ -304,11 +306,15 @@ class ResolvingArgParser(BaseArgParser):
         *,
         arg: Any,
         expected_type: pgql_type.MoveObjectRefArg,
-        _construct: Optional[tuple[Any, Any]] = None,
+        construct: Optional[tuple[Any, Any]] = None,
     ) -> bcs.ObjectArg:
         """Process an object reference."""
         if arg:
-            return self._fetch_or_transpose_object(arg, expected_type)
+            return self.fetch_or_transpose_object(
+                arg,
+                expected_type.is_receiving,
+                expected_type.ref_type == pgql_type.RefType.MUT_REF,
+            )
         raise ValueError("Missing argument")
 
     # TODO: This needs work
@@ -329,11 +335,20 @@ class ResolvingArgParser(BaseArgParser):
 
         if isinstance(construct, tuple):
             inner_fn, outer_fn = construct
-            if inner_fn is self._object_processor:
-                inner_type = self._object_processor(
-                    arg=arg,
-                    expected_type=expected_type.type_params[0],
+            sig = signature(inner_fn)
+            sig_arg_len = parms = len(sig.parameters.keys())
+            if sig_arg_len == 3:
+                inner_type = inner_fn(
+                    arg=arg, expected_type=expected_type, construct=outer_fn
                 )
+            elif sig_arg_len == 1:
+                inner_type = outer_fn(inner_fn(arg))
+
+            # if inner_fn is self._object_processor:
+            #     inner_type = self._object_processor(
+            #         arg=arg,
+            #         expected_type=expected_type.type_params[0],
+            #     )
             else:
                 inner_type = outer_fn(inner_fn(arg))
             etr = bcs.OptionalTypeFactory.as_optional(inner_type)
@@ -352,21 +367,18 @@ class ResolvingArgParser(BaseArgParser):
         self, arg, arg_meta, processor_fn, constructor_fn=None
     ) -> Any:
         """Convert user input argument to the BCS representation expected for transaction."""
-        if inspect.ismethod(processor_fn):
-            return processor_fn(arg=arg, expected_type=arg_meta)
-        # if processor_fn is self._object_processor:
-        #     return self._object_processor(
-        #         arg=arg,
-        #         expected_type=arg_meta,
-        #     )
-        # if processor_fn is self._optional_processor:
-        #     return self._optional_processor(
-        #         arg=arg,
-        #         expected_type=arg_meta,
-        #         construct=constructor_fn,
-        #     )
-        if constructor_fn:
+        if not inspect.ismethod(processor_fn):
             return constructor_fn(processor_fn(arg))
+        sig = signature(processor_fn)
+        sig_arg_len = parms = len(sig.parameters.keys())
+        if sig_arg_len == 3:
+            return processor_fn(
+                arg=arg, expected_type=arg_meta, construct=constructor_fn
+            )
+        elif sig_arg_len == 1:
+            return constructor_fn(processor_fn(arg))
+        # if constructor_fn:
+        #     return constructor_fn(processor_fn(arg))
         return arg
 
     def _list_arg_builder(self, in_meta: any, convert_args: list, arg: list) -> list:
@@ -441,10 +453,11 @@ class ResolvingArgParser(BaseArgParser):
                     in_arg, in_meta, outer, inner
                 )
 
-    async def _async_fetch_or_transpose_object(
+    async def async_fetch_or_transpose_object(
         self,
         arg: Union[str, pgql_type.ObjectReadGQL],
-        expected_type: pgql_type.MoveObjectRefArg,
+        is_receiving: bool,
+        is_mutable: bool,
     ) -> bcs.ObjectArg:
         """Fetches and prepares an object reference to ObjectArg for BCS."""
         object_def: pgql_type.ObjectReadGQL = arg
@@ -464,7 +477,7 @@ class ResolvingArgParser(BaseArgParser):
             "Immutable",
             "Parent",
         ]:
-            if expected_type.is_receiving:
+            if is_receiving:
                 b_obj_arg = bcs.ObjectArg(
                     "Receiving",
                     bcs.ObjectReference.from_gql_ref(object_def),
@@ -481,7 +494,7 @@ class ResolvingArgParser(BaseArgParser):
                 "SharedObject",
                 bcs.SharedObjectReference.from_gql_ref(
                     object_def,
-                    expected_type.ref_type == pgql_type.RefType.MUT_REF,
+                    is_mutable,
                 ),
             )
             return b_obj_arg
@@ -498,7 +511,11 @@ class ResolvingArgParser(BaseArgParser):
     ) -> bcs.ObjectArg:
         """Process an object reference."""
         if arg:
-            return await self._async_fetch_or_transpose_object(arg, expected_type)
+            return await self.async_fetch_or_transpose_object(
+                arg,
+                expected_type.is_receiving,
+                expected_type.ref_type == pgql_type.RefType.MUT_REF,
+            )
         raise ValueError("Missing argument")
 
     # TODO: This needs work
@@ -696,7 +713,7 @@ class UnResolvingArgParser(BaseArgParser):
         raise NotImplementedError("Only async_build_args valid for UnResolvingParser")
 
     # TODO: Replace with UnrealizedObject wrapper
-    async def _async_fetch_or_transpose_object(
+    async def async_fetch_or_transpose_object(
         self,
         arg: str,
         expected_type: pgql_type.MoveObjectRefArg,
@@ -754,7 +771,7 @@ class UnResolvingArgParser(BaseArgParser):
     ) -> bcs.ObjectArg:
         """Process an object reference."""
         if arg:
-            return await self._async_fetch_or_transpose_object(arg, expected_type)
+            return await self.async_fetch_or_transpose_object(arg, expected_type)
         raise ValueError("Missing argument")
 
     # TODO: This needs work
@@ -896,7 +913,7 @@ class UnResolvingArgParser(BaseArgParser):
         """Prepares an object argument for the transaction."""
         # If optional then get the inner type and validate
         if expected_type.is_optional:
-            return self._optional_processor, await self._argument_validate(
+            return self._async_optional_processor, await self._argument_validate(
                 expected_type.type_params[0], arg, True, in_vector
             )
 

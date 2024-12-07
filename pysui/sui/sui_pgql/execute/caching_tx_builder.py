@@ -27,10 +27,9 @@ logger = logging.getLogger()
 #     logger.propagate = True
 
 
-@versionchanged(version="0.17.0", reason="Support bool arguments")
-@versionchanged(version="0.18.0", reason="Support for lists and unsigned ints")
+@versionadded(version="0.73.0", reason="Support serialzed and parallel executions")
 class CachingTransactionBuilder:
-    """ProgrammableTransactionBuilder core transaction construction."""
+    """CachingTransactionBuilder supports defered objectref resolutions."""
 
     def __init__(self, *, compress_inputs: bool = False) -> None:
         """Builder initializer."""
@@ -71,8 +70,6 @@ class CachingTransactionBuilder:
         """
         return bcs.TransactionKind("ProgrammableTransaction", self._finish())
 
-    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
-    @versionchanged(version="0.30.2", reason="Remove reuse of identical pure inputs")
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
         """input_pure registers a pure input argument in the inputs collection.
 
@@ -100,8 +97,6 @@ class CachingTransactionBuilder:
         logger.debug(f"New pure input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
-    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
-    @versionchanged(version="0.73.0", reason="Support unresolved object types")
     def input_obj(
         self,
         key: bcs.BuilderArg,
@@ -138,13 +133,6 @@ class CachingTransactionBuilder:
         logger.debug(f"New object input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
-    @versionadded(version="0.54.0", reason="Support stand-alone ObjectArg")
-    def input_obj_from_objarg(self, object_arg: bcs.ObjectArg) -> bcs.Argument:
-        """."""
-        oval: bcs.Address = object_arg.value.ObjectID
-        barg = bcs.BuilderArg("Object", oval)
-        return self.input_obj(barg, object_arg)
-
     @versionadded(version="0.73.0", reason="Support stand-alone Unresolved objects")
     def input_obj_from_unresolved_object(
         self, object_arg: bcs.UnresolvedObjectArg
@@ -176,19 +164,14 @@ class CachingTransactionBuilder:
         logger.debug("Creating single result return")
         return bcs.Argument("Result", out_index)
 
-    @versionchanged(
-        version="0.54.0",
-        reason="Accept bcs.ObjectArg(s) support GraphQL implementation.",
-    )
     def make_move_vector(
         self,
         vtype: bcs.OptionalTypeTag,
         items: list[
             Union[
                 bcs.Argument,
-                bcs.BuilderArg,
-                bcs.ObjectArg,
-                tuple[bcs.BuilderArg, bcs.ObjectArg],
+                bcs.UnresolvedObjectArg,
+                tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
             ]
         ],
     ) -> bcs.Argument:
@@ -199,10 +182,14 @@ class CachingTransactionBuilder:
         for arg in items:
             if isinstance(arg, bcs.BuilderArg):
                 argrefs.append(self.input_pure(arg))
-            elif isinstance(arg, bcs.ObjectArg):
-                argrefs.append(self.input_obj_from_objarg(arg))
+            elif isinstance(arg, bcs.UnresolvedObjectArg):
+                argrefs.append(self.input_obj_from_unresolved_object(arg))
             elif isinstance(arg, tuple):
-                argrefs.append(self.input_obj(*arg))
+                barg, oarg = arg
+                if isinstance(oarg, bcs.UnresolvedObjectArg):
+                    argrefs.append(self.input_obj(barg, oarg))
+                else:
+                    raise NotImplementedError("Found ObjectArg in make_move_vector")
             elif isinstance(arg, bcs.Argument):
                 argrefs.append(arg)
             else:
@@ -210,7 +197,6 @@ class CachingTransactionBuilder:
 
         return self.command(bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs)))
 
-    @versionchanged(version="0.17.0", reason="Add result count for correct arg return.")
     def move_call(
         self,
         *,
@@ -218,9 +204,10 @@ class CachingTransactionBuilder:
         arguments: list[
             Union[
                 bcs.Argument,
-                bcs.ObjectArg,
+                bcs.UnresolvedObjectArg,
                 bcs.Optional,
-                tuple[bcs.BuilderArg, bcs.ObjectArg],
+                bcs.UnresolvedOptional,
+                tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
             ]
         ],
         type_arguments: list[bcs.TypeTag],
@@ -234,12 +221,16 @@ class CachingTransactionBuilder:
         for arg in arguments:
             if isinstance(arg, bcs.BuilderArg):
                 argrefs.append(self.input_pure(arg))
-            elif isinstance(arg, bcs.ObjectArg):
-                argrefs.append(self.input_obj_from_objarg(arg))
+            elif isinstance(arg, bcs.UnresolvedObjectArg):
+                argrefs.append(self.input_obj_from_unresolved_object(arg))
             elif isinstance(arg, bcs.Optional):
                 argrefs.append(self.input_pure(PureInput.as_input(arg)))
             elif isinstance(arg, tuple):
-                argrefs.append(self.input_obj(*arg))
+                barg, oarg = arg
+                if isinstance(oarg, bcs.UnresolvedObjectArg):
+                    argrefs.append(self.input_obj(barg, oarg))
+                else:
+                    raise NotImplementedError("Found ObjectArg in make_move_vector")
             elif isinstance(arg, (bcs.Argument, bcs.OptionalU64)):
                 argrefs.append(arg)
             elif isinstance(arg, list):
@@ -259,17 +250,12 @@ class CachingTransactionBuilder:
             res_count,
         )
 
-    @versionchanged(version="0.17.0", reason="Extend to take list of amounts")
-    @versionchanged(
-        version="0.33.0", reason="Accept bcs.Argument (i.e. Result) as amount"
-    )
-    @versionchanged(
-        version="0.54.0", reason="Accept bcs.ObjectArg support GraphQL implementation."
-    )
     def split_coin(
         self,
         from_coin: Union[
-            bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]
+            bcs.Argument,
+            bcs.UnresolvedObjectArg,
+            tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
         ],
         amounts: list[bcs.BuilderArg],
     ) -> bcs.Argument:
@@ -281,48 +267,63 @@ class CachingTransactionBuilder:
                 amounts_arg.append(amount)
             else:
                 amounts_arg.append(self.input_pure(amount))
-        if isinstance(from_coin, bcs.ObjectArg):
-            from_coin = self.input_obj_from_objarg(from_coin)
+        if isinstance(from_coin, bcs.UnresolvedObjectArg):
+            from_coin = self.input_obj_from_unresolved_object(from_coin)
+        elif isinstance(from_coin, bcs.Argument):
+            pass
         elif isinstance(from_coin, tuple):
-            from_coin = self.input_obj(*from_coin)
+            barg, oarg = from_coin
+            if isinstance(oarg, bcs.UnresolvedObjectArg):
+                from_coin = self.input_obj(*from_coin)
+            else:
+                raise NotImplementedError("Found ObjectArg in make_move_vector")
+        else:
+            raise ValueError(f"Unknown arg in movecall {from_coin.__class__.__name__}")
         return self.command(
             bcs.Command("SplitCoin", bcs.SplitCoin(from_coin, amounts_arg)),
             len(amounts_arg),
         )
 
-    @versionchanged(
-        version="0.54.0",
-        reason="Accept bcs.ObjectArg(s) support GraphQL implementation.",
-    )
     def merge_coins(
         self,
         to_coin: Union[
             bcs.Argument,
-            bcs.ObjectArg,
             bcs.UnresolvedObjectArg,
-            tuple[bcs.BuilderArg, bcs.ObjectArg],
+            tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
         ],
         from_coins: list[
-            Union[bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+            Union[
+                bcs.Argument,
+                bcs.UnresolvedObjectArg,
+                tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
+            ]
         ],
     ) -> bcs.Argument:
         """Setup a MergeCoins command and return it's result Argument."""
         logger.debug("Creating MergeCoins transaction")
 
-        if isinstance(to_coin, bcs.ObjectArg):
-            raise NotADirectoryError("Found ObjectArg in merge_coins")
-        elif isinstance(to_coin, bcs.UnresolvedObjectArg):
+        if isinstance(to_coin, bcs.UnresolvedObjectArg):
             to_coin = self.input_obj_from_unresolved_object(to_coin)
         elif isinstance(to_coin, tuple):
-            to_coin = self.input_obj(*to_coin)
+            barg, oarg = to_coin
+            if isinstance(oarg, bcs.UnresolvedObjectArg):
+                to_coin = self.input_obj(barg, oarg)
+            else:
+                raise NotImplementedError("Found ObjectArg in merge_coins to_coin")
         from_args: list[bcs.Argument] = []
         for fcoin in from_coins:
             if isinstance(fcoin, bcs.ObjectArg):
-                raise NotADirectoryError("Found ObjectArg in merge_coins from list")
+                raise NotImplementedError("Found ObjectArg in merge_coins from list")
             elif isinstance(fcoin, bcs.UnresolvedObjectArg):
                 fcoin = self.input_obj_from_unresolved_object(fcoin)
             elif isinstance(fcoin, tuple):
-                fcoin = self.input_obj(*fcoin)
+                barg, oarg = fcoin
+                if isinstance(oarg, bcs.UnresolvedObjectArg):
+                    fcoin = self.input_obj(barg, oarg)
+                else:
+                    raise NotImplementedError(
+                        "Found ObjectArg in merge_coins from_coin"
+                    )
             from_args.append(fcoin)
         return self.command(
             bcs.Command("MergeCoins", bcs.MergeCoins(to_coin, from_args))
@@ -336,7 +337,6 @@ class CachingTransactionBuilder:
             list[
                 Union[
                     bcs.Argument,
-                    bcs.ObjectArg,
                     bcs.UnresolvedObjectArg,
                     tuple[bcs.BuilderArg, bcs.ObjectArg],
                 ]
@@ -359,7 +359,13 @@ class CachingTransactionBuilder:
                 elif isinstance(fcoin, bcs.UnresolvedObjectArg):
                     fcoin = self.input_obj_from_unresolved_object(fcoin)
                 elif isinstance(fcoin, tuple):
-                    fcoin = self.input_obj(*fcoin)
+                    barg, oarg = fcoin
+                    if isinstance(oarg, bcs.UnresolvedObjectArg):
+                        fcoin = self.input_obj(barg, oarg)
+                    else:
+                        raise NotImplementedError(
+                            "Found ObjectArg in merge_coins from_coin"
+                        )
                 from_args.append(fcoin)
         else:
             from_args.append(object_ref)
@@ -370,7 +376,7 @@ class CachingTransactionBuilder:
     def transfer_sui(
         self,
         recipient: bcs.BuilderArg,
-        from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
+        from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg]],
         amount: Optional[Union[bcs.BuilderArg, bcs.Optional]] = None,
     ) -> bcs.Argument:
         """Setup a TransferObjects for Sui Coins.
@@ -393,7 +399,11 @@ class CachingTransactionBuilder:
             coin_arg = from_coin
         else:
             # TODO: Validate unresolved type
-            coin_arg = self.input_obj(*from_coin)
+            barg, oarg = from_coin
+            if isinstance(oarg, bcs.UnresolvedObjectArg):
+                coin_arg = self.input_obj(barg, oarg)
+            else:
+                raise NotImplementedError("Found ObjectArg in merge_coins from_coin")
         return self.command(
             bcs.Command(
                 "TransferObjects",
@@ -401,10 +411,6 @@ class CachingTransactionBuilder:
             )
         )
 
-    @versionchanged(
-        version="0.20.0",
-        reason="Removed UpgradeCap auto transfer as per Sui best practices.",
-    )
     def publish(
         self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address]
     ) -> bcs.Argument:

@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `wait_for_transaction` added to AsyncSuiGQLClient
+- [enhancement](https://github.com/FrankC01/pysui/issues/245) GraphQL: Added `optional_object` to SuiTransactions
 
 ### Fixed
 
-- [bug](https://github.com/FrankC01/pysui/issues/244) Adding `epoch` property to SuiString for JSON RPC
+- [bug](https://github.com/FrankC01/pysui/issues/244) Adding `epoch` property to SuiString for JSON RPC.
+  - However; Sui ignores this parameter in the implementation. Adding only for Insepct argument compatability
+- [bug](https://github.com/FrankC01/pysui/issues/242) GraphQL: Fixed bug in publish_upgrade
 
 ### Changed
 

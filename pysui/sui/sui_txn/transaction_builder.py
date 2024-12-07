@@ -350,8 +350,14 @@ class ProgrammableTransactionBuilder:
         return bcs.Argument("Input", out_index)
 
     @versionadded(version="0.54.0", reason="Support stand-alone ObjectArg")
-    def input_obj_from_objarg(self, object_arg: bcs.ObjectArg) -> bcs.Argument:
+    def input_obj_from_objarg(
+        self, object_arg: Union[bcs.ObjectArg, bcs.Optional]
+    ) -> bcs.Argument:
         """."""
+        if isinstance(object_arg, bcs.Optional):
+            object_arg = object_arg.value
+            # oval = object_arg.value.value.ObjectID
+        # else:
         oval: bcs.Address = object_arg.value.ObjectID
         barg = bcs.BuilderArg("Object", oval)
         return self.input_obj(barg, object_arg)
@@ -439,7 +445,11 @@ class ProgrammableTransactionBuilder:
                 argrefs.append(self.input_pure(arg))
             elif isinstance(arg, bcs.ObjectArg):
                 argrefs.append(self.input_obj_from_objarg(arg))
-            elif isinstance(arg, bcs.Optional):
+            elif isinstance(arg, bcs.Optional) and isinstance(arg.value, bcs.ObjectArg):
+                argrefs.append(self.input_obj_from_objarg(arg))
+            elif isinstance(arg, bcs.Optional) and not isinstance(
+                arg.value, bcs.ObjectArg
+            ):
                 argrefs.append(self.input_pure(PureInput.as_input(arg)))
             elif isinstance(arg, tuple):
                 argrefs.append(self.input_obj(*arg))

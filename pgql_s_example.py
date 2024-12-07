@@ -469,9 +469,9 @@ def do_func(client: SyncGqlClient):
     """Fetch structures by package::module."""
     result = client.execute_query_node(
         with_node=qn.GetFunction(
-            package="0x3",
-            module_name="sui_system",
-            function_name="request_add_stake_mul_coin",
+            package="0x2",
+            module_name="pay",
+            function_name="divide_and_keep",
         )
     )
     if result.is_ok():
@@ -639,7 +639,7 @@ def do_stake(client: SyncGqlClient):
     This uses a testnet validator (Blockscope.net). For different environment
     or different validator change the vaddress
     """
-    vaddress = "0x44b1b319e23495995fc837dafd28fc6af8b645edddff0fc1467f1ad631362c23"
+    vaddress = "0xdfed72a46fa7899fd80edf960bb4e05d6852f74a628d55b8dba69064f0ca07d4"
     txer: SuiTransaction = SuiTransaction(client=client)
     # Take 1 Sui from gas
     stake_coin_split = txer.split_coin(coin=txer.gas, amounts=[1000000000])

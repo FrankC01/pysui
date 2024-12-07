@@ -7,7 +7,6 @@
 
 import base64
 from typing import Any, Optional, Union
-from functools import cache
 from deprecated.sphinx import versionchanged
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
@@ -19,6 +18,7 @@ import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_argb as argbase
 from .caching_tx_builder import CachingTransactionBuilder, PureInput
+from pysui.sui.sui_common.async_lru import AsyncLRU
 
 # Well known parameter constructs
 
@@ -28,10 +28,85 @@ class CachingTransaction(txbase):
 
     # Prebuild functions
 
-    _STAKE_REQUEST_TUPLE: tuple = None
-    _UNSTAKE_REQUEST_TUPLE: tuple = None
-    _SPLIT_AND_KEEP_TUPLE: tuple = None
-    _PUBLISH_AUTHORIZE_UPGRADE_TUPLE: tuple = None
+    _STAKE_REQUEST: pgql_type.MoveArgSummary = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF,
+                "0x3",
+                "sui_system",
+                "SuiSystemState",
+                [],
+                False,
+                False,
+                False,
+            ),
+            pgql_type.MoveVectorArg(
+                pgql_type.RefType.NO_REF,
+                pgql_type.MoveObjectRefArg(
+                    pgql_type.RefType.MUT_REF,
+                    "0x2",
+                    "coin",
+                    "Coin",
+                    [
+                        pgql_type.MoveObjectRefArg(
+                            pgql_type.RefType.NO_REF,
+                            "0x2",
+                            "sui",
+                            "SUI",
+                            [],
+                            False,
+                            False,
+                            False,
+                        )
+                    ],
+                    False,
+                    False,
+                    True,
+                ),
+                # pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
+            ),
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.NO_REF,
+                "0x1",
+                "option",
+                "Option",
+                [
+                    pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
+                ],
+                True,
+                False,
+                True,
+            ),
+            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
+        ],
+    )
+    _UNSTAKE_REQUEST: pgql_type.MoveArgSummary = pgql_type.MoveArgSummary(
+        [],
+        [
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.MUT_REF,
+                "0x3",
+                "sui_system",
+                "SuiSystemState",
+                [],
+                False,
+                False,
+                False,
+            ),
+            pgql_type.MoveObjectRefArg(
+                pgql_type.RefType.NO_REF,
+                "0x3",
+                "staking_pool",
+                "StakedSui",
+                [],
+                False,
+                False,
+                False,
+            ),
+        ],
+    )
+
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
 
@@ -51,18 +126,12 @@ class CachingTransaction(txbase):
         :type merge_gas_budget: bool, optional
         """
         super().__init__(**kwargs)
-        self._sclient = SuiGQLClient(pysui_config=self.client.config)
         # Preload
-        self._STAKE_REQUEST_TUPLE = self._function_meta_args(self._STAKE_REQUEST_TARGET)
-        self._UNSTAKE_REQUEST_TUPLE = self._function_meta_args(
-            self._UNSTAKE_REQUEST_TARGET
-        )
-        self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
         self._argparse = argbase.UnResolvingArgParser(self.client)
         self.builder = CachingTransactionBuilder()
 
-    @cache
-    def _function_meta_args(
+    @AsyncLRU(maxsize=256)
+    async def _function_meta_args(
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
         """_function_meta_args Returns the argument summary of a target sui move function
@@ -75,7 +144,8 @@ class CachingTransaction(txbase):
         package, package_module, package_function = (
             tv.TypeValidator.check_target_triplet(target)
         )
-        result = self._sclient.execute_query_node(
+
+        result = await self.client.execute_query_node(
             with_node=qn.GetFunction(
                 package=package,
                 module_name=package_module,
@@ -97,7 +167,7 @@ class CachingTransaction(txbase):
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
         """Returns the argument summary of a target sui move function."""
-        return self._function_meta_args(target)
+        return await self._function_meta_args(target)
 
     def _build_txn_data(
         self,
@@ -181,7 +251,6 @@ class CachingTransaction(txbase):
         )
         return base64.b64encode(txn_data.serialize()).decode()
 
-    @versionchanged(version="0.64.0", reason="Return dict instead of tuple")
     async def build_and_sign(
         self,
         *,
@@ -293,7 +362,7 @@ class CachingTransaction(txbase):
         :rtype: bcs.Argument
         """
         package, package_module, package_function, retcount, ars = (
-            self._SPLIT_AND_KEEP_TUPLE
+            await self._function_meta_args(self._SPLIT_AND_KEEP)
         )
 
         parms = await self._argparse.async_build_args([coin, split_count], ars)
@@ -433,7 +502,7 @@ class CachingTransaction(txbase):
         type_arguments = type_arguments if type_arguments else []
         # Validate and get target meta arguments
         package, package_module, package_function, retcount, ars = (
-            self._function_meta_args(target)
+            await self._function_meta_args(target)
         )
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
         parms = await self._argparse.async_build_args(arguments, ars)
@@ -467,7 +536,7 @@ class CachingTransaction(txbase):
         """
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
-            self._STAKE_REQUEST_TUPLE
+            await self._function_meta_args(self._STAKE_REQUEST_TARGET)
         )
         # Validate arguments
         parms = await self._argparse.async_build_args(
@@ -499,9 +568,7 @@ class CachingTransaction(txbase):
         :rtype: bcs.Argument
         """
         # Fetch pre-build meta arg summary
-        package, package_module, package_function, retcount, ars = (
-            self._UNSTAKE_REQUEST_TUPLE
-        )
+        package, package_module, package_function, retcount, ars = self._UNSTAKE_REQUEST
         # Validate arguments
         parms = await self._argparse.async_build_argsbuild_args(
             [

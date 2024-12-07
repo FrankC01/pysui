@@ -457,6 +457,36 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    async def optional_object(
+        self,
+        *,
+        optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        is_receiving: bool,
+        is_shared_mutable: bool,
+        type_arguments: Optional[list] = None,
+    ) -> bcs.Argument:
+        """."""
+        type_arguments = type_arguments if type_arguments else []
+        # Handle other than argument
+        if not isinstance(optional_object, bcs.Argument):
+            parms = [
+                await self._argparse.async_fetch_or_transpose_object(
+                    optional_object, is_receiving, is_shared_mutable
+                )
+            ]
+        else:
+            parms = [optional_object]
+        type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
+
+        return self.builder.move_call(
+            target=self._STD_FRAMEWORK,
+            arguments=parms,
+            type_arguments=type_arguments,
+            module="option",
+            function="some",
+            res_count=1,
+        )
+
     async def stake_coin(
         self,
         *,

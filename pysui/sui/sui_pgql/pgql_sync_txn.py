@@ -31,7 +31,6 @@ class SuiTransaction(txbase):
     _STAKE_REQUEST_TUPLE: tuple = None
     _UNSTAKE_REQUEST_TUPLE: tuple = None
     _SPLIT_AND_KEEP_TUPLE: tuple = None
-    # _SPLIT_AND_RETURN_TUPLE: tuple = None
     _PUBLISH_AUTHORIZE_UPGRADE_TUPLE: tuple = None
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
@@ -441,9 +440,9 @@ class SuiTransaction(txbase):
         package, package_module, package_function, retcount, ars = (
             self._function_meta_args(target)
         )
+
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
         parms = self._argparse.build_args(arguments, ars)
-        # parms = ab.build_args(self.client, arguments, ars)
         return self.builder.move_call(
             target=package,
             arguments=parms,
@@ -451,6 +450,48 @@ class SuiTransaction(txbase):
             module=package_module,
             function=package_function,
             res_count=retcount,
+        )
+
+    def optional_object(
+        self,
+        *,
+        optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        is_receiving: bool,
+        is_shared_mutable: bool,
+        type_arguments: Optional[list] = None,
+    ) -> bcs.Argument:
+        """optional_object Creations and option::some wrapper around object.
+
+        :param optional_object: target object to make option from
+        :type optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument]
+        :param is_receiving: If not a shared object, indicates if it is a Receiving type
+        :type is_receiving: bool
+        :param is_shared_mutable: If object is shared, indicates if should be mutable
+        :type is_shared_mutable: bool
+        :param type_arguments: The type of object being wrapped, defaults to None
+        :type type_arguments: Optional[list], optional
+        :return: A non-empty object result Argument
+        :rtype: bcs.Argument
+        """
+        type_arguments = type_arguments if type_arguments else []
+        # Handle other than argument
+        if not isinstance(optional_object, bcs.Argument):
+            parms = [
+                self._argparse.fetch_or_transpose_object(
+                    optional_object, is_receiving, is_shared_mutable
+                )
+            ]
+        else:
+            parms = [optional_object]
+        type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
+
+        return self.builder.move_call(
+            target=self._STD_FRAMEWORK,
+            arguments=parms,
+            type_arguments=type_arguments,
+            module="option",
+            function="some",
+            res_count=1,
         )
 
     def stake_coin(
