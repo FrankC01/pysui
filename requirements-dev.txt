@@ -1,9 +1,9 @@
-pylint==3.2.5
+pylint==3.3.2
 pydocstyle==6.3.0
-pytest==8.2.2
-mypy==1.11.0
-types-Deprecated==1.2.9.20240311
+pytest==8.3.4
+mypy==1.13.0
+types-Deprecated==1.2.15.20241117
 build==1.2.1
-twine==5.1.1
+twine==6.0.1
 sphinx==7.4.7
-sphinx_rtd_theme==2.0.0
+sphinx_rtd_theme==3.0.2

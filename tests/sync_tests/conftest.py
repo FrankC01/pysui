@@ -13,61 +13,22 @@
 
 """Fixtures for testing."""
 
-import subprocess
 import pytest
 
-from pysui import SyncClient, SuiConfig
-
-LOCALNET_PROC_SET_REPO: str = ["bash", "localnet", "set-sui-repo"]
-LOCALNET_PROC_SET_ACTIVE: str = ["bash", "localnet", "set-active"]
-LOCALNET_PROC_REGEN: str = ["bash", "localnet", "regen"]
-LOCALNET_PROC_STOP: str = ["bash", "localnet", "stop"]
-
-
-def sui_base_anynet_start() -> bool:
-    """Use any suibase net settings in test."""
-    result = subprocess.run(
-        LOCALNET_PROC_REGEN, capture_output=True, text=True
-    )
-    if result.returncode == 0:
-        return True
-    raise ValueError(f"Result of localnet regen {result.stderr}")
-
-
-def sui_base_localnet_start() -> bool:
-    """Regenerate (start sui-base localnet) and set localnet active."""
-    result = subprocess.run(
-        LOCALNET_PROC_SET_REPO, capture_output=True, text=True
-    )
-    if result.returncode == 0:
-        result = subprocess.run(
-            LOCALNET_PROC_SET_ACTIVE, capture_output=True, text=True
-        )
-        if result.returncode == 0:
-            result = subprocess.run(
-                LOCALNET_PROC_REGEN, capture_output=True, text=True
-            )
-            if result.returncode == 0:
-                return True
-    raise ValueError(f"Result of localnet regen {result.stderr}")
-
-
-def sui_base_localnet_stop() -> bool:
-    """With normal teardown and/or exception stop the localnet."""
-    result = subprocess.run(LOCALNET_PROC_STOP, capture_output=True, text=True)
-    if result.returncode == 0:
-        return True
-    raise ValueError(f"Result of localnet stop {result.stderr}")
+from pysui import PysuiConfiguration, SyncGqlClient
 
 
 @pytest.fixture(scope="package")
-def sui_client() -> SyncClient:
+def sui_client() -> SyncGqlClient:  # type: ignore
     """Fixture to create a test session wide client pointed to sui-base localnet."""
-    # Use for jump ahead versions
     # sui_base_anynet_start()
     # Use for devnet versions
-    sui_base_localnet_start()
-    client = SyncClient(SuiConfig.sui_base_config())
+    # sui_base_localnet_start()
+    cfg = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+        profile_name="devnet",
+        persist=False,
+    )
+    client = SyncGqlClient(pysui_config=cfg)
     # Turn this fixture into a generator
     yield client
-    sui_base_localnet_stop()
