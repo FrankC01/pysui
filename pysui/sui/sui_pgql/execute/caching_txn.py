@@ -16,7 +16,7 @@ import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-import pysui.sui.sui_pgql.pgql_txn_argb as argbase
+import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
 from .caching_tx_builder import CachingTransactionBuilder, PureInput
 from pysui.sui.sui_common.async_lru import AsyncLRU
 
@@ -25,90 +25,6 @@ from pysui.sui.sui_common.async_lru import AsyncLRU
 
 class CachingTransaction(txbase):
     """."""
-
-    # Prebuild functions
-
-    _STAKE_REQUEST: pgql_type.MoveArgSummary = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF,
-                "0x3",
-                "sui_system",
-                "SuiSystemState",
-                [],
-                False,
-                False,
-                False,
-            ),
-            pgql_type.MoveVectorArg(
-                pgql_type.RefType.NO_REF,
-                pgql_type.MoveObjectRefArg(
-                    pgql_type.RefType.MUT_REF,
-                    "0x2",
-                    "coin",
-                    "Coin",
-                    [
-                        pgql_type.MoveObjectRefArg(
-                            pgql_type.RefType.NO_REF,
-                            "0x2",
-                            "sui",
-                            "SUI",
-                            [],
-                            False,
-                            False,
-                            False,
-                        )
-                    ],
-                    False,
-                    False,
-                    True,
-                ),
-                # pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
-            ),
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.NO_REF,
-                "0x1",
-                "option",
-                "Option",
-                [
-                    pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
-                ],
-                True,
-                False,
-                True,
-            ),
-            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
-        ],
-    )
-    _UNSTAKE_REQUEST: pgql_type.MoveArgSummary = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF,
-                "0x3",
-                "sui_system",
-                "SuiSystemState",
-                [],
-                False,
-                False,
-                False,
-            ),
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.NO_REF,
-                "0x3",
-                "staking_pool",
-                "StakedSui",
-                [],
-                False,
-                False,
-                False,
-            ),
-        ],
-    )
-
-    _BUILD_BYTE_STR: str = "tx_bytestr"
-    _SIG_ARRAY: str = "sig_array"
 
     def __init__(
         self,
@@ -126,7 +42,6 @@ class CachingTransaction(txbase):
         :type merge_gas_budget: bool, optional
         """
         super().__init__(**kwargs)
-        # Preload
         self._argparse = argbase.UnResolvingArgParser(self.client)
         self.builder = CachingTransactionBuilder()
 
@@ -365,7 +280,7 @@ class CachingTransaction(txbase):
             await self._function_meta_args(self._SPLIT_AND_KEEP)
         )
 
-        parms = await self._argparse.async_build_args([coin, split_count], ars)
+        parms = await self._argparse.build_args([coin, split_count], ars)
 
         type_arguments = [bcs.TypeTag.type_tag_from(coin_type)]
         return self.builder.move_call(
@@ -568,7 +483,9 @@ class CachingTransaction(txbase):
         :rtype: bcs.Argument
         """
         # Fetch pre-build meta arg summary
-        package, package_module, package_function, retcount, ars = self._UNSTAKE_REQUEST
+        package, package_module, package_function, retcount, ars = (
+            await self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
+        )
         # Validate arguments
         parms = await self._argparse.async_build_argsbuild_args(
             [

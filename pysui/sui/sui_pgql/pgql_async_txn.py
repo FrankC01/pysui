@@ -8,33 +8,23 @@
 import base64
 import asyncio
 from typing import Any, Callable, Optional, Union
-from functools import cache
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
 
-# import pysui.sui.sui_pgql.pgql_txn_base._SuiTransactionBase as txbase
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-import pysui.sui.sui_pgql.pgql_txn_argb as argbase
-
-# Well known parameter constructs
+import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
+from pysui.sui.sui_common.async_lru import AsyncLRU
 
 
 class AsyncSuiTransaction(txbase):
     """."""
 
-    # Prebuild functions
-
-    _STAKE_REQUEST_TUPLE: tuple = None
-    _UNSTAKE_REQUEST_TUPLE: tuple = None
-    _SPLIT_AND_KEEP_TUPLE: tuple = None
-    # _SPLIT_AND_RETURN_TUPLE: tuple = None
-    _PUBLISH_AUTHORIZE_UPGRADE_TUPLE: tuple = None
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
 
@@ -54,17 +44,10 @@ class AsyncSuiTransaction(txbase):
         :type merge_gas_budget: bool, optional
         """
         super().__init__(**kwargs)
-        self._sclient = SuiGQLClient(pysui_config=self.client.config)
-        # Preload
-        self._STAKE_REQUEST_TUPLE = self._function_meta_args(self._STAKE_REQUEST_TARGET)
-        self._UNSTAKE_REQUEST_TUPLE = self._function_meta_args(
-            self._UNSTAKE_REQUEST_TARGET
-        )
-        self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
-        self._argparse = argbase.ResolvingArgParser(self.client)
+        self._argparse = argbase.AsyncResolvingArgParser(self.client)
 
-    @cache
-    def _function_meta_args(
+    @AsyncLRU(maxsize=256)
+    async def _function_meta_args(
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
         """_function_meta_args Returns the argument summary of a target sui move function
@@ -77,7 +60,8 @@ class AsyncSuiTransaction(txbase):
         package, package_module, package_function = (
             tv.TypeValidator.check_target_triplet(target)
         )
-        result = self._sclient.execute_query_node(
+
+        result = await self.client.execute_query_node(
             with_node=qn.GetFunction(
                 package=package,
                 module_name=package_module,
@@ -101,7 +85,7 @@ class AsyncSuiTransaction(txbase):
         """Returns the argument summary of a target sui move function."""
         return self._function_meta_args(target)
 
-    def _build_txn_data(
+    async def _build_txn_data(
         self,
         gas_budget: str = "",
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
@@ -110,9 +94,9 @@ class AsyncSuiTransaction(txbase):
         """Generate the TransactionData structure."""
         obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
-        gas_data: bcs.GasData = gd.get_gas_data(
+        gas_data: bcs.GasData = await gd.async_get_gas_data(
             signing=self.signer_block,
-            client=self._sclient,
+            client=self.client,
             budget=gas_budget if not gas_budget else int(gas_budget),
             use_coins=use_gas_objects,
             objects_in_use=obj_in_use,
@@ -156,7 +140,9 @@ class AsyncSuiTransaction(txbase):
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
-        return self._build_txn_data(gas_budget, use_gas_objects, txn_expires_after)
+        return await self._build_txn_data(
+            gas_budget, use_gas_objects, txn_expires_after
+        )
 
     async def build(
         self,
@@ -249,10 +235,7 @@ class AsyncSuiTransaction(txbase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
 
-        # parms = ab.build_args(self._sclient, [coin, amounts], txbase._SPLIT_COIN)
-        parms = await self._argparse.async_build_args(
-            [coin, amounts], txbase._SPLIT_COIN
-        )
+        parms = await self._argparse.build_args([coin, amounts], txbase._SPLIT_COIN)
         return self.builder.split_coin(parms[0], parms[1:][0])
 
     async def merge_coins(
@@ -270,10 +253,7 @@ class AsyncSuiTransaction(txbase):
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        # parms = ab.build_args(
-        #     self._sclient, [merge_to, merge_from], txbase._MERGE_COINS
-        # )
-        parms = await self._argparse.async_build_args(
+        parms = await self._argparse.build_args(
             [merge_to, merge_from], txbase._MERGE_COINS
         )
 
@@ -299,11 +279,10 @@ class AsyncSuiTransaction(txbase):
         :rtype: bcs.Argument
         """
         package, package_module, package_function, retcount, ars = (
-            self._SPLIT_AND_KEEP_TUPLE
+            await self._function_meta_args(self._SPLIT_AND_KEEP)
         )
 
-        # parms = ab.build_args(self._sclient, [coin, split_count], ars)
-        parms = await self._argparse.async_build_args([coin, split_count], ars)
+        parms = await self._argparse.build_args([coin, split_count], ars)
 
         type_arguments = [bcs.TypeTag.type_tag_from(coin_type)]
         return self.builder.move_call(
@@ -331,10 +310,7 @@ class AsyncSuiTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        # parms = ab.build_args(
-        #     self._sclient, [recipient, transfers], txbase._TRANSFER_OBJECTS
-        # )
-        parms = await self._argparse.async_build_args(
+        parms = await self._argparse.build_args(
             [recipient, transfers], txbase._TRANSFER_OBJECTS
         )
         return self.builder.transfer_objects(parms[0], parms[1:][0])
@@ -359,7 +335,7 @@ class AsyncSuiTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.async_build_args(
+        parms = await self._argparse.build_args(
             [recipient, from_coin, amount], txbase._TRANSFER_SUI
         )
         return self.builder.transfer_sui(*parms)
@@ -389,7 +365,7 @@ class AsyncSuiTransaction(txbase):
 
         return self.builder.move_call(
             target=package,
-            arguments=await self._argparse.async_build_args(
+            arguments=await self._argparse.build_args(
                 [object_to_send, recipient],
                 txbase._PUBLIC_TRANSFER_OBJECTS,
             ),
@@ -413,7 +389,7 @@ class AsyncSuiTransaction(txbase):
                 type_tag = bcs.OptionalTypeTag()
             return self.builder.make_move_vector(type_tag, items)
 
-        parms = await self._argparse.async_build_args([items], txbase._MAKE_MOVE_VEC)
+        parms = await self._argparse.build_args([items], txbase._MAKE_MOVE_VEC)
         if item_type:
             type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
         else:
@@ -446,8 +422,7 @@ class AsyncSuiTransaction(txbase):
             self._function_meta_args(target)
         )
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
-        parms = await self._argparse.async_build_args(arguments, ars)
-        # parms = ab.build_args(self._sclient, arguments, ars)
+        parms = await self._argparse.build_args(arguments, ars)
         return self.builder.move_call(
             target=package,
             arguments=parms,
@@ -507,18 +482,13 @@ class AsyncSuiTransaction(txbase):
         """
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
-            self._STAKE_REQUEST_TUPLE
+            await self._function_meta_args(self._STAKE_REQUEST_TARGET)
         )
         # Validate arguments
-        parms = await self._argparse.async_build_args(
+        parms = await self._argparse.build_args(
             [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
             ars,
         )
-        # parms = ab.build_args(
-        #     self._sclient,
-        #     [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
-        #     ars,
-        # )
         # Create a move vector of coins
         parms[1] = await self.make_move_vector(
             items=parms[1], item_type="0x2::coin::Coin<0x2::sui::SUI>"
@@ -545,19 +515,10 @@ class AsyncSuiTransaction(txbase):
         """
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
-            self._UNSTAKE_REQUEST_TUPLE
+            await self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
         )
         # Validate arguments
-        # parms = ab.build_args(
-        #     self._sclient,
-        #     [
-        #         self._SYSTEMSTATE_OBJECT.value,
-        #         staked_coin,
-        #     ],
-        #     ars,
-        # )
-        # Validate arguments
-        parms = await self._argparse.async_build_args(
+        parms = await self._argparse.build_args(
             [
                 self._SYSTEMSTATE_OBJECT.value,
                 staked_coin,
@@ -634,7 +595,7 @@ class AsyncSuiTransaction(txbase):
             and package_struct == "UpgradeCap"
         ):
             # Prep args
-            cap_obj_arg, policy_arg = await self._argparse.async_build_args(
+            cap_obj_arg, policy_arg = await self._argparse.build_args(
                 [upgrade_cap, upgrade_cap.content["policy"]],
                 txbase._PUBLISH_UPGRADE,
             )

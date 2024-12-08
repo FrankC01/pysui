@@ -44,6 +44,9 @@ class _SuiTransactionBase:
     _STD_FRAMEWORK: bcs.Address = bcs.Address.from_str("0x1")
     _PUBLIC_TRANSFER: str = "0x2::transfer::public_transfer"
     _PAY_GAS: int = 4000000
+    _BUILD_BYTE_STR: str = "tx_bytestr"
+    _SIG_ARRAY: str = "sig_array"
+
     _SPLIT_COIN = pgql_type.MoveArgSummary(
         [],
         [

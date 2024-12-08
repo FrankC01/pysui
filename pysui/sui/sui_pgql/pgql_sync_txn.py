@@ -11,7 +11,6 @@ from functools import cache
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
 
-# import pysui.sui.sui_pgql.pgql_txn_base._SuiTransactionBase as txbase
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
@@ -20,20 +19,9 @@ import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_argb as argbase
 
-# Well known parameter constructs
-
 
 class SuiTransaction(txbase):
     """."""
-
-    # Prebuild functions
-
-    _STAKE_REQUEST_TUPLE: tuple = None
-    _UNSTAKE_REQUEST_TUPLE: tuple = None
-    _SPLIT_AND_KEEP_TUPLE: tuple = None
-    _PUBLISH_AUTHORIZE_UPGRADE_TUPLE: tuple = None
-    _BUILD_BYTE_STR: str = "tx_bytestr"
-    _SIG_ARRAY: str = "sig_array"
 
     def __init__(
         self,
@@ -51,12 +39,6 @@ class SuiTransaction(txbase):
         :type merge_gas_budget: bool, optional
         """
         super().__init__(**kwargs)
-        # Preload
-        self._STAKE_REQUEST_TUPLE = self._function_meta_args(self._STAKE_REQUEST_TARGET)
-        self._UNSTAKE_REQUEST_TUPLE = self._function_meta_args(
-            self._UNSTAKE_REQUEST_TARGET
-        )
-        self._SPLIT_AND_KEEP_TUPLE = self._function_meta_args(self._SPLIT_AND_KEEP)
         self._argparse = argbase.ResolvingArgParser(self.client)
 
     @cache
@@ -288,7 +270,7 @@ class SuiTransaction(txbase):
         :rtype: bcs.Argument
         """
         package, package_module, package_function, retcount, ars = (
-            self._SPLIT_AND_KEEP_TUPLE
+            self._function_meta_args(self._SPLIT_AND_KEEP)
         )
 
         parms = self._argparse.build_args([coin, split_count], ars)
@@ -514,8 +496,9 @@ class SuiTransaction(txbase):
         """
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
-            self._STAKE_REQUEST_TUPLE
+            self._function_meta_args(self._STAKE_REQUEST_TARGET)
         )
+
         # Validate arguments
         parms = self._argparse.build_args(
             [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address], ars
@@ -551,8 +534,9 @@ class SuiTransaction(txbase):
         """
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
-            self._UNSTAKE_REQUEST_TUPLE
+            self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
         )
+
         # Validate arguments
         parms = self._argparse.build_args(
             [
