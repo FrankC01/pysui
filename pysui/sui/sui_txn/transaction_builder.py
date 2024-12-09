@@ -592,8 +592,12 @@ class ProgrammableTransactionBuilder:
                 )
             else:
                 coin_arg = from_coin
-        elif isinstance(from_coin, bcs.Argument):
+        else:
             coin_arg = from_coin
+        if isinstance(coin_arg, bcs.Argument):
+            pass
+        elif isinstance(coin_arg, bcs.ObjectArg):
+            coin_arg = self.input_obj_from_objarg(coin_arg)
         else:
             coin_arg = self.input_obj(*from_coin)
         return self.command(

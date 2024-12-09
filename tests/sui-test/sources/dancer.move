@@ -55,9 +55,9 @@ module pysuidance::dancer {
     }
 
     /// Override for transfer of tracker
-    public fun transfer(tracker: Tracker, recipient: address) {
-        transfer::transfer<Tracker>(tracker, recipient)
-    }
+    // public fun transfer(tracker: Tracker, recipient: address) {
+    //     transfer::transfer<Tracker>(tracker, recipient)
+    // }
 
     /// Get the accumulator length
     fun stored_count(self: &Tracker) : u64 {
