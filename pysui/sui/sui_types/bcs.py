@@ -536,6 +536,22 @@ class UnresolvedObjectArg(canoser.Struct):
             f"{ref.type_package}::{ref.type_module}::{ref.type_struct}",
         )
 
+    @classmethod
+    def from_optional_object_ref_type(
+        cls,
+        arg: str,
+        ref: pgql_type.MoveObjectRefArg,
+        type_str: str,
+    ) -> "UnresolvedObjectArg":
+        """."""
+        return cls(
+            arg,
+            ref.is_optional,
+            ref.is_receiving,
+            ref.type_params[0].ref_type,
+            type_str,
+        )
+
 
 class BuilderArg(canoser.RustEnum):
     """BuilderArg objects are generated in the TransactionBuilder."""

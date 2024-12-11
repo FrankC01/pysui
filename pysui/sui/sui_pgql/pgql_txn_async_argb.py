@@ -463,3 +463,14 @@ class UnResolvingArgParser(AsyncResolvingArgParser):
     ) -> bcs.ObjectArg:
         """Generates unresolve object references for caching."""
         return bcs.UnresolvedObjectArg.from_object_ref_type(arg, expected_type)
+
+    async def fetch_or_transpose_optional_object(
+        self,
+        arg: str,
+        expected_type: pgql_type.MoveObjectRefArg,
+        type_str: str,
+    ) -> bcs.ObjectArg:
+        """Generates unresolve object references for caching."""
+        return bcs.UnresolvedObjectArg.from_optional_object_ref_type(
+            arg, expected_type, type_str
+        )

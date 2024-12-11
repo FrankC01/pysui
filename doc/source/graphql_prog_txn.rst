@@ -122,15 +122,16 @@ Option (not exhaustive)
 +-----------------------------+----------------------------------+---------------------------+
 |     Sui Argument            |       Accepts                    |      Example              |
 +=============================+==================================+===========================+
-| Option<scalar>              | see above                        | see above or None         |
+| Option<scalar>              | see Scalars above                | see above or None         |
 +-----------------------------+----------------------------------+---------------------------+
-| vector<Option<scalar>>      | list[see above]                  | ['foo',None,'bar']        |
+| vector<Option<scalar>>      | list[see Scalars above]          | ['foo',None,'bar']        |
 +-----------------------------+----------------------------------+---------------------------+
 
 Objects
 +++++++
 
 Object vectors use `make_move_vec`
+Option objects use `optional_object`
 
 +-----------------------------+----------------------------------+---------------------------+
 |     Sui Argument            |       Accepts                    |      Example              |

@@ -420,7 +420,7 @@ class CachingTransaction(txbase):
             await self._function_meta_args(target)
         )
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
-        parms = await self._argparse.async_build_args(arguments, ars)
+        parms = await self._argparse.build_args(arguments, ars)
 
         return self.builder.move_call(
             target=package,
@@ -429,6 +429,50 @@ class CachingTransaction(txbase):
             module=package_module,
             function=package_function,
             res_count=retcount,
+        )
+
+    async def optional_object(
+        self,
+        *,
+        target: str,
+        optional_object: Union[str, bcs.Argument],
+        argument_index: int,
+        type_arguments: Optional[list] = None,
+    ) -> bcs.Argument:
+        """optional_object Creations and option::some wrapper around object.
+
+        :param optional_object: target object to make option from
+        :type optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument]
+        :param is_receiving: If not a shared object, indicates if it is a Receiving type
+        :type is_receiving: bool
+        :param is_shared_mutable: If object is shared, indicates if should be mutable
+        :type is_shared_mutable: bool
+        :param type_arguments: The type of object being wrapped, defaults to None
+        :type type_arguments: Optional[list], optional
+        :return: A non-empty object result Argument
+        :rtype: bcs.Argument
+        """
+        type_arguments = type_arguments if type_arguments else []
+        # Handle other than argument
+        if not isinstance(optional_object, bcs.Argument):
+            _, _, _, _, ars = await self._function_meta_args(target)
+            etype = ars.arg_list[argument_index]
+            parms = [
+                await self._argparse.fetch_or_transpose_optional_object(
+                    optional_object, etype, type_arguments[0] if type_arguments else ""
+                )
+            ]
+        else:
+            parms = [optional_object]
+        type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
+
+        return self.builder.move_call(
+            target=self._STD_FRAMEWORK,
+            arguments=parms,
+            type_arguments=type_arguments,
+            module="option",
+            function="some",
+            res_count=1,
         )
 
     async def stake_coin(
