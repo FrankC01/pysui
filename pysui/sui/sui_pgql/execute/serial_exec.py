@@ -6,8 +6,8 @@
 """Serial transaction execution."""
 
 import asyncio
-from functools import partialmethod
-from typing import Optional
+from functools import partialmethod, partial
+from typing import Any, Optional
 
 from pysui import AsyncGqlClient
 import pysui.sui.sui_types.bcs as bcs
@@ -72,12 +72,23 @@ class SerialTransactionExecutor:
             return_exceptions=True,
         )
 
-    async def _build_transaction(self, txn: CachingTransaction):
+    async def _build_transaction(self, txn: CachingTransaction) -> Any:
+        """Builds a TransactionData construct"""
         gcoin = await self._cache.cache.getCustom("gasCoin")
+        if gcoin:
+            txn.set_gas_payment(gcoin)
+        txn.set_gas_budget_if_notset(self._default_gas_budget)
+        return await self._cache.build_transaction(txn)
 
-    async def buildTransaction(self, txn: CachingTransaction):
-        """."""
-        return self._queue.run_task(partialmethod(self._build_transaction, txn))
+    async def build_transaction(self, txn: CachingTransaction) -> Any:
+        """Returns an awaitable coroutine that builds TransactionData.
+
+        :param txn: The transaction to build
+        :type txn: CachingTransaction
+        :return: Transaction builder coroutine
+        :rtype: asyncio.coroutine
+        """
+        return await self._queue.run_task(partial(self._build_transaction, txn))
 
     def reset_cache(self):
         """."""

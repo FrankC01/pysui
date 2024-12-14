@@ -7,7 +7,6 @@
 
 from abc import ABC, abstractmethod
 import asyncio
-import base64
 from typing import Any, Union
 from dataclasses import dataclass
 
@@ -20,7 +19,7 @@ class ObjectCacheEntry:
     objectId: str
     version: str
     digest: str
-    owner: Union[str, None]
+    owner: Union[str, None] = None
     initialSharedVersion: Union[str, None] = None
 
 

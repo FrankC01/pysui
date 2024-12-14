@@ -44,6 +44,16 @@ class CachingTransaction(txbase):
         super().__init__(**kwargs)
         self._argparse = argbase.UnResolvingArgParser(self.client)
         self.builder = CachingTransactionBuilder()
+        self._gas_payment: bcs.ObjectReference = None
+        self._gas_budget: int = 0
+
+    def set_gas_payment(self, payment: bcs.ObjectReference) -> None:
+        """Set the gas payment object."""
+        self._gas_payment = payment
+
+    def set_gas_budget_if_notset(self, budget: int) -> None:
+        """."""
+        self._gas_budget = budget if not self._gas_budget else self._gas_budget
 
     @AsyncLRU(maxsize=256)
     async def _function_meta_args(

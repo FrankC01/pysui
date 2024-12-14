@@ -49,6 +49,34 @@ class CachingTransactionBuilder:
         }
         logger.debug("TransactionBuilder initialized")
 
+    def get_unresolved_inputs(
+        self,
+    ) -> dict[str, bcs.UnresolvedObjectArg]:
+        """Retrieve unresolved objects in input list.
+
+        :return: A dict of input index (key) and UnresolveObjectArg spec
+        :rtype: dict[int, bcs.UnresolvedObjectArg]
+        """
+        # Use for loop as faster for small dictionaries
+        res: dict[str, bcs.UnresolvedObjectArg] = {}
+        for idx, (barg, carg) in enumerate(self.inputs.items()):
+            if barg.enum_name is "Unresolved":
+                res[idx] = carg.value
+        return res
+
+    def resolved_object_inputs(
+        self, entries: dict[int, tuple[bcs.BuilderArg, bcs.CallArg]]
+    ):
+        """."""
+        new_inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
+        for idx, (barg, carg) in enumerate(self.inputs.items()):
+            if barg.enum_name is "Unresolved":
+                rbarg, rcarg = entries[idx]
+                new_inputs[rbarg] = rcarg
+            else:
+                new_inputs[barg] = carg
+        self.inputs = new_inputs
+
     def _finish(self) -> bcs.ProgrammableTransaction:
         """finish returns ProgrammableTransaction structure.
 
@@ -122,7 +150,9 @@ class CachingTransactionBuilder:
         elif key.enum_name == "Unresolved" and isinstance(
             object_arg, bcs.UnresolvedObjectArg
         ):
-            self.inputs[key] = bcs.CallArg("UnresolvedObject", object_arg)
+            carg = bcs.CallArg("UnresolvedObject", object_arg)
+            # self.inputs.update({key: object_arg})
+            self.inputs[key] = carg
             self.objects_registry[key.value] = object_arg
         else:
             raise ValueError(
@@ -223,6 +253,8 @@ class CachingTransactionBuilder:
                 argrefs.append(self.input_pure(arg))
             elif isinstance(arg, bcs.UnresolvedObjectArg):
                 argrefs.append(self.input_obj_from_unresolved_object(arg))
+            elif isinstance(arg, bcs.UnresolvedOptional):
+                pass
             elif isinstance(arg, bcs.Optional):
                 argrefs.append(self.input_pure(PureInput.as_input(arg)))
             elif isinstance(arg, tuple):
