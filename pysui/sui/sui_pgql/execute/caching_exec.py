@@ -6,7 +6,9 @@
 """Caching transaction execution."""
 
 import asyncio
+from typing import Any, Coroutine
 from pysui import AsyncGqlClient
+from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_types.bcs as bcs
 import pysui.sui.sui_types.bcs_txne as txeff
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -27,8 +29,8 @@ class AsyncCachingTransactionExecutor:
     async def reset(self):
         """Reset the cache."""
         return await asyncio.gather(
-            self._cache.clearOwnedObjects(),
-            self._cache.clearCustom(),
+            self.cache.clearOwnedObjects(),
+            self.cache.clearCustom(),
             self.wait_for_last_transaction(),
         )
 
@@ -62,12 +64,87 @@ class AsyncCachingTransactionExecutor:
 
         return resobjs
 
-    async def build_transaction(self, txn: CachingTransaction):
-        """."""
+    async def _get_sui_gas(
+        self,
+        gas_owner: str,
+    ) -> Coroutine[Any, Any, list[ptypes.SuiCoinObjectGQL]]:
+        """Fetch senders Sui coins
+
+        :raises ValueError: If fetch error
+        :return: list of ptypes.ObjectReadGQL
+        :rtype: Coroutine[Any, Any, bcs.ObjectReference]
+        """
+
+        all_coins: list[ptypes.SuiCoinObjectGQL] = []
+
+        result = await self._client.execute_query_node(
+            with_node=qn.GetCoins(owner=gas_owner)
+        )
+        while result.is_ok():
+            all_coins.extend(result.result_data.data)
+            if result.result_data.next_cursor.hasNextPage:
+                result = await self._client.execute_query_node(
+                    with_node=qn.GetCoins(
+                        owner=gas_owner,
+                        next_page=result.result_data.next_cursor,
+                    )
+                )
+            else:
+                break
+        return all_coins
+
+    async def _smash_gas(
+        self, txn: CachingTransaction
+    ) -> Coroutine[Any, Any, ptypes.SuiCoinObjectGQL]:
+        """Smashes all available sui for signer."""
+        # Get object references
+        in_use: list[str] = list(txn.builder.objects_registry.keys())
+        # Get all gas
+        coin_list: list[ptypes.SuiCoinObjectGQL] = await self._get_sui_gas(
+            txn.signer_block.payer_address
+        )
+        if not coin_list:
+            raise TypeError(f"Signer {txn.signer_block.payer_address} has no gas coins")
+        # Eliminate in use
+        coin_list[:] = [coin for coin in coin_list if coin.coin_object_id not in in_use]
+        # available_list: list[ptypes.SuiCoinObjectGQL] = []
+        # for coin in coin_list:
+        #     if coin.coin_object_id not in in_use:
+        #         available_list.append(coin)
+
+        # If noting available, throw exception
+        if not coin_list:
+            raise TypeError(
+                f"Signer {txn.signer_block.payer_address} has no available gas coins"
+            )
+        # If one return it
+        if len(coin_list) == 1:
+            return coin_list[0]
+        # Otherwise smash and return it
+        tx = AsyncSuiTransaction(client=self._client)
+        use_as_gas = coin_list.pop(0)
+        await tx.merge_coins(merge_to=tx.gas, merge_from=coin_list)
+        res = await self._client.execute_query_node(
+            with_node=qn.ExecuteTransaction(
+                **await tx.build_and_sign(use_gas_objects=[use_as_gas])
+            )
+        )
+        if res.is_err():
+            raise ValueError(f"Failed smashing coins with {res.result_string}")
+        return use_as_gas
+
+    async def _resolve_object_inputs(self, txn: CachingTransaction):
+        """Resolves unresolved object references in builder
+
+        :param txn: The transaction
+        :type txn: CachingTransaction
+        """
+        # print("Resolving objects")
         # Get builder unresolved as index, Unresolved map
         unresolved_objects: dict[int, bcs.UnresolvedObjectArg] = (
             txn.builder.get_unresolved_inputs()
         )
+
         # Bang up against cache by id
         fetch_ids: dict[int, str] = {}
         by_id: dict[str, ObjectCacheEntry] = {}
@@ -140,6 +217,26 @@ class AsyncCachingTransactionExecutor:
 
         # Hydrate the transaction
         txn.builder.resolved_object_inputs(resolved_builder_inputs)
+
+    async def build_transaction(
+        self, txn: CachingTransaction
+    ) -> Coroutine[Any, Any, str]:
+        """."""
+        await self._resolve_object_inputs(txn)
+        # Smash gas coins if no payment set
+        if not txn.get_gas_payment():
+            gas_list: ptypes.SuiCoinObjectGQL = await self._smash_gas(txn)
+            txn.set_gas_payment(
+                bcs.ObjectReference(
+                    bcs.Address.from_str(gas_list.coin_object_id),
+                    gas_list.version,
+                    bcs.Digest.from_str(gas_list.object_digest),
+                )
+            )
+        # Build TransactionData and return serialized bytes
+        return await txn.build(
+            gas_budget=txn._gas_budget, use_gas_object=txn.get_gas_payment()
+        )
 
     async def execute_transaction(self, txn: CachingTransaction):
         """."""

@@ -9,7 +9,7 @@
 import base64
 import os
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 import logging
 
 
@@ -165,17 +165,22 @@ class _SuiTransactionBase:
         self,
         *,
         client: BaseSuiGQLClient,
-        compress_inputs: bool = True,
-        initial_sender: Union[SuiAddress, SigningMultiSig] = None,
-        merge_gas_budget: bool = False,
+        compress_inputs: Optional[bool] = True,
+        initial_sender: Union[str, SigningMultiSig] = None,
+        initial_sponsor: Union[str, SigningMultiSig] = None,
+        builder: Optional[Any] = None,
+        arg_parser: Optional[Any] = None,
+        merge_gas_budget: Optional[bool] = False,
     ) -> None:
         """."""
-        self.builder = tx_builder.ProgrammableTransactionBuilder(
+        self.builder = builder or tx_builder.ProgrammableTransactionBuilder(
             compress_inputs=compress_inputs
         )
+        self._argparse = arg_parser
         self.client = client
         self._sig_block = SignerBlock(
-            sender=initial_sender or client.config.active_address
+            sender=initial_sender or client.config.active_address,
+            sponsor=initial_sponsor,
         )
         self._merge_gas = merge_gas_budget
         self._executed = False
@@ -319,12 +324,6 @@ class _SuiTransactionBase:
         err_dict: dict = {x: y for (x, y) in var_map.items() if y != 0}
         err_dict.pop("feature_dict")
         return self.constraints, err_dict if err_dict else None
-
-    def _to_bytes_from_str(self, inbound: Union[str, SuiString]) -> list[int]:
-        """Utility to convert base64 string to bytes then as list of u8."""
-        return list(
-            base64.b64decode(inbound if isinstance(inbound, str) else inbound.value)
-        )
 
     def _compile_source(
         self,

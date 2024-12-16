@@ -6,9 +6,10 @@
 """Pysui Transaction builder that leverages Sui GraphQL."""
 
 import base64
-from typing import Any, Optional, Union
+from typing import Any, Coroutine, Optional, Union
 from deprecated.sphinx import versionchanged
-from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
+from pysui.sui.sui_pgql.pgql_txb_signing import SigningMultiSig
 from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
 
 from pysui.sui.sui_types import bcs
@@ -28,28 +29,38 @@ class CachingTransaction(txbase):
 
     def __init__(
         self,
-        **kwargs,
+        *,
+        client: AsyncSuiGQLClient,
+        sender: Union[str, SigningMultiSig],
+        sponsor: Optional[Union[str, SigningMultiSig]] = None,
     ) -> None:
-        """__init__ Initialize the asynchronous SuiTransaction varient.
+        """Construct the CachingTransaction
 
-        :param client: The asynchronous SuiGQLClient
+        :param client: GraphQL Asynchronous client
         :type client: AsyncSuiGQLClient
-        :param initial_sender: The address of the sender of the transaction, defaults to None
-        :type initial_sender: Union[str, SigningMultiSig], optional
-        :param compress_inputs: Reuse identical inputs, defaults to False
-        :type compress_inputs: bool,optional
-        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
-        :type merge_gas_budget: bool, optional
+        :param sender: The sending address or MultSig for signing
+        :type sender: Union[str, SigningMultiSig]
+        :param sponsor: An optional sponsor address or MultiSig, defaults to None
+        :type sponsor: Optional[Union[str, SigningMultiSig]], optional
         """
-        super().__init__(**kwargs)
-        self._argparse = argbase.UnResolvingArgParser(self.client)
-        self.builder = CachingTransactionBuilder()
+        super().__init__(
+            client=client,
+            compress_inputs=False,
+            initial_sender=sender,
+            initial_sponsor=sponsor,
+            builder=CachingTransactionBuilder(compress_inputs=True),
+            arg_parser=argbase.UnResolvingArgParser(client),
+        )
         self._gas_payment: bcs.ObjectReference = None
         self._gas_budget: int = 0
 
     def set_gas_payment(self, payment: bcs.ObjectReference) -> None:
         """Set the gas payment object."""
         self._gas_payment = payment
+
+    def get_gas_payment(self) -> Union[bcs.ObjectReference, None]:
+        """Fetch the gas payment object."""
+        return self._gas_payment
 
     def set_gas_budget_if_notset(self, budget: int) -> None:
         """."""
@@ -96,21 +107,19 @@ class CachingTransaction(txbase):
 
     def _build_txn_data(
         self,
-        gas_budget: str = "",
-        use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+        gas_budget: int,
+        use_gas_object: bcs.ObjectReference,
         txn_expires_after: Optional[int] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
         """Generate the TransactionData structure."""
-        obj_in_use: set[str] = set(self.builder.objects_registry.keys())
+
+        # obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
-        gas_data: bcs.GasData = gd.get_gas_data(
-            signing=self.signer_block,
-            client=self._sclient,
-            budget=gas_budget if not gas_budget else int(gas_budget),
-            use_coins=use_gas_objects,
-            objects_in_use=obj_in_use,
-            active_gas_price=self.gas_price,
-            tx_kind=tx_kind,
+        gas_data: bcs.GasData = bcs.GasData(
+            [use_gas_object],
+            bcs.Address.from_str(self._sig_block.payer_address),
+            self.gas_price,
+            gas_budget,
         )
         return bcs.TransactionData(
             "V1",
@@ -129,49 +138,44 @@ class CachingTransaction(txbase):
     async def transaction_data(
         self,
         *,
-        gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+        gas_budget: int,
+        use_gas_object: bcs.ObjectReference,
         txn_expires_after: Optional[int] = None,
-    ) -> bcs.TransactionData:
+    ) -> Coroutine[Any, Any, bcs.TransactionData]:
         """transaction_data Construct a BCS TransactionData object.
 
-        If gas_budget not provided, pysui will call DryRunTransactionBlock to calculate.
-
-        If use_gas_objects not used, pysui will determine which gas objects to use to
-        pay for the transaction.
-
-        :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
-        :type gas_budget: Optional[str], optional
-        :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
-        :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
-        :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
+        :param gas_budget: Specify the amount of gas for the transaction budget
+        :type gas_budget: int
+        :param use_gas_object: Specify gas ObjectReference
+        :type use_gas_object: bcs.ObjectReference
+        :param txn_expires_after: Specify the transaction expiration epoch number, defaults to None
         :type txn_expires_after: Optional[int],optional
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
-        return self._build_txn_data(gas_budget, use_gas_objects, txn_expires_after)
+        return self._build_txn_data(gas_budget, use_gas_object, txn_expires_after)
 
     async def build(
         self,
         *,
-        gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+        gas_budget: int,
+        use_gas_object: bcs.ObjectReference,
         txn_expires_after: Optional[int] = None,
-    ) -> str:
+    ) -> Coroutine[Any, Any, str]:
         """build After creating the BCS TransactionData, serialize to base64 string and return.
 
-        :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
-        :type gas_budget: Optional[str], optional
-        :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
-        :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
-        :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
+        :param gas_budget: Specify the amount of gas for the transaction budget
+        :type gas_budget: int
+        :param use_gas_object: Specify gas ObjectReference
+        :type use_gas_object: bcs.ObjectReference
+        :param txn_expires_after: Specify the transaction expiration epoch number, defaults to None
         :type txn_expires_after: Optional[int],optional
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
         txn_data = await self.transaction_data(
             gas_budget=gas_budget,
-            use_gas_objects=use_gas_objects,
+            use_gas_object=use_gas_object,
             txn_expires_after=txn_expires_after,
         )
         return base64.b64encode(txn_data.serialize()).decode()

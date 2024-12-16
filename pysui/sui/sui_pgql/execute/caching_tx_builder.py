@@ -37,6 +37,7 @@ class CachingTransactionBuilder:
         self.commands: list[bcs.Command] = []
         self.objects_registry: dict[str, str] = {}
         self.compress_inputs: bool = compress_inputs
+        self.compress_pure_inputs = True
 
         self.command_frequency = {
             "MoveCall": 0,
@@ -60,7 +61,7 @@ class CachingTransactionBuilder:
         # Use for loop as faster for small dictionaries
         res: dict[str, bcs.UnresolvedObjectArg] = {}
         for idx, (barg, carg) in enumerate(self.inputs.items()):
-            if barg.enum_name is "Unresolved":
+            if barg.enum_name == "Unresolved":
                 res[idx] = carg.value
         return res
 
@@ -110,7 +111,7 @@ class CachingTransactionBuilder:
         logger.debug("Adding pure input")
         out_index = len(self.inputs)
         if key.enum_name == "Pure":
-            if self.compress_inputs:
+            if self.compress_pure_inputs:
                 e_index = 0
                 for _ekey, evalue in self.inputs.items():
                     if key.value == evalue.value:
@@ -121,7 +122,7 @@ class CachingTransactionBuilder:
                     e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
         else:
-            raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
+            raise ValueError(f"Expected Pure builder argument, found {key.enum_name}")
         logger.debug(f"New pure input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
