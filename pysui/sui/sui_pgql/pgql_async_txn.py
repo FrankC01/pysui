@@ -436,21 +436,25 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
-        is_receiving: bool,
-        is_shared_mutable: bool,
+        is_receiving: Optional[bool] = False,
+        is_shared_mutable: Optional[bool] = False,
         type_arguments: Optional[list] = None,
     ) -> bcs.Argument:
         """."""
         type_arguments = type_arguments if type_arguments else []
+        function = "some"
         # Handle other than argument
-        if not isinstance(optional_object, bcs.Argument):
+        if isinstance(optional_object, bcs.Argument):
+            parms = [optional_object]
+        elif isinstance(optional_object, (str, pgql_type.ObjectReadGQL)):
             parms = [
                 await self._argparse.async_fetch_or_transpose_object(
                     optional_object, is_receiving, is_shared_mutable
                 )
             ]
-        else:
-            parms = [optional_object]
+        elif not optional_object:
+            function = "none"
+            parms = []
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
 
         return self.builder.move_call(
@@ -458,7 +462,7 @@ class AsyncSuiTransaction(txbase):
             arguments=parms,
             type_arguments=type_arguments,
             module="option",
-            function="some",
+            function=function,
             res_count=1,
         )
 

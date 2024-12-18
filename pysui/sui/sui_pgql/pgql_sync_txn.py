@@ -437,15 +437,15 @@ class SuiTransaction(txbase):
     def optional_object(
         self,
         *,
-        optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
-        is_receiving: bool,
-        is_shared_mutable: bool,
+        optional_object: Union[None, str, pgql_type.ObjectReadGQL, bcs.Argument],
+        is_receiving: Optional[bool] = False,
+        is_shared_mutable: Optional[bool] = False,
         type_arguments: Optional[list] = None,
     ) -> bcs.Argument:
         """optional_object Creations and option::some wrapper around object.
 
         :param optional_object: target object to make option from
-        :type optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument]
+        :type optional_object: Union[None,str, pgql_type.ObjectReadGQL, bcs.Argument]
         :param is_receiving: If not a shared object, indicates if it is a Receiving type
         :type is_receiving: bool
         :param is_shared_mutable: If object is shared, indicates if should be mutable
@@ -456,15 +456,19 @@ class SuiTransaction(txbase):
         :rtype: bcs.Argument
         """
         type_arguments = type_arguments if type_arguments else []
+        function = "some"
         # Handle other than argument
-        if not isinstance(optional_object, bcs.Argument):
+        if isinstance(optional_object, bcs.Argument):
+            parms = [optional_object]
+        elif isinstance(optional_object, (str, pgql_type.ObjectReadGQL)):
             parms = [
                 self._argparse.fetch_or_transpose_object(
                     optional_object, is_receiving, is_shared_mutable
                 )
             ]
-        else:
-            parms = [optional_object]
+        elif not optional_object:
+            function = "none"
+            parms = []
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
 
         return self.builder.move_call(
@@ -472,7 +476,7 @@ class SuiTransaction(txbase):
             arguments=parms,
             type_arguments=type_arguments,
             module="option",
-            function="some",
+            function=function,
             res_count=1,
         )
 

@@ -189,8 +189,8 @@ class AsyncObjectCache(AsyncInMemoryCache):
 
         super().__init__()
 
-    async def clear(self):
-        self._clear()
+    async def clear(self, cache_type: Union[str, None]):
+        await self._clear(cache_type)
 
     async def getMoveFunctionDefinition(
         self, package: str, module: str, function: str

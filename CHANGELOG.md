@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [change](https://github.com/FrankC01/pysui/issues/246) `optional_object` handles 'None'
+
 ### Removed
 
 ## [0.73.0] - 2024-12-09

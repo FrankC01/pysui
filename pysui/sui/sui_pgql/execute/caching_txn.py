@@ -245,9 +245,7 @@ class CachingTransaction(txbase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
 
-        parms = await self._argparse.async_build_args(
-            [coin, amounts], txbase._SPLIT_COIN
-        )
+        parms = await self._argparse.build_args([coin, amounts], txbase._SPLIT_COIN)
         return self.builder.split_coin(parms[0], parms[1:][0])
 
     async def merge_coins(
@@ -322,7 +320,7 @@ class CachingTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.async_build_args(
+        parms = await self._argparse.build_args(
             [recipient, transfers], txbase._TRANSFER_OBJECTS
         )
         return self.builder.transfer_objects(parms[0], parms[1:][0])
@@ -347,7 +345,7 @@ class CachingTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.async_build_args(
+        parms = await self._argparse.build_args(
             [recipient, from_coin, amount], txbase._TRANSFER_SUI
         )
         return self.builder.transfer_sui(*parms)
@@ -377,7 +375,7 @@ class CachingTransaction(txbase):
 
         return self.builder.move_call(
             target=package,
-            arguments=await self._argparse.async_build_args(
+            arguments=await self._argparse.build_args(
                 [object_to_send, recipient],
                 txbase._PUBLIC_TRANSFER_OBJECTS,
             ),
@@ -401,7 +399,7 @@ class CachingTransaction(txbase):
                 type_tag = bcs.OptionalTypeTag()
             return self.builder.make_move_vector(type_tag, items)
 
-        parms = await self._argparse.async_build_args([items], txbase._MAKE_MOVE_VEC)
+        parms = await self._argparse.build_args([items], txbase._MAKE_MOVE_VEC)
         if item_type:
             type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
         else:
@@ -455,20 +453,23 @@ class CachingTransaction(txbase):
     ) -> bcs.Argument:
         """optional_object Creations and option::some wrapper around object.
 
-        :param optional_object: target object to make option from
-        :type optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument]
-        :param is_receiving: If not a shared object, indicates if it is a Receiving type
-        :type is_receiving: bool
-        :param is_shared_mutable: If object is shared, indicates if should be mutable
-        :type is_shared_mutable: bool
+        ;param target: The target triplet for which the optional object is being sent to
+        :type target:str
+        :param optional_object: target object to make option (some | none) from
+        :type optional_object: Union[str, bcs.Argument]
+        :param argument_index: The index (zero based) of the argument in the target signature
+        :type argument_index: int
         :param type_arguments: The type of object being wrapped, defaults to None
         :type type_arguments: Optional[list], optional
         :return: A non-empty object result Argument
         :rtype: bcs.Argument
         """
+        function: str = "some"
         type_arguments = type_arguments if type_arguments else []
+        if isinstance(optional_object, bcs.Argument):
+            parms = [optional_object]
         # Handle other than argument
-        if not isinstance(optional_object, bcs.Argument):
+        elif isinstance(optional_object, str):
             _, _, _, _, ars = await self._function_meta_args(target)
             etype = ars.arg_list[argument_index]
             parms = [
@@ -476,8 +477,10 @@ class CachingTransaction(txbase):
                     optional_object, etype, type_arguments[0] if type_arguments else ""
                 )
             ]
-        else:
-            parms = [optional_object]
+        elif not optional_object:
+            function = "none"
+            parms = []
+
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
 
         return self.builder.move_call(
@@ -485,7 +488,7 @@ class CachingTransaction(txbase):
             arguments=parms,
             type_arguments=type_arguments,
             module="option",
-            function="some",
+            function=function,
             res_count=1,
         )
 
@@ -512,7 +515,7 @@ class CachingTransaction(txbase):
             await self._function_meta_args(self._STAKE_REQUEST_TARGET)
         )
         # Validate arguments
-        parms = await self._argparse.async_build_args(
+        parms = await self._argparse.build_args(
             [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
             ars,
         )
@@ -545,7 +548,7 @@ class CachingTransaction(txbase):
             await self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
         )
         # Validate arguments
-        parms = await self._argparse.async_build_argsbuild_args(
+        parms = await self._argparse.build_argsbuild_args(
             [
                 self._SYSTEMSTATE_OBJECT.value,
                 staked_coin,

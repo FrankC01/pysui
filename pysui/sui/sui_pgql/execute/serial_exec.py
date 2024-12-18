@@ -6,11 +6,13 @@
 """Serial transaction execution."""
 
 import asyncio
+import base64
 from functools import partialmethod, partial
 from typing import Any, Coroutine, Optional, Union
 
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_txb_signing import SigningMultiSig
+import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_types.bcs as bcs
 import pysui.sui.sui_types.bcs_txne as bcst
 from .caching_exec import AsyncCachingTransactionExecutor
@@ -41,7 +43,7 @@ class SerialTransactionExecutor:
     def __init__(
         self,
         client: AsyncGqlClient,
-        sender: Union[str, SigningMultiSig],
+        signer: Union[str, SigningMultiSig],
         default_gas_budget: Optional[int] = 50_000_000,
     ):
         """SerialTransactionExecutor Creates a new executor.
@@ -56,14 +58,14 @@ class SerialTransactionExecutor:
             client
         )
         self._client = client
-        self._sender = sender
+        self._signer = signer
         self._default_gas_budget: int = default_gas_budget
 
     async def new_transaction(
         self,
     ) -> Coroutine[Any, Any, CachingTransaction]:
         """."""
-        return CachingTransaction(client=self._client, sender=self._sender)
+        return CachingTransaction(client=self._client, sender=self._signer)
 
     async def _cache_gas_coin(
         self, effects: bcst.TransactionEffects
@@ -77,25 +79,17 @@ class SerialTransactionExecutor:
         else:
             await self._cache.cache.deleteCustom("gasCoin")
 
-    async def apply_effects(self, effects: bcst.TransactionEffects):
-        """Apply transaction effects."""
-        return await asyncio.gather(
-            self._cache_gas_coin(effects),
-            self._cache.apply_effects(effects),
-            return_exceptions=True,
-        )
-
     async def _build_transaction(
-        self, txn: CachingTransaction
+        self, transaction: CachingTransaction
     ) -> Coroutine[Any, Any, str]:
         """Builds a TransactionData construct"""
         gcoin: bcs.ObjectReference = await self._cache.cache.getCustom("gasCoin")
         if gcoin:
-            txn.set_gas_payment(gcoin)
-        txn.set_gas_budget_if_notset(self._default_gas_budget)
-        return await self._cache.build_transaction(txn)
+            transaction.set_gas_payment(gcoin)
+        transaction.set_gas_budget_if_notset(self._default_gas_budget)
+        return await self._cache.build_transaction(transaction)
 
-    async def build_transaction(self, txn: CachingTransaction) -> str:
+    async def build_transaction(self, transaction: CachingTransaction) -> str:
         """Builds the TransactionKind bytes ready for signing and execution.
 
         :param txn: The transaction to build
@@ -103,14 +97,68 @@ class SerialTransactionExecutor:
         :return: The build TransactionData base64 str
         :rtype: str
         """
-        return await (await self._queue.run_task(partial(self._build_transaction, txn)))
+        return await (
+            await self._queue.run_task(partial(self._build_transaction, transaction))
+        )
 
-    def reset_cache(self) -> None:
+    async def execute_transaction(
+        self,
+        transaction: Union[str, CachingTransaction],
+        **kwargs,
+    ) -> ptypes.ExecutionResultGQL:
         """."""
-        return self._cache.reset()
 
-    async def wait_for_txn(self):
-        """."""
+        async def task():
+            # Ensure tx is built
+            txn_str = (
+                transaction
+                if isinstance(transaction, str)
+                else await self.build_transaction(transaction)
+            )
+            # Sign the transaction
+            sig_list: list[str] = []
+            if isinstance(self._signer, str):
+                sig_list.append(
+                    self._client.config.active_group.keypair_for_address(
+                        address=self._signer
+                    ).new_sign_secure(txn_str)
+                )
+            else:
+                if self._signer._can_sign_msg:
+                    sig_list.append(
+                        self._signer.multi_sig.sign(txn_str, self.signer.pub_keys)
+                    )
+                else:
+                    raise ValueError("BaseMultiSig can not sign for execution")
+            try:
+                # TODO: Clean up using legacy pysui Signature type
+                results: ptypes.ExecutionResultGQL = (
+                    await self._cache.execute_transaction(
+                        txn_str, [x.value for x in sig_list], **kwargs
+                    )
+                )
+                await self.apply_effects(results.bcs)
+                return results
 
-    async def execute_txn(self, transaction: Union[str, CachingTransaction]):
+            except ValueError as exc:
+                await self.reset_cache()
+                raise exc
+
+        return await (await self._queue.run_task(task))
+
+    async def apply_effects(self, effects_str: str):
+        """Apply transaction effects."""
+        tx_effects = bcst.TransactionEffects.deserialize(base64.b64decode(effects_str))
+        return await asyncio.gather(
+            self._cache_gas_coin(tx_effects),
+            self._cache.apply_effects(tx_effects),
+            return_exceptions=True,
+        )
+
+    async def reset_cache(self) -> None:
         """."""
+        return await self._cache.reset()
+
+    async def wait_for_last_transaction(self):
+        """."""
+        return await self._cache.wait_for_last_transaction()

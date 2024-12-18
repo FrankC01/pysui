@@ -10,7 +10,7 @@ from typing import Any, Coroutine
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_types.bcs as bcs
-import pysui.sui.sui_types.bcs_txne as txeff
+import pysui.sui.sui_types.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 from .cache import AsyncObjectCache, ObjectCacheEntry
@@ -238,16 +238,35 @@ class AsyncCachingTransactionExecutor:
             gas_budget=txn._gas_budget, use_gas_object=txn.get_gas_payment()
         )
 
-    async def execute_transaction(self, txn: CachingTransaction):
+    async def execute_transaction(
+        self,
+        txn_str: str,
+        txn_sigs: list[str],
+        **kwargs,
+    ) -> ptypes.ExecutionResultGQL:
         """."""
+        result = await self._client.execute_query_node(
+            with_node=qn.ExecuteTransaction(
+                tx_bytestr=txn_str,
+                sig_array=txn_sigs,
+            )
+        )
 
-    async def sign_and_execute_transaction(self, txn: CachingTransaction):
-        """."""
+        if result.is_ok():
+            return result.result_data
+        else:
+            raise ValueError(f"{result.result_string}")
 
-    async def apply_effects(self, effects: txeff.TransactionEffects):
+    # async def sign_and_execute_transaction(self, txn: CachingTransaction):
+    #     """."""
+
+    async def apply_effects(self, effects: bcst.TransactionEffects):
         """."""
         self._lastdigest = effects.value.transactionDigest.to_digest_str()
         await self.cache.applyEffects(effects)
 
-    async def wait_for_last_transaction(self):
+    async def wait_for_last_transaction(self) -> Any:
         """."""
+        if self._lastdigest:
+            _xres = await self._client.wait_for_transaction(self._lastdigest)
+            self._lastdigest = None
