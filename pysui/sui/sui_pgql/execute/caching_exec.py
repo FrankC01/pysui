@@ -18,8 +18,9 @@ import pysui.sui.sui_pgql.pgql_types as ptypes
 from .cache import AsyncObjectCache, ObjectCacheEntry
 from .caching_txn import CachingTransaction
 
-logger = logging.getLogger("async_executor")
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger("serial_exec")
+# logger = logging.getLogger("async_executor")
+# logger.setLevel(logging.DEBUG)
 
 
 class AsyncCachingTransactionExecutor:

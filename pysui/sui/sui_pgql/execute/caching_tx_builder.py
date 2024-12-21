@@ -21,10 +21,7 @@ _SUI_PACAKGE_AUTHORIZE_UPGRADE: str = "authorize_upgrade"
 _SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 
 # Standard library logging setup
-logger = logging.getLogger()
-# if not logging.getLogger().handlers:
-#     logger.addHandler(logging.NullHandler())
-#     logger.propagate = True
+logger = logging.getLogger("serial_exec")
 
 
 @versionadded(version="0.73.0", reason="Support serialzed and parallel executions")
@@ -71,7 +68,7 @@ class CachingTransactionBuilder:
         """."""
         new_inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
         for idx, (barg, carg) in enumerate(self.inputs.items()):
-            if barg.enum_name is "Unresolved":
+            if barg.enum_name == "Unresolved":
                 rbarg, rcarg = entries[idx]
                 new_inputs[rbarg] = rcarg
             else:
@@ -208,7 +205,7 @@ class CachingTransactionBuilder:
     ) -> bcs.Argument:
         """Create a call to convert a list of items to a Sui 'vector' type."""
         # Sample first for type
-        logger.debug("Creating MakeMoveVec transaction")
+        logger.debug("MakeMoveVec transaction")
         argrefs: list[bcs.Argument] = []
         for arg in items:
             if isinstance(arg, bcs.BuilderArg):
@@ -247,7 +244,7 @@ class CachingTransactionBuilder:
         res_count: int = 1,
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """Setup a MoveCall command and return it's result Argument."""
-        logger.debug("Creating MakeCall transaction")
+        logger.debug("MoveCall transaction")
         argrefs: list[bcs.Argument] = []
         for arg in arguments:
             if isinstance(arg, bcs.BuilderArg):
@@ -293,7 +290,7 @@ class CachingTransactionBuilder:
         amounts: list[bcs.BuilderArg],
     ) -> bcs.Argument:
         """Setup a SplitCoin command and return it's result Argument."""
-        logger.debug("Creating SplitCoin transaction")
+        logger.debug("SplitCoin transaction")
         amounts_arg = []
         for amount in amounts:
             if isinstance(amount, bcs.Argument):
@@ -333,7 +330,7 @@ class CachingTransactionBuilder:
         ],
     ) -> bcs.Argument:
         """Setup a MergeCoins command and return it's result Argument."""
-        logger.debug("Creating MergeCoins transaction")
+        logger.debug("MergeCoins transaction")
 
         if isinstance(to_coin, bcs.UnresolvedObjectArg):
             to_coin = self.input_obj_from_unresolved_object(to_coin)
@@ -377,7 +374,7 @@ class CachingTransactionBuilder:
         ],
     ) -> bcs.Argument:
         """Setup a TransferObjects command and return it's result Argument."""
-        logger.info("Creating TransferObjects transaction")
+        logger.info("TransferObjects transaction")
         receiver_arg = (
             recipient
             if isinstance(recipient, bcs.Argument)
@@ -416,7 +413,7 @@ class CachingTransactionBuilder:
 
         First uses the SplitCoins result, then returns the TransferObjects result Argument.
         """
-        logger.debug("Creating TransferSui transaction")
+        logger.debug("TransferSui transaction")
         reciever_arg = self.input_pure(recipient)
         if amount and isinstance(amount, bcs.BuilderArg):
             coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
@@ -448,7 +445,7 @@ class CachingTransactionBuilder:
         self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address]
     ) -> bcs.Argument:
         """Setup a Publish command and return it's result Argument."""
-        logger.debug("Creating Publish transaction")
+        logger.debug("Publish transaction")
         # result = self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
         return self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
 
@@ -459,7 +456,7 @@ class CachingTransactionBuilder:
         digest: bcs.BuilderArg,
     ) -> bcs.Argument:
         """Setup a Authorize Upgrade MoveCall and return it's result Argument."""
-        logger.debug("Creating UpgradeAuthorization transaction")
+        logger.debug("UpgradeAuthorization transaction")
         if isinstance(upgrade_cap, bcs.ObjectArg):
             ucap = self.input_obj_from_objarg(upgrade_cap)
         else:
@@ -489,7 +486,7 @@ class CachingTransactionBuilder:
         upgrade_ticket: bcs.Argument,
     ) -> bcs.Argument:
         """Setup a Upgrade Command and return it's result Argument."""
-        logger.debug("Creating PublishUpgrade transaction")
+        logger.debug("PublishUpgrade transaction")
         return self.command(
             bcs.Command(
                 "Upgrade",
@@ -501,7 +498,7 @@ class CachingTransactionBuilder:
         self, upgrade_cap: bcs.Argument, receipt: bcs.Argument
     ) -> bcs.Argument:
         """Setup a Commit Upgrade MoveCall and return it's result Argument."""
-        logger.debug("Creating UpgradeCommit transaction")
+        logger.debug("UpgradeCommit transaction")
         return self.command(
             bcs.Command(
                 "MoveCall",

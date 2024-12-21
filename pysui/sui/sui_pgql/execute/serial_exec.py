@@ -11,6 +11,9 @@ import logging
 import time
 from typing import Any, Coroutine, Optional, Union
 
+logger = logging.getLogger("serial_exec")
+logger.setLevel(logging.DEBUG)
+
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_txb_signing import SigningMultiSig
 import pysui.sui.sui_pgql.pgql_types as ptypes
@@ -19,9 +22,6 @@ import pysui.sui.sui_types.bcs_txne as bcst
 from .caching_exec import AsyncCachingTransactionExecutor
 
 from .caching_txn import CachingTransaction
-
-logger = logging.getLogger("serial_exec")
-logger.setLevel(logging.DEBUG)
 
 
 def _get_gascoin_from_effects(effects: bcst.TransactionEffects) -> bcs.ObjectReference:
@@ -122,15 +122,25 @@ class SerialTransactionExecutor:
 
     async def execute_transactions(
         self,
-        transactions: list[Union[str, CachingTransaction]],
+        transactions: list[CachingTransaction],
         **kwargs,
     ) -> list[ptypes.ExecutionResultGQL]:
-        """."""
+        """Serially execute one or more transactions
+
+        :param transactions: The transactions to execute
+        :type transactions: list[CachingTransaction]
+        :raises ValueError: _description_
+        :raises exc: _description_
+        :return: The transaction execution results
+        :rtype: list[ptypes.ExecutionResultGQL]
+        """
         exe_res: list[ptypes.ExecutionResultGQL] = []
         for tx in transactions:
-            start_time = time.time()
-            tx_str = tx if isinstance(tx, str) else await self._build_transaction(tx)
-            logger.debug("Getting signature")
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                start_time = time.time()
+            logger.debug("Building transaction")
+            tx_str = await self._build_transaction(tx)
+            logger.debug(f"Signing {tx_str}")
             # Sign the transaction
             sig_list: list[str] = []
             if isinstance(self._signer, str):
@@ -148,15 +158,16 @@ class SerialTransactionExecutor:
                     raise ValueError("BaseMultiSig can not sign for execution")
             try:
                 # TODO: Clean up using legacy pysui Signature type
-                logger.debug("Calling cache execute transaction")
+                logger.debug("Cache transaction execution")
                 results: ptypes.ExecutionResultGQL = (
                     await self._cache.execute_transaction(
                         tx_str, [x.value for x in sig_list], **kwargs
                     )
                 )
                 await self.apply_effects(results.bcs)
-                end_time = time.time()
-                logger.debug(f"tx execution {end_time-start_time}")
+                if logger.getEffectiveLevel() == logging.DEBUG:
+                    end_time = time.time()
+                    logger.debug(f"tx execution {end_time-start_time}")
                 exe_res.append(results)
 
             except ValueError as exc:

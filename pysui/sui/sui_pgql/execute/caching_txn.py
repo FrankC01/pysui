@@ -6,6 +6,7 @@
 """Pysui Transaction builder that leverages Sui GraphQL."""
 
 import base64
+import logging
 from typing import Any, Coroutine, Optional, Union
 from deprecated.sphinx import versionchanged
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
@@ -21,7 +22,8 @@ import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
 from .caching_tx_builder import CachingTransactionBuilder, PureInput
 from pysui.sui.sui_common.async_lru import AsyncLRU
 
-# Well known parameter constructs
+logger = logging.getLogger("serial_exec")
+# logger = logging.getLogger("caching transaction")
 
 
 class CachingTransaction(txbase):
