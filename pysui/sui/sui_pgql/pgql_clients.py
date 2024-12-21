@@ -13,6 +13,7 @@ from typing import Callable, Any, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from gql import Client, gql
 from gql.client import ReconnectingAsyncClientSession
+from gql.transport.requests import log as requests_logger
 
 import httpx
 
@@ -37,11 +38,10 @@ from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
 import pysui.sui.sui_pgql.pgql_schema as scm
 import pysui.sui.sui_constants as cnst
 
+# GQL logging
+requests_logger.setLevel(logging.NOTSET)
 # Standard library logging setup
-logger = logging.getLogger("pysui.pgql_client")
-if not logging.getLogger().handlers:
-    logger.addHandler(logging.NullHandler())
-    logger.propagate = False
+logger = logging.getLogger("pgql_client")
 
 
 class PGQL_QueryNode(ABC):
@@ -554,18 +554,15 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         """
         import pysui.sui.sui_pgql.pgql_query as qn
 
-        timeout_signal = asyncio.Event()
-
-        async def timeout_task():
-            await asyncio.sleep(timeout)
-            timeout_signal.set()
-
-        asyncio.create_task(timeout_task())
-
-        while not timeout_signal.is_set():
-            try:
-                return await self.execute_query_node(with_node=qn.GetTx(digest=digest))
-            except Exception as _e:
-                await asyncio.wait_for(asyncio.sleep(poll_interval), timeout=timeout)
-
-        raise Exception("Unexpected error while waiting for transaction block.")
+        total_poll = 0
+        while True:
+            logging.info(f"Polling {digest} for {total_poll} times")
+            res = await self.execute_query_node(with_node=qn.GetTx(digest=digest))
+            if res.is_ok() and not isinstance(res.result_data, pgql_type.NoopGQL):
+                return res
+            total_poll += poll_interval
+            if total_poll < timeout:
+                logging.info("Sleeping")
+                await asyncio.sleep(poll_interval)
+            else:
+                raise ValueError("Timeout error while waiting for transaction block.")

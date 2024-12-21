@@ -6,11 +6,14 @@
 """Transaction execution queues."""
 
 import asyncio
+import logging
 from functools import partial
 import inspect
 from typing import Any, Callable, TypeVar, List
 
 T = TypeVar("T")
+logger = logging.getLogger("queue")
+logger.setLevel(logging.DEBUG)
 
 
 async def _non_async(task: Callable[[Any], None]) -> Any:
@@ -27,6 +30,7 @@ class SerialQueue:
         future = loop.create_future()
         task = task if inspect.isawaitable(task) else partial(_non_async, task)
 
+        logger.debug(f"run_task queing {task}")
         self._queue.append(
             lambda: asyncio.ensure_future(task()).add_done_callback(
                 lambda f: self._process_queue(f, future)
@@ -34,11 +38,14 @@ class SerialQueue:
         )
 
         if len(self._queue) == 1:
+            logger.debug(f"run_task running {self._queue[0]}")
             self._queue[0]()
 
+        logger.debug(f"run_task returning {future}")
         return await future
 
     def _process_queue(self, future: asyncio.Future, main_future: asyncio.Future):
+        logger.debug(f"_process_queue result {future}")
         try:
             result = future.result()
             main_future.set_result(result)
@@ -47,6 +54,7 @@ class SerialQueue:
         finally:
             self._queue.pop(0)
             if self._queue:
+                logger.debug(f"_process_queue running {self._queue[0]}")
                 self._queue[0]()
 
 

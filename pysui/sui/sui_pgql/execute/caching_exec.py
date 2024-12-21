@@ -6,6 +6,8 @@
 """Caching transaction execution."""
 
 import asyncio
+import logging
+import base64
 from typing import Any, Coroutine
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
@@ -15,6 +17,9 @@ import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 from .cache import AsyncObjectCache, ObjectCacheEntry
 from .caching_txn import CachingTransaction
+
+logger = logging.getLogger("async_executor")
+logger.setLevel(logging.DEBUG)
 
 
 class AsyncCachingTransactionExecutor:
@@ -44,6 +49,10 @@ class AsyncCachingTransactionExecutor:
         :rtype: list
         """
         resobjs = []
+        if objids == {}:
+            logger.debug("_get_sui_objects has no entries")
+            return resobjs
+        logger.debug(f"_get_sui_objects on {objids.keys()}")
         oids = list(objids.values())
         result = await self._client.execute_query_node(
             with_node=qn.GetMultipleObjects(object_ids=oids)
@@ -91,6 +100,7 @@ class AsyncCachingTransactionExecutor:
                 )
             else:
                 break
+        logger.debug(f"fetching all coins result {len(all_coins)}")
         return all_coins
 
     async def _smash_gas(
@@ -107,22 +117,21 @@ class AsyncCachingTransactionExecutor:
             raise TypeError(f"Signer {txn.signer_block.payer_address} has no gas coins")
         # Eliminate in use
         coin_list[:] = [coin for coin in coin_list if coin.coin_object_id not in in_use]
-        # available_list: list[ptypes.SuiCoinObjectGQL] = []
-        # for coin in coin_list:
-        #     if coin.coin_object_id not in in_use:
-        #         available_list.append(coin)
 
         # If noting available, throw exception
         if not coin_list:
+            logger.debug("_smash_gas has no available coins")
             raise TypeError(
                 f"Signer {txn.signer_block.payer_address} has no available gas coins"
             )
         # If one return it
         if len(coin_list) == 1:
+            logger.debug("_smash_gas has 1 coin, returning")
             return coin_list[0]
         # Otherwise smash and return it
         tx = AsyncSuiTransaction(client=self._client)
         use_as_gas = coin_list.pop(0)
+        logger.debug(f"_smash_gas merging coins to {use_as_gas.version}")
         await tx.merge_coins(merge_to=tx.gas, merge_from=coin_list)
         res = await self._client.execute_query_node(
             with_node=qn.ExecuteTransaction(
@@ -131,6 +140,22 @@ class AsyncCachingTransactionExecutor:
         )
         if res.is_err():
             raise ValueError(f"Failed smashing coins with {res.result_string}")
+
+        # Wait for commit
+        res = await self._client.wait_for_transaction(res.result_data.digest)
+        if res.is_ok():
+            res = await self._client.execute_query_node(
+                with_node=qn.GetObject(object_id=use_as_gas.coin_object_id)
+            )
+            if res.is_ok():
+                logger.debug(f"_smash_gas post merge to {res.result_data.version}")
+                use_as_gas.object_digest = res.result_data.object_digest
+                use_as_gas.version = res.result_data.version
+            else:
+                raise ValueError("Failed fetching gas coin updates after smashing")
+        if res.is_err():
+            raise ValueError("Failed waiting on transaction")
+
         return use_as_gas
 
     async def _resolve_object_inputs(self, txn: CachingTransaction):
@@ -139,7 +164,7 @@ class AsyncCachingTransactionExecutor:
         :param txn: The transaction
         :type txn: CachingTransaction
         """
-        # print("Resolving objects")
+        logger.debug("_resolving_object_inputs")
         # Get builder unresolved as index, Unresolved map
         unresolved_objects: dict[int, bcs.UnresolvedObjectArg] = (
             txn.builder.get_unresolved_inputs()
@@ -154,7 +179,9 @@ class AsyncCachingTransactionExecutor:
             else:
                 fetch_ids[index] = unobj.ObjectStr
         # Fetch unresolved objects
+        logger.debug(f"Ids for resolving {fetch_ids}")
         resolved_objs = await self._get_sui_objects(fetch_ids)
+        logger.debug(f"Resolved ids {resolved_objs}")
         inv_unrids = {value.ObjectStr: key for key, value in unresolved_objects.items()}
         resolved_builder_inputs: dict[int, tuple[bcs.BuilderArg, bcs.CallArg]] = {}
         # Validate and cache results (may contain deletes)
@@ -223,17 +250,28 @@ class AsyncCachingTransactionExecutor:
     ) -> Coroutine[Any, Any, str]:
         """."""
         await self._resolve_object_inputs(txn)
+        gas_pay = await self.cache.getCustom("gasCoin")
         # Smash gas coins if no payment set
-        if not txn.get_gas_payment():
-            gas_list: ptypes.SuiCoinObjectGQL = await self._smash_gas(txn)
-            txn.set_gas_payment(
-                bcs.ObjectReference(
-                    bcs.Address.from_str(gas_list.coin_object_id),
-                    gas_list.version,
-                    bcs.Digest.from_str(gas_list.object_digest),
-                )
+        if not gas_pay:
+            logger.debug("No gasCoin in cache")
+            gas_object: ptypes.SuiCoinObjectGQL = await self._smash_gas(txn)
+            gas_pay = bcs.ObjectReference(
+                bcs.Address.from_str(gas_object.coin_object_id),
+                gas_object.version,
+                bcs.Digest.from_str(gas_object.object_digest),
             )
+            logger.debug(f"Setting gas coin to oid {gas_object.coin_object_id}")
+            await self.cache.setCustom("gasCoin", gas_pay)
+            txn.set_gas_payment(gas_pay)
+        else:
+            logger.debug("Have gasCoin in cache")
+            txn.set_gas_payment(gas_pay)
         # Build TransactionData and return serialized bytes
+        # tdata = await txn.transaction_data(
+        #     gas_budget=txn._gas_budget, use_gas_object=txn.get_gas_payment()
+        # )
+        # print(tdata.to_json(indent=2))
+        # return base64.b64encode(tdata.serialize()).decode()
         return await txn.build(
             gas_budget=txn._gas_budget, use_gas_object=txn.get_gas_payment()
         )
