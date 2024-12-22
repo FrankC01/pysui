@@ -11,8 +11,7 @@ import logging
 import time
 from typing import Any, Coroutine, Optional, Union
 
-logger = logging.getLogger("serial_exec")
-logger.setLevel(logging.DEBUG)
+ser_txn_exc_logger = logging.getLogger("serial_exec")
 
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_txb_signing import SigningMultiSig
@@ -38,7 +37,7 @@ def _get_gascoin_from_effects(effects: bcst.TransactionEffects) -> bcs.ObjectRef
         raise ValueError("Unexpected gas object state")
 
     edigest, _eowner = effchange.outputState.value
-    logger.debug("Have gas coin from effects")
+    ser_txn_exc_logger.debug("Have gas coin from effects")
     return bcs.ObjectReference(gas_address, v2effects.lamportVersion, edigest)
 
 
@@ -69,23 +68,25 @@ class SerialTransactionExecutor:
         self,
     ) -> Coroutine[Any, Any, CachingTransaction]:
         """."""
-        logger.debug("Generate new transaction")
+        ser_txn_exc_logger.debug("Generate new transaction")
         return CachingTransaction(client=self._client, sender=self._signer)
 
     async def _cache_gas_coin(
         self, effects: bcst.TransactionEffects
     ) -> Coroutine[Any, Any, None]:
         """Retrive gas coin information from effects."""
-        logger.debug("Gas Coin Caching from effects")
+        ser_txn_exc_logger.debug("Gas Coin Caching from effects")
         if effects.enum_name != "V2":
-            logger.debug("Effects != V2")
+            ser_txn_exc_logger.debug("Effects != V2")
             return None
         gascoin = _get_gascoin_from_effects(effects)
         if gascoin:
-            logger.debug(f"Have gas coin with version {gascoin.SequenceNumber}")
+            ser_txn_exc_logger.debug(
+                f"Have gas coin with version {gascoin.SequenceNumber}"
+            )
             await self._cache.cache.setCustom("gasCoin", gascoin)
         else:
-            logger.debug("DON'T Have gas coin")
+            ser_txn_exc_logger.debug("DON'T Have gas coin")
             await self._cache.cache.deleteCustom("gasCoin")
 
     async def apply_effects(self, effects_str: str):
@@ -107,18 +108,43 @@ class SerialTransactionExecutor:
 
     async def _build_transaction(self, transaction: CachingTransaction) -> str:
         """Builds TransactionData for execution."""
-        logger.debug("in _build_transaction")
+        ser_txn_exc_logger.debug("in _build_transaction")
         gcoin: bcs.ObjectReference = await self._cache.cache.getCustom("gasCoin")
         if gcoin:
-            logger.debug(
+            ser_txn_exc_logger.debug(
                 f"Have gas coin {gcoin.SequenceNumber}, setting gas payment in txn"
             )
             transaction.set_gas_payment(gcoin)
         else:
-            logger.debug("No gas coin")
+            ser_txn_exc_logger.debug("No gas coin")
         transaction.set_gas_budget_if_notset(self._default_gas_budget)
-        logger.debug("Calling cache build transaction")
+        ser_txn_exc_logger.debug("Calling cache build transaction")
         return await self._cache.build_transaction(transaction)
+
+    def _sign_transaction(self, tx_str: str) -> list[str]:
+        """Sign the transaction.
+
+        :param tx_str: base64 encoded TransactionData str
+        :type tx_str: str
+        :raises ValueError: if using multi-sign erroneously
+        :return: list of base64 encoded signatures
+        :rtype: list[str]
+        """
+        sig_list: list[str] = []
+        if isinstance(self._signer, str):
+            sig_list.append(
+                self._client.config.active_group.keypair_for_address(
+                    address=self._signer
+                ).new_sign_secure(tx_str)
+            )
+        else:
+            if self._signer._can_sign_msg:
+                sig_list.append(
+                    self._signer.multi_sig.sign(tx_str, self.signer.pub_keys)
+                )
+            else:
+                raise ValueError("BaseMultiSig can not sign for execution")
+        return [x.value for x in sig_list]
 
     async def execute_transactions(
         self,
@@ -136,42 +162,25 @@ class SerialTransactionExecutor:
         """
         exe_res: list[ptypes.ExecutionResultGQL] = []
         for tx in transactions:
-            if logger.getEffectiveLevel() == logging.DEBUG:
-                start_time = time.time()
-            logger.debug("Building transaction")
+            start_time = time.time()
+            ser_txn_exc_logger.debug("Building transaction")
             tx_str = await self._build_transaction(tx)
-            logger.debug(f"Signing {tx_str}")
-            # Sign the transaction
-            sig_list: list[str] = []
-            if isinstance(self._signer, str):
-                sig_list.append(
-                    self._client.config.active_group.keypair_for_address(
-                        address=self._signer
-                    ).new_sign_secure(tx_str)
-                )
-            else:
-                if self._signer._can_sign_msg:
-                    sig_list.append(
-                        self._signer.multi_sig.sign(tx_str, self.signer.pub_keys)
-                    )
-                else:
-                    raise ValueError("BaseMultiSig can not sign for execution")
+            ser_txn_exc_logger.debug(f"Signing {tx_str}")
+
             try:
-                # TODO: Clean up using legacy pysui Signature type
-                logger.debug("Cache transaction execution")
+                ser_txn_exc_logger.debug("Cache transaction execution")
+                # Sign the transaction
+                sig_list = self._sign_transaction(tx_str)
                 results: ptypes.ExecutionResultGQL = (
-                    await self._cache.execute_transaction(
-                        tx_str, [x.value for x in sig_list], **kwargs
-                    )
+                    await self._cache.execute_transaction(tx_str, sig_list, **kwargs)
                 )
                 await self.apply_effects(results.bcs)
-                if logger.getEffectiveLevel() == logging.DEBUG:
-                    end_time = time.time()
-                    logger.debug(f"tx execution {end_time-start_time}")
+                end_time = time.time()
+                ser_txn_exc_logger.info(f"tx execution {end_time-start_time}")
                 exe_res.append(results)
 
             except ValueError as exc:
-                logger.debug("Error callingi cache execute")
+                ser_txn_exc_logger.debug("Error callingi cache execute")
                 await self.reset_cache()
                 raise exc
 

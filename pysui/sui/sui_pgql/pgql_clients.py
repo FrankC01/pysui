@@ -10,15 +10,9 @@ from abc import ABC, abstractmethod
 import logging
 import asyncio
 from typing import Callable, Any, Optional, Union
-from deprecated.sphinx import versionchanged, versionadded, deprecated
+from deprecated.sphinx import versionchanged, versionadded
 from gql import Client, gql
 from gql.client import ReconnectingAsyncClientSession
-from gql.transport.requests import log as requests_logger
-
-import httpx
-
-from gql.transport.httpx import HTTPXAsyncTransport
-
 from gql.transport import exceptions as texc
 from gql.dsl import (
     DSLSchema,
@@ -28,18 +22,14 @@ from graphql.error.syntax_error import GraphQLSyntaxError
 from graphql.utilities.print_schema import print_schema
 from graphql.language.printer import print_ast
 
-# from graphql.language.printer import print_ast
+import httpx
 
-
-from pysui import SuiConfig, SuiRpcResult, PysuiConfiguration
+from pysui import SuiRpcResult, PysuiConfiguration
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
+from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
 import pysui.sui.sui_pgql.pgql_schema as scm
-import pysui.sui.sui_constants as cnst
 
-# GQL logging
-requests_logger.setLevel(logging.NOTSET)
 # Standard library logging setup
 logger = logging.getLogger("pgql_client")
 

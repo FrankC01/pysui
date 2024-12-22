@@ -7,11 +7,14 @@
 
 from abc import ABC, abstractmethod
 import asyncio
+import logging
 from typing import Any, Union
 from dataclasses import dataclass
 
 import pysui.sui.sui_types.bcs_txne as bcs
 import pysui.sui.sui_pgql.pgql_types as ptypes
+
+logger = logging.getLogger("serial_exec")
 
 
 @dataclass
@@ -253,4 +256,5 @@ class AsyncObjectCache(AsyncInMemoryCache):
             else:
                 pass
         if added or deleted:
+            logger.debug(f"Effects results: Deleted {deleted} Added {added}")
             await asyncio.gather(self.delete_objects(deleted), self.add_objects(added))

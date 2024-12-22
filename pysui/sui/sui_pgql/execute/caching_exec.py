@@ -19,8 +19,6 @@ from .cache import AsyncObjectCache, ObjectCacheEntry
 from .caching_txn import CachingTransaction
 
 logger = logging.getLogger("serial_exec")
-# logger = logging.getLogger("async_executor")
-# logger.setLevel(logging.DEBUG)
 
 
 class AsyncCachingTransactionExecutor:
@@ -127,8 +125,9 @@ class AsyncCachingTransactionExecutor:
             )
         # If one return it
         if len(coin_list) == 1:
-            logger.debug("_smash_gas has 1 coin, returning")
-            return coin_list[0]
+            ret_coin = coin_list[0]
+            logger.debug(f"_smash_gas has 1 coin, returning version {ret_coin.version}")
+            return ret_coin
         # Otherwise smash and return it
         tx = AsyncSuiTransaction(client=self._client)
         use_as_gas = coin_list.pop(0)
@@ -142,21 +141,16 @@ class AsyncCachingTransactionExecutor:
         if res.is_err():
             raise ValueError(f"Failed smashing coins with {res.result_string}")
 
-        # Wait for commit
-        res = await self._client.wait_for_transaction(res.result_data.digest)
-        if res.is_ok():
-            res = await self._client.execute_query_node(
-                with_node=qn.GetObject(object_id=use_as_gas.coin_object_id)
-            )
-            if res.is_ok():
-                logger.debug(f"_smash_gas post merge to {res.result_data.version}")
-                use_as_gas.object_digest = res.result_data.object_digest
-                use_as_gas.version = res.result_data.version
-            else:
-                raise ValueError("Failed fetching gas coin updates after smashing")
-        if res.is_err():
-            raise ValueError("Failed waiting on transaction")
+        mresult: ptypes.ExecutionResultGQL = res.result_data
+        tx_effects = bcst.TransactionEffects.deserialize(
+            base64.b64decode(mresult.bcs)
+        ).value
+        _, effchange = tx_effects.changedObjects[tx_effects.gasObjectIndex.value]
+        edigest, _ = effchange.outputState.value
 
+        use_as_gas.version = tx_effects.lamportVersion
+        use_as_gas.object_digest = edigest.to_digest_str()
+        logger.debug(f"Merge gas returning version {use_as_gas.version}")
         return use_as_gas
 
     async def _resolve_object_inputs(self, txn: CachingTransaction):

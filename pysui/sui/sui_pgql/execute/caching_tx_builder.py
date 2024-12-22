@@ -374,7 +374,7 @@ class CachingTransactionBuilder:
         ],
     ) -> bcs.Argument:
         """Setup a TransferObjects command and return it's result Argument."""
-        logger.info("TransferObjects transaction")
+        logger.debug("TransferObjects transaction")
         receiver_arg = (
             recipient
             if isinstance(recipient, bcs.Argument)

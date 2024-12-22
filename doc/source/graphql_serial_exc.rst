@@ -53,5 +53,5 @@ In this example the two transaction times are, respectivley:
 .. code-block:: shell
     :linenos:
 
-    serial_exec DEBUG tx execution 3.573889970779419
-    serial_exec DEBUG tx execution 0.1877460479736328
+    serial_exec DEBUG tx execution 0.783149003982544
+    serial_exec DEBUG tx execution 0.1889028549194336
