@@ -5,17 +5,17 @@ GraohQL SerialTransactionExecutor
 General
 -------
 
-The SerialTransactionExecutor is implemented along with GraphQL support. It highly efficient when creating transactions
-signed by the same address and where the objects owned by the address executing transactions are unlikely to be
+The SerialTransactionExecutor is implemented along with GraphQL support. It is highly efficient when creating transactions
+signed by the same address, and where the objects owned by the address executing transactions are unlikely to be
 changed by transactions not executed through this executor.
 
 The executor is backed by an object cache that is initially populated by resolving the first transactions objects. said objects
-are updated (diged, version) by the transaction results. Subsequent transactions objects are then resolved by the cache as is
+are updated (digest, version) by the transaction results. Subsequent transaction objects are then resolved by the cache as is
 the gas object used to pay for the transaction.
 
 Note that all available gas objects will be smashed to one gas object during transaction build processing.
 
-Here is a simple sunny day example:
+Here is a simple, sunny day, example:
 
 .. code-block:: python
     :linenos:

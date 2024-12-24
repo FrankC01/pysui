@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.74.0] - Unpublished
+## [0.74.0] - 2024-12-24
 
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/243) SerialTransactionExecutor implemented
+  Here are the initial [docs](https://pysui.readthedocs.io/en/latest/graphql_serial_exc.html)
 
 ### Fixed
 
