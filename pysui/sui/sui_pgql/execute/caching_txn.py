@@ -101,12 +101,6 @@ class CachingTransaction(txbase):
             )
         raise ValueError(f"Unresolvable target {target}")
 
-    async def target_function_summary(
-        self, target: str
-    ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
-        """Returns the argument summary of a target sui move function."""
-        return await self._function_meta_args(target)
-
     def _build_txn_data(
         self,
         gas_budget: int,
@@ -182,39 +176,39 @@ class CachingTransaction(txbase):
         )
         return base64.b64encode(txn_data.serialize()).decode()
 
-    async def build_and_sign(
-        self,
-        *,
-        gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
-        txn_expires_after: Optional[int] = None,
-    ) -> dict:
-        """build After creating the BCS TransactionKind, serialize to base64 string, create signatures and return.
+    # async def build_and_sign(
+    #     self,
+    #     *,
+    #     gas_budget: Optional[str] = None,
+    #     use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
+    #     txn_expires_after: Optional[int] = None,
+    # ) -> dict:
+    #     """build After creating the BCS TransactionKind, serialize to base64 string, create signatures and return.
 
-        :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
-        :type gas_budget: Optional[str], optional
-        :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
-        :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
-        :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
-        :type txn_expires_after: Optional[int],optional
-        :return: Dict of
-            {
-                "tx_bytestr": base64 encoded transaction bytes,
-                "sig_array": array of base64 encoded signature bytes
+    #     :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
+    #     :type gas_budget: Optional[str], optional
+    #     :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
+    #     :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
+    #     :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
+    #     :type txn_expires_after: Optional[int],optional
+    #     :return: Dict of
+    #         {
+    #             "tx_bytestr": base64 encoded transaction bytes,
+    #             "sig_array": array of base64 encoded signature bytes
 
-            }
-        :rtype: dict[str, str]
-        """
-        txn_kind = await self.transaction_data(
-            gas_budget=gas_budget,
-            use_gas_objects=use_gas_objects,
-            txn_expires_after=txn_expires_after,
-        )
-        tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
-        sigs = self.signer_block.get_signatures(
-            config=self.client.config, tx_bytes=tx_bytes
-        )
-        return {self._BUILD_BYTE_STR: tx_bytes, self._SIG_ARRAY: sigs}
+    #         }
+    #     :rtype: dict[str, str]
+    #     """
+    #     txn_kind = await self.transaction_data(
+    #         gas_budget=gas_budget,
+    #         use_gas_objects=use_gas_objects,
+    #         txn_expires_after=txn_expires_after,
+    #     )
+    #     tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
+    #     sigs = self.signer_block.get_signatures(
+    #         config=self.client.config, tx_bytes=tx_bytes
+    #     )
+    #     return {self._BUILD_BYTE_STR: tx_bytes, self._SIG_ARRAY: sigs}
 
     async def split_coin(
         self,

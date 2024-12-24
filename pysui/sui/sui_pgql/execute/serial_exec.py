@@ -9,6 +9,7 @@ import asyncio
 import base64
 import logging
 import time
+from enum import IntEnum
 from typing import Any, Coroutine, Optional, Union
 
 ser_txn_exc_logger = logging.getLogger("serial_exec")
@@ -21,6 +22,12 @@ import pysui.sui.sui_types.bcs_txne as bcst
 from .caching_exec import AsyncCachingTransactionExecutor
 
 from .caching_txn import CachingTransaction
+
+
+class ExecutorError(IntEnum):
+    BUILDING_ERROR = 1
+    SIGNING_ERROR = 2
+    EXECUTING_ERROR = 3
 
 
 def _get_gascoin_from_effects(effects: bcst.TransactionEffects) -> bcs.ObjectReference:
@@ -149,8 +156,7 @@ class SerialTransactionExecutor:
     async def execute_transactions(
         self,
         transactions: list[CachingTransaction],
-        **kwargs,
-    ) -> list[ptypes.ExecutionResultGQL]:
+    ) -> list[Union[ptypes.ExecutionResultGQL, Exception]]:
         """Serially execute one or more transactions
 
         :param transactions: The transactions to execute
@@ -164,24 +170,35 @@ class SerialTransactionExecutor:
         for tx in transactions:
             start_time = time.time()
             ser_txn_exc_logger.debug("Building transaction")
-            tx_str = await self._build_transaction(tx)
-            ser_txn_exc_logger.debug(f"Signing {tx_str}")
 
+            # Buillding is non-recoverable
+            tx_str = await asyncio.gather(
+                self._build_transaction(tx), return_exceptions=True
+            )
+            if not isinstance(tx_str[0], str):
+                ser_txn_exc_logger.critical(f"tx build {tx_str[0].args}")
+                exe_res.append((ExecutorError.BUILDING_ERROR, tx_str[0]))
+                continue
+            tx_str: str = tx_str[0]
+            ser_txn_exc_logger.debug(f"Signing {tx_str}")
             try:
                 ser_txn_exc_logger.debug("Cache transaction execution")
                 # Sign the transaction
                 sig_list = self._sign_transaction(tx_str)
-                results: ptypes.ExecutionResultGQL = (
-                    await self._cache.execute_transaction(tx_str, sig_list, **kwargs)
+                results = await asyncio.gather(
+                    self._cache.execute_transaction(tx_str, sig_list)
                 )
+                if not isinstance(results[0], ptypes.ExecutionResultGQL):
+                    ser_txn_exc_logger.critical(f"tx execution {results[0].args}")
+                    exe_res.append((ExecutorError.EXECUTING_ERROR, results[0]))
+                    continue
+                results: ptypes.ExecutionResultGQL = results[0]
                 await self.apply_effects(results.bcs)
                 end_time = time.time()
-                ser_txn_exc_logger.info(f"tx execution {end_time-start_time}")
+                ser_txn_exc_logger.info(f"tx execution time {end_time-start_time}")
                 exe_res.append(results)
-
-            except ValueError as exc:
-                ser_txn_exc_logger.debug("Error callingi cache execute")
-                await self.reset_cache()
-                raise exc
+            except ValueError as ve:
+                ser_txn_exc_logger.critical(f"tx signing non-recoverable {ve.args}")
+                exe_res.append((ExecutorError.SIGNING_ERROR, ve))
 
         return exe_res

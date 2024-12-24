@@ -120,7 +120,7 @@ class AsyncCachingTransactionExecutor:
         # If noting available, throw exception
         if not coin_list:
             logger.debug("_smash_gas has no available coins")
-            raise TypeError(
+            raise ValueError(
                 f"Signer {txn.signer_block.payer_address} has no available gas coins"
             )
         # If one return it
@@ -272,10 +272,7 @@ class AsyncCachingTransactionExecutor:
         )
 
     async def execute_transaction(
-        self,
-        txn_str: str,
-        txn_sigs: list[str],
-        **kwargs,
+        self, txn_str: str, txn_sigs: list[str]
     ) -> ptypes.ExecutionResultGQL:
         """."""
         result = await self._client.execute_query_node(
