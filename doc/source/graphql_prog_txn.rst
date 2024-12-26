@@ -152,7 +152,7 @@ can execute a DryRun:
 DryRun Lite
 -----------
 A lite weight dryrun just uses the TransactionKind (transaction before all gas is reconcilled). The query node to
-use in this case is ``DryRunTransactionKind``. If no options are provided, Sui will provide defautls. See the
+use in this case is ``DryRunTransactionKind``. If no options are provided, Sui will provide defaults. See the
 DryRunTransactionKind documentation.
 
 .. code-block:: python
