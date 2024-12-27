@@ -13,16 +13,12 @@ Python Client SDK for Sui blockchain
 - Rust (stable) for installation of Sui Binaries (optional) and building `pysui-fastcrypto` Rust wrapper (required)
 - Python version >= 3.10
 
-**Note**: If moving from 0.51.0 or earlier it is recommended to start a new virtual environment and installing from PyPi!
-
 ## pysui SDK current (github)
 
-**Release-0.74.0**
+**Release-0.75.0**
 
 - Supports _SUI 1.40.x JSON RPC API_, _SUI 1.40.x GRAPHQL_
 - JSON RPC API backwards compatable to _Sui 1.33.x_
-
-Adds beta `SerialTransactionExecutor`
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
@@ -36,6 +32,10 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 Adds beta `SerialTransactionExecutor` Here are the initial [docs](https://pysui.readthedocs.io/en/latest/graphql_serial_exc.html)
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
+
+## Cup of Coffee
+Wouldn't mind a cup to keep me going!
+Sui Address **0xc45e5ea887e037ddc6a482afa412773b4291c8fdc338f647fb0fcea324975d8e**
 
 ## Sui GraphQL RPC beta
 
@@ -55,7 +55,7 @@ we recommend using testnet or mainnet beta for stability. We are tracking a few 
 
 ### pysui GraphQL support
 
-**Note**: Functionality of pysui GraphQl should be considered beta, use in production is at your own risk.
+**Note**: Functionality of pysui GraphQl should be considered beta, use in production at your own risk.
 
 With pysui 0.50.0 we released beta `pysui`'s beta alignment with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui GraphQL annoucement. We are not yet stable however we have Clients and TransactionBuilder running against Sui GraphQL.
 
