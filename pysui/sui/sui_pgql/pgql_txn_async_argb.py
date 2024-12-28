@@ -38,6 +38,15 @@ _SCALARS_BCS = {
     "u256": bcs.U256,
 }
 
+_OPTIONAL_SCALARS_BCS = {
+    "u8": bcs.OptionalU8,
+    "u16": bcs.OptionalU16,
+    "u32": bcs.OptionalU32,
+    "u64": bcs.OptionalU64,
+    "u128": bcs.OptionalU128,
+    "u256": bcs.OptionalU256,
+}
+
 
 @dataclass
 class _ArgSummary:
@@ -176,11 +185,13 @@ class AsyncResolvingArgParser:
                             ),
                         ),
                     )
-
-                return (
-                    _SCALARS.get(expected_type.scalar_type),
-                    PureInput.as_input,
-                )
+                if in_optional:
+                    return _OPTIONAL_SCALARS_BCS.get(expected_type.scalar_type)
+                else:
+                    return (
+                        _SCALARS.get(expected_type.scalar_type),
+                        PureInput.as_input,
+                    )
 
     def _scalar_argument(
         self,
@@ -258,6 +269,8 @@ class AsyncResolvingArgParser:
                 etr = bcs.OptionalTypeFactory.as_optional(inner_type)
         elif construct:
             inner_type = construct(arg)
+            if construct in bcs.OPTIONAL_SCALARS:
+                return inner_type
             etr = bcs.OptionalTypeFactory.as_optional(inner_type)
         etr.value = inner_type
         return etr

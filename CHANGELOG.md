@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/249) GraphQL Option scalar encoding
+
 ### Changed
 
 ### Removed

@@ -128,8 +128,10 @@ class AsyncCachingTransactionExecutor:
             ret_coin = coin_list[0]
             logger.debug(f"_smash_gas has 1 coin, returning version {ret_coin.version}")
             return ret_coin
-        # Otherwise smash and return it
+        # Otherwise smash lowest to highesst and return it
+        coin_list.sort(key=lambda x: x.balance, reverse=True)
         tx = AsyncSuiTransaction(client=self._client)
+
         use_as_gas = coin_list.pop(0)
         logger.debug(f"_smash_gas merging coins to {use_as_gas.version}")
         await tx.merge_coins(merge_to=tx.gas, merge_from=coin_list)

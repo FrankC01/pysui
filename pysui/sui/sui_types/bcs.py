@@ -343,6 +343,16 @@ class OptionalU256(canoser.RustOptional):
     _type = U256
 
 
+OPTIONAL_SCALARS: list = [
+    OptionalU8,
+    OptionalU16,
+    OptionalU32,
+    OptionalU64,
+    OptionalU128,
+    OptionalU256,
+]
+
+
 class TypeTag(canoser.RustEnum):
     """TypeTag enum for move call type_arguments."""
 

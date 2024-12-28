@@ -264,8 +264,10 @@ class CachingTransactionBuilder:
                     argrefs.append(self.input_obj(barg, oarg))
                 else:
                     raise NotImplementedError("Found ObjectArg in make_move_vector")
-            elif isinstance(arg, (bcs.Argument, bcs.OptionalU64)):
+            elif isinstance(arg, bcs.Argument):
                 argrefs.append(arg)
+            elif isinstance(arg, tuple(bcs.OPTIONAL_SCALARS)):
+                argrefs.append(self.input_pure(PureInput.as_input(arg)))
             elif isinstance(arg, list):
                 argrefs.append(self.input_pure(PureInput.as_input(arg)))
             elif isinstance(arg, bcs.Variable):
@@ -410,7 +412,7 @@ class CachingTransactionBuilder:
         self,
         recipient: bcs.BuilderArg,
         from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg]],
-        amount: Optional[Union[bcs.BuilderArg, bcs.Optional]] = None,
+        amount: Optional[Union[bcs.BuilderArg, bcs.OptionalU64]] = None,
     ) -> bcs.Argument:
         """Setup a TransferObjects for Sui Coins.
 
@@ -420,12 +422,9 @@ class CachingTransactionBuilder:
         reciever_arg = self.input_pure(recipient)
         if amount and isinstance(amount, bcs.BuilderArg):
             coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
-        elif isinstance(amount, bcs.Optional):
-            o_amount: bcs.Optional = amount
-            if o_amount.value:
-                coin_arg = self.split_coin(
-                    from_coin=from_coin, amounts=[o_amount.value]
-                )
+        elif isinstance(amount, bcs.OptionalU64):
+            if amount.value:
+                coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount.value])
             else:
                 coin_arg = from_coin
         elif isinstance(from_coin, bcs.Argument):
