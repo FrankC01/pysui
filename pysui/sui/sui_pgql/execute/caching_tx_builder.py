@@ -12,6 +12,7 @@ from deprecated.sphinx import versionchanged, versionadded
 
 from pysui.sui.sui_common.txb_pure import PureInput
 from pysui.sui.sui_types import bcs
+from pysui.sui.sui_utils import hexstring_to_sui_id
 
 
 # Well known aliases
@@ -60,6 +61,7 @@ class CachingTransactionBuilder:
         for idx, (barg, carg) in enumerate(self.inputs.items()):
             if barg.enum_name == "Unresolved":
                 res[idx] = carg.value
+        # Return unresolved
         return res
 
     def resolved_object_inputs(
@@ -166,6 +168,7 @@ class CachingTransactionBuilder:
         self, object_arg: bcs.UnresolvedObjectArg
     ) -> bcs.Argument:
         """."""
+        object_arg.ObjectStr = hexstring_to_sui_id(object_arg.ObjectStr)
         barg = bcs.BuilderArg("Unresolved", object_arg.ObjectStr)
         return self.input_obj(barg, object_arg)
 
