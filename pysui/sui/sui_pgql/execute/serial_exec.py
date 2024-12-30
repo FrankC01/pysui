@@ -74,7 +74,7 @@ class SerialTransactionExecutor:
     async def new_transaction(
         self,
     ) -> Coroutine[Any, Any, CachingTransaction]:
-        """."""
+        """Create a new caching transaction for transaction block building."""
         ser_txn_exc_logger.debug("Generate new transaction")
         return CachingTransaction(client=self._client, sender=self._signer)
 
@@ -106,11 +106,11 @@ class SerialTransactionExecutor:
         )
 
     async def reset_cache(self) -> None:
-        """."""
+        """Reset (empty) the internal cache."""
         return await self._cache.reset()
 
     async def wait_for_last_transaction(self):
-        """."""
+        """Waits for committed results of last execution."""
         return await self._cache.wait_for_last_transaction()
 
     async def _build_transaction(self, transaction: CachingTransaction) -> str:

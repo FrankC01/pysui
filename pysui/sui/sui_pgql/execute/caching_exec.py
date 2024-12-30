@@ -133,7 +133,7 @@ class AsyncCachingTransactionExecutor:
         tx = AsyncSuiTransaction(client=self._client)
 
         use_as_gas = coin_list.pop(0)
-        logger.debug(f"_smash_gas merging coins to {use_as_gas.version}")
+        logger.debug(f"_smash_gas merging coins to version {use_as_gas.version}")
         await tx.merge_coins(merge_to=tx.gas, merge_from=coin_list)
         res = await self._client.execute_query_node(
             with_node=qn.ExecuteTransaction(
@@ -143,9 +143,9 @@ class AsyncCachingTransactionExecutor:
         if res.is_err():
             raise ValueError(f"Failed smashing coins with {res.result_string}")
 
-        mresult: ptypes.ExecutionResultGQL = res.result_data
+        # Deserialize tx effects and get updated gas coin information
         tx_effects = bcst.TransactionEffects.deserialize(
-            base64.b64decode(mresult.bcs)
+            base64.b64decode(res.result_data.bcs)
         ).value
         _, effchange = tx_effects.changedObjects[tx_effects.gasObjectIndex.value]
         edigest, _ = effchange.outputState.value
@@ -158,7 +158,15 @@ class AsyncCachingTransactionExecutor:
     def _from_cache_to_builder(
         self, unres: bcs.UnresolvedObjectArg, cachm: ObjectCacheEntry
     ) -> tuple[bcs.BuilderArg, bcs.CallArg]:
-        """."""
+        """Converts cach object to BuilderArg and CallArg for tx builder.
+
+        :param unres: The unresolved object
+        :type unres: bcs.UnresolvedObjectArg
+        :param cachm: The cache entry for same object (by address)
+        :type cachm: ObjectCacheEntry
+        :return: Builder and Call arguments replacement in builder's inputs
+        :rtype: tuple[bcs.BuilderArg, bcs.CallArg]
+        """
         co_addy: bcs.Address = bcs.Address.from_str(unres.ObjectStr)
         barg: bcs.BuilderArg = bcs.BuilderArg("Object", co_addy)
         carg: bcs.CallArg = None
@@ -178,16 +186,15 @@ class AsyncCachingTransactionExecutor:
             )
 
         else:
-            oref = bcs.ObjectReference(
-                co_addy,
-                int(cachm.version),
-                bcs.Digest.from_str(cachm.digest),
-            )
             carg = bcs.CallArg(
                 "Object",
                 bcs.ObjectArg(
                     "Recieving" if unres.IsReceiving else "ImmOrOwnedObject",
-                    oref,
+                    bcs.ObjectReference(
+                        co_addy,
+                        int(cachm.version),
+                        bcs.Digest.from_str(cachm.digest),
+                    ),
                 ),
             )
         return (barg, carg)
@@ -234,10 +241,10 @@ class AsyncCachingTransactionExecutor:
                 unentry: bcs.UnresolvedObjectArg = unresolved_objects[
                     inv_unrids[resobj.object_id]
                 ]
+
                 # Build relevant cache type and BuilderArg
-                builder_arg = bcs.BuilderArg(
-                    "Object", bcs.Address.from_str(resobj.object_id)
-                )
+                res_obj_addy: bcs.Address = bcs.Address.from_str(resobj.object_id)
+                builder_arg = bcs.BuilderArg("Object", res_obj_addy)
                 caller_arg: bcs.ObjectArg = None
                 caller_shared: bool = False
                 # Build CallArg
@@ -249,12 +256,14 @@ class AsyncCachingTransactionExecutor:
                         bcs.ObjectArg(
                             "SharedObject",
                             bcs.SharedObjectReference(
-                                bcs.Address.from_str(resobj.object_id),
+                                res_obj_addy,
                                 resobj.object_owner.initial_version,
                                 unentry.RefType == 2,
                             ),
                         ),
                     )
+                    # Read only shared objects are not reported in effects with
+                    # initial version, we wedge it into the cache here
                     await self.cache.add_object(
                         ObjectCacheEntry(
                             resobj.object_id,
@@ -265,17 +274,15 @@ class AsyncCachingTransactionExecutor:
                         )
                     )
 
-                elif isinstance(
+                elif not isinstance(
                     resobj.object_owner,
                     (ptypes.SuiObjectOwnedAddress, ptypes.SuiObjectOwnedParent),
                 ):
-                    pass
-                else:
                     raise ValueError(f"{resobj.object_id} is immutable")
                 # await self.cache.add_object(centry)
                 if not caller_shared:
                     oref = bcs.ObjectReference(
-                        bcs.Address.from_str(resobj.object_id),
+                        res_obj_addy,
                         resobj.version,
                         bcs.Digest.from_str(resobj.object_digest),
                     )
@@ -294,13 +301,19 @@ class AsyncCachingTransactionExecutor:
         else:
             logger.debug("No ids for resolving.")
 
-        # Hydrate the transaction
+        # Hydrate the transaction with resolved objects
         txn.builder.resolved_object_inputs(resolved_builder_inputs)
 
     async def build_transaction(
         self, txn: CachingTransaction
     ) -> Coroutine[Any, Any, str]:
-        """."""
+        """Builds the transaction to ready for execution
+
+        :param txn: The transaction being built
+        :type txn: CachingTransaction
+        :return: Base64 transaction string
+        :rtype: Coroutine[Any, Any, str]
+        """
         await self._resolve_object_inputs(txn)
         gas_pay = await self.cache.getCustom("gasCoin")
         # Smash gas coins if no payment set
@@ -319,11 +332,6 @@ class AsyncCachingTransactionExecutor:
             logger.debug("Have gasCoin in cache")
             txn.set_gas_payment(gas_pay)
         # Build TransactionData and return serialized bytes
-        # tdata = await txn.transaction_data(
-        #     gas_budget=txn._gas_budget, use_gas_object=txn.get_gas_payment()
-        # )
-        # print(tdata.to_json(indent=2))
-        # return base64.b64encode(tdata.serialize()).decode()
         return await txn.build(
             gas_budget=txn._gas_budget, use_gas_object=txn.get_gas_payment()
         )
@@ -331,7 +339,16 @@ class AsyncCachingTransactionExecutor:
     async def execute_transaction(
         self, txn_str: str, txn_sigs: list[str]
     ) -> ptypes.ExecutionResultGQL:
-        """."""
+        """Executes the transaction.
+
+        :param txn_str: Base64 TransactionData string
+        :type txn_str: str
+        :param txn_sigs: List of Base64 signatures
+        :type txn_sigs: list[str]
+        :raises ValueError: HTTP failure
+        :return: The results of the execution
+        :rtype: ptypes.ExecutionResultGQL
+        """
         result = await self._client.execute_query_node(
             with_node=qn.ExecuteTransaction(
                 tx_bytestr=txn_str,
@@ -344,16 +361,22 @@ class AsyncCachingTransactionExecutor:
         else:
             raise ValueError(f"{result.result_string}")
 
-    # async def sign_and_execute_transaction(self, txn: CachingTransaction):
-    #     """."""
-
     async def apply_effects(self, effects: bcst.TransactionEffects):
-        """."""
+        """Apply the transaction execution effects to cache.
+
+        :param effects: The execution transaction effects
+        :type effects: bcst.TransactionEffects
+        """
         self._lastdigest = effects.value.transactionDigest.to_digest_str()
         await self.cache.applyEffects(effects)
 
     async def wait_for_last_transaction(self) -> Any:
-        """."""
+        """Waits for committed results of last execution
+
+        :return: GetTx results SuiRpcResults
+        :rtype: Any
+        """
         if self._lastdigest:
-            _xres = await self._client.wait_for_transaction(self._lastdigest)
+            xres = await self._client.wait_for_transaction(self._lastdigest)
             self._lastdigest = None
+            return xres
