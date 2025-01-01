@@ -48,7 +48,7 @@ Here is a simple, sunny day, example:
             ),
         )
         ser_txne = SerialTransactionExecutor(
-            client=client, signer=client.config.active_address, default_gas_budget=5000000
+            client=client, sender=client.config.active_address, default_gas_budget=5000000
         )
         # Set logging level
         ser_txn_exc_logger.setLevel(logging.DEBUG)
@@ -77,7 +77,7 @@ In this example the two transaction times are, respectivley:
     serial_exec DEBUG tx execution 0.9674050807952881
     serial_exec DEBUG tx execution 0.1889028549194336
 
-Note that the first transaction smashes and primes the gas object as well as resolving unresolved objects
+Note that the first transaction smashes and primes the gas object as well as resolving builder objects references
 
 Exceptions
 ----------
