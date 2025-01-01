@@ -31,8 +31,8 @@ from pysui.sui.sui_utils import publish_buildg
 logger = logging.getLogger()
 
 
-class _SuiTransactionBase:
-    """SuiTransaction GQL base object."""
+class _TransactionBase:
+    """."""
 
     _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
     _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
@@ -166,28 +166,24 @@ class _SuiTransactionBase:
         *,
         client: BaseSuiGQLClient,
         compress_inputs: Optional[bool] = True,
-        initial_sender: Union[str, SigningMultiSig] = None,
-        initial_sponsor: Union[str, SigningMultiSig] = None,
         builder: Optional[Any] = None,
         arg_parser: Optional[Any] = None,
-        merge_gas_budget: Optional[bool] = False,
-    ) -> None:
+    ):
         """."""
         self.builder = builder or tx_builder.ProgrammableTransactionBuilder(
             compress_inputs=compress_inputs
         )
         self._argparse = arg_parser
         self.client = client
-        self._sig_block = SignerBlock(
-            sender=initial_sender or client.config.active_address,
-            sponsor=initial_sponsor,
-        )
-        self._merge_gas = merge_gas_budget
-        self._executed = False
         self.constraints: TransactionConstraints = (
             client.protocol().transaction_constraints
         )
         self._current_gas_price = client.current_gas_price()
+
+    @property
+    def gas(self) -> bcs.Argument:
+        """Enables use of gas reference as parameters in commands."""
+        return self._TRANSACTION_GAS_ARGUMENT
 
     @property
     def gas_price(self) -> int:
@@ -199,15 +195,39 @@ class _SuiTransactionBase:
         """Set the gas price."""
         self._current_gas_price = new_price
 
+
+class _SuiTransactionBase(_TransactionBase):
+    """SuiTransaction GQL base object."""
+
+    def __init__(
+        self,
+        *,
+        client: BaseSuiGQLClient,
+        compress_inputs: Optional[bool] = True,
+        initial_sender: Union[str, SigningMultiSig] = None,
+        initial_sponsor: Union[str, SigningMultiSig] = None,
+        builder: Optional[Any] = None,
+        arg_parser: Optional[Any] = None,
+        merge_gas_budget: Optional[bool] = False,
+    ) -> None:
+        """."""
+        super().__init__(
+            client=client,
+            compress_inputs=compress_inputs,
+            builder=builder,
+            arg_parser=arg_parser,
+        )
+        self._sig_block = SignerBlock(
+            sender=initial_sender or client.config.active_address,
+            sponsor=initial_sponsor,
+        )
+        self._merge_gas = merge_gas_budget
+        self._executed = False
+
     @property
     def signer_block(self) -> SignerBlock:
         """Returns the signers block."""
         return self._sig_block
-
-    @property
-    def gas(self) -> bcs.Argument:
-        """Enables use of gas reference as parameters in commands."""
-        return self._TRANSACTION_GAS_ARGUMENT
 
     def raw_kind(self) -> bcs.TransactionKind:
         """Returns the TransactionKind object hierarchy of inputs, returns and commands.

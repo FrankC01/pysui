@@ -11,6 +11,7 @@ import base64
 from typing import Any, Coroutine
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
+from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
 import pysui.sui.sui_types.bcs as bcs
 import pysui.sui.sui_types.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -103,17 +104,17 @@ class AsyncCachingTransactionExecutor:
         return all_coins
 
     async def _smash_gas(
-        self, txn: CachingTransaction
+        self, txn: CachingTransaction, signer_block: SignerBlock
     ) -> Coroutine[Any, Any, ptypes.SuiCoinObjectGQL]:
         """Smashes all available sui for signer."""
         # Get object references
         in_use: list[str] = list(txn.builder.objects_registry.keys())
         # Get all gas
         coin_list: list[ptypes.SuiCoinObjectGQL] = await self._get_sui_gas(
-            txn.signer_block.payer_address
+            signer_block.payer_address
         )
         if not coin_list:
-            raise TypeError(f"Signer {txn.signer_block.payer_address} has no gas coins")
+            raise TypeError(f"Signer {signer_block.payer_address} has no gas coins")
         # Eliminate in use
         coin_list[:] = [coin for coin in coin_list if coin.coin_object_id not in in_use]
 
@@ -121,7 +122,7 @@ class AsyncCachingTransactionExecutor:
         if not coin_list:
             logger.debug("_smash_gas has no available coins")
             raise ValueError(
-                f"Signer {txn.signer_block.payer_address} has no available gas coins"
+                f"Signer {signer_block.payer_address} has no available gas coins"
             )
         # If one return it
         if len(coin_list) == 1:
@@ -129,7 +130,7 @@ class AsyncCachingTransactionExecutor:
             logger.debug(f"_smash_gas has 1 coin, returning version {ret_coin.version}")
             return ret_coin
         # Otherwise smash lowest to highesst and return it
-        coin_list.sort(key=lambda x: x.balance, reverse=True)
+        coin_list.sort(key=lambda x: int(x.balance), reverse=True)
         tx = AsyncSuiTransaction(client=self._client)
 
         use_as_gas = coin_list.pop(0)
@@ -305,7 +306,7 @@ class AsyncCachingTransactionExecutor:
         txn.builder.resolved_object_inputs(resolved_builder_inputs)
 
     async def build_transaction(
-        self, txn: CachingTransaction
+        self, txn: CachingTransaction, signer_block: SignerBlock
     ) -> Coroutine[Any, Any, str]:
         """Builds the transaction to ready for execution
 
@@ -319,7 +320,9 @@ class AsyncCachingTransactionExecutor:
         # Smash gas coins if no payment set
         if not gas_pay:
             logger.debug("No gasCoin in cache")
-            gas_object: ptypes.SuiCoinObjectGQL = await self._smash_gas(txn)
+            gas_object: ptypes.SuiCoinObjectGQL = await self._smash_gas(
+                txn, signer_block
+            )
             gas_pay = bcs.ObjectReference(
                 bcs.Address.from_str(gas_object.coin_object_id),
                 gas_object.version,
@@ -333,7 +336,9 @@ class AsyncCachingTransactionExecutor:
             txn.set_gas_payment(gas_pay)
         # Build TransactionData and return serialized bytes
         return await txn.build(
-            gas_budget=txn._gas_budget, use_gas_object=txn.get_gas_payment()
+            gas_budget=txn._gas_budget,
+            use_gas_object=txn.get_gas_payment(),
+            signer_block=signer_block,
         )
 
     async def execute_transaction(

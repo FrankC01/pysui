@@ -10,8 +10,8 @@ import logging
 from typing import Any, Coroutine, Optional, Union
 from deprecated.sphinx import versionchanged
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
-from pysui.sui.sui_pgql.pgql_txb_signing import SigningMultiSig
-from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
+from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
+from pysui.sui.sui_pgql.pgql_txn_base import _TransactionBase as txbase
 
 from pysui.sui.sui_types import bcs
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
@@ -33,8 +33,6 @@ class CachingTransaction(txbase):
         self,
         *,
         client: AsyncSuiGQLClient,
-        sender: Union[str, SigningMultiSig],
-        sponsor: Optional[Union[str, SigningMultiSig]] = None,
     ) -> None:
         """Construct the CachingTransaction
 
@@ -48,8 +46,6 @@ class CachingTransaction(txbase):
         super().__init__(
             client=client,
             compress_inputs=False,
-            initial_sender=sender,
-            initial_sponsor=sponsor,
             builder=CachingTransactionBuilder(compress_inputs=True),
             arg_parser=argbase.UnResolvingArgParser(client),
         )
@@ -105,15 +101,15 @@ class CachingTransaction(txbase):
         self,
         gas_budget: int,
         use_gas_object: bcs.ObjectReference,
+        signer_block: SignerBlock,
         txn_expires_after: Optional[int] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
         """Generate the TransactionData structure."""
 
-        # obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
         gas_data: bcs.GasData = bcs.GasData(
             [use_gas_object],
-            bcs.Address.from_str(self._sig_block.payer_address),
+            bcs.Address.from_str(signer_block.payer_address),
             self.gas_price,
             gas_budget,
         )
@@ -121,7 +117,7 @@ class CachingTransaction(txbase):
             "V1",
             bcs.TransactionDataV1(
                 tx_kind,
-                bcs.Address.from_str(self.signer_block.sender_str),
+                bcs.Address.from_str(signer_block.sender_str),
                 gas_data,
                 bcs.TransactionExpiration(
                     "None"
@@ -136,7 +132,7 @@ class CachingTransaction(txbase):
         *,
         gas_budget: int,
         use_gas_object: bcs.ObjectReference,
-        txn_expires_after: Optional[int] = None,
+        signer_block: SignerBlock,
     ) -> Coroutine[Any, Any, bcs.TransactionData]:
         """transaction_data Construct a BCS TransactionData object.
 
@@ -144,19 +140,17 @@ class CachingTransaction(txbase):
         :type gas_budget: int
         :param use_gas_object: Specify gas ObjectReference
         :type use_gas_object: bcs.ObjectReference
-        :param txn_expires_after: Specify the transaction expiration epoch number, defaults to None
-        :type txn_expires_after: Optional[int],optional
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
-        return self._build_txn_data(gas_budget, use_gas_object, txn_expires_after)
+        return self._build_txn_data(gas_budget, use_gas_object, signer_block)
 
     async def build(
         self,
         *,
         gas_budget: int,
         use_gas_object: bcs.ObjectReference,
-        txn_expires_after: Optional[int] = None,
+        signer_block: SignerBlock,
     ) -> Coroutine[Any, Any, str]:
         """build After creating the BCS TransactionData, serialize to base64 string and return.
 
@@ -164,15 +158,13 @@ class CachingTransaction(txbase):
         :type gas_budget: int
         :param use_gas_object: Specify gas ObjectReference
         :type use_gas_object: bcs.ObjectReference
-        :param txn_expires_after: Specify the transaction expiration epoch number, defaults to None
-        :type txn_expires_after: Optional[int],optional
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
         txn_data = await self.transaction_data(
             gas_budget=gas_budget,
             use_gas_object=use_gas_object,
-            txn_expires_after=txn_expires_after,
+            signer_block=signer_block,
         )
         return base64.b64encode(txn_data.serialize()).decode()
 

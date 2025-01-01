@@ -15,7 +15,7 @@ from typing import Any, Coroutine, Optional, Union
 ser_txn_exc_logger = logging.getLogger("serial_exec")
 
 from pysui import AsyncGqlClient
-from pysui.sui.sui_pgql.pgql_txb_signing import SigningMultiSig
+from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_types.bcs as bcs
 import pysui.sui.sui_types.bcs_txne as bcst
@@ -53,8 +53,10 @@ class SerialTransactionExecutor:
 
     def __init__(
         self,
+        *,
         client: AsyncGqlClient,
-        signer: Union[str, SigningMultiSig],
+        sender: Union[str, SigningMultiSig],
+        sponsor: Optional[Union[str, SigningMultiSig]] = None,
         default_gas_budget: Optional[int] = 50_000_000,
     ):
         """SerialTransactionExecutor Creates a new executor.
@@ -68,7 +70,7 @@ class SerialTransactionExecutor:
             client
         )
         self._client = client
-        self._signer = signer
+        self._signing_block = SignerBlock(sender=sender, sponsor=sponsor)
         self._default_gas_budget: int = default_gas_budget
 
     async def new_transaction(
@@ -76,7 +78,7 @@ class SerialTransactionExecutor:
     ) -> Coroutine[Any, Any, CachingTransaction]:
         """Create a new caching transaction for transaction block building."""
         ser_txn_exc_logger.debug("Generate new transaction")
-        return CachingTransaction(client=self._client, sender=self._signer)
+        return CachingTransaction(client=self._client)
 
     async def _cache_gas_coin(
         self, effects: bcst.TransactionEffects
@@ -126,7 +128,7 @@ class SerialTransactionExecutor:
             ser_txn_exc_logger.debug("No gas coin")
         transaction.set_gas_budget_if_notset(self._default_gas_budget)
         ser_txn_exc_logger.debug("Calling cache build transaction")
-        return await self._cache.build_transaction(transaction)
+        return await self._cache.build_transaction(transaction, self._signing_block)
 
     def _sign_transaction(self, tx_str: str) -> list[str]:
         """Sign the transaction.
@@ -137,21 +139,9 @@ class SerialTransactionExecutor:
         :return: list of base64 encoded signatures
         :rtype: list[str]
         """
-        sig_list: list[str] = []
-        if isinstance(self._signer, str):
-            sig_list.append(
-                self._client.config.active_group.keypair_for_address(
-                    address=self._signer
-                ).new_sign_secure(tx_str)
-            )
-        else:
-            if self._signer._can_sign_msg:
-                sig_list.append(
-                    self._signer.multi_sig.sign(tx_str, self.signer.pub_keys)
-                )
-            else:
-                raise ValueError("BaseMultiSig can not sign for execution")
-        return [x.value for x in sig_list]
+        return self._signing_block.get_signatures(
+            config=self._client.config, tx_bytes=tx_str
+        )
 
     async def execute_transactions(
         self,

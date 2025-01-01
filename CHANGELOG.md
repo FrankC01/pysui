@@ -7,15 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.75.0] - Unpublished
 
+**BREAKING CHANGES to SerialTransactionExecution constructor**
+
 ### Added
 
-- [enhancement](https://github.com/FrankC01/pysui/issues/248) - SerialTransactionExecutor object caching
+- [enhancement](https://github.com/FrankC01/pysui/issues/248) - SerialTransactionExecutor object resolution caching
+- [enhancement](https://github.com/FrankC01/pysui/issues/250) - Sender and Sponsor support in SerialTransactionExecutor
 
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/249) GraphQL Option scalar encoding
 
 ### Changed
+
+- [change](https://github.com/FrankC01/pysui/issues/253) SerialTransactionExecution keywords on init changes
+- [change](https://github.com/FrankC01/pysui/issues/252) SerialTransactionExectuor use int balance in _smash_gas sort
 
 ### Removed
 
