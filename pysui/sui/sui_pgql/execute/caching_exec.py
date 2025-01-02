@@ -382,6 +382,8 @@ class AsyncCachingTransactionExecutor:
         :rtype: Any
         """
         if self._lastdigest:
-            xres = await self._client.wait_for_transaction(self._lastdigest)
+            xres = await self._client.wait_for_transaction(
+                digest=self._lastdigest, poll_interval=1
+            )
             self._lastdigest = None
             return xres

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/248) - SerialTransactionExecutor object resolution caching
 - [enhancement](https://github.com/FrankC01/pysui/issues/250) - Sender and Sponsor support in SerialTransactionExecutor
+- [enhancement](https://github.com/FrankC01/pysui/issues/254) - added wait_for_transaction on GraphQL clients
 
 ### Fixed
 

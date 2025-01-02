@@ -9,6 +9,7 @@
 from abc import ABC, abstractmethod
 import logging
 import asyncio
+from time import sleep
 from typing import Callable, Any, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded
 from gql import Client, gql
@@ -346,6 +347,37 @@ class SuiGQLClient(BaseSuiGQLClient):
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
 
+    @versionadded(version="0.75.0", reason="Execution of transaction changes.")
+    def wait_for_transaction(
+        self, *, digest: str, timeout: int = 60, poll_interval: int = 2
+    ) -> SuiRpcResult:
+        """wait_for_transaction Wait for a transaction block result to be available over the API.
+
+        :param digest: The digest of the transaction to get effects on
+        :type digest: str
+        :param timeout: timeout interval in seconds, defaults to 60
+        :type timeout: int, optional
+        :param poll_interval: poll interval wait in seconds, defaults to 2
+        :type poll_interval: int, optional
+        :raises Exception: If effects are not retrieved
+        :return: Standard Sui Result
+        :rtype: SuiRpcResult
+        """
+        import pysui.sui.sui_pgql.pgql_query as qn
+
+        total_poll = 0
+        while True:
+            logging.info(f"Polling {digest} for {total_poll} times")
+            res = self.execute_query_node(with_node=qn.GetTx(digest=digest))
+            if res.is_ok() and not isinstance(res.result_data, pgql_type.NoopGQL):
+                return res
+            total_poll += poll_interval
+            if total_poll < timeout:
+                logging.info("Sleeping")
+                sleep(poll_interval)
+            else:
+                raise ValueError("Timeout error while waiting for transaction block.")
+
 
 class AsyncSuiGQLClient(BaseSuiGQLClient):
     """Asynchronous pysui GraphQL client."""
@@ -528,7 +560,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
     @versionadded(version="0.73.0", reason="Execution of transaction changes.")
     async def wait_for_transaction(
-        self, digest: str, timeout: int = 60, poll_interval: int = 2
+        self, *, digest: str, timeout: int = 60, poll_interval: int = 2
     ) -> SuiRpcResult:
         """wait_for_transaction Wait for a transaction block result to be available over the API.
 
