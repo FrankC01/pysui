@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/258) Fix GetDelegatedStakes GraphQL query
+
 ### Changed
 
 ### Removed

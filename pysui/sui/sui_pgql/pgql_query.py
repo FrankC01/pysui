@@ -864,7 +864,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
                     DSLInlineFragment()
                     .on(schema.Parent)
                     .select(
-                        schema.Parent.parent.select(parent_id=schema.Object.address),
+                        schema.Parent.parent.select(parent_id=schema.Owner.address),
                         obj_owner_kind=DSLMetaField("__typename"),
                     ),
                 ),
