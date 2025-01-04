@@ -95,7 +95,8 @@ New
 General conversions in new argument processor
 ---------------------------------------------
 When a transaction command is created it's arguments are validated and transformed based on
-the types that are defined on the Sui programs function.
+the types that are defined by either commands (i.e. split_coins) or the `move_call` programs function
+arguments.
 
 Scalars
 +++++++
@@ -103,21 +104,24 @@ Scalars
 +-----------------------------+----------------------------------+---------------------------+
 |     Sui Argument            |       Accepts                    |      Example              |
 +=============================+==================================+===========================+
-| bool                        | bool                             | False, True               |
+| bool                        | bool                             | True                      |
 +-----------------------------+----------------------------------+---------------------------+
 | vector<u8>                  | str                              | 'foo'                     |
 +-----------------------------+----------------------------------+---------------------------+
 | String                      | str                              | 'foo'                     |
 +-----------------------------+----------------------------------+---------------------------+
-| u8-u256                     | int                              | sum([1,2,9999343134343])  |
+| u8 through u256             | int                              | sum([1,2,9999343134343])  |
 +-----------------------------+----------------------------------+---------------------------+
-| vector<u8>-vector<256>      | bytes                            | bytes.fromhex("BEEF")     |
+| vector<u8> - vector<256>    | bytes                            | bytes.fromhex("BEEF")     |
 +-----------------------------+----------------------------------+---------------------------+
 | address, ID                 | str                              | '0x....' (valid Sui addr) |
 +-----------------------------+----------------------------------+---------------------------+
 
-Option (not exhaustive)
-+++++++++++++++++++++++
+Scalar Option
++++++++++++++
+
+If the Sui program function takes Option for a scalar or vector of scalars, internally the
+transaction builder will 'wrap' the inputs.
 
 +-----------------------------+----------------------------------+---------------------------+
 |     Sui Argument            |       Accepts                    |      Example              |
@@ -140,6 +144,37 @@ Option objects use `optional_object`
 +-----------------------------+----------------------------------+---------------------------+
 | Obj, &Obj, &mut Obj         | pgql_type.ObjectReadGQL          | GraphQL result            |
 +-----------------------------+----------------------------------+---------------------------+
+
+Object Option
++++++++++++++
+
+If the Sui program function takes Option for an object or vector of objects, the transaction builder provides
+the `optional_object` method.
+
+For example, this contrived move function:
+
+.. code-block::
+    :linenos:
+
+    public fun check_object_option<T>(oparg:Option<T>,_ctx:&mut TxContext) ...
+
+For setting up arguments in pysui use the `optional_object` method on the transaction:
+
+.. code-block:: python
+    :linenos:
+
+    txer = SuiTransaction(client=client)
+
+    fooey = txer.move_call(
+        target=f"{_PACKAGE}::{target_module}::{target_function}",
+        arguments=[
+            txer.optional_object(
+                optional_object="0x....",
+                type_arguments=["0x2::coin::Coin<0x2::sui::SUI>"],
+            ),
+        ],
+        type_arguments=["0x2::coin::Coin<0x2::sui::SUI>"],
+    )
 
 
 ===================
