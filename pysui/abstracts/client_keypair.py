@@ -154,6 +154,10 @@ class KeyPair(ABC):
         """Convert keypair to encoded bytes."""
 
     @abstractmethod
+    def to_bech32(self) -> str:
+        """Convert keypair private key to bech32 format."""
+
+    @abstractmethod
     def serialize(self) -> str:
         """Serialize to platform keystring for persist."""
 

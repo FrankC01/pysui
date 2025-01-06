@@ -213,6 +213,15 @@ class SuiKeyPair(KeyPair):
         """
         return base64.b64encode(self.serialize_to_bytes()).decode()
 
+    @versionadded(version="0.76.0", reason="Export bech32 private key.")
+    def to_bech32(self) -> str:
+        """Convert private key to bech32 format
+
+        :return: bech32 formated private key
+        :rtype: str
+        """
+        return pfc.encode_bech32(self.serialize_to_bytes(), SUI_BECH32_HRP)
+
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
         assert self.private_key, "Can not convert to bytes with invalid private key"
