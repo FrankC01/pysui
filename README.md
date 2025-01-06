@@ -17,7 +17,7 @@ Python Client SDK for Sui blockchain
 
 **Release-0.76.0**
 
-- Supports _SUI 1.40.x JSON RPC API_, _SUI 1.40.x GRAPHQL_
+- Supports _SUI 1.41.x JSON RPC API_, _SUI 1.40.x GRAPHQL_
 - JSON RPC API backwards compatable to _Sui 1.33.x_
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)

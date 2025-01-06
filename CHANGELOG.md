@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/257) Keypair to bech32 format
+
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/258) Fix GetDelegatedStakes GraphQL query
