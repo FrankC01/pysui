@@ -29,6 +29,7 @@ import base58
 import yaml
 from dataclasses_json import DataClassJsonMixin
 from deprecated.sphinx import versionchanged, versionadded
+from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_constants import (
     DEFAULT_ALIAS_PATH_STRING,
     DEFAULT_DEVNET_PATH_STRING,
@@ -49,7 +50,7 @@ from pysui.sui.sui_types.scalars import (
     SuiTxBytes,
     SuiSignature,
 )
-from pysui.sui.sui_types.address import SuiAddress, valid_sui_address
+from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.collections import BatchParameter, SuiArray, SuiMap
 from pysui.sui.sui_excepts import (
     SuiException,

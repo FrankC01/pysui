@@ -198,7 +198,7 @@ class PureInput:
     @pure.register
     @classmethod
     def _(cls, arg: list) -> list:
-        """."""
+        """uleb128 length encoded pure vector."""
         logger.debug(f"list->pure {arg}")
         stage_list = [PureInput.pure(x) for x in arg]
         res_list = list(serialize_uint32_as_uleb128(len(stage_list)))

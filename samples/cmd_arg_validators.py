@@ -19,8 +19,8 @@ import base64
 import binascii
 from pathlib import Path
 from typing import Any, Sequence
+from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
-from pysui.sui.sui_types.address import valid_sui_address
 
 
 class ValidateAlias(argparse.Action):

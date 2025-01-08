@@ -15,47 +15,24 @@
 
 import base64
 import hashlib
-import re
 from typing import Union
 from deprecated.sphinx import deprecated, versionchanged
+from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.abstracts import SuiBaseType
 from pysui.sui.sui_types.scalars import SuiString
-from pysui.sui.sui_constants import SUI_HEX_ADDRESS_STRING_LEN
-from pysui.sui.sui_excepts import SuiInvalidAddress
-
-
-__partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{1,64}")
-
-
-@versionchanged(version="0.19.0", reason="Addresses can be between 3 and 66 chars with prefix, 1 and 64 without.")
-def valid_sui_address(instr: str) -> bool:
-    """Verify Sui address string."""
-    inlen = len(instr)
-    if not instr or inlen > SUI_HEX_ADDRESS_STRING_LEN:
-        return False
-    match instr:
-        case "Immutable":
-            return True
-        case _:
-            if inlen < 3 and (instr.count("x") or instr.count("X")):
-                return False
-            if instr.count("x") or instr.count("X"):
-                instr = instr[2:]
-            re_res = __partstring_pattern.findall(instr)
-            if re_res:
-                if len("".join(re_res)) == len(instr):
-                    return True
-            return False
 
 
 class SuiAddress(SuiBaseType):
     """Sui Address Type."""
 
+    @versionchanged(version="0.76.0", reason="Moved validation to commons.")
     def __init__(self, identifier: Union[SuiString, str]) -> None:
         """Initialize address."""
         testvalid: str = identifier if isinstance(identifier, str) else identifier.value
         if valid_sui_address(testvalid):
-            testvalid = testvalid if testvalid.startswith("0x") else format(f"0x{testvalid}")
+            testvalid = (
+                testvalid if testvalid.startswith("0x") else format(f"0x{testvalid}")
+            )
             super().__init__(SuiString(testvalid))
         else:
             raise ValueError(f"{testvalid} is not valid address string")

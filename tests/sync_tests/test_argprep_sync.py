@@ -15,7 +15,6 @@
 
 import os
 from pysui import SyncGqlClient, handle_result
-from pysui.sui.sui_types.address import valid_sui_address
 import pysui.sui.sui_pgql.pgql_sync_txn as tx
 import pysui.sui.sui_pgql.pgql_query as qn
 from tests.test_utils import gas_not_in
