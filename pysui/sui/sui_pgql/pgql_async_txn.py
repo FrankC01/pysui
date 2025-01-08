@@ -19,7 +19,8 @@ import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
-from pysui.sui.sui_common.async_lru import AsyncLRU
+
+from pysui.sui.sui_common.async_funcs import AsyncLRU
 
 
 class AsyncSuiTransaction(txbase):

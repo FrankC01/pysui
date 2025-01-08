@@ -47,6 +47,7 @@ dynamic = ["version", "readme"]
 wallet = "samples.walletg:main"
 async-gas = "samples.async_gasg:main"
 sgqls = "samples.sgqls:main"
+smash= "samples.smash:main"
 
 [tool.setuptools.packages.find]
 

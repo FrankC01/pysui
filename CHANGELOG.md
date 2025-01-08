@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/257) Keypair to bech32 format
+- [enhancement](https://github.com/FrankC01/pysui/issues/256) smash utility to merge all Sui coins for address
 
 ### Fixed
 

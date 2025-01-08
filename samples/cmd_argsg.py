@@ -749,7 +749,10 @@ def _base_parser(pconfig: PysuiConfiguration) -> argparse.ArgumentParser:
         help=f"The GraphQL profile representing target GraphQL node. Default to '{pconfig.active_profile}'",
     )
     parser.add_argument(
-        "-v", "--version", help="Show pysui SDK version", action="store_true"
+        "-v",
+        "--version",
+        help="Sets flag to show version. Optional.",
+        action="store_true",
     )
     parser.set_defaults(subcommand="version")
 
@@ -784,3 +787,33 @@ def build_async_gas_parser(
     parser.usage = "%(prog)s [options]"
     parser.description = "Gather all gas for all objects"
     return parser.parse_args(in_args)
+
+
+def build_smash_parser(
+    in_args: list, pconfig: PysuiConfiguration
+) -> argparse.Namespace:
+    """Build the argument parser structure for smash."""
+    parser = _base_parser(pconfig)
+    parser.add_argument(
+        "-w",
+        "--wait",
+        required=False,
+        help="Sets flag to wait for transaction commitment. Optional.",
+        action="store_true",
+    )
+    addy_arg_group = parser.add_mutually_exclusive_group(required=True)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        # required=True,
+        help="Sui address of gas owner. Mutually exclusive with '-a | --alias",
+        action=ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        # required=True,
+        help="Alias of owner address.Mutually exclusive with '-o | --owner",
+        action=ValidateAlias,
+    )
+    return parser.parse_args(in_args if in_args else ["--help"])

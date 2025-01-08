@@ -5,33 +5,38 @@ Samples and utilities included in both the `pysui` repo as well as when installi
 
 ## Examples:
 
-### Async Gas
+### async-gas
 
-Example demonstrating using the `pysui` asynchronus client. See [DEVELOP](../DEVELOP.md)
+Reports all Sui coins for `pysui` addresses.
 
-### Sui GraphQL Schemas
+### sgqls
 
-Example that takes one or more GraphQL nodes and writes schemas to folder
+Writes one or more GraphQL node's schema to folder
 
-### WalletG
+### wallet
 
 Implementation demonstrating most commands like the SUI CLI (i.e. `sui client ...`) using Sui GraphQL RPC.
 
+### smash
+
+Merges an addresses Sui coins to one
 
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 
 - `python -m samples.async_gasg`
 - `python -m samples.sgqls`
 - `python -m samples.walletg`
+- `python -m samples.smash`
 
 **Note:** If running from PyPi install, examples can be started directly
 
 - `async-gas`
 - `sgqls`
 - `wallet`
+- `smash`
 
 
-#### WalletG Commands
+#### wallet Commands
 ```shell
 usage: walletg.py [options] command [--command_options]
 

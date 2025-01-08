@@ -18,11 +18,6 @@ Shows:
 * Loading an asynchronous client (see `main`)
 * Fetching all address owned object descriptors from Sui blockchain
 * Fetching all address owned gas objects for each address from Sui blockchain
-* Note that there are new SUI RPC API that can simplify this further and pysui has
-* builders for them. See pysui/sui/sui_builders/get_builders.py:
-*   GetCoinMetaData
-*   GetCoinTypeBalance
-*   GetCoins
 """
 
 import asyncio
@@ -38,12 +33,12 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
+_async_gas_version = "1.0.0"
 from samples.cmd_argsg import build_async_gas_parser
 
 
-from pysui import PysuiConfiguration, __version__
+from pysui import PysuiConfiguration, AsyncGqlClient, __version__
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
@@ -55,7 +50,7 @@ from pysui.sui.sui_txresults.single_tx import (
 
 
 async def _get_all_gas_objects(
-    client: AsyncSuiGQLClient, address_id: str
+    client: AsyncGqlClient, address_id: str
 ) -> list[pgql_type.SuiCoinObjectGQL]:
     """Retreive all Gas Objects."""
     coin_list: list[pgql_type.SuiCoinObjectGQL] = []
@@ -113,7 +108,7 @@ def print_gas(gasses: SuiCoinObjects) -> int:
     return total
 
 
-async def get_all_gas(client: AsyncSuiGQLClient) -> dict[str, list[SuiGas]]:
+async def get_all_gas(client: AsyncGqlClient) -> dict[str, list[SuiGas]]:
     """get_all_gas Gets all SuiGas for each address in configuration.
 
     :param client: Asynchronous Sui Client
@@ -131,7 +126,7 @@ async def get_all_gas(client: AsyncSuiGQLClient) -> dict[str, list[SuiGas]]:
     return return_map
 
 
-async def main_run(client: AsyncSuiGQLClient):
+async def main_run(client: AsyncGqlClient):
     """Main Asynchronous entry point."""
     gasses = asyncio.create_task(get_all_gas(client))
     result = await gasses
@@ -149,7 +144,7 @@ async def main_run(client: AsyncSuiGQLClient):
 
 def sdk_version():
     """Dispay version(s)."""
-    print(f"pysui SDK version: {__version__}")
+    print(f"async_gas_version: {_async_gas_version} SDK version: {__version__}")
 
 
 def main():
@@ -164,7 +159,7 @@ def main():
     if parsed.version:
         sdk_version()
         return
-    arpc = AsyncSuiGQLClient(pysui_config=cfg)
+    arpc = AsyncGqlClient(pysui_config=cfg)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
