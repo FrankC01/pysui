@@ -21,20 +21,25 @@ Implementation demonstrating most commands like the SUI CLI (i.e. `sui client ..
 
 Merges an addresses Sui coins to one
 
+### splay
+
+Spreads an addresses coins to itself or one or all addresses
+
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 
 - `python -m samples.async_gasg`
 - `python -m samples.sgqls`
-- `python -m samples.walletg`
 - `python -m samples.smash`
+- `python -m samples.splay`
+- `python -m samples.walletg`
 
-**Note:** If running from PyPi install, examples can be started directly
+**Note:** If running from PyPi install, or installed into virtual env with `pip install -e...`, examples can be started directly
 
 - `async-gas`
 - `sgqls`
-- `wallet`
 - `smash`
-
+- `splay`
+- `wallet`
 
 #### wallet Commands
 ```shell

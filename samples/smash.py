@@ -42,32 +42,41 @@ from samples.cmd_argsg import build_smash_parser
 
 def sdk_version():
     """Dispay version(s)."""
-    print(f"async_gas_version: {_smash_version} SDK version: {__version__}")
+    print(f"smash version: {_smash_version} SDK version: {__version__}")
 
 
-async def main_run(*, client: AsyncGqlClient, wait: Optional[bool] = False):
+async def main_run(
+    *,
+    client: AsyncGqlClient,
+    includes: list[str],
+    excludes: list[str],
+    wait: bool,
+):
     """Main smash asynchronous entry point."""
     task_result = await asyncio.gather(
-        asfn.merge_all_sui(client=client, address=client.config.active_address),
+        asfn.merge_sui(
+            client=client,
+            address=client.config.active_address,
+            merge_only=includes,
+            exclude=excludes,
+            wait=wait,
+        ),
         return_exceptions=True,
     )
     if isinstance(task_result[0], tuple):
-        merge_status, effects, master_coin = cast(
+        merge_status, effects, master_coin, wait_result = cast(
             tuple[
-                asfn.MergeStatus, bcst.TransactionEffects, pgql_type.SuiCoinObjectGQL
+                asfn.OperationStatus,
+                bcst.TransactionEffects,
+                pgql_type.SuiCoinObjectGQL,
+                pgql_type.TransactionResultGQL,
             ],
             task_result[0],
         )
         # effects, master_coin = task_result[0]
-        if merge_status == asfn.MergeStatus.MERGE:
-            if wait:
-                res: SuiRpcResult = await client.wait_for_transaction(
-                    digest=effects.transactionDigest.to_digest_str()
-                )
-                if res.is_err():
-                    print(f"Transaction `{res.result_data.digest}` failed.")
-            print(f"Succesful smash to {master_coin.coin_object_id}")
-        elif merge_status == asfn.MergeStatus.ONE_COIN_NO_MERGE:
+        if merge_status == asfn.OperationStatus.MERGE:
+            print(f"Succesful smash to coin {master_coin.coin_object_id}")
+        elif merge_status == asfn.OperationStatus.ONE_COIN_NO_MERGE:
             print(
                 f"No merge, only 1 Sui coin for address {client.config.active_address}"
             )
@@ -98,7 +107,14 @@ def main():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(main_run(client=arpc, wait=parsed.wait))
+        loop.run_until_complete(
+            main_run(
+                client=arpc,
+                includes=parsed.include,
+                excludes=parsed.exclude,
+                wait=parsed.wait,
+            )
+        )
     except ValueError as ve:
         print(ve)
     except KeyboardInterrupt:
