@@ -103,6 +103,44 @@ class GetAllCoinBalances(PGQL_QueryNode):
         return pgql_type.BalancesGQL.from_query
 
 
+class GetCoinSummary(PGQL_QueryNode):
+    """GetCoinSummary Returns balance,digest and version"""
+
+    def __init__(self, *, owner: str, coin_id: str):
+        """Set up."""
+        self.owner = owner
+        self.coin_id = coin_id
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Build DocumentNode."""
+
+        _QUERY = """
+            {
+            address(
+                address: "OWNER"
+            ) {
+                objects (filter:{objectIds:["COIN_ID"]}) {
+                nodes {
+                    asCoin {
+                        coin_object_id:address
+                        object_digest:digest
+                        version
+                        balance:coinBalance
+                    }
+                }
+                }
+            }
+            }
+        """
+        _QUERY = _QUERY.replace("OWNER", self.owner).replace("COIN_ID", self.coin_id)
+        return gql(_QUERY)
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.SuiCoinObjectSummaryGQL]:
+        """Return summary serialized to data object."""
+        return pgql_type.SuiCoinObjectSummaryGQL.from_query
+
+
 class GetCoins(PGQL_QueryNode):
     """GetCoins Returns all Coin objects of a specific type for owner."""
 

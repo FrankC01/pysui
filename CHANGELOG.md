@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/258) Fix GetDelegatedStakes GraphQL query
+- [bug](https://github.com/FrankC01/pysui/issues/261) Fix OptionalU64 decode in transfer_sui
 
 ### Changed
 

@@ -215,6 +215,30 @@ class SuiCoinObjectsGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class SuiCoinObjectSummaryGQL(PGQL_Type):
+    """Summary information on sui coin."""
+
+    coin_object_id: str
+    object_digest: str
+    version: int
+    balance: str
+
+    @property
+    def object_id(self) -> str:
+        """Get as object_id."""
+        return self.coin_object_id
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "SuiCoinObjectSummaryGQL":
+        """Serializes query result to sui coin summary."""
+        ser_dict: dict = {}
+        _fast_flat(in_data, ser_dict)
+        ser_dict = ser_dict["nodes"][0]["asCoin"]
+        return clz.from_dict(ser_dict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class SuiStakedCoinGQL:
     """Staked coin object."""
 

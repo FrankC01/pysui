@@ -14,7 +14,7 @@
 
 """Sui Constants."""
 
-SUI_COIN_DENOMINATOR: int = 1000000000
+SUI_COIN_DENOMINATOR: int = 1_000_000_000
 
 # Runtime environment keys
 PYSUI_EXEC_ENV: str = "SUI_EXEC"

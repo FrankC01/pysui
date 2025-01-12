@@ -277,7 +277,12 @@ async def async_get_gas_data(
     if use_coins:
         if all(isinstance(x, str) for x in use_coins):
             use_coins = await _async_get_gas_objects(client, use_coins)
-        elif not all(isinstance(x, pgql_type.SuiCoinObjectGQL) for x in use_coins):
+        elif not all(
+            isinstance(
+                x, (pgql_type.SuiCoinObjectGQL, pgql_type.SuiCoinObjectSummaryGQL)
+            )
+            for x in use_coins
+        ):
             raise ValueError("use_gas_objects must use same type.")
     else:
         use_coins = await _async_get_all_gas_objects(signing, client)

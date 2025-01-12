@@ -199,6 +199,7 @@ class ObjectReference(canoser.Struct):
                 pgql_type.ObjectReadGQL,
                 pgql_type.SuiCoinObjectGQL,
                 pgql_type.SuiStakedCoinGQL,
+                pgql_type.SuiCoinObjectSummaryGQL,
             ),
         ):
             return cls(

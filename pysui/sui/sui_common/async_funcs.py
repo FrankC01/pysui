@@ -237,18 +237,6 @@ async def merge_sui(
     return (OperationStatus.MERGE, tx_effects, use_as_gas, None)
 
 
-async def split_to_same(
-    *,
-    client: Any,
-    address: str,
-    merge_only: Optional[list[str]] = None,
-    exclude: Optional[list[str]] = None,
-    explicit_count: Optional[int] = None,
-    wait: Optional[bool] = False,
-):
-    """."""
-
-
 async def split_to_distribution(
     *,
     client: Any,
@@ -259,6 +247,7 @@ async def split_to_distribution(
     wait: Optional[bool] = False,
 ):
     """."""
+    from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
     # Merge the gas available to address
     merge_tuple: pgql_type.SuiCoinObjectGQL = await asyncio.gather(
@@ -268,20 +257,22 @@ async def split_to_distribution(
         return_exceptions=True,
     )
     if isinstance(merge_tuple[0], tuple):
-        merge_status, effects, master_coin = cast(
-            tuple[OperationStatus, bcst.TransactionEffects, pgql_type.SuiCoinObjectGQL],
+        merge_status, effects, mcoin, _mexec = cast(
+            tuple[
+                OperationStatus,
+                bcst.TransactionEffects,
+                pgql_type.SuiCoinObjectGQL,
+                pgql_type.TransactionResultGQL,
+            ],
             merge_tuple,
         )
-        if merge_status == OperationStatus.MERGE:
-            status = effects.ExecutionStatus.name == "Success"
-            if wait:
-                res: SuiRpcResult = await client.wait_for_transaction(
-                    digest=effects.transactionDigest.to_digest_str()
-                )
-                if res.is_err():
-                    raise ValueError(
-                        f"Merge transaction `{res.result_data.digest}` failed."
-                    )
+        # We have a mergable coin
+        if merge_status == OperationStatus.ONE_COIN_NO_MERGE or (
+            merge_status == OperationStatus.MERGE
+            and effects.status.enum_name != "Success"
+        ):
+            logger.debug(f"Have coin to splay{mcoin.coin_object_id}")
+            tx = AsyncSuiTransaction(client=client)
 
     else:
         raise merge_tuple[0]

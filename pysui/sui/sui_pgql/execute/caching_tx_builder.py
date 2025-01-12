@@ -13,6 +13,9 @@ from deprecated.sphinx import versionchanged, versionadded
 from pysui.sui.sui_common.txb_pure import PureInput
 from pysui.sui.sui_types import bcs
 from pysui.sui.sui_utils import hexstring_to_sui_id
+from pysui.sui.sui_types.scalars import (
+    SuiU64,
+)
 
 
 # Well known aliases
@@ -408,6 +411,9 @@ class CachingTransactionBuilder:
             bcs.Command("TransferObjects", bcs.TransferObjects(from_args, receiver_arg))
         )
 
+    @versionchanged(
+        version="0.76.0", reason="https://github.com/FrankC01/pysui/issues/261"
+    )
     def transfer_sui(
         self,
         recipient: bcs.BuilderArg,
@@ -424,7 +430,12 @@ class CachingTransactionBuilder:
             coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
         elif isinstance(amount, bcs.OptionalU64):
             if amount.value:
-                coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount.value])
+                coin_arg = self.split_coin(
+                    from_coin=from_coin,
+                    amounts=[
+                        PureInput.as_input(SuiU64(bcs.U64.int_safe(amount.value)))
+                    ],
+                )
             else:
                 coin_arg = from_coin
         elif isinstance(from_coin, bcs.Argument):

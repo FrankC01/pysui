@@ -801,13 +801,6 @@ def build_smash_parser(
     """smash merges all of an addresses Sui coins to one."""
     parser = _base_parser(pconfig, "smash [options].\n\n" + build_smash_parser.__doc__)
     parser.add_argument(
-        "-w",
-        "--wait",
-        required=False,
-        help="Sets flag to wait for transaction commitment. Optional.",
-        action="store_true",
-    )
-    parser.add_argument(
         "-i",
         "--include",
         nargs="+",
@@ -834,21 +827,22 @@ def build_smash_parser(
         help="Alias of owner address.Mutually exclusive with '-o/--owner",
         action=validator.ValidateAlias,
     )
+    parser.add_argument(
+        "-w",
+        "--wait",
+        required=False,
+        help="Sets flag to wait for transaction commitment. Optional.",
+        action="store_true",
+    )
+
     return parser.parse_args(in_args if in_args else ["--help"])
 
 
 def build_splay_parser(
     in_args: list, pconfig: PysuiConfiguration
 ) -> argparse.Namespace:
-    """splay spreads all or selected coins to itself or other addresses."""
+    """splay spreads all, selected coins or count evenly to itself or other addresses."""
     parser = _base_parser(pconfig, "splay [options].\n\n" + build_splay_parser.__doc__)
-    parser.add_argument(
-        "-w",
-        "--wait",
-        required=False,
-        help="Sets flag to wait for transaction commitment(s). Optional.",
-        action="store_true",
-    )
     addy_arg_group = parser.add_mutually_exclusive_group(required=False)
     addy_arg_group.add_argument(
         "-o",
@@ -876,6 +870,12 @@ def build_splay_parser(
         help="Excludes these coins from smashing step before splaying",
         action=validator.ValidateAddress,
     )
+
+    parser.add_argument(
+        "-m",
+        "--mist",
+        help="Amount of mist per split. Either expresses as mists `nnn` or Sui `1S`, `1s`",
+    )
     dest_arg_group = parser.add_mutually_exclusive_group(required=False)
     dest_arg_group.add_argument(
         "-n",
@@ -889,5 +889,20 @@ def build_splay_parser(
         nargs="+",
         help="merges all or -c owner coins then splays evenly to these recipients. Mutually exclusive with '-n/--number",
         action=validator.ValidateAddress,
+    )
+    parser.add_argument(
+        "-b",
+        "--budget",
+        required=False,
+        default=10_000_000,
+        help="Budget reserved to execute splay. Optional - defaults to 10_000_000 mists.",
+        action=validator.ValidatePositive,
+    )
+    parser.add_argument(
+        "-w",
+        "--wait",
+        required=False,
+        help="Sets flag to wait for transaction commitment. Optional.",
+        action="store_true",
     )
     return parser.parse_args(in_args if in_args else ["--help"])
