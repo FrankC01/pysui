@@ -93,11 +93,9 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 Discord server [click here](https://discord.gg/uCGYfY4Ph4):
 
-### Additions
-
-There is a companion package called [pysui-gadgets](https://github.com/FrankC01/pysui_gadgets) with a few utilities and ge-gaws that you may find interesting. It is a separate package also on on PyPi.
-
 ### Local node support
+
+Note: Only supported for JSON RPC clients, GraphQL not available for suibase at this time.
 
 We leverage [suibase](https://github.com/ChainMovers/suibase) for our testing and SuiConfig includes an option for interacting directly with local nodes created by `suibase`
 
