@@ -10,7 +10,7 @@ import base64
 import os
 import pathlib
 import sys
-from typing import Optional, cast
+from typing import Optional, Union, cast
 
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 PARENT = PROJECT_DIR.parent
@@ -96,14 +96,79 @@ async def merge_for_gas(
     raise task_result[0]
 
 
+async def _process_txn(
+    client: AsyncGqlClient,
+    txn: AsyncSuiTransaction,
+    budget: int,
+    gas_coin: Union[pgql_type.SuiCoinObjectGQL, pgql_type.SuiCoinObjectSummaryGQL],
+    wait_for_commit: bool,
+) -> tuple[bcst.TransactionEffects, Union[pgql_type.TransactionResultGQL, None]]:
+    """Execute the transaction
+
+    :param client: Sui node client
+    :type client: AsyncGqlClient
+    :param txn: The transaction to sign and execute
+    :type txn: AsyncSuiTransaction
+    :param budget: Budget to reserve for execution
+    :type budget: int
+    :param gas_coin: The coin to use for transaction gas
+    :type gas_coin: Union[pgql_type.SuiCoinObjectGQL, pgql_type.SuiCoinObjectSummaryGQL]
+    :param wait_for_commit: Wait for transaction commitment, otherwise return V2 effects only
+    :type wait_for_commit: bool
+    :raises ValueError: If wait_for_commitment and fetching committed transaction fails or timesout
+    :return: Either just effects (no wait) or effects and transaction commitment result
+    :rtype: tuple[bcst.TransactionEffects, Union[pgql_type.TransactionResultGQL, None]]
+    """
+    results = await client.execute_query_node(
+        with_node=qn.ExecuteTransaction(
+            **await txn.build_and_sign(gas_budget=budget, use_gas_objects=[gas_coin])
+        )
+    )
+    tx_effects = bcst.TransactionEffects.deserialize(
+        base64.b64decode(results.result_data.bcs)
+    ).value
+    if tx_effects.status.enum_name != "Success":
+        logger.info(f"Splay failed {tx_effects.status.to_json(indent=2)}")
+        return ValueError(f"Splay transaction failed{tx_effects.status.value}")
+    else:
+        if wait_for_commit:
+            res: SuiRpcResult = await client.wait_for_transaction(
+                digest=tx_effects.transactionDigest.to_digest_str()
+            )
+            if res.is_err():
+                raise ValueError(
+                    f"Splay transaction `{res.result_data.digest}` failed."
+                )
+            return (tx_effects, res.result_data)
+
+        return (tx_effects, None)
+
+
 async def splay_n_to_self(
     client: AsyncGqlClient,
     mgas: asyncio.Task,
     explicit_count: int,
     budget: int,
     amount_per: Optional[int] = None,
-):
-    """."""
+    wait_for_commit: Optional[bool] = False,
+) -> tuple[bcst.TransactionEffects, Union[pgql_type.TransactionResultGQL, None]]:
+    """Splays coins from and to signing address
+
+    :param client: Sui node client
+    :type client: AsyncGqlClient
+    :param mgas: Merge coin task
+    :type mgas: asyncio.Task
+    :param explicit_count: The number of coins created and sent to signing address
+    :type explicit_count: int
+    :param budget: Budget to reserve for execution
+    :type budget: int
+    :param amount_per: Explicit amount per coin, defaults to None
+    :type amount_per: Optional[int], optional
+    :param wait_for_commit: Wait for transaction commitment, otherwise return V2 effects only
+    :type wait_for_commit: bool
+    :return: Either just effects (no wait) or effects and transaction commitment result
+    :rtype: tuple[bcst.TransactionEffects, Union[pgql_type.TransactionResultGQL, None]]
+    """
     task_result = await mgas
     if isinstance(
         task_result, (pgql_type.SuiCoinObjectGQL, pgql_type.SuiCoinObjectSummaryGQL)
@@ -120,31 +185,7 @@ async def splay_n_to_self(
             await txn.transfer_objects(
                 transfers=r_coins, recipient=client.config.active_address
             )
-            results = await client.execute_query_node(
-                with_node=qn.ExecuteTransaction(
-                    **await txn.build_and_sign(
-                        gas_budget=budget, use_gas_objects=[task_result]
-                    )
-                )
-            )
-            tx_effects = bcst.TransactionEffects.deserialize(
-                base64.b64decode(results.result_data.bcs)
-            ).value
-            if tx_effects.status.enum_name != "Success":
-                logger.info(f"Merge gas failed {tx_effects.status.to_json(indent=2)}")
-                return ValueError(f"Splay transaction failed{tx_effects.status.value}")
-            else:
-                return "Success"
-            # if wait:
-            #     res: SuiRpcResult = await client.wait_for_transaction(
-            #         digest=tx_effects.transactionDigest.to_digest_str()
-            #     )
-            #     if res.is_err():
-            #         raise ValueError(
-            #             f"Merge transaction `{res.result_data.digest}` failed."
-            #         )
-            #     return (OperationStatus.MERGE, tx_effects, use_as_gas, res.result_data)
-
+            return await _process_txn(client, txn, budget, task_result, wait_for_commit)
         else:
             return ValueError(
                 f"Splay total {total_distro} exceeds available coin balance of {balance}"
@@ -153,18 +194,61 @@ async def splay_n_to_self(
         return task_result
 
 
-async def split_n_to_others(
+async def splay_n_to_others(
     client: AsyncGqlClient,
-    amounts: list[int],
     recipients: list[str],
     mgas: asyncio.Task,
-):
-    """."""
+    budget: int,
+    amount_per: Optional[int] = None,
+    wait_for_commit: Optional[bool] = False,
+) -> tuple[bcst.TransactionEffects, Union[pgql_type.TransactionResultGQL, None]]:
+    """Splays coins to recipients
+
+    :param client: Sui node client
+    :type client: AsyncGqlClient
+    :param recipients: List of recipients to receive splayed coins
+    :type recipients: list[str]
+    :param mgas: Merge gas task
+    :type mgas: asyncio.Task
+    :param budget: Budget to reserve for execution
+    :type budget: int
+    :param amount_per:Explicit amount per coin, defaults to None
+    :type amount_per: Optional[int], optional
+    :param wait_for_commit: Wait for transaction commitment, otherwise return V2 effects only
+    :type wait_for_commit: Optional[bool], optional
+    :return: Either just effects (no wait) or effects and transaction commitment result
+    :rtype: tuple[bcst.TransactionEffects, Union[pgql_type.TransactionResultGQL, None]]
+    """
     task_result = await mgas
-    if isinstance(task_result, pgql_type.SuiCoinObjectGQL):
-        pass
+    if isinstance(
+        task_result, (pgql_type.SuiCoinObjectGQL, pgql_type.SuiCoinObjectSummaryGQL)
+    ):
+        r_count = len(recipients)
+        r_balance = int(task_result.balance)
+        balance = r_balance - budget
+        distro = amount_per if amount_per else int(balance / r_count)
+        total_distro = distro * r_count
+        if balance >= total_distro:
+            txn = AsyncSuiTransaction(client=client)
+            if r_count == 1:
+                r_coins = await txn.split_coin(coin=txn.gas, amounts=[distro])
+                await txn.transfer_objects(transfers=r_coins, recipient=recipients[0])
+            else:
+                amounts = [distro for x in range(r_count)]
+                r_coins = await txn.split_coin(coin=txn.gas, amounts=amounts)
+                for idx, recip in enumerate(recipients):
+                    await txn.transfer_objects(
+                        transfers=r_coins[idx], recipient=recipients[idx]
+                    )
+            return await _process_txn(client, txn, budget, task_result, wait_for_commit)
+
+        else:
+            return ValueError(
+                f"Splay total {total_distro} exceeds available coin balance of {balance}"
+            )
+
     else:
-        raise task_result
+        return task_result
 
 
 # TT
@@ -199,18 +283,28 @@ def _reconcille_args(
                 mist = SUI_COIN_DENOMINATOR * int(mist)
         mist = int(mist)
 
-    if not send_to and (not explicit_count or explicit_count < 2):
-        raise ValueError(f"splaying to self must specify -n >= 1")
+    # This determines whether self splaying or distribution
+    # if not self splaying and recipients omitted, defaults to other addresses in configuration
+    if not send_to and not explicit_count:
+        my_addy = client.config.active_address
+        send_to = [x for x in client.config.active_group.address_list if x != my_addy]
+    # Otherwise this is a self splay
+    if explicit_count and explicit_count < 2:
+        raise ValueError(f"splaying to self must specify -n >= 2")
+
+    # Ignite smashing
+    smasher = asyncio.create_task(
+        merge_for_gas(client, merge_only, exclude_from_merge, True),
+        name="smasher",
+    )
+
     if explicit_count:
         return splay_n_to_self(
-            client,
-            asyncio.create_task(
-                merge_for_gas(client, merge_only, exclude_from_merge, True),
-                name="merger",
-            ),
-            explicit_count,
-            budget,
-            mist,
+            client, smasher, explicit_count, budget, mist, wait_for_commit
+        )
+    elif send_to:
+        return splay_n_to_others(
+            client, send_to, smasher, budget, mist, wait_for_commit
         )
 
 

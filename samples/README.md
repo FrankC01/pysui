@@ -23,7 +23,7 @@ Merges an addresses Sui coins to one
 
 ### splay
 
-Spreads an addresses coins to itself or one or all addresses
+Spreads an address coins to itself or one to many other addresses
 
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 

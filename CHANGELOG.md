@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.76.0] - Unpublished
 
-**BREAKING CHANGES to SerialTransactionExecution constructor**
 
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/257) Keypair to bech32 format
 - [enhancement](https://github.com/FrankC01/pysui/issues/256) smash utility to merge all Sui coins for address
+- [enhancement](https://github.com/FrankC01/pysui/issues/255) splay utility to distribute coins to 1 or more addresses
 
 ### Fixed
 
@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [bug](https://github.com/FrankC01/pysui/issues/261) Fix OptionalU64 decode in transfer_sui
 
 ### Changed
+
+- Bumped pysui-fastcrypto dependency
 
 ### Removed
 
