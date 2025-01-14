@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [enhancement](https://github.com/FrankC01/pysui/issues/257) Keypair to bech32 format
 - [enhancement](https://github.com/FrankC01/pysui/issues/256) smash utility to merge all Sui coins for address
 - [enhancement](https://github.com/FrankC01/pysui/issues/255) splay utility to distribute coins to 1 or more addresses
+- [change](https://github.com/FrankC01/pysui/issues/262) `GetMultipleVersionedObjects` to support Sui GraphQL 1.4x.x multiGetObjects
 
 ### Fixed
 
@@ -22,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bumped pysui-fastcrypto dependency
+- Removed dead code and legacy dependencies in `async-gas`
+- [change](https://github.com/FrankC01/pysui/issues/262) Deprecated `GetMultiplePastObjects` as Sui GraphQL 1.40.0 deprecated underlyting query and introduced multiGetObjects.
 
 ### Removed
 

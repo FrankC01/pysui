@@ -168,19 +168,19 @@ async def do_past_object(client: AsyncGqlClient):
     )
 
 
-async def do_multiple_past_object(client: AsyncGqlClient):
-    """Fetch a past object.
+async def do_multiple_object_versions(client: AsyncGqlClient):
+    """Fetchs object details by version.
     To run, change the objectID str and version int.
     """
-    past_objects = [
+    object_versions = [
         {
-            "objectId": "0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
-            "version": 17078252,
+            "objectId": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
+            "version": 43,
         }
     ]
     handle_result(
         await client.execute_query_node(
-            with_node=qn.GetMultiplePastObjects(for_versions=past_objects)
+            with_node=qn.GetMultipleVersionedObjects(for_versions=object_versions)
         )
     )
 
@@ -646,7 +646,7 @@ async def main():
         # await do_object(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)
-        # await do_multiple_past_object(client_init)
+        # await do_multiple_object_versions(client_init)
         # await do_objects_for(client_init)
         # await do_dynamics(client_init)
         # await do_event(client_init)

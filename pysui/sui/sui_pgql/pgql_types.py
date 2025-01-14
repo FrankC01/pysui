@@ -397,6 +397,27 @@ class ObjectReadsGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ObjectVersionReadsGQL(PGQL_Type):
+    """Collection of object data objects."""
+
+    data: list[ObjectReadGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectReadsGQL":
+        """Serializes query result to list of Sui objects.
+
+        The in_data is a dictionary with 2 keys: 'cursor' and 'objects_data'
+        """
+        in_data = in_data.pop("multiGetObjects")
+        # Get cursor
+        dlist: list[ObjectReadGQL] = [
+            ObjectReadGQL.from_query(i_obj) for i_obj in in_data
+        ]
+        return ObjectVersionReadsGQL(dlist)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class EventGQL(PGQL_Type):
     """Collection of event summaries."""
 

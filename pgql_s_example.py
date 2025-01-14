@@ -158,19 +158,19 @@ def do_past_object(client: SyncGqlClient):
     )
 
 
-def do_multiple_past_object(client: SyncGqlClient):
+def do_multiple_object_versions(client: SyncGqlClient):
     """Fetch a past object.
     To run, change the objectID str and version int and add more dicts to the list.
     """
-    past_objects = [
+    object_versions = [
         {
-            "objectId": "0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
-            "version": 17078252,
+            "objectId": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
+            "version": 43,
         }
     ]
     handle_result(
         client.execute_query_node(
-            with_node=qn.GetMultiplePastObjects(for_versions=past_objects)
+            with_node=qn.GetMultipleVersionedObjects(for_versions=object_versions)
         )
     )
 
@@ -716,7 +716,7 @@ if __name__ == "__main__":
         # do_object(client_init)
         # do_objects(client_init)
         # do_past_object(client_init)
-        # do_multiple_past_object(client_init)
+        # do_multiple_object_versions(client_init)
         # do_objects_for(client_init)
         # do_dynamics(client_init)
         # do_event(client_init)

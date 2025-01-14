@@ -33,7 +33,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_async_gas_version = "1.0.0"
+_async_gas_version = "1.0.1"
 from samples.cmd_argsg import build_async_gas_parser
 
 
@@ -41,12 +41,6 @@ from pysui import PysuiConfiguration, AsyncGqlClient, __version__
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-
-from pysui.sui.sui_txresults.single_tx import (
-    ObjectReadPage,
-    SuiCoinObjects,
-    SuiGas,
-)
 
 
 async def _get_all_gas_objects(
@@ -71,21 +65,7 @@ async def _get_all_gas_objects(
     return coin_list
 
 
-def object_stats(objs: list[ObjectReadPage]) -> None:
-    """object_stats Print stats about objects for address.
-
-    :param objs: List of object descriptors
-    :type objs: list[ObjectInfo]
-    """
-    obj_types = {}
-    for desc in objs.data:
-        if desc.object_type not in obj_types:
-            obj_types[desc.object_type] = 0
-        obj_types[desc.object_type] = obj_types[desc.object_type] + 1
-    print(f"owned types and counts:\n{json.dumps(obj_types,indent=2)}")
-
-
-def print_gas(gasses: SuiCoinObjects) -> int:
+def print_gas(gasses: list[pgql_type.SuiCoinObjectGQL]) -> int:
     """print_gas Prints gas balances for each gas object `gasses`.
 
     :param gasses: A list of SuiGas type objects
@@ -108,7 +88,9 @@ def print_gas(gasses: SuiCoinObjects) -> int:
     return total
 
 
-async def get_all_gas(client: AsyncGqlClient) -> dict[str, list[SuiGas]]:
+async def get_all_gas(
+    client: AsyncGqlClient,
+) -> dict[str, list[pgql_type.SuiCoinObjectGQL]]:
     """get_all_gas Gets all SuiGas for each address in configuration.
 
     :param client: Asynchronous Sui Client
