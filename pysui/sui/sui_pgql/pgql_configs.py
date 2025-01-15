@@ -37,6 +37,8 @@ _QUERY = """
             requestTimeoutMs
             maxQueryPayloadSize
             maxTypeArgumentDepth
+            maxTypeArgumentWidth
+            maxTransactionIds
             maxTypeNodes
             maxMoveValueDepth
             maxTransactionPayloadSize
@@ -63,10 +65,6 @@ _QUERY = """
 class ServiceConfigGQL:
     """Sui GraphQL service controls."""
 
-    maxTypeArgumentDepth: int
-    maxTypeNodes: int
-    maxMoveValueDepth: int
-
     enabledFeatures: list[str]
     maxQueryDepth: int
     maxQueryNodes: int
@@ -76,6 +74,10 @@ class ServiceConfigGQL:
     maxPageSize: int
     requestTimeoutMs: int
     maxQueryPayloadSize: int
+    maxTypeArgumentDepth: int
+    maxTypeArgumentWidth: int
+    maxTypeNodes: int
+    maxMoveValueDepth: int
     mutationTimeoutMs: Optional[int] = dataclasses.field(default=None)
     maxTransactionPayloadSize: Optional[int] = dataclasses.field(default=None)
     maxTransactionIds: Optional[int] = dataclasses.field(default=None)
