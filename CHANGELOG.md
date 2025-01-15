@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.76.0] - Unpublished
+## [0.76.0] - 2025-01-15
 
 
 ### Added
@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [enhancement](https://github.com/FrankC01/pysui/issues/256) smash utility to merge all Sui coins for address
 - [enhancement](https://github.com/FrankC01/pysui/issues/255) splay utility to distribute coins to 1 or more addresses
 - [change](https://github.com/FrankC01/pysui/issues/262) `GetMultipleVersionedObjects` to support Sui GraphQL 1.4x.x multiGetObjects
+- [change](https://github.com/FrankC01/pysui/issues/259) `ServiceConfigGQL` added additional constraints
 
 ### Fixed
 

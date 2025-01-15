@@ -24,7 +24,7 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.75.0 - Released 2025-01-03**
+**Release-0.76.0 - Released 2025-01-15**
 
 - Supports _SUI 1.40.x JSON RPC API_, _SUI 1.40.x GRAPHQL_
 - JSON RPC API backwards compatable to _Sui 1.33.x_
@@ -34,7 +34,7 @@ Adds beta `SerialTransactionExecutor` Here are the initial [docs](https://pysui.
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
 ## Cup of Coffee
-Wouldn't mind a cup to keep me going!
+Wouldn't mind a cup to keep us going!
 Sui Address **0xc45e5ea887e037ddc6a482afa412773b4291c8fdc338f647fb0fcea324975d8e**
 
 ## Sui GraphQL RPC beta
