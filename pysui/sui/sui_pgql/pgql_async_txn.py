@@ -84,7 +84,7 @@ class AsyncSuiTransaction(txbase):
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
         """Returns the argument summary of a target sui move function."""
-        return self._function_meta_args(target)
+        return await self._function_meta_args(target)
 
     async def _build_txn_data(
         self,
@@ -420,7 +420,7 @@ class AsyncSuiTransaction(txbase):
         type_arguments = type_arguments if type_arguments else []
         # Validate and get target meta arguments
         package, package_module, package_function, retcount, ars = (
-            self._function_meta_args(target)
+            await self._function_meta_args(target)
         )
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
         parms = await self._argparse.build_args(arguments, ars)
