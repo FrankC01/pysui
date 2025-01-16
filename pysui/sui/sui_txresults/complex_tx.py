@@ -219,7 +219,7 @@ class Event(SuiTxReturnType, DataClassJsonMixin):
 
     bcs: str
     package_id: str = field(metadata=config(letter_case=LetterCase.CAMEL))
-    parsed_json: str = field(metadata=config(letter_case=LetterCase.CAMEL))
+    parsed_json: dict = field(metadata=config(letter_case=LetterCase.CAMEL))
     sender: str
     transaction_module: str = field(metadata=config(letter_case=LetterCase.CAMEL))
     event_type: str = field(metadata=config(field_name="type"))
