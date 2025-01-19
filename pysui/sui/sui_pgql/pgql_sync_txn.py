@@ -228,7 +228,6 @@ class SuiTransaction(txbase):
         """
 
         parms = self._argparse.build_args([coin, amounts], txbase._SPLIT_COIN)
-        # parms = ab.build_args(self.client, [coin, amounts], txbase._SPLIT_COIN)
         return self.builder.split_coin(parms[0], parms[1:][0])
 
     def merge_coins(
@@ -247,7 +246,6 @@ class SuiTransaction(txbase):
         :rtype: bcs.Argument
         """
         parms = self._argparse.build_args([merge_to, merge_from], txbase._MERGE_COINS)
-        # parms = ab.build_args(self.client, [merge_to, merge_from], txbase._MERGE_COINS)
         return self.builder.merge_coins(parms[0], parms[1:][0])
 
     def split_coin_equal(
@@ -274,7 +272,6 @@ class SuiTransaction(txbase):
         )
 
         parms = self._argparse.build_args([coin, split_count], ars)
-        # parms = ab.build_args(self.client, [coin, split_count], ars)
         type_arguments = [bcs.TypeTag.type_tag_from(coin_type)]
         return self.builder.move_call(
             target=package,
@@ -304,9 +301,6 @@ class SuiTransaction(txbase):
         parms = self._argparse.build_args(
             [recipient, transfers], txbase._TRANSFER_OBJECTS
         )
-        # parms = ab.build_args(
-        #     self.client, [recipient, transfers], txbase._TRANSFER_OBJECTS
-        # )
         return self.builder.transfer_objects(parms[0], parms[1:][0])
 
     def transfer_sui(
@@ -329,11 +323,6 @@ class SuiTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        # return self.builder.transfer_sui(
-        #     *ab.build_args(
-        #         self.client, [recipient, from_coin, amount], txbase._TRANSFER_SUI
-        #     )
-        # )
         return self.builder.transfer_sui(
             *self._argparse.build_args(
                 [recipient, from_coin, amount], txbase._TRANSFER_SUI
