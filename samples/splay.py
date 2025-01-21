@@ -175,6 +175,8 @@ async def splay_n_to_self(
     ):
 
         r_balance = int(task_result.balance)
+        if budget > r_balance:
+            return ValueError(f"Available gas {r_balance} is less than budget {budget}")
         balance = r_balance - budget
         distro = amount_per if amount_per else int(balance / explicit_count)
         total_distro = distro * explicit_count
@@ -225,6 +227,8 @@ async def splay_n_to_others(
     ):
         r_count = len(recipients)
         r_balance = int(task_result.balance)
+        if budget > r_balance:
+            return ValueError(f"Available gas {r_balance} is less than budget {budget}")
         balance = r_balance - budget
         distro = amount_per if amount_per else int(balance / r_count)
         total_distro = distro * r_count
