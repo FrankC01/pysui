@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/266) Fixes exception, return error if budget greater than balance
+- Typos in readthedocs for GraphQL Programmable Transactions
 
 ### Changed
 

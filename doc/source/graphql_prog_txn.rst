@@ -195,7 +195,7 @@ DryRunTransactionKind documentation.
 
     def dry_run_kind(txn:SuiTransaction):
         """Uses defaults for DryRunTransactionKind."""
-        raw_kind = txer.raw_kind()
+        raw_kind = txn.raw_kind()
         raw_kind_ser = base64.b64encode(raw_kind.serialize().decode())
 
         # Print the TransactionType BCS (pre-serialized) structure
@@ -222,7 +222,7 @@ is dryrun for inspection
 
     def dry_run(txn:SuiTransaction):
         """Uses fully built TransactionData for DryRunTransaction"""
-        raw_kind = txer.raw_kind()
+        raw_kind = txn.raw_kind()
         # Print the TransactionData BCS (pre-serialized) structure
         # print(raw_kind.to_json(indent=2))
 
@@ -254,7 +254,7 @@ required:
         # print(raw_kind.to_json(indent=2))
 
         # Build and sign to get the base64 transaction bytes and list of signatures
-        tx_dict = txer.build_and_sign()
+        tx_dict = txn.build_and_sign()
         # Execute the transaction
         result = txer.client.execute_query_node(
             with_node=qn.ExecuteTransaction(**tx_dict)
