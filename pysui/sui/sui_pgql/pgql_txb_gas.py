@@ -88,6 +88,7 @@ def _coins_for_budget(
     coins: list[pgql_type.SuiCoinObjectGQL], budget: int
 ) -> list[bcs.ObjectReference]:
     """."""
+    coins.sort(key=lambda x: int(x.balance), reverse=True)
     _coin_fit = [x for x in coins if int(x.balance) > budget]
     if _coin_fit:
         _coin_fit = [_coin_fit[0]]

@@ -15,6 +15,7 @@ Move.lock
 *.log*
 
 # Temporary Spikes
+faux.py
 temp*.py
 temp*.json
 temp_sub.py

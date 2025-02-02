@@ -627,7 +627,9 @@ async def main():
             write_schema=False,
             pysui_config=PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+                # profile_name="devnet",
                 # profile_name="testnet",
+                # profile_name="mainnet",
             ),
         )
         print(f"Active chain profile   '{client_init.chain_environment}'")

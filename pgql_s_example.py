@@ -193,9 +193,8 @@ def do_objects_for(client: SyncGqlClient):
         client.execute_query_node(
             with_node=qn.GetMultipleObjects(
                 object_ids=[
-                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-                    "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
-                    "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
+                    "0x622bd4386896675a1e31d489b789a3b848468c85f081537cbab076092b0727ed",
+                    "0x365d59f8994c6d18c682a9cede48cfd9313b72d4f9de029529e388898113231b",
                 ]
             )
         )
@@ -466,12 +465,16 @@ def do_structs(client: SyncGqlClient):
 
 
 def do_func(client: SyncGqlClient):
-    """Fetch structures by package::module."""
+    """Fetch structures by package::module.
+
+    You will need to change the package,module and functions here for a well known one
+    depending on the environment (devnet, testnet, mainnet) you are running this.
+    """
     result = client.execute_query_node(
         with_node=qn.GetFunction(
-            package="0x2",
-            module_name="pay",
-            function_name="divide_and_keep",
+            package="0xce936b3b14d08848177b930e1944490bc445492b786c293a5a3588c892c1ebf4",
+            module_name="fungible",
+            function_name="mint",
         )
     )
     if result.is_ok():
@@ -535,10 +538,10 @@ def do_dry_run_kind_new(client: SyncGqlClient):
     txer = SuiTransaction(client=client)
     scres = txer.split_coin(coin=txer.gas, amounts=[1000000, 1000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
-
-    tx_b64 = base64.b64encode(txer.raw_kind().serialize()).decode()
     handle_result(
-        client.execute_query_node(with_node=qn.DryRunTransactionKind(tx_bytestr=tx_b64))
+        client.execute_query_node(
+            with_node=qn.DryRunTransactionKind(tx_bytestr=txer.build_for_dryrun())
+        )
     )
 
 
@@ -608,7 +611,7 @@ def split_1_half(client: SyncGqlClient):
         scres = txer.split_coin(coin=txer.gas, amounts=[amount])
         txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
         txdict = txer.build_and_sign()
-        handle_result(
+        result = handle_result(
             client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
         )
 
@@ -628,7 +631,7 @@ def split_any_half(client: SyncGqlClient):
         scres = txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
         txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
         txdict = txer.build_and_sign()
-        handle_result(
+        result = handle_result(
             client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
         )
 
@@ -695,7 +698,9 @@ if __name__ == "__main__":
     try:
         cfg = PysuiConfiguration(
             group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+            profile_name="devnet",
             # profile_name="testnet",
+            # profile_name="mainnet",
             # persist=True,
         )
         client_init = SyncGqlClient(write_schema=False, pysui_config=cfg)

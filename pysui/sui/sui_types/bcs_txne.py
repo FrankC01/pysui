@@ -227,3 +227,12 @@ class TransactionEffects(can.RustEnum):
         ("V1", TransactionEffectsV1),
         ("V2", TransactionEffectsV2),
     ]
+
+
+if __name__ == "__main__":
+    """."""
+    import base64
+
+    bcs = "AQByAAAAAAAAAEBCDwAAAAAAkJgXAQAAAADI7A4AAAAAAJgmAAAAAAAAIGumr1zYfIzEy6DwayTg2OOwsITm32cqH/BiCxNWy00/AQAAAAAAAiAhgX1CvwmrGbXuox6ZTSWMKN50XLEmHAoPWe8JRo2nMiDxlQRTv9yuritx6h9V3Lm/CdKbQXd9BU3Zryvs6HQT4XMAAAAAAAAABBQHztnMcSfWQquveJ8LgcWlGYMjZ/vWQb/i5PyNSLPDAXIAAAAAAAAAIOWd8XofHxGYSoN7FzAbEtTaaa9q6hlo/qmZaF24NaO4AKni2zhfBVzAIVo83iaLdicFNblEOAdRTxg76Gkmwhn0ASBvizHWJscsfpg8vXOTvgCvWmAbxFjXZid7lWY03PNfOQCp4ts4XwVcwCFaPN4mi3YnBTW5RDgHUU8YO+hpJsIZ9AAsYu63La/k1DLlOazaWqcYMESEWKwe+hsde2kApNTnRQACAQAAAAAAAAAgs7ZyN4Y+hZK0RMSQ7fPymerGY3VL9oPIxINKG9h+ZUwBNl1Z+JlMbRjGgqnO3kjP2TE7ctT53gKVKeOIiYETIxsAASCALuwi/OuVafChgxZ+gikNA3NQQH4bccPK39ELSEaQEgCp4ts4XwVcwCFaPN4mi3YnBTW5RDgHUU8YO+hpJsIZ9AFiK9Q4aJZnWh4x1Im3iaO4SEaMhfCBU3y6sHYJKwcn7QABILnbetajqVTghNWdP8EXoGBoMw7aiJUINM4qH0gSlKfOAKni2zhfBVzAIVo83iaLdicFNblEOAdRTxg76Gkmwhn0AQAA"
+    te = TransactionEffects.deserialize(base64.b64decode(bcs))
+    print(te)

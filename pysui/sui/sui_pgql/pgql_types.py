@@ -601,6 +601,62 @@ class SuiCoinMetadataGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ObjectContent:
+    has_public_transfer: bool
+    as_object: dict
+
+    # "as_object": {
+    #     "content": {
+    #         "id": "0x1407ced9cc7127d642abaf789f0b81c5a519832367fbd641bfe2e4fc8d48b3c3",
+    #         "balance": {"value": "1247706815"},
+    #     },
+    #     "object_type_repr": {
+    #         "object_type": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
+    #     },
+    # },
+    def object_type(self) -> str:
+        return self.as_object["object_type_repr"]["object_type"]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ObjectState:
+    bcs: str
+    version: int
+    object_digest: str
+    object_id: str
+    object_kind: str
+    owner: dict
+    storage_rebate: str
+    prior_transaction: dict
+    as_move_content: Optional[ObjectContent] = None
+    as_move_package: Optional[dict] = None
+
+    def is_package(self) -> bool:
+        return self.as_move_package if self.as_move_package else False
+
+    def is_object(self) -> bool:
+        return self.as_move_content if self.as_move_content else False
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ObjectChange:
+    address: str
+    deleted: bool
+    created: bool
+    input_state: Optional[ObjectState]
+    output_state: Optional[ObjectState]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ObjectChanges:
+    nodes: list[ObjectChange]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class TransactionResultGQL(PGQL_Type):
     """Transaction result representation class."""
 
@@ -620,6 +676,10 @@ class TransactionResultGQL(PGQL_Type):
             txblock["transaction_kind"] = txblock.pop("kind")["tx_kind"]
             return TransactionResultGQL.from_dict(txblock)
         return NoopGQL.from_query()
+
+    def object_changes(self) -> ObjectChanges:
+        """Return data structured object changes."""
+        return ObjectChanges.from_dict(self.effects["objectChanges"])
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

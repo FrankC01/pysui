@@ -229,8 +229,7 @@ is dryrun for inspection
         # Execute the dry run
         result =
             txn.client.execute_query_node(
-                with_node=qn.DryRunTransaction(tx_bytestr=txn.build())
-            )
+                with_node=qn.DryRunTransaction(tx_bytestr=txn.build()))
 
         if result.is_ok():
             print(result.result_data.to_json(indent=2))
@@ -257,7 +256,7 @@ required:
         tx_dict = txn.build_and_sign()
         # Execute the transaction
         result = txer.client.execute_query_node(
-            with_node=qn.ExecuteTransaction(**tx_dict)
+            with_node=qn.ExecuteTransaction(**tx_dict))
 
         if result.is_ok():
             # Unlike JSON RPC, the GraphRPC transaction execution just returns
