@@ -152,6 +152,11 @@ class PysuiConfiguration:
         return self._model
 
     @property
+    def active_group_name(self) -> str:
+        """Return name of active group."""
+        return self._model.active_group.group_name
+
+    @property
     def active_group(self) -> cfg_group.ProfileGroup:
         """Return the active group."""
         return self._model.active_group
@@ -208,6 +213,10 @@ class PysuiConfiguration:
             else self.active_group
         )
         return _group.keypair_for_address(address=address)
+
+    def group_names(self) -> list[str]:
+        """Return the groups in the configuration."""
+        return [x.group_name for x in self._model.groups]
 
     def profile_names(self, *, in_group: Optional[str] = None) -> list[str]:
         """Return the profiles in a group. Default to active group."""

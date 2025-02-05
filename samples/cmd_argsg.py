@@ -745,6 +745,14 @@ def _base_parser(
         description="",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    # parser.add_argument(
+    #     "--group",
+    #     dest="group_name",
+    #     choices=pconfig.group_names(),
+    #     default=pconfig.active_group,
+    #     required=False,
+    #     help=f"The GraphQL groups. Default to '{pconfig.active_group_name}'",
+    # )
     parser.add_argument(
         # "-p",
         "--profile",
