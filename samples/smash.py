@@ -86,15 +86,28 @@ async def main_run(
         raise task_result[0]
 
 
+def _group_pull(cli_arg: list, config: PysuiConfiguration) -> list:
+    """Check for group and set accordingly."""
+
+    if cli_arg.count("--group"):
+        ndx = cli_arg.index("--group")
+        nvl: str = cli_arg[ndx + 1]
+        config.make_active(group_name=nvl)
+
+    return cli_arg
+
+
 def main():
     """Entry point for smash utility."""
-    arg_line = sys.argv[1:].copy()
+
     cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+    arg_line = _group_pull(sys.argv[1:].copy(), cfg)
     parsed = build_smash_parser(arg_line, cfg)
     if parsed.version:
         sdk_version()
         return
     cfg.make_active(
+        group_name=parsed.group_name,
         profile_name=parsed.profile_name,
         address=parsed.owner,
         alias=parsed.alias,

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/270) CLI apps now take `--group` as argument.
+  - Note that pysui CLI apps are all GraphQL based, setting group to JSON RPC type will fail execution.
+
 ### Fixed
 
 ### Changed

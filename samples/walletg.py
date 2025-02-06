@@ -26,17 +26,26 @@ from samples.cmd_argsg import build_parser
 from samples.cmdsg import SUI_CMD_DISPATCH
 
 
+def _group_pull(cli_arg: list, config: PysuiConfiguration) -> list:
+    """Check for group and set accordingly."""
+
+    if cli_arg.count("--group"):
+        ndx = cli_arg.index("--group")
+        nvl: str = cli_arg[ndx + 1]
+        config.make_active(group_name=nvl)
+
+    return cli_arg
+
+
 def main():
     """Entry point for demonstration."""
-    arg_line = sys.argv[1:].copy()
-    cfg_local: bool = False
-    # Handle a different client.yaml than default
-    if arg_line and arg_line[0] == "--local":
-        raise ValueError("--local is invalid for GraphQL")
     cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+    arg_line = _group_pull(sys.argv[1:].copy(), cfg)
     parsed = build_parser(arg_line, cfg)
     cmd_call = SUI_CMD_DISPATCH.get(parsed.subcommand, None)
-    cfg.make_active(profile_name=parsed.profile_name, persist=False)
+    cfg.make_active(
+        group_name=parsed.group_name, profile_name=parsed.profile_name, persist=False
+    )
     if cmd_call:
         var_args = vars(parsed)
         var_args.pop("subcommand")
