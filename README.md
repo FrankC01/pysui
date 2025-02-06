@@ -31,10 +31,6 @@ See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
-## Cup of Coffee
-Wouldn't mind a cup to keep us going!
-Sui Address **0xc45e5ea887e037ddc6a482afa412773b4291c8fdc338f647fb0fcea324975d8e**
-
 ## Sui GraphQL RPC beta
 
 MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
