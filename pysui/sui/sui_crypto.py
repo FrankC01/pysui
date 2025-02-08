@@ -72,10 +72,50 @@ class IntentScope(IntEnum):
 class SuiPublicKey(PublicKey):
     """SuiPublicKey Sui Basic public key."""
 
+    @versionadded(version="0.78.0", reason="Support standalone public key.")
+    @classmethod
+    def from_serialized(cls, indata: str) -> PublicKey:
+        """Convert base64 string to public key."""
+        key_list = list(base64.b64decode(indata))
+        sig = SignatureScheme(key_list[0])
+        return SuiPublicKey(sig, bytes(key_list[1::]))
+
     @property
     def pub_key(self) -> str:
         """Return self as base64 encoded string."""
         return self.to_b64()
+
+    @property
+    def scheme(self) -> SignatureScheme:
+        """Get the keys scheme."""
+        return self._scheme
+
+    @versionadded(
+        version="0.78.0",
+        reason="Support standalone public key serialization to base64.",
+    )
+    def serialize(self) -> str:
+        """Serialize public key to base64 keystring."""
+        return base64.b64encode(self.scheme_and_key()).decode()
+
+    @versionadded(
+        version="0.78.0", reason="Support signature verification using public key."
+    )
+    def verify_personal_message(self, message: str, signature: str) -> bool:
+        """Verify personal message with signature, returning true/false."""
+        from pysui.sui.sui_txn.transaction_builder import PureInput
+
+        # Hash the message with intent
+        intent_msg = bytearray([IntentScope.PersonalMessage, 0, 0])
+        intent_msg.extend(PureInput.pure(list(base64.b64decode(message))))
+        hd1 = hashlib.blake2b(intent_msg, digest_size=32).digest()
+        sigbytes = bytes(list(base64.b64decode(signature))[1:65])
+        return pfc.verify_pubk(
+            self.scheme,
+            self.key_bytes,
+            base64.b64encode(hd1).decode(),
+            base64.b64encode(sigbytes).decode(),
+        )
 
 
 @versionchanged(version="0.33.0", reason="Converted to use pysui-fastcrypto")
@@ -166,12 +206,6 @@ class SuiKeyPair(KeyPair):
         assert self.private_key, "Can not sign with invalid private key"
         sig = bytearray(self.private_key.sign_secure_personal_message(message))
         return base64.b64encode(sig).decode()
-
-    @versionchanged(version="0.34.0", reason="Added to sign arbirary messages")
-    @deprecated(version="0.71.0", reason="Use sign_personal_message instead")
-    def sign_message(self, message: str) -> str:
-        """Sign arbitrary base64 encoded message, returning a base64 signed message."""
-        return pfc.sign_message(self.scheme, self.private_key.key_bytes, message)
 
     @versionadded(version="0.71.0", reason="Verify personal message with intent.")
     def verify_personal_message(self, message: str, sig: str) -> bool:

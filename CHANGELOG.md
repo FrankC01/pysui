@@ -12,11 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [enhancement](https://github.com/FrankC01/pysui/issues/270) CLI apps now take `--group` as argument.
   - Note that pysui CLI apps are all GraphQL based, setting group to JSON RPC type will fail execution.
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/271) Use public key to verify signature on personal message.
+  - Added `serialize` to SuiPublicKey to convert to signature scheme and bytes to base64
+  - Added `from_serialized` to SuiPublicKey as class method to create SuiPublicKey from base64 encoded signature scheme and bytes
+  - Added `verify_personal_message` to SuiPublicKey to verify signature using public key
+
 ### Fixed
 
 ### Changed
 
 ### Removed
+
+- `sign_message` on SuiKeyPair deprecated since "0.71.0"
 
 ## [0.77.0] - 2025-02-02
 

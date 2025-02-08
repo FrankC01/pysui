@@ -91,6 +91,15 @@ class PublicKey(Key):
         """
         return self.scheme.value.to_bytes(1, "little") + self.key_bytes
 
+    @abstractmethod
+    def serialize(self) -> str:
+        """Serialize public key to base64 keystring."""
+
+    @classmethod
+    @abstractmethod
+    def from_serialized(cls, indata: str) -> "PublicKey":
+        """Convert base64 string to public key."""
+
 
 class PrivateKey(Key):
     """PrivateKey construct."""
@@ -121,10 +130,6 @@ class KeyPair(ABC):
     @abstractmethod
     def new_sign_secure(self, tx_data: str) -> Union[AbstractType, str]:
         """Sign transactions securley."""
-
-    @abstractmethod
-    def sign_message(self, message: str) -> str:
-        """Sign arbitrary base64 encoded message, returning a base64 signed message."""
 
     @abstractmethod
     def sign_personal_message(self, message: str) -> str:
