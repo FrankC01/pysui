@@ -334,7 +334,6 @@ def do_staked_sui(client: SyncGqlClient):
 def do_latest_cp(client: SyncGqlClient):
     """."""
     qnode = qn.GetLatestCheckpointSequence()
-    # print(qnode.query_as_string())
     handle_result(client.execute_query_node(with_node=qnode))
 
 
