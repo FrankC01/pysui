@@ -77,6 +77,19 @@ class ConsensusCommitPrologueV2(SuiTxReturnType, DataClassJsonMixin):
 
 
 @dataclass
+class ConsensusCommitPrologueV3(SuiTxReturnType, DataClassJsonMixin):
+    """A system transaction marking the start of a series of transactions scheduled as part of a checkpoint."""
+
+    kind: str
+    commit_timestamp_ms: str
+    consensus_commit_digest: str
+    epoch: str
+    prologue_round: str = field(metadata=config(field_name="round"))
+    sub_dag_index: Optional[str]
+    consensus_determined_version_assignments: Optional[dict[str, list]]
+
+
+@dataclass
 class ProgrammableTransaction(SuiTxReturnType, DataClassJsonMixin):
     """A series of commands where the results of one command can be used in future commands."""
 
@@ -147,6 +160,10 @@ class TransactionData(SuiTxReturnType, DataClassJsonMixin):
                     self.transaction = Genesis.from_dict(self.transaction)
                 case "ProgrammableTransaction":
                     self.transaction = ProgrammableTransaction.from_dict(
+                        self.transaction
+                    )
+                case "ConsensusCommitPrologueV3":
+                    self.transaction = ConsensusCommitPrologueV3.from_dict(
                         self.transaction
                     )
                 case "ConsensusCommitPrologueV2":
