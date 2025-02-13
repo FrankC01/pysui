@@ -1,6 +1,6 @@
 
-GraphQL QueryNodes
-===================
+QueryNodes
+==========
 
 General
 -------
@@ -23,6 +23,8 @@ QueryNode Classes
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetAllCoinBalances`            |
 +-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetCoinSummary`                |
++-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetCoins`                      |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetLatestSuiSystemState`       |
@@ -38,6 +40,8 @@ QueryNode Classes
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetPastObject`                 |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetMultiplePastObjects`        |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetMultipleVersionedObjects`   |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetDynamicFields`              |
 +-------------------------------------------------------------------------+
