@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug PR](https://github.com/FrankC01/pysui/pull/278) Fixes new ConsensusCommitPrologueV3 handling bug in JSON RPC dataclass. Contriubed by [Omri Levy](https://github.com/omri2861)
+
 ### Changed
 
 ### Removed
