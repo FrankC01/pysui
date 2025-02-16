@@ -1,0 +1,41 @@
+{
+    "module": "sample",
+    "classes": [
+        {
+            "class_type": "Structure",
+            "class_name": "S1",
+            "fields": [
+                {
+                    "class_name": "array_of_5_encoded",
+                    "class_type": "Array",
+                    "array_definition": {
+                        "fixed_length": 5,
+                        "encode_length": true,
+                        "element": "u8"
+                    }
+                },
+                {
+                    "class_name": "list_of_u8",
+                    "class_type": "List",
+                    "element": "u8"
+                }
+            ]
+        },
+        {
+            "class_type": "Enum",
+            "class_name": "E1",
+            "fields": [
+                {
+                    "class_name": "list_of_u8",
+                    "class_type": "List",
+                    "element": "u8"
+                }
+            ]
+        },
+        {
+            "class_type": "Optional",
+            "class_name": "O1",
+            "element": "u8"
+        }
+    ]
+}
