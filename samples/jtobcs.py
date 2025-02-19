@@ -45,13 +45,31 @@ _BCS_COMMON_TYPES: dict[str, str] = {
 }
 
 
-def parse_args(in_args: list) -> argparse.Namespace:
+def parse_args(
+    in_args: list, default_folder: str, input_file_default: str
+) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         add_help=True,
         usage="%(prog)s [options] command [--command_options]",
         description="",
     )
-    return parser.parse_args(in_args if in_args else ["--help"])
+    parser.add_argument(
+        "-i",
+        "--input",
+        dest="json_input_file",
+        required=False,
+        help=f"The JSON input file to convert to a Python BCS module. Default to '{input_file_default}'",
+    )
+    parser.add_argument(
+        "-t",
+        "--target-folder",
+        dest="target_output_folder",
+        default=default_folder,
+        required=False,
+        help=f"The folder where the Python BCS module is written to. Default to '{default_folder}'",
+    )
+    return parser.parse_args(in_args)
+    # return parser.parse_args(in_args if in_args else ["--help"])
 
 
 def gen_structure(*, name: str, ast_module: ast.AST, spec: dict) -> ast.ClassDef:
@@ -189,7 +207,7 @@ def validate_json(
             (resource_path / "jtobcs_sample.json").read_text(encoding="utf8")
         )
     else:
-        json_data = json.loads(Path(json_data).read_text(encoding="utf8"))
+        json_data = json.loads(Path(json_file).read_text(encoding="utf8"))
 
     document = JSON(json_data)
     result = jtobcs_schema.evaluate(document)
@@ -202,12 +220,13 @@ def main():
     """Main execution for jtobcs."""
     res_path = Path(inspect.getfile(inspect.currentframe())).parent
     catalog = create_catalog("2020-12")
+    parsed = parse_args([], os.getcwd(), "jtobcs_sample.json")
     json_data = validate_json(catalog=catalog, resource_path=res_path)
     pre_file = res_path / "jtobcs_pre.py"
-    pre_module: ast.Module = ast.parse(
-        pre_file.read_text(encoding="utf8"), "jtobcs_pre.py", "exec"
-    )
     module_name = json_data["module"]
+    pre_module: ast.Module = ast.parse(
+        pre_file.read_text(encoding="utf8"), module_name, "exec"
+    )
     for spec in json_data["classes"]:
         _ = process_json(pre_module, spec)
     # print(ast.dump(pre_module, True, False, indent=4))
