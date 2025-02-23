@@ -119,6 +119,11 @@ class SuiArray(SuiCollection, Generic[AT]):
         """Alias for transactions."""
         return self.array
 
+    @property
+    def past_objects(self) -> list[dict]:
+        """Alias for transactions."""
+        return self.array
+
 
 @deprecated(
     version="0.65.0", reason="Transition to pysui GraphQL SuiClients and QueryNodes"
