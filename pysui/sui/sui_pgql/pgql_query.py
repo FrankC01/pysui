@@ -1585,7 +1585,8 @@ class DryRunTransactionKind(PGQL_QueryNode):
                 schema.DryRunResult.error,
                 schema.DryRunResult.results.select(
                     schema.DryRunEffect.returnValues.select(
-                        schema.DryRunReturn.type.select(schema.MoveType.repr)
+                        schema.DryRunReturn.type.select(schema.MoveType.repr),
+                        schema.DryRunReturn.bcs,
                     )
                 ),
                 transactionBlock=schema.DryRunResult.transaction.select(std_txn),
@@ -1623,7 +1624,8 @@ class DryRunTransaction(PGQL_QueryNode):
                 schema.DryRunResult.error,
                 schema.DryRunResult.results.select(
                     schema.DryRunEffect.returnValues.select(
-                        schema.DryRunReturn.type.select(schema.MoveType.repr)
+                        schema.DryRunReturn.type.select(schema.MoveType.repr),
+                        schema.DryRunReturn.bcs,
                     )
                 ),
                 transactionBlock=schema.DryRunResult.transaction.select(std_txn),

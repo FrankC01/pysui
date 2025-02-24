@@ -5,13 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.79.0] - Unpublished
+## [0.79.0] - 2025-02-24
 
 ### Added
+
+- For GraphQL added `bcs` to the DryRunResult fields
 
 ### Fixed
 
 - [bug PR](https://github.com/FrankC01/pysui/pull/278) Fixes new ConsensusCommitPrologueV3 handling bug in JSON RPC dataclass. Contriubed by [Omri Levy](https://github.com/omri2861)
+- [bug PR](https://github.com/FrankC01/pysui/pull/281) Added `past_objects` property to SuiArray for JSON RPC supporting `sui_tryGetPastObjects`
 
 ### Changed
 
