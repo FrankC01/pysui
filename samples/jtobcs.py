@@ -200,7 +200,9 @@ def validate_json(
 ):
     """Validate the JSON file with our schema."""
     jtobcs_schema: JSONSchema = JSONSchema.loadf(
-        resource_path / "json-schema-jtobcs_sample.json"
+        # resource_path / "json-schema-jtobcs_sample.json"
+        resource_path
+        / "jtobcs_spec.json"
     )
     if not json_file:
         json_data = json.loads(

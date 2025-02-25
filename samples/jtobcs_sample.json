@@ -1,41 +1,76 @@
 {
-    "module": "sample",
+    "module": "foo",
     "classes": [
         {
+            "class_name": "FirstClass",
             "class_type": "Structure",
-            "class_name": "S1",
             "fields": [
                 {
-                    "class_name": "array_of_5_encoded",
-                    "class_type": "Array",
-                    "array_definition": {
-                        "fixed_length": 5,
-                        "encode_length": true,
-                        "element": "u8"
-                    }
+                    "class_name": "a",
+                    "class_type": "Reference",
+                    "element": "u8"
                 },
                 {
-                    "class_name": "list_of_u8",
+                    "class_name": "b",
                     "class_type": "List",
                     "element": "u8"
-                }
-            ]
-        },
-        {
-            "class_type": "Enum",
-            "class_name": "E1",
-            "fields": [
+                },
                 {
-                    "class_name": "list_of_u8",
-                    "class_type": "List",
-                    "element": "u8"
+                    "class_name": "c",
+                    "class_type": "Tuple",
+                    "elements": [
+                        {
+                            "class_type": "Reference",
+                            "element": "u8"
+                        },
+                        {
+                            "class_type": "Reference",
+                            "element": "u16"
+                        }
+                    ]
+                },
+                {
+                    "class_name": "d",
+                    "class_type": "Array",
+                    "array_definition": {
+                        "element": "u8",
+                        "fixed_length": 32,
+                        "encode_length": false
+                    }
                 }
             ]
         },
         {
+            "class_name": "MyEnum",
+            "class_type": "Enum",
+            "enums": [
+                {
+                    "class_name": "One",
+                    "class_type": "Reference",
+                    "element": "FirstClass"
+                },
+                {
+                    "class_name": "Two",
+                    "class_type": "Reference",
+                    "element": "u8"
+                },
+                {
+                    "class_name": "Three",
+                    "class_type": "Constant",
+                    "element": {
+                        "constant_type": "bool",
+                        "constant_value": false
+                    }
+                }
+            ]
+        },
+        {
+            "class_name": "U8Optional",
             "class_type": "Optional",
-            "class_name": "O1",
-            "element": "u8"
+            "element": {
+                "class_type": "Reference",
+                "element": "u8"
+            }
         }
     ]
 }
