@@ -127,7 +127,11 @@ def gen_option(*, name: str, ast_module: ast.AST, spec: dict) -> ast.ClassDef:
     """Generate a BCS canoser RustOptional."""
 
     if element := spec.get("element"):
-        atype = _BCS_COMMON_TYPES.get(element, element)
+        if element and isinstance(element, dict):
+            if element["class_type"] == "Reference":
+                atype = _BCS_COMMON_TYPES.get(element["element"], element["element"])
+            else:
+                raise NotImplementedError(f"No supporting {element['class_type']} yet.")
     else:
         atype = None
 
@@ -172,6 +176,31 @@ def gen_list_field(*, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
     ast_field.elts.append(expr.value)
 
 
+def gen_tuple_field(*, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
+    """."""
+    field_targets: ast.Tuple = ast.Tuple([], ast.Load)
+    for field in spec["elements"]:
+        process_json(field_targets, field)
+    cname = ast.Constant(name, str)
+    ast_field.elts.append(ast.Tuple([cname, field_targets], ast.Load()))
+
+
+def gen_inner_reference(*, ast_field: ast.Tuple, spec: dict) -> ast.Tuple:
+    """."""
+    atype = _BCS_COMMON_TYPES.get(spec["element"], spec["element"])
+    expr: ast.Expr = ast.parse(atype).body[0]
+    ast_field.elts.append(expr.value)
+
+
+def gen_reference_field(*, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
+    """."""
+    atype = _BCS_COMMON_TYPES.get(spec["element"], spec["element"])
+    sstr = f"('{name}',{atype})"
+    expr: ast.Expr = ast.parse(sstr).body[0]
+    ast_field.elts.append(expr.value)
+    print()
+
+
 def process_json(ast_module: Any, spec: dict) -> Any:
     """."""
     match spec["class_type"]:
@@ -191,6 +220,17 @@ def process_json(ast_module: Any, spec: dict) -> Any:
             return gen_list_field(
                 name=spec["class_name"], ast_field=ast_module, spec=spec
             )
+        case "Tuple":
+            return gen_tuple_field(
+                name=spec["class_name"], ast_field=ast_module, spec=spec
+            )
+        case "Reference":
+            if c_name := spec.get("class_name", None):
+                return gen_reference_field(name=c_name, ast_field=ast_module, spec=spec)
+            else:
+                return gen_inner_reference(ast_field=ast_module, spec=spec)
+        case "Constant":
+            raise NotImplementedError("No Tuple Yet.")
 
     return None
 
