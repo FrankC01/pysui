@@ -101,7 +101,7 @@ def gen_structure(*, name: str, ast_module: ast.AST, spec: dict) -> ast.ClassDef
 def gen_enum(*, name: str, ast_module: ast.AST, spec: dict) -> ast.ClassDef:
     """Generate a BCS canoser RustEnum."""
     field_targets: ast.List = ast.List([], ast.Load)
-    if fields := spec.get("fields"):
+    if fields := spec.get("enums"):
         for field in fields:
             process_json(field_targets, field)
 
@@ -198,7 +198,18 @@ def gen_reference_field(*, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
     sstr = f"('{name}',{atype})"
     expr: ast.Expr = ast.parse(sstr).body[0]
     ast_field.elts.append(expr.value)
-    print()
+
+
+def gen_constant_field(*, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
+    """."""
+    ispec = spec.get("element", None)
+    if ispec and isinstance(ispec, dict):
+        if atype := _BCS_COMMON_TYPES.get(ispec["constant_type"]):
+            sstr = f"('{name}',{ispec['constant_value']})"
+            expr: ast.Expr = ast.parse(sstr).body[0]
+            ast_field.elts.append(expr.value)
+            return expr.value
+    raise ValueError(f"Constant {ispec} not recognized")
 
 
 def process_json(ast_module: Any, spec: dict) -> Any:
@@ -230,7 +241,9 @@ def process_json(ast_module: Any, spec: dict) -> Any:
             else:
                 return gen_inner_reference(ast_field=ast_module, spec=spec)
         case "Constant":
-            raise NotImplementedError("No Tuple Yet.")
+            return gen_constant_field(
+                name=spec["class_name"], ast_field=ast_module, spec=spec
+            )
 
     return None
 
