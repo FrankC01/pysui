@@ -183,7 +183,7 @@ class Tree(TreeVisitor):
 
     def visit_TupleAssignmentNode(self, node: TupleAssignmentNode) -> dict:
         """A tuple has a identifier and an expression"""
-        print()
+        # print()
         return reduce(
             lambda a, b: a | b, [self.visit(x) for x in node.children], node.node_data
         )

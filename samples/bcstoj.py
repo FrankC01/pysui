@@ -6,8 +6,10 @@
 """BCS to Json generator."""
 
 import ast
+import inspect
 import json
 import os
+from jsonschema import validate
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +59,7 @@ class ListFields(ast.NodeVisitor):
                 self.current_node = ntree.TupleAssignmentNode(
                     data={"class_name": cnodes[0].value}, to_parent=self.current_node
                 )
-                print(f"Tuple for {cnodes[0].value}")
+                # print(f"Tuple for {cnodes[0].value}")
                 cnodes = cnodes[1:]
             # The field assignment from above, contains a tuple
             else:
@@ -87,7 +89,7 @@ class ListFields(ast.NodeVisitor):
         if node.value is None:
             const_cls = "null"
         elif node.value in [True, False]:
-            const_cls = "bool"
+            const_cls = "boolean"
         elif isinstance(node.value, int):
             const_cls = "int"
         elif isinstance(node.value, str):
@@ -149,7 +151,7 @@ class Declarations(ast.NodeVisitor):
 
     def handle_fields(self, ast_node: ast.List) -> ntree.Node:
         """Handles fields for canoser.Sstruct."""
-        print(f"Fields for {self.tree_node.node_data['class_name']}")
+        # print(f"Fields for {self.tree_node.node_data['class_name']}")
         list_handler = ListFields(self.tree_node)
         list_handler.visit(ast_node)
         return list_handler.current_node
@@ -157,7 +159,7 @@ class Declarations(ast.NodeVisitor):
 
     def handle_enums(self, ast_node: ast.List) -> ntree.Node:
         """Handles enums for canoser.RustEnum."""
-        print(f"Enums for {self.tree_node.node_data['class_name']}")
+        # print(f"Enums for {self.tree_node.node_data['class_name']}")
         list_handler = ListFields(self.tree_node)
         list_handler.visit(ast_node)
         return list_handler.current_node
@@ -165,7 +167,7 @@ class Declarations(ast.NodeVisitor):
 
     def handle_element(self, ast_node: ast.AST) -> ntree.Node:
         """Handles element primarily for canoser.RustOptional."""
-        print(f"Element for {self.tree_node.node_data['class_name']}")
+        # print(f"Element for {self.tree_node.node_data['class_name']}")
         list_handler = ListFields(self.tree_node)
         list_handler.visit(ast_node)
         return list_handler.current_node
@@ -202,32 +204,35 @@ class Declarations(ast.NodeVisitor):
                 ):
                     for assign in x:
                         x = self.visit(assign)
-                        print()
+                        # print()
                 self.tree_node = None
-        print()
+        # print()
 
 
 # pylint: enable=invalid-name
+def validate_json(*, resource_path: Path, json_data: dict):
+    """Validate the JSON file with our schema."""
+    schema_json = resource_path / "jtobcs_spec.json"
+    schema = json.loads(schema_json.read_text(encoding="utf8"))
+    validate(json_data, schema)
 
 
 def main():
     """Main execution for jtobcs."""
-    res_path = Path(
-        os.getcwd()
-    )  # Path(inspect.getfile(inspect.currentframe())).parent.parent
-    # catalog = create_catalog("2020-12")
-    # parsed = parse_args([], os.getcwd(), "jtobcs_sample.json")
-    # json_data = validate_json(catalog=catalog, resource_path=res_path)
-    pre_file = res_path / "samples/bcs_samp.py"
-    # module_name = json_data["module"]
+    res_path = Path(inspect.getfile(inspect.currentframe())).parent
+    pre_file = res_path / "bcs_samp.py"
     pre_module: ast.Module = ast.parse(
         pre_file.read_text(encoding="utf8"), "samples/bcs_samp.py", "exec"
     )
     parse_tree: ntree.Tree = ntree.Tree("classes")
     decls = Declarations(parse_tree.root)
     decls.visit(pre_module)
-    jstr = json.dumps({"module": "foo", "classes": parse_tree.emit()}, indent=2)
+    json_object = {"module": "s2", "classes": parse_tree.emit()}
+    validate_json(resource_path=res_path, json_data=json_object)
+    jstr = json.dumps(json_object, indent=2)
     print(jstr)
+    # fpath = res_path / "s2.json"
+    # fpath.write_text(jstr, encoding="utf8")
 
 
 if __name__ == "__main__":

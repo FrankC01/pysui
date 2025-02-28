@@ -6,4 +6,4 @@
 """Json to BCS generator."""
 
 import canoser
-import pysui.sui.sui_types.bcs
+import pysui.sui.sui_types.bcs as bcs

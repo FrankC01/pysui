@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-from jschon import create_catalog, JSON, JSONSchema, Catalog
+from jsonschema import validate
 
 _BCS_STRUCT_BASE = ast.Attribute(
     ast.Name("canoser", ast.Load()),
@@ -41,7 +41,7 @@ _BCS_COMMON_TYPES: dict[str, str] = {
     "u128": "bcs.U1128",
     "u256": "bcs.U256",
     "string": "str",
-    "bool": "bool",
+    "boolean": "bool",
 }
 
 
@@ -58,6 +58,7 @@ def parse_args(
         "--input",
         dest="json_input_file",
         required=False,
+        default=input_file_default,
         help=f"The JSON input file to convert to a Python BCS module. Default to '{input_file_default}'",
     )
     parser.add_argument(
@@ -248,35 +249,20 @@ def process_json(ast_module: Any, spec: dict) -> Any:
     return None
 
 
-def validate_json(
-    *, catalog: Catalog, resource_path: Path, json_file: Optional[str] = None
-):
+def validate_json(*, resource_path: Path, json_file: str) -> dict:
     """Validate the JSON file with our schema."""
-    jtobcs_schema: JSONSchema = JSONSchema.loadf(
-        # resource_path / "json-schema-jtobcs_sample.json"
-        resource_path
-        / "jtobcs_spec.json"
-    )
-    if not json_file:
-        json_data = json.loads(
-            (resource_path / "jtobcs_sample.json").read_text(encoding="utf8")
-        )
-    else:
-        json_data = json.loads(Path(json_file).read_text(encoding="utf8"))
-
-    document = JSON(json_data)
-    result = jtobcs_schema.evaluate(document)
-    if result.valid:
-        return json_data
-    raise ValueError(result.output("basic"))
+    schema_json = resource_path / "jtobcs_spec.json"
+    schema = json.loads(schema_json.read_text(encoding="utf8"))
+    json_data = json.loads(Path(json_file).read_text(encoding="utf8"))
+    validate(json_data, schema)
+    return json_data
 
 
 def main():
     """Main execution for jtobcs."""
     res_path = Path(inspect.getfile(inspect.currentframe())).parent
-    catalog = create_catalog("2020-12")
-    parsed = parse_args([], os.getcwd(), "jtobcs_sample.json")
-    json_data = validate_json(catalog=catalog, resource_path=res_path)
+    parsed = parse_args([], os.getcwd(), res_path / "jtobcs_sample.json")
+    json_data = validate_json(resource_path=res_path, json_file=parsed.json_input_file)
     pre_file = res_path / "jtobcs_pre.py"
     module_name = json_data["module"]
     pre_module: ast.Module = ast.parse(
@@ -284,8 +270,12 @@ def main():
     )
     for spec in json_data["classes"]:
         _ = process_json(pre_module, spec)
-    # print(ast.dump(pre_module, True, False, indent=4))
     print(ast.unparse(pre_module))
+    # if parsed.target_output_folder == "con":
+    #     print(ast.unparse(pre_module))
+    # else:
+    #     fpath = Path(parsed.target_output_folder) / f"{module_name}.py"
+    #     fpath.write_text(ast.unparse(pre_module), encoding="utf8")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 {
-    "module": "foo",
+    "module": "sample",
     "classes": [
         {
             "class_name": "FirstClass",
@@ -58,7 +58,7 @@
                     "class_name": "Three",
                     "class_type": "Constant",
                     "element": {
-                        "constant_type": "bool",
+                        "constant_type": "boolean",
                         "constant_value": false
                     }
                 }
