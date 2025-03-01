@@ -5,15 +5,43 @@
 
 """BCS to Json generator."""
 
+import argparse
 import ast
 import inspect
 import json
-import os
+import sys
 from jsonschema import validate
 from pathlib import Path
 from typing import Any
 
 import bcstoj_tree as ntree
+
+
+def parse_args(
+    in_args: list, default_folder: str, input_file_default: str
+) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        usage="%(prog)s [options] command [--command_options]",
+        description="",
+    )
+    parser.add_argument(
+        "-i",
+        "--input",
+        dest="python_input_file",
+        required=False,
+        default=input_file_default,
+        help=f"The Python input file containing BCS constructs to convert to JSON. Default to '{input_file_default}'",
+    )
+    parser.add_argument(
+        "-t",
+        "--target-folder",
+        dest="target_output_folder",
+        default=default_folder,
+        required=False,
+        help=f"The folder where the JSON output is written to. Default to '{default_folder}'",
+    )
+    return parser.parse_args(in_args)
 
 
 # pylint: disable=invalid-name
@@ -219,19 +247,27 @@ def validate_json(*, resource_path: Path, json_data: dict):
 
 def main():
     """Main execution for jtobcs."""
+    cwd = Path.cwd()
     res_path = Path(inspect.getfile(inspect.currentframe())).parent
     pre_file = res_path / "bcs_samp.py"
+
+    args_parsed = parse_args(sys.argv[1:].copy(), str(cwd), str(pre_file))
+    source_module = Path(args_parsed.python_input_file)
     pre_module: ast.Module = ast.parse(
-        pre_file.read_text(encoding="utf8"), "samples/bcs_samp.py", "exec"
+        source_module.read_text(encoding="utf8"), source_module, "exec"
     )
     parse_tree: ntree.Tree = ntree.Tree("classes")
     decls = Declarations(parse_tree.root)
     decls.visit(pre_module)
-    json_object = {"module": "s2", "classes": parse_tree.emit()}
+    # Get the name of the tail of the input python module as the 'module' name in json
+    fname = source_module.stem
+
+    json_object = {"module": fname, "classes": parse_tree.emit()}
     validate_json(resource_path=res_path, json_data=json_object)
     jstr = json.dumps(json_object, indent=2)
     print(jstr)
-    # fpath = res_path / "s2.json"
+
+    # fpath = res_path / f"{fname}.json"
     # fpath.write_text(jstr, encoding="utf8")
 
 
