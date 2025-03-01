@@ -9,7 +9,7 @@ import ast
 import json
 import inspect
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 from jsonschema import validate
 
 
@@ -42,8 +42,27 @@ class JsonToBcs:
         "boolean": "bool",
     }
 
+    def _class_def(
+        self, name: str, base: ast.Attribute, field_name: str, field_expr: ast.AST
+    ) -> ast.ClassDef:
+        """Class definition framework."""
+        return ast.ClassDef(
+            name,
+            [base],
+            [],
+            [
+                ast.Assign(
+                    [ast.Name(field_name, ast.Store())],
+                    field_expr,
+                    type_comment=None,
+                    lineno=0,
+                )
+            ],
+            [],
+        )
+
     def _gen_structure(
-        self, *, name: str, ast_module: ast.AST, spec: dict
+        self, *, name: str, ast_module: Union[ast.AST, ast.Module], spec: dict
     ) -> ast.ClassDef:
         """Generate a BCS canoser Struct."""
 
@@ -51,50 +70,27 @@ class JsonToBcs:
         if fields := spec.get("fields"):
             for field in fields:
                 self.process_json(field_targets, field)
+        cdef = self._class_def(name, self._BCS_STRUCT_BASE, "_fields", field_targets)
+        if isinstance(ast_module, ast.Module):
+            ast_module.body.append(cdef)
+        return cdef
 
-        ast_module.body.append(
-            ast.ClassDef(
-                name,
-                [self._BCS_STRUCT_BASE],
-                [],
-                [
-                    ast.Assign(
-                        [ast.Name("_fields", ast.Store())],
-                        field_targets,
-                        type_comment=None,
-                        lineno=0,
-                    )
-                ],
-                [],
-            )
-        )
-
-    def _gen_enum(self, *, name: str, ast_module: ast.AST, spec: dict) -> ast.ClassDef:
+    def _gen_enum(
+        self, *, name: str, ast_module: Union[ast.AST, ast.Module], spec: dict
+    ) -> ast.ClassDef:
         """Generate a BCS canoser RustEnum."""
         field_targets: ast.List = ast.List([], ast.Load)
         if fields := spec.get("enums"):
             for field in fields:
                 self.process_json(field_targets, field)
 
-        ast_module.body.append(
-            ast.ClassDef(
-                name,
-                [self._BCS_ENUM_BASE],
-                [],
-                [
-                    ast.Assign(
-                        [ast.Name("_enums", ast.Store())],
-                        field_targets,
-                        type_comment=None,
-                        lineno=0,
-                    )
-                ],
-                [],
-            )
-        )
+        cdef = self._class_def(name, self._BCS_ENUM_BASE, "_enums", field_targets)
+        if isinstance(ast_module, ast.Module):
+            ast_module.body.append(cdef)
+        return cdef
 
     def _gen_option(
-        self, *, name: str, ast_module: ast.AST, spec: dict
+        self, *, name: str, ast_module: Union[ast.AST, ast.Module], spec: dict
     ) -> ast.ClassDef:
         """Generate a BCS canoser RustOptional."""
 
@@ -106,29 +102,18 @@ class JsonToBcs:
                     )
                 else:
                     raise NotImplementedError(
-                        f"No supporting {element['class_type']} yet."
+                        f"Not supporting {element['class_type']} yet."
                     )
         else:
             atype = None
 
         expr: ast.Expr = ast.parse(f"_type={atype}").body[0]
+        cdef = self._class_def(name, self._BCS_OPTIONAL_BASE, "_type", expr.value)
 
-        ast_module.body.append(
-            ast.ClassDef(
-                name,
-                [self._BCS_OPTIONAL_BASE],
-                [],
-                [
-                    ast.Assign(
-                        [ast.Name("_type", ast.Store())],
-                        expr.value,
-                        type_comment=None,
-                        lineno=0,
-                    )
-                ],
-                [],
-            )
-        )
+        if isinstance(ast_module, ast.Module):
+            ast_module.body.append(cdef)
+
+        return cdef
 
     def _gen_array_field(self, *, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
         """Generate an array of type."""
