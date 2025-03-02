@@ -54,23 +54,14 @@ def main():
     """Main execution for jtobcs."""
     res_path = Path(inspect.getfile(inspect.currentframe())).parent
     parsed = parse_args([], str(Path.cwd()), res_path / "jtobcs_sample.json")
-
-    jtobcs = JsonToBcs()
-    json_data = jtobcs.validate_json(json_file=parsed.json_input_file)
+    json_data = JsonToBcs.validate_json(json_file=parsed.json_input_file)
     module_name = json_data["module"]
+    jtobcs = JsonToBcs(module_name)
+    ast_module = jtobcs.gen_module(json_data=json_data)
 
-    python_stub = res_path / "jtobcs_pre.py"
-    ast_module: ast.Module = ast.parse(
-        python_stub.read_text(encoding="utf8"), module_name, "exec"
-    )
-    for spec in json_data["classes"]:
-        jtobcs.process_json(ast_module, spec)
     print(ast.unparse(ast_module))
-    # if parsed.target_output_folder == "con":
-    #     print(ast.unparse(ast_module))
-    # else:
-    #     fpath = Path(parsed.target_output_folder) / f"{module_name}.py"
-    #     fpath.write_text(ast.unparse(ast_module), encoding="utf8")
+    # fpath = Path(parsed.target_output_folder) / f"{module_name}.py"
+    # fpath.write_text(ast.unparse(ast_module), encoding="utf8")
 
 
 if __name__ == "__main__":

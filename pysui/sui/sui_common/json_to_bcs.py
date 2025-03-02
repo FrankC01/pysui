@@ -42,6 +42,14 @@ class JsonToBcs:
         "boolean": "bool",
     }
 
+    def __init__(self, module_name: str):
+        """."""
+        resource_path = Path(inspect.getfile(inspect.currentframe())).parent
+        self.python_stub = resource_path / "jtobcs_pre.py"
+        self.ast_module: ast.Module = ast.parse(
+            self.python_stub.read_text(encoding="utf8"), module_name, "exec"
+        )
+
     def _class_def(
         self, name: str, base: ast.Attribute, field_name: str, field_expr: ast.AST
     ) -> ast.ClassDef:
@@ -69,7 +77,7 @@ class JsonToBcs:
         field_targets: ast.List = ast.List([], ast.Load)
         if fields := spec.get("fields"):
             for field in fields:
-                self.process_json(field_targets, field)
+                self._process_json(field_targets, field)
         cdef = self._class_def(name, self._BCS_STRUCT_BASE, "_fields", field_targets)
         if isinstance(ast_module, ast.Module):
             ast_module.body.append(cdef)
@@ -82,7 +90,7 @@ class JsonToBcs:
         field_targets: ast.List = ast.List([], ast.Load)
         if fields := spec.get("enums"):
             for field in fields:
-                self.process_json(field_targets, field)
+                self._process_json(field_targets, field)
 
         cdef = self._class_def(name, self._BCS_ENUM_BASE, "_enums", field_targets)
         if isinstance(ast_module, ast.Module):
@@ -138,7 +146,7 @@ class JsonToBcs:
         """."""
         field_targets: ast.Tuple = ast.Tuple([], ast.Load)
         for field in spec["elements"]:
-            self.process_json(field_targets, field)
+            self._process_json(field_targets, field)
         cname = ast.Constant(name, str)
         ast_field.elts.append(ast.Tuple([cname, field_targets], ast.Load()))
 
@@ -170,7 +178,7 @@ class JsonToBcs:
                 return expr.value
         raise ValueError(f"Constant {ispec} not recognized")
 
-    def process_json(self, ast_module: Any, spec: dict) -> Any:
+    def _process_json(self, ast_module: Any, spec: dict) -> Any:
         """."""
         match spec["class_type"]:
             case "Structure":
@@ -209,9 +217,15 @@ class JsonToBcs:
                     name=spec["class_name"], ast_field=ast_module, spec=spec
                 )
 
+    def gen_module(self, *, json_data: dict) -> ast.Module:
+        """."""
+        for spec in json_data["classes"]:
+            self._process_json(self.ast_module, spec)
+        return self.ast_module
+
     @classmethod
     def validate_json(clz, *, json_file: str) -> dict:
-        """Validate the JSON file with our schema."""
+        """Validate the JSON file with schema."""
         resource_path = Path(inspect.getfile(inspect.currentframe())).parent
         schema_json = resource_path / "jtobcs_spec.json"
         schema = json.loads(schema_json.read_text(encoding="utf8"))
