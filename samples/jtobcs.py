@@ -10,6 +10,7 @@ import argparse
 import inspect
 import os
 import pathlib
+from pathlib import Path
 import sys
 
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
@@ -20,7 +21,7 @@ sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 from pysui.sui.sui_common.json_to_bcs import JsonToBcs
-from pathlib import Path
+from pysui.sui.sui_common.validators import ValidateScrOrDir, ValidateFile
 
 
 def parse_args(
@@ -36,15 +37,15 @@ def parse_args(
         "--input",
         dest="json_input_file",
         required=False,
-        default=input_file_default,
+        action=ValidateFile,
         help=f"The JSON input file to convert to a Python BCS module. Default to '{input_file_default}'",
     )
     parser.add_argument(
-        "-t",
-        "--target-folder",
+        "-o",
+        "--output-folder",
         dest="target_output_folder",
-        default=default_folder,
         required=False,
+        action=ValidateScrOrDir,
         help=f"The folder where the Python BCS module is written to. Default to '{default_folder}'",
     )
     return parser.parse_args(in_args)
@@ -53,15 +54,26 @@ def parse_args(
 def main():
     """Main execution for jtobcs."""
     res_path = Path(inspect.getfile(inspect.currentframe())).parent
-    parsed = parse_args([], str(Path.cwd()), res_path / "jtobcs_sample.json")
-    json_data = JsonToBcs.validate_json(json_file=parsed.json_input_file)
+    input_source: str = str(res_path / "jtobcs_sample.json")
+    output_folder: str = str(Path.cwd())
+    parsed = parse_args(
+        sys.argv[1:].copy(), str(Path.cwd()), res_path / "jtobcs_sample.json"
+    )
+    if parsed.json_input_file:
+        input_source = parsed.json_input_file
+    if parsed.target_output_folder:
+        output_folder = parsed.target_output_folder
+
+    json_data = JsonToBcs.validate_json(json_file=input_source)
     module_name = json_data["module"]
     jtobcs = JsonToBcs(module_name)
     ast_module = jtobcs.gen_module(json_data=json_data)
 
-    print(ast.unparse(ast_module))
-    # fpath = Path(parsed.target_output_folder) / f"{module_name}.py"
-    # fpath.write_text(ast.unparse(ast_module), encoding="utf8")
+    if output_folder == "con":
+        print(ast.unparse(ast_module))
+    else:
+        fpath = Path(output_folder) / f"{module_name}.py"
+        fpath.write_text(ast.unparse(ast_module), encoding="utf8")
 
 
 if __name__ == "__main__":

@@ -125,9 +125,50 @@ class ValidatePackageDir(argparse.Action):
     ) -> None:
         """Validate."""
         ppath = Path(values)
-        if not ppath.exists:
+        if not ppath.exists():
             parser.error(f"{str(ppath)} does not exist.")
         setattr(namespace, self.dest, ppath)
+
+
+class ValidateFile(argparse.Action):
+    """Validate package directory."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = ...,
+    ) -> None:
+        """Validate."""
+        ppath = Path(values)
+        if not ppath.exists():
+            parser.error(f"{str(ppath)} does not exist.")
+        elif not ppath.is_file():
+            parser.error(f"{str(ppath)} is not a file.")
+        setattr(namespace, self.dest, ppath)
+
+
+class ValidateScrOrDir(argparse.Action):
+    """Validate package directory."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = ...,
+    ) -> None:
+        """Validate."""
+        if values and values == "con":
+            setattr(namespace, self.dest, values)
+        else:
+            ppath = Path(values)
+            if not ppath.exists():
+                parser.error(f"{str(ppath)} does not exist.")
+            elif not ppath.is_dir():
+                parser.error(f"{str(ppath)} is not a folder.")
+            setattr(namespace, self.dest, values)
 
 
 class ValidatePositive(argparse.Action):
