@@ -39,7 +39,7 @@ class Node:
 
 
 class ClassDeclaration(Node):
-    """A node that is a container of tuples."""
+    """A node that is a container of field tuples or expression."""
 
     def __init__(self, *, to_parent: T, data: Optional[Any] = None):
         """For ListContainer with parent typlically being a Class definition node"""
@@ -47,7 +47,7 @@ class ClassDeclaration(Node):
 
 
 class ListContainer(Node):
-    """A node that is a container of tuples."""
+    """A node that is a container of tuples when for a Structure or Enum."""
 
     def __init__(self, *, to_parent: T, data: Optional[Any] = None):
         """For ListContainer with parent typlically being a Class definition node"""
@@ -111,7 +111,7 @@ class AttributeReference(Node):
 
 
 class TreeVisitor:
-    """."""
+    """A specific visitor for traversing a tree."""
 
     def visit(self, node: Node):
         """Visit a node."""
@@ -145,7 +145,7 @@ def iter_fields(node: Node):
 
 # pylint: disable=invalid-name
 class Tree(TreeVisitor):
-    """Generic n-ary tree."""
+    """Generic n-ary tree as IR to json."""
 
     def __init__(self, name):
         """."""
@@ -262,7 +262,7 @@ class Tree(TreeVisitor):
 
 # pylint: disable=invalid-name
 class ListFields(ast.NodeVisitor):
-    """."""
+    """A tree visitor of the python AST for `_fields` or `_enums` resolution."""
 
     _STD_CANOSER_TYPES: dict[str, str] = {
         "Uint8": "u8",
@@ -370,7 +370,7 @@ class ListFields(ast.NodeVisitor):
 
 
 class Declarations(ast.NodeVisitor):
-    """."""
+    """A tree visitor of the python AST for `Structure`,`RustEnum` or `RustOptional` resolution."""
 
     _ASSIGN_TYPES: list[str] = ["_fields", "_enums", "_type"]
     _JSON_TYPES: list[str] = ["fields", "enums", "element"]

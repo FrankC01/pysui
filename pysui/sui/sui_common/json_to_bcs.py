@@ -14,6 +14,7 @@ from jsonschema import validate
 
 
 class JsonToBcs:
+    """JSON to BCS generator class."""
 
     _BCS_STRUCT_BASE = ast.Attribute(
         ast.Name("canoser", ast.Load()),
@@ -218,7 +219,7 @@ class JsonToBcs:
                 )
 
     def gen_module(self, *, json_data: dict) -> ast.Module:
-        """."""
+        """Generates the python BCS from json data."""
         for spec in json_data["classes"]:
             self._process_json(self.ast_module, spec)
         return self.ast_module

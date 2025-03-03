@@ -22,7 +22,7 @@ sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 
-import pysui.sui.sui_common.bcstoj as ntree
+import pysui.sui.sui_common.bcs_to_json as ntree
 from pysui.sui.sui_common.validators import ValidateScrOrDir, ValidateFile
 
 
@@ -54,7 +54,7 @@ def parse_args(
 
 
 def main():
-    """Main execution for jtobcs."""
+    """Main execution for bcstoj."""
     res_path = Path(inspect.getfile(inspect.currentframe())).parent
     sample_file = res_path / "bcs_samp.py"
     input_source: str = str(sample_file)
