@@ -1,0 +1,174 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$ref": "#/$defs/JsonToBcs",
+    "$defs": {
+        "JsonToBcs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "module": {
+                    "type": "string"
+                },
+                "classes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Class"
+                    }
+                }
+            },
+            "required": [
+                "classes",
+                "module"
+            ],
+            "title": "JsonToBcs"
+        },
+        "Class": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "class_name": {
+                    "type": "string"
+                },
+                "class_type": {
+                    "type": "string"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Field"
+                    }
+                },
+                "enums": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Enum"
+                    }
+                },
+                "element": {
+                    "$ref": "#/$defs/ClassElement"
+                }
+            },
+            "required": [
+                "class_name",
+                "class_type"
+            ],
+            "title": "Class"
+        },
+        "Enum": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "class_name": {
+                    "type": "string"
+                },
+                "class_type": {
+                    "type": "string"
+                },
+                "element": {
+                    "$ref": "#/$defs/ElementUnion"
+                }
+            },
+            "required": [
+                "class_name",
+                "class_type",
+                "element"
+            ],
+            "title": "Enum"
+        },
+        "ElementElementClass": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "constant_type": {
+                    "type": "string"
+                },
+                "constant_value": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "constant_type",
+                "constant_value"
+            ],
+            "title": "ElementElementClass"
+        },
+        "Field": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "class_name": {
+                    "type": "string"
+                },
+                "class_type": {
+                    "type": "string"
+                },
+                "element": {
+                    "type": "string"
+                },
+                "elements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/ClassElement"
+                    }
+                },
+                "array_definition": {
+                    "$ref": "#/$defs/ArrayDefinition"
+                }
+            },
+            "required": [
+                "class_name",
+                "class_type"
+            ],
+            "title": "Field"
+        },
+        "ArrayDefinition": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "element": {
+                    "type": "string"
+                },
+                "fixed_length": {
+                    "type": "integer"
+                },
+                "encode_length": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "element",
+                "encode_length",
+                "fixed_length"
+            ],
+            "title": "ArrayDefinition"
+        },
+        "ClassElement": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "class_type": {
+                    "type": "string"
+                },
+                "element": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "class_type",
+                "element"
+            ],
+            "title": "ClassElement"
+        },
+        "ElementUnion": {
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/ElementElementClass"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "title": "ElementUnion"
+        }
+    }
+}

@@ -4,7 +4,7 @@ testpaths = ["tests", "tests/sync_tests", "tests/integration_sync"]
 pythonpath = ["pysui", "abstracts", "sui", "sui/sui_types"]
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel","setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -32,6 +32,7 @@ dependencies = [
     "PyYAML < 6.2, >= 6.0.1",
     "httpx < 0.28, >=0.27.0",
     "h2 < 5.0, >= 4.1",
+    "jsonschema < 4.24, >= 4.23.0",
     "websockets < 13.0.0, >=10.0.0",
     "typing_utils < 0.2.0, >=0.1.0",
     "canoser==0.8.2",
@@ -49,6 +50,8 @@ async-gas = "samples.async_gasg:main"
 sgqls = "samples.sgqls:main"
 smash= "samples.smash:main"
 splay= "samples.splay:main"
+jtobcs="samples.jtobcs:main"
+bcstoj="samples.bcstoj:main"
 
 [tool.setuptools.packages.find]
 
@@ -68,6 +71,9 @@ exclude = [
 [tool.setuptools.dynamic]
 version = { attr = "pysui.version.__version__" }
 readme = { file = ["README.md"], content-type = "text/markdown" }
+
+[tool.setuptools.package-data]
+mypkg = ["*.json"]
 
 [project.urls]
 changelog = "https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md"

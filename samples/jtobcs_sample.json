@@ -1,0 +1,76 @@
+{
+    "module": "sample",
+    "classes": [
+        {
+            "class_name": "FirstClass",
+            "class_type": "Structure",
+            "fields": [
+                {
+                    "class_name": "a",
+                    "class_type": "Reference",
+                    "element": "u8"
+                },
+                {
+                    "class_name": "b",
+                    "class_type": "List",
+                    "element": "u8"
+                },
+                {
+                    "class_name": "c",
+                    "class_type": "Tuple",
+                    "elements": [
+                        {
+                            "class_type": "Reference",
+                            "element": "u8"
+                        },
+                        {
+                            "class_type": "Reference",
+                            "element": "u16"
+                        }
+                    ]
+                },
+                {
+                    "class_name": "d",
+                    "class_type": "Array",
+                    "array_definition": {
+                        "element": "u8",
+                        "fixed_length": 32,
+                        "encode_length": false
+                    }
+                }
+            ]
+        },
+        {
+            "class_name": "MyEnum",
+            "class_type": "Enum",
+            "enums": [
+                {
+                    "class_name": "One",
+                    "class_type": "Reference",
+                    "element": "FirstClass"
+                },
+                {
+                    "class_name": "Two",
+                    "class_type": "Reference",
+                    "element": "u8"
+                },
+                {
+                    "class_name": "Three",
+                    "class_type": "Constant",
+                    "element": {
+                        "constant_type": "boolean",
+                        "constant_value": false
+                    }
+                }
+            ]
+        },
+        {
+            "class_name": "U8Optional",
+            "class_type": "Optional",
+            "element": {
+                "class_type": "Reference",
+                "element": "u8"
+            }
+        }
+    ]
+}
