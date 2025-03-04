@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/280) Utility to create python BCS classes from JSON
+- [enhancement](https://github.com/FrankC01/pysui/issues/282) Utility to create JSON from python BCS classes
+
 ### Fixed
 
 ### Changed

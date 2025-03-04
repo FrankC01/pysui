@@ -25,6 +25,14 @@ Merges an addresses Sui coins to one
 
 Spreads an address coins to itself or one to many other addresses
 
+### jtobcs
+
+Converts a JSON document with BCS specification to a python BCS module (*.py)
+
+### bcstoj
+
+Converts a python BCS module to a JSON document (*.json)
+
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 
 - `python -m samples.async_gasg`
@@ -32,6 +40,8 @@ Spreads an address coins to itself or one to many other addresses
 - `python -m samples.smash`
 - `python -m samples.splay`
 - `python -m samples.walletg`
+- `python -m samples.jtobcs`
+- `python -m samples.bcstoj`
 
 **Note:** If running from PyPi install, or installed into virtual env with `pip install -e...`, examples can be started directly
 
@@ -40,6 +50,8 @@ Spreads an address coins to itself or one to many other addresses
 - `smash`
 - `splay`
 - `wallet`
+- `jtobcs`
+- `bcstoj`
 
 #### wallet Commands
 ```shell
