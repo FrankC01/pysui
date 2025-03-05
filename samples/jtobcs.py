@@ -30,7 +30,7 @@ def parse_args(
     parser = argparse.ArgumentParser(
         add_help=True,
         usage="%(prog)s [options] command [--command_options]",
-        description="",
+        description="Generate python module of BCS classes from JSON.",
     )
     parser.add_argument(
         "-i",
