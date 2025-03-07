@@ -35,7 +35,21 @@
                     "array_definition": {
                         "element": "u8",
                         "fixed_length": 32,
-                        "encode_length": false
+                        "encode_length": true
+                    }
+                },
+                {
+                    "class_name": "e",
+                    "class_type": "Map",
+                    "map_definition": {
+                        "map_key": {
+                            "class_type": "Reference",
+                            "element": "bytes"
+                        },
+                        "map_value": {
+                            "class_type": "List",
+                            "element": "u8"
+                        }
                     }
                 }
             ]

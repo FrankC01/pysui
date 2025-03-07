@@ -41,6 +41,7 @@ class JsonToBcs:
         "u256": "bcs.U256",
         "string": "str",
         "boolean": "bool",
+        "bytes": "bytes",
     }
 
     def __init__(self, module_name: str):
@@ -137,11 +138,22 @@ class JsonToBcs:
         ast_field.elts.append(expr.value)
 
     def _gen_list_field(self, *, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
-        """Generate an array of type."""
+        """Generate an list of type."""
         atype = self._BCS_COMMON_TYPES.get(spec["element"], spec["element"])
-        sstr = f"('{name}',[{atype}])"
+        sstr = f"('{name}',[{atype}])" if name else f"[{atype}]"
         expr: ast.Expr = ast.parse(sstr).body[0]
         ast_field.elts.append(expr.value)
+
+    def _gen_map_field(self, *, name, ast_field: ast.List, spec: dict) -> ast.Dict:
+        """Generate a dict type."""
+        # To hold map and key
+        field_targets: ast.Tuple = ast.Tuple([], ast.Load)
+        self._process_json(field_targets, spec["map_definition"]["map_key"])
+        self._process_json(field_targets, spec["map_definition"]["map_value"])
+        mdict: ast.Dict = ast.Dict([], [])
+        mdict.keys.append(field_targets.elts[0])
+        mdict.values.append(field_targets.elts[1])
+        ast_field.elts.append(ast.Tuple([ast.Constant(name, str), mdict], ast.Load()))
 
     def _gen_tuple_field(self, *, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
         """."""
@@ -151,18 +163,12 @@ class JsonToBcs:
         cname = ast.Constant(name, str)
         ast_field.elts.append(ast.Tuple([cname, field_targets], ast.Load()))
 
-    def _gen_inner_reference(self, *, ast_field: ast.Tuple, spec: dict) -> ast.Tuple:
-        """."""
-        atype = self._BCS_COMMON_TYPES.get(spec["element"], spec["element"])
-        expr: ast.Expr = ast.parse(atype).body[0]
-        ast_field.elts.append(expr.value)
-
     def _gen_reference_field(
         self, *, name, ast_field: ast.List, spec: dict
     ) -> ast.Tuple:
         """."""
         atype = self._BCS_COMMON_TYPES.get(spec["element"], spec["element"])
-        sstr = f"('{name}',{atype})"
+        sstr = f"('{name}',{atype})" if name else atype
         expr: ast.Expr = ast.parse(sstr).body[0]
         ast_field.elts.append(expr.value)
 
@@ -200,6 +206,10 @@ class JsonToBcs:
                 )
             case "List":
                 return self._gen_list_field(
+                    name=spec.get("class_name"), ast_field=ast_module, spec=spec
+                )
+            case "Map":
+                return self._gen_map_field(
                     name=spec["class_name"], ast_field=ast_module, spec=spec
                 )
             case "Tuple":
@@ -207,12 +217,9 @@ class JsonToBcs:
                     name=spec["class_name"], ast_field=ast_module, spec=spec
                 )
             case "Reference":
-                if c_name := spec.get("class_name", None):
-                    return self._gen_reference_field(
-                        name=c_name, ast_field=ast_module, spec=spec
-                    )
-                else:
-                    return self._gen_inner_reference(ast_field=ast_module, spec=spec)
+                return self._gen_reference_field(
+                    name=spec.get("class_name"), ast_field=ast_module, spec=spec
+                )
             case "Constant":
                 return self._gen_constant_field(
                     name=spec["class_name"], ast_field=ast_module, spec=spec
