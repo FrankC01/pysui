@@ -78,6 +78,14 @@ class ListType(Node):
         super().__init__(data=data, parent=to_parent)
 
 
+class MapType(Node):
+    """A Map (dict) type construct."""
+
+    def __init__(self, *, data: Any, to_parent: T):
+        """For Map (dict) type with parent typlically being construct of field/enum tuple."""
+        super().__init__(data=data, parent=to_parent)
+
+
 class ArrayType(Node):
     """A array construct."""
 
@@ -199,6 +207,15 @@ class Tree(TreeVisitor):
             lambda a, b: a | b, [self.visit(x) for x in node.children], node.node_data
         )
 
+    def visit_MapType(self, node: MapType) -> dict:
+        """A maptype has a key/value declaration."""
+        ugga = [self.visit(x) for x in node.children]
+        mt_key = node.children[0].node_data
+        return {
+            "class_type": "Map",
+            "map_definition": {"map_key": ugga[0], "map_value": ugga[1]},
+        }
+
     def visit_ArrayType(self, node: ArrayType) -> dict:
         """."""
         parms = [self.visit(x) for x in node.children]
@@ -314,6 +331,16 @@ class ListFields(ast.NodeVisitor):
             self.visit(gcnode)
 
         self.current_node = self.current_node.parent_node
+
+    def visit_Dict(self, ast_node: ast.Dict):
+        self.current_node = MapType(
+            data={"class_type": "Map"}, to_parent=self.current_node
+        )
+        self.visit(ast_node.keys[0])
+        for mvalue in ast_node.values:
+            self.visit(mvalue)
+
+        print()
 
     def visit_Attribute(self, ast_node: ast.Attribute):
         """Attribute reference handler."""

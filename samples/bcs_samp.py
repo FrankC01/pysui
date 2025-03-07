@@ -13,6 +13,7 @@ class FirstClass(canoser.Struct):
         ("b", [canoser.Uint8]),
         ("c", (canoser.Uint8, canoser.Uint16)),
         ("d", canoser.ArrayT(canoser.Uint8, 32, False)),
+        ("e", {bytes: [canoser.Uint8]}),
     ]
 
 

@@ -113,6 +113,9 @@
                 },
                 "array_definition": {
                     "$ref": "#/$defs/ArrayDefinition"
+                },
+                "map_definition": {
+                    "$ref": "#/$defs/MapDefinition"
                 }
             },
             "required": [
@@ -120,6 +123,34 @@
                 "class_type"
             ],
             "title": "Field"
+        },
+        "InnerField": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "class_type": {
+                    "type": "string"
+                },
+                "element": {
+                    "type": "string"
+                },
+                "elements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/ClassElement"
+                    }
+                },
+                "array_definition": {
+                    "$ref": "#/$defs/ArrayDefinition"
+                },
+                "map_definition": {
+                    "$ref": "#/$defs/MapDefinition"
+                }
+            },
+            "required": [
+                "class_type"
+            ],
+            "title": "InnerField"
         },
         "ArrayDefinition": {
             "type": "object",
@@ -141,6 +172,23 @@
                 "fixed_length"
             ],
             "title": "ArrayDefinition"
+        },
+        "MapDefinition": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "map_key": {
+                    "$ref": "#/$defs/InnerField"
+                },
+                "map_value": {
+                    "$ref": "#/$defs/InnerField"
+                }
+            },
+            "required": [
+                "map_key",
+                "map_value"
+            ],
+            "title": "MapDefinition"
         },
         "ClassElement": {
             "type": "object",
