@@ -23,6 +23,8 @@ sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 from pysui.sui.sui_common.json_to_bcs import JsonToBcs
 from pysui.sui.sui_common.validators import ValidateScrOrDir, ValidateFile
 
+_jtobcs_version = "0.1.0-beta"
+
 
 def parse_args(
     in_args: list, default_folder: str, input_file_default: str
@@ -31,6 +33,12 @@ def parse_args(
         add_help=True,
         usage="%(prog)s [options] command [--command_options]",
         description="Generate python module of BCS classes from JSON.",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        help="Sets flag to show version. Optional.",
+        action="store_true",
     )
     parser.add_argument(
         "-i",
@@ -59,21 +67,24 @@ def main():
     parsed = parse_args(
         sys.argv[1:].copy(), str(Path.cwd()), res_path / "jtobcs_sample.json"
     )
-    if parsed.json_input_file:
-        input_source = parsed.json_input_file
-    if parsed.target_output_folder:
-        output_folder = parsed.target_output_folder
+    if not parsed.version:
+        if parsed.json_input_file:
+            input_source = parsed.json_input_file
+        if parsed.target_output_folder:
+            output_folder = parsed.target_output_folder
 
-    json_data = JsonToBcs.validate_json(json_file=input_source)
-    module_name = json_data["module"]
-    jtobcs = JsonToBcs(module_name)
-    ast_module = jtobcs.gen_module(json_data=json_data)
+        json_data = JsonToBcs.validate_json(json_file=input_source)
+        module_name = json_data["module"]
+        jtobcs = JsonToBcs(module_name)
+        ast_module = jtobcs.gen_module(json_data=json_data)
 
-    if output_folder == "con":
-        print(ast.unparse(ast_module))
+        if output_folder == "con":
+            print(ast.unparse(ast_module))
+        else:
+            fpath = Path(output_folder) / f"{module_name}.py"
+            fpath.write_text(ast.unparse(ast_module), encoding="utf8")
     else:
-        fpath = Path(output_folder) / f"{module_name}.py"
-        fpath.write_text(ast.unparse(ast_module), encoding="utf8")
+        print(f"jtobcs {_jtobcs_version}")
 
 
 if __name__ == "__main__":

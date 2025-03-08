@@ -5,12 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.80.0] - Unpublished
+## [0.80.0] - 2025-02-24
 
 ### Added
 
-- [enhancement](https://github.com/FrankC01/pysui/issues/280) Utility to create python BCS classes from JSON
-- [enhancement](https://github.com/FrankC01/pysui/issues/282) Utility to create JSON from python BCS classes
+- [enhancement](https://github.com/FrankC01/pysui/issues/280) **BETA** Utility to create python BCS classes from JSON
+- [enhancement](https://github.com/FrankC01/pysui/issues/282) **BETA** Utility to create JSON from python BCS classes
 
 ### Fixed
 
