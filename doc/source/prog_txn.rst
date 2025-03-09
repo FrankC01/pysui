@@ -25,7 +25,7 @@ differences:
     * Encapsulates additional high level commands, such as `stake_coin`, `unstake_coin`, `split_coin_equal` and `publish_upgrade`
     * Transaction methods have a high degree of flexibility in providing different arguments types
 
-Gettinig Started
+Getting Started
 ################
 SuiTransactions encapsulate a SuiClient, transaction sender and/or sponsors for signing, gas objects, inspection and execution
 methods as well as the ability to add one or more commands.
@@ -70,7 +70,7 @@ This requires providing an instantiated SuiClient.
         # that satisfies the budget. An inspection is done internally
         # and the budget will automatically adjust to the higher when compared
 
-        tx_result = handle_result(txb.execute(gas_budget="1000000"))
+        tx_result = handle_result(txn.execute(gas_budget="1000000"))
         print(tx_result.to_json(indent=2))
 
 Commands available
