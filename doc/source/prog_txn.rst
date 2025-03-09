@@ -25,7 +25,7 @@ differences:
     * Encapsulates additional high level commands, such as `stake_coin`, `unstake_coin`, `split_coin_equal` and `publish_upgrade`
     * Transaction methods have a high degree of flexibility in providing different arguments types
 
-Gettinig Started
+Getting Started
 ################
 SuiTransactions encapsulate a SuiClient, transaction sender and/or sponsors for signing, gas objects, inspection and execution
 methods as well as the ability to add one or more commands.
