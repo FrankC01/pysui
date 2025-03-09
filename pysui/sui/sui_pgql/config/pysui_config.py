@@ -26,7 +26,8 @@ class PysuiConfiguration:
         self,
         *,
         from_cfg_path: str = None,
-        group_name: Optional[str] = "sui_gql_config",
+        # group_name: Optional[str] = "sui_gql_config",
+        group_name: Optional[str] = None,
         profile_name: Optional[str] = None,
         address: Optional[str] = None,
         alias: Optional[str] = None,
@@ -73,6 +74,7 @@ class PysuiConfiguration:
             self.rebuild_from_sui_client(
                 rebuild_gql=not self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP)
             )
+            self._model.active_group = self.SUI_GQL_RPC_GROUP
             self._config_file.write_text(self._model.to_json(indent=2))
 
         # Fixup GQL
@@ -145,6 +147,11 @@ class PysuiConfiguration:
                 gql_rpc_group_name=self.SUI_GQL_RPC_GROUP,
                 json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
             )
+
+    @property
+    def config(self) -> str:
+        """Return the configuration folder."""
+        return self._config_root
 
     @property
     def model(self) -> PysuiConfigModel:

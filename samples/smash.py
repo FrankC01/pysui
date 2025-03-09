@@ -18,7 +18,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_smash_version = "1.0.0"
+_smash_version = "1.1.0"
 
 import logging
 
@@ -37,7 +37,7 @@ import pysui.sui.sui_common.async_funcs as asfn
 import pysui.sui.sui_types.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui import PysuiConfiguration, AsyncGqlClient, __version__, SuiRpcResult
-from samples.cmd_argsg import build_smash_parser
+from samples.cmd_argsg import build_smash_parser, pre_config_pull
 
 
 def sdk_version():
@@ -86,22 +86,10 @@ async def main_run(
         raise task_result[0]
 
 
-def _group_pull(cli_arg: list, config: PysuiConfiguration) -> list:
-    """Check for group and set accordingly."""
-
-    if cli_arg.count("--group"):
-        ndx = cli_arg.index("--group")
-        nvl: str = cli_arg[ndx + 1]
-        config.make_active(group_name=nvl)
-
-    return cli_arg
-
-
 def main():
     """Entry point for smash utility."""
 
-    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-    arg_line = _group_pull(sys.argv[1:].copy(), cfg)
+    cfg, arg_line = pre_config_pull(sys.argv[1:].copy())
     parsed = build_smash_parser(arg_line, cfg)
     if parsed.version:
         sdk_version()

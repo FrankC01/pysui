@@ -59,7 +59,12 @@ usage: walletg.py [options] command [--command_options]
 
 options:
   -h, --help            show this help message and exit
-  -v, --version         Show pysui SDK version
+  --config CONFIG_NAME  The Pysui Configuration folder to use. Default to '~/.pysui'
+  --group {user,sui_json_config,sui_gql_config}
+                        The GraphQL groups. Default to 'sui_gql_config'
+  --profile {devnet,testnet,mainnet}
+                        The GraphQL profile node. Default to 'devnet' from 'sui_gql_config'
+  -v, --version         Sets flag to show version. Optional.
 
 commands:
   {aliases,active-address,addresses,new-address,gas,object,objects,merge-coin,split-coin,split-coin-equally,transfer-object,transfer-sui,pay,gql-query,tx-dryrun-data,tx-dryrun-kind,execute-signed-tx,package,publish,call,txns}

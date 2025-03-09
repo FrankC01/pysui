@@ -19,7 +19,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_splay_version = "1.0.0"
+_splay_version = "1.1.0"
 
 import logging
 
@@ -41,7 +41,7 @@ import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui import PysuiConfiguration, AsyncGqlClient, __version__, SuiRpcResult
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
-from samples.cmd_argsg import build_splay_parser
+from samples.cmd_argsg import build_splay_parser, pre_config_pull
 
 
 def sdk_version():
@@ -340,21 +340,9 @@ async def main_run(
     await client.close()
 
 
-def _group_pull(cli_arg: list, config: PysuiConfiguration) -> list:
-    """Check for group and set accordingly."""
-
-    if cli_arg.count("--group"):
-        ndx = cli_arg.index("--group")
-        nvl: str = cli_arg[ndx + 1]
-        config.make_active(group_name=nvl)
-
-    return cli_arg
-
-
 def main():
     """Entry point for splay utility."""
-    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-    arg_line = _group_pull(sys.argv[1:].copy(), cfg)
+    cfg, arg_line = pre_config_pull(sys.argv[1:].copy())
     parsed = build_splay_parser(arg_line, cfg)
     if parsed.version:
         sdk_version()

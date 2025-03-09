@@ -742,6 +742,13 @@ def _base_parser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
+        "--config",
+        dest="config_name",
+        default=pconfig.config,
+        required=False,
+        help=f"The Pysui Configuration folder to use. Default to '{pconfig.config}'",
+    )
+    parser.add_argument(
         "--group",
         dest="group_name",
         choices=pconfig.group_names(),
@@ -910,3 +917,33 @@ def build_splay_parser(
         action="store_true",
     )
     return parser.parse_args(in_args if in_args else ["--help"])
+
+
+def _group_pull(cli_arg: list, config: PysuiConfiguration) -> list:
+    """Check for group and set accordingly."""
+
+    if cli_arg.count("--group"):
+        ndx = cli_arg.index("--group")
+        nvl: str = cli_arg[ndx + 1]
+        config.make_active(group_name=nvl)
+        cli_arg = [n for n in cli_arg if n not in [cli_arg[ndx], cli_arg[ndx + 1]]]
+
+    return cli_arg
+
+
+def pre_config_pull(cli_arg: list) -> tuple[PysuiConfiguration, list]:
+    """Check for a configuration path to use."""
+    cfg = None
+    removals: list = []
+    if cli_arg.count("--config"):
+        ndx = cli_arg.index("--config")
+        nvl: str = cli_arg[ndx + 1]
+        cfg = PysuiConfiguration(from_cfg_path=nvl)
+        removals.append(cli_arg[ndx])
+        removals.append(cli_arg[ndx + 1])
+        cli_arg = _group_pull(cli_arg, cfg)
+        cli_arg = [n for n in cli_arg if n not in removals]
+    else:
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+
+    return cfg, cli_arg

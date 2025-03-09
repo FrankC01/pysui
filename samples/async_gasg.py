@@ -33,8 +33,8 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_async_gas_version = "1.0.1"
-from samples.cmd_argsg import build_async_gas_parser
+_async_gas_version = "1.1.0"
+from samples.cmd_argsg import build_async_gas_parser, pre_config_pull
 
 
 from pysui import PysuiConfiguration, AsyncGqlClient, __version__
@@ -129,22 +129,10 @@ def sdk_version():
     print(f"async_gas_version: {_async_gas_version} SDK version: {__version__}")
 
 
-def _group_pull(cli_arg: list, config: PysuiConfiguration) -> list:
-    """Check for group and set accordingly."""
-
-    if cli_arg.count("--group"):
-        ndx = cli_arg.index("--group")
-        nvl: str = cli_arg[ndx + 1]
-        config.make_active(group_name=nvl)
-
-    return cli_arg
-
-
 def main():
     """Setup asynch loop and run."""
     # Handle a different client.yaml than default
-    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-    arg_line = _group_pull(sys.argv[1:].copy(), cfg)
+    cfg, arg_line = pre_config_pull(sys.argv[1:].copy())
     parsed = build_async_gas_parser(arg_line, cfg)
 
     cfg.make_active(
