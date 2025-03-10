@@ -6,6 +6,7 @@
 """Pysui data classes for GraphQL results."""
 from abc import ABC, abstractmethod
 
+import base64
 import dataclasses
 from enum import IntEnum
 from typing import Any, Optional, Union, Callable
@@ -300,6 +301,26 @@ class SuiStakedCoinsGQL(PGQL_Type):
                 }
             )
         return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ObjectContentBCS(PGQL_Type):
+    """Raw object content BCS string."""
+
+    address: str  # Yes
+    bcs: str
+
+    def as_bytes(self) -> bytes:
+        """Convert BCS to bytes"""
+        return base64.b64decode(self.bcs)
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectContentBCS":
+        """."""
+        to_merge: dict = {}
+        _fast_flat(in_data, to_merge)
+        return clz.from_dict(to_merge)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

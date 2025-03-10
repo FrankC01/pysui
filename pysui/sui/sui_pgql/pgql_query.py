@@ -295,6 +295,38 @@ class GetObject(PGQL_QueryNode):
         return pgql_type.ObjectReadGQL.from_query
 
 
+class GetObjectContent(PGQL_QueryNode):
+    """Returns a specific object's content BCS string."""
+
+    def __init__(self, *, object_id: str):
+        """QueryNode initializer.
+
+        :param object_id: The object id hex string with 0x prefix
+        :type object_id: str
+        """
+        self.object_id = TypeValidator.check_object_id(object_id)
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Build DocumentNode"""
+        return dsl_gql(
+            DSLQuery(
+                object=schema.Query.object(address=self.object_id).select(
+                    schema.Object.address,
+                    schema.Object.asMoveObject.select(
+                        schema.MoveObject.contents.select(
+                            schema.MoveValue.bcs,
+                        )
+                    ),
+                ),
+            )
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.ObjectContentBCS]:
+        """Return the serializer to ObjectReadGQL function."""
+        return pgql_type.ObjectContentBCS.from_query
+
+
 class GetObjectsOwnedByAddress(PGQL_QueryNode):
     """Returns data for all objects by owner."""
 
