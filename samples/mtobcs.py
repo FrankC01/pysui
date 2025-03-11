@@ -6,6 +6,7 @@
 """Move structure to BCS generator."""
 
 import argparse
+import asyncio
 import os
 import pathlib
 import sys
@@ -21,6 +22,7 @@ sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 from pysui.sui.sui_common.validators import ValidateScrOrDir, ValidateSuiTriple
 from pysui import PysuiConfiguration
+from pysui.sui.sui_common.move_to_bcs import MoveStructureTree
 from samples.cmd_argsg import pre_config_pull
 
 _mtobcs_version = "0.1.0-beta"
@@ -109,5 +111,21 @@ def main():
         print(f"jtobcs {_mtobcs_version}")
 
 
+async def faux_main():
+    pcfg: PysuiConfiguration = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+        profile_name="devnet",
+        # profile_name="testnet",
+        # profile_name="mainnet",
+        # persist=True,
+    )
+    starg: str = (
+        "0xb329ac4e2749e94e123f690210cf0d508f14da80cf6e8abfd380d29237130473::parms::ParmObject"
+    )
+    mst: MoveStructureTree = MoveStructureTree(cfg=pcfg, target=starg)
+    await mst.build()
+
+
 if __name__ == "__main__":
-    main()
+    asyncio.run(faux_main())
+    # main()
