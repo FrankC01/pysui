@@ -1355,7 +1355,7 @@ class GetMoveDataType(PGQL_QueryNode):
         """
         self.package = package
         self.module = module_name
-        self.struct_or_enum_name = data_type_name
+        self.data_type_name = data_type_name
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
         """."""

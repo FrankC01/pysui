@@ -123,8 +123,8 @@ class MoveStructureTree:
 
         addy, mod, struc = type_decl.split("::")
         result = await client.execute_query_node(
-            with_node=qn.GetStructureOrEnum(
-                package=addy, module_name=mod, struct_or_enum_name=struc
+            with_node=qn.GetMoveDataType(
+                package=addy, module_name=mod, data_type_name=struc
             )
         )
         if result.is_ok():
