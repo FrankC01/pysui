@@ -110,7 +110,17 @@ def _expender(striple: str) -> str:
     return "::".join(trip)
 
 
-MOVE_STD_STRUCTS: dict[str, Any] = {
-    _expender("0x2::object::UID"): Address,
-    _expender("0x2::balance:::Balance"): Balance,
+MOVE_STD_SCALAR_REFS: dict[str, str] = {
+    "u8": "bcse.U8",
+    "u16": "bcse.U16",
+    "u32": "bcse.U32",
+    "u64": "bcse.U64",
+    "u128": "bcse.U128",
+    "u256": "bcse.U256",
+    "address": "bcse.Address",
+}
+
+MOVE_STD_STRUCT_REFS: dict[str, str] = {
+    "0x0000000000000000000000000000000000000000000000000000000000000002::object::UID": "bcse.Address",
+    "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance": "bcse.Balance",
 }
