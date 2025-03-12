@@ -1180,6 +1180,34 @@ class ProtocolConfigGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class MoveEnumVariantGQL:
+    """Sui MoveEnum representation."""
+
+    variant_name: str
+    fields: list[dict]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveEnumGQL:
+    """Sui MoveEnum representation."""
+
+    enum_name: str
+    abilities: list[str]
+    variants: list[MoveEnumVariantGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "MoveEnumGQL":
+        if in_data:
+            in_data = in_data.get("object", in_data)
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            return MoveEnumGQL.from_dict(fdict)
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class MoveStructureGQL:
     """Sui MoveStucture representation."""
 
@@ -1194,6 +1222,26 @@ class MoveStructureGQL:
             fdict: dict = {}
             _fast_flat(in_data, fdict)
             return MoveStructureGQL.from_dict(fdict)
+        return NoopGQL.from_query()
+
+
+class MoveDataTypeGQL:
+    @classmethod
+    def from_query(clz, in_data: dict) -> Union[MoveStructureGQL, MoveEnumGQL]:
+        """."""
+        if in_data:
+            dtype = in_data["object"]["asMovePackage"]["module"]
+            if dtype.get("struct"):
+                return MoveStructureGQL.from_query(in_data)
+            dtype = dtype["datatype"]
+            if dtype.get("asMoveStruct"):
+                if dtype.get("asMoveEnum"):
+                    dtype.pop("asMoveEnum")
+                return MoveStructureGQL.from_query(in_data)
+            else:
+                if dtype.get("asMoveStruct"):
+                    dtype.pop("asMoveStruct")
+                return MoveEnumGQL.from_query(in_data)
         return NoopGQL.from_query()
 
 

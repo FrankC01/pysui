@@ -1329,9 +1329,55 @@ class GetStructure(PGQL_QueryNode):
         return dsl_gql(struc.fragment(schema), DSLQuery(qres))
 
     @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveStructureGQL], None]:
-        """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.MoveStructureGQL.from_query
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveDataTypeGQL], None]:
+        """Return the serialization function for MoveDataType."""
+        return pgql_type.MoveDataTypeGQL.from_query
+
+
+class GetMoveDataType(PGQL_QueryNode):
+    """GetMoveDataType When executed, returns a module's structure or enum representation."""
+
+    def __init__(
+        self,
+        *,
+        package: str,
+        module_name: str,
+        data_type_name: str,
+    ) -> None:
+        """QueryNode initializer.
+
+        :param package: object_id of package to query
+        :type package: str
+        :param module_name: Name of module from package containing the structure_name to fetch
+        :type module_name: str
+        :param data_type_name: Name of structure or enum to fetch
+        :type data_type_name: str
+        """
+        self.package = package
+        self.module = module_name
+        self.struct_or_enum_name = data_type_name
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        struc = frag.MoveStructure().fragment(schema)
+        enum = frag.MoveEnum().fragment(schema)
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.datatype(name=self.data_type_name).select(
+                        schema.MoveDatatype.asMoveStruct.select(struc),
+                        schema.MoveDatatype.asMoveEnum.select(enum),
+                    )
+                )
+            )
+        )
+        return dsl_gql(struc, enum, DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveDataTypeGQL], None]:
+        """Return the serialization function for MoveDataType."""
+        return pgql_type.MoveDataTypeGQL.from_query
 
 
 class GetStructures(PGQL_QueryNode):

@@ -120,7 +120,7 @@ async def faux_main():
         # persist=True,
     )
     starg: str = (
-        "0xd92f5b46a529be8b4add60cf469a2eafe6ec240c204bd9d89a6be1dc23189d89::parms::ParmObject"
+        "0x70bdca3e6e2cb31ff34856b65f3c09f972f73004617c504855cc6d10949e8044::parms::ParmObject"
     )
     mst: MoveStructureTree = MoveStructureTree(cfg=pcfg, target=starg)
     await mst.build()

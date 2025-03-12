@@ -64,6 +64,16 @@ class MoveStructureNode(MoveNode):
         super().__init__(ident, data)
 
 
+class MoveEnumNode(MoveNode):
+    """Generic Enum node"""
+
+    def __init__(
+        self, ident: str, fields: list[MoveFieldNode], data: Optional[Any] = None
+    ):
+        self.fields: list[MoveFieldNode] = fields
+        super().__init__(ident, data)
+
+
 class MoveStructureTree:
     """Tree of Sui Move structures."""
 
@@ -71,7 +81,7 @@ class MoveStructureTree:
         """Initialize"""
         self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
         self.target: str = target
-        self.children: list[MoveStructureNode] = []
+        self.children: list[MoveNode] = []
 
     def _handle_simple(self, fname: str, fval: str) -> MoveFieldNode:
         """Convert scalars and simples."""
@@ -105,19 +115,20 @@ class MoveStructureTree:
         return f_field, f_fetch
 
     async def _fetch_structure(
-        self, *, client: AsyncGqlClient, struct_decl: str
+        self, *, client: AsyncGqlClient, type_decl: str
     ) -> tuple[qtype.MoveStructureGQL, list]:
         """Fetch a Move structure declaration and depedencies."""
         direct_fields: list[MoveFieldNode] = []
         fetch_fields: list = []
 
-        addy, mod, struc = struct_decl.split("::")
+        addy, mod, struc = type_decl.split("::")
         result = await client.execute_query_node(
-            with_node=qn.GetStructure(
-                package=addy, module_name=mod, structure_name=struc
+            with_node=qn.GetStructureOrEnum(
+                package=addy, module_name=mod, struct_or_enum_name=struc
             )
         )
         if result.is_ok():
+            # TODO: Handle struct vs enum
             for field in result.result_data.fields:
                 fname = field["field_name"]
                 fbody = field["field_type"]["signature"]["body"]
@@ -135,7 +146,7 @@ class MoveStructureTree:
                         direct_fields.append(self._handle_vector(fname, fbody))
                     else:
                         print(fbody)
-            return MoveStructureNode(struc, direct_fields, struct_decl), fetch_fields
+            return MoveStructureNode(struc, direct_fields, type_decl), fetch_fields
         else:
             raise ValueError(result.result_string)
 
@@ -145,7 +156,7 @@ class MoveStructureTree:
     async def build(self):
         """Build the tree."""
         struct_targ, more_fetch = await self._fetch_structure(
-            client=self.client, struct_decl=self.target
+            client=self.client, type_decl=self.target
         )
         self.children.append(struct_targ)
 
@@ -158,7 +169,7 @@ class MoveStructureTree:
 
         for x in _growing_len(more_fetch):
             struct_targ, _more_fetch = await self._fetch_structure(
-                client=self.client, struct_decl=x
+                client=self.client, type_decl=x
             )
             self.children.insert(0, struct_targ)
             if _more_fetch:
