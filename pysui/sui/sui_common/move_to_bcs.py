@@ -54,6 +54,18 @@ class MoveStructureField(MoveFieldNode):
         super().__init__(ident, data)
 
 
+class MoveVariantField(MoveFieldNode):
+
+    def __init__(
+        self,
+        ident: str,
+        variant_members: list[MoveFieldNode],
+        data: Optional[Any] = None,
+    ):
+        self.variant_members: list[MoveFieldNode] = variant_members
+        super().__init__(ident, data)
+
+
 class MoveStructureNode(MoveNode):
     """Generic Structure node"""
 
@@ -68,9 +80,9 @@ class MoveEnumNode(MoveNode):
     """Generic Enum node"""
 
     def __init__(
-        self, ident: str, fields: list[MoveFieldNode], data: Optional[Any] = None
+        self, ident: str, variants: list[MoveVariantField], data: Optional[Any] = None
     ):
-        self.fields: list[MoveFieldNode] = fields
+        self.variants: list[MoveVariantField] = variants
         super().__init__(ident, data)
 
 
@@ -114,51 +126,86 @@ class MoveStructureTree:
             f_fetch = targ
         return f_field, f_fetch
 
-    async def _fetch_structure(
-        self, *, client: AsyncGqlClient, type_decl: str
-    ) -> tuple[qtype.MoveStructureGQL, list]:
-        """Fetch a Move structure declaration and depedencies."""
+    def _process_structure(
+        self,
+        type_decl: str,
+        struc_name: str,
+        mstrut: qtype.MoveStructureGQL,
+    ) -> tuple[MoveStructureNode, list]:
+        """."""
         direct_fields: list[MoveFieldNode] = []
         fetch_fields: list = []
 
-        addy, mod, struc = type_decl.split("::")
-        result = await client.execute_query_node(
-            with_node=qn.GetMoveDataType(
-                package=addy, module_name=mod, data_type_name=struc
-            )
-        )
-        if result.is_ok():
-            # TODO: Handle struct vs enum
-            for field in result.result_data.fields:
-                fname = field["field_name"]
-                fbody = field["field_type"]["signature"]["body"]
+        for field in mstrut.fields:
+            fname = field["field_name"]
+            fbody = field["field_type"]["signature"]["body"]
+            if isinstance(fbody, str):
+                direct_fields.append(self._handle_simple(fname, fbody))
+            else:
+                if fbody.get("datatype"):
+                    s_field, s_fetch = self._handle_reference(fname, fbody["datatype"])
+                    direct_fields.append(s_field)
+                    if s_fetch:
+                        fetch_fields.append(s_fetch)
+                elif fbody.get("vector"):
+                    direct_fields.append(self._handle_vector(fname, fbody))
+                else:
+                    print(fbody)
+        return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
+
+    def _process_enum(
+        self, type_decl: str, enum_name: str, menum: qtype.MoveEnumGQL
+    ) -> tuple[MoveEnumNode, list]:
+        """."""
+        direct_variants: list[MoveVariantField] = []
+        fetch_fields: list = []
+        for variant in menum.variants:
+            vname = variant.variant_name
+            variant_members: list = []
+            for field_member in variant.fields:
+                fname = field_member["field_name"]
+                fbody = field_member["field_type"]["signature"]["body"]
                 if isinstance(fbody, str):
-                    direct_fields.append(self._handle_simple(fname, fbody))
+                    variant_members.append(self._handle_simple(fname, fbody))
+                #     direct_fields
                 else:
                     if fbody.get("datatype"):
                         s_field, s_fetch = self._handle_reference(
                             fname, fbody["datatype"]
                         )
-                        direct_fields.append(s_field)
+                        variant_members.append(s_field)
                         if s_fetch:
                             fetch_fields.append(s_fetch)
                     elif fbody.get("vector"):
-                        direct_fields.append(self._handle_vector(fname, fbody))
-                    else:
-                        print(fbody)
-            return MoveStructureNode(struc, direct_fields, type_decl), fetch_fields
+                        variant_members.append(self._handle_vector(fname, fbody))
+
+            direct_variants.append(MoveVariantField(vname, variant_members))
+        return MoveEnumNode(enum_name, direct_variants, type_decl), fetch_fields
+
+    async def _fetch_type(
+        self, *, client: AsyncGqlClient, type_decl: str
+    ) -> tuple[MoveNode, list]:
+        """Fetch a Move structure declaration and depedencies."""
+        addy, mod, type_name = type_decl.split("::")
+        result = await client.execute_query_node(
+            with_node=qn.GetMoveDataType(
+                package=addy, module_name=mod, data_type_name=type_name
+            )
+        )
+        if result.is_ok():
+            if isinstance(result.result_data, qtype.MoveStructureGQL):
+                return self._process_structure(type_decl, type_name, result.result_data)
+            return self._process_enum(type_decl, type_name, result.result_data)
         else:
             raise ValueError(result.result_string)
 
-    async def _process_dependent(self, *, client: AsyncGqlClient):
-        """."""
-
     async def build(self):
-        """Build the tree."""
-        struct_targ, more_fetch = await self._fetch_structure(
+        """Build the tree by walking move data types."""
+        # Initialize with primary data type
+        type_node, more_fetch = await self._fetch_type(
             client=self.client, type_decl=self.target
         )
-        self.children.append(struct_targ)
+        self.children.append(type_node)
 
         def _growing_len(xs):
             """Generator for potentially growing list of dependencies"""
@@ -167,11 +214,16 @@ class MoveStructureTree:
                 yield xs[i]
                 i += 1
 
+        # For each predecessor (growing list)
         for x in _growing_len(more_fetch):
-            struct_targ, _more_fetch = await self._fetch_structure(
+            # Build predecessor data type
+            type_node, _more_fetch = await self._fetch_type(
                 client=self.client, type_decl=x
             )
-            self.children.insert(0, struct_targ)
+            self.children.insert(0, type_node)
+            # Found more predecessors
             if _more_fetch:
                 more_fetch.extend(_more_fetch)
-        print()
+
+    async def emit(self, base_ast: ast.Module):
+        """Emit BCS module."""

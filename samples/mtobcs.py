@@ -27,6 +27,17 @@ from samples.cmd_argsg import pre_config_pull
 
 _mtobcs_version = "0.1.0-beta"
 
+import logging
+
+logger = logging.getLogger()
+logging.basicConfig(
+    filename="mtobcs.log",
+    filemode="a",
+    encoding="utf-8",
+    format="%(asctime)s %(module)s %(levelname)s %(message)s",
+    level=logging.INFO,
+)
+
 
 def parse_args(
     pconfig: PysuiConfiguration, in_args: list, default_folder: str
@@ -95,7 +106,7 @@ def parse_args(
 # Generate the classes
 
 
-def main():
+async def main():
     """Main entry point for mtobcs."""
     cfg, arg_line = pre_config_pull(sys.argv[1:].copy())
     output_folder: str = str(Path.cwd())
@@ -108,7 +119,7 @@ def main():
                 persist=False,
             )
     else:
-        print(f"jtobcs {_mtobcs_version}")
+        print(f"mtobcs {_mtobcs_version}")
 
 
 async def faux_main():
@@ -120,12 +131,15 @@ async def faux_main():
         # persist=True,
     )
     starg: str = (
-        "0x70bdca3e6e2cb31ff34856b65f3c09f972f73004617c504855cc6d10949e8044::parms::ParmObject"
+        "0x78f2d481065d62e4aac902a8453d3529d48efb2001f307993240239df965fc96::parms::ParmObject"
     )
+    logger.info(f"Processing {starg}")
     mst: MoveStructureTree = MoveStructureTree(cfg=pcfg, target=starg)
     await mst.build()
+    # await mst.emit()
+    logger.info(f"Complete processing {starg}")
 
 
 if __name__ == "__main__":
     asyncio.run(faux_main())
-    # main()
+    # asyncio.run(main())
