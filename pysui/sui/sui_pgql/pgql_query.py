@@ -327,6 +327,55 @@ class GetObjectContent(PGQL_QueryNode):
         return pgql_type.ObjectContentBCS.from_query
 
 
+class GetMultipleObjectContent(PGQL_QueryNode):
+    """Returns a specific object's content BCS string."""
+
+    def __init__(
+        self,
+        *,
+        object_ids: list[str],
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ):
+        """QueryNode initializer.
+
+        :param object_id: The object id hex string with 0x prefix
+        :type object_id: str
+        """
+        self.object_ids = [TypeValidator.check_object_id(x) for x in object_ids]
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Build DocumentNode"""
+        pg_cursor = frag.PageCursor().fragment(schema)
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
+        qres = schema.Query.objects(filter={"objectIds": self.object_ids})
+        if self.next_page:
+            qres(after=self.next_page.endCursor)
+
+        qres.select(
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(
+                schema.Object.address,
+                schema.Object.asMoveObject.select(
+                    schema.MoveObject.contents.select(
+                        schema.MoveValue.bcs,
+                    )
+                ),
+            ),
+        ),
+        return dsl_gql(
+            pg_cursor,
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.ObjectsContentBCS]:
+        """Return the serializer to ObjectsContentBCS function."""
+        return pgql_type.ObjectsContentBCS.from_query
+
+
 class GetObjectsOwnedByAddress(PGQL_QueryNode):
     """Returns data for all objects by owner."""
 

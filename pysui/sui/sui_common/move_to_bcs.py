@@ -37,8 +37,17 @@ class MoveScalarField(MoveFieldNode):
 
 class MoveVectorField(MoveFieldNode):
 
-    def __init__(self, ident: str, levels: int, base_data: Any):
+    def __init__(
+        self,
+        *,
+        ident: str,
+        levels: int,
+        of_type: Optional[bool] = False,
+        base_data: Optional[Any] = None,
+    ):
         self.levels = levels
+        self.vofclz = of_type
+
         super().__init__(ident, base_data)
 
 
@@ -102,15 +111,37 @@ class MoveStructureTree:
         else:
             return MoveScalarField(fname, fval)
 
-    def _handle_vector(self, fname: str, fval: Any) -> MoveFieldNode:
+    def _handle_vector(
+        self, fname: str, fval: Any
+    ) -> tuple[MoveFieldNode, Union[str, None]]:
         """Capture vector information."""
         depth_level: int = 0
         i_val = fval
+        voft = False
         while isinstance(i_val, dict):
-            depth_level += 1
-            i_val = i_val["vector"]
+            if i_val.get("vector"):
+                depth_level += 1
+                i_val = i_val["vector"]
+            else:
+                break
         # TODO: Proper resolution if inner information
-        return MoveVectorField(fname, depth_level, i_val)
+        if isinstance(i_val, str):
+            s_field = self._handle_simple(fname, i_val)
+            s_fetch = None
+        elif isinstance(i_val, dict) and i_val.get("datatype"):
+            voft = True
+            s_field, s_fetch = self._handle_reference(fname, i_val.get("datatype"))
+        else:
+            raise NotImplementedError(f"Vector of {i_val} not handled.")
+        return (
+            MoveVectorField(
+                ident=fname,
+                levels=depth_level,
+                of_type=voft,
+                base_data=s_field,
+            ),
+            s_fetch,
+        )
 
     def _handle_reference(
         self, fname: str, fval: dict
@@ -148,7 +179,10 @@ class MoveStructureTree:
                     if s_fetch:
                         fetch_fields.append(s_fetch)
                 elif fbody.get("vector"):
-                    direct_fields.append(self._handle_vector(fname, fbody))
+                    s_field, s_fetch = self._handle_vector(fname, fbody)
+                    direct_fields.append(s_field)
+                    if s_fetch:
+                        fetch_fields.append(s_fetch)
                 else:
                     print(fbody)
         return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
@@ -202,10 +236,12 @@ class MoveStructureTree:
     async def build(self):
         """Build the tree by walking move data types."""
         # Initialize with primary data type
+        handled: set[str] = set()
         type_node, more_fetch = await self._fetch_type(
             client=self.client, type_decl=self.target
         )
         self.children.append(type_node)
+        handled.add(self.target)
 
         def _growing_len(xs):
             """Generator for potentially growing list of dependencies"""
@@ -217,13 +253,17 @@ class MoveStructureTree:
         # For each predecessor (growing list)
         for x in _growing_len(more_fetch):
             # Build predecessor data type
-            type_node, _more_fetch = await self._fetch_type(
-                client=self.client, type_decl=x
-            )
-            self.children.insert(0, type_node)
-            # Found more predecessors
-            if _more_fetch:
-                more_fetch.extend(_more_fetch)
+            if x not in handled:
+                type_node, _more_fetch = await self._fetch_type(
+                    client=self.client, type_decl=x
+                )
+                self.children.insert(0, type_node)
+                handled.add(x)
+                # Found more predecessors
+                if _more_fetch:
+                    more_fetch.extend(_more_fetch)
+
+        return
 
     async def emit(self, base_ast: ast.Module):
         """Emit BCS module."""

@@ -131,7 +131,7 @@ async def faux_main():
         # persist=True,
     )
     starg: str = (
-        "0x78f2d481065d62e4aac902a8453d3529d48efb2001f307993240239df965fc96::parms::ParmObject"
+        "0x8fc856ab6d9ef345fcd97293a761b673b9cc5a441845c6ed07713d77e72f8f10::parms::ParmObject"
     )
     logger.info(f"Processing {starg}")
     mst: MoveStructureTree = MoveStructureTree(cfg=pcfg, target=starg)
