@@ -6,33 +6,30 @@
 """Move to BCS module."""
 
 import ast
+import inspect
 from typing import Any, Optional, Union
+from pathlib import Path
+import uuid
+
 from pysui import PysuiConfiguration, AsyncGqlClient
+import pysui.sui.sui_common.bcs_ast as bcs_ast
+from pysui.sui.sui_common.bcs_ast import BcsAst
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as qtype
 import pysui.sui.sui_types.bcs_stnd as bcse
 
 
-class MoveNode:
-    """Generic Node."""
-
-    def __init__(self, ident: str, data: Any):
-        """Node Initializer."""
-        self.ident: str = ident
-        self.data: Any = data
-
-
-class MoveFieldNode(MoveNode):
+class MoveFieldNode(bcs_ast.Node):
     """Generic Structure Field node"""
 
-    def __init__(self, ident: str, data: Any):
-        super().__init__(ident, data)
+    def __init__(self, ident: str, data: Any, fields: Optional[list] = None):
+        super().__init__(ident, data, fields)
 
 
 class MoveScalarField(MoveFieldNode):
 
-    def __init__(self, ident: str, data: Any):
-        super().__init__(ident, data)
+    def __init__(self, ident: str, data: Any, fields: Optional[list] = None):
+        super().__init__(ident, data, fields)
 
 
 class MoveVectorField(MoveFieldNode):
@@ -53,14 +50,14 @@ class MoveVectorField(MoveFieldNode):
 
 class MoveStandardField(MoveFieldNode):
 
-    def __init__(self, ident: str, data: Any):
-        super().__init__(ident, data)
+    def __init__(self, ident: str, data: Any, fields: Optional[list] = None):
+        super().__init__(ident, data, fields)
 
 
 class MoveStructureField(MoveFieldNode):
 
-    def __init__(self, ident: str, data: Any):
-        super().__init__(ident, data)
+    def __init__(self, ident: str, data: Any, fields: Optional[list] = None):
+        super().__init__(ident, data, fields)
 
 
 class MoveVariantField(MoveFieldNode):
@@ -71,38 +68,35 @@ class MoveVariantField(MoveFieldNode):
         variant_members: list[MoveFieldNode],
         data: Optional[Any] = None,
     ):
-        self.variant_members: list[MoveFieldNode] = variant_members
-        super().__init__(ident, data)
+        super().__init__(ident, data, variant_members)
 
 
-class MoveStructureNode(MoveNode):
+class MoveStructureNode(bcs_ast.Node):
     """Generic Structure node"""
 
     def __init__(
         self, ident: str, fields: list[MoveFieldNode], data: Optional[Any] = None
     ):
-        self.fields: list[MoveFieldNode] = fields
-        super().__init__(ident, data)
+        super().__init__(ident, data, fields)
 
 
-class MoveEnumNode(MoveNode):
+class MoveEnumNode(bcs_ast.Node):
     """Generic Enum node"""
 
     def __init__(
         self, ident: str, variants: list[MoveVariantField], data: Optional[Any] = None
     ):
-        self.variants: list[MoveVariantField] = variants
-        super().__init__(ident, data)
+        super().__init__(ident, data, variants)
 
 
-class MoveStructureTree:
+class MoveDataType:
     """Tree of Sui Move structures."""
 
     def __init__(self, *, cfg: PysuiConfiguration, target: str):
         """Initialize"""
         self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
         self.target: str = target
-        self.children: list[MoveNode] = []
+        self.children: list[bcs_ast.Node] = []
 
     def _handle_simple(self, fname: str, fval: str) -> MoveFieldNode:
         """Convert scalars and simples."""
@@ -218,7 +212,7 @@ class MoveStructureTree:
 
     async def _fetch_type(
         self, *, client: AsyncGqlClient, type_decl: str
-    ) -> tuple[MoveNode, list]:
+    ) -> tuple[bcs_ast.Node, list]:
         """Fetch a Move structure declaration and depedencies."""
         addy, mod, type_name = type_decl.split("::")
         result = await client.execute_query_node(
@@ -265,5 +259,129 @@ class MoveStructureTree:
 
         return
 
-    async def emit(self, base_ast: ast.Module):
-        """Emit BCS module."""
+    async def emit(self):
+        """Emit BCS python module."""
+        resource_path = Path(inspect.getfile(inspect.currentframe())).parent
+        self.python_stub = resource_path / "mtobcs_pre.py"
+        self.ast_module: ast.Module = ast.parse(
+            self.python_stub.read_text(encoding="utf8"), "move_data", "exec"
+        )
+        walker = _BCSGenerator(self.children, self.ast_module)
+        walker._walk()
+
+        print(ast.unparse(walker.ast_module))
+        print()
+
+
+class _BCSGenerator(bcs_ast.NodeVisitor):
+    """."""
+
+    def __init__(self, intake_children: list, ast_module: ast.Module):
+        super().__init__(ast_module)
+        self.intake: list = intake_children
+
+    def _walk(self):
+        for child in self.intake:
+            self.visit(child)
+        print()
+
+    def visit_MoveStructureNode(self, node: MoveStructureNode):
+        """."""
+        field_targets: ast.List = ast.List([], ast.Load)
+        _ctxt = BcsAst.structure_base(node.ident, field_targets)
+        self.put(_ctxt)
+        self.put(field_targets)
+        for field in node.fields:
+            self.put(ast.Tuple([ast.Constant(field.ident, str)], ast.Load))
+            self.visit(field)
+            field_targets.elts.append(self.get())
+        # Pop fields
+        _ftargs = self.get()
+        assert _ftargs == field_targets
+        # Pop class def
+        _rctxt = self.get()
+        assert _ctxt == _rctxt
+        self.ast_module.body.append(_ctxt)
+
+    def visit_MoveEnumNode(self, node: MoveEnumNode):
+        """."""
+        field_targets: ast.List = ast.List([], ast.Load)
+        _ctxt = BcsAst.enum_base(node.ident, field_targets)
+        self.put(_ctxt)
+        self.put(field_targets)
+
+        for field in node.fields:
+            self.visit(field)
+        # Pop fields
+        _ftargs = self.get()
+        assert _ftargs == field_targets
+        # Pop class def
+        _rctxt = self.get()
+        assert _ctxt == _rctxt
+        self.ast_module.body.append(_ctxt)
+
+    def visit_MoveStandardField(self, node: MoveStandardField):
+        """."""
+        # print(f"Processing Standard Field {node.ident}")
+        sstr = f"{node.data}"
+        expr: ast.Expr = ast.parse(sstr).body[0]
+        container = self.peek_first()
+        container.elts.append(expr.value)
+
+    def visit_MoveStructureField(self, node: MoveStructureField):
+        """."""
+        print(f"Processing Structure Field {node.ident}")
+        sstr = f"{node.data}"
+        expr: ast.Expr = ast.parse(sstr).body[0]
+        container = self.peek_first()
+        container.elts.append(expr.value)
+
+    def visit_MoveVectorField(self, node: MoveVectorField):
+        """."""
+        print(
+            f"Processing Vector {node.ident} nesting {node.levels} of type {node.vofclz}"
+        )
+        core_list = ast.List([], ast.Load)
+        self.put(core_list)
+        self.visit(node.data)
+        _ = self.get()
+        core_list.elts.extend([BcsAst.CONSTANT_NONE, BcsAst.CONSTANT_TRUE])
+        node.levels -= 1
+        while node.levels:
+            core_list = ast.List(
+                [core_list, BcsAst.CONSTANT_NONE, BcsAst.CONSTANT_TRUE], ast.Load
+            )
+            node.levels -= 1
+
+        self.peek_first().elts.append(core_list)
+
+    def visit_MoveVariantField(self, node: MoveVariantField):
+        """."""
+        print(f"Processing Variant {node.ident}")
+        cname = ast.Constant(node.ident, str)
+        tuple_ast = ast.Tuple([cname], ast.Load)
+        self.put(tuple_ast)
+        # If there is more than one field we lift a new enum
+        if len(node.fields) > 1:
+            cdef = self.first_from_top(ast.ClassDef)
+            iename = f"{cdef.name}_{uuid.uuid4().hex}"
+            field_targets: ast.List = ast.List([], ast.Load)
+            _ctxt = BcsAst.enum_base(iename, field_targets)
+
+            self.put(field_targets)
+            for field in node.fields:
+                mvar = MoveVariantField(field.ident, [field])
+                self.visit(mvar)
+            _ = self.get()
+            self.ast_module.body.append(_ctxt)
+            expr: ast.Expr = ast.parse(iename).body[0]
+            tuple_ast.elts.append(expr.value)
+
+        else:
+            self.visit(node.fields[0])
+        # Pop the variant tuple
+        _ = self.get()
+        self.peek_first().elts.append(tuple_ast)
+
+        # Append
+        print()

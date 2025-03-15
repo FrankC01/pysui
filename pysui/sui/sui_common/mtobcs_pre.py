@@ -3,7 +3,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Json to BCS generator."""
+"""Move Datatypes to BCS generator."""
 
 import canoser
-import pysui.sui.sui_types.bcs as bcs
+import pysui.sui.sui_types.bcs_stnd as bcse

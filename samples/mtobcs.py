@@ -22,7 +22,7 @@ sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 from pysui.sui.sui_common.validators import ValidateScrOrDir, ValidateSuiTriple
 from pysui import PysuiConfiguration
-from pysui.sui.sui_common.move_to_bcs import MoveStructureTree
+from pysui.sui.sui_common.move_to_bcs import MoveDataType
 from samples.cmd_argsg import pre_config_pull
 
 _mtobcs_version = "0.1.0-beta"
@@ -134,9 +134,10 @@ async def faux_main():
         "0x8fc856ab6d9ef345fcd97293a761b673b9cc5a441845c6ed07713d77e72f8f10::parms::ParmObject"
     )
     logger.info(f"Processing {starg}")
-    mst: MoveStructureTree = MoveStructureTree(cfg=pcfg, target=starg)
+    mst: MoveDataType = MoveDataType(cfg=pcfg, target=starg)
     await mst.build()
-    # await mst.emit()
+
+    await mst.emit()
     logger.info(f"Complete processing {starg}")
 
 
