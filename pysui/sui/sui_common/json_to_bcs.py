@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Union
 from jsonschema import validate
 
-from pysui.sui.sui_common.bcs_ast import BCSAST
+from pysui.sui.sui_common.bcs_ast import BcsAst
 
 
 class JsonToBcs:
@@ -47,7 +47,7 @@ class JsonToBcs:
         if fields := spec.get("fields"):
             for field in fields:
                 self._process_json(field_targets, field)
-        cdef = BCSAST.structure_base(name, field_targets)
+        cdef = BcsAst.structure_base(name, field_targets)
         if isinstance(ast_module, ast.Module):
             ast_module.body.append(cdef)
         return cdef
@@ -60,7 +60,7 @@ class JsonToBcs:
         if fields := spec.get("enums"):
             for field in fields:
                 self._process_json(field_targets, field)
-        cdef = BCSAST.enum_base(name, field_targets)
+        cdef = BcsAst.enum_base(name, field_targets)
         if isinstance(ast_module, ast.Module):
             ast_module.body.append(cdef)
         return cdef
@@ -84,7 +84,7 @@ class JsonToBcs:
             atype = None
 
         expr: ast.Expr = ast.parse(f"_type={atype}").body[0]
-        cdef = BCSAST.optional_base(name, expr.value)
+        cdef = BcsAst.optional_base(name, expr.value)
         if isinstance(ast_module, ast.Module):
             ast_module.body.append(cdef)
 

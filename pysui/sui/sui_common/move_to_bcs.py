@@ -22,14 +22,14 @@ import pysui.sui.sui_types.bcs_stnd as bcse
 class MoveFieldNode(bcs_ast.Node):
     """Generic Structure Field node"""
 
-    def __init__(self, ident: str, data: Any, fields: Optional[list] = None):
-        super().__init__(ident, data, fields)
+    def __init__(self, ident: str, data: Any, children: Optional[list] = None):
+        super().__init__(ident, data, children)
 
 
 class MoveScalarField(MoveFieldNode):
 
-    def __init__(self, ident: str, data: Any, fields: Optional[list] = None):
-        super().__init__(ident, data, fields)
+    def __init__(self, ident: str, data: Any, children: Optional[list] = None):
+        super().__init__(ident, data, children)
 
 
 class MoveVectorField(MoveFieldNode):
@@ -50,14 +50,14 @@ class MoveVectorField(MoveFieldNode):
 
 class MoveStandardField(MoveFieldNode):
 
-    def __init__(self, ident: str, data: Any, fields: Optional[list] = None):
-        super().__init__(ident, data, fields)
+    def __init__(self, ident: str, data: Any, children: Optional[list] = None):
+        super().__init__(ident, data, children)
 
 
 class MoveStructureField(MoveFieldNode):
 
-    def __init__(self, ident: str, data: Any, fields: Optional[list] = None):
-        super().__init__(ident, data, fields)
+    def __init__(self, ident: str, data: Any, children: Optional[list] = None):
+        super().__init__(ident, data, children)
 
 
 class MoveVariantField(MoveFieldNode):
@@ -65,28 +65,30 @@ class MoveVariantField(MoveFieldNode):
     def __init__(
         self,
         ident: str,
-        variant_members: list[MoveFieldNode],
+        children: list[MoveFieldNode],
         data: Optional[Any] = None,
     ):
-        super().__init__(ident, data, variant_members)
+        super().__init__(ident, data, children)
 
 
 class MoveStructureNode(bcs_ast.Node):
     """Generic Structure node"""
 
     def __init__(
-        self, ident: str, fields: list[MoveFieldNode], data: Optional[Any] = None
+        self, ident: str, children: list[MoveFieldNode], data: Optional[Any] = None
     ):
-        super().__init__(ident, data, fields)
+        self.processed = False
+        super().__init__(ident, data, children)
 
 
 class MoveEnumNode(bcs_ast.Node):
     """Generic Enum node"""
 
     def __init__(
-        self, ident: str, variants: list[MoveVariantField], data: Optional[Any] = None
+        self, ident: str, children: list[MoveVariantField], data: Optional[Any] = None
     ):
-        super().__init__(ident, data, variants)
+        self.processed = False
+        super().__init__(ident, data, children)
 
 
 class MoveDataType:
@@ -96,6 +98,10 @@ class MoveDataType:
         """Initialize"""
         self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
         self.target: str = target
+        # resource_path =
+        self.python_stub = (
+            Path(inspect.getfile(inspect.currentframe())).parent / "mtobcs_pre.py"
+        )
         self.children: list[bcs_ast.Node] = []
 
     def _handle_simple(self, fname: str, fval: str) -> MoveFieldNode:
@@ -259,39 +265,55 @@ class MoveDataType:
 
         return
 
-    async def emit(self):
+    async def emit(self) -> str:
         """Emit BCS python module."""
-        resource_path = Path(inspect.getfile(inspect.currentframe())).parent
-        self.python_stub = resource_path / "mtobcs_pre.py"
-        self.ast_module: ast.Module = ast.parse(
-            self.python_stub.read_text(encoding="utf8"), "move_data", "exec"
+        walker = _BCSGenerator(
+            self.children,
+            ast.parse(self.python_stub.read_text(encoding="utf8")),
         )
-        walker = _BCSGenerator(self.children, self.ast_module)
         walker._walk()
 
-        print(ast.unparse(walker.ast_module))
-        print()
+        return ast.unparse(walker.ast_module)
 
 
 class _BCSGenerator(bcs_ast.NodeVisitor):
-    """."""
+    """Generates the BCS associated with Move constructs."""
 
-    def __init__(self, intake_children: list, ast_module: ast.Module):
+    def __init__(self, children: list, ast_module: ast.Module):
         super().__init__(ast_module)
-        self.intake: list = intake_children
+        self.children: list = children
+
+    def _needs_processing(
+        self, current_cdef: str, depend_cdef: str
+    ) -> Union[bcs_ast.Node, None]:
+        """Check to see if node is yet to be processed."""
+        base_index = -1
+        depend_index = -1
+        for idx, child in enumerate(self.children):
+            if child.ident == current_cdef:
+                base_index = idx
+            elif child.ident == depend_cdef:
+                if not child.processed:
+                    depend_index = idx
+        return self.children[depend_index] if depend_index > base_index else None
 
     def _walk(self):
-        for child in self.intake:
+        """Walks the primary Move constructs."""
+        for child in self.children:
+            # If already processed, skip
+            if isinstance(child, MoveStructureNode) or isinstance(child, MoveEnumNode):
+                if child.processed:
+                    continue
             self.visit(child)
         print()
 
     def visit_MoveStructureNode(self, node: MoveStructureNode):
-        """."""
+        """Generate a BCS structue class and it's fields."""
         field_targets: ast.List = ast.List([], ast.Load)
         _ctxt = BcsAst.structure_base(node.ident, field_targets)
         self.put(_ctxt)
         self.put(field_targets)
-        for field in node.fields:
+        for field in node.children:
             self.put(ast.Tuple([ast.Constant(field.ident, str)], ast.Load))
             self.visit(field)
             field_targets.elts.append(self.get())
@@ -301,16 +323,17 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         # Pop class def
         _rctxt = self.get()
         assert _ctxt == _rctxt
+        node.processed = True
         self.ast_module.body.append(_ctxt)
 
     def visit_MoveEnumNode(self, node: MoveEnumNode):
-        """."""
+        """Generate a BCS enum class and it's variants."""
         field_targets: ast.List = ast.List([], ast.Load)
         _ctxt = BcsAst.enum_base(node.ident, field_targets)
         self.put(_ctxt)
         self.put(field_targets)
 
-        for field in node.fields:
+        for field in node.children:
             self.visit(field)
         # Pop fields
         _ftargs = self.get()
@@ -318,58 +341,47 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         # Pop class def
         _rctxt = self.get()
         assert _ctxt == _rctxt
+        node.processed = True
         self.ast_module.body.append(_ctxt)
 
     def visit_MoveStandardField(self, node: MoveStandardField):
-        """."""
-        # print(f"Processing Standard Field {node.ident}")
-        sstr = f"{node.data}"
-        expr: ast.Expr = ast.parse(sstr).body[0]
+        """Generate a reference to a scalar type."""
+        expr = ast.parse(f"{node.data}").body[0].value
         container = self.peek_first()
-        container.elts.append(expr.value)
+        container.elts.append(expr)
 
     def visit_MoveStructureField(self, node: MoveStructureField):
-        """."""
-        print(f"Processing Structure Field {node.ident}")
-        sstr = f"{node.data}"
-        expr: ast.Expr = ast.parse(sstr).body[0]
+        """Generate a reference to a struct type."""
+        current_cdef = self.first_from_top(ast.ClassDef).name
+        # Check if the structure, as a depedency, has already been processed
+        # If not, generate it first
+        if depedendent := self._needs_processing(current_cdef, node.data):
+            self.visit(depedendent)
+        # Resume
+        expr = ast.parse(f"{node.data}").body[0].value
         container = self.peek_first()
-        container.elts.append(expr.value)
+        container.elts.append(expr)
 
     def visit_MoveVectorField(self, node: MoveVectorField):
-        """."""
-        print(
-            f"Processing Vector {node.ident} nesting {node.levels} of type {node.vofclz}"
+        """Generate a vector of n depth."""
+        self.peek_first().elts.append(
+            BcsAst.generate_nested_vector(node.levels, self, node)
         )
-        core_list = ast.List([], ast.Load)
-        self.put(core_list)
-        self.visit(node.data)
-        _ = self.get()
-        core_list.elts.extend([BcsAst.CONSTANT_NONE, BcsAst.CONSTANT_TRUE])
-        node.levels -= 1
-        while node.levels:
-            core_list = ast.List(
-                [core_list, BcsAst.CONSTANT_NONE, BcsAst.CONSTANT_TRUE], ast.Load
-            )
-            node.levels -= 1
-
-        self.peek_first().elts.append(core_list)
 
     def visit_MoveVariantField(self, node: MoveVariantField):
-        """."""
-        print(f"Processing Variant {node.ident}")
+        """Generate the variant field of an enum class."""
         cname = ast.Constant(node.ident, str)
         tuple_ast = ast.Tuple([cname], ast.Load)
         self.put(tuple_ast)
         # If there is more than one field we lift a new enum
-        if len(node.fields) > 1:
+        if len(node.children) > 1:
             cdef = self.first_from_top(ast.ClassDef)
             iename = f"{cdef.name}_{uuid.uuid4().hex}"
             field_targets: ast.List = ast.List([], ast.Load)
             _ctxt = BcsAst.enum_base(iename, field_targets)
 
             self.put(field_targets)
-            for field in node.fields:
+            for field in node.children:
                 mvar = MoveVariantField(field.ident, [field])
                 self.visit(mvar)
             _ = self.get()
@@ -378,10 +390,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
             tuple_ast.elts.append(expr.value)
 
         else:
-            self.visit(node.fields[0])
+            self.visit(node.children[0])
         # Pop the variant tuple
         _ = self.get()
         self.peek_first().elts.append(tuple_ast)
-
-        # Append
-        print()

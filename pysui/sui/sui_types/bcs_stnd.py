@@ -97,18 +97,8 @@ U32 = canoser.Uint32
 U64 = canoser.Uint64
 U128 = canoser.Uint128
 U256 = Uint256
-
-
-class Balance(canoser.Struct):
-    _fields = [("balance", U8)]
-
-
-def _expender(striple: str) -> str:
-    """Expend simple triple."""
-    trip = striple.split("::")
-    trip[0] = hexstring_to_sui_id(trip[0])
-    return "::".join(trip)
-
+String = canoser.StrT
+Balance = U64
 
 MOVE_STD_SCALAR_REFS: dict[str, str] = {
     "u8": "bcse.U8",
@@ -123,4 +113,5 @@ MOVE_STD_SCALAR_REFS: dict[str, str] = {
 MOVE_STD_STRUCT_REFS: dict[str, str] = {
     "0x0000000000000000000000000000000000000000000000000000000000000002::object::UID": "bcse.Address",
     "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance": "bcse.Balance",
+    "0x0000000000000000000000000000000000000000000000000000000000000001::string::String": "bcse.String",
 }

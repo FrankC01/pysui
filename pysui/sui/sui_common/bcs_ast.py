@@ -7,17 +7,17 @@
 
 import ast
 from collections import deque
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 
 class Node:
     """Generic Node."""
 
-    def __init__(self, ident: str, data: Any, fields: list[Any]):
+    def __init__(self, ident: str, data: Any, children: list[Any]):
         """Node Initializer."""
         self.ident: str = ident
         self.data: Any = data
-        self.fields: list = fields if fields else []
+        self.children: list = children if children else []
 
 
 class NodeVisitor:
@@ -72,7 +72,7 @@ class NodeVisitor:
         Yield a Node for each child in ``node.children``
         that is present on *node*.
         """
-        for field in node.fields:
+        for field in node.children:
             try:
                 yield field
             except AttributeError:
@@ -103,55 +103,93 @@ class BcsAst:
     CONSTANT_NONE = ast.Constant(None)
 
     @classmethod
-    def structure_base(clz, name: str, field_expr: ast.AST):
+    def structure_base(
+        clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
+    ) -> ast.ClassDef:
         """Return a canoser Struct class definition."""
+        field_assign = ast.Assign(
+            [ast.Name("_fields", ast.Store())],
+            field_expr,
+            type_comment=None,
+            lineno=0,
+        )
+        if class_doc:
+            body = [ast.Expr(ast.Constant(class_doc, str)), field_assign]
+        else:
+            body = [field_assign]
+
         return ast.ClassDef(
             name,
             [clz._BCS_STRUCT_BASE],
             [],
-            [
-                ast.Assign(
-                    [ast.Name("_fields", ast.Store())],
-                    field_expr,
-                    type_comment=None,
-                    lineno=0,
-                )
-            ],
+            body,
             [],
         )
 
     @classmethod
-    def enum_base(clz, name: str, field_expr: ast.AST):
+    def enum_base(
+        clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
+    ) -> ast.ClassDef:
         """Return a canoser RustEnum class definition."""
+        field_assign = ast.Assign(
+            [ast.Name("_enums", ast.Store())],
+            field_expr,
+            type_comment=None,
+            lineno=0,
+        )
+        if class_doc:
+            body = [ast.Expr(ast.Constant(class_doc, str)), field_assign]
+        else:
+            body = [field_assign]
+
         return ast.ClassDef(
             name,
             [clz._BCS_ENUM_BASE],
             [],
-            [
-                ast.Assign(
-                    [ast.Name("_enums", ast.Store())],
-                    field_expr,
-                    type_comment=None,
-                    lineno=0,
-                )
-            ],
+            body,
             [],
         )
 
     @classmethod
-    def optional_base(clz, name: str, field_expr: ast.AST):
+    def optional_base(
+        clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
+    ) -> ast.ClassDef:
         """Return a canoser RustOptional class definition."""
+        field_assign = ast.Assign(
+            [ast.Name("_type", ast.Store())],
+            field_expr,
+            type_comment=None,
+            lineno=0,
+        )
+        if class_doc:
+            body = [ast.Expr(ast.Constant(class_doc, str)), field_assign]
+        else:
+            body = [field_assign]
+
         return ast.ClassDef(
             name,
             [clz._BCS_OPTIONAL_BASE],
             [],
-            [
-                ast.Assign(
-                    [ast.Name("_type", ast.Store())],
-                    field_expr,
-                    type_comment=None,
-                    lineno=0,
-                )
-            ],
+            body,
             [],
         )
+
+    @classmethod
+    def generate_nested_vector(
+        clz, depth: int, walker: NodeVisitor, node: Node
+    ) -> ast.List:
+        """Create a BCS list or depth list of lists of data type in node."""
+        assert depth > 0
+        # Create the root most list and visit the type of list
+        walker.put(ast.List([], ast.Load))
+        walker.visit(node.data)
+        core_list = walker.get()
+        core_list.elts.extend([clz.CONSTANT_NONE, clz.CONSTANT_TRUE])
+        # If depth > 1 then wrap the root list
+        depth -= 1
+        while depth:
+            core_list = ast.List(
+                [core_list, clz.CONSTANT_NONE, clz.CONSTANT_TRUE], ast.Load
+            )
+            depth -= 1
+        return core_list

@@ -131,13 +131,14 @@ async def faux_main():
         # persist=True,
     )
     starg: str = (
-        "0x8fc856ab6d9ef345fcd97293a761b673b9cc5a441845c6ed07713d77e72f8f10::parms::ParmObject"
+        "0xf3ca9f773fa0ffcf444ec5d82401111b560f2473d67031c774457ba82009ffbb::parms::ParmObject"
     )
     logger.info(f"Processing {starg}")
     mst: MoveDataType = MoveDataType(cfg=pcfg, target=starg)
     await mst.build()
 
-    await mst.emit()
+    bcs_py = await mst.emit()
+    print(bcs_py)
     logger.info(f"Complete processing {starg}")
 
 
