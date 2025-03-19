@@ -5,5 +5,6 @@
 
 """Move Datatypes to BCS generator."""
 
+from typing import Any
 import canoser
 import pysui.sui.sui_types.bcs_stnd as bcse

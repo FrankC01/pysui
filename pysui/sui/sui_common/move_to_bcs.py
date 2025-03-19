@@ -10,6 +10,7 @@ import inspect
 from typing import Any, Optional, Union
 from pathlib import Path
 import uuid
+import logging
 
 from pysui import PysuiConfiguration, AsyncGqlClient
 import pysui.sui.sui_common.bcs_ast as bcs_ast
@@ -17,6 +18,8 @@ from pysui.sui.sui_common.bcs_ast import BcsAst
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as qtype
 import pysui.sui.sui_types.bcs_stnd as bcse
+
+logger = logging.getLogger("mtobcs")
 
 
 class MoveFieldNode(bcs_ast.Node):
@@ -60,6 +63,12 @@ class MoveStructureField(MoveFieldNode):
         super().__init__(ident, data, children)
 
 
+class MoveOptionalField(MoveFieldNode):
+
+    def __init__(self, ident, data, children=None):
+        super().__init__(ident, data, children)
+
+
 class MoveVariantField(MoveFieldNode):
 
     def __init__(
@@ -98,7 +107,6 @@ class MoveDataType:
         """Initialize"""
         self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
         self.target: str = target
-        # resource_path =
         self.python_stub = (
             Path(inspect.getfile(inspect.currentframe())).parent / "mtobcs_pre.py"
         )
@@ -124,7 +132,6 @@ class MoveDataType:
                 i_val = i_val["vector"]
             else:
                 break
-        # TODO: Proper resolution if inner information
         if isinstance(i_val, str):
             s_field = self._handle_simple(fname, i_val)
             s_fetch = None
@@ -147,11 +154,14 @@ class MoveDataType:
         self, fname: str, fval: dict
     ) -> tuple[MoveFieldNode, Union[str, None]]:
         """Resolve datatype references."""
-        targ = "::".join([fval["package"], fval["module"], fval["type"]])
+        # targ = "::".join([fval["package"], fval["module"], fval["type"]])
+        targ = BcsAst.fully_qualified_reference(fval)
         f_field = None
         f_fetch = None
         if t_str := bcse.MOVE_STD_STRUCT_REFS.get(targ):
             f_field = MoveStructureField(fname, t_str)
+        elif targ == bcse.MOVE_OPTIONAL_TYPE:
+            f_field = MoveOptionalField(fname, fval)
         else:
             f_field = MoveStructureField(fname, fval["type"])
             f_fetch = targ
@@ -221,6 +231,8 @@ class MoveDataType:
     ) -> tuple[bcs_ast.Node, list]:
         """Fetch a Move structure declaration and depedencies."""
         addy, mod, type_name = type_decl.split("::")
+        logger.info(f"Fetching '{type_decl}' definition")
+        # print(f"Fetching: {type_decl}")
         result = await client.execute_query_node(
             with_node=qn.GetMoveDataType(
                 package=addy, module_name=mod, data_type_name=type_name
@@ -265,11 +277,11 @@ class MoveDataType:
 
         return
 
-    async def emit(self) -> str:
+    async def emit(self, *, pre_includes: Optional[list[str]] = None) -> str:
         """Emit BCS python module."""
         walker = _BCSGenerator(
-            self.children,
-            ast.parse(self.python_stub.read_text(encoding="utf8")),
+            children=self.children,
+            ast_module=ast.parse(self.python_stub.read_text(encoding="utf8")),
         )
         walker._walk()
 
@@ -279,9 +291,18 @@ class MoveDataType:
 class _BCSGenerator(bcs_ast.NodeVisitor):
     """Generates the BCS associated with Move constructs."""
 
-    def __init__(self, children: list, ast_module: ast.Module):
+    def __init__(
+        self,
+        *,
+        children: list,
+        ast_module: ast.Module,
+        pre_includes: Optional[list[str]] = None,
+    ):
         super().__init__(ast_module)
         self.children: list = children
+        self.pre_includes: list[str] = pre_includes or []
+        for pre_i in self.pre_includes:
+            pass
 
     def _needs_processing(
         self, current_cdef: str, depend_cdef: str
@@ -292,7 +313,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         for idx, child in enumerate(self.children):
             if child.ident == current_cdef:
                 base_index = idx
-            elif child.ident == depend_cdef:
+            elif child.ident == depend_cdef or child.data == depend_cdef:
                 if not child.processed:
                     depend_index = idx
         return self.children[depend_index] if depend_index > base_index else None
@@ -301,15 +322,14 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         """Walks the primary Move constructs."""
         for child in self.children:
             # If already processed, skip
-            if isinstance(child, MoveStructureNode) or isinstance(child, MoveEnumNode):
-                if child.processed:
-                    continue
+            if child.processed:
+                continue
             self.visit(child)
-        print()
 
     def visit_MoveStructureNode(self, node: MoveStructureNode):
         """Generate a BCS structue class and it's fields."""
         field_targets: ast.List = ast.List([], ast.Load)
+        logger.info(f"Generating '{node.ident}' structure type.")
         _ctxt = BcsAst.structure_base(node.ident, field_targets)
         self.put(_ctxt)
         self.put(field_targets)
@@ -318,17 +338,16 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
             self.visit(field)
             field_targets.elts.append(self.get())
         # Pop fields
-        _ftargs = self.get()
-        assert _ftargs == field_targets
+        _ = self.get()
         # Pop class def
-        _rctxt = self.get()
-        assert _ctxt == _rctxt
-        node.processed = True
+        _ = self.get()
         self.ast_module.body.append(_ctxt)
+        node.processed = True
 
     def visit_MoveEnumNode(self, node: MoveEnumNode):
         """Generate a BCS enum class and it's variants."""
         field_targets: ast.List = ast.List([], ast.Load)
+        logger.info(f"Generating '{node.ident}' enum type.")
         _ctxt = BcsAst.enum_base(node.ident, field_targets)
         self.put(_ctxt)
         self.put(field_targets)
@@ -336,13 +355,11 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         for field in node.children:
             self.visit(field)
         # Pop fields
-        _ftargs = self.get()
-        assert _ftargs == field_targets
+        _ = self.get()
         # Pop class def
-        _rctxt = self.get()
-        assert _ctxt == _rctxt
-        node.processed = True
+        _ = self.get()
         self.ast_module.body.append(_ctxt)
+        node.processed = True
 
     def visit_MoveStandardField(self, node: MoveStandardField):
         """Generate a reference to a scalar type."""
@@ -359,6 +376,49 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
             self.visit(depedendent)
         # Resume
         expr = ast.parse(f"{node.data}").body[0].value
+        container = self.peek_first()
+        container.elts.append(expr)
+
+    def visit_MoveOptionalField(self, node: MoveOptionalField):
+        """Generate an unknown ref."""
+        # From the immediate class, get the classname
+        # class ClassName_optional_ident(canoser.RustOptional):
+        #   _type = Any
+        # Resolve any typeParameters in node.data
+        cdef: ast.ClassDef = self.first_from_top(ast.ClassDef)
+        opt_name: str = f"{cdef.name}_optional_{node.ident}"
+        logger.info(
+            f"Generating '{opt_name}' optional type for '{cdef.name}' field '{node.ident}'"
+        )
+        type_parm = node.data["typeParameters"][0]
+        ast_type: ast.Name = ast.Name("Any", ast.Load())
+        # A straight up scalar type?
+        if isinstance(type_parm, str):
+            ast_type = ast.Name(
+                bcse.MOVE_STD_SCALAR_REFS.get(type_parm, type_parm), ast.Load()
+            )
+        # A reference to another structure - Use structure 'type' name as type
+        elif (
+            isinstance(type_parm, dict)
+            and type_parm.get("datatype")
+            and type_parm["datatype"].get("package")
+        ):
+            type_parm = type_parm["datatype"]
+            fq_ref = BcsAst.fully_qualified_reference(type_parm)
+            # Process dependent if found
+            if depedendent := self._needs_processing(cdef.name, fq_ref):
+                self.visit(depedendent)
+            ast_type = ast.Name(type_parm["type"], ast.Load())
+        # A unknown generic reference - Use Any as type
+        elif isinstance(type_parm, dict) and next(iter(type_parm)) == "typeParameter":
+            logger.warning(f"`{opt_name}` Optional class may require fixup.")
+            pass
+        else:
+            raise NotImplementedError(f"Unknown optional type {type_parm}")
+
+        optdef: ast.Classdef = BcsAst.optional_base(opt_name, ast_type)
+        self.ast_module.body.append(optdef)
+        expr = ast.parse(opt_name).body[0].value
         container = self.peek_first()
         container.elts.append(expr)
 

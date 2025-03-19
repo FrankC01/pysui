@@ -32,7 +32,7 @@ import logging
 logger = logging.getLogger()
 logging.basicConfig(
     filename="mtobcs.log",
-    filemode="a",
+    filemode="w",
     encoding="utf-8",
     format="%(asctime)s %(module)s %(levelname)s %(message)s",
     level=logging.INFO,
@@ -131,9 +131,11 @@ async def faux_main():
         # persist=True,
     )
     starg: str = (
-        "0xf3ca9f773fa0ffcf444ec5d82401111b560f2473d67031c774457ba82009ffbb::parms::ParmObject"
+        "0xd64180a00db195a116aabcdc68ff6095b28a6592cb33af6e434bac717e760f9a::parms::ParmObject"
     )
-    logger.info(f"Processing {starg}")
+    # starg: str = (
+    #     "0x0c7ae833c220aa73a3643a0d508afa4ac5d50d97312ea4584e35f9eb21b9df12::pool::Pool"
+    # )
     mst: MoveDataType = MoveDataType(cfg=pcfg, target=starg)
     await mst.build()
 

@@ -193,3 +193,8 @@ class BcsAst:
             )
             depth -= 1
         return core_list
+
+    @classmethod
+    def fully_qualified_reference(clz, fval: dict) -> str:
+        """Conjoins package, module, struct/enum from datatype."""
+        return "::".join([fval["package"], fval["module"], fval["type"]])
