@@ -416,7 +416,8 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         else:
             raise NotImplementedError(f"Unknown optional type {type_parm}")
 
-        optdef: ast.Classdef = BcsAst.optional_base(opt_name, ast_type)
+        optdef: ast.ClassDef = BcsAst.optional_type(self, opt_name, ast_type)
+        # optdef: ast.Classdef = BcsAst.optional_base(opt_name, ast_type)
         self.ast_module.body.append(optdef)
         expr = ast.parse(opt_name).body[0].value
         container = self.peek_first()

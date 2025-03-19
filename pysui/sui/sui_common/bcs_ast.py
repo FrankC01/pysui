@@ -6,6 +6,7 @@
 """BCS ast helpers."""
 
 import ast
+import copy
 from collections import deque
 from typing import Any, Optional, Union
 
@@ -24,6 +25,7 @@ class NodeVisitor:
     """A specific visitor for traversing a tree to express python ast."""
 
     def __init__(self, ast_module: ast.Module):
+        self.optional_stub = ast_module.body.pop()
         self.ast_module = ast_module
         self.stack = deque()
 
@@ -155,6 +157,7 @@ class BcsAst:
         clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
     ) -> ast.ClassDef:
         """Return a canoser RustOptional class definition."""
+
         field_assign = ast.Assign(
             [ast.Name("_type", ast.Store())],
             field_expr,
@@ -173,6 +176,32 @@ class BcsAst:
             body,
             [],
         )
+
+    @classmethod
+    def optional_type(
+        clz,
+        walker: NodeVisitor,
+        name: str,
+        field_expr: ast.AST,
+        class_doc: Optional[str] = None,
+    ) -> ast.ClassDef:
+        """."""
+        ocopy: ast.ClassDef = copy.deepcopy(walker.optional_stub)
+        tjfn: ast.FunctionDef = ocopy.body.pop()
+        field_assign = ast.Assign(
+            [ast.Name("_type", ast.Store())],
+            field_expr,
+            type_comment=None,
+            lineno=0,
+        )
+        if class_doc:
+            body = [ast.Expr(ast.Constant(class_doc, str)), field_assign, tjfn]
+        else:
+            body = [field_assign, tjfn]
+
+        ocopy.name = name
+        ocopy.body = body
+        return ocopy
 
     @classmethod
     def generate_nested_vector(

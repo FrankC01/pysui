@@ -130,9 +130,11 @@ async def faux_main():
         # profile_name="mainnet",
         # persist=True,
     )
+    # Devnet
     starg: str = (
         "0xd64180a00db195a116aabcdc68ff6095b28a6592cb33af6e434bac717e760f9a::parms::ParmObject"
     )
+    # Testnet
     # starg: str = (
     #     "0x0c7ae833c220aa73a3643a0d508afa4ac5d50d97312ea4584e35f9eb21b9df12::pool::Pool"
     # )

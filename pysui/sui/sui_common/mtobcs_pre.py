@@ -6,5 +6,13 @@
 """Move Datatypes to BCS generator."""
 
 from typing import Any
+import json
 import canoser
 import pysui.sui.sui_types.bcs_stnd as bcse
+
+
+class _OptionalStub(canoser.RustOptional):
+
+    def to_json(self, sort_keys=False, indent=4):
+        amap = self.to_json_serializable()
+        return json.dumps(amap, sort_keys=sort_keys, indent=indent)
