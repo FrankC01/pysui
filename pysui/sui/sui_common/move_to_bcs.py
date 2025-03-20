@@ -392,6 +392,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         )
         type_parm = node.data["typeParameters"][0]
         ast_type: ast.Name = ast.Name("Any", ast.Load())
+        cdoc: str = None
         # A straight up scalar type?
         if isinstance(type_parm, str):
             ast_type = ast.Name(
@@ -412,11 +413,12 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         # A unknown generic reference - Use Any as type
         elif isinstance(type_parm, dict) and next(iter(type_parm)) == "typeParameter":
             logger.warning(f"`{opt_name}` Optional class may require fixup.")
+            cdoc = "_type Any MUST be replaced with concrete type."
             pass
         else:
             raise NotImplementedError(f"Unknown optional type {type_parm}")
 
-        optdef: ast.ClassDef = BcsAst.optional_type(self, opt_name, ast_type)
+        optdef: ast.ClassDef = BcsAst.optional_type(self, opt_name, ast_type, cdoc)
         # optdef: ast.Classdef = BcsAst.optional_base(opt_name, ast_type)
         self.ast_module.body.append(optdef)
         expr = ast.parse(opt_name).body[0].value

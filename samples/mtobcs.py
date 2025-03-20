@@ -7,11 +7,13 @@
 
 import argparse
 import asyncio
+import json
 import os
 import pathlib
 import sys
 
 from pathlib import Path
+from typing import Union
 
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 PARENT = PROJECT_DIR.parent
@@ -20,7 +22,11 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui.sui.sui_common.validators import ValidateScrOrDir, ValidateSuiTriple
+from pysui.sui.sui_common.validators import (
+    ValidateScrOrDir,
+    ValidateFile,
+    valid_sui_address,
+)
 from pysui import PysuiConfiguration
 from pysui.sui.sui_common.move_to_bcs import MoveDataType
 from samples.cmd_argsg import pre_config_pull
@@ -77,11 +83,11 @@ def parse_args(
     )
     parser.add_argument(
         "-m",
-        "--move_struct",
+        "--move-struct-file",
         dest="move_structure",
         required=True,
-        action=ValidateSuiTriple,
-        help="The address::module::struct type",
+        action=ValidateFile,
+        help="JSON file of string array, each row identifies a program structure (e.g. 0x2::coin::Coin)",
     )
     parser.add_argument(
         "-o",
@@ -95,15 +101,21 @@ def parse_args(
     return parser.parse_args(in_args)
 
 
-# Build the structure tree
-# 1. Fetch an objects structure
-# 2. For each field
-# 3. if scalar (ie. u64, string, address, digest) return
-# 4. else go to 1
-#
-# Setup the basic module
-# Walk the tree bottom up
-# Generate the classes
+def _validate_structs(slist: list[str]) -> Union[None, ValueError]:
+    """Ensure structs are well formed."""
+    for package in slist:
+        if package.count("::") == 2:
+            addy, module, tail = package.split("::")
+            if not valid_sui_address(addy):
+                raise ValueError(f"Invalid Sui address '{addy}' in '{package}'.")
+        else:
+            raise ValueError(f"Invalid Sui move triple '{package}'.")
+
+
+def _fname_from_triple(triple: str) -> str:
+    """Form a filename of lower(struct)_module_address.py."""
+    addy, module, struct = triple.split("::")
+    return f"{struct.lower()}_{module.lower()}_{addy}.py"
 
 
 async def main():
@@ -118,6 +130,23 @@ async def main():
                 profile_name=parsed.profile_name,
                 persist=False,
             )
+        # Load the move structure json file
+        json_file: Path = parsed.move_structure
+        package_structs: list[str] = json.loads(json_file.read_text(encoding="utf8"))
+        _validate_structs(package_structs)
+        output_folder = parsed.target_output_folder
+        # Emit python modules for each identified move program structure
+        for package in package_structs:
+            fname = _fname_from_triple(package)
+            mst: MoveDataType = MoveDataType(cfg=cfg, target=package)
+            await mst.build()
+            bcs_py = await mst.emit()
+            if output_folder == "con":
+                print(bcs_py)
+            else:
+                fpath = Path(output_folder) / fname
+                fpath.write_text(bcs_py, encoding="utf8")
+
     else:
         print(f"mtobcs {_mtobcs_version}")
 
@@ -147,5 +176,5 @@ async def faux_main():
 
 
 if __name__ == "__main__":
-    asyncio.run(faux_main())
-    # asyncio.run(main())
+    # asyncio.run(faux_main())
+    asyncio.run(main())

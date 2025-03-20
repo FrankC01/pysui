@@ -3,7 +3,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Move Datatypes to BCS generator."""
+"""Move Datatypes shell for BCS generation, DO NOT MODIFY."""
 
 from typing import Any
 import json
@@ -12,6 +12,7 @@ import pysui.sui.sui_types.bcs_stnd as bcse
 
 
 class _OptionalStub(canoser.RustOptional):
+    """This is removed during generation."""
 
     def to_json(self, sort_keys=False, indent=4):
         amap = self.to_json_serializable()

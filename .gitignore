@@ -18,6 +18,7 @@ Move.lock
 faux.py
 temp*.py
 temp*.json
+temp*.stub
 temp_sub.py
 out*
 protocol.json
