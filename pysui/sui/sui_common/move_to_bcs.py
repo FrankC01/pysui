@@ -330,7 +330,9 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         """Generate a BCS structue class and it's fields."""
         field_targets: ast.List = ast.List([], ast.Load)
         logger.info(f"Generating '{node.ident}' structure type.")
-        _ctxt = BcsAst.structure_base(node.ident, field_targets)
+        _ctxt = BcsAst.structure_base(
+            node.ident, field_targets, f"Generated from {node.data}"
+        )
         self.put(_ctxt)
         self.put(field_targets)
         for field in node.children:
@@ -348,7 +350,9 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         """Generate a BCS enum class and it's variants."""
         field_targets: ast.List = ast.List([], ast.Load)
         logger.info(f"Generating '{node.ident}' enum type.")
-        _ctxt = BcsAst.enum_base(node.ident, field_targets)
+        _ctxt = BcsAst.enum_base(
+            node.ident, field_targets, f"Generated from {node.data}"
+        )
         self.put(_ctxt)
         self.put(field_targets)
 
