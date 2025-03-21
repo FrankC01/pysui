@@ -68,7 +68,6 @@ def parse_args(
         help=f"The GraphQL groups. Default to '{pconfig.active_group_name}'",
     )
     parser.add_argument(
-        # "-p",
         "--profile",
         dest="profile_name",
         choices=pconfig.profile_names(),
@@ -151,30 +150,5 @@ async def main():
         print(f"mtobcs {_mtobcs_version}")
 
 
-async def faux_main():
-    pcfg: PysuiConfiguration = PysuiConfiguration(
-        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
-        profile_name="devnet",
-        # profile_name="testnet",
-        # profile_name="mainnet",
-        # persist=True,
-    )
-    # Devnet
-    starg: str = (
-        "0xd64180a00db195a116aabcdc68ff6095b28a6592cb33af6e434bac717e760f9a::parms::ParmObject"
-    )
-    # Testnet
-    # starg: str = (
-    #     "0x0c7ae833c220aa73a3643a0d508afa4ac5d50d97312ea4584e35f9eb21b9df12::pool::Pool"
-    # )
-    mst: MoveDataType = MoveDataType(cfg=pcfg, target=starg)
-    await mst.build()
-
-    bcs_py = await mst.emit()
-    print(bcs_py)
-    logger.info(f"Complete processing {starg}")
-
-
 if __name__ == "__main__":
-    # asyncio.run(faux_main())
     asyncio.run(main())

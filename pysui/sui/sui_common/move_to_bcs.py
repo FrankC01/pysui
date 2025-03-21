@@ -361,6 +361,12 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         self.ast_module.body.append(_ctxt)
         node.processed = True
 
+    def visit_MoveScalarField(self, node: MoveScalarField):
+        """Generate a reference to a scalar type."""
+        expr = ast.parse(f"{node.data}").body[0].value
+        container = self.peek_first()
+        container.elts.append(expr)
+
     def visit_MoveStandardField(self, node: MoveStandardField):
         """Generate a reference to a scalar type."""
         expr = ast.parse(f"{node.data}").body[0].value
