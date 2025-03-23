@@ -6,6 +6,7 @@
 """Pysui data classes for GraphQL results."""
 from abc import ABC, abstractmethod
 
+import base64
 import dataclasses
 from enum import IntEnum
 from typing import Any, Optional, Union, Callable
@@ -299,6 +300,54 @@ class SuiStakedCoinsGQL(PGQL_Type):
                     "nextCursor": next_cursor,
                 }
             )
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ObjectContentBCS(PGQL_Type):
+    """Raw object content BCS string."""
+
+    address: str  # Yes
+    bcs: str
+
+    def as_bytes(self) -> bytes:
+        """Convert BCS to bytes"""
+        return base64.b64decode(self.bcs)
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectContentBCS":
+        """."""
+        to_merge: dict = {}
+        _fast_flat(in_data, to_merge)
+        return clz.from_dict(to_merge)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ObjectsContentBCS(PGQL_Type):
+    """Raw object content BCS string."""
+
+    next_cursor: PagingCursor
+    objects_data: list[ObjectContentBCS]
+
+    def as_bytes(self) -> bytes:
+        """Convert BCS to bytes"""
+        return base64.b64decode(self.bcs)
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectsContentBCS":
+        """."""
+        if len(in_data):
+            next_cursor = PagingCursor.from_dict(in_data["objects"].pop("cursor"))
+
+            to_merge: dict = {}
+            _fast_flat(in_data, to_merge)
+            to_merge["objects_data"] = [
+                ObjectContentBCS.from_query(x) for x in to_merge["objects_data"]
+            ]
+            to_merge["next_cursor"] = next_cursor
+            return clz.from_dict(to_merge)
         return NoopGQL.from_query()
 
 
@@ -1159,6 +1208,34 @@ class ProtocolConfigGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class MoveEnumVariantGQL:
+    """Sui MoveEnum representation."""
+
+    variant_name: str
+    fields: list[dict]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveEnumGQL:
+    """Sui MoveEnum representation."""
+
+    enum_name: str
+    abilities: list[str]
+    variants: list[MoveEnumVariantGQL]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "MoveEnumGQL":
+        if in_data:
+            in_data = in_data.get("object", in_data)
+            fdict: dict = {}
+            _fast_flat(in_data, fdict)
+            return MoveEnumGQL.from_dict(fdict)
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class MoveStructureGQL:
     """Sui MoveStucture representation."""
 
@@ -1173,6 +1250,26 @@ class MoveStructureGQL:
             fdict: dict = {}
             _fast_flat(in_data, fdict)
             return MoveStructureGQL.from_dict(fdict)
+        return NoopGQL.from_query()
+
+
+class MoveDataTypeGQL:
+    @classmethod
+    def from_query(clz, in_data: dict) -> Union[MoveStructureGQL, MoveEnumGQL]:
+        """."""
+        if in_data:
+            dtype = in_data["object"]["asMovePackage"]["module"]
+            if dtype.get("struct"):
+                return MoveStructureGQL.from_query(in_data)
+            dtype = dtype["datatype"]
+            if dtype.get("asMoveStruct"):
+                if dtype.get("asMoveEnum"):
+                    dtype.pop("asMoveEnum")
+                return MoveStructureGQL.from_query(in_data)
+            else:
+                if dtype.get("asMoveStruct"):
+                    dtype.pop("asMoveStruct")
+                return MoveEnumGQL.from_query(in_data)
         return NoopGQL.from_query()
 
 

@@ -721,6 +721,32 @@ class MoveStructure(PGQL_Fragment):
         )
 
 
+class MoveEnum(PGQL_Fragment):
+    """MoveEnum reusable fragment"""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+
+        return (
+            DSLFragment("MoveEnum")
+            .on(schema.MoveEnum)
+            .select(
+                schema.MoveEnum.name.alias("enum_name"),
+                schema.MoveEnum.abilities,
+                schema.MoveEnum.variants.select(
+                    schema.MoveEnumVariant.name.alias("variant_name"),
+                    schema.MoveEnumVariant.fields.select(
+                        schema.MoveField.name.alias("field_name"),
+                        schema.MoveField.type.alias("field_type").select(
+                            schema.OpenMoveType.signature
+                        ),
+                    ),
+                ),
+            )
+        )
+
+
 class MoveFunction(PGQL_Fragment):
     """MoveFunction reusable fragment"""
 

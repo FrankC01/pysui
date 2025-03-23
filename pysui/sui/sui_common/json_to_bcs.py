@@ -12,25 +12,11 @@ from pathlib import Path
 from typing import Any, Union
 from jsonschema import validate
 
+from pysui.sui.sui_common.bcs_ast import BcsAst
+
 
 class JsonToBcs:
     """JSON to BCS generator class."""
-
-    _BCS_STRUCT_BASE = ast.Attribute(
-        ast.Name("canoser", ast.Load()),
-        "Struct",
-        ast.Load(),
-    )
-    _BCS_ENUM_BASE = ast.Attribute(
-        ast.Name("canoser", ast.Load()),
-        "RustEnum",
-        ast.Load(),
-    )
-    _BCS_OPTIONAL_BASE = ast.Attribute(
-        ast.Name("canoser", ast.Load()),
-        "RustOptional",
-        ast.Load(),
-    )
 
     _BCS_COMMON_TYPES: dict[str, str] = {
         "u8": "bcs.U8",
@@ -52,25 +38,6 @@ class JsonToBcs:
             self.python_stub.read_text(encoding="utf8"), module_name, "exec"
         )
 
-    def _class_def(
-        self, name: str, base: ast.Attribute, field_name: str, field_expr: ast.AST
-    ) -> ast.ClassDef:
-        """Class definition framework."""
-        return ast.ClassDef(
-            name,
-            [base],
-            [],
-            [
-                ast.Assign(
-                    [ast.Name(field_name, ast.Store())],
-                    field_expr,
-                    type_comment=None,
-                    lineno=0,
-                )
-            ],
-            [],
-        )
-
     def _gen_structure(
         self, *, name: str, ast_module: Union[ast.AST, ast.Module], spec: dict
     ) -> ast.ClassDef:
@@ -80,7 +47,7 @@ class JsonToBcs:
         if fields := spec.get("fields"):
             for field in fields:
                 self._process_json(field_targets, field)
-        cdef = self._class_def(name, self._BCS_STRUCT_BASE, "_fields", field_targets)
+        cdef = BcsAst.structure_base(name, field_targets)
         if isinstance(ast_module, ast.Module):
             ast_module.body.append(cdef)
         return cdef
@@ -93,8 +60,7 @@ class JsonToBcs:
         if fields := spec.get("enums"):
             for field in fields:
                 self._process_json(field_targets, field)
-
-        cdef = self._class_def(name, self._BCS_ENUM_BASE, "_enums", field_targets)
+        cdef = BcsAst.enum_base(name, field_targets)
         if isinstance(ast_module, ast.Module):
             ast_module.body.append(cdef)
         return cdef
@@ -118,8 +84,7 @@ class JsonToBcs:
             atype = None
 
         expr: ast.Expr = ast.parse(f"_type={atype}").body[0]
-        cdef = self._class_def(name, self._BCS_OPTIONAL_BASE, "_type", expr.value)
-
+        cdef = BcsAst.optional_base(name, expr.value)
         if isinstance(ast_module, ast.Module):
             ast_module.body.append(cdef)
 

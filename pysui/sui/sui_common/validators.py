@@ -46,6 +46,26 @@ def valid_sui_address(instr: str) -> bool:
             return False
 
 
+class ValidateSuiTriple(argparse.Action):
+    """Validate a::b::c"""
+
+    def __call__(
+        self,
+        parser,
+        namespace,
+        values,
+        option_string=None,
+    ):
+        if values.count("::") == 2:
+            addy, module, tail = values.split("::")
+            if valid_sui_address(addy):
+                setattr(namespace, self.dest, values)
+            else:
+                parser.error(f"Invalid Sui address '{addy}' in '{values}'.")
+        else:
+            parser.error(f"Invalid Sui move triple '{values}'.")
+
+
 class ValidateAlias(argparse.Action):
     """Alias string validator."""
 

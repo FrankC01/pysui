@@ -295,6 +295,87 @@ class GetObject(PGQL_QueryNode):
         return pgql_type.ObjectReadGQL.from_query
 
 
+class GetObjectContent(PGQL_QueryNode):
+    """Returns a specific object's content BCS string."""
+
+    def __init__(self, *, object_id: str):
+        """QueryNode initializer.
+
+        :param object_id: The object id hex string with 0x prefix
+        :type object_id: str
+        """
+        self.object_id = TypeValidator.check_object_id(object_id)
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Build DocumentNode"""
+        return dsl_gql(
+            DSLQuery(
+                object=schema.Query.object(address=self.object_id).select(
+                    schema.Object.address,
+                    schema.Object.asMoveObject.select(
+                        schema.MoveObject.contents.select(
+                            schema.MoveValue.bcs,
+                        )
+                    ),
+                ),
+            )
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.ObjectContentBCS]:
+        """Return the serializer to ObjectReadGQL function."""
+        return pgql_type.ObjectContentBCS.from_query
+
+
+class GetMultipleObjectContent(PGQL_QueryNode):
+    """Returns a specific object's content BCS string."""
+
+    def __init__(
+        self,
+        *,
+        object_ids: list[str],
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ):
+        """QueryNode initializer.
+
+        :param object_id: The object id hex string with 0x prefix
+        :type object_id: str
+        """
+        self.object_ids = [TypeValidator.check_object_id(x) for x in object_ids]
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Build DocumentNode"""
+        pg_cursor = frag.PageCursor().fragment(schema)
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
+        qres = schema.Query.objects(filter={"objectIds": self.object_ids})
+        if self.next_page:
+            qres(after=self.next_page.endCursor)
+
+        qres.select(
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(
+                schema.Object.address,
+                schema.Object.asMoveObject.select(
+                    schema.MoveObject.contents.select(
+                        schema.MoveValue.bcs,
+                    )
+                ),
+            ),
+        ),
+        return dsl_gql(
+            pg_cursor,
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.ObjectsContentBCS]:
+        """Return the serializer to ObjectsContentBCS function."""
+        return pgql_type.ObjectsContentBCS.from_query
+
+
 class GetObjectsOwnedByAddress(PGQL_QueryNode):
     """Returns data for all objects by owner."""
 
@@ -1297,9 +1378,55 @@ class GetStructure(PGQL_QueryNode):
         return dsl_gql(struc.fragment(schema), DSLQuery(qres))
 
     @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveStructureGQL], None]:
-        """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.MoveStructureGQL.from_query
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveDataTypeGQL], None]:
+        """Return the serialization function for MoveDataType."""
+        return pgql_type.MoveDataTypeGQL.from_query
+
+
+class GetMoveDataType(PGQL_QueryNode):
+    """GetMoveDataType When executed, returns a module's structure or enum representation."""
+
+    def __init__(
+        self,
+        *,
+        package: str,
+        module_name: str,
+        data_type_name: str,
+    ) -> None:
+        """QueryNode initializer.
+
+        :param package: object_id of package to query
+        :type package: str
+        :param module_name: Name of module from package containing the structure_name to fetch
+        :type module_name: str
+        :param data_type_name: Name of structure or enum to fetch
+        :type data_type_name: str
+        """
+        self.package = package
+        self.module = module_name
+        self.data_type_name = data_type_name
+
+    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """."""
+        struc = frag.MoveStructure().fragment(schema)
+        enum = frag.MoveEnum().fragment(schema)
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.datatype(name=self.data_type_name).select(
+                        schema.MoveDatatype.asMoveStruct.select(struc),
+                        schema.MoveDatatype.asMoveEnum.select(enum),
+                    )
+                )
+            )
+        )
+        return dsl_gql(struc, enum, DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveDataTypeGQL], None]:
+        """Return the serialization function for MoveDataType."""
+        return pgql_type.MoveDataTypeGQL.from_query
 
 
 class GetStructures(PGQL_QueryNode):
