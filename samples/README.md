@@ -33,6 +33,10 @@ Converts a JSON document with BCS specification to a python BCS module (*.py)
 
 Converts a python BCS module to a JSON document (*.json)
 
+### mtobcs
+
+Generate python BCS constructs from published move struct or enum
+
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 
 - `python -m samples.async_gasg`
@@ -42,6 +46,7 @@ Converts a python BCS module to a JSON document (*.json)
 - `python -m samples.walletg`
 - `python -m samples.jtobcs`
 - `python -m samples.bcstoj`
+- `python -m samples.mtobcs`
 
 **Note:** If running from PyPi install, or installed into virtual env with `pip install -e...`, examples can be started directly
 
@@ -52,6 +57,7 @@ Converts a python BCS module to a JSON document (*.json)
 - `wallet`
 - `jtobcs`
 - `bcstoj`
+- `mtobcs`
 
 #### wallet Commands
 ```shell

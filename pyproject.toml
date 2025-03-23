@@ -52,6 +52,7 @@ smash= "samples.smash:main"
 splay= "samples.splay:main"
 jtobcs="samples.jtobcs:main"
 bcstoj="samples.bcstoj:main"
+mtobcs="samples.mtobcs:main"
 
 [tool.setuptools.packages.find]
 
