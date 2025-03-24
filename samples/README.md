@@ -37,6 +37,18 @@ Converts a python BCS module to a JSON document (*.json)
 
 Generate python BCS constructs from published move struct or enum
 
+This requires a json file identifying _one or more_ structures/enums to process. For example, using testnet, this json identifies the CETUS protocol pool (assume file name is `cetus_pool.json`):
+
+```json
+[
+    "0x0c7ae833c220aa73a3643a0d508afa4ac5d50d97312ea4584e35f9eb21b9df12::pool::Pool"
+]
+```
+
+`mtobcs --profile testnet -m cetus_pool.json`
+
+This will generate a `pool_pool_0x0c7ae833c220aa73a3643a0d508afa4ac5d50d97312ea4584e35f9eb21b9df12.py` file containing the BCS equivalent.
+
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 
 - `python -m samples.async_gasg`
