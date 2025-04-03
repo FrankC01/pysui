@@ -47,6 +47,9 @@ optionals_*.json
 # Local copy of SUI 0x2 modules and functions
 siggen.list
 
+# Local copy of Sui gRPC protobufs
+suiprot
+
 # Publish runs cruft
 build
 doc/build
