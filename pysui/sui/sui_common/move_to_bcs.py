@@ -150,6 +150,17 @@ class MoveDataType:
             s_fetch,
         )
 
+    def _process_typeparm_fortype(self, fval: dict) -> Union[str, None]:
+        """."""
+        if tparm := fval.get("typeParameters"):
+            if (
+                tparm
+                and tparm[0].get("datatype")
+                and tparm[0]["datatype"].get("package")
+            ):
+                return BcsAst.fully_qualified_reference(tparm[0].get("datatype"))
+        return None
+
     def _handle_reference(
         self, fname: str, fval: dict
     ) -> tuple[MoveFieldNode, Union[str, None]]:
@@ -162,6 +173,7 @@ class MoveDataType:
             f_field = MoveStructureField(fname, t_str)
         elif targ == bcse.MOVE_OPTIONAL_TYPE:
             f_field = MoveOptionalField(fname, fval)
+            f_fetch = self._process_typeparm_fortype(fval)
         else:
             f_field = MoveStructureField(fname, fval["type"])
             f_fetch = targ
@@ -194,6 +206,7 @@ class MoveDataType:
                     if s_fetch:
                         fetch_fields.append(s_fetch)
                 else:
+                    # Should log fbody
                     print(fbody)
         return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
 
@@ -424,7 +437,6 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         elif isinstance(type_parm, dict) and next(iter(type_parm)) == "typeParameter":
             logger.warning(f"`{opt_name}` Optional class may require fixup.")
             cdoc = "_type Any MUST be replaced with concrete type."
-            pass
         else:
             raise NotImplementedError(f"Unknown optional type {type_parm}")
 
