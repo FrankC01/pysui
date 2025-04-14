@@ -15,10 +15,8 @@ from grpclib.client import Channel
 from pysui import SuiRpcResult, PysuiConfiguration
 
 import pysui.sui.sui_grpc.suimsgs.sui.types as v2types
-import pysui.sui.sui_grpc.suimsgs.sui.node.v2 as v2node
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
 
-NodeClient: TypeAlias = "_SuiNodeClient"
 LedgerClient: TypeAlias = "_SuiLedgerClient"
 TxClient: TypeAlias = "_SuiTransactionClient"
 
@@ -49,16 +47,6 @@ class SuiGrpcClient:
         for channel in self._channels:
             channel.close()
         self._channel.close()
-
-    def node_client(self, *, grpc_url: Optional[str] = None) -> "_SuiNodeClient":
-        """."""
-        url = _clean_url(grpc_url)
-        channel = self._channel
-        if url:
-            channel = Channel(host=url[0], port=url[1], ssl=True)
-            self._channels.append(channel)
-
-        return _SuiNodeClient(channel)
 
     def ledger_client(self, *, grpc_url: Optional[str] = None) -> "_SuiLedgerClient":
         """."""
@@ -117,36 +105,6 @@ class GrpcServiceClient(abc.ABC):
             return SuiRpcResult(False, e.args)
 
 
-class _SuiNodeClient(GrpcServiceClient):
-    """."""
-
-    def __init__(self, channel: Channel):
-        """."""
-        self._service = v2node.NodeServiceStub(channel)
-        super().__init__()
-
-    async def get_node_info(self) -> SuiRpcResult:
-        """."""
-        return await self._execute(
-            self._service.get_node_info, v2node.GetNodeInfoRequest()
-        )
-
-    async def get_object(
-        self,
-        *,
-        object_id: str,
-        version: Optional[int] = None,
-        read_mask: Optional[list[str]] = None,
-    ) -> SuiRpcResult:
-        """."""
-        object_id = v2types.ObjectId(bytes.fromhex(object_id[2:]))
-        field_mask = FieldMask(read_mask) if read_mask else None
-        return await self._execute(
-            self._service.get_object,
-            v2node.GetObjectRequest(object_id, version, field_mask),
-        )
-
-
 class _SuiLedgerClient(GrpcServiceClient):
     """."""
 
@@ -165,6 +123,14 @@ class _SuiLedgerClient(GrpcServiceClient):
         field_mask = FieldMask(read_mask) if read_mask else None
         request = v2base.GetObjectRequest(object_id, version, field_mask)
         return await self._execute(self._service.get_object, request)
+
+    async def get_transaction(
+        self, *, digest: str, read_mask: Optional[list[str]] = None
+    ) -> SuiRpcResult:
+        """."""
+        field_mask = FieldMask(read_mask) if read_mask else None
+        request = v2base.GetTransactionRequest(digest, field_mask)
+        return await self._execute(self._service.get_transaction, request)
 
 
 class _SuiTransactionClient(GrpcServiceClient):
