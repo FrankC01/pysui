@@ -65,7 +65,13 @@ class MoveStructureField(MoveFieldNode):
 
 class MoveOptionalField(MoveFieldNode):
 
-    def __init__(self, ident, data, children=None):
+    def __init__(
+        self,
+        *,
+        ident,
+        data,
+        children=None,
+    ):
         super().__init__(ident, data, children)
 
 
@@ -134,7 +140,7 @@ class MoveDataType:
                 break
         if isinstance(i_val, str):
             s_field = self._handle_simple(fname, i_val)
-            s_fetch = None
+            s_fetch = []
         elif isinstance(i_val, dict) and i_val.get("datatype"):
             voft = True
             s_field, s_fetch = self._handle_reference(fname, i_val.get("datatype"))
@@ -150,33 +156,38 @@ class MoveDataType:
             s_fetch,
         )
 
-    def _process_typeparm_fortype(self, fval: dict) -> Union[str, None]:
+    def _process_typeparm_fortype(self, fval: dict) -> list[str] | None:
         """."""
         if tparm := fval.get("typeParameters"):
             if (
                 tparm
+                and not isinstance(tparm[0], str)
                 and tparm[0].get("datatype")
                 and tparm[0]["datatype"].get("package")
             ):
-                return BcsAst.fully_qualified_reference(tparm[0].get("datatype"))
-        return None
+                return [BcsAst.fully_qualified_reference(tparm[0].get("datatype"))]
+        return []
 
-    def _handle_reference(
-        self, fname: str, fval: dict
-    ) -> tuple[MoveFieldNode, Union[str, None]]:
+    def _handle_reference(self, fname: str, fval: dict) -> tuple[MoveFieldNode, list]:
         """Resolve datatype references."""
-        # targ = "::".join([fval["package"], fval["module"], fval["type"]])
         targ = BcsAst.fully_qualified_reference(fval)
         f_field = None
-        f_fetch = None
+        f_fetch = []
         if t_str := bcse.MOVE_STD_STRUCT_REFS.get(targ):
             f_field = MoveStructureField(fname, t_str)
         elif targ == bcse.MOVE_OPTIONAL_TYPE:
-            f_field = MoveOptionalField(fname, fval)
-            f_fetch = self._process_typeparm_fortype(fval)
+            stype: bool = False
+            sval = None
+            # if typeparm := fval.get("typeParameters"):
+            #     if typeparm and isinstance(typeparm[0], str):
+            #         stype = True
+            #         sval = typeparm[0]
+            #     else:
+            f_fetch.extend(self._process_typeparm_fortype(fval))
+            f_field = MoveOptionalField(ident=fname, data=fval)
         else:
             f_field = MoveStructureField(fname, fval["type"])
-            f_fetch = targ
+            f_fetch.append(targ)
         return f_field, f_fetch
 
     def _process_structure(
@@ -184,6 +195,7 @@ class MoveDataType:
         type_decl: str,
         struc_name: str,
         mstrut: qtype.MoveStructureGQL,
+        type_parms: dict | None = None,
     ) -> tuple[MoveStructureNode, list]:
         """."""
         direct_fields: list[MoveFieldNode] = []
@@ -193,25 +205,32 @@ class MoveDataType:
             fname = field["field_name"]
             fbody = field["field_type"]["signature"]["body"]
             if isinstance(fbody, str):
+                # print(f"\nsimple {fbody}\n")
                 direct_fields.append(self._handle_simple(fname, fbody))
             else:
-                if fbody.get("datatype"):
-                    s_field, s_fetch = self._handle_reference(fname, fbody["datatype"])
+                if field_type := fbody.get("datatype"):
+                    # print(f"\nComplex {field_type}\n")
+                    s_field, s_fetch = self._handle_reference(fname, field_type)
                     direct_fields.append(s_field)
                     if s_fetch:
-                        fetch_fields.append(s_fetch)
+                        fetch_fields.extend(s_fetch)
                 elif fbody.get("vector"):
+                    # print(f"\nVector {field_type}\n")
                     s_field, s_fetch = self._handle_vector(fname, fbody)
                     direct_fields.append(s_field)
                     if s_fetch:
-                        fetch_fields.append(s_fetch)
+                        fetch_fields.extend(s_fetch)
                 else:
                     # Should log fbody
                     print(fbody)
         return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
 
     def _process_enum(
-        self, type_decl: str, enum_name: str, menum: qtype.MoveEnumGQL
+        self,
+        type_decl: str,
+        enum_name: str,
+        menum: qtype.MoveEnumGQL,
+        type_parms: dict | None = None,
     ) -> tuple[MoveEnumNode, list]:
         """."""
         direct_variants: list[MoveVariantField] = []
@@ -232,7 +251,7 @@ class MoveDataType:
                         )
                         variant_members.append(s_field)
                         if s_fetch:
-                            fetch_fields.append(s_fetch)
+                            fetch_fields.extend(s_fetch)
                     elif fbody.get("vector"):
                         variant_members.append(self._handle_vector(fname, fbody))
 
@@ -240,7 +259,7 @@ class MoveDataType:
         return MoveEnumNode(enum_name, direct_variants, type_decl), fetch_fields
 
     async def _fetch_type(
-        self, *, client: AsyncGqlClient, type_decl: str
+        self, *, client: AsyncGqlClient, type_decl: str, type_parms: dict | None = None
     ) -> tuple[bcs_ast.Node, list]:
         """Fetch a Move structure declaration and depedencies."""
         addy, mod, type_name = type_decl.split("::")
