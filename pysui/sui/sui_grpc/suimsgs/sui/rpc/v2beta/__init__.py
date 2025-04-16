@@ -2114,6 +2114,10 @@ class Epoch(betterproto.Message):
     committee: "ValidatorCommittee | None" = betterproto.message_field(2, optional=True)
     """The committee governing this epoch."""
 
+    first_checkpoint: "int | None" = betterproto.uint64_field(4, optional=True)
+    last_checkpoint: "int | None" = betterproto.uint64_field(5, optional=True)
+    start: "datetime | None" = betterproto.message_field(6, optional=True)
+    end: "datetime | None" = betterproto.message_field(7, optional=True)
     reference_gas_price: "int | None" = betterproto.uint64_field(8, optional=True)
     """Reference gas price denominated in MIST"""
 
