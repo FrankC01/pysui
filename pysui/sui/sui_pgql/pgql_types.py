@@ -171,23 +171,30 @@ class SuiCoinFromObjectsGQL(PGQL_Type):
     """Collection of sui coin from objects."""
 
     data: list[Union[SuiCoinObjectGQL, ObjectReadDeletedGQL]]
+    next_cursor: PagingCursor
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SuiCoinFromObjectsGQL":
         if in_data:
             ser_dict: dict = {}
+            ncurs: PagingCursor = PagingCursor.from_dict(
+                in_data["objects"].pop("cursor")
+            )
             _fast_flat(in_data, ser_dict)
             mid_list: list[dict] = []
-            for node in ser_dict["nodes"]:
-                ser_dict: dict = {}
-                _fast_flat(node, ser_dict)
+            for node in ser_dict["coin_objects"]:
+                ser_coin_dict: dict = node["asMoveObject"]["asCoin"]
+                # _fast_flat(node, ser_dict)
                 # If fetching by ID it may not exist
-                if ser_dict.get("object_kind") == "HISTORICAL":
-                    mid_list.append(ser_dict)
-                elif ser_dict.get("object_kind") == "WRAPPED_OR_DELETED":
-                    ser_dict.pop("amo")
-                    mid_list.append(ObjectReadDeletedGQL.from_dict(ser_dict))
-            return clz.from_dict({"data": mid_list})
+                if (
+                    ser_coin_dict.get("status") == "HISTORICAL"
+                    or ser_coin_dict.get("status") == "INDEXED"
+                ):
+                    mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
+                elif ser_coin_dict.get("status") == "WRAPPED_OR_DELETED":
+                    # ser_coin_dict.pop("amo")
+                    mid_list.append(ObjectReadDeletedGQL.from_dict(ser_coin_dict))
+            return clz.from_dict({"data": mid_list, "next_cursor": ncurs})
         return NoopGQL.from_query()
 
 
