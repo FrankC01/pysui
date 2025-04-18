@@ -31,7 +31,7 @@ from pysui import PysuiConfiguration
 from pysui.sui.sui_common.move_to_bcs import MoveDataType
 from samples.cmd_argsg import pre_config_pull
 
-_mtobcs_version = "0.1.0-beta"
+_mtobcs_version = "0.1.1-beta"
 
 import logging
 

@@ -47,13 +47,19 @@ class SuiGrpcClient:
         self._channels: list[Channel] = []
 
     def close(self):
-        """."""
+        """Close the base gRPC channel"""
         for channel in self._channels:
             channel.close()
         self._channel.close()
 
-    def ledger_client(self, *, grpc_url: Optional[str] = None) -> "_SuiLedgerClient":
-        """."""
+    def ledger_client(self, *, grpc_url: Optional[str] = None) -> LedgerClient:
+        """Return a new instance of a Ledger service client.
+
+        :param grpc_url: URL of service if not same as SuiGrpcClient, defaults to None
+        :type grpc_url: Optional[str], optional
+        :return: A Ledger Service client
+        :rtype: LedgerClient
+        """
         url = _clean_url(grpc_url)
         channel = self._channel
         if url:
@@ -61,10 +67,14 @@ class SuiGrpcClient:
             self._channels.append(channel)
         return _SuiLedgerClient(channel)
 
-    def transaction_client(
-        self, *, grpc_url: Optional[str] = None
-    ) -> "_SuiTransactionClient":
-        """."""
+    def transaction_client(self, *, grpc_url: Optional[str] = None) -> TxClient:
+        """Return a new instance of a Transaction service client.
+
+        :param grpc_url: URL of service if not same as SuiGrpcClient, defaults to None
+        :type grpc_url: Optional[str], optional
+        :return: A Transaction Service client
+        :rtype: TxClient
+        """
         url = _clean_url(grpc_url)
         channel = self._channel
         if url:
@@ -72,19 +82,26 @@ class SuiGrpcClient:
             self._channels.append(channel)
         return _SuiTransactionClient(channel)
 
-    def alpha_data_client(
-        self, *, grpc_url: Optional[str] = None
-    ) -> "_SuiAlphaDataClient":
-        """."""
-        url = _clean_url(grpc_url)
-        channel = self._channel
-        if url:
-            channel = Channel(host=url[0], port=url[1], ssl=True)
-            self._channels.append(channel)
-        return _SuiAlphaDataClient(channel)
+    # def alpha_data_client(
+    #     self, *, grpc_url: Optional[str] = None
+    # ) -> "_SuiAlphaDataClient":
+    #     """."""
+    #     url = _clean_url(grpc_url)
+    #     channel = self._channel
+    #     if url:
+    #         channel = Channel(host=url[0], port=url[1], ssl=True)
+    #         self._channels.append(channel)
+    #     return _SuiAlphaDataClient(channel)
 
 
 def _clean_url(url: str) -> tuple[str | None, int | None] | None:
+    """Clean up and separate url from port.
+
+    :param url: Inbound URL
+    :type url: str
+    :return: A URL and Port tuple
+    :rtype: tuple[str | None, int | None] | None
+    """
     try:
         up: urlparse.ParseResultBytes = urlparse.urlparse(url)
         if up.netloc:
@@ -102,10 +119,10 @@ def _clean_url(url: str) -> tuple[str | None, int | None] | None:
 
 
 class GrpcServiceClient(abc.ABC):
-    """."""
+    """Abstract base class for gRPC service clients.."""
 
     def __init__(self):
-        """."""
+        """Initializer."""
 
     async def _execute(
         self,
@@ -113,7 +130,15 @@ class GrpcServiceClient(abc.ABC):
         request: betterproto.Message,
         **kwargs,
     ) -> SuiRpcResult:
-        """."""
+        """Submit the execution of the gRPC message
+
+        :param fn: Specific service function
+        :type fn: Callable[[betterproto.Message], betterproto.Message]
+        :param request: The associated request message for service
+        :type request: betterproto.Message
+        :return: A result status including either a response (success) or error string
+        :rtype: SuiRpcResult
+        """
         try:
             result = await fn(request, **kwargs)
             return SuiRpcResult(True, None, result)

@@ -109,6 +109,10 @@ class MoveEnumNode(bcs_ast.Node):
 class MoveDataType:
     """Tree of Sui Move structures."""
 
+    _FETCH_DECL: str = "fetch_declaration"
+    _DECL_PARMS: str = "decl_paramtypes"
+    _DECL_TYPE_NAME: str = "decl_type_name"
+
     def __init__(self, *, cfg: PysuiConfiguration, target: str):
         """Initialize"""
         self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
@@ -126,8 +130,8 @@ class MoveDataType:
             return MoveScalarField(fname, fval)
 
     def _handle_vector(
-        self, fname: str, fval: Any
-    ) -> tuple[MoveFieldNode, Union[str, None]]:
+        self, fname: str, fval: Any, type_parms: Any
+    ) -> tuple[MoveFieldNode, list]:
         """Capture vector information."""
         depth_level: int = 0
         i_val = fval
@@ -144,6 +148,14 @@ class MoveDataType:
         elif isinstance(i_val, dict) and i_val.get("datatype"):
             voft = True
             s_field, s_fetch = self._handle_reference(fname, i_val.get("datatype"))
+            if s_fetch and type_parms:
+                for ifetch in s_fetch:
+                    inames = [ifetch[self._DECL_TYPE_NAME]]
+                    inames.extend(type_parms)
+                    ifetch[self._DECL_TYPE_NAME] = "_".join(inames)
+                    s_field.data = ifetch[self._DECL_TYPE_NAME]
+                    for idx, mmap in enumerate(ifetch[self._DECL_PARMS]):
+                        mmap["typeParameter"] = type_parms[idx]
         else:
             raise NotImplementedError(f"Vector of {i_val} not handled.")
         return (
@@ -156,7 +168,7 @@ class MoveDataType:
             s_fetch,
         )
 
-    def _process_typeparm_fortype(self, fval: dict) -> list[str] | None:
+    def _process_typeparm_fortype(self, fval: dict) -> list[dict | None]:
         """."""
         if tparm := fval.get("typeParameters"):
             if (
@@ -165,14 +177,27 @@ class MoveDataType:
                 and tparm[0].get("datatype")
                 and tparm[0]["datatype"].get("package")
             ):
-                return [BcsAst.fully_qualified_reference(tparm[0].get("datatype"))]
+                return [
+                    {
+                        self._FETCH_DECL: BcsAst.fully_qualified_reference(
+                            tparm[0].get("datatype")
+                        )
+                    }
+                ]
         return []
 
-    def _handle_reference(self, fname: str, fval: dict) -> tuple[MoveFieldNode, list]:
+    def _handle_reference(
+        self,
+        fname: str,
+        fval: dict,
+        type_info: Optional[dict] = None,
+    ) -> tuple[MoveFieldNode, list[dict]]:
         """Resolve datatype references."""
+        if "typeParameter" in fval:
+            return self._handle_simple(fname, fval["typeParameter"]), []
         targ = BcsAst.fully_qualified_reference(fval)
         f_field = None
-        f_fetch = []
+        f_fetch: list[dict] = []
         if t_str := bcse.MOVE_STD_STRUCT_REFS.get(targ):
             f_field = MoveStructureField(fname, t_str)
         elif targ == bcse.MOVE_OPTIONAL_TYPE:
@@ -186,8 +211,20 @@ class MoveDataType:
             f_fetch.extend(self._process_typeparm_fortype(fval))
             f_field = MoveOptionalField(ident=fname, data=fval)
         else:
-            f_field = MoveStructureField(fname, fval["type"])
-            f_fetch.append(targ)
+            # Here the name should be processed with the
+            fv_type = fval["type"]
+            # Take the fv_type base name, if type parms, append the type name within
+            type_name, carry_parms = BcsAst.struct_field_type(
+                fv_type, fval["typeParameters"]
+            )
+            f_field = MoveStructureField(fname, type_name)
+            f_fetch.append(
+                {
+                    self._FETCH_DECL: targ,
+                    self._DECL_PARMS: fval["typeParameters"],
+                    self._DECL_TYPE_NAME: type_name,
+                }
+            )
         return f_field, f_fetch
 
     def _process_structure(
@@ -196,10 +233,12 @@ class MoveDataType:
         struc_name: str,
         mstrut: qtype.MoveStructureGQL,
         type_parms: dict | None = None,
-    ) -> tuple[MoveStructureNode, list]:
+    ) -> tuple[MoveStructureNode, list[dict]]:
         """."""
+        if type_parms and type_parms.get(self._DECL_TYPE_NAME):
+            struc_name = type_parms.get(self._DECL_TYPE_NAME)
         direct_fields: list[MoveFieldNode] = []
-        fetch_fields: list = []
+        fetch_fields: list[dict] = []
 
         for field in mstrut.fields:
             fname = field["field_name"]
@@ -216,10 +255,23 @@ class MoveDataType:
                         fetch_fields.extend(s_fetch)
                 elif fbody.get("vector"):
                     # print(f"\nVector {field_type}\n")
-                    s_field, s_fetch = self._handle_vector(fname, fbody)
+                    s_field, s_fetch = self._handle_vector(
+                        fname, fbody, type_parms.get(self._DECL_PARMS)
+                    )
                     direct_fields.append(s_field)
                     if s_fetch:
                         fetch_fields.extend(s_fetch)
+                # Indirection
+                elif "typeParameter" in fbody:
+                    idex = fbody["typeParameter"]
+                    if dparm := type_parms.get(self._DECL_PARMS):
+                        of_type = dparm[idex]
+                        s_field, s_fetch = self._handle_reference(
+                            fname, of_type.get("datatype", of_type)
+                        )
+                        direct_fields.append(s_field)
+                        if s_fetch:
+                            fetch_fields.extend(s_fetch)
                 else:
                     # Should log fbody
                     print(fbody)
@@ -259,9 +311,10 @@ class MoveDataType:
         return MoveEnumNode(enum_name, direct_variants, type_decl), fetch_fields
 
     async def _fetch_type(
-        self, *, client: AsyncGqlClient, type_decl: str, type_parms: dict | None = None
+        self, *, client: AsyncGqlClient, move_type_decl: dict
     ) -> tuple[bcs_ast.Node, list]:
         """Fetch a Move structure declaration and depedencies."""
+        type_decl = move_type_decl[self._FETCH_DECL]
         addy, mod, type_name = type_decl.split("::")
         logger.info(f"Fetching '{type_decl}' definition")
         # print(f"Fetching: {type_decl}")
@@ -272,8 +325,19 @@ class MoveDataType:
         )
         if result.is_ok():
             if isinstance(result.result_data, qtype.MoveStructureGQL):
-                return self._process_structure(type_decl, type_name, result.result_data)
-            return self._process_enum(type_decl, type_name, result.result_data)
+                fn = self._process_structure
+                return fn(
+                    type_decl,
+                    type_name,
+                    result.result_data,
+                    move_type_decl,
+                )
+            return self._process_enum(
+                type_decl,
+                type_name,
+                result.result_data,
+                move_type_decl,
+            )
         else:
             raise ValueError(result.result_string)
 
@@ -282,7 +346,11 @@ class MoveDataType:
         # Initialize with primary data type
         handled: set[str] = set()
         type_node, more_fetch = await self._fetch_type(
-            client=self.client, type_decl=self.target
+            client=self.client,
+            move_type_decl={
+                self._FETCH_DECL: self.target,
+                self._DECL_PARMS: {},
+            },  # type_decl=self.target
         )
         self.children.append(type_node)
         handled.add(self.target)
@@ -297,12 +365,13 @@ class MoveDataType:
         # For each predecessor (growing list)
         for x in _growing_len(more_fetch):
             # Build predecessor data type
-            if x not in handled:
+            decl = x[self._FETCH_DECL]
+            if decl not in handled:
                 type_node, _more_fetch = await self._fetch_type(
-                    client=self.client, type_decl=x
+                    client=self.client, move_type_decl=x
                 )
                 self.children.insert(0, type_node)
-                handled.add(x)
+                handled.add(decl)
                 # Found more predecessors
                 if _more_fetch:
                     more_fetch.extend(_more_fetch)
@@ -480,7 +549,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         # If there is more than one field we lift a new enum
         if len(node.children) > 1:
             cdef = self.first_from_top(ast.ClassDef)
-            iename = f"{cdef.name}_{uuid.uuid4().hex}"
+            iename = f"{cdef.name}_{node.ident}"
             field_targets: ast.List = ast.List([], ast.Load)
             _ctxt = BcsAst.enum_base(iename, field_targets)
 
