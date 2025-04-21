@@ -417,7 +417,7 @@ class ObjectReadGQL(PGQL_Type):
                         res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
                     case "Parent":
                         res_dict["object_owner"] = SuiObjectOwnedParent(
-                            owner_kind, owner["owner"]["parent_id"]
+                            owner_kind, owner["parent"]["parent_id"]
                         )
                     case "Immutable":
                         res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)

@@ -211,13 +211,9 @@ class SimulateTransactionResponse(betterproto.Message):
 
 @dataclass(eq=False, repr=False)
 class ResolveTransactionRequest(betterproto.Message):
-    unresolved_transaction: "str | None" = betterproto.string_field(1, optional=True)
-    """
-    optional sui.rpc.v2beta.Transaction unresolved_transaction = 1;
-     TODO FIX TYPE
-     Json unresolved transaction type
-    """
-
+    unresolved_transaction: "_v2_beta__.Transaction | None" = betterproto.message_field(
+        1, optional=True
+    )
     read_mask: "betterproto_lib_google_protobuf.FieldMask | None" = (
         betterproto.message_field(2, optional=True)
     )

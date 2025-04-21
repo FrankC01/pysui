@@ -15,6 +15,7 @@ import logging
 from pysui import PysuiConfiguration, AsyncGqlClient
 import pysui.sui.sui_common.bcs_ast as bcs_ast
 from pysui.sui.sui_common.bcs_ast import BcsAst
+import pysui.sui.sui_common.mtobcs_types as mtypes
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as qtype
 import pysui.sui.sui_types.bcs_stnd as bcse
@@ -113,10 +114,15 @@ class MoveDataType:
     _DECL_PARMS: str = "decl_paramtypes"
     _DECL_TYPE_NAME: str = "decl_type_name"
 
-    def __init__(self, *, cfg: PysuiConfiguration, target: str):
+    def __init__(
+        self,
+        *,
+        cfg: PysuiConfiguration,
+        target: mtypes.GenericStructure | mtypes.Structure,
+    ):
         """Initialize"""
         self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
-        self.target: str = target
+        self.target = target
         self.python_stub = (
             Path(inspect.getfile(inspect.currentframe())).parent / "mtobcs_pre.py"
         )
@@ -128,6 +134,27 @@ class MoveDataType:
             return MoveStandardField(fname, sfield)
         else:
             return MoveScalarField(fname, fval)
+
+    def _build_parmed_assets(
+        self, s_field: MoveFieldNode, fetch_decl: dict, parm_list: list
+    ):
+        """."""
+        name_list = [fetch_decl[self._DECL_TYPE_NAME]]
+        if len(fetch_decl[self._DECL_PARMS]) == len(parm_list):
+            for tparm in parm_list:
+                if isinstance(tparm, str):
+                    name_list.append(tparm)
+                elif isinstance(tparm, dict):
+                    if "datatype" in tparm and "package" in tparm["datatype"]:
+                        name_list.append(tparm["datatype"]["type"])
+                    else:
+                        raise NotImplementedError("Ugh")
+                else:
+                    raise NotImplementedError("Ugh")
+            new_name = "_".join(name_list)
+            fetch_decl[self._DECL_TYPE_NAME] = new_name
+            fetch_decl[self._DECL_PARMS] = parm_list
+            s_field.data = new_name
 
     def _handle_vector(
         self, fname: str, fval: Any, type_parms: Any
@@ -149,13 +176,7 @@ class MoveDataType:
             voft = True
             s_field, s_fetch = self._handle_reference(fname, i_val.get("datatype"))
             if s_fetch and type_parms:
-                for ifetch in s_fetch:
-                    inames = [ifetch[self._DECL_TYPE_NAME]]
-                    inames.extend(type_parms)
-                    ifetch[self._DECL_TYPE_NAME] = "_".join(inames)
-                    s_field.data = ifetch[self._DECL_TYPE_NAME]
-                    for idx, mmap in enumerate(ifetch[self._DECL_PARMS]):
-                        mmap["typeParameter"] = type_parms[idx]
+                self._build_parmed_assets(s_field, s_fetch[0], type_parms)
         else:
             raise NotImplementedError(f"Vector of {i_val} not handled.")
         return (
@@ -266,15 +287,19 @@ class MoveDataType:
                     idex = fbody["typeParameter"]
                     if dparm := type_parms.get(self._DECL_PARMS):
                         of_type = dparm[idex]
-                        s_field, s_fetch = self._handle_reference(
-                            fname, of_type.get("datatype", of_type)
-                        )
-                        direct_fields.append(s_field)
-                        if s_fetch:
-                            fetch_fields.extend(s_fetch)
+                        if isinstance(of_type, str):
+                            direct_fields.append(self._handle_simple(fname, of_type))
+                        else:
+                            s_field, s_fetch = self._handle_reference(
+                                fname, of_type.get("datatype", of_type)
+                            )
+                            direct_fields.append(s_field)
+                            if s_fetch:
+                                fetch_fields.extend(s_fetch)
                 else:
                     # Should log fbody
-                    print(fbody)
+                    # print(fbody)
+                    logger.warning(f"Unhandled {fbody}")
         return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
 
     def _process_enum(
@@ -341,19 +366,52 @@ class MoveDataType:
         else:
             raise ValueError(result.result_string)
 
+    def _root_process(
+        self, initial_target: mtypes.GenericStructure | mtypes.Structure
+    ) -> tuple[str, list, MoveStructureNode | None]:
+        """."""
+        more_fetch = []
+        last_child = None
+        children: list = []
+        if isinstance(initial_target, mtypes.Structure):
+            return initial_target.value_type, more_fetch, last_child
+        else:
+            dystruct: mtypes.GenericStructure = initial_target
+            name_list: list = ["GenericStructure"]
+            first_field = None
+
+            for key, value in dystruct.properties.items():
+                if bcse.MOVE_STD_SCALAR_REFS.get(value):
+                    name_list.append(value)
+                    children.append(self._handle_simple(key, value))
+                else:
+                    _, _, ftype = value.split("::")
+                    name_list.append(ftype)
+                    children.append(self._handle_simple(key, ftype))
+                    if first_field:
+                        more_fetch.append({self._FETCH_DECL: value})
+                    else:
+                        first_field = value
+
+            last_child = MoveStructureNode("_".join(name_list), children)
+            return first_field, more_fetch, last_child
+
     async def build(self):
         """Build the tree by walking move data types."""
         # Initialize with primary data type
+        init_target, more_fetch, last_child = self._root_process(self.target)
         handled: set[str] = set()
-        type_node, more_fetch = await self._fetch_type(
+        type_node, add_fetch = await self._fetch_type(
             client=self.client,
             move_type_decl={
-                self._FETCH_DECL: self.target,
+                self._FETCH_DECL: init_target,
                 self._DECL_PARMS: {},
             },  # type_decl=self.target
         )
         self.children.append(type_node)
-        handled.add(self.target)
+        handled.add(type_node.ident)
+        if add_fetch:
+            more_fetch.extend(add_fetch)
 
         def _growing_len(xs):
             """Generator for potentially growing list of dependencies"""
@@ -366,16 +424,21 @@ class MoveDataType:
         for x in _growing_len(more_fetch):
             # Build predecessor data type
             decl = x[self._FETCH_DECL]
-            if decl not in handled:
+            decl_type_name = x.get(self._DECL_TYPE_NAME, decl)
+            if decl_type_name not in handled:
                 type_node, _more_fetch = await self._fetch_type(
                     client=self.client, move_type_decl=x
                 )
                 self.children.insert(0, type_node)
-                handled.add(decl)
+                if decl_type_name == decl:
+                    decl_type_name = type_node.ident
+                handled.add(decl_type_name)
                 # Found more predecessors
                 if _more_fetch:
                     more_fetch.extend(_more_fetch)
 
+        if last_child:
+            self.children.append(last_child)
         return
 
     async def emit(self, *, pre_includes: Optional[list[str]] = None) -> str:

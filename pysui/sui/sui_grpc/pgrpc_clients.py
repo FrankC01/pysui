@@ -9,9 +9,9 @@ from typing import Optional, TypeAlias, Any
 from collections.abc import Callable
 import abc
 import urllib.parse as urlparse
-import base64
 import traceback
 import betterproto
+
 from betterproto.lib.google.protobuf import FieldMask
 from grpclib.client import Channel
 from pysui import SuiRpcResult, PysuiConfiguration
@@ -133,9 +133,9 @@ class GrpcServiceClient(abc.ABC):
         """Submit the execution of the gRPC message
 
         :param fn: Specific service function
-        :type fn: Callable[[betterproto.Message], betterproto.Message]
+        :type fn: Callable[[betterproto2.Message], betterproto2.Message]
         :param request: The associated request message for service
-        :type request: betterproto.Message
+        :type request: betterproto2.Message
         :return: A result status including either a response (success) or error string
         :rtype: SuiRpcResult
         """
@@ -270,13 +270,15 @@ class _SuiTransactionClient(GrpcServiceClient):
         """."""
         field_mask = FieldMask(read_mask) if read_mask else None
         sigs = [v2base.UserSignature(x) for x in sig_array]
+        request = v2base.ExecuteTransactionRequest(
+            v2base.Transaction(bcs=tx_bytestr),
+            sigs,
+            field_mask,
+        )
+        print(request.to_json(indent=2))
         return await self._execute(
             self._service.execute_transaction,
-            v2base.ExecuteTransactionRequest(
-                v2base.Transaction(bcs=tx_bytestr),
-                sigs,
-                field_mask,
-            ),
+            request,
             **kwargs,
         )
 

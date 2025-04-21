@@ -1364,6 +1364,15 @@ class Input(betterproto.Message):
      object.
     """
 
+    literal: "betterproto_lib_google_protobuf.Value | None" = betterproto.message_field(
+        1000, optional=True
+    )
+    """
+    A literal value
+    
+     INPUT ONLY
+    """
+
 
 @dataclass(eq=False, repr=False)
 class ObjectReference(betterproto.Message):
