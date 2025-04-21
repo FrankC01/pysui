@@ -8,6 +8,10 @@
 
 Python Client SDK for Sui blockchain
 
+## A cup of coffee
+
+- The team could use a cup or carafe. Sui address `0xc45e5ea887e037ddc6a482afa412773b4291c8fdc338f647fb0fcea324975d8e`
+
 ## pysui SDK Dependencies
 
 - Rust (stable) for installation of Sui Binaries (optional) and building `pysui-fastcrypto` Rust wrapper (required)
@@ -17,17 +21,17 @@ Python Client SDK for Sui blockchain
 
 **Release-0.82.0**
 
-- Supports _SUI 1.45.x JSON RPC API_, _SUI 1.45.x GRAPHQL_
-- JSON RPC API backwards compatable to _Sui 1.38.x_
+- Supports _SUI 1.45.x JSON RPC API_, _SUI 1.47.x GRAPHQL_
+- JSON RPC API backwards compatable to _Sui 1.40.x_
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
 
 ## PyPi current
 
-**Release-0.80.1 - Released 2025-03-24**
+**Release-0.82.0 - Released 2025-04-21**
 
-- Supports _SUI 1.45.x JSON RPC API_, _SUI 1.44.x GRAPHQL_
-- JSON RPC API backwards compatable to _Sui 1.36.x_
+- Supports _SUI 1.45.x JSON RPC API_, _SUI 1.47.x GRAPHQL_
+- JSON RPC API backwards compatable to _Sui 1.40.x_
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
