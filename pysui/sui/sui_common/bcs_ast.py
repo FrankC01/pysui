@@ -223,7 +223,24 @@ class BcsAst:
             depth -= 1
         return core_list
 
-    @classmethod
-    def fully_qualified_reference(clz, fval: dict) -> str:
+    @staticmethod
+    def fully_qualified_reference(fval: dict) -> str:
         """Conjoins package, module, struct/enum from datatype."""
         return "::".join([fval["package"], fval["module"], fval["type"]])
+
+    @staticmethod
+    def struct_field_type(field_name: str, type_parms: list) -> tuple[str, list]:
+        """Forms a name conjoined with typeparm."""
+        new_name: str = field_name
+        new_tparms: list = type_parms
+        if type_parms:
+            name_list: list[str] = [new_name]
+            for tparm in type_parms:
+                if isinstance(tparm, str):
+                    name_list.append(tparm)
+                elif dt := tparm.get("datatype"):
+                    name_list.append(dt["type"])
+
+            new_name = "_".join(name_list)
+            return new_name, new_tparms
+        return new_name, new_tparms

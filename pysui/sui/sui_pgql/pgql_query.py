@@ -6,7 +6,7 @@
 """QueryNode generators."""
 
 from typing import Optional, Callable, Union, Any
-from deprecated.sphinx import versionadded, deprecated
+from deprecated.sphinx import versionadded, deprecated, versionchanged
 from gql import gql
 from gql.dsl import (
     DSLQuery,
@@ -422,6 +422,9 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
         return pgql_type.ObjectReadsGQL.from_query
 
 
+@versionchanged(
+    version="0.82.0", reason="Fixes https://github.com/FrankC01/pysui/issues/292"
+)
 class GetMultipleGasObjects(PGQL_QueryNode):
     """Return basic Sui gas represnetation for each coin_id string."""
 
@@ -434,39 +437,15 @@ class GetMultipleGasObjects(PGQL_QueryNode):
         self.coin_ids = coin_object_ids
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-
+        std_coin = frag.StandardCoinObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
         qres = schema.Query.objects(filter={"objectIds": self.coin_ids}).select(
-            schema.ObjectConnection.nodes.select(
-                schema.Object.version,
-                object_id=schema.Object.address,
-                object_kind=schema.Object.status,
-                amo=schema.Object.asMoveObject.select(
-                    schema.MoveObject.asCoin.select(
-                        schema.Coin.version,
-                        schema.Coin.hasPublicTransfer,
-                        schema.Coin.previousTransactionBlock.select(
-                            previous_transaction=schema.TransactionBlock.digest
-                        ),
-                        schema.Coin.owner.select(
-                            DSLInlineFragment()
-                            .on(schema.AddressOwner)
-                            .select(
-                                schema.AddressOwner.owner.select(
-                                    coin_owner=schema.Owner.address
-                                )
-                            ),
-                        ),
-                        schema.Coin.contents.select(
-                            schema.MoveValue.type.select(coin_type=schema.MoveType.repr)
-                        ),
-                        object_digest=schema.Coin.digest,
-                        balance=schema.Coin.coinBalance,
-                        coin_object_id=schema.Coin.address,
-                    ),
-                ),
-            )
+            std_coin
         )
+
         return dsl_gql(
+            std_coin,
+            pg_cursor,
             DSLQuery(qres),
         )
 

@@ -15,6 +15,7 @@ import logging
 from pysui import PysuiConfiguration, AsyncGqlClient
 import pysui.sui.sui_common.bcs_ast as bcs_ast
 from pysui.sui.sui_common.bcs_ast import BcsAst
+import pysui.sui.sui_common.mtobcs_types as mtypes
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as qtype
 import pysui.sui.sui_types.bcs_stnd as bcse
@@ -65,7 +66,13 @@ class MoveStructureField(MoveFieldNode):
 
 class MoveOptionalField(MoveFieldNode):
 
-    def __init__(self, ident, data, children=None):
+    def __init__(
+        self,
+        *,
+        ident,
+        data,
+        children=None,
+    ):
         super().__init__(ident, data, children)
 
 
@@ -103,10 +110,19 @@ class MoveEnumNode(bcs_ast.Node):
 class MoveDataType:
     """Tree of Sui Move structures."""
 
-    def __init__(self, *, cfg: PysuiConfiguration, target: str):
+    _FETCH_DECL: str = "fetch_declaration"
+    _DECL_PARMS: str = "decl_paramtypes"
+    _DECL_TYPE_NAME: str = "decl_type_name"
+
+    def __init__(
+        self,
+        *,
+        cfg: PysuiConfiguration,
+        target: mtypes.GenericStructure | mtypes.Structure,
+    ):
         """Initialize"""
         self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
-        self.target: str = target
+        self.target = target
         self.python_stub = (
             Path(inspect.getfile(inspect.currentframe())).parent / "mtobcs_pre.py"
         )
@@ -119,9 +135,30 @@ class MoveDataType:
         else:
             return MoveScalarField(fname, fval)
 
+    def _build_parmed_assets(
+        self, s_field: MoveFieldNode, fetch_decl: dict, parm_list: list
+    ):
+        """."""
+        name_list = [fetch_decl[self._DECL_TYPE_NAME]]
+        if len(fetch_decl[self._DECL_PARMS]) == len(parm_list):
+            for tparm in parm_list:
+                if isinstance(tparm, str):
+                    name_list.append(tparm)
+                elif isinstance(tparm, dict):
+                    if "datatype" in tparm and "package" in tparm["datatype"]:
+                        name_list.append(tparm["datatype"]["type"])
+                    else:
+                        raise NotImplementedError("Ugh")
+                else:
+                    raise NotImplementedError("Ugh")
+            new_name = "_".join(name_list)
+            fetch_decl[self._DECL_TYPE_NAME] = new_name
+            fetch_decl[self._DECL_PARMS] = parm_list
+            s_field.data = new_name
+
     def _handle_vector(
-        self, fname: str, fval: Any
-    ) -> tuple[MoveFieldNode, Union[str, None]]:
+        self, fname: str, fval: Any, type_parms: Any
+    ) -> tuple[MoveFieldNode, list]:
         """Capture vector information."""
         depth_level: int = 0
         i_val = fval
@@ -134,10 +171,12 @@ class MoveDataType:
                 break
         if isinstance(i_val, str):
             s_field = self._handle_simple(fname, i_val)
-            s_fetch = None
+            s_fetch = []
         elif isinstance(i_val, dict) and i_val.get("datatype"):
             voft = True
             s_field, s_fetch = self._handle_reference(fname, i_val.get("datatype"))
+            if s_fetch and type_parms:
+                self._build_parmed_assets(s_field, s_fetch[0], type_parms)
         else:
             raise NotImplementedError(f"Vector of {i_val} not handled.")
         return (
@@ -150,21 +189,63 @@ class MoveDataType:
             s_fetch,
         )
 
+    def _process_typeparm_fortype(self, fval: dict) -> list[dict | None]:
+        """."""
+        if tparm := fval.get("typeParameters"):
+            if (
+                tparm
+                and not isinstance(tparm[0], str)
+                and tparm[0].get("datatype")
+                and tparm[0]["datatype"].get("package")
+            ):
+                return [
+                    {
+                        self._FETCH_DECL: BcsAst.fully_qualified_reference(
+                            tparm[0].get("datatype")
+                        )
+                    }
+                ]
+        return []
+
     def _handle_reference(
-        self, fname: str, fval: dict
-    ) -> tuple[MoveFieldNode, Union[str, None]]:
+        self,
+        fname: str,
+        fval: dict,
+        type_info: Optional[dict] = None,
+    ) -> tuple[MoveFieldNode, list[dict]]:
         """Resolve datatype references."""
-        # targ = "::".join([fval["package"], fval["module"], fval["type"]])
+        if "typeParameter" in fval:
+            return self._handle_simple(fname, fval["typeParameter"]), []
         targ = BcsAst.fully_qualified_reference(fval)
         f_field = None
-        f_fetch = None
+        f_fetch: list[dict] = []
         if t_str := bcse.MOVE_STD_STRUCT_REFS.get(targ):
             f_field = MoveStructureField(fname, t_str)
         elif targ == bcse.MOVE_OPTIONAL_TYPE:
-            f_field = MoveOptionalField(fname, fval)
+            stype: bool = False
+            sval = None
+            # if typeparm := fval.get("typeParameters"):
+            #     if typeparm and isinstance(typeparm[0], str):
+            #         stype = True
+            #         sval = typeparm[0]
+            #     else:
+            f_fetch.extend(self._process_typeparm_fortype(fval))
+            f_field = MoveOptionalField(ident=fname, data=fval)
         else:
-            f_field = MoveStructureField(fname, fval["type"])
-            f_fetch = targ
+            # Here the name should be processed with the
+            fv_type = fval["type"]
+            # Take the fv_type base name, if type parms, append the type name within
+            type_name, carry_parms = BcsAst.struct_field_type(
+                fv_type, fval["typeParameters"]
+            )
+            f_field = MoveStructureField(fname, type_name)
+            f_fetch.append(
+                {
+                    self._FETCH_DECL: targ,
+                    self._DECL_PARMS: fval["typeParameters"],
+                    self._DECL_TYPE_NAME: type_name,
+                }
+            )
         return f_field, f_fetch
 
     def _process_structure(
@@ -172,33 +253,61 @@ class MoveDataType:
         type_decl: str,
         struc_name: str,
         mstrut: qtype.MoveStructureGQL,
-    ) -> tuple[MoveStructureNode, list]:
+        type_parms: dict | None = None,
+    ) -> tuple[MoveStructureNode, list[dict]]:
         """."""
+        if type_parms and type_parms.get(self._DECL_TYPE_NAME):
+            struc_name = type_parms.get(self._DECL_TYPE_NAME)
         direct_fields: list[MoveFieldNode] = []
-        fetch_fields: list = []
+        fetch_fields: list[dict] = []
 
         for field in mstrut.fields:
             fname = field["field_name"]
             fbody = field["field_type"]["signature"]["body"]
             if isinstance(fbody, str):
+                # print(f"\nsimple {fbody}\n")
                 direct_fields.append(self._handle_simple(fname, fbody))
             else:
-                if fbody.get("datatype"):
-                    s_field, s_fetch = self._handle_reference(fname, fbody["datatype"])
+                if field_type := fbody.get("datatype"):
+                    # print(f"\nComplex {field_type}\n")
+                    s_field, s_fetch = self._handle_reference(fname, field_type)
                     direct_fields.append(s_field)
                     if s_fetch:
-                        fetch_fields.append(s_fetch)
+                        fetch_fields.extend(s_fetch)
                 elif fbody.get("vector"):
-                    s_field, s_fetch = self._handle_vector(fname, fbody)
+                    # print(f"\nVector {field_type}\n")
+                    s_field, s_fetch = self._handle_vector(
+                        fname, fbody, type_parms.get(self._DECL_PARMS)
+                    )
                     direct_fields.append(s_field)
                     if s_fetch:
-                        fetch_fields.append(s_fetch)
+                        fetch_fields.extend(s_fetch)
+                # Indirection
+                elif "typeParameter" in fbody:
+                    idex = fbody["typeParameter"]
+                    if dparm := type_parms.get(self._DECL_PARMS):
+                        of_type = dparm[idex]
+                        if isinstance(of_type, str):
+                            direct_fields.append(self._handle_simple(fname, of_type))
+                        else:
+                            s_field, s_fetch = self._handle_reference(
+                                fname, of_type.get("datatype", of_type)
+                            )
+                            direct_fields.append(s_field)
+                            if s_fetch:
+                                fetch_fields.extend(s_fetch)
                 else:
-                    print(fbody)
+                    # Should log fbody
+                    # print(fbody)
+                    logger.warning(f"Unhandled {fbody}")
         return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
 
     def _process_enum(
-        self, type_decl: str, enum_name: str, menum: qtype.MoveEnumGQL
+        self,
+        type_decl: str,
+        enum_name: str,
+        menum: qtype.MoveEnumGQL,
+        type_parms: dict | None = None,
     ) -> tuple[MoveEnumNode, list]:
         """."""
         direct_variants: list[MoveVariantField] = []
@@ -219,7 +328,7 @@ class MoveDataType:
                         )
                         variant_members.append(s_field)
                         if s_fetch:
-                            fetch_fields.append(s_fetch)
+                            fetch_fields.extend(s_fetch)
                     elif fbody.get("vector"):
                         variant_members.append(self._handle_vector(fname, fbody))
 
@@ -227,9 +336,10 @@ class MoveDataType:
         return MoveEnumNode(enum_name, direct_variants, type_decl), fetch_fields
 
     async def _fetch_type(
-        self, *, client: AsyncGqlClient, type_decl: str
+        self, *, client: AsyncGqlClient, move_type_decl: dict
     ) -> tuple[bcs_ast.Node, list]:
         """Fetch a Move structure declaration and depedencies."""
+        type_decl = move_type_decl[self._FETCH_DECL]
         addy, mod, type_name = type_decl.split("::")
         logger.info(f"Fetching '{type_decl}' definition")
         # print(f"Fetching: {type_decl}")
@@ -240,20 +350,68 @@ class MoveDataType:
         )
         if result.is_ok():
             if isinstance(result.result_data, qtype.MoveStructureGQL):
-                return self._process_structure(type_decl, type_name, result.result_data)
-            return self._process_enum(type_decl, type_name, result.result_data)
+                fn = self._process_structure
+                return fn(
+                    type_decl,
+                    type_name,
+                    result.result_data,
+                    move_type_decl,
+                )
+            return self._process_enum(
+                type_decl,
+                type_name,
+                result.result_data,
+                move_type_decl,
+            )
         else:
             raise ValueError(result.result_string)
+
+    def _root_process(
+        self, initial_target: mtypes.GenericStructure | mtypes.Structure
+    ) -> tuple[str, list, MoveStructureNode | None]:
+        """."""
+        more_fetch = []
+        last_child = None
+        children: list = []
+        if isinstance(initial_target, mtypes.Structure):
+            return initial_target.value_type, more_fetch, last_child
+        else:
+            dystruct: mtypes.GenericStructure = initial_target
+            name_list: list = ["GenericStructure"]
+            first_field = None
+
+            for key, value in dystruct.properties.items():
+                if bcse.MOVE_STD_SCALAR_REFS.get(value):
+                    name_list.append(value)
+                    children.append(self._handle_simple(key, value))
+                else:
+                    _, _, ftype = value.split("::")
+                    name_list.append(ftype)
+                    children.append(self._handle_simple(key, ftype))
+                    if first_field:
+                        more_fetch.append({self._FETCH_DECL: value})
+                    else:
+                        first_field = value
+
+            last_child = MoveStructureNode("_".join(name_list), children)
+            return first_field, more_fetch, last_child
 
     async def build(self):
         """Build the tree by walking move data types."""
         # Initialize with primary data type
+        init_target, more_fetch, last_child = self._root_process(self.target)
         handled: set[str] = set()
-        type_node, more_fetch = await self._fetch_type(
-            client=self.client, type_decl=self.target
+        type_node, add_fetch = await self._fetch_type(
+            client=self.client,
+            move_type_decl={
+                self._FETCH_DECL: init_target,
+                self._DECL_PARMS: {},
+            },  # type_decl=self.target
         )
         self.children.append(type_node)
-        handled.add(self.target)
+        handled.add(type_node.ident)
+        if add_fetch:
+            more_fetch.extend(add_fetch)
 
         def _growing_len(xs):
             """Generator for potentially growing list of dependencies"""
@@ -265,16 +423,22 @@ class MoveDataType:
         # For each predecessor (growing list)
         for x in _growing_len(more_fetch):
             # Build predecessor data type
-            if x not in handled:
+            decl = x[self._FETCH_DECL]
+            decl_type_name = x.get(self._DECL_TYPE_NAME, decl)
+            if decl_type_name not in handled:
                 type_node, _more_fetch = await self._fetch_type(
-                    client=self.client, type_decl=x
+                    client=self.client, move_type_decl=x
                 )
                 self.children.insert(0, type_node)
-                handled.add(x)
+                if decl_type_name == decl:
+                    decl_type_name = type_node.ident
+                handled.add(decl_type_name)
                 # Found more predecessors
                 if _more_fetch:
                     more_fetch.extend(_more_fetch)
 
+        if last_child:
+            self.children.append(last_child)
         return
 
     async def emit(self, *, pre_includes: Optional[list[str]] = None) -> str:
@@ -424,7 +588,6 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         elif isinstance(type_parm, dict) and next(iter(type_parm)) == "typeParameter":
             logger.warning(f"`{opt_name}` Optional class may require fixup.")
             cdoc = "_type Any MUST be replaced with concrete type."
-            pass
         else:
             raise NotImplementedError(f"Unknown optional type {type_parm}")
 
@@ -449,7 +612,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         # If there is more than one field we lift a new enum
         if len(node.children) > 1:
             cdef = self.first_from_top(ast.ClassDef)
-            iename = f"{cdef.name}_{uuid.uuid4().hex}"
+            iename = f"{cdef.name}_{node.ident}"
             field_targets: ast.List = ast.List([], ast.Load)
             _ctxt = BcsAst.enum_base(iename, field_targets)
 

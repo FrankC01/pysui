@@ -100,6 +100,72 @@ class StandardCoin(PGQL_Fragment):
         )
 
 
+class StandardCoinObject(PGQL_Fragment):
+    """StandardCoin reusable fragment."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        pg_cursor = PageCursor()
+        return (
+            DSLFragment("CoinStandard")
+            .on(schema.ObjectConnection)
+            .select(
+                cursor=schema.ObjectConnection.pageInfo.select(
+                    pg_cursor.fragment(schema)
+                ),
+                coin_objects=schema.ObjectConnection.nodes.select(
+                    schema.Object.asMoveObject.select(
+                        schema.MoveObject.asCoin.select(
+                            schema.Coin.status,
+                            schema.Coin.version,
+                            schema.Coin.hasPublicTransfer,
+                            schema.Coin.previousTransactionBlock.select(
+                                previous_transaction=schema.TransactionBlock.digest
+                            ),
+                            schema.Coin.owner.select(
+                                DSLInlineFragment()
+                                .on(schema.AddressOwner)
+                                .select(
+                                    schema.AddressOwner.owner.select(
+                                        address_id=schema.Owner.address
+                                    ),
+                                    obj_owner_kind=DSLMetaField("__typename"),
+                                ),
+                                DSLInlineFragment()
+                                .on(schema.Shared)
+                                .select(
+                                    initial_version=schema.Shared.initialSharedVersion,
+                                    obj_owner_kind=DSLMetaField("__typename"),
+                                ),
+                                DSLInlineFragment()
+                                .on(schema.Immutable)
+                                .select(
+                                    obj_owner_kind=DSLMetaField("__typename"),
+                                ),
+                                DSLInlineFragment()
+                                .on(schema.Parent)
+                                .select(
+                                    schema.Parent.parent.select(
+                                        parent_id=schema.Owner.address
+                                    ),
+                                    obj_owner_kind=DSLMetaField("__typename"),
+                                ),
+                            ),
+                            schema.Coin.contents.select(
+                                schema.MoveValue.type.select(
+                                    coin_type=schema.MoveType.repr
+                                )
+                            ),
+                            object_digest=schema.Coin.digest,
+                            balance=schema.Coin.coinBalance,
+                            coin_object_id=schema.Coin.address,
+                        ),
+                    )
+                ),
+            )
+        )
+
+
 class BaseObject(PGQL_Fragment):
     """BaseObject reusable fragment."""
 

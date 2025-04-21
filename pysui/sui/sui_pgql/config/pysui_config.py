@@ -20,6 +20,7 @@ class PysuiConfiguration:
 
     SUI_JSON_RPC_GROUP: str = "sui_json_config"
     SUI_GQL_RPC_GROUP: str = "sui_gql_config"
+    SUI_GRPC_GROUP: str = "sui_grpc_config"
     SUI_USER_GROUP: str = "user"
 
     def __init__(
@@ -64,11 +65,19 @@ class PysuiConfiguration:
             self._model: PysuiConfigModel = PysuiConfigModel.from_json(
                 self._config_file.read_text(encoding="utf8")
             )
+
+        # Set up GRPC group if not exist, don't overwrite
+        # self.model.add_group(
+        #     group=cfg_group.ProfileGroup(self.SUI_GRPC_GROUP, "", "", [], [], [], []),
+        #     make_active=False,
+        # )
+
         # Set up user group if not exist, don't overwrite
         self.model.add_group(
             group=cfg_group.ProfileGroup(self.SUI_USER_GROUP, "", "", [], [], [], []),
             make_active=False,
         )
+
         # Initialize from sui config if found
         if not self._model.has_group(group_name=self.SUI_JSON_RPC_GROUP):
             self.rebuild_from_sui_client(

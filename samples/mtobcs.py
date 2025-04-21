@@ -29,9 +29,10 @@ from pysui.sui.sui_common.validators import (
 )
 from pysui import PysuiConfiguration
 from pysui.sui.sui_common.move_to_bcs import MoveDataType
+import pysui.sui.sui_common.mtobcs_types as mtypes
 from samples.cmd_argsg import pre_config_pull
 
-_mtobcs_version = "0.1.0-beta"
+_mtobcs_version = "0.1.2-beta"
 
 import logging
 
@@ -82,11 +83,11 @@ def parse_args(
     )
     parser.add_argument(
         "-m",
-        "--move-struct-file",
-        dest="move_structure",
+        "--move-target-file",
+        dest="move_targets",
         required=True,
         action=ValidateFile,
-        help="JSON file of string array, each row identifies a program structure (e.g. 0x2::coin::Coin)",
+        help="JSON file of array of maps, each identifies a target for generation",
     )
     parser.add_argument(
         "-o",
@@ -98,17 +99,6 @@ def parse_args(
         help=f"The folder where the Python BCS module is written to. Default to '{default_folder}'",
     )
     return parser.parse_args(in_args)
-
-
-def _validate_structs(slist: list[str]) -> Union[None, ValueError]:
-    """Ensure structs are well formed."""
-    for package in slist:
-        if package.count("::") == 2:
-            addy, module, tail = package.split("::")
-            if not valid_sui_address(addy):
-                raise ValueError(f"Invalid Sui address '{addy}' in '{package}'.")
-        else:
-            raise ValueError(f"Invalid Sui move triple '{package}'.")
 
 
 def _fname_from_triple(triple: str) -> str:
@@ -130,13 +120,14 @@ async def main():
                 persist=False,
             )
         # Load the move structure json file
-        json_file: Path = parsed.move_structure
-        package_structs: list[str] = json.loads(json_file.read_text(encoding="utf8"))
-        _validate_structs(package_structs)
+        json_file: Path = parsed.move_targets
+        package_targets: mtypes.Targets = mtypes.Targets.load_declarations(
+            json.loads(json_file.read_text(encoding="utf8"))
+        )
         output_folder = parsed.target_output_folder
         # Emit python modules for each identified move program structure
-        for package in package_structs:
-            fname = _fname_from_triple(package)
+        for package in package_targets.targets:
+            fname = package.out_file
             mst: MoveDataType = MoveDataType(cfg=cfg, target=package)
             await mst.build()
             bcs_py = await mst.emit()
