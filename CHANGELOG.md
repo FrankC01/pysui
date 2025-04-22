@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.83.0] - Unpublished
+
+### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
 ## [0.82.0] - 2025-04-21
 
 ### Added
@@ -30,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [enhancement](https://github.com/FrankC01/pysui/issues/276) CLI utilities now accept `--config ` argument
+- [enhancement](https://github.com/FrankC01/pysui/issues/276) CLI utilities now accept `--config` argument
 to use PysuiConfiguration from other than default path.
 
 ### Removed
@@ -62,7 +72,6 @@ to use PysuiConfiguration from other than default path.
 ### Changed
 
 ### Removed
-
 
 ## [0.78.0] - 2025-02-11
 
@@ -249,7 +258,6 @@ to use PysuiConfiguration from other than default path.
 
 ### Removed
 
-
 ## [0.69.0] - 2024-09-22
 
 ### Added
@@ -284,9 +292,9 @@ to use PysuiConfiguration from other than default path.
 - Bump version 0.68.0
 - On PysuiConfiguration, renamed `active_env` property to `active_profile`
 - Mysten GraphQL removed `devnet-beta` url and only supports:
-  - https://sui-mainnet.mystenlabs.com/graphql
-  - https://sui-testnet.mystenlabs.com/graphql
-  - https://sui-devnet.mystenlabs.com/graphql
+  - <https://sui-mainnet.mystenlabs.com/graphql>
+  - <https://sui-testnet.mystenlabs.com/graphql>
+  - <https://sui-devnet.mystenlabs.com/graphql>
 
 ### Removed
 
@@ -338,7 +346,6 @@ to use PysuiConfiguration from other than default path.
 - Reorganized initiatlization of PysuiConfiguration and run time rebuilding from `client.yaml`
 
 ### Removed
-
 
 ## [0.65.0] - 2024-07-18
 
@@ -421,10 +428,9 @@ to use PysuiConfiguration from other than default path.
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/212) GraphQL GetPackage and GetFunction fail converting to dataclass
-- [bug](https://github.com/FrankC01/pysui/issues/210) Passing str doesn't convert to vector<u8> (GraphQL SuiTransaction)
+- [bug](https://github.com/FrankC01/pysui/issues/210) Passing str doesn't convert to `vector<u8>` (GraphQL SuiTransaction)
 - Fixed handling case of unresolvable UpgradeCap fetch in GraphQL SuiTransaction `publish_upgrade``
 - Regression in arg processor for GraphQL Transaction building
-
 
 ### Changed
 
@@ -447,12 +453,13 @@ to use PysuiConfiguration from other than default path.
 - `client_headers` property to GraphQL clients (read only, produces copy)
 - `with_headers` argument to client `execute...` methods.
   - During execution, merges provided with global headers:
+
   ```python
     hdr = self.client_headers
     hdr = hdr if not with_headers else hdr.update(with_headers)
   ```
+  
 - Single permanent reconnecting async session for `AsyncSuiGQLClient`
-
 
 ### Fixed
 
@@ -516,7 +523,6 @@ to use PysuiConfiguration from other than default path.
 
 - [PR](https://github.com/FrankC01/pysui/pull/197) - Documentation
 - [PR](https://github.com/FrankC01/pysui/pull/198) - Documentation
-
 
 ### Changed
 
@@ -654,7 +660,7 @@ fields and format results, while similar, are not guarenteed to be identical. Se
 
 ## [0.51.2] - 2024-01-29
 
-** BREAKING CHANGES **
+**BREAKING CHANGES**
 
 ### Added
 
@@ -715,7 +721,7 @@ SuiConfig.user_config() regression.
 
 ## [0.50.0] - 2023-12-27
 
-** BREAKING CHANGES **
+**BREAKING CHANGES**
 
 ### Added
 
@@ -795,7 +801,6 @@ SuiConfig.user_config() regression.
   * SuiConfig.create_new_keypair_and_address
   * SuiConfig.recover_keypair_and_address
 
-
 ### Removed
 
 ## [0.40.1] - Unpublished
@@ -869,7 +874,6 @@ SuiConfig.user_config() regression.
 
 ### Removed
 
-
 ## [0.37.2] - Unpublished
 
 ### Added
@@ -883,7 +887,6 @@ SuiConfig.user_config() regression.
 - Bumped supported Sui RPC to 1.13.0
 
 ### Removed
-
 
 ## [0.37.1] - 2023-10-09
 
@@ -924,7 +927,6 @@ SuiConfig.user_config() regression.
 
 ### Removed
 
-
 ## [0.36.0] - 2023-09-16
 
 ### Added
@@ -949,7 +951,7 @@ SuiConfig.user_config() regression.
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/163) uleb128 encoding of
-pure vectors (i.e. vector<u8>, etc.)
+pure vectors (i.e. `vector<u8>`, etc.)
 
 ### Changed
 
@@ -1029,7 +1031,6 @@ was replaced but validation routine not updated
 
 ### Removed
 
-
 ## [0.33.0] - 2023-08-11
 
 **BREAKING CHANGE**
@@ -1047,11 +1048,15 @@ built specific to your platform.
 - [enhancement](https://github.com/FrankC01/pysui/issues/143) Ability to add a new key to the
   SuiConfig. The argument can either be a Sui keystring _or_ a dict for importing keys exported from Wallet. The
   dict must take the form of:
+
   ```python
     {
       'wallet_key':'0x.....',             # Wallet exported key hex string (66 chars with 0x prefix)
       'key_scheme': SignatureScheme.XYZ   # Where XYZ is one of {ED25519, SECP256k1, SECP256r1}
     }
+    
+```
+
 - The concert with the above enhancement, if initiating `pysui` with `SuiConfig.user_config(...)` the `prv_keys`
   parameter can be a list of Sui keystrings, the dict as described above, or both.
 
@@ -1061,8 +1066,8 @@ built specific to your platform.
 
 ### Changed
 
-- [change]((https://github.com/FrankC01/pysui/issues/144) `pysui` now requires pysui-fastcrypto
-- [change]((https://github.com/FrankC01/pysui/issues/145) Per change above, removed all
+- [change]((<https://github.com/FrankC01/pysui/issues/144>) `pysui` now requires pysui-fastcrypto
+- [change]((<https://github.com/FrankC01/pysui/issues/145>) Per change above, removed all
   but generic SuiKeyPair, SuiPublicKey and SuiPrivateKey classes
 - [change](https://github.com/FrankC01/pysui/issues/147) Allowing transaction command Result in split_coin amounts list
 - `create_new_keypair_and_address` on SuiConfig now takes word_counts (int) instead of mnemonic phrase
@@ -1220,8 +1225,6 @@ use SuiTransaction:
   - pay_sui_txn
   - pay_txn
 
-
-
 ## [0.29.1] - Unpublished
 
 ### Added
@@ -1350,7 +1353,6 @@ use SuiTransaction:
   - TransferObject
 
 ### Removed
-
 
 ## [0.26.0] - 2023-06-20
 
@@ -2187,7 +2189,7 @@ BIG BREAKING CHANGES!
 
 ### Fixed
 
-- [bug] (https://github.com/FrankC01/pysui/issues/46)
+- [bug] (<https://github.com/FrankC01/pysui/issues/46>)
 
 ### Changed
 

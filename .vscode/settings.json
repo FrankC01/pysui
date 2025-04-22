@@ -23,6 +23,12 @@
     "--disable",
     "unused-argument"
   ],
+  "markdownlint.config": {
+    "MD024": {"siblings_only": true},
+    "MD036":false,
+    "MD049":false,
+    "MD007":false
+  },
   "autoDocstring.docstringFormat": "sphinx",
   "autoDocstring.generateDocstringOnEnter": true,
   "autoDocstring.guessTypes": true,
