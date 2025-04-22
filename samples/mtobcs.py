@@ -107,8 +107,8 @@ def _fname_from_triple(triple: str) -> str:
     return f"{struct.lower()}_{module.lower()}_{addy}.py"
 
 
-async def main():
-    """Main entry point for mtobcs."""
+async def _execute():
+    """."""
     cfg, arg_line = pre_config_pull(sys.argv[1:].copy())
     output_folder: str = str(Path.cwd())
     parsed = parse_args(cfg, arg_line, output_folder)
@@ -141,5 +141,10 @@ async def main():
         print(f"mtobcs {_mtobcs_version}")
 
 
+def main():
+    """Main entry point for mtobcs."""
+    asyncio.run(_execute())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
