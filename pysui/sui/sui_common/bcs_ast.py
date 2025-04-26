@@ -126,6 +126,7 @@ class BcsAst:
             [],
             body,
             [],
+            lineno=0,
         )
 
     @classmethod
@@ -150,6 +151,7 @@ class BcsAst:
             [],
             body,
             [],
+            lineno=0,
         )
 
     @classmethod
@@ -175,6 +177,7 @@ class BcsAst:
             [],
             body,
             [],
+            lineno=0,
         )
 
     @classmethod

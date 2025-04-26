@@ -5,24 +5,28 @@
 
 """pysui gRPC Clients"""
 
-from typing import Optional, TypeAlias, Any
+from typing import Optional, TypeAlias
 from collections.abc import Callable
 import abc
 import urllib.parse as urlparse
 import traceback
-import betterproto
+import betterproto2
 
-from betterproto.lib.google.protobuf import FieldMask
+from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 from grpclib.client import Channel
 from pysui import SuiRpcResult, PysuiConfiguration
 
-
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
+
+import logging
+
+logger = logging.getLogger()
+
+# import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 
 LedgerClient: TypeAlias = "_SuiLedgerClient"
 TxClient: TypeAlias = "_SuiTransactionClient"
-AlphaDataClient: TypeAlias = "_SuiAlphaDataClient"
+# AlphaDataClient: TypeAlias = "_SuiAlphaDataClient"
 
 
 class SuiGrpcClient:
@@ -126,8 +130,8 @@ class GrpcServiceClient(abc.ABC):
 
     async def _execute(
         self,
-        fn: Callable[[betterproto.Message], betterproto.Message],
-        request: betterproto.Message,
+        fn: Callable[[betterproto2.Message], betterproto2.Message],
+        request: betterproto2.Message,
         **kwargs,
     ) -> SuiRpcResult:
         """Submit the execution of the gRPC message
@@ -140,30 +144,37 @@ class GrpcServiceClient(abc.ABC):
         :rtype: SuiRpcResult
         """
         try:
+            logger.debug(f"Request {request}")
             result = await fn(request, **kwargs)
+            logger.debug(f"Success {result}")
             return SuiRpcResult(True, None, result)
         except Exception as e:
             traceback_str = traceback.format_exc()
-            print(traceback_str)
+            logger.error(traceback_str)
             return SuiRpcResult(False, e.args)
 
 
 class _SuiLedgerClient(GrpcServiceClient):
-    """."""
+    """gRPC LedgerService client."""
 
     def __init__(self, channel: Channel):
         self._service = v2base.LedgerServiceStub(channel)
         super().__init__()
 
     async def get_service_info(self, **kwargs) -> SuiRpcResult:
-        """."""
+        """Return gRPC service information.
+
+        :return: Query result v2base.GetServiceInfoResponse if successful
+        :rtype: SuiRpcResult
+        """
         return await self._execute(
             self._service.get_service_info, v2base.GetServiceInfoRequest(), **kwargs
         )
 
     async def get_checkpoint(
         self,
-        check_point: int | str,
+        check_point: Optional[int] = None,
+        digest: Optional[str] = None,
         read_mask: Optional[list[str]] = None,
         **kwargs,
     ) -> SuiRpcResult:
@@ -171,8 +182,8 @@ class _SuiLedgerClient(GrpcServiceClient):
         field_mask = FieldMask(read_mask) if read_mask else None
         args = (
             {"sequence_number": check_point}
-            if isinstance(check_point, int)
-            else {"digest": check_point}
+            if check_point and isinstance(check_point, int)
+            else {"digest": digest}
         )
         return await self._execute(
             self._service.get_checkpoint,
@@ -252,10 +263,10 @@ class _SuiLedgerClient(GrpcServiceClient):
 
 
 class _SuiTransactionClient(GrpcServiceClient):
-    """."""
+    """Service client for Transaction processing."""
 
     def __init__(self, channel: Channel):
-        """."""
+        """Initialize."""
         self._service = v2base.TransactionExecutionServiceStub(channel)
         super().__init__()
 
@@ -267,7 +278,17 @@ class _SuiTransactionClient(GrpcServiceClient):
         read_mask: Optional[list[str]] = None,
         **kwargs,
     ) -> SuiRpcResult:
-        """."""
+        """Submit transaction for execution.
+
+        :param tx_bytestr: base64 encoded TransactionData
+        :type tx_bytestr: str
+        :param sig_array: List of base64 encoded transaction signatures.
+        :type sig_array: list[str]
+        :param read_mask: List of fields to include in response results
+        :type read_mask: Optional[list[str]], optional
+        :return: Results of execution.
+        :rtype: SuiRpcResult
+        """
         field_mask = FieldMask(read_mask) if read_mask else None
         sigs = [v2base.UserSignature(x) for x in sig_array]
         request = v2base.ExecuteTransactionRequest(
@@ -283,25 +304,25 @@ class _SuiTransactionClient(GrpcServiceClient):
         )
 
 
-class _SuiAlphaDataClient(GrpcServiceClient):
-    """."""
+# class _SuiAlphaDataClient(GrpcServiceClient):
+#     """."""
 
-    def __init__(self, channel: Channel):
-        """."""
-        self._service = v2alpha.LiveDataServiceStub(channel)
-        super().__init__()
+#     def __init__(self, channel: Channel):
+#         """."""
+#         self._service = v2alpha.LiveDataServiceStub(channel)
+#         super().__init__()
 
-    async def get_owned_objects(
-        self,
-        *,
-        owner: str,
-        # read_mask: Optional[list[str]] = None,
-        **kwargs,
-    ) -> SuiRpcResult:
-        """."""
-        # field_mask = FieldMask(read_mask) if read_mask else None
-        return await self._execute(
-            self._service.list_owned_objects,
-            v2alpha.ListOwnedObjectsRequest(owner),
-            **kwargs,
-        )
+#     async def get_owned_objects(
+#         self,
+#         *,
+#         owner: str,
+#         # read_mask: Optional[list[str]] = None,
+#         **kwargs,
+#     ) -> SuiRpcResult:
+#         """."""
+#         # field_mask = FieldMask(read_mask) if read_mask else None
+#         return await self._execute(
+#             self._service.list_owned_objects,
+#             v2alpha.ListOwnedObjectsRequest(owner),
+#             **kwargs,
+#         )

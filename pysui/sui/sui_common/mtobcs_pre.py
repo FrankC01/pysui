@@ -3,7 +3,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Move Datatypes shell for BCS generation, DO NOT MODIFY."""
+"""Move Datatypes for BCS deserialization."""
 
 from typing import Any
 import json

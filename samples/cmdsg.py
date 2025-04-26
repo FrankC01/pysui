@@ -111,24 +111,32 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
 
     def _detail_gas_objects(gas_objects: list[ptypes.SuiCoinObjectGQL]) -> None:
         total = 0
+        all_total = 0
         print()
         header_object_id = "Gas Object ID"
         header_mist = "Mist"
         header_sui = "SUI"
+        header_status = "Status"
         header_str = format(
-            f"{header_object_id:^72s}{header_mist:^12s}{header_sui:^15s}"
+            f"{header_object_id:^72s}{header_mist:^12s}{header_sui:^15s}{header_status}"
         )
         print(header_str)
         for _ in range(0, len(header_str)):
             print("-", end="")
         print()
         for gas_object in gas_objects:
+            if gas_object.previous_transaction:
+                status = "Active"
+            else:
+                status = "Pruned"
             balance = int(gas_object.balance)
-            total += balance
+            all_total += balance
+            total += balance if gas_object.previous_transaction else 0
             print(
-                f"{gas_object.coin_object_id:^66s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:.8f}"
+                f"{gas_object.coin_object_id:^66s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:>8.4f}    {status}"
             )
-        print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
+        print(f"   All gas {all_total:12} -> {all_total/SUI_COIN_DENOMINATOR:>8.4f}")
+        print(f"Active gas {total:12} -> {total/SUI_COIN_DENOMINATOR:>8.4f}")
         print()
         return total
 

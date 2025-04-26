@@ -100,8 +100,8 @@ The corresponding target from ``mainnet`` looks like this:
 #. Field values are in quotes (strings).
 #. Field values can either be standard move types (u8 to u256, address or string).
 
-Example
-*******
+Example 1: Command Line usage (GraphQL)
+***************************************
 
 Assumes you have ``pysui 0.82.0`` (or above) installed in a virtual environment
 
@@ -166,3 +166,105 @@ This script can be run from command line with
 .. code-block:: console
 
     python -m demo_bcs
+
+Example 2: Programmatically (GraphQL)
+*************************************
+
+To perform building the python BCS module (emphemerally) and deserializing a move object requires
+an async loop for execution. This is one contrived example
+
+.. code-block:: python
+
+    #    Copyright Frank V. Castellucci
+    #    SPDX-License-Identifier: Apache-2.0
+
+    # -*- coding: utf-8 -*-
+
+    """Sample interactive mtobcs."""
+
+    import asyncio
+    import json
+    from pathlib import Path
+    from typing import Any
+
+    from pysui import PysuiConfiguration, AsyncGqlClient
+    from pysui.sui.sui_pgql.pgql_query import GetObjectContent
+    from pysui.sui.sui_common.move_to_bcs import MoveDataType
+    import pysui.sui.sui_common.mtobcs_types as mtypes
+
+
+    async def resolve_bcs_class(
+        client: AsyncGqlClient, target: mtypes.GenericStructure
+    ) -> Any:
+        """Resolve Move target and return base python BCS class.
+
+        Args:
+            client (AsyncGqlClient): Active async client
+            targets (mtypes.Targets): the target move information
+
+        Returns:
+            Any: bcs class to deserialize chain object to
+        """
+
+        mdt: MoveDataType = MoveDataType(client=client, target=target)
+        root_class_name: str = await mdt.parse_move_target()
+        namespace = await mdt.compile_bcs()
+        return namespace[root_class_name]
+
+
+    async def get_object_content(client: AsyncGqlClient, object_id: str) -> bytes:
+        """Fetch and objects content BCS.
+
+        Args:
+            client (AsyncGqlClient): Active async client
+            object_id (str): ID of object to fetch data (base64 str)
+
+        Raises:
+            ValueError: If failure fetching object
+
+        Returns:
+            bytes: Decoded BCS base64 data
+        """
+
+        result = await client.execute_query_node(
+            with_node=GetObjectContent(object_id=object_id)
+        )
+        if result.is_ok():
+            return result.result_data.as_bytes()
+        else:
+            raise ValueError(f"Fetch failed with {result.result_string}")
+
+
+    async def _execute():
+        """Demo execution potential"""
+
+        # Setup network configuration, profile_name should be where the move struct
+        # and content object exist
+        client = AsyncGqlClient(
+            pysui_config=PysuiConfiguration(
+                group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+                profile_name="mainnet",
+            )
+        )
+        # Load the mtobcs target structure (dataclass) from json
+        target_decl = Path("mainnet_test.json")
+        package_targets: mtypes.Targets = mtypes.Targets.load_declarations(
+            json.loads(target_decl.read_text(encoding="utf8"))
+        )
+        # Schedule tasks and await results
+        results = await asyncio.gather(
+            resolve_bcs_class(client, package_targets.targets[0]),
+            get_object_content(
+                client, "0xc5e430c7c517e99da14e67928b360f3260de47cb61f55338cdd9119f519c282c"
+            ),
+        )
+        print(results[0].deserialize(results[1]).to_json(indent=2))
+
+
+    if __name__ == "__main__":
+        asyncio.run(_execute())
+
+Example 3: Programmatically (gRPC)
+**********************************
+
+Under construction

@@ -100,6 +100,42 @@ U256 = Uint256
 String = canoser.StrT
 Balance = U64
 
+
+class TypeName(canoser.Struct):
+    """Move Typename."""
+
+    _fields = [("name", String)]
+
+
+class Publisher(canoser.Struct):
+    """Move Publisher."""
+
+    _fields = [("id", Address), ("package", String), ("module_name", String)]
+
+
+class UpgradeCap(canoser.Struct):
+    """Move UpgradeCap."""
+
+    _fields = [
+        ("id", Address),
+        ("package", String),
+        ("version", U64),
+        ("policy", U8),
+    ]
+
+
+class Versioned(canoser.Struct):
+    """Move Versioned."""
+
+    _fields = [("id", Address), ("version", U64)]
+
+
+class Random(canoser.Struct):
+    """Move Random."""
+
+    _fields = [("id", Address), ("inner", Versioned)]
+
+
 MOVE_STD_SCALAR_REFS: dict[str, str] = {
     "u8": "bcse.U8",
     "u16": "bcse.U16",
@@ -108,6 +144,8 @@ MOVE_STD_SCALAR_REFS: dict[str, str] = {
     "u128": "bcse.U128",
     "u256": "bcse.U256",
     "address": "bcse.Address",
+    "string": "bcse.String",
+    "bool": "bool",
 }
 
 MOVE_OPTIONAL_TYPE: str = (
@@ -115,7 +153,12 @@ MOVE_OPTIONAL_TYPE: str = (
 )
 
 MOVE_STD_STRUCT_REFS: dict[str, str] = {
+    "0x0000000000000000000000000000000000000000000000000000000000000001::string::String": "bcse.String",
+    "0x0000000000000000000000000000000000000000000000000000000000000001::type_name::TypeName": "bcse.TypeName",
     "0x0000000000000000000000000000000000000000000000000000000000000002::object::UID": "bcse.Address",
     "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance": "bcse.Balance",
-    "0x0000000000000000000000000000000000000000000000000000000000000001::string::String": "bcse.String",
+    "0x0000000000000000000000000000000000000000000000000000000000000002::package::Publisher": "bcse.Publisher",
+    "0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap": "bcse.UpgradeCap",
+    "0x0000000000000000000000000000000000000000000000000000000000000002::versioned::Versioned": "bcse.Versioned",
+    "0x0000000000000000000000000000000000000000000000000000000000000002::random::Random": "bcse.Random",
 }

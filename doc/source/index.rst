@@ -23,6 +23,7 @@ Welcome to pysui's documentation!
    logging
    builders
    utilities
+   grpc
    graphql
    graphql_prog_txn
    graphql_pyconfig

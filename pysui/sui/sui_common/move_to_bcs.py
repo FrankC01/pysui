@@ -117,16 +117,25 @@ class MoveDataType:
     def __init__(
         self,
         *,
-        cfg: PysuiConfiguration,
+        cfg: Optional[PysuiConfiguration] = None,
+        client: Optional[AsyncGqlClient] = None,
         target: mtypes.GenericStructure | mtypes.Structure,
     ):
         """Initialize"""
-        self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
+        if not cfg and not client:
+            raise ValueError("One of cfg or client must be set")
+        if client:
+            self.client = client
+        else:
+            self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
         self.target = target
         self.python_stub = (
             Path(inspect.getfile(inspect.currentframe())).parent / "mtobcs_pre.py"
         )
         self.children: list[bcs_ast.Node] = []
+        self._parsed: bool = False
+        self._generated: Any = None
+        self._compiled: Any = None
 
     def _handle_simple(self, fname: str, fval: str) -> MoveFieldNode:
         """Convert scalars and simples."""
@@ -396,60 +405,84 @@ class MoveDataType:
             last_child = MoveStructureNode("_".join(name_list), children)
             return first_field, more_fetch, last_child
 
-    async def build(self):
-        """Build the tree by walking move data types."""
-        # Initialize with primary data type
-        init_target, more_fetch, last_child = self._root_process(self.target)
-        handled: set[str] = set()
-        type_node, add_fetch = await self._fetch_type(
-            client=self.client,
-            move_type_decl={
-                self._FETCH_DECL: init_target,
-                self._DECL_PARMS: {},
-            },  # type_decl=self.target
-        )
-        self.children.append(type_node)
-        handled.add(type_node.ident)
-        if add_fetch:
-            more_fetch.extend(add_fetch)
+    async def parse_move_target(self) -> str:
+        """Parse the move target creating an IR and returning entry point classname.
 
-        def _growing_len(xs):
-            """Generator for potentially growing list of dependencies"""
-            i = 0
-            while i < len(xs):
-                yield xs[i]
-                i += 1
+        :return: Entry point class name
+        :rtype: str
+        """
+        if not self._parsed:
+            # Initialize with primary data type
+            init_target, more_fetch, last_child = self._root_process(self.target)
+            handled: set[str] = set()
+            type_node, add_fetch = await self._fetch_type(
+                client=self.client,
+                move_type_decl={
+                    self._FETCH_DECL: init_target,
+                    self._DECL_PARMS: {},
+                },  # type_decl=self.target
+            )
+            self.children.append(type_node)
+            handled.add(type_node.ident)
+            if add_fetch:
+                more_fetch.extend(add_fetch)
 
-        # For each predecessor (growing list)
-        for x in _growing_len(more_fetch):
-            # Build predecessor data type
-            decl = x[self._FETCH_DECL]
-            decl_type_name = x.get(self._DECL_TYPE_NAME, decl)
-            if decl_type_name not in handled:
-                type_node, _more_fetch = await self._fetch_type(
-                    client=self.client, move_type_decl=x
-                )
-                self.children.insert(0, type_node)
-                if decl_type_name == decl:
-                    decl_type_name = type_node.ident
-                handled.add(decl_type_name)
-                # Found more predecessors
-                if _more_fetch:
-                    more_fetch.extend(_more_fetch)
+            def _growing_len(xs):
+                """Generator for potentially growing list of dependencies"""
+                i = 0
+                while i < len(xs):
+                    yield xs[i]
+                    i += 1
 
-        if last_child:
-            self.children.append(last_child)
-        return
+            # For each predecessor (growing list)
+            for x in _growing_len(more_fetch):
+                # Build predecessor data type
+                decl = x[self._FETCH_DECL]
+                decl_type_name = x.get(self._DECL_TYPE_NAME, decl)
+                if decl_type_name not in handled:
+                    type_node, _more_fetch = await self._fetch_type(
+                        client=self.client, move_type_decl=x
+                    )
+                    self.children.insert(0, type_node)
+                    if decl_type_name == decl:
+                        decl_type_name = type_node.ident
+                    handled.add(decl_type_name)
+                    # Found more predecessors
+                    if _more_fetch:
+                        more_fetch.extend(_more_fetch)
 
-    async def emit(self, *, pre_includes: Optional[list[str]] = None) -> str:
+            if last_child:
+                self.children.append(last_child)
+            self._parsed = True
+        return self.children[-1].ident
+
+    async def compile_bcs(self, force: Optional[bool] = False) -> dict:
+        """Compile the target and return executable ast."""
+        if force:
+            self._generated = False
+            self._compiled = False
+        if not self._compiled:
+            if not self._generated:
+                _ = await self.emit_bcs_source()
+
+            self._compiled = {}
+            comped_module = compile(
+                ast.unparse(self._generated.ast_module), filename="blah", mode="exec"
+            )
+            exec(comped_module, self._compiled)
+        return self._compiled
+
+    async def emit_bcs_source(self) -> str:
         """Emit BCS python module."""
-        walker = _BCSGenerator(
-            children=self.children,
-            ast_module=ast.parse(self.python_stub.read_text(encoding="utf8")),
-        )
-        walker._walk()
+        if not self._generated:
+            walker = _BCSGenerator(
+                children=self.children,
+                ast_module=ast.parse(self.python_stub.read_text(encoding="utf8")),
+            )
+            walker._walk()
+            self._generated = walker
 
-        return ast.unparse(walker.ast_module)
+        return ast.unparse(self._generated.ast_module)
 
 
 class _BCSGenerator(bcs_ast.NodeVisitor):
@@ -500,7 +533,11 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         self.put(_ctxt)
         self.put(field_targets)
         for field in node.children:
-            self.put(ast.Tuple([ast.Constant(field.ident, str)], ast.Load))
+            self.put(
+                ast.Tuple(
+                    [ast.Constant(field.ident, str, lineno=0)], ast.Load, lineno=0
+                )
+            )
             self.visit(field)
             field_targets.elts.append(self.get())
         # Pop fields

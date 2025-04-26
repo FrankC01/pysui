@@ -9,9 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Initial gRPC documentation (WIP)
+
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/295) `mtobcs` async loop not started from cmdline
+- Wallet gas display to identify pruned vs active coins
+- GraphQL transaction gas resolution to not include pruned coins
+
 ### Changed
+
+- [enhancement](https://github.com/FrankC01/pysui/issues/294) Use of mtobcs programmatically
+- [enhancement](https://github.com/FrankC01/pysui/issues/284) Switch gRPC library from `betterproto` to `betterprot2`
+
 
 ### Removed
 
@@ -1054,8 +1064,8 @@ built specific to your platform.
       'wallet_key':'0x.....',             # Wallet exported key hex string (66 chars with 0x prefix)
       'key_scheme': SignatureScheme.XYZ   # Where XYZ is one of {ED25519, SECP256k1, SECP256r1}
     }
-    
-```
+
+  ```
 
 - The concert with the above enhancement, if initiating `pysui` with `SuiConfig.user_config(...)` the `prv_keys`
   parameter can be a list of Sui keystrings, the dict as described above, or both.

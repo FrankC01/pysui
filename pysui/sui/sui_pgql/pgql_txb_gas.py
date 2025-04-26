@@ -178,7 +178,8 @@ async def _async_get_gas_objects(
         with_node=qn.GetMultipleGasObjects(coin_object_ids=gas_ids)
     )
     if result.is_ok():
-        return result.result_data.data
+        data_res = [x for x in result.result_data.data if x.previous_transaction]
+        return data_res
     else:
         raise ValueError(f"Error retrieving coins by id {result.result_string}")
 
@@ -203,6 +204,7 @@ async def _async_get_all_gas_objects(
                 break
         else:
             raise ValueError(f"Execute query error: {result.result_string}")
+    coin_list = [x for x in coin_list if x.previous_transaction]
     return coin_list
 
 
@@ -274,7 +276,7 @@ async def async_get_gas_data(
     :rtype: bcs.GasData
     """
     # Get available coins
-    _specified_coins = True if use_coins else False
+    # _specified_coins = True if use_coins else False
     if use_coins:
         if all(isinstance(x, str) for x in use_coins):
             use_coins = await _async_get_gas_objects(client, use_coins)
