@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [bug](https://github.com/FrankC01/pysui/issues/295) `mtobcs` async loop not started from cmdline
 - Wallet gas display to identify pruned vs active coins
 - GraphQL transaction gas resolution to not include pruned coins
+- gRPC execute transaction - Convert base64 tx_bytestr and signatures to BCS.value bytes
 
 ### Changed
 

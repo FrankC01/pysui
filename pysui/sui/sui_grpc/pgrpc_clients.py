@@ -8,6 +8,7 @@
 from typing import Optional, TypeAlias
 from collections.abc import Callable
 import abc
+import base64
 import urllib.parse as urlparse
 import traceback
 import betterproto2
@@ -290,13 +291,16 @@ class _SuiTransactionClient(GrpcServiceClient):
         :rtype: SuiRpcResult
         """
         field_mask = FieldMask(read_mask) if read_mask else None
-        sigs = [v2base.UserSignature(x) for x in sig_array]
+        sigs = [
+            v2base.UserSignature(bcs=v2base.Bcs(value=base64.b64decode(x)))
+            for x in sig_array
+        ]
+        tx_bytes = base64.b64decode(tx_bytestr)
         request = v2base.ExecuteTransactionRequest(
-            v2base.Transaction(bcs=tx_bytestr),
+            v2base.Transaction(bcs=v2base.Bcs(value=tx_bytes)),
             sigs,
             field_mask,
         )
-        print(request.to_json(indent=2))
         return await self._execute(
             self._service.execute_transaction,
             request,
