@@ -29,7 +29,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "betterproto2 < 1.0.0, >= 0.5.1",
+    "betterproto2[grpclib] < 1.0.0, >= 0.5.1",
     "dataclasses_json < 0.7.0, >= 0.6.6",
     "PyYAML < 6.2, >= 6.0.1",
     "httpx < 0.28, >=0.27.0",
