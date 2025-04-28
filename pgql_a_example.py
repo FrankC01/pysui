@@ -12,6 +12,10 @@ from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
+from pysui.sui.sui_pgql.pgql_utils import (
+    async_get_all_owned_gas_objects,
+    async_get_all_owned_objects,
+)
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -63,30 +67,19 @@ async def do_gas(client: AsyncGqlClient):
 
 async def do_all_gas(client: AsyncGqlClient):
     """Fetch all coins for owner."""
-    result = handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetCoins(owner=client.config.active_address)
+    try:
+        # This will include all coins whether active, pruned or deleted.
+        # Change only_active to True for only active coins
+        all_coins = await async_get_all_owned_gas_objects(
+            owner=client.config.active_address, client=client, only_active=False
         )
-    )
-    tcoins = 0
-    tbalance = 0
-    while result.is_ok():
-        coins: ptypes.SuiCoinObjectsGQL = result.result_data
-        tcoins += len(coins.data)
-        tbalance += sum([int(x.balance) for x in coins.data])
-        if result.result_data.next_cursor.hasNextPage:
-            result = handle_result(
-                await client.execute_query_node(
-                    with_node=qn.GetCoins(
-                        owner=client.config.active_address,
-                        next_page=result.result_data.next_cursor,
-                    )
-                )
-            )
-        else:
-            break
-    print(f"Total coins: {tcoins}")
-    print(f"Total mists: {tbalance}")
+        for coin in all_coins:
+            print(coin.to_json(indent=2))
+        print(f"Total coins: {len(all_coins)}")
+        print(f"Total mists: {sum([int(x.balance) for x in all_coins])}")
+
+    except ValueError as ve:
+        raise ve
 
 
 async def do_gas_ids(client: AsyncGqlClient):
@@ -147,11 +140,14 @@ async def do_object(client: AsyncGqlClient):
 
 async def do_objects(client: AsyncGqlClient):
     """Fetch all objects held by owner."""
-    handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetObjectsOwnedByAddress(owner=client.config.active_address)
+    try:
+        objects: list = await async_get_all_owned_objects(
+            client.config.active_address, client
         )
-    )
+        for object in objects:
+            print(object.to_json(indent=2))
+    except ValueError as ve:
+        raise ve
 
 
 async def do_past_object(client: AsyncGqlClient):

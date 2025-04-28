@@ -11,6 +11,10 @@ from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
+from pysui.sui.sui_pgql.pgql_utils import (
+    get_all_owned_gas_objects,
+    get_all_owned_objects,
+)
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -49,6 +53,7 @@ def do_coins_for_type(client: SyncGqlClient):
 
 def do_gas(client: SyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
+    # Returns the first 'page' of coins only
     coins_node = qn.GetCoins(owner=client.config.active_address)
     result = handle_result(client.execute_query_node(with_node=coins_node))
     if result.is_ok():
@@ -59,30 +64,19 @@ def do_gas(client: SyncGqlClient):
 
 def do_all_gas(client: SyncGqlClient):
     """Fetch all coins for owner."""
-    result = handle_result(
-        client.execute_query_node(
-            with_node=qn.GetCoins(owner=client.config.active_address)
+    try:
+        # This will include all coins whether active, pruned or deleted.
+        # Change only_active to True for only active coins
+        all_coins = get_all_owned_gas_objects(
+            owner=client.config.active_address, client=client, only_active=False
         )
-    )
-    tcoins = 0
-    tbalance = 0
-    while result.is_ok():
-        coins: ptypes.SuiCoinObjectsGQL = result.result_data
-        tcoins += len(coins.data)
-        tbalance += sum([int(x.balance) for x in coins.data])
-        if result.result_data.next_cursor.hasNextPage:
-            result = handle_result(
-                client.execute_query_node(
-                    with_node=qn.GetCoins(
-                        owner=client.config.active_address,
-                        next_page=result.result_data.next_cursor,
-                    )
-                )
-            )
-        else:
-            break
-    print(f"Total coins: {tcoins}")
-    print(f"Total mists: {tbalance}")
+        for coin in all_coins:
+            print(coin.to_json(indent=2))
+        print(f"Total coins: {len(all_coins)}")
+        print(f"Total mists: {sum([int(x.balance) for x in all_coins])}")
+
+    except ValueError as ve:
+        raise ve
 
 
 def do_gas_ids(client: SyncGqlClient):
@@ -177,11 +171,12 @@ def do_multiple_object_versions(client: SyncGqlClient):
 
 def do_objects(client: SyncGqlClient):
     """Fetch all objects held by owner."""
-    handle_result(
-        client.execute_query_node(
-            with_node=qn.GetObjectsOwnedByAddress(owner=client.config.active_address)
-        )
-    )
+    try:
+        objects: list = get_all_owned_objects(client.config.active_address, client)
+        for object in objects:
+            print(object.to_json(indent=2))
+    except ValueError as ve:
+        raise ve
 
 
 def do_objects_for(client: SyncGqlClient):

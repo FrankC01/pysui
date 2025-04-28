@@ -12,6 +12,7 @@ from typing import Any, Coroutine
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
+from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
 import pysui.sui.sui_types.bcs as bcs
 import pysui.sui.sui_types.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -80,26 +81,11 @@ class AsyncCachingTransactionExecutor:
         """Fetch senders Sui coins
 
         :raises ValueError: If fetch error
-        :return: list of ptypes.ObjectReadGQL
-        :rtype: Coroutine[Any, Any, bcs.ObjectReference]
+        :return: list of ptypes.SuiCoinObjectGQL
+        :rtype: Coroutine[Any, Any, ptypes.SuiCoinObjectGQL]
         """
 
-        all_coins: list[ptypes.SuiCoinObjectGQL] = []
-
-        result = await self._client.execute_query_node(
-            with_node=qn.GetCoins(owner=gas_owner)
-        )
-        while result.is_ok():
-            all_coins.extend(result.result_data.data)
-            if result.result_data.next_cursor.hasNextPage:
-                result = await self._client.execute_query_node(
-                    with_node=qn.GetCoins(
-                        owner=gas_owner,
-                        next_page=result.result_data.next_cursor,
-                    )
-                )
-            else:
-                break
+        all_coins = await async_get_all_owned_gas_objects(gas_owner, self._client)
         logger.debug(f"fetching all coins result {len(all_coins)}")
         return all_coins
 

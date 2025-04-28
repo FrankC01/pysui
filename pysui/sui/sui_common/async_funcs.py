@@ -12,11 +12,13 @@ from enum import IntEnum
 from collections import OrderedDict
 from typing import Any, Coroutine, Optional, cast
 
+
 logger = logging.getLogger("async_funcs")
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_types.bcs_txne as bcst
+from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
 from pysui import SuiRpcResult
 
 
@@ -99,36 +101,6 @@ class AsyncLRU:
         return wrapper
 
 
-async def get_all_sui(
-    *,
-    client: Any,
-    gas_owner: str,
-) -> Coroutine[Any, Any, list[pgql_type.SuiCoinObjectGQL]]:
-    """Fetch owner Sui coins
-
-    :raises ValueError: If fetch error
-    :return: list of ptypes.SuiCoinObjectGQL
-    :rtype: Coroutine[Any, Any, list[pgql_type.SuiCoinObjectGQL]]]
-    """
-
-    all_coins: list[pgql_type.SuiCoinObjectGQL] = []
-
-    result = await client.execute_query_node(with_node=qn.GetCoins(owner=gas_owner))
-    while result.is_ok():
-        all_coins.extend(result.result_data.data)
-        if result.result_data.next_cursor.hasNextPage:
-            result = await client.execute_query_node(
-                with_node=qn.GetCoins(
-                    owner=gas_owner,
-                    next_page=result.result_data.next_cursor,
-                )
-            )
-        else:
-            break
-    logger.debug(f"fetching all coins result {len(all_coins)}")
-    return all_coins
-
-
 class OperationStatus(IntEnum):
     OPS_FAIL = 0
     ONE_COIN_NO_MERGE = 1
@@ -172,10 +144,9 @@ async def merge_sui(
     # Get object references
     in_use: list[str] = exclude or []
     merge_only: list[str] = merge_only or []
-
-    # Get all gas
-    coin_list: list[pgql_type.SuiCoinObjectGQL] = await get_all_sui(
-        client=client, gas_owner=address
+    # Get all active gas for address
+    coin_list: list[pgql_type.SuiCoinObjectGQL] = await async_get_all_owned_gas_objects(
+        address, client
     )
     if not coin_list:
         raise ValueError(f"Address {address} has no gas coins")

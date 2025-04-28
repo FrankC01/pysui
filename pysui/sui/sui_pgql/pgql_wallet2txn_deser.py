@@ -36,7 +36,7 @@ def _is_unresolved(clup: tuple, item: Any) -> Any:
 def _resolve_inputs(client: SuiGQLClient, unresolved: list[tuple[int, Any]]) -> list:
     """Resolves unresolved types from wallet standard.
 
-    :param client: HTTP client
+    :param client: GraphQL client
     :type client: SuiGQLClient
     :param unresolved: list of unresolved types
     :type unresolved: list

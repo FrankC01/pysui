@@ -425,24 +425,40 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
 @versionchanged(
     version="0.82.0", reason="Fixes https://github.com/FrankC01/pysui/issues/292"
 )
+@versionchanged(
+    version="0.84.0", reason="Reference https://github.com/FrankC01/pysui/issues/297"
+)
 class GetMultipleGasObjects(PGQL_QueryNode):
     """Return basic Sui gas represnetation for each coin_id string."""
 
-    def __init__(self, *, coin_object_ids: list[str]):
+    def __init__(
+        self,
+        *,
+        coin_object_ids: list[str],
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ):
         """QueryNode initializer.
 
         :param coin_object_ids: list of object ids to fetch
         :type coin_object_ids: list[str]
         """
-        self.coin_ids = coin_object_ids
+        self.coin_ids = TypeValidator.check_object_ids(coin_object_ids)
+        self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        """Build DocumentNode."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
         std_coin = frag.StandardCoinObject().fragment(schema)
         pg_cursor = frag.PageCursor().fragment(schema)
+        qres = schema.Query.objects(filter={"objectIds": self.coin_ids})
+        if self.next_page:
+            qres(after=self.next_page.endCursor)
+
         qres = schema.Query.objects(filter={"objectIds": self.coin_ids}).select(
             std_coin
         )
-
         return dsl_gql(
             std_coin,
             pg_cursor,

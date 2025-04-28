@@ -9,43 +9,13 @@ from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
 from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
+from pysui.sui.sui_pgql.pgql_utils import (
+    async_get_all_owned_gas_objects,
+    async_get_gas_objects_by_ids,
+    get_all_owned_gas_objects,
+    get_gas_objects_by_ids,
+)
 from pysui.sui.sui_types import bcs
-
-
-def _get_gas_objects(
-    client: BaseSuiGQLClient, gas_ids: list[str]
-) -> list[pgql_type.SuiCoinObjectGQL]:
-    """Retreive specific Gas Objects."""
-    result = client.execute_query_node(
-        with_node=qn.GetMultipleGasObjects(coin_object_ids=gas_ids)
-    )
-    if result.is_ok():
-        return result.result_data.data
-    else:
-        raise ValueError(f"Error retrieving coins by id {result.result_string}")
-
-
-def _get_all_gas_objects(
-    signing: SignerBlock, client: BaseSuiGQLClient
-) -> list[pgql_type.SuiCoinObjectGQL]:
-    """Retreive all Gas Objects."""
-    payer = signing.payer_address
-    coin_list: list[pgql_type.SuiCoinObjectGQL] = []
-    result = client.execute_query_node(with_node=qn.GetCoins(owner=payer))
-    while True:
-        if result.is_ok():
-            coin_list.extend(result.result_data.data)
-            if result.result_data.next_cursor.hasNextPage:
-                result = client.execute_query_node(
-                    with_node=qn.GetCoins(
-                        owner=payer, next_page=result.result_data.next_cursor
-                    )
-                )
-            else:
-                break
-        else:
-            raise ValueError(f"Execute query error: {result.result_string}")
-    return coin_list
 
 
 def _dry_run_for_budget(
@@ -141,14 +111,13 @@ def get_gas_data(
     :rtype: bcs.GasData
     """
     # Get available coins
-    _specified_coins = True if use_coins else False
     if use_coins:
         if all(isinstance(x, str) for x in use_coins):
-            use_coins = _get_gas_objects(client, use_coins)
+            use_coins = get_gas_objects_by_ids(client, use_coins)
         elif not all(isinstance(x, pgql_type.SuiCoinObjectGQL) for x in use_coins):
             raise ValueError("use_gas_objects must use same type.")
     else:
-        use_coins = _get_all_gas_objects(signing, client)
+        use_coins = get_all_owned_gas_objects(signing.payer_address, client)
     if not budget:
         budget = _dry_run_for_budget(
             signing,
@@ -168,44 +137,6 @@ def get_gas_data(
             budget,
         )
     raise ValueError("No coin objects found to fund transaction.")
-
-
-async def _async_get_gas_objects(
-    client: BaseSuiGQLClient, gas_ids: list[str]
-) -> list[pgql_type.SuiCoinObjectGQL]:
-    """Retreive specific Gas Objects."""
-    result = await client.execute_query_node(
-        with_node=qn.GetMultipleGasObjects(coin_object_ids=gas_ids)
-    )
-    if result.is_ok():
-        data_res = [x for x in result.result_data.data if x.previous_transaction]
-        return data_res
-    else:
-        raise ValueError(f"Error retrieving coins by id {result.result_string}")
-
-
-async def _async_get_all_gas_objects(
-    signing: SignerBlock, client: BaseSuiGQLClient
-) -> list[pgql_type.SuiCoinObjectGQL]:
-    """Retreive all Gas Objects."""
-    payer = signing.payer_address
-    coin_list: list[pgql_type.SuiCoinObjectGQL] = []
-    result = await client.execute_query_node(with_node=qn.GetCoins(owner=payer))
-    while True:
-        if result.is_ok():
-            coin_list.extend(result.result_data.data)
-            if result.result_data.next_cursor.hasNextPage:
-                result = await client.execute_query_node(
-                    with_node=qn.GetCoins(
-                        owner=payer, next_page=result.result_data.next_cursor
-                    )
-                )
-            else:
-                break
-        else:
-            raise ValueError(f"Execute query error: {result.result_string}")
-    coin_list = [x for x in coin_list if x.previous_transaction]
-    return coin_list
 
 
 async def _async_dry_run_for_budget(
@@ -276,10 +207,9 @@ async def async_get_gas_data(
     :rtype: bcs.GasData
     """
     # Get available coins
-    # _specified_coins = True if use_coins else False
     if use_coins:
         if all(isinstance(x, str) for x in use_coins):
-            use_coins = await _async_get_gas_objects(client, use_coins)
+            use_coins = await async_get_gas_objects_by_ids(client, use_coins)
         elif not all(
             isinstance(
                 x, (pgql_type.SuiCoinObjectGQL, pgql_type.SuiCoinObjectSummaryGQL)
@@ -288,7 +218,7 @@ async def async_get_gas_data(
         ):
             raise ValueError("use_gas_objects must use same type.")
     else:
-        use_coins = await _async_get_all_gas_objects(signing, client)
+        use_coins = await async_get_all_owned_gas_objects(signing.payer_address, client)
     if not budget:
         budget = await _async_dry_run_for_budget(
             signing,

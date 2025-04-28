@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.84.0] - Unpublished
+
+### Added
+
+### Fixed
+
+### Changed
+
+- [enhancment](https://github.com/FrankC01/pysui/issues/297) Add paging to GetMultipleGasObjects
+- `async_gas` utility only reports on active gas coins
+- [enhancement](https://github.com/FrankC01/pysui/issues/298) Initial refactoring collection of cursored GraphQL functions, gas coin and object queries to `pgql_utils.py`
+
+### Removed
+
 ## [0.83.0] - 2025-04-27
 
 ### Added
@@ -21,8 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/294) Use of mtobcs programmatically
-- [enhancement](https://github.com/FrankC01/pysui/issues/284) Switch gRPC library from `betterproto` to `betterprot2`
-
+- [enhancement](https://github.com/FrankC01/pysui/issues/284) Switch gRPC library from `betterproto` to `betterproto2`
 
 ### Removed
 

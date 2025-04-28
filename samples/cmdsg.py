@@ -26,6 +26,10 @@ from pysui.sui.sui_excepts import (
     SuiPackageBuildFail,
     SuiMiisingModuleByteCode,
 )
+from pysui.sui.sui_pgql.pgql_utils import (
+    get_all_owned_gas_objects,
+    get_all_owned_objects,
+)
 
 _SUI_COIN_TYPE: str = (
     "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
@@ -149,24 +153,11 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
         for_owner = client.config.active_address
 
     all_gas = []
-    gas_result = client.execute_query_node(with_node=qn.GetCoins(owner=for_owner))
-    while gas_result.is_ok():
-        all_gas.extend(gas_result.result_data.data)
-        if gas_result.result_data.next_cursor.hasNextPage:
-            gas_result = client.execute_query_node(
-                with_node=qn.GetCoins(
-                    owner=for_owner,
-                    next_page=gas_result.result_data.next_cursor,
-                )
-            )
-        else:
-            break
-
-    # gas_result = client.get_gas(for_owner, True)
-    if gas_result.is_ok():
+    try:
+        all_gas = get_all_owned_gas_objects(for_owner, client, False)
         _detail_gas_objects(all_gas)
-    else:
-        print(f"Error: {gas_result.result_string}")
+    except ValueError as ve:
+        raise ve
 
 
 def sui_new_address(client: SuiGQLClient, args: argparse.Namespace) -> None:
@@ -258,40 +249,23 @@ def sui_objects(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    all_objects = []
-    result = client.execute_query_node(
-        with_node=qn.GetObjectsOwnedByAddress(owner=for_owner)
-    )
-    while result.is_ok():
-        all_objects.extend(result.result_data.data)
-        if result.result_data.next_cursor.hasNextPage:
-            result = client.execute_query_node(
-                with_node=qn.GetObjectsOwnedByAddress(
-                    owner=for_owner,
-                    next_page=result.result_data.next_cursor,
-                )
-            )
-        else:
-            break
+    all_objects: list = get_all_owned_objects(for_owner, client)
 
-    # result = client.get_objects(for_owner)
-    if result.is_ok():
-        if args.json:
-            print(result.result_data.to_json(indent=2))
-        else:
-            _objects_header_print()
-            for desc in all_objects:
-                if desc.object_type == _SUI_COIN_TYPE:
-                    dobj_type = "Sui Coin"
-                elif desc.object_type == _SUI_UPGRADE_CAP:
-                    dobj_type = "Upgrade Cap"
-                else:
-                    dobj_type = desc.object_type
-                print(
-                    f"{desc.object_id} |  {desc.version:^8} | {desc.object_digest} | {dobj_type}"
-                )
+    if args.json:
+        for desc in all_objects:
+            print(desc.to_json(indent=2))
     else:
-        print(f"{result.result_string}")
+        _objects_header_print()
+        for desc in all_objects:
+            if desc.object_type == _SUI_COIN_TYPE:
+                dobj_type = "Sui Coin"
+            elif desc.object_type == _SUI_UPGRADE_CAP:
+                dobj_type = "Upgrade Cap"
+            else:
+                dobj_type = desc.object_type
+            print(
+                f"{desc.object_id} |  {desc.version:^8} | {desc.object_digest} | {dobj_type}"
+            )
 
 
 def transfer_object(client: SuiGQLClient, args: argparse.Namespace) -> None:

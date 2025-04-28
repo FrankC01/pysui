@@ -33,13 +33,13 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_async_gas_version = "1.1.0"
+_async_gas_version = "1.1.1"
+from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
 from samples.cmd_argsg import build_async_gas_parser, pre_config_pull
 
 
 from pysui import PysuiConfiguration, AsyncGqlClient, __version__
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
-import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 
@@ -47,22 +47,10 @@ async def _get_all_gas_objects(
     client: AsyncGqlClient, address_id: str
 ) -> list[pgql_type.SuiCoinObjectGQL]:
     """Retreive all Gas Objects."""
-    coin_list: list[pgql_type.SuiCoinObjectGQL] = []
-    result = await client.execute_query_node(with_node=qn.GetCoins(owner=address_id))
-    while True:
-        if result.is_ok():
-            coin_list.extend(result.result_data.data)
-            if result.result_data.next_cursor.hasNextPage:
-                result = await client.execute_query_node(
-                    with_node=qn.GetCoins(
-                        owner=address_id, next_page=result.result_data.next_cursor
-                    )
-                )
-            else:
-                break
-        else:
-            raise ValueError(f"Execute query error: {result.result_string}")
-    return coin_list
+    try:
+        return await async_get_all_owned_gas_objects(address_id, client)
+    except ValueError as ve:
+        raise ve
 
 
 def print_gas(gasses: list[pgql_type.SuiCoinObjectGQL]) -> int:
