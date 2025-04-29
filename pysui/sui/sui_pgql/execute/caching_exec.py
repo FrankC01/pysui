@@ -12,7 +12,10 @@ from typing import Any, Coroutine
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
-from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
+from pysui.sui.sui_pgql.pgql_utils import (
+    async_get_all_owned_gas_objects,
+    async_get_objects_by_ids,
+)
 import pysui.sui.sui_types.bcs as bcs
 import pysui.sui.sui_types.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -55,23 +58,7 @@ class AsyncCachingTransactionExecutor:
             return resobjs
         logger.debug(f"_get_sui_objects on {objids.keys()}")
         oids = list(objids.values())
-        result = await self._client.execute_query_node(
-            with_node=qn.GetMultipleObjects(object_ids=oids)
-        )
-        while result.is_ok():
-            resobjs.extend(result.result_data.data)
-            if result.result_data.next_cursor.hasNextPage:
-                result = await self.client.execute_query_node(
-                    with_node=qn.GetMultipleObjects(
-                        object_ids=oids,
-                        next_page=result.result_data.next_cursor,
-                    )
-                )
-            else:
-                break
-        if result.is_err():
-            raise ValueError(result.result_string)
-
+        resobjs = await async_get_objects_by_ids(self._client, oids)
         return resobjs
 
     async def _get_sui_gas(
