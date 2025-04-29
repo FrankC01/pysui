@@ -15,25 +15,22 @@ _P = ParamSpec("P")
 
 
 def active_types_only(
-    objects: list[pgql_type.SuiCoinObjectGQL] | list[pgql_type.ObjectReadGQL],
-) -> list[pgql_type.SuiCoinObjectGQL] | list[pgql_type.ObjectReadGQL]:
-    """Filters out any objects that are pruned or deleted.
+    objects: list[pgql_type.PGQL_Type],
+) -> list[pgql_type.PGQL_Type]:
+    """Attempts to Filter out objects that have been pruned or deleted.
 
-    :param coins: List of coins or generic objects
-    :type coins: list[pgql_type.SuiCoinObjectGQL]
-    :return: List of active coins or genertic objects
-    :rtype: llist[pgql_type.SuiCoinObjectGQL] | list[pgql_type.ObjectReadGQL]
+    :param objects: Homogenous list of objects
+    :type objects: list[pgql_type.PGQL_Type]
+    :return: List of objects
+    :rtype: list[pgql_type.PGQL_Type]
     """
     if objects:
-        if hasattr(objects[0], "previous_transaction"):
-            return [x for x in objects if x.previous_tractions]
-        elif hasattr(objects[0], "previous_transaction_digest"):
-            return [x for x in objects if x.previous_transaction_digest]
-        else:
-            raise ValueError(
-                "active_types list contains neither SuiCoinObjectGQL or ObjectReadGQL"
-            )
-    return []
+        if x := next(filter(lambda x: x is not None, objects), False):
+            if hasattr(x, "previous_transaction"):
+                return [x for x in objects if x and x.previous_transaction]
+            elif hasattr(x, "previous_transaction_digest"):
+                return [x for x in objects if x and x.previous_transaction_digest]
+    return objects
 
 
 def sync_cursored_collector(
