@@ -223,7 +223,7 @@ class _SuiLedgerClient(GrpcServiceClient):
     async def get_objects(
         self,
         *,
-        object_ids: list[str],
+        object_ids: list[tuple[str, int | None]],
         read_mask: Optional[list[str]] = None,
         **kwargs,
     ):

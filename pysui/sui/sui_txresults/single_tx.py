@@ -40,10 +40,12 @@ class FaucetGas(DataClassJsonMixin):
 class FaucetGasRequest(DataClassJsonMixin):
     """Result of faucet get gas."""
 
-    transferred_gas_objects: list[FaucetGas] = field(
-        metadata=config(letter_case=LetterCase.CAMEL)
-    )
-    error: Optional[dict] = field(default_factory=dict)
+    status: str
+    coins_sent: list[dict[str, str]]
+    # transferred_gas_objects: list[FaucetGas] = field(
+    #     metadata=config(letter_case=LetterCase.CAMEL)
+    # )
+    # error: Optional[dict] = field(default_factory=dict)
 
 
 # ObjectRead

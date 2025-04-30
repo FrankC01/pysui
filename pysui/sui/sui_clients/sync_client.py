@@ -377,6 +377,9 @@ class SuiClient(ClientMixin):
         version="0.34.0",
         reason="Added faucet check. Will fail gracefull setting SuiRpcResult",
     )
+    @versionchanged(
+        version="0.84.0", reason="Mysten changed faucet request url and behavior."
+    )
     def get_gas_from_faucet(self, for_address: SuiAddress = None) -> Any:
         """get_gas_from_faucet Gets gas from SUI faucet.
 
@@ -388,30 +391,6 @@ class SuiClient(ClientMixin):
         """
         for_address = for_address or self.config.active_address
 
-        def _faucet_status(furl: str, task_id: str) -> SuiRpcResult:
-            while True:
-                result = self._client.get(
-                    furl + task_id,
-                ).json()
-                if result["error"]:
-                    return SuiRpcResult(False, f"Error on status for task {task_id}")
-                elif result["status"]["status"] == "SUCCEEDED":
-                    return SuiRpcResult(
-                        True,
-                        None,
-                        FaucetGasRequest.from_dict(
-                            {
-                                "transferred_gas_objects": result["status"][
-                                    "transferred_gas_objects"
-                                ]["sent"]
-                            }
-                        ),
-                    )
-                elif result["status"]["status"] == "INPROGRESS":
-                    pass
-                else:
-                    return SuiRpcResult(False, result)
-
         try:
             if self.config.faucet_url:
                 s1 = self._client.post(
@@ -419,22 +398,17 @@ class SuiClient(ClientMixin):
                     headers=GetObjectsOwnedByAddress(for_address).header,
                     json={"FixedAmountRequest": {"recipient": f"{for_address}"}},
                 )
-                # If exhausted requests
+                s1j = s1.json()
+                if "status" in s1j:
+                    if s1j.get("status") == "Success":
+                        return SuiRpcResult(True, None, FaucetGasRequest.from_dict(s1j))
+
                 if s1.status_code == 429:
                     return SuiRpcResult(False, s1.reason_phrase)
-                result = s1.json()
-                if result["error"] is None:
-                    faucet_status = (
-                        DEVNET_FAUCET_STATUS_URLV1
-                        if self.config.environment == "devnet"
-                        else TESTNET_FAUCET_STATUS_URLV1
-                    )
-                    return _faucet_status(faucet_status, result["task"])
-                return SuiRpcResult(False, result["error"])
             else:
                 return SuiRpcResult(False, "Faucet not enabled for this configuration.")
         except JSONDecodeError as jexc:
-            return SuiRpcResult(False, f"JSON Decoder Error {jexc.msg}", vars(jexc))
+            return SuiRpcResult(False, f"JSON Decoder Error {jexc.doc}", vars(jexc))
         except httpx.ReadTimeout as hexc:
             return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
         except TypeError as texc:

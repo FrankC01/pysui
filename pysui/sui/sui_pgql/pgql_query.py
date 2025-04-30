@@ -1235,7 +1235,7 @@ class GetNameServiceNames(PGQL_QueryNode):
         self.owner = owner
 
     def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """."""
+        """Build DocumentNode."""
         return dsl_gql(
             DSLQuery(
                 schema.Query.address(address=self.owner).select(

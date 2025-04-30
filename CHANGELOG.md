@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [enhancment](https://github.com/FrankC01/pysui/issues/297) Add paging to GetMultipleGasObjects
 - `async_gas` utility only reports on active gas coins
 - [enhancement](https://github.com/FrankC01/pysui/issues/298) Initial refactoring collection of cursored GraphQL functions, gas coin and object queries to `pgql_utils.py`
+- [change](https://github.com/FrankC01/pysui/issues/301) devnet and testnet Sui faucet request changes.
 
 ### Removed
 
