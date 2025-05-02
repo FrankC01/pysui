@@ -77,6 +77,13 @@ def _build_read_cmds(subparser) -> None:
         help="Alias of owner address. Optional.",
         action=validator.ValidateAlias,
     )
+    addy_arg_group.add_argument(
+        "-i",
+        "--include-pruned",
+        required=False,
+        help="Include pruned and deleted results. Optional.",
+        action="store_true",
+    )
     subp.set_defaults(subcommand="gas")
     # Object
     subp = subparser.add_parser("object", help="Show object by id")
@@ -103,6 +110,13 @@ def _build_read_cmds(subparser) -> None:
         required=False,
         help="Alias of owner address. Optional.",
         action=validator.ValidateAlias,
+    )
+    subp.add_argument(
+        "-i",
+        "--include-pruned",
+        required=False,
+        help="Include pruned and deleted results. Optional.",
+        action="store_true",
     )
     subp.add_argument(
         "-j",

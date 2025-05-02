@@ -154,7 +154,7 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
 
     all_gas = []
     try:
-        all_gas = get_all_owned_gas_objects(for_owner, client, False)
+        all_gas = get_all_owned_gas_objects(for_owner, client, not args.include_pruned)
         _detail_gas_objects(all_gas)
     except ValueError as ve:
         raise ve
@@ -249,7 +249,9 @@ def sui_objects(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    all_objects: list = get_all_owned_objects(for_owner, client)
+    all_objects: list = get_all_owned_objects(
+        for_owner, client, not args.include_pruned
+    )
 
     if args.json:
         for desc in all_objects:

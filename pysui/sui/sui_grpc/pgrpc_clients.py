@@ -37,18 +37,20 @@ class SuiGrpcClient:
         self,
         *,
         pysui_config: PysuiConfiguration,
-        grpc_node_url: Optional[str] = None,
+        grpc_node_url: str,
     ):
         """Initializes client.
 
         :param pysui_config: Configuration for interfaces
         :type pysui_config: PysuiConfiguration
+        :parm grpc_node_url: gRPC URL
+        :type grpc_node_url: str
         """
         self._pysui_config: PysuiConfiguration = pysui_config
         if url := _clean_url(grpc_node_url):
             self._channel: Channel = Channel(host=url[0], port=url[1], ssl=True)
         else:
-            pysui_config.model.get_group(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
+            raise ValueError(f"{grpc_node_url} is not valid URL")
         self._channels: list[Channel] = []
 
     def close(self):
@@ -145,9 +147,9 @@ class GrpcServiceClient(abc.ABC):
         :rtype: SuiRpcResult
         """
         try:
-            logger.debug(f"Request {request}")
+            logger.info(f"Request {request}")
             result = await fn(request, **kwargs)
-            logger.debug(f"Success {result}")
+            logger.info(f"Success {result}")
             return SuiRpcResult(True, None, result)
         except Exception as e:
             traceback_str = traceback.format_exc()
