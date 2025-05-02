@@ -38,7 +38,7 @@ from pysui.sui.sui_txresults.package_meta import (
 from pysui.sui.sui_txresults.single_tx import (
     TransactionConstraints,
 )
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_types.collections import SuiArray, SuiMap
 from pysui.sui.sui_types.scalars import (
     SuiNullType,

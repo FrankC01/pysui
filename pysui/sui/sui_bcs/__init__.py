@@ -3,7 +3,4 @@
 
 # -*- coding: utf-8 -*-
 
-"""Json to BCS generator."""
-
-import canoser
-import pysui.sui.sui_bcs.bcs as bcs
+"""Sui BCS Package."""

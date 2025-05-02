@@ -14,7 +14,9 @@ At the time of this writing, there are limitations to Sui gRPC and only offers s
 Subject to Change
 ====================
 
-pysui's gRPC implementation, class names, etc. subject to change. This implementation is not production ready and should be considered experiemental.
+pysui's gRPC implementation, class names, etc. subject to change.
+This implementation is not production ready and should
+be considered experiemental.
 
 ===================
 pysui gRPC services
@@ -71,4 +73,4 @@ Notes:
 #. All service clients are asynchronus
 #. All gRPC calls return a ``SuiRpcResult``
 #. All data results are of type ``dataclass``
-#. A service client may be instantiated with a different URL than the factory client
+#. A service client may be instantiated with a different URL

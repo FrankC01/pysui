@@ -6,7 +6,7 @@
 """Sui TransactionEffects BCS Type."""
 
 import canoser as can
-import pysui.sui.sui_types.bcs as bcs
+import pysui.sui.sui_bcs.bcs as bcs
 
 
 class OptionalString(can.RustOptional):

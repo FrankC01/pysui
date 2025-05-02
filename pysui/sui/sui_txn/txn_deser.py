@@ -26,7 +26,7 @@ from pysui.sui.sui_txresults.single_tx import (
     ImmutableOwner,
     SharedOwner,
 )
-import pysui.sui.sui_types.bcs as bcs
+import pysui.sui.sui_bcs.bcs as bcs
 from pysui.sui.sui_types.scalars import SuiU16
 
 

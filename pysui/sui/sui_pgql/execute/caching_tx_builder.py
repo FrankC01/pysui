@@ -11,7 +11,7 @@ from typing import Optional, Set, Union
 from deprecated.sphinx import versionchanged, versionadded
 
 from pysui.sui.sui_common.txb_pure import PureInput
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_utils import hexstring_to_sui_id
 from pysui.sui.sui_types.scalars import (
     SuiU64,

@@ -40,7 +40,7 @@ from pysui.sui.sui_constants import (
 )
 
 from pysui.sui.sui_types import SuiSignature, SuiAddress
-from pysui.sui.sui_types.bcs import (
+from pysui.sui.sui_bcs.bcs import (
     MsBitmap,
     MsCompressedSig,
     MsEd25519PublicKey,

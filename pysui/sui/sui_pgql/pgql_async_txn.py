@@ -12,7 +12,7 @@ from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
 
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv

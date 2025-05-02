@@ -18,7 +18,7 @@ from pysui.sui.sui_common.bcs_ast import BcsAst
 import pysui.sui.sui_common.mtobcs_types as mtypes
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as qtype
-import pysui.sui.sui_types.bcs_stnd as bcse
+import pysui.sui.sui_bcs.bcs_stnd as bcse
 
 logger = logging.getLogger("mtobcs")
 

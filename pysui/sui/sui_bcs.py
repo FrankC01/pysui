@@ -9,7 +9,7 @@ import base64
 from typing import Union
 
 from deprecated.sphinx import deprecated
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_clients.common import PreExecutionResult, SuiRpcResult
 
 from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient

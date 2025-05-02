@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- Deprecated `GetMultiplePastObjects`, use `GetMultipleVersionedObjects` instead
+
 ## [0.83.0] - 2025-04-27
 
 ### Added

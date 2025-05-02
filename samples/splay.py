@@ -35,7 +35,7 @@ logging.basicConfig(
 logger.info("Initializing smash.")
 
 import pysui.sui.sui_common.async_funcs as asfn
-import pysui.sui.sui_types.bcs_txne as bcst
+import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR

@@ -11,7 +11,7 @@ import logging
 from typing import Any, Union
 from dataclasses import dataclass
 
-import pysui.sui.sui_types.bcs_txne as bcs
+import pysui.sui.sui_bcs.bcs_txne as bcs
 import pysui.sui.sui_pgql.pgql_types as ptypes
 
 logger = logging.getLogger("serial_exec")

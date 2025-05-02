@@ -17,7 +17,7 @@ logger = logging.getLogger("async_funcs")
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
-import pysui.sui.sui_types.bcs_txne as bcst
+import pysui.sui.sui_bcs.bcs_txne as bcst
 from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
 from pysui import SuiRpcResult
 

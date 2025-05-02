@@ -34,7 +34,7 @@ logging.basicConfig(
 logger.info("Initializing smash.")
 
 import pysui.sui.sui_common.async_funcs as asfn
-import pysui.sui.sui_types.bcs_txne as bcst
+import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui import PysuiConfiguration, AsyncGqlClient, __version__, SuiRpcResult
 from samples.cmd_argsg import build_smash_parser, pre_config_pull

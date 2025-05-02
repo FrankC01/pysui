@@ -17,8 +17,8 @@ ser_txn_exc_logger = logging.getLogger("serial_exec")
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_pgql.pgql_types as ptypes
-import pysui.sui.sui_types.bcs as bcs
-import pysui.sui.sui_types.bcs_txne as bcst
+import pysui.sui.sui_bcs.bcs as bcs
+import pysui.sui.sui_bcs.bcs_txne as bcst
 from .caching_exec import AsyncCachingTransactionExecutor
 
 from .caching_txn import CachingTransaction

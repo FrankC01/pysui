@@ -14,7 +14,7 @@ from functools import singledispatchmethod
 logger = logging.getLogger()
 
 
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_utils import serialize_uint32_as_uleb128
 
 from pysui.sui.sui_types.scalars import (

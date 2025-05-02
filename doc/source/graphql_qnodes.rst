@@ -39,8 +39,6 @@ QueryNode Classes
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetPastObject`                 |
 +-------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_pgql.pgql_query.GetMultiplePastObjects`        |
-+-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetMultipleVersionedObjects`   |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetDynamicFields`              |

@@ -8,7 +8,7 @@
 from typing import Any
 import json
 import canoser
-import pysui.sui.sui_types.bcs_stnd as bcse
+import pysui.sui.sui_bcs.bcs_stnd as bcse
 
 
 class _OptionalStub(canoser.RustOptional):

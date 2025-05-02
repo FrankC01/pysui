@@ -15,7 +15,7 @@ from functools import singledispatchmethod
 from deprecated.sphinx import versionchanged, versionadded
 from pysui.sui.sui_txresults.single_tx import TransactionConstraints
 
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.scalars import (
     ObjectID,

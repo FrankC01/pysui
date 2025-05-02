@@ -16,8 +16,8 @@ from pysui.sui.sui_pgql.pgql_utils import (
     async_get_all_owned_gas_objects,
     async_get_objects_by_ids,
 )
-import pysui.sui.sui_types.bcs as bcs
-import pysui.sui.sui_types.bcs_txne as bcst
+import pysui.sui.sui_bcs.bcs as bcs
+import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 from .cache import AsyncObjectCache, ObjectCacheEntry

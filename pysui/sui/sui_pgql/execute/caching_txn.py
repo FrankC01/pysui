@@ -13,7 +13,7 @@ from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
 from pysui.sui.sui_pgql.pgql_txn_base import _TransactionBase as txbase
 
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type

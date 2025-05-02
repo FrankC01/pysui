@@ -557,58 +557,6 @@ class GetPastObject(PGQL_QueryNode):
         return pgql_type.ObjectReadGQL.from_query
 
 
-@deprecated(
-    version="0.76.0",
-    reason="Deprecated by Sui. Use GetMultipleVersionedObjects instead",
-)
-class GetMultiplePastObjects(PGQL_QueryNode):
-    """GetMultiplePastObjects When executed, return the object information for a specified version.
-
-    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
-    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
-    policies.
-    """
-
-    def __init__(self, *, for_versions: list[dict]):
-        """QueryNode initializer to fetch past object information for a list of object keys.
-
-        Where each `dict` (key) is of construct:
-        {
-            objectId:str, # Object id
-            version:int   # Previous version id to fetch
-        }
-
-        :param history: The list of ObjectKsy dictionaries
-        :type history: list[dict]
-
-        """
-
-        self.version_list = for_versions
-
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """."""
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-
-        return dsl_gql(
-            std_object,
-            base_object,
-            pg_cursor,
-            DSLQuery(
-                schema.Query.objects(filter={"objectKeys": self.version_list}).select(
-                    cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
-                    objects_data=schema.ObjectConnection.nodes.select(std_object),
-                )
-            ),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectReadsGQL]:
-        """Return the serializer to ObjectReadsGQL function."""
-        return pgql_type.ObjectReadsGQL.from_query
-
-
 @versionadded(version="0.76.0", reason="Sui 1.40.0 introduced")
 class GetMultipleVersionedObjects(PGQL_QueryNode):
     """GetMultipleVersionedObjects When executed, return the object information for a specified version.

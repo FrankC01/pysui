@@ -56,7 +56,7 @@ from pysui.sui.sui_txresults.single_tx import (
     SuiCoinObject,
 )
 
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 
 # Standard library logging setup
 logger = logging.getLogger("pysui.async_transaction")

@@ -14,7 +14,7 @@ import base58
 import pysui.version as ver
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 from pysui.sui.sui_txn.transaction_builder import ProgrammableTransactionBuilder
-import pysui.sui.sui_types.bcs as bcs
+import pysui.sui.sui_bcs.bcs as bcs
 from pysui.sui.sui_pgql.pgql_wallet_deser import SuiBuilder
 
 # pylint: disable=C0103:invalid-name

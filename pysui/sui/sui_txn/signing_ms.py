@@ -25,7 +25,7 @@ from pysui.sui.sui_txresults.single_tx import SuiCoinObject
 from pysui.sui.sui_types.collections import SuiArray
 from pysui.sui.sui_types.scalars import SuiSignature, SuiString
 
-from pysui.sui.sui_types import bcs
+from pysui.sui.sui_bcs import bcs
 
 
 @versionadded(version="0.28.0", reason="Deprecating PayAllSui builder.")
