@@ -3,16 +3,21 @@
 
 # -*- coding: utf-8 -*-
 
-"""Move Datatypes for BCS deserialization."""
+"""Pysui BCS Base abstraction supporting dataclass_json."""
 
-from typing import Any
 import json
-import pysui.sui.sui_bcs.bcs_stnd as bcse
-import pysui.sui.sui_bcs.pysui_bcs as pbcsbase
+import canoser
 
 
-class _OptionalStub(pbcsbase.BCS_Optional):
-    """This is removed during generation."""
+class BCS_Struct(canoser.Struct):
+    pass
+
+
+class BCS_Enum(canoser.RustEnum):
+    pass
+
+
+class BCS_Optional(canoser.RustOptional):
 
     def to_json(self, sort_keys=False, indent=4):
         amap = self.to_json_serializable()

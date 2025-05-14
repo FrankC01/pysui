@@ -348,11 +348,39 @@ def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    # print(args)
+    use_gas_coin = None
+    # Use generic gas if no explicit coin provided.
     txn = SuiTransaction(client=client, initial_sender=for_owner)
-    coins = txn.split_coin(
-        coin=args.coin_object_id, amounts=[int(x) for x in args.mists]
-    )
+    if args.coin_object_id:
+        target_coin = args.coin_object_id
+        use_gas_coin = [args.gas]
+    else:
+        if args.gas:
+            print("Specifying '-g' option while defaulting '-c' is invalid")
+            return
+        total_mist = 0
+        for mist in args.mists:
+            total_mist += int(mist)
+        assets = get_all_owned_gas_objects(owner=for_owner, client=client)
+        # Best funded assets to use for gas
+        if assets:
+            target_coin = txn.gas
+            if len(assets) == 1:
+                pass
+            else:
+                use_gas_coin = []
+                assets.sort(key=lambda x: int(x.balance), reverse=True)
+                running_total = 0
+                for asset in assets:
+                    if running_total <= total_mist:
+                        use_gas_coin.append(asset)
+                        running_total += int(asset.balance)
+                    else:
+                        break
+        else:
+            raise ValueError(f"{for_owner} has no Sui coins")
+
+    coins = txn.split_coin(coin=target_coin, amounts=[int(x) for x in args.mists])
     if not isinstance(coins, list):
         txn.transfer_objects(transfers=[coins], recipient=for_owner)
     else:
@@ -360,7 +388,7 @@ def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
     transaction_execute(
         txb=txn,
         gas_budget=args.budget,
-        use_gas_objects=[args.gas] if args.gas else None,
+        use_gas_objects=use_gas_coin,
     )
 
 

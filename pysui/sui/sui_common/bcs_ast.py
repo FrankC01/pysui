@@ -85,18 +85,18 @@ class BcsAst:
     """BCS ast type helper class."""
 
     _BCS_STRUCT_BASE = ast.Attribute(
-        ast.Name("canoser", ast.Load()),
-        "Struct",
+        ast.Name("pbcsbase", ast.Load()),
+        "BCS_Struct",
         ast.Load(),
     )
     _BCS_ENUM_BASE = ast.Attribute(
-        ast.Name("canoser", ast.Load()),
-        "RustEnum",
+        ast.Name("pbcsbase", ast.Load()),
+        "BCS_Enum",
         ast.Load(),
     )
     _BCS_OPTIONAL_BASE = ast.Attribute(
-        ast.Name("canoser", ast.Load()),
-        "RustOptional",
+        ast.Name("pbcsbase", ast.Load()),
+        "BCS_Optional",
         ast.Load(),
     )
 

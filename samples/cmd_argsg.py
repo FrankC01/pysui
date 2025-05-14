@@ -359,8 +359,8 @@ def _build_coin_cmds(subparser) -> None:
     subp.add_argument(
         "-c",
         "--coin_object_id",
-        required=True,
-        help="Specify the coin ID the split-amounts are being split from.",
+        required=False,
+        help="Specify the coin ID the split-amounts are being split from. Optional, wiil choose coin.",
         action=validator.ValidateObjectID,
     )
     subp.add_argument(

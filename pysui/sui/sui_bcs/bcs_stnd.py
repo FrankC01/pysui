@@ -10,10 +10,10 @@ from typing import Any
 import canoser
 
 from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_bcs.pysui_bcs import BCS_Struct
 from pysui.sui.sui_utils import (
     b58str_to_list,
     hexstring_to_list,
-    hexstring_to_sui_id,
     from_list_to_b58str,
 )
 
@@ -21,14 +21,14 @@ _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
 
 
-class Address(canoser.Struct):
+class Address(BCS_Struct):
     """Address Represents a Sui Address or ObjectID as list of ints."""
 
-    _fields = [("Address", canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH, False))]
+    _fields = [("address", canoser.ArrayT(canoser.Uint8, _ADDRESS_LENGTH, False))]
 
     def to_str(self) -> str:
         """."""
-        return binascii.hexlify(bytes(getattr(self, "Address"))).decode()
+        return binascii.hexlify(bytes(getattr(self, "address"))).decode()
 
     def to_address_str(self) -> str:
         """."""
@@ -49,14 +49,14 @@ class Address(canoser.Struct):
         return cls(hexstring_to_list(indata))
 
 
-class Digest(canoser.Struct):
+class Digest(BCS_Struct):
     """Digest represents a transaction or object base58 value as list of ints."""
 
-    _fields = [("Digest", canoser.ArrayT(canoser.Uint8, _DIGEST_LENGTH))]
+    _fields = [("digest", canoser.ArrayT(canoser.Uint8, _DIGEST_LENGTH))]
 
     def to_digest_str(self) -> str:
         """Convert bytes to base58 digest str."""
-        return from_list_to_b58str(self.Digest)
+        return from_list_to_b58str(self.digest)
 
     @classmethod
     def from_str(cls, indata: str) -> "Digest":
@@ -101,19 +101,19 @@ String = canoser.StrT
 Balance = U64
 
 
-class TypeName(canoser.Struct):
+class TypeName(BCS_Struct):
     """Move Typename."""
 
     _fields = [("name", String)]
 
 
-class Publisher(canoser.Struct):
+class Publisher(BCS_Struct):
     """Move Publisher."""
 
     _fields = [("id", Address), ("package", String), ("module_name", String)]
 
 
-class UpgradeCap(canoser.Struct):
+class UpgradeCap(BCS_Struct):
     """Move UpgradeCap."""
 
     _fields = [
@@ -124,13 +124,13 @@ class UpgradeCap(canoser.Struct):
     ]
 
 
-class Versioned(canoser.Struct):
+class Versioned(BCS_Struct):
     """Move Versioned."""
 
     _fields = [("id", Address), ("version", U64)]
 
 
-class Random(canoser.Struct):
+class Random(BCS_Struct):
     """Move Random."""
 
     _fields = [("id", Address), ("inner", Versioned)]
