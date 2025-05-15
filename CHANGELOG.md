@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/306) `mtobcs` Duplicates are being generated.
+
 ### Changed
 
 - [change](https://github.com/FrankC01/pysui/issues/302) `wallet split-coin` now finds best fit gas coin to split from when omitting `-c/--coin_object_id` argument

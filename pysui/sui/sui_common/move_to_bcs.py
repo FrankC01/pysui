@@ -439,6 +439,8 @@ class MoveDataType:
                 # Build predecessor data type
                 decl = x[self._FETCH_DECL]
                 decl_type_name = x.get(self._DECL_TYPE_NAME, decl)
+                if decl_type_name.count(":"):
+                    decl_type_name = decl_type_name.split("::")[-1]
                 if decl_type_name not in handled:
                     type_node, _more_fetch = await self._fetch_type(
                         client=self.client, move_type_decl=x
