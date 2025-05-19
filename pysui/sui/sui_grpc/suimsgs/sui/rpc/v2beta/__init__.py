@@ -1842,6 +1842,13 @@ class Event(betterproto2.Message):
     BCS serialized bytes of the event.
     """
 
+    json: "___google__protobuf__.Value | None" = betterproto2.field(
+        100, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    JSON rendering of the event.
+    """
+
 
 default_message_pool.register_message("sui.rpc.v2beta", "Event", Event)
 
@@ -3002,6 +3009,13 @@ class Object(betterproto2.Message):
     The amount of SUI to rebate if this object gets deleted.
     This number is re-calculated each time the object is mutated based on
     the present storage gas price.
+    """
+
+    json: "___google__protobuf__.Value | None" = betterproto2.field(
+        100, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    JSON rendering of the object.
     """
 
 
