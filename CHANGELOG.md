@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- [bug](https://github.com/FrankC01/pysui/issues/308) Type_args contains spaces
+- [bug](https://github.com/FrankC01/pysui/issues/308) Processing type_args containing spaces fails
 
 ## [0.84.0] - 2025-05-19
 
