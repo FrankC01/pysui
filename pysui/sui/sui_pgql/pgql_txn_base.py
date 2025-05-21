@@ -7,11 +7,13 @@
 
 
 import base64
+import hashlib
 import os
 from pathlib import Path
 from typing import Any, Optional, Union
 import logging
 
+import base58
 
 from pysui import SuiAddress, ObjectID
 
@@ -228,6 +230,33 @@ class _SuiTransactionBase(_TransactionBase):
     def signer_block(self) -> SignerBlock:
         """Returns the signers block."""
         return self._sig_block
+
+    @classmethod
+    def digest_from_bytes(cls, transaction_data_bytes: bytes) -> str:
+        """Return the base58 encoded digest from transaction byte string.
+
+        :param transaction_data_bytes: Bytes from serialized TransactionData
+        :type transaction_data_bytes: bytes
+        :return: Sui transaction digest
+        :rtype: str
+        """
+        return base58.b58encode(
+            hashlib.blake2b(
+                b"TransactionData::" + transaction_data_bytes,
+                digest_size=32,
+            ).digest()
+        ).decode()
+
+    @classmethod
+    def digest_from_b64str(cls, transaction_data_bytes_str: str) -> str:
+        """Return the base58 encoded digest from transaction base64 encoded string.
+
+        :param transaction_data_bytes_str: Base64 encoded serialized TransactionData
+        :type transaction_data_bytes_str: str
+        :return: Sui transaction digest
+        :rtype: str
+        """
+        return cls.digest_from_bytes(base64.b64decode(transaction_data_bytes_str))
 
     def raw_kind(self) -> bcs.TransactionKind:
         """Returns the TransactionKind object hierarchy of inputs, returns and commands.

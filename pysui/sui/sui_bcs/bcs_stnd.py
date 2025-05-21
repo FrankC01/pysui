@@ -10,7 +10,7 @@ from typing import Any
 import canoser
 
 from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_bcs.pysui_bcs import BCS_Struct
+from pysui.sui.sui_bcs.pysui_bcs import BCS_Struct, BCS_Enum, BCS_Optional
 from pysui.sui.sui_utils import (
     b58str_to_list,
     hexstring_to_list,

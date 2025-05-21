@@ -390,10 +390,12 @@ class TypeTag(canoser.RustEnum):
         ("U256", None),
     ]
 
+    @versionchanged(version="0.85.0", reason="Remove spaces in type_argument string")
     @classmethod
     def type_tag_from(cls, value: str) -> "TypeTag":
         """."""
         assert isinstance(value, str), f"Expected string, found {type(value)}"
+        value = value.replace(" ", "")
         # Scalar types
         if value in cls._LCASE_SCALARS:
             index = cls._LCASE_SCALARS.index(value)

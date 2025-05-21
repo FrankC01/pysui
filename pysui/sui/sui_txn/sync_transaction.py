@@ -450,7 +450,6 @@ class SuiTransaction(_SuiTransactionBase):
         self._resolve_objects(items, objref_indexes, objtup_indexes)
         return items
 
-    # TODO: Investigate functools LRU
     @versionchanged(
         version="0.20.2", reason="Capture function argument meta data as well"
     )
