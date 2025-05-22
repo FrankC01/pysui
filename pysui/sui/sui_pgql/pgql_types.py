@@ -317,6 +317,8 @@ class ObjectContentBCS(PGQL_Type):
 
     address: str  # Yes
     bcs: str
+    status: Optional[str] = None
+    previous_transaction_digest: Optional[str] = None
 
     def as_bytes(self) -> bytes:
         """Convert BCS to bytes"""
@@ -337,10 +339,6 @@ class ObjectsContentBCS(PGQL_Type):
 
     next_cursor: PagingCursor
     objects_data: list[ObjectContentBCS]
-
-    def as_bytes(self) -> bytes:
-        """Convert BCS to bytes"""
-        return base64.b64decode(self.bcs)
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectsContentBCS":

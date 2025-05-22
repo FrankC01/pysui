@@ -295,6 +295,9 @@ class GetObject(PGQL_QueryNode):
         return pgql_type.ObjectReadGQL.from_query
 
 
+@versionchanged(
+    version="0.85.0", reason="Added status and previous transaction digest."
+)
 class GetObjectContent(PGQL_QueryNode):
     """Returns a specific object's content BCS string."""
 
@@ -312,10 +315,14 @@ class GetObjectContent(PGQL_QueryNode):
             DSLQuery(
                 object=schema.Query.object(address=self.object_id).select(
                     schema.Object.address,
+                    schema.Object.status,
                     schema.Object.asMoveObject.select(
                         schema.MoveObject.contents.select(
                             schema.MoveValue.bcs,
                         )
+                    ),
+                    prior_transaction=schema.Object.previousTransactionBlock.select(
+                        previous_transaction_digest=schema.TransactionBlock.digest
                     ),
                 ),
             )
@@ -327,6 +334,9 @@ class GetObjectContent(PGQL_QueryNode):
         return pgql_type.ObjectContentBCS.from_query
 
 
+@versionchanged(
+    version="0.85.0", reason="Added status and previous transaction digest."
+)
 class GetMultipleObjectContent(PGQL_QueryNode):
     """Returns a specific object's content BCS string."""
 
@@ -358,10 +368,14 @@ class GetMultipleObjectContent(PGQL_QueryNode):
             cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
             objects_data=schema.ObjectConnection.nodes.select(
                 schema.Object.address,
+                schema.Object.status,
                 schema.Object.asMoveObject.select(
                     schema.MoveObject.contents.select(
                         schema.MoveValue.bcs,
                     )
+                ),
+                prior_transaction=schema.Object.previousTransactionBlock.select(
+                    previous_transaction_digest=schema.TransactionBlock.digest
                 ),
             ),
         ),

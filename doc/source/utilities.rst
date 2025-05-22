@@ -75,8 +75,8 @@ here is the ``dynamic_field.move`` struct declaration:
 
 The corresponding target from ``mainnet`` looks like this:
 
-.. code-block:: json 
-    
+.. code-block:: json
+
     {
         "targets" : [
             {
