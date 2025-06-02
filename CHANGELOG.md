@@ -5,16 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.85.0] - Unpublished
+## [0.85.0] - 2025-06-02
 
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/304) Ability to return a Python dataclass from a BCS object
 - [enhancement](https://github.com/FrankC01/pysui/issues/309) Generate transaction digest before execution
+- [Feature Request](https://github.com/FrankC01/pysui/issues/311) Support proxy in JSON RPC and GraphQL client constructors
 
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/308) Processing type_args containing spaces fails
+
+### Changed
+
+- [gRPC](https://github.com/MystenLabs/sui/pull/22204)
 
 ## [0.84.0] - 2025-05-19
 

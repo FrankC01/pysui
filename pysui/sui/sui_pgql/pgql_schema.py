@@ -5,6 +5,8 @@
 
 """Schema management module."""
 
+from typing import Optional
+from deprecated.sphinx import versionchanged
 from gql import Client, gql
 from gql.client import ReconnectingAsyncClientSession
 import httpx
@@ -23,14 +25,15 @@ class Schema:
 
     SCHEMA_HEADER_SCHEMA_KEY: str = "x-sui-rpc-version"
 
-    def __init__(self, *, gql_url: str, gql_env: str):
+    @versionchanged(
+        version="0.85.0",
+        reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
+    )
+    def __init__(self, *, gql_url: str, gql_env: str, proxies: Optional[dict] = None):
         """."""
         _init_client: Client = Client(
             transport=HTTPXTransport(
-                url=gql_url,
-                verify=True,
-                http2=True,
-                timeout=120.0,
+                url=gql_url, verify=True, http2=True, timeout=120.0, proxies=proxies
             ),
             fetch_schema_from_transport=True,
         )
@@ -86,7 +89,11 @@ class Schema:
             )
         return self._async_session
 
-    def set_async_client(self):
+    @versionchanged(
+        version="0.85.0",
+        reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
+    )
+    def set_async_client(self, proxies: Optional[dict] = None):
         """."""
         self._async_client = Client(
             transport=HTTPXAsyncTransport(
@@ -94,5 +101,6 @@ class Schema:
                 verify=True,
                 http2=True,
                 timeout=120.0,
+                proxies=proxies,
             ),
         )

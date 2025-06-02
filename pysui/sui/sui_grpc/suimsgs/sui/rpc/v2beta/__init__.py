@@ -535,6 +535,8 @@ class OwnerOwnerKind(betterproto2.Enum):
 
     IMMUTABLE = 4
 
+    CONSENSUS_ADDRESS = 5
+
 
 class PackageUpgradeErrorPackageUpgradeErrorKind(betterproto2.Enum):
     PACKAGE_UPGRADE_ERROR_KIND_UNKNOWN = 0
@@ -3075,6 +3077,9 @@ class Owner(betterproto2.Message):
     version: "int | None" = betterproto2.field(
         3, betterproto2.TYPE_UINT64, optional=True
     )
+    """
+    The `initial_shared_version` if kind is `SHARED` or `start_version` if kind `CONSENSUS_ADDRESS`.
+    """
 
 
 default_message_pool.register_message("sui.rpc.v2beta", "Owner", Owner)

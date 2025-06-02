@@ -74,10 +74,15 @@ class SuiClient(ClientMixin):
     """Sui Syncrhonous Client."""
 
     @versionchanged(version="0.28.0", reason="Added logging")
+    @versionchanged(
+        version="0.85.0",
+        reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
+    )
     def __init__(
         self,
         config: SuiConfig,
-        request_type: SuiRequestType = SuiRequestType.WAITFORLOCALEXECUTION,
+        request_type: Optional[SuiRequestType] = SuiRequestType.WAITFORLOCALEXECUTION,
+        proxies: Optional[dict] = None,
     ) -> None:
         """Client initializer."""
         super().__init__(config, request_type)
@@ -85,6 +90,7 @@ class SuiClient(ClientMixin):
             http2=True,
             timeout=120.0,
             verify=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
+            proxies=proxies,
         )
         self._fetch_common_descriptors()
         logger.info(f"Initialized synchronous client for {config.rpc_url}")

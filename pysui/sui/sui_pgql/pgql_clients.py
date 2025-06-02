@@ -192,20 +192,24 @@ class SuiGQLClient(BaseSuiGQLClient):
     @versionchanged(
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
+    @versionchanged(
+        version="0.85.0",
+        reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
+    )
     def __init__(
         self,
         *,
         pysui_config: PysuiConfiguration,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
+        proxies: Optional[dict] = None,
     ):
         """Sui GraphQL Client initializer."""
         gurl = pysui_config.url
         genv = pysui_config.active_profile
-        # gurl, genv = BaseSuiGQLClient._resolve_url(config, schema_version)
         super().__init__(
             pysui_config=pysui_config,
-            schema=scm.Schema(gql_url=gurl, gql_env=genv),
+            schema=scm.Schema(gql_url=gurl, gql_env=genv, proxies=proxies),
             write_schema=write_schema,
             default_header=default_header,
         )
@@ -385,18 +389,25 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     @versionchanged(
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
+    @versionchanged(
+        version="0.85.0",
+        reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
+    )
     def __init__(
         self,
         *,
         pysui_config: PysuiConfiguration,
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
+        proxies: Optional[dict] = None,
     ):
         """Async Sui GraphQL Client initializer."""
         scm_mgr: scm.Schema = scm.Schema(
-            gql_url=pysui_config.url, gql_env=pysui_config.active_profile
+            gql_url=pysui_config.url,
+            gql_env=pysui_config.active_profile,
+            proxies=proxies,
         )
-        scm_mgr.set_async_client()
+        scm_mgr.set_async_client(proxies)
 
         super().__init__(
             pysui_config=pysui_config,
