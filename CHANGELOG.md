@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.0] - Unpublished
+
+### Added
+
+- [enhancement](https://github.com/FrankC01/pysui/issues/312) add 'save' and 'save_to' for PysuiConfiguration
+
+### Fixed
+
+### Changed
+
+- [BREAKING change](https://github.com/FrankC01/pysui/issues/313) The constructor of PysuiConfiguration no
+longer creates the PysuiConfig.json file if does not exist. First time users must call class method `PysuiConfiguration.initialize_config`.
+See [documentation](https://pysui.readthedocs.io/en/latest/graphql_pyconfig.html).
+
 ## [0.85.0] - 2025-06-02
 
 ### Added

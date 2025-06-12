@@ -6,12 +6,18 @@
 """Pysui Configuration."""
 
 
+from copy import deepcopy
 import platform
 from pathlib import Path
 from typing import Optional
+from deprecated.sphinx import versionchanged, versionadded, deprecated
 
 from pysui.abstracts.client_keypair import SignatureScheme
-from pysui.sui.sui_pgql.config.confmodel import PysuiConfigModel
+from pysui.sui.sui_pgql.config.conflegacy import load_client_yaml
+from pysui.sui.sui_pgql.config.confmodel import (
+    _CURRENT_CONFIG_VERSION,
+    PysuiConfigModel,
+)
 import pysui.sui.sui_pgql.config.confgroup as cfg_group
 
 
@@ -23,12 +29,15 @@ class PysuiConfiguration:
     SUI_GRPC_GROUP: str = "sui_grpc_config"
     SUI_USER_GROUP: str = "user"
 
+    @versionchanged(
+        version="0.86.0",
+        reason="BREAKING: Moved initializing profiles to `PysuiCofiguration.initialize_config`",
+    )
     def __init__(
         self,
         *,
-        from_cfg_path: str = None,
-        # group_name: Optional[str] = "sui_gql_config",
         group_name: Optional[str] = None,
+        from_cfg_path: str = None,
         profile_name: Optional[str] = None,
         address: Optional[str] = None,
         alias: Optional[str] = None,
@@ -53,42 +62,13 @@ class PysuiConfiguration:
         self._config_root = Path(from_cfg_path or "~/.pysui").expanduser()
         # _ecfgdir = Path(self._config_root).expanduser()
         self._config_file = self._config_root / "PysuiConfig.json"
-        # If the primmary path doesn't exist create
-        if not self._config_root.exists():
-            self._config_root.mkdir()
-        # If above, then true else determine
         if not self._config_file.exists():
-            # Populate the default profile configuration and write
-            self._model: PysuiConfigModel = PysuiConfigModel()
-            self._config_file.write_text(self._model.to_json(indent=2))
-        else:
-            self._model: PysuiConfigModel = PysuiConfigModel.from_json(
-                self._config_file.read_text(encoding="utf8")
+            raise ValueError(
+                f"{self._config_file} does not exist, use PysuiConfiguration.initialize_config to setup."
             )
-
-        # Set up GRPC group if not exist, don't overwrite
-        # self.model.add_group(
-        #     group=cfg_group.ProfileGroup(self.SUI_GRPC_GROUP, "", "", [], [], [], []),
-        #     make_active=False,
-        # )
-
-        # Set up user group if not exist, don't overwrite
-        self.model.add_group(
-            group=cfg_group.ProfileGroup(self.SUI_USER_GROUP, "", "", [], [], [], []),
-            make_active=False,
+        self._model: PysuiConfigModel = PysuiConfigModel.from_json(
+            self._config_file.read_text(encoding="utf8")
         )
-
-        # Initialize from sui config if found
-        if not self._model.has_group(group_name=self.SUI_JSON_RPC_GROUP):
-            self.rebuild_from_sui_client(
-                rebuild_gql=not self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP)
-            )
-            self._model.active_group = self.SUI_GQL_RPC_GROUP
-            self._config_file.write_text(self._model.to_json(indent=2))
-
-        # Fixup GQL
-        if not self._model.version:
-            self._model.gql_version_fixup(group_name=self.SUI_GQL_RPC_GROUP)
 
         # Make active as per arguments
         self.make_active(
@@ -99,63 +79,89 @@ class PysuiConfiguration:
             persist=persist,
         )
 
+    @versionadded(
+        version="0.86.0",
+        reason="New group and profile initializations",
+    )
+    @classmethod
+    def initialize_config(
+        cls,
+        *,
+        in_folder: Optional[Path] = None,
+        init_groups: list[dict],
+    ) -> "PysuiConfiguration":
+        """."""
+        if len(init_groups) == 0:
+            raise ValueError("At least 1 group needed in initialize_config")
+        _config_root = in_folder if in_folder else Path("~/.pysui")
+        _config_root = _config_root.expanduser()
+        _config_file = _config_root / "PysuiConfig.json"
+        if not _config_root.exists():
+            _config_root.mkdir(parents=True, exist_ok=True)
+
+        instance = cls.__new__(cls)
+
+        _suicfg = Path("~/.sui/sui_config").expanduser()
+        if _suicfg.exists():
+            _faux_group = load_client_yaml(_suicfg, "_faux")
+
+        if platform.system() == "Windows":
+            _bcfgp = Path("~/.cargo/bin/sui.exe").expanduser()
+        else:
+            _bcfgp = Path("~/.cargo/bin/sui").expanduser()
+
+        _bcfg = str(_bcfgp) if _bcfgp.exists() else ""
+
+        setattr(instance, "_model", PysuiConfigModel(_CURRENT_CONFIG_VERSION, _bcfg))
+        setattr(instance, "_config_root", _config_root)
+        setattr(instance, "_config_file", _config_file)
+        for group in init_groups:
+            group_cfg = cfg_group.ProfileGroup(group["name"], "", "", [], [], [], [])
+            if group.get("graphql_from_sui", None):
+                if _suicfg.exists():
+                    group_cfg = deepcopy(_faux_group)
+                    group_cfg.group_name = group["name"]
+                    for prf in group_cfg.profiles:
+                        if prf.profile_name == "devnet":
+                            prf.url = "https://sui-devnet.mystenlabs.com/graphql"
+                        elif prf.profile_name == "testnet":
+                            prf.url = "https://sui-testnet.mystenlabs.com/graphql"
+                        elif prf.profile_name == "mainnet":
+                            prf.url = "https://sui-mainnet.mystenlabs.com/graphql"
+                else:
+                    raise ValueError(
+                        f"Initialize {group['name']} from sui config failure. sui config does not exist."
+                    )
+            instance.model.add_group(
+                group=group_cfg, make_active=group.get("make_active", False)
+            )
+        # Save to file
+        instance._write_model()
+        # Return configuration
+        return instance
+
     def _write_model(self):
         """Writes out the configuration model."""
         self._config_file.write_text(self.to_json(indent=2))
 
+    def save(self):
+        """External invoked write."""
+        self._write_model()
+
+    def save_to(self, new_folder: Path):
+        """External invoked write."""
+        _config_root = new_folder.expanduser()
+        # _ecfgdir = Path(self._config_root).expanduser()
+        _config_file = _config_root / "PysuiConfig.json"
+        if not _config_root.exists():
+            _config_root.mkdir(parents=True, exist_ok=True)
+        self._config_root = _config_root
+        self._config_file = _config_file
+        self._write_model()
+
     def to_json(self, *_cmds, **kwargs) -> str:
         """Return JSON formatted representation of PysuiConfiguration."""
         return self._model.to_json(**kwargs)
-
-    def rebuild_from_sui_client(
-        self,
-        *,
-        rebuild_gql: bool = False,
-        persist: bool = True,
-    ):
-        """Delete existing JSON SUI_JSON_RPC_GROUP group and regenerate from sui binary configuration."
-
-        :param rebuild_gql: Delete and rebuild the SUI_GQL_RPC_GROUP, defaults to False
-        :type rebuild_gql: bool, optional
-        :param persist: Persist updated PysuiConfiguration, defaults to True
-        :type persist: bool, optional
-        """
-        # Determine if sui configuration installed
-        _scfg = Path("~/.sui/sui_config").expanduser()
-        _bcfg = Path("~/.cargo/bin/sui").expanduser()
-        if _scfg.exists():
-            # If exists legacy group, remove it
-            if self._model.has_group(group_name=self.SUI_JSON_RPC_GROUP):
-                self._model.remove_group(group_name=self.SUI_JSON_RPC_GROUP)
-            # Determine if sui binaries installed
-            if platform.system() == "Windows":
-                _bcfg = Path("~/.cargo/bin/sui.exe").expanduser()
-            else:
-                _bcfg = Path("~/.cargo/bin/sui").expanduser()
-            _ = self._model.initialize_json_rpc(
-                sui_config=_scfg,
-                sui_binary=_bcfg,
-                json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
-            )
-            if rebuild_gql:
-                if self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP):
-                    self._model.remove_group(group_name=self.SUI_GQL_RPC_GROUP)
-                _ = self._model.initialize_gql_rpc(
-                    sui_binary=_bcfg,
-                    gql_rpc_group_name=self.SUI_GQL_RPC_GROUP,
-                    json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
-                )
-
-            if persist:
-                self._write_model()
-        else:
-            if self._model.has_group(group_name=self.SUI_GQL_RPC_GROUP):
-                self._model.remove_group(group_name=self.SUI_GQL_RPC_GROUP)
-            _ = self._model.initialize_gql_rpc(
-                sui_binary=_bcfg,
-                gql_rpc_group_name=self.SUI_GQL_RPC_GROUP,
-                json_rpc_group_name=self.SUI_JSON_RPC_GROUP,
-            )
 
     @property
     def config(self) -> str:
