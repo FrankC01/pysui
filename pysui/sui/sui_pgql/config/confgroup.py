@@ -367,11 +367,28 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         if make_active:
             self.active_profile = new_prf.profile_name
 
-    def remove_profile(self, *, profile_name: str):
+    def remove_profile(self, *, profile_name: str) -> str:
         """Remove a profile after validating name."""
         prf_names = self.profile_names
         if profile_name in prf_names:
+            was_active: bool = self.using_profile == profile_name
             self.profiles = [x for x in self.profiles if x.profile_name != profile_name]
             prf_names = self.profile_names
-            if self.using_profile not in prf_names:
-                self.using_profile = prf_names[0]
+            if was_active:
+                self.using_profile = prf_names[0] if prf_names else ""
+            return self.using_profile
+
+    def remove_alias(self, *, alias_name: str) -> str:
+        """Remove the identity associated to alias."""
+        al_names = [x.alias for x in self.alias_list]
+        if alias_name in al_names:
+            al_ndx = al_names.index(alias_name)
+            # Remove remnants
+            al_addy = self.address_list[al_ndx]
+            self.alias_list.pop(al_ndx)
+            self.address_list.pop(al_ndx)
+            self.key_list.pop(al_ndx)
+            if self.using_address == al_addy:
+                self.using_address = self.address_list[0] if self.address_list else ""
+            return self.using_address
+        raise ValueError(f"{alias_name} does not exist.")

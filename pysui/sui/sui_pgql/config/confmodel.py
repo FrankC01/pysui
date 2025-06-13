@@ -8,6 +8,7 @@
 import dataclasses
 from typing import Optional, Union
 from pathlib import Path
+from deprecated.sphinx import versionchanged
 import dataclasses_json
 
 
@@ -193,8 +194,9 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
             _updated = True
         return _updated
 
-    def remove_group(self, *, group_name: str):
-        """Remove group from model."""
+    @versionchanged(version="0.86.0", reason="Return new active replacing removed.")
+    def remove_group(self, *, group_name: str) -> str:
+        """Remove group from model, reassign active and return name."""
         _res = self._group_exists(group_name=group_name)
         if _res:
             _gindex = self.groups.index(_res)
@@ -207,5 +209,5 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
                 else:
                     self.group_active = ""
             self.groups.pop(_gindex)
-            return
+            return self.group_active
         raise ValueError(f"Group {group_name} not found.")
