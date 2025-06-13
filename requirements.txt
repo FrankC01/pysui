@@ -3,6 +3,7 @@ dataclasses_json < 0.7.0, >= 0.6.6
 pyyaml < 6.2, >= 6.0.1
 httpx < 0.28, >=0.27.0
 h2 < 5, >= 4.1.0
+maturin>=1.8.2
 pysui-fastcrypto >= 0.6.0
 jsonschema < 4.24, >= 4.23.0
 gql[httpx,websockets] >= 3.5.0

@@ -11,9 +11,7 @@ build:
   tools:
     python: "3.10"
     # You can also specify other tool versions:
-    # nodejs: "16"
     rust: "1.70"
-    # golang: "1.17"
   jobs:
     post_create_environment:
       - pip install sphinx-rtd-theme
