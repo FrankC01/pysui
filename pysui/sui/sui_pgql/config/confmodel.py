@@ -45,15 +45,6 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         """Test for group existence."""
         return self._group_exists(group_name=group_name)
 
-    def remove_group(self, *, group_name: str) -> None:
-        """Remove a group from the group list."""
-        _target_group = self.get_group(group_name=group_name)
-        self.groups.remove(_target_group)
-        # Adjust active group
-        if self.group_active == _target_group.group_name:
-            if self.groups:
-                self.group_active = self.groups[0].group_name
-
     def get_group(self, *, group_name: str) -> prfgrp.ProfileGroup:
         """Get a group or throw exception if doesn't exist."""
         _res = self._group_exists(group_name=group_name)
