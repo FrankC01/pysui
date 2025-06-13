@@ -45,6 +45,8 @@ html_theme_options = {
     # "titles_only": False,
 }
 
+autodoc_mock_imports = ["pysui-fastcrypto"]
+
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
