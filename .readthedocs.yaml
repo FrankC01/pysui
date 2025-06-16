@@ -25,4 +25,4 @@ sphinx:
 # Data class documentation
 python:
   install:
-    - requirements: requirements.txt
+    - requirements: reqrtd.txt
