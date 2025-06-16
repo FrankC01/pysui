@@ -8,6 +8,14 @@
 
 import os
 import sys
+import unittest.mock as mock
+
+MOCK_MODULES = ["pysui_fastcrypto", "pysui_fastcrypto"]
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
+
+autodoc_mock_imports = ["pysui-fastcrypto"]
+
 
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, os.path.abspath("../../pysui"))
@@ -44,8 +52,6 @@ html_theme_options = {
     # "includehidden": False,
     # "titles_only": False,
 }
-
-autodoc_mock_imports = ["pysui-fastcrypto"]
 
 autodoc_default_options = {
     "members": True,
