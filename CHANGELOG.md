@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- readthedocs build failing
+
 ### Changed
 
 - [BREAKING change](https://github.com/FrankC01/pysui/issues/313) The constructor of PysuiConfiguration no
