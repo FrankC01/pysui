@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [BREAKING change](https://github.com/FrankC01/pysui/issues/313) The constructor of PysuiConfiguration no
-longer creates the PysuiConfig.json file if does not exist. First time users must call class method `PysuiConfiguration.initialize_config`.
-See [documentation](https://pysui.readthedocs.io/en/latest/graphql_pyconfig.html).
+longer creates the PysuiConfig.json file if it does not exist. First time users must call class method `PysuiConfiguration.initialize_config`.
+See [documentation](https://pysui.readthedocs.io/en/latest/graphql_pyconfig.html#first-time-instantiation).
 
 ## [0.85.0] - 2025-06-02
 

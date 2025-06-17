@@ -10,7 +10,7 @@ import os
 import sys
 import unittest.mock as mock
 
-MOCK_MODULES = ["pysui_fastcrypto", "pysui_fastcrypto"]
+MOCK_MODULES = ["pysui_fastcrypto", "pysui-fastcrypto"]
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 

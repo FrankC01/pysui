@@ -33,6 +33,7 @@ Welcome to pysui's documentation!
    multi_sig
    prog_txn
    subscriptions
+   modules
 
 
 Indices and tables

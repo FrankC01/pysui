@@ -166,7 +166,7 @@ class PysuiConfiguration:
     @property
     def config(self) -> str:
         """Return the configuration folder."""
-        return self._config_root
+        return str(self._config_root)
 
     @property
     def model(self) -> PysuiConfigModel:
@@ -213,8 +213,9 @@ class PysuiConfiguration:
         """Returns the active groups active profile faucet status url."""
         return self.active_group.active_profile.faucet_status_url
 
+    @versionchanged(version="0.86.0", reason="Name change to be semantically correct")
     @property
-    def config_path(self) -> str:
+    def config_actives(self) -> str:
         """Return configuration breadcrumb path."""
         _group = self.active_group
         return f"{_group.group_name}.{_group.active_profile.profile_name}"
