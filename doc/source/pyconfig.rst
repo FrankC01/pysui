@@ -1,7 +1,7 @@
-GraphQL PysuiConfiguration
-""""""""""""""""""""""""""
+PysuiConfiguration
+""""""""""""""""""
 
-PysuiConfiguration is the GraphQL replacement for the
+PysuiConfiguration is the gRPC and GraphQL replacement for the
 legacy SuiConfig and this new class must be used when creating GraphQL
 clients and SuiTransactions.
 
@@ -49,22 +49,29 @@ First time instantiation
 
 For the initial setup of PysuiConfiguration you would use the ``PysuiConfiguration.initialize_config`` class method. 
 
-Here is an example that sets up a configuration for standard GraphQL:
+Here is an example that sets up a configuration for standard GraphQL and gRPC:
 
 .. code-block:: python
     :linenos:
 
     # Identify the path where PysuiConfig.json goes
     fpath = Path("~/cfgamp1")
-    # Create a group definition. In this case, the
-    # 'graphql_from_sui' flag says to load urls, private keys
-    # and aliases from the `~/.sui/sui_config` folder
+    # Create a group definitions and load base from ~/.sui/sui_config.
     init_groups = [
+        # GraphQL standard, make it active
         {
-            "name": "sui_gql_config",
+            "name": PysuiConfiguration.SUI_GQL_RPC_GROUP,
             "graphql_from_sui": True,
+            "grpc_from_sui": False,
             "make_active": True,
-        }
+        },
+        # gRPC standard
+        {
+            "name": PysuiConfiguration.SUI_GRPC_GROUP,
+            "graphql_from_sui": False,
+            "grpc_from_sui": True,
+            "make_active": False,
+        },
     ]
     cfg = PysuiConfiguration.initialize_config(
         in_folder=fpath, # if parm not supplied, defaults to `~/.pysui`

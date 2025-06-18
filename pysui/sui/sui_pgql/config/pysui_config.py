@@ -90,7 +90,7 @@ class PysuiConfiguration:
         in_folder: Optional[Path] = None,
         init_groups: list[dict],
     ) -> "PysuiConfiguration":
-        """."""
+        """Initialize a PysuiConfiguration (PysuiConfig.json)."""
         if len(init_groups) == 0:
             raise ValueError("At least 1 group needed in initialize_config")
         _config_root = in_folder if in_folder else Path("~/.pysui")
@@ -98,6 +98,8 @@ class PysuiConfiguration:
         _config_file = _config_root / "PysuiConfig.json"
         if not _config_root.exists():
             _config_root.mkdir(parents=True, exist_ok=True)
+        if _config_file.exists():
+            raise ValueError(f"{_config_file} already exists.")
 
         instance = cls.__new__(cls)
 
@@ -130,8 +132,24 @@ class PysuiConfiguration:
                             prf.url = "https://sui-mainnet.mystenlabs.com/graphql"
                 else:
                     raise ValueError(
-                        f"Initialize {group['name']} from sui config failure. sui config does not exist."
+                        f"Initialize {group['name']} from sui config failure. Sui config does not exist."
                     )
+            if group.get("grpc_from_sui", None):
+                if _suicfg.exists():
+                    group_cfg = deepcopy(_faux_group)
+                    group_cfg.group_name = group["name"]
+                    for prf in group_cfg.profiles:
+                        if prf.profile_name == "devnet":
+                            prf.url = "fullnode.devnet.sui.io:443"
+                        elif prf.profile_name == "testnet":
+                            prf.url = "fullnode.testnet.sui.io:443"
+                        elif prf.profile_name == "mainnet":
+                            prf.url = "fullnode.mainnet.sui.io:443"
+                else:
+                    raise ValueError(
+                        f"Initialize {group['name']} from sui config failure. Sui config does not exist."
+                    )
+
             instance.model.add_group(
                 group=group_cfg, make_active=group.get("make_active", False)
             )

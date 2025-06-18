@@ -23,12 +23,12 @@ Welcome to pysui's documentation!
    logging
    builders
    utilities
-   grpc
+   pyconfig
    graphql
    graphql_prog_txn
-   graphql_pyconfig
    graphql_qnodes
    graphql_serial_exc
+   grpc
    aliases
    multi_sig
    prog_txn

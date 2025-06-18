@@ -1,6 +1,6 @@
 
-QueryNodes
-==========
+GraphQL QueryNodes
+==================
 
 General
 -------
