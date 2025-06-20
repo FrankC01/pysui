@@ -13,12 +13,12 @@ from typing import Optional
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 
 from pysui.abstracts.client_keypair import SignatureScheme
-from pysui.sui.sui_pgql.config.conflegacy import load_client_yaml
-from pysui.sui.sui_pgql.config.confmodel import (
+from pysui.sui.sui_common.config.conflegacy import load_client_yaml
+from pysui.sui.sui_common.config.confmodel import (
     _CURRENT_CONFIG_VERSION,
     PysuiConfigModel,
 )
-import pysui.sui.sui_pgql.config.confgroup as cfg_group
+import pysui.sui.sui_common.config.confgroup as cfg_group
 
 
 class PysuiConfiguration:
@@ -79,6 +79,40 @@ class PysuiConfiguration:
             persist=persist,
         )
 
+    @classmethod
+    def _gen_graphql(
+        cls, basis: cfg_group.ProfileGroup, name: str
+    ) -> cfg_group.ProfileGroup:
+        """Generate graphql group"""
+        group_cfg = deepcopy(basis)
+        group_cfg.group_name = name
+        for prf in group_cfg.profiles:
+            if prf.profile_name == "devnet":
+                prf.url = "https://sui-devnet.mystenlabs.com/graphql"
+            elif prf.profile_name == "testnet":
+                prf.url = "https://sui-testnet.mystenlabs.com/graphql"
+            elif prf.profile_name == "mainnet":
+                prf.url = "https://sui-mainnet.mystenlabs.com/graphql"
+        return group_cfg
+
+    @classmethod
+    def _gen_grpc(
+        cls, basis: cfg_group.ProfileGroup, name: str
+    ) -> cfg_group.ProfileGroup:
+        """Generate gRPC group"""
+        group_cfg = deepcopy(basis)
+        group_cfg.group_name = name
+        for prf in group_cfg.profiles:
+            prf.faucet_url = None
+            prf.faucet_status_url = None
+            if prf.profile_name == "devnet":
+                prf.url = "fullnode.devnet.sui.io:443"
+            elif prf.profile_name == "testnet":
+                prf.url = "fullnode.testnet.sui.io:443"
+            elif prf.profile_name == "mainnet":
+                prf.url = "fullnode.mainnet.sui.io:443"
+        return group_cfg
+
     @versionadded(
         version="0.86.0",
         reason="New group and profile initializations",
@@ -121,30 +155,14 @@ class PysuiConfiguration:
             group_cfg = cfg_group.ProfileGroup(group["name"], "", "", [], [], [], [])
             if group.get("graphql_from_sui", None):
                 if _suicfg.exists():
-                    group_cfg = deepcopy(_faux_group)
-                    group_cfg.group_name = group["name"]
-                    for prf in group_cfg.profiles:
-                        if prf.profile_name == "devnet":
-                            prf.url = "https://sui-devnet.mystenlabs.com/graphql"
-                        elif prf.profile_name == "testnet":
-                            prf.url = "https://sui-testnet.mystenlabs.com/graphql"
-                        elif prf.profile_name == "mainnet":
-                            prf.url = "https://sui-mainnet.mystenlabs.com/graphql"
+                    group_cfg = cls._gen_graphql(_faux_group, group["name"])
                 else:
                     raise ValueError(
                         f"Initialize {group['name']} from sui config failure. Sui config does not exist."
                     )
             if group.get("grpc_from_sui", None):
                 if _suicfg.exists():
-                    group_cfg = deepcopy(_faux_group)
-                    group_cfg.group_name = group["name"]
-                    for prf in group_cfg.profiles:
-                        if prf.profile_name == "devnet":
-                            prf.url = "fullnode.devnet.sui.io:443"
-                        elif prf.profile_name == "testnet":
-                            prf.url = "fullnode.testnet.sui.io:443"
-                        elif prf.profile_name == "mainnet":
-                            prf.url = "fullnode.mainnet.sui.io:443"
+                    group_cfg = cls._gen_grpc(_faux_group, group["name"])
                 else:
                     raise ValueError(
                         f"Initialize {group['name']} from sui config failure. Sui config does not exist."

@@ -12,8 +12,8 @@ from deprecated.sphinx import versionchanged
 import dataclasses_json
 
 
-import pysui.sui.sui_pgql.config.confgroup as prfgrp
-from pysui.sui.sui_pgql.config.conflegacy import load_client_yaml
+import pysui.sui.sui_common.config.confgroup as prfgrp
+from pysui.sui.sui_common.config.conflegacy import load_client_yaml
 
 _GQL_DEFAULTS: dict = {
     "devnet": "https://sui-devnet.mystenlabs.com/graphql",

@@ -12,7 +12,7 @@ import pprint
 import sys
 from pysui import __version__, SuiRpcResult
 
-from pysui.sui.sui_pgql.config.pysui_config import PysuiConfiguration
+from pysui import PysuiConfiguration
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 import pysui.sui.sui_pgql.pgql_query as qn
