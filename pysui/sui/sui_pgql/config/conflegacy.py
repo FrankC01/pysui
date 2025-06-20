@@ -21,14 +21,15 @@ from pysui.sui.sui_pgql.config.confgroup import (
     Profile,
 )
 from pysui.sui.sui_crypto import keypair_from_keystring
+import pysui.sui.sui_constants as sui_constant
 
-_DEVNET_SUI_URL: str = "https://fullnode.devnet.sui.io:443"
-_DEVNET_FAUCET_URL: str = "https://faucet.devnet.sui.io/v1/gas"
-_DEVNET_FAUCET_STATUS_URL: str = "https://faucet.devnet.sui.io/v1/status/"
+_DEVNET_SUI_URL: str = sui_constant.DEVNET_SUI_URL
+_DEVNET_FAUCET_URL: str = sui_constant.DEVNET_FAUCET_URLV1
+_DEVNET_FAUCET_STATUS_URL: str = ""
 
-_TESTNET_SUI_URL: str = "https://fullnode.testnet.sui.io:443"
-_TESTNET_FAUCET_URL: str = "https://faucet.testnet.sui.io/v1/gas"
-_TESTNET_FAUCET_STATUS_URL: str = "https://faucet.testnet.sui.io/v1/status/"
+_TESTNET_SUI_URL: str = sui_constant.TESTNET_SUI_URL
+_TESTNET_FAUCET_URL: str = sui_constant.TESTNET_FAUCET_URLV1
+_TESTNET_FAUCET_STATUS_URL: str = ""
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

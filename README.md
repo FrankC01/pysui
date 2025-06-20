@@ -25,14 +25,10 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.86.0**
+**Release-0.87.0**
 
 - Supports _SUI 1.48.x JSON RPC API_, _SUI 1.50.x GRAPHQL_
 - JSON RPC API backwards compatable to _Sui 1.41.x_
-
-[BREAKING change](https://github.com/FrankC01/pysui/issues/313) The constructor of PysuiConfiguration no
-longer creates the PysuiConfig.json file if does not exist. First time users must call class method `PysuiConfiguration.initialize_config`.
-See [documentation](https://pysui.readthedocs.io/en/latest/pyconfig.html#first-time-instantiation).
 
 ## PyPi current
 
