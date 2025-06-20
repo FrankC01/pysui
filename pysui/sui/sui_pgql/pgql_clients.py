@@ -26,6 +26,7 @@ from graphql.language.printer import print_ast
 import httpx
 
 from pysui import SuiRpcResult, PysuiConfiguration
+from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
@@ -79,7 +80,7 @@ class PGQL_Fragment(ABC):
     version="0.64.0",
     reason="BREAKING previous properteries now take schema version option",
 )
-class BaseSuiGQLClient:
+class BaseSuiGQLClient(PysuiClient):
     """Base GraphQL client."""
 
     def __init__(
@@ -92,9 +93,9 @@ class BaseSuiGQLClient:
     ):
         """."""
 
-        self._pysui_config: PysuiConfiguration = pysui_config
+        super().__init__(pysui_config=pysui_config, default_header=default_header)
         self._schema: scm.Schema = schema
-        self._default_header = default_header if default_header else {}
+
         # Schema persist
         if write_schema:
             def_env = self._schema.rpc_config.gqlEnvironment
@@ -107,10 +108,6 @@ class BaseSuiGQLClient:
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
     @property
-    def config(self) -> PysuiConfiguration:
-        """Fetch the Pysui configuration."""
-        return self._pysui_config
-
     def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
         return self._schema.rpc_config.checkpoints.nodes[0].reference_gas_price

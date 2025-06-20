@@ -21,7 +21,8 @@ from pysui.sui.sui_txresults.single_tx import (
     TransactionConstraints,
 )
 
-from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
+from .client import PysuiClient
+
 from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -166,7 +167,7 @@ class _TransactionBase:
     def __init__(
         self,
         *,
-        client: BaseSuiGQLClient,
+        client: PysuiClient,
         compress_inputs: Optional[bool] = True,
         builder: Optional[Any] = None,
         arg_parser: Optional[Any] = None,
@@ -180,7 +181,7 @@ class _TransactionBase:
         self.constraints: TransactionConstraints = (
             client.protocol().transaction_constraints
         )
-        self._current_gas_price = client.current_gas_price()
+        self._current_gas_price = client.current_gas_price
 
     @property
     def gas(self) -> bcs.Argument:
@@ -204,7 +205,7 @@ class _SuiTransactionBase(_TransactionBase):
     def __init__(
         self,
         *,
-        client: BaseSuiGQLClient,
+        client: PysuiClient,
         compress_inputs: Optional[bool] = True,
         initial_sender: Union[str, SigningMultiSig] = None,
         initial_sponsor: Union[str, SigningMultiSig] = None,

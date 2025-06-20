@@ -14,10 +14,10 @@ import traceback
 import betterproto2
 
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
-from grpclib.client import Channel
-from pysui import SuiRpcResult, PysuiConfiguration
-
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+from grpclib.client import Channel
+
+from pysui import SuiRpcResult, PysuiConfiguration
 
 import logging
 
@@ -25,8 +25,8 @@ logger = logging.getLogger()
 
 # import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 
-LedgerClient: TypeAlias = "_SuiLedgerClient"
-TxClient: TypeAlias = "_SuiTransactionClient"
+LedgerClient: TypeAlias = "_SuiLedgerService"
+TxClient: TypeAlias = "_SuiTransactionService"
 # AlphaDataClient: TypeAlias = "_SuiAlphaDataClient"
 
 
@@ -37,20 +37,21 @@ class SuiGrpcClient:
         self,
         *,
         pysui_config: PysuiConfiguration,
-        grpc_node_url: str,
     ):
         """Initializes client.
 
         :param pysui_config: Configuration for interfaces
         :type pysui_config: PysuiConfiguration
         :parm grpc_node_url: gRPC URL
-        :type grpc_node_url: str
         """
         self._pysui_config: PysuiConfiguration = pysui_config
-        if url := _clean_url(grpc_node_url):
+
+        if url := _clean_url(self._pysui_config.active_group.active_profile.url):
             self._channel: Channel = Channel(host=url[0], port=url[1], ssl=True)
         else:
-            raise ValueError(f"{grpc_node_url} is not valid URL")
+            raise ValueError(
+                f"{pysui_config.active_group.active_profile.url} in {self._pysui_config.active_profile} is not valid URL"
+            )
         self._channels: list[Channel] = []
 
     def close(self):
@@ -72,7 +73,7 @@ class SuiGrpcClient:
         if url:
             channel = Channel(host=url[0], port=url[1], ssl=True)
             self._channels.append(channel)
-        return _SuiLedgerClient(channel)
+        return _SuiLedgerService(channel)
 
     def transaction_client(self, *, grpc_url: Optional[str] = None) -> TxClient:
         """Return a new instance of a Transaction service client.
@@ -87,7 +88,7 @@ class SuiGrpcClient:
         if url:
             channel = Channel(host=url[0], port=url[1], ssl=True)
             self._channels.append(channel)
-        return _SuiTransactionClient(channel)
+        return _SuiTransactionService(channel)
 
     # def alpha_data_client(
     #     self, *, grpc_url: Optional[str] = None
@@ -157,7 +158,7 @@ class GrpcServiceClient(abc.ABC):
             return SuiRpcResult(False, e.args)
 
 
-class _SuiLedgerClient(GrpcServiceClient):
+class _SuiLedgerService(GrpcServiceClient):
     """gRPC LedgerService client."""
 
     def __init__(self, channel: Channel):
@@ -265,7 +266,7 @@ class _SuiLedgerClient(GrpcServiceClient):
         )
 
 
-class _SuiTransactionClient(GrpcServiceClient):
+class _SuiTransactionService(GrpcServiceClient):
     """Service client for Transaction processing."""
 
     def __init__(self, channel: Channel):

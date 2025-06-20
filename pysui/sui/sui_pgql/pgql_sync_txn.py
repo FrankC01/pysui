@@ -9,7 +9,7 @@ import base64
 from typing import Any, Callable, Optional, Union
 from functools import cache
 from deprecated.sphinx import versionchanged, versionadded, deprecated
-from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
+from pysui.sui.sui_common.trxn_base import _SuiTransactionBase as txbase
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
