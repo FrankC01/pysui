@@ -57,12 +57,7 @@ class PGRPC_Request(abc.ABC):
         else:
             return None
 
-    @staticmethod
-    def _result_fields(message_class) -> list[str]:
-        """Return the fields defined in the result so as to support FieldMasks."""
-        return list(message_class.__dataclass_fields__.keys())
-
-    @abc.abstractmethod
+    @classmethod
     def result_fields(cls) -> list[str]:
         """Return the fields defined in the result so as to support FieldMasks."""
-        pass
+        return list(cls.RESULT_TYPE.__dataclass_fields__.keys())

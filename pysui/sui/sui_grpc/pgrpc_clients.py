@@ -10,6 +10,7 @@ from collections.abc import Callable
 import urllib.parse as urlparse
 import traceback
 import betterproto2
+from grpclib.exceptions import GRPCError
 
 from pysui.sui.sui_common.client import PysuiClient
 
@@ -18,7 +19,7 @@ import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 # Need conditional around these
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
 
-if absreq.CURRENT_VERSION[1] == 87:
+if absreq.CURRENT_VERSION[1] >= 87:
     import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
     import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 else:
@@ -103,7 +104,7 @@ class SuiGrpcClient(PysuiClient):
             result = await srv_fn(srv_req, **kwargs)
             logger.info("Success")
             return SuiRpcResult(True, None, result)
-        except Exception as e:
+        except (GRPCError, ValueError) as e:
             traceback_str = traceback.format_exc()
             logger.error(traceback_str)
             return SuiRpcResult(False, e.args)

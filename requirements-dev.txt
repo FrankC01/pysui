@@ -1,4 +1,4 @@
-betterproto2-compiler < 1.0.0, >= 0.5.1
+betterproto2-compiler < 1.0.0, >= 0.6.0
 pylint==3.3.2
 doc8==1.1.2
 pydocstyle==6.3.0
