@@ -11,6 +11,9 @@ from typing import Callable, Optional
 
 import betterproto2
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
+import pysui.version
+
+CURRENT_VERSION = [int(x) for x in pysui.version.__version__.split(".")]
 
 
 class Service(IntEnum):

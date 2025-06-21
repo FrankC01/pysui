@@ -13,14 +13,20 @@ import betterproto2
 
 from pysui.sui.sui_common.client import PysuiClient
 
+import pysui.sui.sui_grpc.pgrpc_absreq as absreq
+
 # Need conditional around these
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
+
+if absreq.CURRENT_VERSION[1] == 87:
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
+else:
+    raise ValueError("HARD STOP")
+
 from grpclib.client import Channel
 
 from pysui import SuiRpcResult, PysuiConfiguration
-import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 
 
 import logging

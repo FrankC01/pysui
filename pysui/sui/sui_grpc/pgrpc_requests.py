@@ -10,9 +10,13 @@ from typing import Callable, Optional
 
 import betterproto2
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
+
+if absreq.CURRENT_VERSION[1] == 87:
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
+else:
+    raise ValueError("HARD STOP")
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
