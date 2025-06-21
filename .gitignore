@@ -67,3 +67,4 @@ doc/source/pysui.sui.rst
 # Misc cruft
 *.txt
 !reqrtd.txt
+PysuiConfig.json

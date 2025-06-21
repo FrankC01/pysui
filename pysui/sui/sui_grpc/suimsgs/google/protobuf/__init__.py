@@ -4,11 +4,11 @@
 # This file has been @generated
 
 __all__ = (
-    "NullValue",
     "Duration",
     "Empty",
     "FieldMask",
     "ListValue",
+    "NullValue",
     "Struct",
     "Timestamp",
     "Value",
@@ -24,7 +24,7 @@ import dateutil.parser
 
 from ...message_pool import default_message_pool
 
-betterproto2.check_compiler_version("0.5.1")
+betterproto2.check_compiler_version("0.6.0")
 
 
 class NullValue(betterproto2.Enum):

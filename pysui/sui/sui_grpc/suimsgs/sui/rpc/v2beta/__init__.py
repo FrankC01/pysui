@@ -4,23 +4,9 @@
 # This file has been @generated
 
 __all__ = (
-    "ArgumentArgumentKind",
-    "ChangedObjectIdOperation",
-    "ChangedObjectInputObjectState",
-    "ChangedObjectOutputObjectState",
-    "CheckpointCommitmentCheckpointCommitmentKind",
-    "CommandArgumentErrorCommandArgumentErrorKind",
-    "ExecutionErrorExecutionErrorKind",
-    "ExecutionTimeObservationExecutionTimeObservationKind",
-    "InputInputKind",
-    "OwnerOwnerKind",
-    "PackageUpgradeErrorPackageUpgradeErrorKind",
-    "SignatureScheme",
-    "TransactionExpirationTransactionExpirationKind",
-    "TypeArgumentErrorTypeArgumentErrorKind",
-    "UnchangedSharedObjectUnchangedSharedObjectKind",
     "ActiveJwk",
     "Argument",
+    "ArgumentArgumentKind",
     "AuthenticatorStateExpire",
     "AuthenticatorStateUpdate",
     "BalanceChange",
@@ -30,17 +16,22 @@ __all__ = (
     "BatchGetTransactionsResponse",
     "Bcs",
     "CanceledTransaction",
-    "ChangedObject",
     "ChangeEpoch",
+    "ChangedObject",
+    "ChangedObjectIdOperation",
+    "ChangedObjectInputObjectState",
+    "ChangedObjectOutputObjectState",
     "Checkpoint",
     "CheckpointCommitment",
+    "CheckpointCommitmentCheckpointCommitmentKind",
     "CheckpointContents",
-    "CheckpointedTransactionInfo",
     "CheckpointSummary",
+    "CheckpointedTransactionInfo",
     "CircomG1",
     "CircomG2",
     "Command",
     "CommandArgumentError",
+    "CommandArgumentErrorCommandArgumentErrorKind",
     "ConsensusCommitPrologue",
     "ConsensusDeterminedVersionAssignments",
     "EndOfEpochData",
@@ -48,12 +39,14 @@ __all__ = (
     "EndOfEpochTransactionKind",
     "Epoch",
     "Event",
-    "ExecutedTransaction",
     "ExecuteTransactionRequest",
     "ExecuteTransactionResponse",
+    "ExecutedTransaction",
     "ExecutionError",
+    "ExecutionErrorExecutionErrorKind",
     "ExecutionStatus",
     "ExecutionTimeObservation",
+    "ExecutionTimeObservationExecutionTimeObservationKind",
     "ExecutionTimeObservations",
     "GasCostSummary",
     "GasPayment",
@@ -65,8 +58,10 @@ __all__ = (
     "GetServiceInfoResponse",
     "GetTransactionRequest",
     "Input",
+    "InputInputKind",
     "Jwk",
     "JwkId",
+    "LedgerServiceStub",
     "MakeMoveVector",
     "MergeCoins",
     "MoveCall",
@@ -81,12 +76,15 @@ __all__ = (
     "Object",
     "ObjectReference",
     "Owner",
+    "OwnerOwnerKind",
     "PackageUpgradeError",
+    "PackageUpgradeErrorPackageUpgradeErrorKind",
     "PasskeyAuthenticator",
     "ProgrammableTransaction",
     "ProtocolConfig",
     "Publish",
     "RandomnessStateUpdate",
+    "SignatureScheme",
     "SizeError",
     "SplitCoins",
     "StakeSubsidy",
@@ -98,13 +96,17 @@ __all__ = (
     "Transaction",
     "TransactionEffects",
     "TransactionEvents",
+    "TransactionExecutionServiceStub",
     "TransactionExpiration",
+    "TransactionExpirationTransactionExpirationKind",
     "TransactionFinality",
     "TransactionKind",
     "TransferObjects",
     "TypeArgumentError",
+    "TypeArgumentErrorTypeArgumentErrorKind",
     "TypeOrigin",
     "UnchangedSharedObject",
+    "UnchangedSharedObjectUnchangedSharedObjectKind",
     "Upgrade",
     "UpgradeInfo",
     "UserSignature",
@@ -121,10 +123,6 @@ __all__ = (
     "ZkLoginInputs",
     "ZkLoginProof",
     "ZkLoginPublicIdentifier",
-    "LedgerServiceStub",
-    "LedgerServiceBase",
-    "TransactionExecutionServiceStub",
-    "TransactionExecutionServiceBase",
 )
 
 import datetime
@@ -139,7 +137,7 @@ if TYPE_CHECKING:
     from betterproto2.grpc.grpclib_client import MetadataLike
     from grpclib.metadata import Deadline
 
-betterproto2.check_compiler_version("0.5.1")
+betterproto2.check_compiler_version("0.6.0")
 
 
 class ArgumentArgumentKind(betterproto2.Enum):
@@ -673,6 +671,13 @@ class UnchangedSharedObjectUnchangedSharedObjectKind(betterproto2.Enum):
     PER_EPOCH_CONFIG = 5
     """
     Read of a per-epoch config object that should remain the same during an epoch.
+    This has been deprecated in favor of `PER_EPOCH_CONFIG_WITH_SEQUENCE_NUMBER`.
+    """
+
+    PER_EPOCH_CONFIG_WITH_SEQUENCE_NUMBER = 6
+    """
+    Read of a per-epoch config object that should remain the same during an epoch.
+    This contains the sequence number config at the start of the epoch.
     """
 
 

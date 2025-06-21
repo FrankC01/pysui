@@ -13,8 +13,10 @@ import urllib.parse as urlparse
 import traceback
 import betterproto2
 
+from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 from grpclib.client import Channel
 
 from pysui import SuiRpcResult, PysuiConfiguration
@@ -23,14 +25,12 @@ import logging
 
 logger = logging.getLogger()
 
-# import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
-
 LedgerClient: TypeAlias = "_SuiLedgerService"
 TxClient: TypeAlias = "_SuiTransactionService"
-# AlphaDataClient: TypeAlias = "_SuiAlphaDataClient"
+LiveDataClient: TypeAlias = "_SuiLiveDataService"
 
 
-class SuiGrpcClient:
+class SuiGrpcClient(PysuiClient):
     """Asynchronous gRPC client."""
 
     def __init__(
@@ -52,7 +52,15 @@ class SuiGrpcClient:
             raise ValueError(
                 f"{pysui_config.active_group.active_profile.url} in {self._pysui_config.active_profile} is not valid URL"
             )
+        self._ledger = self.ledger_client()
         self._channels: list[Channel] = []
+
+    @property
+    async def current_gas_price(self) -> int:
+        """Fetch the current epoch gas price."""
+        # _fields = ["reference_gas_price"]
+        result = await self._ledger.get_epoch(epoch_id=None)
+        return result.result_data.reference_gas_price
 
     def close(self):
         """Close the base gRPC channel"""
@@ -90,16 +98,14 @@ class SuiGrpcClient:
             self._channels.append(channel)
         return _SuiTransactionService(channel)
 
-    # def alpha_data_client(
-    #     self, *, grpc_url: Optional[str] = None
-    # ) -> "_SuiAlphaDataClient":
-    #     """."""
-    #     url = _clean_url(grpc_url)
-    #     channel = self._channel
-    #     if url:
-    #         channel = Channel(host=url[0], port=url[1], ssl=True)
-    #         self._channels.append(channel)
-    #     return _SuiAlphaDataClient(channel)
+    def live_data_client(self, *, grpc_url: Optional[str] = None) -> LiveDataClient:
+        """."""
+        url = _clean_url(grpc_url)
+        channel = self._channel
+        if url:
+            channel = Channel(host=url[0], port=url[1], ssl=True)
+            self._channels.append(channel)
+        return _SuiLiveDataService(channel)
 
 
 def _clean_url(url: str) -> tuple[str | None, int | None] | None:
@@ -311,25 +317,25 @@ class _SuiTransactionService(GrpcServiceClient):
         )
 
 
-# class _SuiAlphaDataClient(GrpcServiceClient):
-#     """."""
+class _SuiLiveDataService(GrpcServiceClient):
+    """."""
 
-#     def __init__(self, channel: Channel):
-#         """."""
-#         self._service = v2alpha.LiveDataServiceStub(channel)
-#         super().__init__()
+    def __init__(self, channel: Channel):
+        """."""
+        self._service = v2alpha.LiveDataServiceStub(channel)
+        super().__init__()
 
-#     async def get_owned_objects(
-#         self,
-#         *,
-#         owner: str,
-#         # read_mask: Optional[list[str]] = None,
-#         **kwargs,
-#     ) -> SuiRpcResult:
-#         """."""
-#         # field_mask = FieldMask(read_mask) if read_mask else None
-#         return await self._execute(
-#             self._service.list_owned_objects,
-#             v2alpha.ListOwnedObjectsRequest(owner),
-#             **kwargs,
-#         )
+    async def get_owned_objects(
+        self,
+        *,
+        owner: str,
+        # read_mask: Optional[list[str]] = None,
+        **kwargs,
+    ) -> SuiRpcResult:
+        """."""
+        # field_mask = FieldMask(read_mask) if read_mask else None
+        return await self._execute(
+            self._service.list_owned_objects,
+            v2alpha.ListOwnedObjectsRequest(owner),
+            **kwargs,
+        )
