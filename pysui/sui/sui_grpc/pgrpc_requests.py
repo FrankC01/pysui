@@ -354,10 +354,8 @@ class ExecuteTransactions(absreq.PGRPC_Request):
             if isinstance(sig, str):
                 self.signatures.append(
                     v2base.UserSignature(
-                        # signature=base64.b64decode(transaction),
-                        # scheme=v2base.SignatureScheme.ED25519,
                         bcs=v2base.Bcs(
-                            value=base64.b64decode(transaction), name="UserSignature"
+                            value=base64.b64decode(sig), name="UserSignature"
                         )
                     )
                 )
@@ -367,11 +365,6 @@ class ExecuteTransactions(absreq.PGRPC_Request):
                         bcs=v2base.Bcs(value=sig, name="UserSignature")
                     )
                 )
-                # self.signatures.append(
-                #     v2base.UserSignature(
-                #         signature=sig, scheme=v2base.SignatureScheme.ED25519
-                #     )
-                # )
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
