@@ -163,6 +163,119 @@ class GetObjects(absreq.PGRPC_Request):
         )
 
 
+class GetOwnedObjects(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.ListOwnedObjectsResponse
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        object_type: Optional[str] = None,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.LIVEDATA)
+        self.owner = owner
+        self.object_type = object_type
+        self.page_size = page_size
+        self.page_token = page_token
+
+    def to_request(
+        self, *, stub: v2alpha.LiveDataServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.list_owned_objects, v2alpha.ListOwnedObjectsRequest(
+            owner=self.owner,
+            object_type=self.object_type,
+            page_size=self.page_size,
+            page_token=self.page_token,
+        )
+
+
+class GetCoinInfo(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.GetCoinInfoResponse
+
+    def __init__(
+        self,
+        *,
+        coin_type: Optional[str] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.LIVEDATA)
+        self.coin_type = coin_type
+
+    def to_request(
+        self, *, stub: v2alpha.LiveDataServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.get_coin_info, v2alpha.GetCoinInfoRequest(
+            coin_type=self.coin_type,
+        )
+
+
+class GetBalance(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.GetBalanceResponse
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        coin_type: str,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.LIVEDATA)
+        self.owner = owner
+        self.coin_type = coin_type
+
+    def to_request(
+        self, *, stub: v2alpha.LiveDataServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.get_balance, v2alpha.GetBalanceRequest(
+            owner=self.owner, coin_type=self.coin_type
+        )
+
+
+class GetBalances(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.ListBalancesResponse
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.LIVEDATA)
+        self.owner = owner
+        self.page_size = page_size
+        self.page_token = page_token
+
+    def to_request(
+        self, *, stub: v2alpha.LiveDataServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.list_balances, v2alpha.ListBalancesRequest(
+            owner=self.owner,
+            page_size=self.page_size,
+            page_token=self.page_token,
+        )
+
+
 class GetTransaction(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = v2base.ExecutedTransaction
@@ -231,7 +344,7 @@ class ExecuteTransactions(absreq.PGRPC_Request):
 
         self.transaction = v2base.Transaction(
             bcs=(
-                v2base.Bcs(value=transaction, name="bar")
+                v2base.Bcs(value=transaction, name="Transaction")
                 if isinstance(transaction, bytes)
                 else v2base.Bcs(value=base64.b64decode(transaction))
             )
@@ -243,12 +356,16 @@ class ExecuteTransactions(absreq.PGRPC_Request):
                     v2base.UserSignature(
                         # signature=base64.b64decode(transaction),
                         # scheme=v2base.SignatureScheme.ED25519,
-                        bcs=v2base.Bcs(value=base64.b64decode(transaction), name="foo")
+                        bcs=v2base.Bcs(
+                            value=base64.b64decode(transaction), name="UserSignature"
+                        )
                     )
                 )
             else:
                 self.signatures.append(
-                    v2base.UserSignature(bcs=v2base.Bcs(value=sig, name="foo"))
+                    v2base.UserSignature(
+                        bcs=v2base.Bcs(value=sig, name="UserSignature")
+                    )
                 )
                 # self.signatures.append(
                 #     v2base.UserSignature(
@@ -266,6 +383,48 @@ class ExecuteTransactions(absreq.PGRPC_Request):
         return stub.execute_transaction, v2base.ExecuteTransactionRequest(
             transaction=self.transaction,
             signatures=self.signatures,
+            read_mask=self.field_mask,
+        )
+
+
+class SimulateTransaction(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.SimulateTransactionResponse
+
+    def __init__(
+        self,
+        *,
+        transaction: str | bytes,
+        checks_enabled: Optional[bool] = True,
+        gas_selection: Optional[bool] = True,
+        field_mask: Optional[list[str]] = None,
+    ):
+        """."""
+        super().__init__(absreq.Service.LIVEDATA)
+        self.transaction = v2base.Transaction(
+            bcs=(
+                v2base.Bcs(value=transaction, name="Transaction")
+                if isinstance(transaction, bytes)
+                else v2base.Bcs(value=base64.b64decode(transaction))
+            )
+        )
+        self.checks_enables = (
+            v2alpha.SimulateTransactionRequestVmChecks.ENABLED
+            if checks_enabled
+            else v2alpha.SimulateTransactionRequestVmChecks.DISABLED
+        )
+        self.gas_selection = gas_selection
+        self.field_mask = self._field_mask(field_mask)
+
+    def to_request(
+        self, *, stub: v2alpha.LiveDataServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        return stub.simulate_transaction, v2alpha.SimulateTransactionRequest(
+            transaction=self.transaction,
+            checks=self.checks_enables,
+            do_gas_selection=self.gas_selection,
             read_mask=self.field_mask,
         )
 
