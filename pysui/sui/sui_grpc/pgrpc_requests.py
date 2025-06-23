@@ -5,7 +5,7 @@
 
 """pysui gRPC Requests"""
 
-
+import base64
 from typing import Callable, Optional
 
 import betterproto2
@@ -17,6 +17,8 @@ if absreq.CURRENT_VERSION[1] >= 87:
     import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 else:
     raise ValueError("HARD STOP")
+
+# Ledger Service Commands
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
@@ -92,6 +94,16 @@ class GetEpoch(absreq.PGRPC_Request):
         )
 
 
+OBJECT_DEFAULT_FIELDS: list[str] = [
+    "bcs",
+    "owner",
+    "object_type",
+    "digest",
+    "json",
+    "previous_transaction",
+]
+
+
 class GetObject(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = v2base.Object
@@ -107,7 +119,9 @@ class GetObject(absreq.PGRPC_Request):
         super().__init__(absreq.Service.LEDGER)
         self.object_id = object_id
         self.version = version
-        self.field_mask = self._field_mask(field_mask)
+        self.field_mask = self._field_mask(
+            field_mask if field_mask else OBJECT_DEFAULT_FIELDS
+        )
 
     def to_request(
         self, *, stub: v2base.LedgerServiceStub
@@ -133,7 +147,9 @@ class GetObjects(absreq.PGRPC_Request):
         """Initializer."""
         super().__init__(absreq.Service.LEDGER)
         self.objects = objects
-        self.field_mask = self._field_mask(field_mask)
+        self.field_mask = self._field_mask(
+            field_mask if field_mask else OBJECT_DEFAULT_FIELDS
+        )
 
     def to_request(
         self, *, stub: v2base.LedgerServiceStub
@@ -196,4 +212,176 @@ class GetTransactions(absreq.PGRPC_Request):
         """."""
         return stub.batch_get_transactions, v2base.BatchGetTransactionsRequest(
             digests=self.transactions, read_mask=self.field_mask
+        )
+
+
+class ExecuteTransactions(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2base.ExecuteTransactionResponse
+
+    def __init__(
+        self,
+        *,
+        transaction: str | bytes,
+        signatures: list[str | bytes],
+        field_mask: Optional[list[str]] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.TRANSACTION)
+
+        self.transaction = v2base.Transaction(
+            bcs=(
+                v2base.Bcs(value=transaction, name="bar")
+                if isinstance(transaction, bytes)
+                else v2base.Bcs(value=base64.b64decode(transaction))
+            )
+        )
+        self.signatures: list[v2base.UserSignature] = []
+        for sig in signatures:
+            if isinstance(sig, str):
+                self.signatures.append(
+                    v2base.UserSignature(
+                        # signature=base64.b64decode(transaction),
+                        # scheme=v2base.SignatureScheme.ED25519,
+                        bcs=v2base.Bcs(value=base64.b64decode(transaction), name="foo")
+                    )
+                )
+            else:
+                self.signatures.append(
+                    v2base.UserSignature(bcs=v2base.Bcs(value=sig, name="foo"))
+                )
+                # self.signatures.append(
+                #     v2base.UserSignature(
+                #         signature=sig, scheme=v2base.SignatureScheme.ED25519
+                #     )
+                # )
+        self.field_mask = self._field_mask(field_mask)
+
+    def to_request(
+        self, *, stub: v2base.TransactionExecutionServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.execute_transaction, v2base.ExecuteTransactionRequest(
+            transaction=self.transaction,
+            signatures=self.signatures,
+            read_mask=self.field_mask,
+        )
+
+
+class GetPackage(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.GetPackageResponse
+
+    def __init__(
+        self,
+        *,
+        package_id: str,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.MOVEPACKAGE)
+        self.package_id = package_id
+
+    def to_request(
+        self, *, stub: v2alpha.MovePackageServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.get_package, v2alpha.GetPackageRequest(package_id=self.package_id)
+
+
+class GetModule(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.GetModuleResponse
+
+    def __init__(self, *, package_id: str, module_name: str) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.MOVEPACKAGE)
+        self.package_id = package_id
+        self.module_name = module_name
+
+    def to_request(
+        self, *, stub: v2alpha.MovePackageServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.get_module, v2alpha.GetModuleRequest(
+            package_id=self.package_id, module_name=self.module_name
+        )
+
+
+class GetDataType(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.GetDatatypeResponse
+
+    def __init__(self, *, package_id: str, module_name: str, type_name: str) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.MOVEPACKAGE)
+        self.package_id = package_id
+        self.module_name = module_name
+        self.type_name = type_name
+
+    def to_request(
+        self, *, stub: v2alpha.MovePackageServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.get_datatype, v2alpha.GetDatatypeRequest(
+            package_id=self.package_id,
+            module_name=self.module_name,
+            name=self.type_name,
+        )
+
+
+class GetFunction(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.GetFunctionResponse
+
+    def __init__(
+        self, *, package_id: str, module_name: str, function_name: str
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.MOVEPACKAGE)
+        self.package_id = package_id
+        self.module_name = module_name
+        self.function_name = function_name
+
+    def to_request(
+        self, *, stub: v2alpha.MovePackageServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.get_function, v2alpha.GetFunctionRequest(
+            package_id=self.package_id,
+            module_name=self.module_name,
+            name=self.function_name,
+        )
+
+
+class SubscribeCheckpoint(absreq.PGRPC_Request):
+
+    RESULT_TYPE: betterproto2.Message = v2alpha.SubscribeCheckpointsResponse
+
+    def __init__(
+        self,
+        *,
+        field_mask: Optional[list[str]] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.SUBSCRIPTION)
+        self.field_mask = self._field_mask(field_mask)
+
+    def to_request(
+        self, *, stub: v2alpha.SubscriptionServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.subscribe_checkpoints, v2alpha.SubscribeCheckpointsRequest(
+            read_mask=self.field_mask
         )

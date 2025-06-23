@@ -83,19 +83,40 @@ class SuiGrpcClient(PysuiClient):
         srv_req: betterproto2.Message
         match request.service:
             case absreq.Service.LIVEDATA:
-                pass
+                srv_fn, srv_req = request.to_request(
+                    stub=v2alpha.LiveDataServiceStub(self._channel)
+                )
             case absreq.Service.LEDGER:
                 srv_fn, srv_req = request.to_request(
                     stub=v2base.LedgerServiceStub(self._channel)
                 )
             case absreq.Service.TRANSACTION:
-                pass
+                srv_fn, srv_req = request.to_request(
+                    stub=v2base.TransactionExecutionServiceStub(self._channel)
+                )
             case absreq.Service.MOVEPACKAGE:
-                pass
+                srv_fn, srv_req = request.to_request(
+                    stub=v2alpha.MovePackageServiceStub(self._channel)
+                )
+            # Subscriptions are called synchronously on first fetch
             case absreq.Service.SUBSCRIPTION:
-                pass
+                srv_fn, srv_req = request.to_request(
+                    stub=v2alpha.SubscriptionServiceStub(self._channel)
+                )
+                try:
+                    logger.info(f"Request {request}")
+                    result = srv_fn(srv_req, **kwargs)
+                    logger.info("Success")
+                    return SuiRpcResult(True, None, result)
+                except (GRPCError, ValueError) as e:
+                    traceback_str = traceback.format_exc()
+                    logger.error(traceback_str)
+                    return SuiRpcResult(False, e.args)
+
             case absreq.Service.SIGNATURE:
-                pass
+                srv_fn, srv_req = request.to_request(
+                    stub=v2alpha.SignatureVerificationServiceStub(self._channel)
+                )
             case _:
                 raise NotImplementedError(f"{request.service} not implemented.")
 

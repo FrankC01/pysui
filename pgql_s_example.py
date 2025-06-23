@@ -564,9 +564,10 @@ def do_execute_new(client: SyncGqlClient):
     This uses the new SuiTransaction (GraphQL RPC based)
     """
     txer: SuiTransaction = SuiTransaction(client=client)
-    scres = txer.split_coin(coin=txer.gas, amounts=[1000000, 1000000])
+    scres = txer.split_coin(coin=txer.gas, amounts=[1000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     txdict = txer.build_and_sign()
+    print(txdict)
     handle_result(client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict)))
 
 
