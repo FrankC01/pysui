@@ -36,7 +36,7 @@ class GetServiceInfo(absreq.PGRPC_Request):
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
-        """."""
+        """Prepare the request for submission."""
         return stub.get_service_info, v2base.GetServiceInfoRequest()
 
 
@@ -105,6 +105,7 @@ OBJECT_DEFAULT_FIELDS: list[str] = [
 
 
 class GetObject(absreq.PGRPC_Request):
+    """Get object request."""
 
     RESULT_TYPE: betterproto2.Message = v2base.Object
 
@@ -128,7 +129,7 @@ class GetObject(absreq.PGRPC_Request):
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
-        """."""
+        """Prepare the request for submission."""
         return stub.get_object, v2base.GetObjectRequest(
             object_id=self.object_id, version=self.version, read_mask=self.field_mask
         )
@@ -193,6 +194,32 @@ class GetOwnedObjects(absreq.PGRPC_Request):
             object_type=self.object_type,
             page_size=self.page_size,
             page_token=self.page_token,
+        )
+
+
+class GetGas(GetOwnedObjects):
+    """Get gas objects owned by address using GetOwnedObjects."""
+
+    def __init__(self, *, owner, page_size=None, page_token=None):
+        """Initializer."""
+        super().__init__(
+            owner=owner,
+            object_type="0x2::coin::Coin<0x2::sui::SUI>",
+            page_size=page_size,
+            page_token=page_token,
+        )
+
+
+class GetStaked(GetOwnedObjects):
+    """Get staked coin objects owned by address using GetOwnedObjects."""
+
+    def __init__(self, *, owner, page_size=None, page_token=None):
+        """Initializer."""
+        super().__init__(
+            owner=owner,
+            object_type="0x3::staking_pool::StakedSui",
+            page_size=page_size,
+            page_token=page_token,
         )
 
 

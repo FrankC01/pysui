@@ -34,6 +34,26 @@ import logging
 
 logger = logging.getLogger()
 
+from pysui.sui.sui_pgql.pgql_types import TransactionConstraints
+
+_TXCONSTRAINTS = list(TransactionConstraints.__dataclass_fields__.keys())
+
+
+def _map_pconstraints(in_bound: v2base.ProtocolConfig):
+    """Extract protocol constraints in parity with GraphQL model."""
+    ordered_list: list = []
+    for item in _TXCONSTRAINTS:
+        if res := getattr(in_bound, item, None):
+            ordered_list.append(int(res))
+        elif res := in_bound.feature_flags.get(item, None):
+            ordered_list.append(int(res))
+        elif res := in_bound.attributes.get(item, None):
+            ordered_list.append(int(res))
+        else:
+            raise ValueError(f"{item} not found in gRPC protocol configuration.")
+
+    return TransactionConstraints(*ordered_list)
+
 
 class SuiGrpcClient(PysuiClient):
     """Asynchronous gRPC client."""
@@ -64,6 +84,14 @@ class SuiGrpcClient(PysuiClient):
         """Fetch the current epoch gas price."""
         result = await self.execute(request=GetEpoch())
         return result.result_data.reference_gas_price
+
+    @property
+    async def protocol(self):
+        """Fetch the protocol constraints."""
+        result = await self.execute(request=GetEpoch(field_mask=["protocol_config"]))
+        if result.is_ok():
+            return _map_pconstraints(result.result_data.protocol_config)
+        raise ValueError(f"protocol fetch returned {result.result_string}")
 
     def close(self):
         """Close the base gRPC channel"""
