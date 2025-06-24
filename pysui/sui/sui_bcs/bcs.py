@@ -24,6 +24,7 @@ from pysui.sui.sui_utils import (
     from_list_to_b58str,
 )
 import pysui.sui.sui_pgql.pgql_types as pgql_type
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
 
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
@@ -173,7 +174,7 @@ class ObjectReference(canoser.Struct):
         :param indata: The reference information for an Object from ObjectRead
         :type indata: GenericRef
         :return: The instantiated BCS object
-        :rtype: SharedObjectReference
+        :rtype: ObjectReference
         """
         if isinstance(indata, GenericRef):
             return cls(
@@ -191,7 +192,7 @@ class ObjectReference(canoser.Struct):
         :param indata: The reference information for an Object from ObjectRead
         :type indata: GenericRef
         :return: The instantiated BCS object
-        :rtype: SharedObjectReference
+        :rtype: ObjectReference
         """
         if isinstance(
             indata,
@@ -206,6 +207,24 @@ class ObjectReference(canoser.Struct):
                 Address.from_str(indata.object_id),
                 indata.version,
                 Digest.from_str(indata.object_digest),
+            )
+        raise ValueError(f"{indata} is not valid")
+
+    @classmethod
+    @versionadded(version="0.87.0", reason="Support grpc argument inferencing")
+    def from_grpc_ref(cls, indata: v2base.Object) -> "ObjectReference":
+        """from_grpc_ref init construct with gRPC Object
+
+        :param indata: Object definition
+        :type indata: v2base.Object
+        :return: The instantiated BCS object
+        :rtype: ObjectReference
+        """
+        if isinstance(indata, v2base.Object):
+            return cls(
+                Address.from_str(indata.object_id),
+                indata.version,
+                Digest.from_str(indata.digest),
             )
         raise ValueError(f"{indata} is not valid")
 
@@ -263,6 +282,25 @@ class SharedObjectReference(canoser.Struct):
         return cls(
             Address.from_str(indata.object_id),
             indata.object_owner.initial_version,
+            mutable,
+        )
+
+    @classmethod
+    @versionadded(version="0.87.0", reason="Support argument inferencing")
+    def from_grpc_ref(
+        cls, indata: v2base.Object, is_mutable: bool = False
+    ) -> "SharedObjectReference":
+        """from_grpc_ref init construct with gRPC Object.
+
+        :param indata: The reference information for an Object
+        :type indata: v2base.Object
+        :return: The instantiated BCS object
+        :rtype: SharedObjectReference
+        """
+        mutable = is_mutable if indata.object_id not in cls._IMMUTABLES else False
+        return cls(
+            Address.from_str(indata.object_id),
+            indata.owner.version,
             mutable,
         )
 

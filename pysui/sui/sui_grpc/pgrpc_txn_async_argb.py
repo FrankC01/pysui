@@ -6,14 +6,14 @@
 
 import itertools
 import inspect
-from inspect import signature
 from typing import Any, Optional, Union
-from functools import partial, partialmethod
+from functools import partial
 from dataclasses import dataclass, field
 import canoser.int_type as cint
 from pysui.sui.sui_common.txb_pure import PureInput
-import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 import pysui.sui.sui_types as suit
 from pysui.sui.sui_bcs import bcs
@@ -89,53 +89,47 @@ class AsyncResolvingArgParser:
 
     async def fetch_or_transpose_object(
         self,
-        arg: Union[str, pgql_type.ObjectReadGQL],
+        arg: Union[str, v2base.Object],
         is_receiving: bool,
         is_mutable: bool,
         expected_type: Optional[Any] = None,
     ) -> bcs.ObjectArg:
         """Fetches and prepares an object reference to ObjectArg for BCS."""
-        object_def: pgql_type.ObjectReadGQL = arg
+        object_def: v2base.Object = arg
         if isinstance(arg, str):
-            result = await self._client.execute_query_node(
-                with_node=qn.GetObject(object_id=arg)
-            )
+            result = await self._client.execute(request=rn.GetObject(object_id=arg))
             if result.is_ok():
                 object_def = result.result_data
-                if isinstance(
-                    object_def, (pgql_type.NoopGQL, pgql_type.ObjectReadDeletedGQL)
-                ):
+                if not object_def or not object_def.previous_transaction:
                     raise ValueError(f"{arg} object not found")
 
-        if object_def.object_owner.obj_owner_kind in [
-            "AddressOwner",
-            "Immutable",
-            "Parent",
+        if object_def.owner.kind in [
+            "ADDRESS",
+            "IMMUTABLE",
+            "OBJECT",
         ]:
             if is_receiving:
                 b_obj_arg = bcs.ObjectArg(
                     "Receiving",
-                    bcs.ObjectReference.from_gql_ref(object_def),
+                    bcs.ObjectReference.from_grpc_ref(object_def),
                 )
             else:
                 b_obj_arg = bcs.ObjectArg(
                     "ImmOrOwnedObject",
-                    bcs.ObjectReference.from_gql_ref(object_def),
+                    bcs.ObjectReference.from_grpc_ref(object_def),
                 )
             return b_obj_arg
 
-        if object_def.object_owner.obj_owner_kind == "Shared":
+        if object_def.owner.kind == "SHARED":
             b_obj_arg = bcs.ObjectArg(
                 "SharedObject",
-                bcs.SharedObjectReference.from_gql_ref(
+                bcs.SharedObjectReference.from_grpc_ref(
                     object_def,
                     is_mutable,
                 ),
             )
             return b_obj_arg
-        raise ValueError(
-            f"Unknown owner kind {object_def.object_owner.obj_owner_kind }"
-        )
+        raise ValueError(f"Unknown object owner kind {object_def.owner.kind}")
 
     def _pure_generate(
         self,

@@ -97,6 +97,8 @@ class GetEpoch(absreq.PGRPC_Request):
 OBJECT_DEFAULT_FIELDS: list[str] = [
     "bcs",
     "owner",
+    "version",
+    "object_id",
     "object_type",
     "digest",
     "json",
@@ -230,7 +232,7 @@ class GetCoinInfo(absreq.PGRPC_Request):
     def __init__(
         self,
         *,
-        coin_type: Optional[str] = None,
+        coin_type: Optional[str] = "0x2::sui::SUI",
     ) -> None:
         """Initializer."""
         super().__init__(absreq.Service.LIVEDATA)
