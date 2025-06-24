@@ -85,11 +85,15 @@ class SuiGrpcClient(PysuiClient):
         result = await self.execute(request=GetEpoch())
         return result.result_data.reference_gas_price
 
-    @property
-    async def protocol(self):
+    async def protocol(self, for_version: Optional[str] = None):
         """Fetch the protocol constraints."""
-        result = await self.execute(request=GetEpoch(field_mask=["protocol_config"]))
-        if result.is_ok():
+        result = await self.execute(
+            request=GetEpoch(
+                epoch_number=int(for_version) if for_version else None,
+                field_mask=["protocol_config"],
+            )
+        )
+        if result.is_ok() and result.result_data.protocol_config:
             return _map_pconstraints(result.result_data.protocol_config)
         raise ValueError(f"protocol fetch returned {result.result_string}")
 

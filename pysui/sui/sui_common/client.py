@@ -8,6 +8,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 from pysui import PysuiConfiguration
+import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 
 class PysuiClient(ABC):
@@ -33,3 +34,9 @@ class PysuiClient(ABC):
     def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
         pass
+
+    @abstractmethod
+    def protocol(
+        self, for_version: Optional[str] = None
+    ) -> pgql_type.TransactionConstraints:
+        """Fetch the protocol constraint block."""
