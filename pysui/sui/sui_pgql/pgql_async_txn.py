@@ -33,7 +33,7 @@ class AsyncSuiTransaction(txbase):
         self,
         **kwargs,
     ) -> None:
-        """__init__ Initialize the synchronous SuiTransaction.
+        """__init__ Initialize the asynchronous SuiTransaction.
 
         :param client: The asynchronous SuiGQLClient
         :type client: AsyncSuiGQLClient
