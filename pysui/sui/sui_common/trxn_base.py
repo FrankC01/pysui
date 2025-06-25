@@ -23,7 +23,7 @@ from pysui.sui.sui_txresults.single_tx import (
 
 from .client import PysuiClient
 
-from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock, SigningMultiSig
+from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_bcs import bcs

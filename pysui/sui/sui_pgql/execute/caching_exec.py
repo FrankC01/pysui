@@ -11,7 +11,7 @@ import base64
 from typing import Any, Coroutine
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
-from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
+from pysui.sui.sui_common.txb_signing import SignerBlock
 from pysui.sui.sui_pgql.pgql_utils import (
     async_get_all_owned_gas_objects,
     async_get_objects_by_ids,

@@ -6,8 +6,9 @@
 """pysui gRPC Requests"""
 
 import base64
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
+from deprecated.sphinx import versionadded, deprecated, versionchanged
 import betterproto2
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
@@ -164,6 +165,22 @@ class GetObjects(absreq.PGRPC_Request):
         return stub.batch_get_objects, v2base.BatchGetObjectsRequest(
             requests=o_list, read_mask=self.field_mask
         )
+
+
+class GetMultipleObjects(GetObjects):
+    """
+    To maintain parity with GraphQL.
+
+    Retrieve information about multiple objects by object ids.
+    Leverages GetObjects (gRPC) for exection.
+    """
+
+    def __init__(
+        self, *, object_ids: list[str], next_page: Optional[Any] = None, field_mask=None
+    ):
+        if next_page:
+            raise NotImplementedError(f"Paging not supported for multiple objects")
+        super().__init__(objects=[(x, None) for x in object_ids], field_mask=field_mask)
 
 
 class GetOwnedObjects(absreq.PGRPC_Request):

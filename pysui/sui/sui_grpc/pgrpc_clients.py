@@ -9,14 +9,14 @@ from typing import Optional, TypeAlias
 from collections.abc import Callable
 import urllib.parse as urlparse
 import traceback
+import logging
+
 import betterproto2
 from grpclib.exceptions import GRPCError
 
 from pysui.sui.sui_common.client import PysuiClient
 
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
-
-# Need conditional around these
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
 
 if absreq.CURRENT_VERSION[1] >= 87:
@@ -28,13 +28,10 @@ else:
 from grpclib.client import Channel
 
 from pysui import SuiRpcResult, PysuiConfiguration
-
-
-import logging
-
-logger = logging.getLogger()
-
 from pysui.sui.sui_pgql.pgql_types import TransactionConstraints
+
+logger = logging.getLogger("pgrpc_client")
+
 
 _TXCONSTRAINTS = list(TransactionConstraints.__dataclass_fields__.keys())
 
@@ -83,7 +80,9 @@ class SuiGrpcClient(PysuiClient):
     async def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
         result = await self.execute(request=GetEpoch())
-        return result.result_data.reference_gas_price
+        if result.is_ok():
+            return result.result_data.reference_gas_price
+        raise ValueError(f"Error accessing gRPC {result.result_string}")
 
     async def protocol(self, for_version: Optional[str] = None):
         """Fetch the protocol constraints."""

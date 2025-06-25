@@ -10,7 +10,7 @@ import logging
 from typing import Any, Coroutine, Optional, Union
 from deprecated.sphinx import versionchanged
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
-from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
+from pysui.sui.sui_common.txb_signing import SignerBlock
 from pysui.sui.sui_common.trxn_base import _TransactionBase as txbase
 
 from pysui.sui.sui_bcs import bcs

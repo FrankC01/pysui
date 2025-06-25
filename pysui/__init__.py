@@ -42,3 +42,4 @@ from pysui.sui.sui_clients.subscribe import SuiClient as Subscribe
 from pysui.sui.sui_common.config import PysuiConfiguration
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient as SyncGqlClient
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
+from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient

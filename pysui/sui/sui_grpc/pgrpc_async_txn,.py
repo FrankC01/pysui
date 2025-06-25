@@ -5,6 +5,7 @@
 
 """Pysui Transaction builder that leverages Sui gRPC."""
 
+from typing import Optional, Union
 from pysui.sui.sui_common.trxn_base import _SuiTransactionBase as txbase
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_bcs import bcs
@@ -14,6 +15,10 @@ from pysui.sui.sui_common.async_funcs import AsyncLRU
 
 # TODO: gRPC argbase implementation
 import pysui.sui.sui_grpc.pgrpc_txn_async_argb as argbase
+
+# TODO: gRPC gas implementation
+import pysui.sui.sui_grpc.pgrpc_txb_gas as gd
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
 
 
 class AsyncSuiTransaction(txbase):
@@ -72,3 +77,41 @@ class AsyncSuiTransaction(txbase):
                 mfunc.arg_summary(),
             )
         raise ValueError(f"Unresolvable target {target}")
+
+    async def target_function_summary(
+        self, target: str
+    ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
+        """Returns the argument summary of a target sui move function."""
+        return await self._function_meta_args(target)
+
+    async def _build_txn_data(
+        self,
+        gas_budget: str = "",
+        use_gas_objects: Optional[list[Union[str, v2base.Object]]] = None,
+        txn_expires_after: Optional[int] = None,
+    ) -> Union[bcs.TransactionData, ValueError]:
+        """Generate the TransactionData structure."""
+        obj_in_use: set[str] = set(self.builder.objects_registry.keys())
+        tx_kind = self.builder.finish_for_inspect()
+        gas_data: bcs.GasData = await gd.async_get_gas_data(
+            signing=self.signer_block,
+            client=self.client,
+            budget=gas_budget if not gas_budget else int(gas_budget),
+            use_coins=use_gas_objects,
+            objects_in_use=obj_in_use,
+            active_gas_price=self.gas_price,
+            tx_kind=tx_kind,
+        )
+        return bcs.TransactionData(
+            "V1",
+            bcs.TransactionDataV1(
+                tx_kind,
+                bcs.Address.from_str(self.signer_block.sender_str),
+                gas_data,
+                bcs.TransactionExpiration(
+                    "None"
+                    if not txn_expires_after
+                    else bcs.TransactionExpiration("Epoch", txn_expires_after)
+                ),
+            ),
+        )

@@ -15,7 +15,7 @@ from typing import Any, Coroutine, Optional, Union
 ser_txn_exc_logger = logging.getLogger("serial_exec")
 
 from pysui import AsyncGqlClient
-from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock, SigningMultiSig
+from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_bcs.bcs as bcs
 import pysui.sui.sui_bcs.bcs_txne as bcst

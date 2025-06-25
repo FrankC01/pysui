@@ -21,9 +21,9 @@ Welcome to pysui's documentation!
    getting_started
    intro
    logging
+   pyconfig
    builders
    utilities
-   pyconfig
    graphql
    graphql_prog_txn
    graphql_qnodes
