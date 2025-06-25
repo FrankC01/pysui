@@ -1,7 +1,7 @@
 Introducing pysui
 =================
 
-**pysui** is the Python Sui RPC API Client SDK.
+**pysui** is the Python Sui RPC, GraphQL and gRPC API Client SDK.
 
 The role of Sui Binaries
 ------------------------
@@ -9,50 +9,120 @@ The role of Sui Binaries
 
 -
     | If publishing or publishing upgrades, these functions rely on the
-    | presence of the binaries during the publish call as it invokes: ``sui move build``
+    | presence of the binaries during the publish call as
+    | it invokes: ``sui move build``
 
-
--
-    | When not running with ``user configuration``, creating a Client relies on the presence of the ``client.yaml`` the Sui binaries created.
-    | For example, if SuiConfig is created with :meth:`pysui.sui.sui_config.SuiConfig.default_config` it looks for:
-    | ``.sui/sui_config/client.yaml``
 
 The Clients
 -----------
 
-All **pysui** SDK usage commonly starts with the creation of one or more SuiClients. Their job is handling
-the interactions between itself and the SUI blockchain via the SUI RPC API.
+All **pysui** SDK usage starts with the creation of one kind of SuiClient.
+The client's job is handling the interactions between itself and the
+SUI blockchain via a particular SUI API (JSON, GraphQL or gRPC).
 
-**pysui** SDK includes synchronous and asynchronous clients for interacting with SUI RPC API and an
-asynchronous client for subscriptions.
+What type of client you use depends on a number of factors:
 
-The first two client types have the same methods (parity) so it is a matter of choice, or necessity, on which to use. It
-is pretty much standard that the client is allocated at the very begining of your application. Here
-are examples of doing just that as well as allocating a subscription client:
+- Production readiness
+- Flexibility
+- Performance
+- Longevity
+- Asynch or sync models (A/S)
+- Subscriptions (Subs?)
+- etc.
+
+The following table is what client types are current available:
+
++--------------------+------------+----------------+-------------+-------+
+|  API Support | A/S?| Prod Ready | Planned Sunset | Performance | Subs? |
++==============+=====+============+================+=============+=======+
+|  gRPC        | A   | No         | No             | Fastest     | Yes   |
++--------------------+------------+----------------+-------------+-------+
+|  JSON RPC    | A/S | Yes        | Yes (2026)     | Fast        | No    |
++--------------------+------------+----------------+-------------+-------+
+|  GraphQL     | A/S | No         | No             | Not so Fast | Yes   |
++--------------------+------------+----------------+-------------+-------+
+
+
+For gRPC and GraphQL here is `Additional considerations`_ .
+
+.. _Additional considerations: https://docs.sui.io/guides/developer/getting-started/data-serving
+
+When both asynchronous and synchronous client are available it is a matter
+of choice, or necessity, on which to use. It is typical that a client is
+instantiated at the very begining of your application.
+
+JSON RPC **pysui** client Setup
++++++++++++++++++++++++++++++++
 
 .. code-block:: Python
    :linenos:
 
-    # The underlying configuration class
+    # The underlying configuration classes
     from pysui import SuiConfig
 
-    # For synchronous RPC API interactions
-    from pysui import SyncClient
+    # For synchronous and asynchronous JSON RPC API interactions
+    from pysui import SyncClient, AsyncClient
 
-    # For asynchronous RPC API interactions
-    from pysui import AsyncClient
-
-    # For asynchronous subscriptions interactions
-    from pysui import Subscribe
-
-    # Synchronous client
+    # JSON RPC Synchronous client setup
     client = SyncClient(SuiConfig.default_config())
 
-    # Asynchronous client
+    # JSON RPC Asynchronous client
     client = AsyncClient(SuiConfig.default_config())
 
-    # Asynchronous subscriber
-    client = Subscribe(SuiConfig.default_config())
+SuiConfig is a thin wrapper around Mystens configuraiton when you've
+installed Sui binaries.
+
+GraphQL **pysui** client Setup
+++++++++++++++++++++++++++++++
+
+.. code-block:: Python
+   :linenos:
+
+    # The underlying configuration classes
+    from pysui import PysuiConfiguration
+
+    # For synchronous and asynchronous GraphQL API interactions
+    from pysui import SyncGqlClient, AsyncGqlClient
+
+    # GraphQL Synchronous client setup
+    client = SyncGqlClient(pysui_config=...)
+
+    # GraphQL Asynchronous client
+    client = AsyncGqlClient(pysui_config=...)
+
+See :any:`pyconfig` for more information regarding configuration setup.
+
+gRPC **pysui** client Setup
++++++++++++++++++++++++++++
+
+.. code-block:: Python
+   :linenos:
+
+    # The underlying configuration classes
+    from pysui import PysuiConfiguration
+
+    # For asynchronous (only option) gRPC API interactions
+    from pysui import SuiGrpcClient
+
+    # gRPC Asynchronous client
+    client = SuiGrpcClient(pysui_config=...)
+
+See :any:`pyconfig` for more information regarding configuration setup.
+
+Blockchain Queries and Transactions
+-----------------------------------
+
+Each client type (JSON RPC, GraphQL and gRPC) facilitates fetching data
+and executing transactions through various mechanisms.
+
+- JSON RPC: **pysui** encapsualtes support in class objects called Builders
+- GraphQL: **pysui** encapsulates support in class objects called QueryNodes
+- gRPC: **pysui** encapsualtes support in class objects call Requests
+
+There is general parity of capabilities across clients although in some cases
+they may be unique.
+
+
 
 The raw workhorse for submitting transactions is :py:meth:`pysui.sui.sui_clients.sync_client.SuiClient.execute` which takes a
 **Builder** object. Builders describe the RPC call, any parameters and how to format sucessful results.
@@ -92,9 +162,12 @@ First ensure proper setup of `sui-base`:
     localnet set-active
 
 
-Having compleded that, the change you will notices is loading the right configuration into your SuiClient so all operations
-interact with the sui-base localnet node. All operations are the same whether you are interacting with `devnet`,
-`testnet`, `mainnet` or the **sui-base** `localnode`. So once you set the client correctly all code should behave as normal:
+Having compleded that, the change you will notices is loading the right
+configuration into your SuiClient so all operations interact with
+the sui-base localnet node. All operations are the same whether you are
+interacting with `devnet`, `testnet`, `mainnet` or the
+**sui-base** `localnode`. So once you set the client correctly
+all code should behave as normal:
 
 .. code-block:: Python
    :linenos:
@@ -108,17 +181,11 @@ interact with the sui-base localnet node. All operations are the same whether yo
     # For asynchronous RPC API interactions
     from pysui import AsyncClient
 
-    # For asynchronous subscriptions interactions
-    from pysui import Subscribe
-
     # Synchronous client
     client = SyncClient(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
 
     # Asynchronous client
     client = AsyncClient(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
-
-    # Asynchronous subscriber
-    client = Subscribe(SuiConfig.sui_base_config()) # Assumes sui-base localnet is running
 
 
 Remember to shutdown `suibase` when done:
@@ -157,11 +224,9 @@ With this option, you set the rpc_url, keystrings and optional web socket url. F
         #   key_scheme can be ED25519, SECP256K1 or SECP256R1
         prv_keys=["AOM6UAQrFe7r9nNDGRlWwj1o7m1cGK6mDZ3efRJJmvcG"],
 
-        # Optional, only needed for subscribing
-        ws_url="wss://fullnode.devnet.sui.io:443",
     )
 
-    # Option-2: Alternate setup configuration without keystrings or web sercices
+    # Option-2: Alternate setup configuration without keystrings
     cfg = SuiConfig.user_config(rpc_url="https://fullnode.devnet.sui.io:443")
 
     # One address (and keypair), at least, should be created

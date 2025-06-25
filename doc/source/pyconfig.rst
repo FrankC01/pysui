@@ -1,5 +1,6 @@
 PysuiConfiguration
 """"""""""""""""""
+.. _pyconfig:
 
 PysuiConfiguration is the gRPC and GraphQL replacement for the
 legacy SuiConfig and this new class must be used when creating GraphQL
