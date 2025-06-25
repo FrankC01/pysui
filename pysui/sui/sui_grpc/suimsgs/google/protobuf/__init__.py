@@ -24,7 +24,8 @@ import dateutil.parser
 
 from ...message_pool import default_message_pool
 
-betterproto2.check_compiler_version("0.6.0")
+_COMPILER_VERSION = "0.7.0"
+betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
 class NullValue(betterproto2.Enum):

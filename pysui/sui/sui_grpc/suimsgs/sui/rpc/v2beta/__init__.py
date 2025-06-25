@@ -137,11 +137,12 @@ if TYPE_CHECKING:
     from betterproto2.grpc.grpclib_client import MetadataLike
     from grpclib.metadata import Deadline
 
-betterproto2.check_compiler_version("0.6.0")
+_COMPILER_VERSION = "0.7.0"
+betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
 class ArgumentArgumentKind(betterproto2.Enum):
-    ARGUMENT_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     GAS = 1
     """
@@ -161,7 +162,7 @@ class ArgumentArgumentKind(betterproto2.Enum):
 
 
 class ChangedObjectIdOperation(betterproto2.Enum):
-    ID_OPERATION_UNKNOWN = 0
+    UNKNOWN = 0
 
     NONE = 1
 
@@ -171,25 +172,25 @@ class ChangedObjectIdOperation(betterproto2.Enum):
 
 
 class ChangedObjectInputObjectState(betterproto2.Enum):
-    INPUT_OBJECT_STATE_UNKNOWN = 0
+    UNKNOWN = 0
 
-    INPUT_OBJECT_STATE_DOES_NOT_EXIST = 1
+    DOES_NOT_EXIST = 1
 
-    INPUT_OBJECT_STATE_EXISTS = 2
+    EXISTS = 2
 
 
 class ChangedObjectOutputObjectState(betterproto2.Enum):
-    OUTPUT_OBJECT_STATE_UNKNOWN = 0
+    UNKNOWN = 0
 
-    OUTPUT_OBJECT_STATE_DOES_NOT_EXIST = 1
+    DOES_NOT_EXIST = 1
 
-    OUTPUT_OBJECT_STATE_OBJECT_WRITE = 2
+    OBJECT_WRITE = 2
 
-    OUTPUT_OBJECT_STATE_PACKAGE_WRITE = 3
+    PACKAGE_WRITE = 3
 
 
 class CheckpointCommitmentCheckpointCommitmentKind(betterproto2.Enum):
-    CHECKPOINT_COMMITMENT_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     ECMH_LIVE_OBJECT_SET = 1
     """
@@ -199,7 +200,7 @@ class CheckpointCommitmentCheckpointCommitmentKind(betterproto2.Enum):
 
 
 class CommandArgumentErrorCommandArgumentErrorKind(betterproto2.Enum):
-    COMMAND_ARGUMENT_ERROR_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     TYPE_MISMATCH = 1
     """
@@ -281,7 +282,7 @@ class CommandArgumentErrorCommandArgumentErrorKind(betterproto2.Enum):
 
 
 class ExecutionErrorExecutionErrorKind(betterproto2.Enum):
-    EXECUTION_ERROR_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     INSUFFICIENT_GAS = 1
     """
@@ -501,7 +502,7 @@ class ExecutionErrorExecutionErrorKind(betterproto2.Enum):
 
 
 class ExecutionTimeObservationExecutionTimeObservationKind(betterproto2.Enum):
-    EXECUTION_TIME_OBSERVATION_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     MOVE_ENTRY_POINT = 1
 
@@ -519,7 +520,7 @@ class ExecutionTimeObservationExecutionTimeObservationKind(betterproto2.Enum):
 
 
 class InputInputKind(betterproto2.Enum):
-    INPUT_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     PURE = 1
     """
@@ -543,7 +544,7 @@ class InputInputKind(betterproto2.Enum):
 
 
 class OwnerOwnerKind(betterproto2.Enum):
-    OWNER_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     ADDRESS = 1
 
@@ -557,7 +558,7 @@ class OwnerOwnerKind(betterproto2.Enum):
 
 
 class PackageUpgradeErrorPackageUpgradeErrorKind(betterproto2.Enum):
-    PACKAGE_UPGRADE_ERROR_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     UNABLE_TO_FETCH_PACKAGE = 1
     """
@@ -616,7 +617,7 @@ class SignatureScheme(betterproto2.Enum):
 
 
 class TransactionExpirationTransactionExpirationKind(betterproto2.Enum):
-    TRANSACTION_EXPIRATION_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     NONE = 1
     """
@@ -631,7 +632,7 @@ class TransactionExpirationTransactionExpirationKind(betterproto2.Enum):
 
 
 class TypeArgumentErrorTypeArgumentErrorKind(betterproto2.Enum):
-    TYPE_ARGUMENT_ERROR_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     TYPE_NOT_FOUND = 1
     """
@@ -645,7 +646,7 @@ class TypeArgumentErrorTypeArgumentErrorKind(betterproto2.Enum):
 
 
 class UnchangedSharedObjectUnchangedSharedObjectKind(betterproto2.Enum):
-    UNCHANGED_SHARED_OBJECT_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     READ_ONLY_ROOT = 1
     """
@@ -671,13 +672,6 @@ class UnchangedSharedObjectUnchangedSharedObjectKind(betterproto2.Enum):
     PER_EPOCH_CONFIG = 5
     """
     Read of a per-epoch config object that should remain the same during an epoch.
-    This has been deprecated in favor of `PER_EPOCH_CONFIG_WITH_SEQUENCE_NUMBER`.
-    """
-
-    PER_EPOCH_CONFIG_WITH_SEQUENCE_NUMBER = 6
-    """
-    Read of a per-epoch config object that should remain the same during an epoch.
-    This contains the sequence number config at the start of the epoch.
     """
 
 

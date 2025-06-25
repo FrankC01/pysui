@@ -9,7 +9,7 @@ from typing import Optional, Callable, ParamSpec
 from functools import partial
 from pysui.sui.sui_common.client import PysuiClient
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 _P = ParamSpec("P")
 
@@ -59,9 +59,9 @@ async def async_cursored_collector(
                 if only_active
                 else result.result_data.data
             )
-            if result.result_data.next_cursor.hasNextPage:
+            if result.result_data.page_token:
                 result = await client.execute_query_node(
-                    with_node=pfn(next_page=result.result_data.next_cursor)
+                    with_node=pfn(page_token=result.result_data.page_token)
                 )
             else:
                 break
@@ -90,7 +90,7 @@ async def async_get_all_owned_gas_objects(
     :rtype: list[v2base.Object]
     """
     return await async_cursored_collector(
-        partial(qn.GetCoins, owner=owner), client, only_active
+        partial(rn.GetGas, owner=owner), client, only_active
     )
 
 
@@ -113,7 +113,7 @@ async def async_get_all_owned_objects(
     :rtype: list[v2base.Object]
     """
     return await async_cursored_collector(
-        partial(qn.GetObjectsOwnedByAddress, owner=owner), client, only_active
+        partial(rn.GetOwnedObjects, owner=owner), client, only_active
     )
 
 
@@ -135,8 +135,9 @@ async def async_get_gas_objects_by_ids(
     :return: List of active SuiCoin objects
     :rtype: list[v2base.Object]
     """
+    raise NotImplementedError("Not ready for implementation")
     return await async_cursored_collector(
-        partial(qn.GetMultipleGasObjects, coin_object_ids=gas_ids), client, only_active
+        partial(rn.GetMultipleObjects, coin_object_ids=gas_ids), client, only_active
     )
 
 
@@ -159,5 +160,5 @@ async def async_get_objects_by_ids(
     :rtype: list[v2base.Object]
     """
     return await async_cursored_collector(
-        partial(qn.GetMultipleObjects, object_ids=object_ids), only_active
+        partial(rn.GetMultipleObjects, object_ids=object_ids), only_active
     )

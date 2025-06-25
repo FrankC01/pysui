@@ -5,6 +5,7 @@
 
 __all__ = (
     "Ability",
+    "AbilitySet",
     "Balance",
     "CoinMetadata",
     "CoinTreasury",
@@ -70,7 +71,8 @@ if TYPE_CHECKING:
     from betterproto2.grpc.grpclib_client import MetadataLike
     from grpclib.metadata import Deadline
 
-betterproto2.check_compiler_version("0.6.0")
+_COMPILER_VERSION = "0.7.0"
+betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
 class Ability(betterproto2.Enum):
@@ -102,7 +104,7 @@ class Ability(betterproto2.Enum):
 
 
 class DatatypeDescriptorDatatypeKind(betterproto2.Enum):
-    DATATYPE_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     STRUCT = 1
 
@@ -110,7 +112,7 @@ class DatatypeDescriptorDatatypeKind(betterproto2.Enum):
 
 
 class DynamicFieldDynamicFieldKind(betterproto2.Enum):
-    DYNAMIC_FIELD_KIND_UNKNOWN = 0
+    UNKNOWN = 0
 
     FIELD = 1
 
@@ -118,7 +120,7 @@ class DynamicFieldDynamicFieldKind(betterproto2.Enum):
 
 
 class FunctionDescriptorVisibility(betterproto2.Enum):
-    VISIBILITY_UNKNOWN = 0
+    UNKNOWN = 0
 
     PRIVATE = 1
 
@@ -128,7 +130,7 @@ class FunctionDescriptorVisibility(betterproto2.Enum):
 
 
 class OpenSignatureReference(betterproto2.Enum):
-    REFERENCE_UNKNOWN = 0
+    UNKNOWN = 0
 
     IMMUTABLE = 1
 
@@ -136,7 +138,7 @@ class OpenSignatureReference(betterproto2.Enum):
 
 
 class OpenSignatureBodyType(betterproto2.Enum):
-    TYPE_UNKNOWN = 0
+    UNKNOWN = 0
 
     ADDRESS = 1
 
@@ -156,9 +158,9 @@ class OpenSignatureBodyType(betterproto2.Enum):
 
     VECTOR = 9
 
-    DATATYPE = 10
+    _ = 10
 
-    TYPE_PARAMETER = 11
+    PARAMETER = 11
 
 
 class SimulateTransactionRequestVmChecks(betterproto2.Enum):
@@ -172,6 +174,20 @@ class SimulateTransactionRequestVmChecks(betterproto2.Enum):
     """
 
     DISABLED = 1
+
+
+@dataclass(eq=False, repr=False)
+class AbilitySet(betterproto2.Message):
+    """
+    A set of abilities for a type parameter
+    """
+
+    abilities: "list[Ability]" = betterproto2.field(
+        1, betterproto2.TYPE_ENUM, repeated=True
+    )
+
+
+default_message_pool.register_message("sui.rpc.v2alpha", "AbilitySet", AbilitySet)
 
 
 @dataclass(eq=False, repr=False)
@@ -504,11 +520,12 @@ class FunctionDescriptor(betterproto2.Message):
     Whether the function is marked `entry` or not.
     """
 
-    type_parameters: "list[Ability]" = betterproto2.field(
-        7, betterproto2.TYPE_ENUM, repeated=True
+    type_parameters: "list[AbilitySet]" = betterproto2.field(
+        7, betterproto2.TYPE_MESSAGE, repeated=True
     )
     """
     Ability constraints for type parameters
+    Each AbilitySet represents the constraints for one type parameter
     """
 
     parameters: "list[OpenSignature]" = betterproto2.field(
@@ -1001,7 +1018,7 @@ class Module(betterproto2.Message):
     Name of this module
     """
 
-    data_types: "list[DatatypeDescriptor]" = betterproto2.field(
+    datatypes: "list[DatatypeDescriptor]" = betterproto2.field(
         3, betterproto2.TYPE_MESSAGE, repeated=True
     )
     """

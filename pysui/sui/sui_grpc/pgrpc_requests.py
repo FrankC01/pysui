@@ -146,9 +146,13 @@ class GetObjects(absreq.PGRPC_Request):
         self,
         *,
         objects: tuple[str, Optional[int]],
+        page_token: Optional[bytes] = None,
         field_mask: Optional[list[str]] = None,
     ) -> None:
         """Initializer."""
+        if page_token:
+            raise NotImplementedError("Waiting for Mysten to support paging ")
+
         super().__init__(absreq.Service.LEDGER)
         self.objects = objects
         self.field_mask = self._field_mask(
@@ -176,11 +180,17 @@ class GetMultipleObjects(GetObjects):
     """
 
     def __init__(
-        self, *, object_ids: list[str], next_page: Optional[Any] = None, field_mask=None
+        self,
+        *,
+        object_ids: list[str],
+        page_token: Optional[bytes] = None,
+        field_mask=None,
     ):
-        if next_page:
-            raise NotImplementedError(f"Paging not supported for multiple objects")
-        super().__init__(objects=[(x, None) for x in object_ids], field_mask=field_mask)
+        super().__init__(
+            objects=[(x, None) for x in object_ids],
+            page_token=page_token,
+            field_mask=field_mask,
+        )
 
 
 class GetOwnedObjects(absreq.PGRPC_Request):

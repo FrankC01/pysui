@@ -18,7 +18,7 @@ The Clients
 
 All **pysui** SDK usage starts with the creation of one kind of SuiClient.
 The client's job is handling the interactions between itself and the
-SUI blockchain via a particular SUI API (JSON, GraphQL or gRPC).
+SUI blockchain via a particular SUI protocol (JSON RPC, GraphQL or gRPC).
 
 What type of client you use depends on a number of factors:
 
@@ -30,7 +30,7 @@ What type of client you use depends on a number of factors:
 - Subscriptions (Subs?)
 - etc.
 
-The following table is what client types are current available:
+The following table is what client types and protocols are current available:
 
 +--------------------+------------+----------------+-------------+-------+
 |  API Support | A/S?| Prod Ready | Planned Sunset | Performance | Subs? |
@@ -122,13 +122,7 @@ and executing transactions through various mechanisms.
 There is general parity of capabilities across clients although in some cases
 they may be unique.
 
-
-
-The raw workhorse for submitting transactions is :py:meth:`pysui.sui.sui_clients.sync_client.SuiClient.execute` which takes a
-**Builder** object. Builders describe the RPC call, any parameters and how to format sucessful results.
-
-While some of the SuiClient convenience methods (e.g. :meth:`pysui.sui.sui_clients.sync_client.SuiClient.get_object`) take care of
-creating a Builder for the caller, and then executing, all **Builders** are available to setup outside of the SuiClient.
+EXAMPLES OF QUERY
 
 Running With `suibase`
 ----------------------
@@ -200,9 +194,12 @@ Remember to shutdown `suibase` when done:
 Running With user configuration
 -------------------------------
 
-A new option for loading a configuration was added in `pysui` 0.25.0: :py:meth:`pysui.sui.sui_config.SuiConfig.user_config`
+This is specific to the JSON RPC clients and SuiConfig only.
 
-With this option, you set the rpc_url, keystrings and optional web socket url. For example:
+A new option for loading a configuration was added
+in `pysui` 0.25.0: :py:meth:`pysui.sui.sui_config.SuiConfig.user_config`
+
+With this option, you set the rpc_url, keystrings. For example:
 
 .. code-block:: Python
    :linenos:
@@ -237,10 +234,12 @@ With this option, you set the rpc_url, keystrings and optional web socket url. F
     client = SyncClient(cfg)
 
 Caveats
-#######
++++++++
 
-With user configuraiton, as it does not assume the installation of Sui binaries, the following are
-considerations:
+With user configuraiton, as it does not assume the installation of Sui
+binaries, the following are considerations:
 
-1. You can not publish or upgrade Sui move contracts, attempting to do so will thow a **ValueError** exception
-2. Any new address/keypair creations **will not** be persisted as `user_config` is emphemeral
+1. You can not publish or upgrade Sui move contracts, attempting
+to do so will thow a **ValueError** exception
+2. Any new address/keypair creations **will not** be persisted
+as `user_config` is emphemeral

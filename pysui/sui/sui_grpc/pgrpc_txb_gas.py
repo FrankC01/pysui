@@ -7,7 +7,6 @@ import base64
 from typing import Optional, Union
 from pysui.sui.sui_common.txb_signing import SignerBlock
 from pysui.sui.sui_common.client import PysuiClient
-import pysui.sui.sui_pgql.pgql_query as qn
 
 # TODO: Fixup curosors for gRPC in utils
 from pysui.sui.sui_grpc.pgrpc_utils import (
@@ -16,6 +15,7 @@ from pysui.sui.sui_grpc.pgrpc_utils import (
 )
 from pysui.sui.sui_bcs import bcs
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 
 def _coins_for_budget(
@@ -45,39 +45,19 @@ def _coins_for_budget(
 
 
 async def _async_dry_run_for_budget(
-    signing: SignerBlock,
     client: PysuiClient,
-    tx_bytes: str,
-    active_gas_price: int,
+    tx_bytes: bytes,
 ) -> int:
     """Perform a dry run when no budget specified."""
-    result = await client.execute_query_node(
-        with_node=qn.DryRunTransactionKind(
-            tx_bytestr=tx_bytes,
-            tx_meta={
-                "sender": signing.sender_str,
-                "gasPrice": active_gas_price,
-                "gasSponsor": signing.sponsor_str,
-            },
-            skip_checks=False,
+    result = await client.execute(
+        request=rn.SimulateTransaction(
+            transaction=tx_bytes, field_mask=["transaction.transaction"]
         )
     )
     if result.is_ok():
-        c_cost: int = int(
-            result.result_data.transaction_block.effects["gasEffects"]["gasSummary"][
-                "computationCost"
-            ]
-        )
-        s_cost: int = int(
-            result.result_data.transaction_block.effects["gasEffects"]["gasSummary"][
-                "storageCost"
-            ]
-        )
-        return c_cost + s_cost
+        return result.result_data.transaction.transaction.gas_payment.budget
     else:
-        raise ValueError(
-            f"Error running DryRunTransactionBlock: {result.result_string}"
-        )
+        raise ValueError(f"Error running SimulateTransaction: {result.result_string}")
 
 
 async def async_get_gas_data(
@@ -120,12 +100,7 @@ async def async_get_gas_data(
     else:
         use_coins = await async_get_all_owned_gas_objects(signing.payer_address, client)
     if not budget:
-        budget = await _async_dry_run_for_budget(
-            signing,
-            client,
-            base64.b64encode(tx_kind.serialize()).decode(),
-            active_gas_price,
-        )
+        budget = await _async_dry_run_for_budget(client, tx_kind.serialize())
     # Remove conflicts with objects in use
     use_coins = [x for x in use_coins if x.coin_object_id not in objects_in_use]
     # Make sure something left to pay for
