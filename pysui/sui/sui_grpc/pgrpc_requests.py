@@ -145,14 +145,12 @@ class GetObjects(absreq.PGRPC_Request):
     def __init__(
         self,
         *,
-        objects: tuple[str, Optional[int]],
-        page_token: Optional[bytes] = None,
+        objects: list[tuple[str, Optional[int]]],
         field_mask: Optional[list[str]] = None,
     ) -> None:
         """Initializer."""
-        if page_token:
-            raise NotImplementedError("Waiting for Mysten to support paging ")
-
+        if len(objects) > 50:
+            raise ValueError(f"Max object ids 50, {len(objects)} submitted.")
         super().__init__(absreq.Service.LEDGER)
         self.objects = objects
         self.field_mask = self._field_mask(
@@ -183,12 +181,10 @@ class GetMultipleObjects(GetObjects):
         self,
         *,
         object_ids: list[str],
-        page_token: Optional[bytes] = None,
         field_mask=None,
     ):
         super().__init__(
             objects=[(x, None) for x in object_ids],
-            page_token=page_token,
             field_mask=field_mask,
         )
 

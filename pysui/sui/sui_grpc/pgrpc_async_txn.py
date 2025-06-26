@@ -36,12 +36,22 @@ class AsyncSuiTransaction(txbase):
 
         :param client: The asynchronous SuiGQLClient
         :type client: SuiGrpcClient
-        :param initial_sender: The address of the sender of the transaction, defaults to None
+        :param compress_inputs: reuse same inputs, defaults to True
+        :type compress_inputs: Optional[bool], optional
+        :param initial_sender: initial sender of transactions, defaults to None
         :type initial_sender: Union[str, SigningMultiSig], optional
-        :param compress_inputs: Reuse identical inputs, defaults to False
-        :type compress_inputs: bool,optional
-        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
-        :type merge_gas_budget: bool, optional
+        :param initial_sponsor: initial sponser of transactions, defaults to None
+        :type initial_sponsor: Union[str, SigningMultiSig], optional
+        :param builder: move call parameter builder, defaults to None
+        :type builder: Optional[Any], optional
+        :param arg_parser: transaction command argument parser validator, defaults to None
+        :type arg_parser: Optional[Any], optional
+        :param merge_gas_budget: global gas budget for each transaction, defaults to False
+        :type merge_gas_budget: Optional[bool], optional
+        :param txn_constraints: set transaction constraints, defaults to None
+        :type txn_constraints: Optional[TransactionConstraints], optional
+        :param gas_price: set gas price, defaults to None
+        :type gas_price: Optional[int], optional
         """
         super().__init__(**kwargs)
         self._argparse = argbase.AsyncResolvingArgParser(self.client)

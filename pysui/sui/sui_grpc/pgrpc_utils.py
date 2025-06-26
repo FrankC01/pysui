@@ -40,7 +40,7 @@ async def async_cursored_collector(
 ) -> list:
     """Handles paging for any query type that return a 'data' list and cursor.
 
-    :param pfn: Partial function that takes keyword argument of `next_page` and returns a list
+    :param pfn: Partial function that takes keyword argument of `page_token` and returns a list
     :type pfn: Callable[_P, list]
     :param client: The gRPC client
     :type client: PysuiClient
@@ -76,7 +76,7 @@ async def async_get_all_owned_gas_objects(
 ) -> list[v2base.Object]:
     """Asynchronous: Retrieves list of all gas objects details for owner.
 
-    Uses cursor to ensure all asked for are retrieved from graph node and
+    Uses cursor to ensure all asked for are retrieved from gRPC node and
     only returns those that are not deleted or pruned.
 
     :param owner: The owner address id
@@ -135,9 +135,11 @@ async def async_get_gas_objects_by_ids(
     :return: List of active SuiCoin objects
     :rtype: list[v2base.Object]
     """
-    raise NotImplementedError("Not ready for implementation")
+    # TODO: This call has no pagination, need to get max id constraint
+    # and perform looped fetch
+    # Also need to filter for coins only
     return await async_cursored_collector(
-        partial(rn.GetMultipleObjects, coin_object_ids=gas_ids), client, only_active
+        partial(rn.GetMultipleObjects, object_ids=gas_ids), client, only_active
     )
 
 
@@ -159,6 +161,8 @@ async def async_get_objects_by_ids(
     :return: List of active objects
     :rtype: list[v2base.Object]
     """
+    # TODO: This call has no pagination, need to get max id constraint
+    # and perform looped fetch
     return await async_cursored_collector(
         partial(rn.GetMultipleObjects, object_ids=object_ids), only_active
     )

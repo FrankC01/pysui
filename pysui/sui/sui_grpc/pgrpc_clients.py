@@ -5,17 +5,20 @@
 
 """pysui gRPC Clients"""
 
-from typing import Optional, TypeAlias
 from collections.abc import Callable
-import urllib.parse as urlparse
-import traceback
+import dataclasses
 import logging
+from typing import Optional, TypeAlias
+import traceback
+import urllib.parse as urlparse
 
 import betterproto2
+import dataclasses_json
 from grpclib.exceptions import GRPCError
 
 from pysui.sui.sui_common.client import PysuiClient
 
+from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
 
@@ -36,6 +39,12 @@ logger = logging.getLogger("pgrpc_client")
 _TXCONSTRAINTS = list(TransactionConstraints.__dataclass_fields__.keys())
 
 
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ProtocolConfig:
+    transaction_constraints: TransactionConstraints
+
+
 def _map_pconstraints(in_bound: v2base.ProtocolConfig):
     """Extract protocol constraints in parity with GraphQL model."""
     ordered_list: list = []
@@ -49,7 +58,7 @@ def _map_pconstraints(in_bound: v2base.ProtocolConfig):
         else:
             raise ValueError(f"{item} not found in gRPC protocol configuration.")
 
-    return TransactionConstraints(*ordered_list)
+    return ProtocolConfig(TransactionConstraints(*ordered_list))
 
 
 class SuiGrpcClient(PysuiClient):
@@ -75,6 +84,7 @@ class SuiGrpcClient(PysuiClient):
                 f"{pysui_config.active_group.active_profile.url} in {self._pysui_config.active_profile} is not valid URL"
             )
         self._channels: list[Channel] = []
+        self._protocol_config: ProtocolConfig = None
 
     @property
     async def current_gas_price(self) -> int:
@@ -84,16 +94,19 @@ class SuiGrpcClient(PysuiClient):
             return result.result_data.reference_gas_price
         raise ValueError(f"Error accessing gRPC {result.result_string}")
 
-    async def protocol(self, for_version: Optional[str] = None):
+    async def protocol(self, epoch_number: Optional[int] = None) -> ProtocolConfig:
         """Fetch the protocol constraints."""
         result = await self.execute(
             request=GetEpoch(
-                epoch_number=int(for_version) if for_version else None,
+                epoch_number=epoch_number,
                 field_mask=["protocol_config"],
             )
         )
-        if result.is_ok() and result.result_data.protocol_config:
-            return _map_pconstraints(result.result_data.protocol_config)
+        if result.is_ok() and hasattr(result.result_data, "protocol_config"):
+            self._protocol_config = _map_pconstraints(
+                result.result_data.protocol_config
+            )
+            return self._protocol_config
         raise ValueError(f"protocol fetch returned {result.result_string}")
 
     def close(self):
@@ -101,6 +114,32 @@ class SuiGrpcClient(PysuiClient):
         for channel in self._channels:
             channel.close()
         self._channel.close()
+
+    async def transaction(
+        self,
+        **kwargs,
+    ) -> AsyncSuiTransaction:
+        """transaction _summary_
+
+        :param compress_inputs: reuse same inputs, defaults to True
+        :type compress_inputs: Optional[bool], optional
+        :param initial_sender: initial sender of transactions, defaults to None
+        :type initial_sender: Union[str, SigningMultiSig], optional
+        :param initial_sponsor: initial sponser of transactions, defaults to None
+        :type initial_sponsor: Union[str, SigningMultiSig], optional
+        :param builder: move call parameter builder, defaults to None
+        :type builder: Optional[Any], optional
+        :param arg_parser: transaction command argument parser validator, defaults to None
+        :type arg_parser: Optional[Any], optional
+        :param merge_gas_budget: global gas budget for each transaction, defaults to False
+        :type merge_gas_budget: Optional[bool], optional
+        :return: gRPC Transaction builder
+        :rtype: AsyncSuiTransaction
+        """
+        kwargs["client"] = self
+        kwargs["txn_constraints"] = await self.protocol()
+        kwargs["gas_price"] = await self.current_gas_price
+        return AsyncSuiTransaction(**kwargs)
 
     async def execute(self, *, request: absreq.PGRPC_Request, **kwargs) -> SuiRpcResult:
         """execute calls the request's service
