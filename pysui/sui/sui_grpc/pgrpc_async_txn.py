@@ -20,6 +20,7 @@ import pysui.sui.sui_grpc.pgrpc_txn_async_argb as argbase
 
 import pysui.sui.sui_grpc.pgrpc_txb_gas as gd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 
 
 class AsyncSuiTransaction(txbase):
@@ -98,7 +99,9 @@ class AsyncSuiTransaction(txbase):
     async def _build_txn_data(
         self,
         gas_budget: str = "",
-        use_gas_objects: Optional[list[Union[str, v2base.Object]]] = None,
+        use_gas_objects: Optional[
+            list[Union[str, v2base.Object | v2alpha.OwnedObject]]
+        ] = None,
         txn_expires_after: Optional[int] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
         """Generate the TransactionData structure."""
@@ -131,7 +134,9 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[list[Union[str, v2base.Object]]] = None,
+        use_gas_objects: Optional[
+            list[Union[str, v2base.Object | v2alpha.OwnedObject]]
+        ] = None,
         txn_expires_after: Optional[int] = None,
     ) -> bcs.TransactionData:
         """transaction_data Construct a BCS TransactionData object.
@@ -158,7 +163,9 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[list[Union[str, v2base.Object]]] = None,
+        use_gas_objects: Optional[
+            list[Union[str, v2base.Object | v2alpha.OwnedObject]]
+        ] = None,
         txn_expires_after: Optional[int] = None,
     ) -> str:
         """build After creating the BCS TransactionData, serialize to base64 string and return.
@@ -183,7 +190,9 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[list[Union[str, v2base.Object]]] = None,
+        use_gas_objects: Optional[
+            list[Union[str, v2base.Object | v2alpha.OwnedObject]]
+        ] = None,
         txn_expires_after: Optional[int] = None,
     ) -> dict:
         """build After creating the BCS TransactionKind, serialize to base64 string, create signatures and return.

@@ -15,6 +15,7 @@ from pysui.sui.sui_grpc.pgrpc_utils import (
 )
 from pysui.sui.sui_bcs import bcs
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 
@@ -41,7 +42,7 @@ def _coins_for_budget(
                 f"Total gas available {_accum}, transaction requires {budget}"
             )
         _coin_fit = _accum_coin
-    return [bcs.ObjectReference.from_gql_ref(x) for x in _coin_fit]
+    return [bcs.ObjectReference.from_grpc_ref(x) for x in _coin_fit]
 
 
 async def _async_dry_run_for_budget(
@@ -65,7 +66,7 @@ async def async_get_gas_data(
     signing: SignerBlock,
     client: PysuiClient,
     budget: Optional[int] = None,
-    use_coins: Optional[list[Union[str, v2base.Object]]] = None,
+    use_coins: Optional[list[Union[str, v2base.Object | v2alpha.OwnedObject]]] = None,
     objects_in_use: set[str],
     active_gas_price: int,
     tx_kind: bcs.TransactionKind,
@@ -99,10 +100,12 @@ async def async_get_gas_data(
             raise ValueError("use_gas_objects must use same type.")
     else:
         use_coins = await async_get_all_owned_gas_objects(signing.payer_address, client)
+    # TODO: Remove budget default when equivalent of DryRun/Simulate support TransactionKind
+    budget = budget or 50_000_000
     if not budget:
         budget = await _async_dry_run_for_budget(client, tx_kind.serialize())
     # Remove conflicts with objects in use
-    use_coins = [x for x in use_coins if x.coin_object_id not in objects_in_use]
+    use_coins = [x for x in use_coins if x.object_id not in objects_in_use]
     # Make sure something left to pay for
     if use_coins:
         # Return constructs for createing bcs.GasData

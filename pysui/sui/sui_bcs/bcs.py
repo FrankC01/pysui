@@ -25,6 +25,7 @@ from pysui.sui.sui_utils import (
 )
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
@@ -212,7 +213,9 @@ class ObjectReference(canoser.Struct):
 
     @classmethod
     @versionadded(version="0.87.0", reason="Support grpc argument inferencing")
-    def from_grpc_ref(cls, indata: v2base.Object) -> "ObjectReference":
+    def from_grpc_ref(
+        cls, indata: v2base.Object | v2alpha.OwnedObject
+    ) -> "ObjectReference":
         """from_grpc_ref init construct with gRPC Object
 
         :param indata: Object definition
@@ -220,7 +223,7 @@ class ObjectReference(canoser.Struct):
         :return: The instantiated BCS object
         :rtype: ObjectReference
         """
-        if isinstance(indata, v2base.Object):
+        if isinstance(indata, (v2base.Object, v2alpha.OwnedObject)):
             return cls(
                 Address.from_str(indata.object_id),
                 indata.version,

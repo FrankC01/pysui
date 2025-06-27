@@ -55,11 +55,14 @@ async def async_cursored_collector(
     while True:
         if result.is_ok():
             collection.extend(
-                active_types_only(result.result_data.data)
+                active_types_only(result.result_data.objects)
                 if only_active
-                else result.result_data.data
+                else result.result_data.objects
             )
-            if result.result_data.page_token:
+            if (
+                hasattr(result.result_data, "page_token")
+                and result.result_data.page_token
+            ):
                 result = await client.execute_query_node(
                     with_node=pfn(page_token=result.result_data.page_token)
                 )
