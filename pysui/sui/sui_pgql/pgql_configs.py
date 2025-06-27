@@ -59,6 +59,44 @@ _QUERY = """
     }
 """
 
+_QUERY_BETA = """
+
+    query {
+        chainIdentifier
+        checkpoint {
+            sequenceNumber
+            timestamp
+            epoch {
+                    referenceGasPrice
+                }
+        }
+        serviceConfig {
+            mutationTimeoutMs
+            queryTimeoutMs
+            maxQueryDepth
+            maxQueryNodes
+            maxOutputNodes
+            maxTransactionPayloadSize
+            maxQueryPayloadSize
+            maxTypeArgumentDepth
+            maxTypeArgumentWidth
+            maxTypeNodes
+            maxMoveValueDepth
+        }
+      protocolConfigs {
+          protocolVersion
+          configs {
+            key
+            value
+          }
+          featureFlags {
+            key
+            value
+          }
+        }
+    }
+"""
+
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
@@ -86,6 +124,26 @@ class ServiceConfigGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ServiceConfigBetaGQL:
+    """Sui GraphQL service controls."""
+
+    maxQueryDepth: int
+    maxQueryNodes: int
+    maxOutputNodes: int
+    maxQueryPayloadSize: int
+    # defaultPageSize: int
+    # maxPageSize: str
+    maxTypeArgumentDepth: int
+    maxTypeArgumentWidth: int
+    maxTypeNodes: int
+    maxMoveValueDepth: int
+    mutationTimeoutMs: Optional[int] = dataclasses.field(default=None)
+    queryTimeoutMs: Optional[int] = dataclasses.field(default=None)
+    maxTransactionPayloadSize: Optional[int] = dataclasses.field(default=None)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class CheckpointNodeGQL:
     sequenceNumber: int
     timestamp: str
@@ -104,7 +162,6 @@ class CheckpointConnectionGQL:
     nodes: list[CheckpointNodeGQL]
 
 
-# TODO: Make primary when changes moved through mainnet
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class SuiConfigGQL:
@@ -120,6 +177,24 @@ class SuiConfigGQL:
         return SuiConfigGQL.from_dict(in_data)
 
 
+# TODO: Make primary when changes moved through mainnet
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class SuiConfigBetaGQL:
+    chainIdentifier: str
+    serviceConfig: ServiceConfigBetaGQL
+    protocolConfigs: pgql_type.ProtocolConfigGQL
+    checkpoint: CheckpointNodeGQL
+    gqlEnvironment: Optional[str] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "SuiConfigGQL":
+        """."""
+        return SuiConfigBetaGQL.from_dict(in_data)
+
+
 def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable]:
     """Get the configuration for Sui GraphQL."""
+    if env == "testbeta" or env == "mainbeta":
+        return _QUERY_BETA, SuiConfigBetaGQL.from_query
     return _QUERY, SuiConfigGQL.from_query
