@@ -589,8 +589,8 @@ class GetMultipleVersionedObjects(PGQL_QueryNode):
             version:int   # Version to fetch
         }
 
-        :param history: The list of ObjectKey dictionaries
-        :type history: list[dict]
+        :param for_versions: The list of object and version dictionaries
+        :type for_versions: list[dict]
 
         """
 

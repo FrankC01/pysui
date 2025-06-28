@@ -35,11 +35,11 @@ The following table is what client types and protocols are current available:
 +--------------------+------------+----------------+-------------+-------+
 |  API Support | A/S?| Prod Ready | Planned Sunset | Performance | Subs? |
 +==============+=====+============+================+=============+=======+
-|  gRPC        | A   | No         | No             | Fastest     | Yes   |
+|  gRPC        | A   | No (alpha) | No             | Fastest     | Yes   |
 +--------------------+------------+----------------+-------------+-------+
 |  JSON RPC    | A/S | Yes        | Yes (2026)     | Fast        | No    |
 +--------------------+------------+----------------+-------------+-------+
-|  GraphQL     | A/S | No         | No             | Not so Fast | Yes   |
+|  GraphQL     | A/S | No (alpha) | No             | Not so Fast | Yes   |
 +--------------------+------------+----------------+-------------+-------+
 
 
@@ -124,17 +124,20 @@ they may be unique.
 
 EXAMPLES OF QUERY
 
-Running With `suibase`
-----------------------
+Running With `suibase` (JSON RPC ONLY)
+--------------------------------------
 
 We have aligned with `The sui-base utility <https://suibase.io/>`_ which provides
-superior localnet configurability and repeatability. It is the framework for our ``pysui`` unit/integration testing and we've
-made usage easier to leverage in developing with ``pysui``.
+superior localnet configurability and repeatability. It is the framework for
+our ``pysui`` unit/integration testing and we've made usage easier to leverage
+in developing with ``pysui``.
 
-In the code block above, you will notice the use of `SuiConfig.default_config()` which is driven by the standard `client.yaml`.
+In the code block above, you will notice the use of
+`SuiConfig.default_config()` which is driven by the standard `client.yaml`.
 
-Whereas with `suibase` it loads a persistant, and configurable, Sui configuration along with 5 addresses of each keytype
-and providing a copius amount of Sui coin per address.
+Whereas with `suibase` it loads a persistant, and configurable,
+Sui configuration along with 5 addresses of each keytype and providing
+a copius amount of Sui coin per address.
 
 First ensure proper setup of `sui-base`:
 
@@ -191,8 +194,8 @@ Remember to shutdown `suibase` when done:
     localnet stop
 
 
-Running With user configuration
--------------------------------
+Running With user configuration  (JSON RPC ONLY)
+------------------------------------------------
 
 This is specific to the JSON RPC clients and SuiConfig only.
 
@@ -241,5 +244,5 @@ binaries, the following are considerations:
 
 1. You can not publish or upgrade Sui move contracts, attempting
 to do so will thow a **ValueError** exception
-2. Any new address/keypair creations **will not** be persisted
+1. Any new address/keypair creations **will not** be persisted
 as `user_config` is emphemeral

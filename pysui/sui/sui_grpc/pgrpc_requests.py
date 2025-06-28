@@ -96,7 +96,6 @@ class GetEpoch(absreq.PGRPC_Request):
 
 
 OBJECT_DEFAULT_FIELDS: list[str] = [
-    "bcs",
     "owner",
     "version",
     "object_id",
@@ -116,7 +115,36 @@ class GetObject(absreq.PGRPC_Request):
         self,
         *,
         object_id: str,
-        version: Optional[int] = None,
+        field_mask: Optional[list[str]] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.LEDGER)
+        self.object_id = object_id
+        self.field_mask = self._field_mask(
+            field_mask if field_mask else OBJECT_DEFAULT_FIELDS
+        )
+
+    def to_request(
+        self, *, stub: v2base.LedgerServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """Prepare the request for submission."""
+        return stub.get_object, v2base.GetObjectRequest(
+            object_id=self.object_id, read_mask=self.field_mask
+        )
+
+
+class GetPastObject(absreq.PGRPC_Request):
+    """Get object request."""
+
+    RESULT_TYPE: betterproto2.Message = v2base.Object
+
+    def __init__(
+        self,
+        *,
+        object_id: str,
+        version: int,
         field_mask: Optional[list[str]] = None,
     ) -> None:
         """Initializer."""
@@ -138,21 +166,21 @@ class GetObject(absreq.PGRPC_Request):
         )
 
 
-class GetObjects(absreq.PGRPC_Request):
+class GetMultipleObjects(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = v2base.BatchGetObjectsResponse
 
     def __init__(
         self,
         *,
-        objects: list[tuple[str, Optional[int]]],
+        objects: list[str],
         field_mask: Optional[list[str]] = None,
     ) -> None:
         """Initializer."""
         if len(objects) > 50:
             raise ValueError(f"Max object ids 50, {len(objects)} submitted.")
         super().__init__(absreq.Service.LEDGER)
-        self.objects = objects
+        self.objects = [v2base.GetObjectRequest(obj, None) for obj in objects]
         self.field_mask = self._field_mask(
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
@@ -163,29 +191,54 @@ class GetObjects(absreq.PGRPC_Request):
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        o_list = [v2base.GetObjectRequest(x, y) for x, y in self.objects]
         return stub.batch_get_objects, v2base.BatchGetObjectsRequest(
-            requests=o_list, read_mask=self.field_mask
+            requests=self.objects, read_mask=self.field_mask
         )
 
 
-class GetMultipleObjects(GetObjects):
+class GetMultiplePastObjects(absreq.PGRPC_Request):
     """
-    To maintain parity with GraphQL.
-
     Retrieve information about multiple objects by object ids.
-    Leverages GetObjects (gRPC) for exection.
     """
 
     def __init__(
         self,
         *,
-        object_ids: list[str],
-        field_mask=None,
-    ):
-        super().__init__(
-            objects=[(x, None) for x in object_ids],
-            field_mask=field_mask,
+        for_versions: list[dict[str, int]],
+        field_mask: Optional[list[str]] = None,
+    ) -> None:
+        """QueryNode initializer to fetch past object information for a list of object keys.
+
+        Where each `dict` (key) is of construct:
+        {
+            objectId:str, # Object id
+            version:int   # Version to fetch
+        }
+
+        :param for_versions: The list of object and version dictionaries
+        :type for_versions: list[dict]
+
+        """
+        if len(for_versions) > 50:
+            raise ValueError(f"Max object ids 50, {len(for_versions)} submitted.")
+        super().__init__(absreq.Service.LEDGER)
+        self.objects = []
+        for entry in for_versions:
+            self.objects.append(
+                v2base.GetObjectRequest(entry["objectId"], entry["version"])
+            )
+        self.field_mask = self._field_mask(
+            field_mask if field_mask else OBJECT_DEFAULT_FIELDS
+        )
+
+    def to_request(
+        self, *, stub: v2base.LedgerServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.batch_get_objects, v2base.BatchGetObjectsRequest(
+            requests=self.objects, read_mask=self.field_mask
         )
 
 
