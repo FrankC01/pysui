@@ -36,6 +36,8 @@ __all__ = (
     "ListDynamicFieldsResponse",
     "ListOwnedObjectsRequest",
     "ListOwnedObjectsResponse",
+    "ListPackageVersionsRequest",
+    "ListPackageVersionsResponse",
     "LiveDataServiceStub",
     "Module",
     "MovePackageServiceStub",
@@ -45,6 +47,7 @@ __all__ = (
     "OpenSignatureReference",
     "OwnedObject",
     "Package",
+    "PackageVersion",
     "RegulatedCoinMetadata",
     "SignatureVerificationServiceStub",
     "SimulateTransactionRequest",
@@ -1008,6 +1011,64 @@ default_message_pool.register_message(
 
 
 @dataclass(eq=False, repr=False)
+class ListPackageVersionsRequest(betterproto2.Message):
+    package_id: "str | None" = betterproto2.field(
+        1, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    Required. The `storage_id` of any version of the package.
+    """
+
+    page_size: "int | None" = betterproto2.field(
+        2, betterproto2.TYPE_UINT32, optional=True
+    )
+    """
+    The maximum number of versions to return. The service may return fewer than this value.
+    If unspecified, at most `1000` entries will be returned.
+    The maximum value is `10000`; values above `10000` will be coerced to `10000`.
+    """
+
+    page_token: "bytes | None" = betterproto2.field(
+        3, betterproto2.TYPE_BYTES, optional=True
+    )
+    """
+    A page token, received from a previous `ListPackageVersions` call.
+    Provide this to retrieve the subsequent page.
+
+    When paginating, all other parameters provided to `ListPackageVersions` must
+    match the call that provided the page token.
+    """
+
+
+default_message_pool.register_message(
+    "sui.rpc.v2alpha", "ListPackageVersionsRequest", ListPackageVersionsRequest
+)
+
+
+@dataclass(eq=False, repr=False)
+class ListPackageVersionsResponse(betterproto2.Message):
+    versions: "list[PackageVersion]" = betterproto2.field(
+        1, betterproto2.TYPE_MESSAGE, repeated=True
+    )
+    """
+    List of all package versions, ordered by version.
+    """
+
+    next_page_token: "bytes | None" = betterproto2.field(
+        2, betterproto2.TYPE_BYTES, optional=True
+    )
+    """
+    A token, which can be sent as `page_token` to retrieve the next page.
+    If this field is omitted, there are no subsequent pages.
+    """
+
+
+default_message_pool.register_message(
+    "sui.rpc.v2alpha", "ListPackageVersionsResponse", ListPackageVersionsResponse
+)
+
+
+@dataclass(eq=False, repr=False)
 class Module(betterproto2.Message):
     """
     A Move Module.
@@ -1172,6 +1233,32 @@ class Package(betterproto2.Message):
 
 
 default_message_pool.register_message("sui.rpc.v2alpha", "Package", Package)
+
+
+@dataclass(eq=False, repr=False)
+class PackageVersion(betterproto2.Message):
+    """
+    A simplified representation of a package version
+    """
+
+    package_id: "str | None" = betterproto2.field(
+        1, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    The storage ID of this package version
+    """
+
+    version: "int | None" = betterproto2.field(
+        2, betterproto2.TYPE_UINT64, optional=True
+    )
+    """
+    The version number
+    """
+
+
+default_message_pool.register_message(
+    "sui.rpc.v2alpha", "PackageVersion", PackageVersion
+)
 
 
 @dataclass(eq=False, repr=False)
@@ -1591,6 +1678,23 @@ class MovePackageServiceStub(betterproto2.ServiceStub):
             "/sui.rpc.v2alpha.MovePackageService/GetFunction",
             message,
             GetFunctionResponse,
+            timeout=timeout,
+            deadline=deadline,
+            metadata=metadata,
+        )
+
+    async def list_package_versions(
+        self,
+        message: "ListPackageVersionsRequest",
+        *,
+        timeout: "float | None" = None,
+        deadline: "Deadline | None" = None,
+        metadata: "MetadataLike | None" = None,
+    ) -> "ListPackageVersionsResponse":
+        return await self._unary_unary(
+            "/sui.rpc.v2alpha.MovePackageService/ListPackageVersions",
+            message,
+            ListPackageVersionsResponse,
             timeout=timeout,
             deadline=deadline,
             metadata=metadata,
