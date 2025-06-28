@@ -225,7 +225,7 @@ class AsyncSuiTransaction(txbase):
     async def split_coin(
         self,
         *,
-        coin: str | v2base.Object | bcs.Argument,
+        coin: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument,
         amounts: list[Union[int, bcs.Argument]],
     ) -> bcs.Argument | list[bcs.Argument]:
         """split_coin Creates a new coin(s) with the defined amount(s), split from the provided coin.
@@ -239,62 +239,44 @@ class AsyncSuiTransaction(txbase):
 
             # Transfer all coins to one recipient
             txer = SuiTransaction(client)
-            scres = await txer.split_coin(coin=primary_coin, amounts=[1000000000, 1000000000])
+            scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000, 1000000000])
             await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
             # OR only transfer less than all
             await txer.transfer_objects(transfers=[scres[0]],recipient=client.config.active_address)
 
-        :param coin: The coin address (object id) to split from.
-        :type coin: Union[str, v2base.Object, bcs.Argument]
-        :param amounts: The amount or list of amounts to split the coin out to
+        If the amount list contains only one element then a single Result argument is returned, otherwise
+        a list of NestedResult arguments are returned.
+
+        :param coin: The coin to split from.
+        :type coin: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :param amounts: The list of amounts to split the coin out to
         :type amounts: list[Union[int, bcs.Argument]]
-        :return: A result or list of results types to use in subsequent commands
+        :return: A Result or list of  NestedResults types to use in subsequent commands
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
         parms = await self._argparse.build_args([coin, amounts], txbase._SPLIT_COIN)
         return self.builder.split_coin(parms[0], parms[1:][0])
 
-    async def merge_coins(
-        self,
-        *,
-        merge_to: str | v2base.Object | bcs.Argument,
-        merge_from: list[str | v2base.Object, bcs.Argument],
-    ) -> bcs.Argument:
-        """merge_coins Merges one or more coins to a primary coin.
-
-        :param merge_to: The coin to merge other coins to
-        :type merge_to: Union[str, v2base.Object, bcs.Argument]
-        :param merge_from: One or more coins to merge to primary 'merge_to' coin
-        :type merge_from: list[Union[str, v2base.Object, bcs.Argument]]
-        :return: The command result. Can not be used as input in subsequent commands.
-        :rtype: bcs.Argument
-        """
-        parms = await self._argparse.build_args(
-            [merge_to, merge_from], txbase._MERGE_COINS
-        )
-
-        return self.builder.merge_coins(parms[0], parms[1:][0])
-
     async def split_coin_equal(
         self,
         *,
-        coin: str | v2base.Object | bcs.Argument,
+        coin: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument,
         split_count: int,
         coin_type: Optional[str] = "0x2::sui::SUI",
     ) -> bcs.Argument:
-        """split_coin_equal Splits a Sui coin into equal parts and transfers to transaction signer.
+        """split_coin_equal Split one coin to equal amounts
 
-        :param coin: The coin to split
-        :type coin: Union[str, v2base.Object, bcs.Argument]
-        :param split_count: The number of parts to split coin into
+        :param coin: Identies the coin object or generic gas argument to split from.
+        :type coin: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument
+        :param split_count: how many coins to split `coin` into
         :type split_count: int
-        :param coin_type: The coin type, defaults to a Sui coin type
-        :type coin_type: Optional[str], optional
-        :return: The command result. Because all splits are automagically transferred to
-            signer, the result is not usable as input to subseqent commands.
+        :param coin_type: Type move type of coin being split, defaults to "0x2::sui::SUI"
+        :type coin_type: str, optional
+        :return: Null argument. Can not be used in subsequent commands.
         :rtype: bcs.Argument
         """
+        raise NotImplementedError("Pending MovePackage service in gRPC")
         package, package_module, package_function, retcount, ars = (
             await self._function_meta_args(self._SPLIT_AND_KEEP)
         )
@@ -311,16 +293,37 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    async def merge_coins(
+        self,
+        *,
+        merge_to: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument,
+        merge_from: list[str | v2base.Object, v2alpha.OwnedObject | bcs.Argument],
+    ) -> bcs.Argument:
+        """merge_coins Merges one or more coins to a primary coin.
+
+        :param merge_to: The coin to merge other coins to
+        :type merge_to: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :param merge_from: One or more coins to merge to primary 'merge_to' coin
+        :type merge_from: list[Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]]
+        :return: The command result. Can not be used as input in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        parms = await self._argparse.build_args(
+            [merge_to, merge_from], txbase._MERGE_COINS
+        )
+
+        return self.builder.merge_coins(parms[0], parms[1:][0])
+
     async def transfer_objects(
         self,
         *,
-        transfers: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]],
+        transfers: list[str | v2base.Object, v2alpha.OwnedObject | bcs.Argument],
         recipient: Union[str, bcs.Argument],
     ) -> bcs.Argument:
         """transfer_objects Transfers one or more objects to a recipient.
 
         :param transfers: A list or SuiArray of objects to transfer
-        :type transfers: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]]
+        :type transfers: list[Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]]
         :param recipient: The recipient address that will receive the objects being transfered
         :type recipient: Union[str, bcs.Argument]
         :return: The command result. Can NOT be used as input in subsequent commands.
@@ -335,15 +338,15 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         recipient: str,
-        from_coin: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        from_coin: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument,
         amount: Optional[int] = None,
     ) -> bcs.Argument:
         """transfer_sui Transfers a Sui coin object to a recipient.
 
         :param recipient: The recipient address that will receive the Sui coin being transfered
         :type recipient: str
-        :param from_coin: The Sui coin to transfer
-        :type from_coin: Union[str, bcs.Argument]
+        :param from_coin: The Sui coin to take amount from and transfer
+        :type from_coin: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
         :param amount: Optional amount to transfer. Entire coin if not specified, defaults to None
         :type amount: Optional[int], optional
         :raises ValueError: If unable to fetch the from_coin
@@ -359,14 +362,14 @@ class AsyncSuiTransaction(txbase):
     async def public_transfer_object(
         self,
         *,
-        object_to_send: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        object_to_send: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument],
         recipient: str,
         object_type: str,
     ) -> bcs.Argument:
         """public_transfer_object Public transfer of any object with KEY and STORE Attributes.
 
         :param object_to_send: Object being transferred
-        :type object_to_send: Union[str, bcs.Argument]
+        :type object_to_send: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
         :param recipient: Address for recipient of object_to_send
         :type recipient: str
         :param object_type: Type arguments
@@ -374,6 +377,7 @@ class AsyncSuiTransaction(txbase):
         :return: Result of command which is non-reusable
         :rtype: bcs.Argument
         """
+        raise NotImplementedError("Pending MovePackage service in gRPC")
         package, package_module, package_function = (
             tv.TypeValidator.check_target_triplet(self._PUBLIC_TRANSFER)
         )
@@ -394,10 +398,11 @@ class AsyncSuiTransaction(txbase):
     async def make_move_vector(
         self,
         *,
-        items: list[str, pgql_type.ObjectReadGQL, bcs.ObjectArg],
+        items: list[str, v2base.Object, v2alpha.OwnedObject, bcs.ObjectArg],
         item_type: Optional[str] = None,
     ) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
+        raise NotImplementedError("Pending MovePackage service in gRPC")
         if all(isinstance(x, bcs.ObjectArg) for x in items):
             if item_type:
                 type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
@@ -432,6 +437,7 @@ class AsyncSuiTransaction(txbase):
             move method being called.
         :rtype: Union[bcs.Argument, list[bcs.Argument]]
         """
+        raise NotImplementedError("Pending MovePackage service in gRPC")
         type_arguments = type_arguments if type_arguments else []
         # Validate and get target meta arguments
         package, package_module, package_function, retcount, ars = (
@@ -451,18 +457,30 @@ class AsyncSuiTransaction(txbase):
     async def optional_object(
         self,
         *,
-        optional_object: Union[str, pgql_type.ObjectReadGQL, bcs.Argument],
+        optional_object: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument],
         is_receiving: Optional[bool] = False,
         is_shared_mutable: Optional[bool] = False,
         type_arguments: Optional[list] = None,
     ) -> bcs.Argument:
-        """."""
+        """optional_object Wrap object as move Option
+
+        :param optional_object: Object to wrap
+        :type optional_object: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :param is_receiving: True if this a receiving type, defaults to False
+        :type is_receiving: Optional[bool], optional
+        :param is_shared_mutable: True if this is a shared mutable type, defaults to False
+        :type is_shared_mutable: Optional[bool], optional
+        :param type_arguments: Move type string, defaults to None
+        :type type_arguments: Optional[list], optional
+        :return: Argument that can be used in subsequent commands (e.g. move_call arguments)
+        :rtype: bcs.Argument
+        """
         type_arguments = type_arguments if type_arguments else []
         function = "some"
         # Handle other than argument
         if isinstance(optional_object, bcs.Argument):
             parms = [optional_object]
-        elif isinstance(optional_object, (str, pgql_type.ObjectReadGQL)):
+        elif isinstance(optional_object, (str, v2base.Object, v2alpha.OwnedObject)):
             parms = [
                 await self._argparse.async_fetch_or_transpose_object(
                     optional_object, is_receiving, is_shared_mutable
@@ -485,14 +503,14 @@ class AsyncSuiTransaction(txbase):
     async def stake_coin(
         self,
         *,
-        coins: list[Union[str, pgql_type.ObjectReadGQL, bcs.Argument]],
+        coins: list[Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]],
         validator_address: str,
         amount: Optional[int] = None,
     ) -> bcs.Argument:
         """stake_coin Stakes one or more coins to a specific validator.
 
         :param coins: One or more coins to stake.
-        :type coins: list[str, pgql_type.ObjectReadGQL, bcs.Argument]
+        :type coins: list[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
         :param validator_address: The validator to stake coins to
         :type validator_address: str
         :param amount: Amount from coins to stake. If not stated, all coin will be staked, defaults to None
@@ -500,6 +518,7 @@ class AsyncSuiTransaction(txbase):
         :return: The command result.
         :rtype: bcs.Argument
         """
+        raise NotImplementedError("Pending MovePackage service in gRPC")
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
             await self._function_meta_args(self._STAKE_REQUEST_TARGET)
@@ -533,6 +552,7 @@ class AsyncSuiTransaction(txbase):
         :return: The Result argument
         :rtype: bcs.Argument
         """
+        raise NotImplementedError("Pending MovePackage service in gRPC")
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
             await self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
@@ -573,7 +593,7 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         project_path: str,
-        upgrade_cap: Union[str, pgql_type.ObjectReadGQL],
+        upgrade_cap: Union[str, v2base.Object, v2alpha.OwnedObject],
         args_list: Optional[list[str]] = None,
     ) -> bcs.Argument:
         """publish_upgrade Authorize, publish and commit upgrade of package.

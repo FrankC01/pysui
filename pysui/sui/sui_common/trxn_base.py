@@ -112,16 +112,7 @@ class _TransactionBase:
             pgql_type.MoveObjectRefArg(
                 pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
             ),
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF,
-                "0x2",
-                "sui",
-                "SUI",
-                [pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64")],
-                True,
-                False,
-                False,
-            ),
+            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
         ],
     )
 
