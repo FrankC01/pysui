@@ -308,6 +308,26 @@ class SharedObjectReference(canoser.Struct):
         )
 
 
+class Uint53(canoser.int_type.IntType):
+    """Uint256 represents a 256 bit ulong as hack as canoser doesn't support."""
+
+    byte_lens = 53
+    max_value = 9007199254740991
+    min_value = 0
+    signed = False
+
+    @classmethod
+    def encode(cls, value):
+        """encode Override canoser.int_type.IntType to return value as bytes.
+
+        :param value: The inbound python int to covert
+        :type value: int
+        :return: Representation as bytes
+        :rtype: bytes
+        """
+        return value.to_bytes(32, byteorder="little", signed=False)
+
+
 class Uint256(canoser.int_type.IntType):
     """Uint256 represents a 256 bit ulong as hack as canoser doesn't support."""
 
@@ -333,6 +353,7 @@ class Uint256(canoser.int_type.IntType):
 U8 = canoser.Uint8
 U16 = canoser.Uint16
 U32 = canoser.Uint32
+U53 = Uint53
 U64 = canoser.Uint64
 U128 = canoser.Uint128
 U256 = Uint256

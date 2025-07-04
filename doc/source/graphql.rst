@@ -5,8 +5,8 @@ GraphQL
 MystenLab's announcement can be found `Here <https://github.com/mystenLabs/sui/issues/13700/>`_ . This change begins the
 transitions from JSON RPC node interactions to GraphQL RPC node interactions.
 
-``pysui`` has added support for interacting with the Sui GraphQL RPC node as well as porting Builders to what we
-refer to as QueryNodes for, currently, read operations.
+``pysui`` has added support for interacting with the Sui GraphQL RPC node as
+well as porting Builders to what are refered to as QueryNodes.
 
 At the time of this writing, there are limitations to Sui GraphQL RPC. Before moving forward read `This <https://forums.sui.io/t/launching-the-beta-graphql-rpc-service/45104/12/>`_ to
 know what is active in the beta.
@@ -15,7 +15,8 @@ know what is active in the beta.
 Subject to Change
 ====================
 
-pysui's GraphQL implementation, class names, etc. subject to change. This implementation is not production ready and should be considered experiemental.
+pysui's GraphQL implementation, class names, etc. subject to change. This
+implementation is not production ready and should be considered experiemental.
 
 
 ====================
@@ -24,14 +25,15 @@ Key Dependencies
 
 pysui uses `gql <https://pypi.org/project/gql/>`_ for GraphQL queries and eventually mutations and subscriptions. Includes DSL.
 
-You can use the capabilities of this library to create your own query strings, DocumentNodes or QueryNodes.
+You can use the capabilities of this library to create your own query strings,
+DocumentNodes or QueryNodes.
 
 ====================
 Running Samples
 ====================
 
-If you have installed Sui binaries then change the environment to either testnet or mainnet. Note that Sui GraphQL mainnet has
-less bugs than testnet.
+If you have installed Sui binaries then change the environment to either
+testnet or mainnet. Note that Sui GraphQL mainnet has less bugs than testnet.
 
 .. code-block::
 
@@ -78,8 +80,9 @@ Simple dev example
 Schema
 ------
 
-To leverage the power of Sui GraphQL one would benefit to understand the schema implemented. To create a
-copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy in the current directory:
+To leverage the power of Sui GraphQL one would benefit to understand the
+schema implemented. To create a copy of a Sui GraphQL RPC schema in use,
+you can instruct pysui to write a copy in the current directory:
 
 .. code-block:: python
     :linenos:
@@ -100,8 +103,8 @@ copy of a Sui GraphQL RPC schema in use, you can instruct pysui to write a copy 
 Service Configuration
 ---------------------
 
-A Sui GraphQL node may vary in it's configuraiton. When pysui initializes a client, the assoicated
-node configuration is captured and can be accessed via:
+A Sui GraphQL node may vary in it's configuraiton. When pysui initializes a
+client, the assoicated node configuration is captured and can be accessed via:
 
 .. code-block:: python
     :linenos:
@@ -119,7 +122,8 @@ node configuration is captured and can be accessed via:
         main()
 
 
-At the time of this writing, the results for the Mysten Sui `devnet` GraphQL node:
+At the time of this writing, the results for the Mysten
+Sui `devnet` GraphQL node:
 
 .. code-block:: json
     :linenos:
@@ -155,8 +159,9 @@ At the time of this writing, the results for the Mysten Sui `devnet` GraphQL nod
 HTTP Client Headers
 ----------------------------
 
-You can set global HTTP client headers at the creation of the SuiGQLClient and you can override/extend them
-with each query execution. If used at query execution it is merged/update with the global.
+You can set global HTTP client headers at the creation of the SuiGQLClient
+and you can override/extend them with each query execution. If used at query
+execution it is merged/update with the global.
 
 If not provided at construction, it defaults to ``{"headers":None}``
 
@@ -188,8 +193,8 @@ If not provided at construction, it defaults to ``{"headers":None}``
 Executing Queries
 =================
 
-The SuiGQLClient encapsulates the ``gql`` Client and support multiple options to execute a query and
-returning results
+The SuiGQLClient encapsulates the ``gql`` Client and support multiple options
+to execute a query and returning results
 
 .. code-block:: python
 
@@ -224,9 +229,12 @@ returning results
     ) -> SuiRpcResult:
 
 * ``execute_query_string`` convert a GraphQL query string to a gql `DocumentNode <https://gql.readthedocs.io/en/stable/usage/basic_usage.html#>`_ and execute, returning a dictionary result by default
-* ``execute_document_node`` will execute a gql DocumentNode and return a dictionary result if no ``encode_fn`` function is defined
-* ``execute_query_node`` will execute a ``pysui`` QueryNode and return a dictionary result if no ``encode_fn`` function is defined
-* ``encode_fn`` is an explict callable for encoding a query result that takes a dictionary and returns Any. If specified along with a ``pysui`` QueryNode, it will override the encode_fn method
+* ``execute_document_node`` will execute a gql DocumentNode and return a
+   dictionary result if no ``encode_fn`` function is defined
+* ``execute_query_node`` will execute a ``pysui`` QueryNode and return a
+  dictionary result if no ``encode_fn`` function is defined
+* ``encode_fn`` is an explict callable for encoding a query result that takes
+  a dictionary and returns Any. If specified along with a ``pysui`` QueryNode, it will override the encode_fn method
 
 --------------
 String queries
@@ -268,8 +276,8 @@ convert the sting to a ``DocumentNode``, execute the query and either return the
 DocumentNode queries
 -----------------------
 
-``DocumentNode`` queries are those that use the ``gql`` intermediate step of convering a query string to a DocumentNode
-using ``gql`` functions.
+``DocumentNode`` queries are those that use the ``gql`` intermediate step of
+convering a query string to a DocumentNode using ``gql`` functions.
 
 .. code-block:: python
 
@@ -295,24 +303,33 @@ using ``gql`` functions.
 pysui QueryNode queries
 -----------------------
 
-pysui QueryNodes are those that subclass ``pysui.sui.sui_pgql.pgql_client.PGQL_QueryNode``. ``pysui`` provides a number of
-predefined QueryNode queries that attempt to achieve parity with most pysui SDK Builders, however some may not be supported.
+pysui QueryNodes are those that subclass ``PGQL_QueryNode``. ``pysui`` provides
+a number of predefined QueryNode queries that attempt to achieve parity with
+most pysui SDK Builders, however some may not be supported.
 
-pysui QueryNodes (such as ``GetCoins`` above) take zero or more parameters depending on the query, and
-some provide paging control for large results. All pysui can QueryNodes provide an ``NODE.encode_fn(dict)`` static method
-to encode the dictionary result, from executing, to a encoding style of their own. This can be overriden as noted above.
+pysui QueryNodes (such as ``GetCoins`` above) take zero or more parameters
+depending on the query, and some provide paging control for large results.
+All pysui can QueryNodes provide an ``NODE.encode_fn(dict)`` static method
+to encode the dictionary result, from executing, to a encoding style of
+their own. This can be overriden as noted above.
 
 
 pysui QueryNodes leverage gql's `DSL <https://gql.readthedocs.io/en/stable/advanced/dsl_module.html#>`_ to
-construct queries, fragments and inline fragments. Once constructed, pysui QueryNodes can be submitted to
-the client (SuiGQLClient or AsyncSuiGQLClient) ``execute_query`` method.
+construct queries, fragments and inline fragments. Once constructed, pysui
+QueryNodes can be submitted to the client (SuiGQLClient or AsyncSuiGQLClient)
+``execute_query`` method.
 
-When passing a QueryNode to ``execute_query`` a few things happen prior to submitting:
+When passing a QueryNode to ``execute_query`` a few things happen prior to
+submitting:
 
 #. The QueryNode's ``as_document_node`` is called to return a DocumentNode
-#. The result is checked and if it is the ``PGQL_NoOp`` type, a ``NoopGQL`` object is returned, otherwise...
-#. The DocumentNode is submitted for execution and ``gql`` returns a Python dict of the result
-#. A check is then made to see if either ``encode_fn`` is provided or if the QueryNode provides an ``encode_fn`` the function is called to prepare the result and returns
+#. The result is checked and if it is the ``PGQL_NoOp`` type, a ``NoopGQL``
+   object is returned, otherwise...
+#. The DocumentNode is submitted for execution and ``gql`` returns a Python
+   dict of the result
+#. A check is then made to see if either ``encode_fn`` is provided or if the
+   QueryNode provides an ``encode_fn`` the function is called to prepare the
+   result and returns
 #. Otherwise the Python dict is returned
 
 ================================
@@ -323,16 +340,19 @@ Creating PGQL_QueryNode queries
 Notes:
 -------
 
-#. During the execute step, if a QueryNode has public property ``owner`` it is first checked if the value
-    is an alias and will resolve it to the associated Sui address, otherwise the value is validated as a Sui address literal.
-#. In the ``as_document_node`` call it does not have to be constructed using DSL as the example below in Step 2 shows. It is
+#. During the execute step, if a QueryNode has public property ``owner`` it is
+    first checked if the value is an alias and will resolve it to the
+    associated Sui address, otherwise the value is validated as a Sui
+    address literal.
+#. In the ``as_document_node`` call it does not have to be constructed
+    using DSL as the example below in Step 2 shows. It is
     only required that the method returns a DocumentNode.
 
 -------
 Step 1:
 -------
 
-Note the required and optional methods from ``pysui.sui.sui_pgql.pgql_client.PGQL_QueryNode``:
+Note the required and optional methods from ``PGQL_QueryNode``:
 
 .. code-block:: python
 
@@ -366,8 +386,9 @@ Note the required and optional methods from ``pysui.sui.sui_pgql.pgql_client.PGQ
 Step 2:
 -------
 
-Derive and implement your construct. This example is a predefined pysui QueryNode that uses the
-``gql`` DSL with the schema. It also has defined an encoding type.
+Derive and implement your construct. This example is a predefined pysui
+QueryNode that uses the ``gql`` DSL with the schema. It also has defined
+an encoding type.
 
 .. code-block:: python
 

@@ -1,3 +1,4 @@
+=================
 Introducing pysui
 =================
 
@@ -88,9 +89,9 @@ GraphQL **pysui** client Setup
     client = SyncGqlClient(pysui_config=...)
 
     # GraphQL Asynchronous client
-    client = AsyncGqlClient(pysui_config=...)
+    client = AsyncGqlClient(pysui_config=PysuiConfiguration(...))
 
-See :any:`pyconfig` for more information regarding configuration setup.
+See the :doc:`PysuiConfiguration <pyconfig>` page for detailed information.
 
 gRPC **pysui** client Setup
 +++++++++++++++++++++++++++
@@ -105,12 +106,12 @@ gRPC **pysui** client Setup
     from pysui import SuiGrpcClient
 
     # gRPC Asynchronous client
-    client = SuiGrpcClient(pysui_config=...)
+    client = SuiGrpcClient(pysui_config=PysuiConfiguration(...))
 
-See :any:`pyconfig` for more information regarding configuration setup.
+See the :doc:`PysuiConfiguration <pyconfig>` page for detailed information.
 
-Blockchain Queries and Transactions
------------------------------------
+Blockchain Queries
+------------------
 
 Each client type (JSON RPC, GraphQL and gRPC) facilitates fetching data
 and executing transactions through various mechanisms.
@@ -122,7 +123,121 @@ and executing transactions through various mechanisms.
 There is general parity of capabilities across clients although in some cases
 they may be unique.
 
-EXAMPLES OF QUERY
++-----------+--------------------------------------+
+|  Protocol | Classes                              |
++===========+======================================+
+| JSON RPC  | :doc:`Builders <builders>`           |
++-----------+--------------------------------------+
+| GraphQL   | :doc:`Query Nodes <graphql_qnodes>`  |
++-----------+--------------------------------------+
+| gRPC      | :doc:`Requests <grpc_requests_list>` |
++-----------+--------------------------------------+
+
+JSON RPC fetch object
++++++++++++++++++++++
+
+.. code-block:: Python
+   :linenos:
+
+    # Fundemental classes
+    from pysui import SuiConfig, SyncClient, ObjectID
+
+    # The JSON RPC builders
+    import pysui.sui.sui_builders.get_builders as bn
+
+    def get_object_example():
+        """Fetch an object by ID."""
+
+        # Setup synchronous client using defaults in Mysten's client.yaml
+        client = SyncClient(SuiConfig.default_config())
+
+        # Setup the get object builder
+        builder = bn.GetObject(
+            object_id=ObjectID(
+                "0x09f29cd8795c171136f0da589516bfdf4ca0f77084550830fe20611e06018dc7"
+            )
+        )
+
+        # Execute and reviewe the results
+        result = client.execute(builder=builder)
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)
+
+GraphQL fetch object
++++++++++++++++++++++
+
+.. code-block:: Python
+   :linenos:
+
+    # Fundemental classes
+    from pysui import PysuiConfiguration, SyncGqlClient
+
+    # The GraphQL query nodes
+    import pysui.sui.sui_pgql.pgql_query as qn
+
+    def get_object_example():
+        """Fetch an object by ID."""
+
+        # SUI_GQL_RPC_GROUP is a named group in the configuration.
+        # Default configuration is located in the `~/.pysui` folder.
+
+        cfg = PysuiConfiguration(
+            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+        )
+        client = SyncGqlClient(pysui_config=cfg)
+
+        query_node = qn.GetObject(
+            object_id="0x09f29cd8795c171136f0da589516bfdf4ca0f77084550830fe20611e06018dc7"
+        )
+        result = client.execute_query_node(with_node=query_node)
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)
+
+
+gRPC fetch object
++++++++++++++++++
+
+.. code-block:: Python
+   :linenos:
+
+    # gRPC client is asynchronous only
+    import asyncio
+
+    # Fundemental classes
+    from pysui import PysuiConfiguration, SuiGrpcClient
+
+    # The gRPC request nodes
+    import pysui.sui.sui_grpc.pgrpc_requests as rn
+
+    async def get_object_example():
+        """Fetch an object by ID."""
+
+        # SUI_GRPC_GROUP is a named group in the configuration.
+        # Default configuration is located in the `~/.pysui` folder.
+
+        cfg = PysuiConfiguration(
+            group_name=PysuiConfiguration.SUI_GRPC_GROUP,
+        )
+        client = SuiGrpcClient(pysui_config=cfg)
+
+        request = rn.GetObject(
+            object_id="0x09f29cd8795c171136f0da589516bfdf4ca0f77084550830fe20611e06018dc7"
+        )
+        result = await grpc_client.execute(request=request)
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)
+
+    if __name__ == "__main__":
+        try:
+            asyncio.run(main(cfg))
+        except ValueError as ve:
+            print(ve)
 
 Running With `suibase` (JSON RPC ONLY)
 --------------------------------------

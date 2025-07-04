@@ -2,7 +2,7 @@
 gRPC
 """"
 
-MystenLab has exposed a lower level data protcol using Google Protobuffs.
+MystenLab has exposed a lower level data protocol using Google Protobuffs.
 This change is part of the transitions from JSON RPC node interactions which
 is planned to sunset in 2026.
 

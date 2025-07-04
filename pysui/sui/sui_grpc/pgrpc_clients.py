@@ -16,13 +16,14 @@ import betterproto2
 import dataclasses_json
 from grpclib.exceptions import GRPCError
 
+from pysui import SDK_CURRENT_VERSION
 from pysui.sui.sui_common.client import PysuiClient
 
 from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
 
-if absreq.CURRENT_VERSION[1] >= 87:
+if SDK_CURRENT_VERSION[1] >= 87:
     import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
     import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
 else:

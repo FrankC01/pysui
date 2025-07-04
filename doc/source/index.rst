@@ -29,6 +29,7 @@ Welcome to pysui's documentation!
    graphql_qnodes
    graphql_serial_exc
    grpc
+   grpc_requests_list
    aliases
    multi_sig
    prog_txn

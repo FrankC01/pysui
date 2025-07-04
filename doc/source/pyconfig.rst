@@ -6,6 +6,15 @@ PysuiConfiguration is the gRPC and GraphQL replacement for the
 legacy SuiConfig and this new class must be used when creating GraphQL
 clients and SuiTransactions.
 
+This page contains general class information that will aid developers
+if they undertake configuration changes in their code.
+
+However; to assist in editing either Mysten's ``client.yaml`` or pysui's
+``PysuiConfig.json`` there is a TUI tool called `TPYSUI`_  that may be useful
+in managing configurations outside of your code.
+
+.. _TPYSUI: https://github.com/Suitters/tpysui
+
 General
 =======
 For JSON RPDC pysui relied on the presence of ``~/.sui`` and it's constituent configuration elements including
