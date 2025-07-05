@@ -20,6 +20,7 @@ Welcome to pysui's documentation!
 
    getting_started
    intro
+   bc_queries
    logging
    pyconfig
    builders

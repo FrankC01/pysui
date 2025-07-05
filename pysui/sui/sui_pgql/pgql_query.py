@@ -591,7 +591,6 @@ class GetMultipleVersionedObjects(PGQL_QueryNode):
 
         :param for_versions: The list of object and version dictionaries
         :type for_versions: list[dict]
-
         """
 
         self.version_list = for_versions
@@ -726,6 +725,7 @@ class GetEvents(PGQL_QueryNode):
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
         """
+
         self.event_filter = event_filter
         self.next_page = next_page
 
@@ -1620,7 +1620,7 @@ class GetPackage(PGQL_QueryNode):
 
 
 class DryRunTransactionKind(PGQL_QueryNode):
-    """."""
+    """DryRunTransactionKind query node."""
 
     def __init__(
         self,
@@ -1644,8 +1644,8 @@ class DryRunTransactionKind(PGQL_QueryNode):
             gasBudget: The budget to use. Defaults to max gas budget
             gasSponsor: The Sui address string of the sponsor, defaults to the sender
         }
-
         """
+
         self.tx_data = tx_bytestr
         self.tx_meta = tx_meta if tx_meta else {}
         self.tx_skipchecks = skip_checks
@@ -1687,7 +1687,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
 
 
 class DryRunTransaction(PGQL_QueryNode):
-    """."""
+    """DryRunTransaction query node."""
 
     def __init__(self, *, tx_bytestr) -> None:
         """__init__ Initialize DryRunTransaction object."""

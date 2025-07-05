@@ -1,6 +1,5 @@
-PysuiConfiguration
-""""""""""""""""""
-.. _pyconfig:
+PysuiConfiguration Details
+""""""""""""""""""""""""""
 
 PysuiConfiguration is the gRPC and GraphQL replacement for the
 legacy SuiConfig and this new class must be used when creating GraphQL
@@ -9,34 +8,45 @@ clients and SuiTransactions.
 This page contains general class information that will aid developers
 if they undertake configuration changes in their code.
 
-However; to assist in editing either Mysten's ``client.yaml`` or pysui's
-``PysuiConfig.json`` there is a TUI tool called `TPYSUI`_  that may be useful
-in managing configurations outside of your code.
+tpysui
+=======
 
-.. _TPYSUI: https://github.com/Suitters/tpysui
+To assist in editing either Mysten's ``client.yaml`` or pysui's
+``PysuiConfig.json`` there is a TUI tool called `Terminal Pysui`_
+that may be useful in managing configurations outside of your code.
+
+.. _Terminal Pysui: https://github.com/Suitters/tpysui
 
 General
 =======
-For JSON RPDC pysui relied on the presence of ``~/.sui`` and it's constituent configuration elements including
-``client.yaml``, ``sui.keystore``, and ``sui.aliases`` which were all encapsulated by SuiConfig. While SuiConfig
-supported some maniplations (i.e. adding new keys, alias management, etc.) it fell short of a more robust configuration
-management strategy. In addition, the code itself did not gracefully age with the advent of Sui GraphQL RPC. Until Mysten
-eliminates JSON RPC, SuiConfig may continue to be used with the JSON RPC clients.
+For JSON RPDC pysui relied on the presence of ``~/.sui`` and it's constituent
+configuration elements including ``client.yaml``, ``sui.keystore``,
+and ``sui.aliases`` which were all encapsulated by SuiConfig. While SuiConfig
+supported some maniplations (i.e. adding new keys, alias management, etc.) it
+fell short of a more robust configuration management strategy. In addition, the
+code itself did not gracefully age with the advent of Sui GraphQL RPC. Until
+Mysten eliminates JSON RPC, SuiConfig may continue to be used with the
+JSON RPC clients.
 
-PysuiConfiguration persists its own configuration (defaults to ``~/.pysui``) and offers more flexibility when it
-comes to configuration management. Amongst other things:
+PysuiConfiguration persists to it's own configuration location
+(defaults to ``~/.pysui``) and offers more flexibility when it comes
+to configuration management. Amongst other things:
 
-#. It does not presume it's configuration is persisted to a fixed location (configurable)
-#. It supports programmatic switching between it's primary components (see Anatomy below)
-#. It has a smaller code base that, when legacy JSON RPC support is removed, has a smaller memory footprint
+#. It does not presume it's configuration is persisted to a fixed
+location (configurable)
+#. It supports programmatic switching between it's primary components
+(see Anatomy below)
+#. It has a smaller code base that, when legacy JSON RPC support is removed,
+has a smaller memory footprint
 #. And more...
 
 Anatomy of PysuiConfiguration
 =============================
-The primary data model for PysuiConfiguration is a series of related ``dataclasse`` objects:
+The primary data model for PysuiConfiguration is a series of related
+``dataclasse`` objects:
 
-* The root data model is ``PysuiConfigModel`` which is a member of PysuiConfiguration.
-    It contains or or more
+* The root data model is ``PysuiConfigModel`` which is a member of
+  PysuiConfiguration. It contains or or more
 
     * ``ProfileGroup``, or group for short, which encapsulates unique environment configurations. only
         one group can be active at a time in the instance.
@@ -57,7 +67,7 @@ and the arguments you can pass to the constructor rely on that understanding.
 First time instantiation
 ------------------------
 
-For the initial setup of PysuiConfiguration you would use the ``PysuiConfiguration.initialize_config`` class method. 
+For the initial setup of PysuiConfiguration you would use the ``PysuiConfiguration.initialize_config`` class method.
 
 Here is an example that sets up a configuration for standard GraphQL and gRPC:
 
@@ -194,7 +204,8 @@ explicit group *does not* exist, or the profile (with profile_name) *does* exist
         make_active: Optional[bool] = False,
         in_group: Optional[str] = None,
         persist: Optional[bool] = True,
-    )
+    ):
+        """Add a new profile."""
 
 Update Existing
 ~~~~~~~~~~~~~~~
@@ -213,7 +224,8 @@ explicit group or the profile (with profile_name) *does not* exist.
         faucet_status_url: Optional[str] = None,
         in_group: Optional[str] = None,
         persist: Optional[bool] = True,
-    )
+    ):
+        """Update PysuiConfig.json"""
 
 ProfileGroup
 ------------
@@ -244,11 +256,13 @@ Returns the mnemonic string and address string upon success.
         make_active: Optional[bool] = False,
         alias: Optional[str] = None,
         persist: Optional[bool] = True,
-    )
+    ):
+        """Generate a new keypair."""
 
-Adding Keys to Greoup
+Adding Keys to Group
 ~~~~~~~~~~~~~~~~~~~~~
-If you do not want to generate new keys you can import existing keys into a group.
+If you do not want to generate new keys you can import
+existing keys into a group.
 
 .. code-block:: python
 
@@ -258,7 +272,8 @@ If you do not want to generate new keys you can import existing keys into a grou
         key_block: list[dict[str, str]],
         in_group: Optional[str] = None,
         persist: Optional[bool] = True,
-    ) -> list[str]
+    ) -> list[str]:
+        """Add a keypair."""
 
 The ``key_block`` is a list of dictionaries containing the base64 or bech32 keystring and an optional
 alias, for example:
@@ -292,7 +307,8 @@ Create a new group will raise an exception if the group_name group *does* exist.
         active_address_index: int,
         make_group_active: Optional[bool] = False,
         persist: Optional[bool] = True,
-    ) -> list[str]
+    ) -> list[str]:
+        """Add a new group."""
 
 The following is an example of creating a fictional group:
 

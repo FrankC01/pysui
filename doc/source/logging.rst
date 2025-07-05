@@ -1,14 +1,17 @@
 
+#######
 Logging
 #######
 
-The ``pysui`` package has logging enabled. However; it is up to the application(s) using the SDK
-to setup logging configuration. If this is not done, ``pysui`` logging information is lost.
+The ``pysui`` package has logging enabled. However; it is up to the
+application(s) using the SDK to setup logging configuration. If this
+is not done, ``pysui`` logging information is lost.
 
 Module Logging
 --------------
 
-Select ``pysui`` modules are setup for logging and have the following construct:
+Select ``pysui`` modules are setup for logging and have the following
+construct:
 
 .. code-block:: Python
 
@@ -17,10 +20,11 @@ Select ``pysui`` modules are setup for logging and have the following construct:
         logger.addHandler(logging.NullHandler())
         logger.propagate = False
 
-As you can see, if a root logger is not setup, ``pysui`` log messages go to the NullHandler (no-op)
+As you can see, if a root logger is not setup, ``pysui`` log messages
+go to the NullHandler (no-op)
 
-With this construct, the root logger (in application) **must** be configured prior to the
-inclusion of ``pysui`` modules. For example:
+With this construct, the root logger (in application) **must** be configured
+prior to the inclusion of ``pysui`` modules. For example:
 
 .. code-block:: Python
 
@@ -44,28 +48,3 @@ inclusion of ``pysui`` modules. For example:
 
     if __name__ == "__main__":
         main()
-
-
-Log Enabled Modules
--------------------
-
-Not every module in ``pysui`` is log enabled and adding logging and logging messages is an ongoing effort. The
-following have been enabled and have various degrees of logging messages:
-
-+-----------------------------------------+
-|     Module                              |
-+=========================================+
-| pysui.sui.sui_config                    |
-+-----------------------------------------+
-| pysui.sui.sui_clients.sync_client       |
-+-----------------------------------------+
-| pysui.sui.sui_clients.async_client      |
-+-----------------------------------------+
-| pysui.sui.sui_clients.subscribe         |
-+-----------------------------------------+
-| pysui.sui.sui_txn.sync_transaction      |
-+-----------------------------------------+
-| pysui.sui.sui_txn.async_transaction     |
-+-----------------------------------------+
-| pysui.sui.sui_txn.transaction_builder   |
-+-----------------------------------------+
