@@ -21,7 +21,8 @@ _GQL_DEFAULTS: dict = {
     "mainnet": "https://sui-mainnet.mystenlabs.com/graphql",
 }
 
-_CURRENT_CONFIG_VERSION: str = "1.0.0"
+_CONFIG_VERSION_100: str = "1.0.0"
+_CURRENT_CONFIG_VERSION: str = "1.1.0"
 
 
 @dataclasses.dataclass
@@ -51,6 +52,22 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         if not _res:
             raise ValueError(f"{group_name} does not exist.")
         return _res
+
+    def update_model(self, gql_well_known: str, grpc_well_known: str) -> bool:
+        """Update the model."""
+        # If prior was 1.0.0, 1.1.0 brings protocol indicator
+        # in groups
+        change_made: bool = False
+        if self.version == _CONFIG_VERSION_100:
+            change_made = True
+            for g in self.groups:
+                if g.group_name == gql_well_known:
+                    g.protocol = prfgrp.GroupProtocol.GRAPHQL
+                elif g.group_name == grpc_well_known:
+                    g.protocol = prfgrp.GroupProtocol.GRPC
+                else:
+                    g.protocol = prfgrp.GroupProtocol.OTHER
+        return change_made
 
     @property
     def active_group(self) -> prfgrp.ProfileGroup:

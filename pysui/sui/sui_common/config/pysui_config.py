@@ -69,6 +69,11 @@ class PysuiConfiguration:
         self._model: PysuiConfigModel = PysuiConfigModel.from_json(
             self._config_file.read_text(encoding="utf8")
         )
+        # Migrate if versions outdated.
+        if self._model.version != _CURRENT_CONFIG_VERSION:
+            self._model.update_model(self.SUI_GQL_RPC_GROUP, self.SUI_GRPC_GROUP)
+            self._model.version = _CURRENT_CONFIG_VERSION
+            self.save()
 
         # Make active as per arguments
         self.make_active(
@@ -86,6 +91,7 @@ class PysuiConfiguration:
         """Generate graphql group"""
         group_cfg = deepcopy(basis)
         group_cfg.group_name = name
+        group_cfg.group_protocol = cfg_group.GroupProtocol.GRAPHQL
         for prf in group_cfg.profiles:
             if prf.profile_name == "devnet":
                 prf.url = "https://sui-devnet.mystenlabs.com/graphql"
@@ -102,6 +108,7 @@ class PysuiConfiguration:
         """Generate gRPC group"""
         group_cfg = deepcopy(basis)
         group_cfg.group_name = name
+        group_cfg.group_protocol = cfg_group.GroupProtocol.GRPC
         for prf in group_cfg.profiles:
             prf.faucet_url = None
             prf.faucet_status_url = None
@@ -152,7 +159,9 @@ class PysuiConfiguration:
         setattr(instance, "_config_root", _config_root)
         setattr(instance, "_config_file", _config_file)
         for group in init_groups:
-            group_cfg = cfg_group.ProfileGroup(group["name"], "", "", [], [], [], [])
+            group_cfg = cfg_group.ProfileGroup(
+                group["name"], "", "", [], [], [], [], cfg_group.GroupProtocol.OTHER
+            )
             if group.get("graphql_from_sui", None):
                 if _suicfg.exists():
                     group_cfg = cls._gen_graphql(_faux_group, group["name"])
@@ -341,6 +350,7 @@ class PysuiConfiguration:
         profile_block: list[dict[str, str]],
         key_block: list[dict[str, str]],
         active_address_index: int,
+        group_protocol: cfg_group.GroupProtocol,
         make_group_active: Optional[bool] = False,
         persist: Optional[bool] = True,
     ) -> list[str]:
@@ -376,6 +386,8 @@ class PysuiConfiguration:
         :type key_block: list[dict[str, str]]
         :param active_address_index: The index of the address to make as active_address for group
         :type active_address_index: int
+        :parm group_protocol: THe protocol hint from conf_group.py
+        :type GroupProtocol
         :param make_group_active: Sets the group to the configurations active_group, defaults to False
         :type make_group_active: Optional[bool], optional
         :param persist: Persist updates to PysuiConfig.json, defaults to True
@@ -387,7 +399,9 @@ class PysuiConfiguration:
             raise ValueError(f"{group_name} already exists")
         # Create and add an empty group
         self.model.add_group(
-            group=cfg_group.ProfileGroup(group_name, "", "", [], [], [], []),
+            group=cfg_group.ProfileGroup(
+                group_name, "", "", [], [], [], [], group_protocol
+            ),
             make_active=make_group_active,
         )
         if make_group_active and (self.active_group.group_name != group_name):
