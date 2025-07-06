@@ -15,6 +15,11 @@ Aliases are supported by both SuiConfig and PysuiConfiguration.
 Runtime
 -------
 
+GraphQL and gRPC
+++++++++++++++++
+
+See the :doc:`PysuiConfiguration <pyconfig>` page for detailed information.
+
 JSON RPC
 ++++++++
 

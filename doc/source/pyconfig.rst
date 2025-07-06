@@ -365,6 +365,7 @@ The following is an example of creating a fictional group:
             key_block=key_blocks,
             profile_block=profile_blocks,
             active_address_index=0,
+            group_protocol=GroupProtocol.OTHER,
             make_group_active=True,
             persist=False,
         )
