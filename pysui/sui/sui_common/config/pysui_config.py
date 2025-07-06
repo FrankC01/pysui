@@ -357,24 +357,17 @@ class PysuiConfiguration:
         """Create a unique new group.
 
         A profile is defined by a dict with the following k/v pairs
-
         {
             "profile_name": str,
-
             "url": str,
-
             "faucet_url": str | None,
-
             "faucet_status_url": str | None,
-
             "make_active": bool
         }
 
         A key is defined by a dict with following k/v pairs
-
         {
             "key_string": str # Either a base64 or bech32 private key
-
             "alias": str     # Optional alias, one will be generated otherwise
         }
 
@@ -395,6 +388,7 @@ class PysuiConfiguration:
         :return: The list of addresses generated from the key_block
         :rtype: list[str]
         """
+
         if self._model.has_group(group_name=group_name):
             raise ValueError(f"{group_name} already exists")
         # Create and add an empty group
