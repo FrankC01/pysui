@@ -43,21 +43,24 @@ has a smaller memory footprint
 Anatomy of PysuiConfiguration
 =============================
 The primary data model for PysuiConfiguration is a series of related
-``dataclasse`` objects:
+``dataclass`` objects:
 
-* The root data model is ``PysuiConfigModel`` which is a member of
-  PysuiConfiguration. It contains or or more
+.. image:: pysui_aliases.png
+   :height: 400px
+   :width: 400px
+   :align: center
 
-    * ``ProfileGroup``, or group for short, which encapsulates unique
+
+* The root data model is ``PysuiConfiguration`` It contains or or more
+
+    * ``ProfileGroups``, group for short, which encapsulates unique
         environment configurations. only one group can be active at a
         time in the instance. Its construct includes the following,
         all of which are configurable:
 
         * One or more ``Profile``, or profile, a named object containing
           individual urls for communicatinhg to Sui.
-        * Associated keys, aliases and addresses
-        * Identifies an active profile
-        * Identifies an active address
+        * Associated Keys, Aliases and Addresses
 
 PysuiConfiguration
 ==================
