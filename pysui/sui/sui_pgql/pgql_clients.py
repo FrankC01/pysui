@@ -211,6 +211,22 @@ class SuiGQLClient(BaseSuiGQLClient):
             default_header=default_header,
         )
 
+    @versionadded(version="0.87.0", reason="Parity with gRPC client.")
+    def transaction(self, **kwargs) -> Any:
+        """Return a synchronous SuiTransaction.
+
+        :param initial_sender: The address of the sender of the transaction, defaults to None
+        :type initial_sender: Union[str, SigningMultiSig], optional
+        :param compress_inputs: Reuse identical inputs, defaults to False
+        :type compress_inputs: bool,optional
+        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
+        :type merge_gas_budget: bool, optional
+        """
+        import pysui.sui.sui_pgql.pgql_sync_txn as synctxn
+
+        kwargs["client"] = self
+        return synctxn.SuiTransaction(**kwargs)
+
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
     )
@@ -413,6 +429,22 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             default_header=default_header,
         )
         self._slock = asyncio.Semaphore()
+
+    @versionadded(version="0.87.0", reason="Parity with gRPC client.")
+    def transaction(self, **kwargs) -> Any:
+        """Return a synchronous SuiTransaction.
+
+        :param initial_sender: The address of the sender of the transaction, defaults to None
+        :type initial_sender: Union[str, SigningMultiSig], optional
+        :param compress_inputs: Reuse identical inputs, defaults to False
+        :type compress_inputs: bool,optional
+        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
+        :type merge_gas_budget: bool, optional
+        """
+        import pysui.sui.sui_pgql.pgql_async_txn as asynctxn
+
+        kwargs["client"] = self
+        return asynctxn.AsyncSuiTransaction(**kwargs)
 
     @property
     def session(self) -> Any:

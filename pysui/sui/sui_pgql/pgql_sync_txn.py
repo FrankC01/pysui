@@ -23,6 +23,10 @@ import pysui.sui.sui_pgql.pgql_txn_argb as argbase
 class SuiTransaction(txbase):
     """."""
 
+    @deprecated(
+        version="0.87.0",
+        reason="GraphQL clients now create transactions. Use that instead",
+    )
     def __init__(
         self,
         **kwargs,

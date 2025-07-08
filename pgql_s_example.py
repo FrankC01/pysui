@@ -563,7 +563,7 @@ def do_execute_new(client: SyncGqlClient):
 
     This uses the new SuiTransaction (GraphQL RPC based)
     """
-    txer: SuiTransaction = SuiTransaction(client=client)
+    txer: SuiTransaction = client.transaction()
     scres = txer.split_coin(coin=txer.gas, amounts=[1000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     txdict = txer.build_and_sign()
@@ -582,7 +582,7 @@ def merge_some(client: SyncGqlClient):
         with_node=qn.GetCoins(owner=client.config.active_address)
     )
     if result.is_ok() and len(result.result_data.data) > 1:
-        txer: SuiTransaction = SuiTransaction(client=client)
+        txer: SuiTransaction = client.transaction()
         txer.merge_coins(merge_to=txer.gas, merge_from=result.result_data.data[1:])
         txdict = txer.build_and_sign()
         handle_result(
@@ -602,7 +602,7 @@ def split_1_half(client: SyncGqlClient):
     )
     if result.is_ok() and len(result.result_data.data) == 1:
         amount = int(int(result.result_data.data[0].balance) / 2)
-        txer: SuiTransaction = SuiTransaction(client=client)
+        txer: SuiTransaction = client.transaction()
         scres = txer.split_coin(coin=txer.gas, amounts=[amount])
         txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
         txdict = txer.build_and_sign()
@@ -622,7 +622,7 @@ def split_any_half(client: SyncGqlClient):
     )
     if result.is_ok() and len(result.result_data.data) > 1:
         amount = int(int(result.result_data.data[0].balance) / 2)
-        txer: SuiTransaction = SuiTransaction(client=client)
+        txer: SuiTransaction = client.transaction()
         scres = txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
         txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
         txdict = txer.build_and_sign()
@@ -638,7 +638,7 @@ def do_stake(client: SyncGqlClient):
     or different validator change the vaddress
     """
     vaddress = "0xdfed72a46fa7899fd80edf960bb4e05d6852f74a628d55b8dba69064f0ca07d4"
-    txer: SuiTransaction = SuiTransaction(client=client)
+    txer: SuiTransaction = client.transaction()
     # Take 1 Sui from gas
     stake_coin_split = txer.split_coin(coin=txer.gas, amounts=[1000000000])
     # Stake the coin
@@ -667,7 +667,7 @@ def do_unstake(client: SyncGqlClient):
     owner = client.config.active_address
     result = client.execute_query_node(with_node=qn.GetDelegatedStakes(owner=owner))
     if result.is_ok() and result.result_data.staked_coins:
-        txer: SuiTransaction = SuiTransaction(client=client)
+        txer: SuiTransaction = client.transaction()
         # Unstake the first staked coin
         txer.unstake_coin(staked_coin=result.result_data.staked_coins[0])
         # Uncomment to dry run

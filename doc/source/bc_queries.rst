@@ -90,6 +90,8 @@ gRPC fetch object
         else:
             print(result.result_string)
 
+        client.close()
+
     if __name__ == "__main__":
         try:
             asyncio.run(main(cfg))

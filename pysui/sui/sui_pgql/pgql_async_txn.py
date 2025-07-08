@@ -29,6 +29,10 @@ class AsyncSuiTransaction(txbase):
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
 
+    @deprecated(
+        version="0.87.0",
+        reason="GraphQL clients now create transactions. Use that instead",
+    )
     def __init__(
         self,
         **kwargs,
