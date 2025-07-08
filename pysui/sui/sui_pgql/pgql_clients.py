@@ -211,7 +211,7 @@ class SuiGQLClient(BaseSuiGQLClient):
             default_header=default_header,
         )
 
-    @versionadded(version="0.87.0", reason="Parity with gRPC client.")
+    @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
     def transaction(self, **kwargs) -> Any:
         """Return a synchronous SuiTransaction.
 
@@ -430,7 +430,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         )
         self._slock = asyncio.Semaphore()
 
-    @versionadded(version="0.87.0", reason="Parity with gRPC client.")
+    @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
     def transaction(self, **kwargs) -> Any:
         """Return a synchronous SuiTransaction.
 

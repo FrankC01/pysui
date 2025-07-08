@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- GraphQL clients have method: `transaction(...)` which returns a SuiTransaction for consistency with gRPC clients.
+- JSON RPC, GraphQL and gRPC clients have method: `transaction(...)` which returns a SuiTransaction
+leveraging the client protocol.
 - [GraphQL beta support](https://github.com/FrankC01/pysui/issues/296)
 - [gRPC beta support](https://github.com/FrankC01/pysui/issues/284)
 
