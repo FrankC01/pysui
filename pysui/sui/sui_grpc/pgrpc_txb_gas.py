@@ -14,13 +14,12 @@ from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_gas_objects_by_ids,
 )
 from pysui.sui.sui_bcs import bcs
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 
 def _coins_for_budget(
-    coins: list[v2base.Object],
+    coins: list[sui_prot.Object],
     budget: int,
 ) -> list[bcs.ObjectReference]:
     """."""
@@ -66,7 +65,7 @@ async def async_get_gas_data(
     signing: SignerBlock,
     client: PysuiClient,
     budget: Optional[int] = None,
-    use_coins: Optional[list[Union[str, v2base.Object | v2alpha.OwnedObject]]] = None,
+    use_coins: Optional[list[Union[str, sui_prot.Object]]] = None,
     objects_in_use: set[str],
     active_gas_price: int,
     tx_kind: bcs.TransactionKind,
@@ -86,7 +85,7 @@ async def async_get_gas_data(
     :param budget: Option budget to set for transaction, defaults to None
     :type budget: Optional[int], optional
     :param use_coins: Gas coins to use for paying transactions, defaults to None
-    :type use_coins: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
+    :type use_coins: Optional[list[Union[str, sui_prot.Object]]], optional
     :raises ValueError: If use_coins are not either strings or SuiCoinObjectGQL objects
     :raises ValueError: If not gas coins provided and none found
     :return: _description_
@@ -96,7 +95,7 @@ async def async_get_gas_data(
     if use_coins:
         if all(isinstance(x, str) for x in use_coins):
             use_coins = await async_get_gas_objects_by_ids(client, use_coins)
-        elif not all(isinstance(x, (v2base.Object)) for x in use_coins):
+        elif not all(isinstance(x, (sui_prot.Object)) for x in use_coins):
             raise ValueError("use_gas_objects must use same type.")
     else:
         use_coins = await async_get_all_owned_gas_objects(signing.payer_address, client)

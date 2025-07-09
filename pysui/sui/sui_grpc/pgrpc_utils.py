@@ -8,15 +8,15 @@
 from typing import Optional, Callable, ParamSpec
 from functools import partial
 from pysui.sui.sui_common.client import PysuiClient
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 _P = ParamSpec("P")
 
 
 def active_types_only(
-    objects: list[v2base.Object],
-) -> list[v2base.Object]:
+    objects: list[sui_prot.Object],
+) -> list[sui_prot.Object]:
     """Attempts to Filter out objects that have been pruned or deleted.
 
     :param objects: Homogenous list of objects
@@ -76,7 +76,7 @@ async def async_cursored_collector(
 
 async def async_get_all_owned_gas_objects(
     owner: str, client: PysuiClient, only_active: Optional[bool] = True
-) -> list[v2base.Object]:
+) -> list[sui_prot.Object]:
     """Asynchronous: Retrieves list of all gas objects details for owner.
 
     Uses cursor to ensure all asked for are retrieved from gRPC node and
@@ -90,7 +90,7 @@ async def async_get_all_owned_gas_objects(
     :type only_active: bool, optional defaults to True
     :raises ValueError: If the query fails
     :return: List of active SuiCoin objects
-    :rtype: list[v2base.Object]
+    :rtype: list[sui_prot.Object]
     """
     return await async_cursored_collector(
         partial(rn.GetGas, owner=owner), client, only_active
@@ -99,7 +99,7 @@ async def async_get_all_owned_gas_objects(
 
 async def async_get_all_owned_objects(
     owner: str, client: PysuiClient, only_active: Optional[bool] = True
-) -> list[v2base.Object]:
+) -> list[sui_prot.Object]:
     """Asynchronous: Retrieves list of all object details for owner.
 
     Uses cursor to ensure all asked for are retrieved from graph node and
@@ -113,7 +113,7 @@ async def async_get_all_owned_objects(
     :type only_active: Optional[bool], optional
     :raises ValueError: If the query fails
     :return: List of address owned objects
-    :rtype: list[v2base.Object]
+    :rtype: list[sui_prot.Object]
     """
     return await async_cursored_collector(
         partial(rn.GetOwnedObjects, owner=owner), client, only_active
@@ -122,7 +122,7 @@ async def async_get_all_owned_objects(
 
 async def async_get_gas_objects_by_ids(
     client: PysuiClient, gas_ids: list[str], only_active: Optional[bool] = True
-) -> list[v2base.Object]:
+) -> list[sui_prot.Object]:
     """Asynchronous: Retrieves list of all gas objects details from object id strs.
 
     Uses cursor to ensure all asked for are retrieved from graph node and
@@ -136,7 +136,7 @@ async def async_get_gas_objects_by_ids(
     :type only_active: bool, optional defaults to True
     :raises ValueError: If the query fails
     :return: List of active SuiCoin objects
-    :rtype: list[v2base.Object]
+    :rtype: list[sui_prot.Object]
     """
     # TODO: This call has no pagination, need to get max id constraint
     # and perform looped fetch
@@ -148,7 +148,7 @@ async def async_get_gas_objects_by_ids(
 
 async def async_get_objects_by_ids(
     client: PysuiClient, object_ids: list[str], only_active: Optional[bool] = True
-) -> list[v2base.Object]:
+) -> list[sui_prot.Object]:
     """Asynchronous: Retrieves list of all objects details from object id strs.
 
     Uses cursor to ensure all asked for are retrieved from graph node and
@@ -162,7 +162,7 @@ async def async_get_objects_by_ids(
     :type only_active: bool, optional defaults to True
     :raises ValueError: If the query fails
     :return: List of active objects
-    :rtype: list[v2base.Object]
+    :rtype: list[sui_prot.Object]
     """
     # TODO: This call has no pagination, need to get max id constraint
     # and perform looped fetch

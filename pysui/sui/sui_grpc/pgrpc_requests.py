@@ -13,18 +13,14 @@ import betterproto2
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 
-if absreq.CURRENT_VERSION[1] >= 87:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
-else:
-    raise ValueError("HARD STOP")
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 # Ledger Service Commands
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2base.GetServiceInfoResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.GetServiceInfoResponse
 
     def __init__(self) -> None:
         """Initializer."""
@@ -33,17 +29,17 @@ class GetServiceInfo(absreq.PGRPC_Request):
     def to_request(
         self,
         *,
-        stub: v2base.LedgerServiceStub,
+        stub: sui_prot.LedgerServiceStub,
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """Prepare the request for submission."""
-        return stub.get_service_info, v2base.GetServiceInfoRequest()
+        return stub.get_service_info, sui_prot.GetServiceInfoRequest()
 
 
 class GetCheckpoint(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2base.Checkpoint
+    RESULT_TYPE: betterproto2.Message = sui_prot.Checkpoint
 
     def __init__(
         self,
@@ -59,19 +55,19 @@ class GetCheckpoint(absreq.PGRPC_Request):
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
-        self, *, stub: v2base.LedgerServiceStub
+        self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.get_checkpoint, v2base.GetCheckpointRequest(
+        return stub.get_checkpoint, sui_prot.GetCheckpointRequest(
             sequence_number=self.sequence, digest=self.digest, read_mask=self.field_mask
         )
 
 
 class GetEpoch(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2base.Epoch
+    RESULT_TYPE: betterproto2.Message = sui_prot.Epoch
 
     def __init__(
         self,
@@ -85,12 +81,12 @@ class GetEpoch(absreq.PGRPC_Request):
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
-        self, *, stub: v2base.LedgerServiceStub
+        self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.get_epoch, v2base.GetEpochRequest(
+        return stub.get_epoch, sui_prot.GetEpochRequest(
             epoch=self.epoch_number, read_mask=self.field_mask
         )
 
@@ -109,7 +105,7 @@ OBJECT_DEFAULT_FIELDS: list[str] = [
 class GetObject(absreq.PGRPC_Request):
     """Get object request."""
 
-    RESULT_TYPE: betterproto2.Message = v2base.Object
+    RESULT_TYPE: betterproto2.Message = sui_prot.Object
 
     def __init__(
         self,
@@ -125,12 +121,12 @@ class GetObject(absreq.PGRPC_Request):
         )
 
     def to_request(
-        self, *, stub: v2base.LedgerServiceStub
+        self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """Prepare the request for submission."""
-        return stub.get_object, v2base.GetObjectRequest(
+        return stub.get_object, sui_prot.GetObjectRequest(
             object_id=self.object_id, read_mask=self.field_mask
         )
 
@@ -138,7 +134,7 @@ class GetObject(absreq.PGRPC_Request):
 class GetPastObject(absreq.PGRPC_Request):
     """Get object request."""
 
-    RESULT_TYPE: betterproto2.Message = v2base.Object
+    RESULT_TYPE: betterproto2.Message = sui_prot.Object
 
     def __init__(
         self,
@@ -156,19 +152,19 @@ class GetPastObject(absreq.PGRPC_Request):
         )
 
     def to_request(
-        self, *, stub: v2base.LedgerServiceStub
+        self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """Prepare the request for submission."""
-        return stub.get_object, v2base.GetObjectRequest(
+        return stub.get_object, sui_prot.GetObjectRequest(
             object_id=self.object_id, version=self.version, read_mask=self.field_mask
         )
 
 
 class GetMultipleObjects(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2base.BatchGetObjectsResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetObjectsResponse
 
     def __init__(
         self,
@@ -180,18 +176,18 @@ class GetMultipleObjects(absreq.PGRPC_Request):
         if len(objects) > 50:
             raise ValueError(f"Max object ids 50, {len(objects)} submitted.")
         super().__init__(absreq.Service.LEDGER)
-        self.objects = [v2base.GetObjectRequest(obj, None) for obj in objects]
+        self.objects = [sui_prot.GetObjectRequest(obj, None) for obj in objects]
         self.field_mask = self._field_mask(
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
 
     def to_request(
-        self, *, stub: v2base.LedgerServiceStub
+        self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.batch_get_objects, v2base.BatchGetObjectsRequest(
+        return stub.batch_get_objects, sui_prot.BatchGetObjectsRequest(
             requests=self.objects, read_mask=self.field_mask
         )
 
@@ -225,26 +221,26 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
         self.objects = []
         for entry in for_versions:
             self.objects.append(
-                v2base.GetObjectRequest(entry["objectId"], entry["version"])
+                sui_prot.GetObjectRequest(entry["objectId"], entry["version"])
             )
         self.field_mask = self._field_mask(
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
 
     def to_request(
-        self, *, stub: v2base.LedgerServiceStub
+        self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.batch_get_objects, v2base.BatchGetObjectsRequest(
+        return stub.batch_get_objects, sui_prot.BatchGetObjectsRequest(
             requests=self.objects, read_mask=self.field_mask
         )
 
 
 class GetOwnedObjects(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.ListOwnedObjectsResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.ListOwnedObjectsResponse
 
     def __init__(
         self,
@@ -262,12 +258,12 @@ class GetOwnedObjects(absreq.PGRPC_Request):
         self.page_token = page_token
 
     def to_request(
-        self, *, stub: v2alpha.LiveDataServiceStub
+        self, *, stub: sui_prot.LiveDataServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.list_owned_objects, v2alpha.ListOwnedObjectsRequest(
+        return stub.list_owned_objects, sui_prot.ListOwnedObjectsRequest(
             owner=self.owner,
             object_type=self.object_type,
             page_size=self.page_size,
@@ -303,7 +299,7 @@ class GetStaked(GetOwnedObjects):
 
 class GetCoinInfo(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.GetCoinInfoResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.GetCoinInfoResponse
 
     def __init__(
         self,
@@ -315,19 +311,19 @@ class GetCoinInfo(absreq.PGRPC_Request):
         self.coin_type = coin_type
 
     def to_request(
-        self, *, stub: v2alpha.LiveDataServiceStub
+        self, *, stub: sui_prot.LiveDataServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.get_coin_info, v2alpha.GetCoinInfoRequest(
+        return stub.get_coin_info, sui_prot.GetCoinInfoRequest(
             coin_type=self.coin_type,
         )
 
 
 class GetBalance(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.GetBalanceResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.GetBalanceResponse
 
     def __init__(
         self,
@@ -341,19 +337,19 @@ class GetBalance(absreq.PGRPC_Request):
         self.coin_type = coin_type
 
     def to_request(
-        self, *, stub: v2alpha.LiveDataServiceStub
+        self, *, stub: sui_prot.LiveDataServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.get_balance, v2alpha.GetBalanceRequest(
+        return stub.get_balance, sui_prot.GetBalanceRequest(
             owner=self.owner, coin_type=self.coin_type
         )
 
 
 class GetBalances(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.ListBalancesResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.ListBalancesResponse
 
     def __init__(
         self,
@@ -369,12 +365,12 @@ class GetBalances(absreq.PGRPC_Request):
         self.page_token = page_token
 
     def to_request(
-        self, *, stub: v2alpha.LiveDataServiceStub
+        self, *, stub: sui_prot.LiveDataServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.list_balances, v2alpha.ListBalancesRequest(
+        return stub.list_balances, sui_prot.ListBalancesRequest(
             owner=self.owner,
             page_size=self.page_size,
             page_token=self.page_token,
@@ -383,7 +379,7 @@ class GetBalances(absreq.PGRPC_Request):
 
 class GetTransaction(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2base.ExecutedTransaction
+    RESULT_TYPE: betterproto2.Message = sui_prot.ExecutedTransaction
 
     def __init__(
         self,
@@ -397,19 +393,19 @@ class GetTransaction(absreq.PGRPC_Request):
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
-        self, *, stub: v2base.LedgerServiceStub
+        self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.get_transaction, v2base.GetTransactionRequest(
+        return stub.get_transaction, sui_prot.GetTransactionRequest(
             digest=self.digest, read_mask=self.field_mask
         )
 
 
 class GetTransactions(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2base.BatchGetTransactionsResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetTransactionsResponse
 
     def __init__(
         self,
@@ -423,62 +419,62 @@ class GetTransactions(absreq.PGRPC_Request):
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
-        self, *, stub: v2base.LedgerServiceStub
+        self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.batch_get_transactions, v2base.BatchGetTransactionsRequest(
+        return stub.batch_get_transactions, sui_prot.BatchGetTransactionsRequest(
             digests=self.transactions, read_mask=self.field_mask
         )
 
 
-class ExecuteTransactions(absreq.PGRPC_Request):
+class ExecuteTransaction(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2base.ExecuteTransactionResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.ExecuteTransactionResponse
 
     def __init__(
         self,
         *,
-        transaction: str | bytes,
-        signatures: list[str | bytes],
+        tx_bytestr: str | bytes,
+        sig_array: list[str | bytes],
         field_mask: Optional[list[str]] = None,
     ) -> None:
         """Initializer."""
         super().__init__(absreq.Service.TRANSACTION)
 
-        self.transaction = v2base.Transaction(
+        self.transaction = sui_prot.Transaction(
             bcs=(
-                v2base.Bcs(value=transaction, name="Transaction")
-                if isinstance(transaction, bytes)
-                else v2base.Bcs(value=base64.b64decode(transaction))
+                sui_prot.Bcs(value=tx_bytestr, name="Transaction")
+                if isinstance(tx_bytestr, bytes)
+                else sui_prot.Bcs(value=base64.b64decode(tx_bytestr))
             )
         )
-        self.signatures: list[v2base.UserSignature] = []
-        for sig in signatures:
+        self.signatures: list[sui_prot.UserSignature] = []
+        for sig in sig_array:
             if isinstance(sig, str):
                 self.signatures.append(
-                    v2base.UserSignature(
-                        bcs=v2base.Bcs(
+                    sui_prot.UserSignature(
+                        bcs=sui_prot.Bcs(
                             value=base64.b64decode(sig), name="UserSignature"
                         )
                     )
                 )
             else:
                 self.signatures.append(
-                    v2base.UserSignature(
-                        bcs=v2base.Bcs(value=sig, name="UserSignature")
+                    sui_prot.UserSignature(
+                        bcs=sui_prot.Bcs(value=sig, name="UserSignature")
                     )
                 )
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
-        self, *, stub: v2base.TransactionExecutionServiceStub
+        self, *, stub: sui_prot.TransactionExecutionServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.execute_transaction, v2base.ExecuteTransactionRequest(
+        return stub.execute_transaction, sui_prot.ExecuteTransactionRequest(
             transaction=self.transaction,
             signatures=self.signatures,
             read_mask=self.field_mask,
@@ -487,7 +483,7 @@ class ExecuteTransactions(absreq.PGRPC_Request):
 
 class SimulateTransaction(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.SimulateTransactionResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.SimulateTransactionResponse
 
     def __init__(
         self,
@@ -499,27 +495,27 @@ class SimulateTransaction(absreq.PGRPC_Request):
     ):
         """."""
         super().__init__(absreq.Service.LIVEDATA)
-        self.transaction = v2base.Transaction(
+        self.transaction = sui_prot.Transaction(
             bcs=(
-                v2base.Bcs(value=transaction, name="Transaction")
+                sui_prot.Bcs(value=transaction, name="Transaction")
                 if isinstance(transaction, bytes)
-                else v2base.Bcs(value=base64.b64decode(transaction))
+                else sui_prot.Bcs(value=base64.b64decode(transaction))
             )
         )
         self.checks_enables = (
-            v2alpha.SimulateTransactionRequestVmChecks.ENABLED
+            sui_prot.SimulateTransactionRequestVmChecks.ENABLED
             if checks_enabled
-            else v2alpha.SimulateTransactionRequestVmChecks.DISABLED
+            else sui_prot.SimulateTransactionRequestVmChecks.DISABLED
         )
         self.gas_selection = gas_selection
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
-        self, *, stub: v2alpha.LiveDataServiceStub
+        self, *, stub: sui_prot.LiveDataServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
-        return stub.simulate_transaction, v2alpha.SimulateTransactionRequest(
+        return stub.simulate_transaction, sui_prot.SimulateTransactionRequest(
             transaction=self.transaction,
             checks=self.checks_enables,
             do_gas_selection=self.gas_selection,
@@ -529,7 +525,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
 
 class GetPackage(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.GetPackageResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.GetPackageResponse
 
     def __init__(
         self,
@@ -541,38 +537,38 @@ class GetPackage(absreq.PGRPC_Request):
         self.package_id = package_id
 
     def to_request(
-        self, *, stub: v2alpha.MovePackageServiceStub
+        self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.get_package, v2alpha.GetPackageRequest(package_id=self.package_id)
+        return stub.get_package, sui_prot.GetPackageRequest(package_id=self.package_id)
 
 
-class GetModule(absreq.PGRPC_Request):
+# class GetModule(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.GetModuleResponse
+#     RESULT_TYPE: betterproto2.Message = sui_prot.GetModuleResponse
 
-    def __init__(self, *, package_id: str, module_name: str) -> None:
-        """Initializer."""
-        super().__init__(absreq.Service.MOVEPACKAGE)
-        self.package_id = package_id
-        self.module_name = module_name
+#     def __init__(self, *, package_id: str, module_name: str) -> None:
+#         """Initializer."""
+#         super().__init__(absreq.Service.MOVEPACKAGE)
+#         self.package_id = package_id
+#         self.module_name = module_name
 
-    def to_request(
-        self, *, stub: v2alpha.MovePackageServiceStub
-    ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
-    ]:
-        """."""
-        return stub.get_module, v2alpha.GetModuleRequest(
-            package_id=self.package_id, module_name=self.module_name
-        )
+#     def to_request(
+#         self, *, stub: sui_prot.MovePackageServiceStub
+#     ) -> tuple[
+#         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+#     ]:
+#         """."""
+#         return stub.get_module, sui_prot.GetModuleRequest(
+#             package_id=self.package_id, module_name=self.module_name
+#         )
 
 
 class GetDataType(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.GetDatatypeResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.GetDatatypeResponse
 
     def __init__(self, *, package_id: str, module_name: str, type_name: str) -> None:
         """Initializer."""
@@ -582,12 +578,12 @@ class GetDataType(absreq.PGRPC_Request):
         self.type_name = type_name
 
     def to_request(
-        self, *, stub: v2alpha.MovePackageServiceStub
+        self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.get_datatype, v2alpha.GetDatatypeRequest(
+        return stub.get_datatype, sui_prot.GetDatatypeRequest(
             package_id=self.package_id,
             module_name=self.module_name,
             name=self.type_name,
@@ -596,7 +592,7 @@ class GetDataType(absreq.PGRPC_Request):
 
 class GetFunction(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.GetFunctionResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.GetFunctionResponse
 
     def __init__(
         self, *, package_id: str, module_name: str, function_name: str
@@ -608,12 +604,12 @@ class GetFunction(absreq.PGRPC_Request):
         self.function_name = function_name
 
     def to_request(
-        self, *, stub: v2alpha.MovePackageServiceStub
+        self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.get_function, v2alpha.GetFunctionRequest(
+        return stub.get_function, sui_prot.GetFunctionRequest(
             package_id=self.package_id,
             module_name=self.module_name,
             name=self.function_name,
@@ -622,7 +618,7 @@ class GetFunction(absreq.PGRPC_Request):
 
 class SubscribeCheckpoint(absreq.PGRPC_Request):
 
-    RESULT_TYPE: betterproto2.Message = v2alpha.SubscribeCheckpointsResponse
+    RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeCheckpointsResponse
 
     def __init__(
         self,
@@ -634,11 +630,11 @@ class SubscribeCheckpoint(absreq.PGRPC_Request):
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
-        self, *, stub: v2alpha.SubscriptionServiceStub
+        self, *, stub: sui_prot.SubscriptionServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
-        return stub.subscribe_checkpoints, v2alpha.SubscribeCheckpointsRequest(
+        return stub.subscribe_checkpoints, sui_prot.SubscribeCheckpointsRequest(
             read_mask=self.field_mask
         )

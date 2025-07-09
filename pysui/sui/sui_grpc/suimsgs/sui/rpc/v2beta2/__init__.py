@@ -125,7 +125,6 @@ __all__ = (
     "OpenSignatureBody",
     "OpenSignatureBodyType",
     "OpenSignatureReference",
-    "OwnedObject",
     "Owner",
     "OwnerOwnerKind",
     "Package",
@@ -737,7 +736,7 @@ class PackageUpgradeErrorPackageUpgradeErrorKind(betterproto2.Enum):
     Package upgrade is incompatible with previous version.
     """
 
-    DIGETS_DOES_NOT_MATCH = 4
+    DIGEST_DOES_NOT_MATCH = 4
     """
     Digest in upgrade ticket and computed digest differ.
     """
@@ -2151,6 +2150,13 @@ class DynamicField(betterproto2.Message):
     is a dynamic field or a dynamic child object
     """
 
+    object: "Object | None" = betterproto2.field(
+        8, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    The object itself when a child is a dynamic object field.
+    """
+
 
 default_message_pool.register_message("sui.rpc.v2beta2", "DynamicField", DynamicField)
 
@@ -2277,6 +2283,13 @@ class EndOfEpochTransactionKind(betterproto2.Message):
     )
     """
     Create the accumulator root object.
+    """
+
+    coin_registry_create: "___google__protobuf__.Empty | None" = betterproto2.field(
+        206, betterproto2.TYPE_MESSAGE, optional=True, group="kind"
+    )
+    """
+    Create and initialize the Coin Registry object.
     """
 
 
@@ -3286,7 +3299,7 @@ class GetServiceInfoResponse(betterproto2.Message):
     The lowest checkpoint for which object data is available.
     """
 
-    server_version: "str | None" = betterproto2.field(
+    server: "str | None" = betterproto2.field(
         8, betterproto2.TYPE_STRING, optional=True
     )
     """
@@ -3620,6 +3633,10 @@ class ListDynamicFieldsRequest(betterproto2.Message):
     match the call that provided the page token.
     """
 
+    read_mask: "___google__protobuf__.FieldMask | None" = betterproto2.field(
+        4, betterproto2.TYPE_MESSAGE, optional=True
+    )
+
 
 default_message_pool.register_message(
     "sui.rpc.v2beta2", "ListDynamicFieldsRequest", ListDynamicFieldsRequest
@@ -3660,20 +3677,6 @@ class ListOwnedObjectsRequest(betterproto2.Message):
     Required. The address of the account that owns the objects.
     """
 
-    object_type: "str | None" = betterproto2.field(
-        4, betterproto2.TYPE_STRING, optional=True
-    )
-    """
-    Optional type filter to limit the types of objects listed.
-
-    Providing an object type with no type params will return objects of that
-    type with any type parameter, e.g. `0x2::coin::Coin` will return all
-    `Coin<T>` objects regardless of the type parameter `T`. Providing a type
-    with a type param will retrict the returned objects to only those objects
-    that match the provided type parameters, e.g.
-    `0x2::coin::Coin<0x2::sui::SUI>` will only return `Coin<SUI>` objects.
-    """
-
     page_size: "int | None" = betterproto2.field(
         2, betterproto2.TYPE_UINT32, optional=True
     )
@@ -3694,6 +3697,24 @@ class ListOwnedObjectsRequest(betterproto2.Message):
     match the call that provided the page token.
     """
 
+    read_mask: "___google__protobuf__.FieldMask | None" = betterproto2.field(
+        4, betterproto2.TYPE_MESSAGE, optional=True
+    )
+
+    object_type: "str | None" = betterproto2.field(
+        5, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    Optional type filter to limit the types of objects listed.
+
+    Providing an object type with no type params will return objects of that
+    type with any type parameter, e.g. `0x2::coin::Coin` will return all
+    `Coin<T>` objects regardless of the type parameter `T`. Providing a type
+    with a type param will retrict the returned objects to only those objects
+    that match the provided type parameters, e.g.
+    `0x2::coin::Coin<0x2::sui::SUI>` will only return `Coin<SUI>` objects.
+    """
+
 
 default_message_pool.register_message(
     "sui.rpc.v2beta2", "ListOwnedObjectsRequest", ListOwnedObjectsRequest
@@ -3702,7 +3723,7 @@ default_message_pool.register_message(
 
 @dataclass(eq=False, repr=False)
 class ListOwnedObjectsResponse(betterproto2.Message):
-    objects: "list[OwnedObject]" = betterproto2.field(
+    objects: "list[Object]" = betterproto2.field(
         1, betterproto2.TYPE_MESSAGE, repeated=True
     )
     """
@@ -4276,6 +4297,13 @@ class Object(betterproto2.Message):
     JSON rendering of the object.
     """
 
+    balance: "int | None" = betterproto2.field(
+        101, betterproto2.TYPE_UINT64, optional=True
+    )
+    """
+    Current balance if this object is a `0x2::coin::Coin<T>`
+    """
+
 
 default_message_pool.register_message("sui.rpc.v2beta2", "Object", Object)
 
@@ -4369,39 +4397,6 @@ class OpenSignatureBody(betterproto2.Message):
 default_message_pool.register_message(
     "sui.rpc.v2beta2", "OpenSignatureBody", OpenSignatureBody
 )
-
-
-@dataclass(eq=False, repr=False)
-class OwnedObject(betterproto2.Message):
-    object_id: "str | None" = betterproto2.field(
-        2, betterproto2.TYPE_STRING, optional=True
-    )
-
-    version: "int | None" = betterproto2.field(
-        3, betterproto2.TYPE_UINT64, optional=True
-    )
-
-    digest: "str | None" = betterproto2.field(
-        4, betterproto2.TYPE_STRING, optional=True
-    )
-
-    owner: "Owner | None" = betterproto2.field(
-        5, betterproto2.TYPE_MESSAGE, optional=True
-    )
-
-    object_type: "str | None" = betterproto2.field(
-        6, betterproto2.TYPE_STRING, optional=True
-    )
-
-    balance: "int | None" = betterproto2.field(
-        200, betterproto2.TYPE_UINT64, optional=True
-    )
-    """
-    Current balance if this object is a `0x2::coin::Coin<T>`
-    """
-
-
-default_message_pool.register_message("sui.rpc.v2beta2", "OwnedObject", OwnedObject)
 
 
 @dataclass(eq=False, repr=False)
@@ -5608,12 +5603,19 @@ class TransactionKind(betterproto2.Message):
     A user transaction comprised of a list of native commands and Move calls.
     """
 
-    change_epoch: "ChangeEpoch | None" = betterproto2.field(
-        100, betterproto2.TYPE_MESSAGE, optional=True, group="kind"
+    programmable_system_transaction: "ProgrammableTransaction | None" = (
+        betterproto2.field(3, betterproto2.TYPE_MESSAGE, optional=True, group="kind")
     )
     """
     System Transactions
 
+    A system transaction comprised of a list of native commands and Move calls.
+    """
+
+    change_epoch: "ChangeEpoch | None" = betterproto2.field(
+        100, betterproto2.TYPE_MESSAGE, optional=True, group="kind"
+    )
+    """
     System transaction used to end an epoch.
 
     The `ChangeEpoch` variant is now deprecated (but the `ChangeEpoch` struct is still used by
@@ -6932,7 +6934,7 @@ class SubscriptionServiceStub(betterproto2.ServiceStub):
         This API provides a subscription to the checkpoint stream for the Sui
         blockchain. When a subscription is initialized the stream will begin with
         the latest executed checkpoint as seen by the server. Responses are
-        gaurenteed to return checkpoints in-order and without gaps. This enables
+        guaranteed to return checkpoints in-order and without gaps. This enables
         clients to know exactly the last checkpoint they have processed and in the
         event the subscription terminates (either by the client/server or by the
         connection breaking), clients will be able to reinitailize a subscription

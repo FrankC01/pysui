@@ -6,18 +6,52 @@ Blockchain Transactions
 short, for the three client flavors (JSON RPC, GraphQL and gRPC).
 
 
-There is parity of capabilities across clients although in some cases
-they may be unique.
+All transactions have parity in the fundamental commands. **Note** that the
+gRPC protocol only supports `async` command methods
 
-+-----------+--------------------------------------+
-|  Protocol | Classes                              |
-+===========+======================================+
-| JSON RPC  | :doc:`Builders <builders>`           |
-+-----------+--------------------------------------+
-| gRPC      | :doc:`Requests <grpc_requests_list>` |
-+-----------+--------------------------------------+
-| GraphQL   | :doc:`Query Nodes <graphql_qnodes>`  |
-+-----------+--------------------------------------+
+Transaction Commands
+--------------------
+
++--------------------------+---------------+
+|  Command                 | Available     |
++==========================+===============+
+| split_coin               | all           |
++--------------------------+---------------+
+| split_coin_equal         | all           |
++--------------------------+---------------+
+| merge_coin               | all           |
++--------------------------+---------------+
+| transfer_objects         | all           |
++--------------------------+---------------+
+| transfer_sui             | all           |
++--------------------------+---------------+
+| public_transfer_object   | all           |
++--------------------------+---------------+
+| make_move_vector         | all           |
++--------------------------+---------------+
+| move_call                | all           |
++--------------------------+---------------+
+| stake_coin               | all           |
++--------------------------+---------------+
+| unstake_coin             | all           |
++--------------------------+---------------+
+| publish                  | all           |
++--------------------------+---------------+
+| publish_upgrade          | all           |
++--------------------------+---------------+
+| custom_upgrade           | all           |
++--------------------------+---------------+
+| optional_object          | GraphQL/gRPC  |
++--------------------------+---------------+
+
+Executing Transactions
+----------------------
+
+
+
+
+:py:class:`pysui.sui.sui_builders.base_builder.SuiRequestType`
+
 
 JSON RPC fetch object
 ---------------------

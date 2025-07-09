@@ -19,8 +19,7 @@ from pysui.sui.sui_common.async_funcs import AsyncLRU
 import pysui.sui.sui_grpc.pgrpc_txn_async_argb as argbase
 
 import pysui.sui.sui_grpc.pgrpc_txb_gas as gd
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 
 class AsyncSuiTransaction(txbase):
@@ -99,9 +98,7 @@ class AsyncSuiTransaction(txbase):
     async def _build_txn_data(
         self,
         gas_budget: str = "",
-        use_gas_objects: Optional[
-            list[Union[str, v2base.Object | v2alpha.OwnedObject]]
-        ] = None,
+        use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
         """Generate the TransactionData structure."""
@@ -134,9 +131,7 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[
-            list[Union[str, v2base.Object | v2alpha.OwnedObject]]
-        ] = None,
+        use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
     ) -> bcs.TransactionData:
         """transaction_data Construct a BCS TransactionData object.
@@ -148,8 +143,8 @@ class AsyncSuiTransaction(txbase):
 
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
         :type gas_budget: Optional[str], optional
-        :param use_gas_objects: Specify gas object(s) (by ID or v2base.Object), defaults to None
-        :type use_gas_objects: Optional[list[Union[str, v2base.Object]]], optional
+        :param use_gas_objects: Specify gas object(s) (by ID or sui_prot.Object), defaults to None
+        :type use_gas_objects: Optional[list[Union[str, sui_prot.Object]]], optional
         :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
         :type txn_expires_after: Optional[int],optional
         :return: The TransactionData BCS structure
@@ -163,17 +158,15 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[
-            list[Union[str, v2base.Object | v2alpha.OwnedObject]]
-        ] = None,
+        use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
     ) -> str:
         """build After creating the BCS TransactionData, serialize to base64 string and return.
 
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
         :type gas_budget: Optional[str], optional
-        :param use_gas_objects: Specify gas object(s) (by ID or v2base.Object), defaults to None
-        :type use_gas_objects: Optional[list[Union[str, v2base.Object]]], optional
+        :param use_gas_objects: Specify gas object(s) (by ID or sui_prot.Object), defaults to None
+        :type use_gas_objects: Optional[list[Union[str, sui_prot.Object]]], optional
         :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
         :type txn_expires_after: Optional[int],optional
         :return: Base64 encoded transaction bytes
@@ -190,17 +183,15 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         gas_budget: Optional[str] = None,
-        use_gas_objects: Optional[
-            list[Union[str, v2base.Object | v2alpha.OwnedObject]]
-        ] = None,
+        use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
     ) -> dict:
         """build After creating the BCS TransactionKind, serialize to base64 string, create signatures and return.
 
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
         :type gas_budget: Optional[str], optional
-        :param use_gas_objects: Specify gas object(s) (by ID or v2base.Object), defaults to None
-        :type use_gas_objects: Optional[list[Union[str, v2base.Object]]], optional
+        :param use_gas_objects: Specify gas object(s) (by ID or sui_prot.Object), defaults to None
+        :type use_gas_objects: Optional[list[Union[str, sui_prot.Object]]], optional
         :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
         :type txn_expires_after: Optional[int],optional
         :return: Dict of
@@ -225,7 +216,7 @@ class AsyncSuiTransaction(txbase):
     async def split_coin(
         self,
         *,
-        coin: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument,
+        coin: str | sui_prot.Object | bcs.Argument,
         amounts: list[Union[int, bcs.Argument]],
     ) -> bcs.Argument | list[bcs.Argument]:
         """split_coin Creates a new coin(s) with the defined amount(s), split from the provided coin.
@@ -249,7 +240,7 @@ class AsyncSuiTransaction(txbase):
         a list of NestedResult arguments are returned.
 
         :param coin: The coin to split from.
-        :type coin: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :type coin: Union[str, sui_prot.Object, bcs.Argument]
         :param amounts: The list of amounts to split the coin out to
         :type amounts: list[Union[int, bcs.Argument]]
         :return: A Result or list of  NestedResults types to use in subsequent commands
@@ -261,14 +252,14 @@ class AsyncSuiTransaction(txbase):
     async def split_coin_equal(
         self,
         *,
-        coin: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument,
+        coin: str | sui_prot.Object | bcs.Argument,
         split_count: int,
         coin_type: Optional[str] = "0x2::sui::SUI",
     ) -> bcs.Argument:
         """split_coin_equal Split one coin to equal amounts
 
         :param coin: Identies the coin object or generic gas argument to split from.
-        :type coin: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument
+        :type coin: str | sui_prot.Object | bcs.Argument
         :param split_count: how many coins to split `coin` into
         :type split_count: int
         :param coin_type: Type move type of coin being split, defaults to "0x2::sui::SUI"
@@ -296,15 +287,15 @@ class AsyncSuiTransaction(txbase):
     async def merge_coins(
         self,
         *,
-        merge_to: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument,
-        merge_from: list[str | v2base.Object, v2alpha.OwnedObject | bcs.Argument],
+        merge_to: str | sui_prot.Object | bcs.Argument,
+        merge_from: list[str | sui_prot.Object | bcs.Argument],
     ) -> bcs.Argument:
         """merge_coins Merges one or more coins to a primary coin.
 
         :param merge_to: The coin to merge other coins to
-        :type merge_to: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :type merge_to: Union[str, sui_prot.Object, bcs.Argument]
         :param merge_from: One or more coins to merge to primary 'merge_to' coin
-        :type merge_from: list[Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]]
+        :type merge_from: list[Union[str, sui_prot.Object, bcs.Argument]]
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
@@ -317,13 +308,13 @@ class AsyncSuiTransaction(txbase):
     async def transfer_objects(
         self,
         *,
-        transfers: list[str | v2base.Object, v2alpha.OwnedObject | bcs.Argument],
+        transfers: list[str | sui_prot.Object | bcs.Argument],
         recipient: Union[str, bcs.Argument],
     ) -> bcs.Argument:
         """transfer_objects Transfers one or more objects to a recipient.
 
         :param transfers: A list or SuiArray of objects to transfer
-        :type transfers: list[Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]]
+        :type transfers: list[Union[str, sui_prot.Object,  bcs.Argument]]
         :param recipient: The recipient address that will receive the objects being transfered
         :type recipient: Union[str, bcs.Argument]
         :return: The command result. Can NOT be used as input in subsequent commands.
@@ -338,7 +329,7 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         recipient: str,
-        from_coin: str | v2base.Object | v2alpha.OwnedObject | bcs.Argument,
+        from_coin: str | sui_prot.Object | bcs.Argument,
         amount: Optional[int] = None,
     ) -> bcs.Argument:
         """transfer_sui Transfers a Sui coin object to a recipient.
@@ -346,7 +337,7 @@ class AsyncSuiTransaction(txbase):
         :param recipient: The recipient address that will receive the Sui coin being transfered
         :type recipient: str
         :param from_coin: The Sui coin to take amount from and transfer
-        :type from_coin: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :type from_coin: Union[str, sui_prot.Object, bcs.Argument]
         :param amount: Optional amount to transfer. Entire coin if not specified, defaults to None
         :type amount: Optional[int], optional
         :raises ValueError: If unable to fetch the from_coin
@@ -362,14 +353,14 @@ class AsyncSuiTransaction(txbase):
     async def public_transfer_object(
         self,
         *,
-        object_to_send: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument],
+        object_to_send: Union[str, sui_prot.Object, bcs.Argument],
         recipient: str,
         object_type: str,
     ) -> bcs.Argument:
         """public_transfer_object Public transfer of any object with KEY and STORE Attributes.
 
         :param object_to_send: Object being transferred
-        :type object_to_send: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :type object_to_send: Union[str, sui_prot.Object, bcs.Argument]
         :param recipient: Address for recipient of object_to_send
         :type recipient: str
         :param object_type: Type arguments
@@ -398,7 +389,7 @@ class AsyncSuiTransaction(txbase):
     async def make_move_vector(
         self,
         *,
-        items: list[str, v2base.Object, v2alpha.OwnedObject, bcs.ObjectArg],
+        items: list[str | sui_prot.Object | bcs.ObjectArg],
         item_type: Optional[str] = None,
     ) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
@@ -457,7 +448,7 @@ class AsyncSuiTransaction(txbase):
     async def optional_object(
         self,
         *,
-        optional_object: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument],
+        optional_object: Union[str, sui_prot.Object, bcs.Argument],
         is_receiving: Optional[bool] = False,
         is_shared_mutable: Optional[bool] = False,
         type_arguments: Optional[list] = None,
@@ -465,7 +456,7 @@ class AsyncSuiTransaction(txbase):
         """optional_object Wrap object as move Option
 
         :param optional_object: Object to wrap
-        :type optional_object: Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :type optional_object: Union[str, sui_prot.Object, bcs.Argument]
         :param is_receiving: True if this a receiving type, defaults to False
         :type is_receiving: Optional[bool], optional
         :param is_shared_mutable: True if this is a shared mutable type, defaults to False
@@ -480,7 +471,7 @@ class AsyncSuiTransaction(txbase):
         # Handle other than argument
         if isinstance(optional_object, bcs.Argument):
             parms = [optional_object]
-        elif isinstance(optional_object, (str, v2base.Object, v2alpha.OwnedObject)):
+        elif isinstance(optional_object, (str, sui_prot.Object)):
             parms = [
                 await self._argparse.async_fetch_or_transpose_object(
                     optional_object, is_receiving, is_shared_mutable
@@ -503,14 +494,14 @@ class AsyncSuiTransaction(txbase):
     async def stake_coin(
         self,
         *,
-        coins: list[Union[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]],
+        coins: list[Union[str, sui_prot.Object, bcs.Argument]],
         validator_address: str,
         amount: Optional[int] = None,
     ) -> bcs.Argument:
         """stake_coin Stakes one or more coins to a specific validator.
 
         :param coins: One or more coins to stake.
-        :type coins: list[str, v2base.Object, v2alpha.OwnedObject, bcs.Argument]
+        :type coins: list[str, sui_prot.Object, bcs.Argument]
         :param validator_address: The validator to stake coins to
         :type validator_address: str
         :param amount: Amount from coins to stake. If not stated, all coin will be staked, defaults to None
@@ -593,15 +584,15 @@ class AsyncSuiTransaction(txbase):
         self,
         *,
         project_path: str,
-        upgrade_cap: Union[str, v2base.Object, v2alpha.OwnedObject],
+        upgrade_cap: Union[str, sui_prot.Object],
         args_list: Optional[list[str]] = None,
     ) -> bcs.Argument:
         """publish_upgrade Authorize, publish and commit upgrade of package.
 
         :param project_path: Path to move project
         :type project_path: str
-        :param upgrade_cap: Id or ObjectRead of UpgradeCap
-        :type upgrade_cap: Union[str, pgql_type.ObjectReadGQL]
+        :param upgrade_cap: Id or sui_prot.Object of UpgradeCap
+        :type upgrade_cap: Union[str, sui_prot.Object]
         :param args_list: Arguments for compilation of project, defaults to None
         :type args_list: Optional[list[str]], optional
         :raises ValueError: If fetching UpgradeCap has error

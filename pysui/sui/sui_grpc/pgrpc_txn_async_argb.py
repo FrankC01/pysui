@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 import canoser.int_type as cint
 from pysui.sui.sui_common.txb_pure import PureInput
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 import pysui.sui.sui_types as suit
@@ -89,13 +89,13 @@ class AsyncResolvingArgParser:
 
     async def fetch_or_transpose_object(
         self,
-        arg: Union[str, v2base.Object],
+        arg: Union[str, sui_prot.Object],
         is_receiving: bool,
         is_mutable: bool,
         expected_type: Optional[Any] = None,
     ) -> bcs.ObjectArg:
         """Fetches and prepares an object reference to ObjectArg for BCS."""
-        object_def: v2base.Object = arg
+        object_def: sui_prot.Object = arg
         if isinstance(arg, str):
             result = await self._client.execute(request=rn.GetObject(object_id=arg))
             if result.is_ok():

@@ -23,11 +23,7 @@ from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
 
-if SDK_CURRENT_VERSION[1] >= 87:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
-else:
-    raise ValueError("HARD STOP")
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 from grpclib.client import Channel
 
@@ -46,7 +42,7 @@ class ProtocolConfig:
     transaction_constraints: TransactionConstraints
 
 
-def _map_pconstraints(in_bound: v2base.ProtocolConfig):
+def _map_pconstraints(in_bound: sui_prot.ProtocolConfig):
     """Extract protocol constraints in parity with GraphQL model."""
     ordered_list: list = []
     for item in _TXCONSTRAINTS:
@@ -155,24 +151,24 @@ class SuiGrpcClient(PysuiClient):
         match request.service:
             case absreq.Service.LIVEDATA:
                 srv_fn, srv_req = request.to_request(
-                    stub=v2alpha.LiveDataServiceStub(self._channel)
+                    stub=sui_prot.LiveDataServiceStub(self._channel)
                 )
             case absreq.Service.LEDGER:
                 srv_fn, srv_req = request.to_request(
-                    stub=v2base.LedgerServiceStub(self._channel)
+                    stub=sui_prot.LedgerServiceStub(self._channel)
                 )
             case absreq.Service.TRANSACTION:
                 srv_fn, srv_req = request.to_request(
-                    stub=v2base.TransactionExecutionServiceStub(self._channel)
+                    stub=sui_prot.TransactionExecutionServiceStub(self._channel)
                 )
             case absreq.Service.MOVEPACKAGE:
                 srv_fn, srv_req = request.to_request(
-                    stub=v2alpha.MovePackageServiceStub(self._channel)
+                    stub=sui_prot.MovePackageServiceStub(self._channel)
                 )
             # Subscriptions are called synchronously on first fetch
             case absreq.Service.SUBSCRIPTION:
                 srv_fn, srv_req = request.to_request(
-                    stub=v2alpha.SubscriptionServiceStub(self._channel)
+                    stub=sui_prot.SubscriptionServiceStub(self._channel)
                 )
                 try:
                     logger.info(f"Request {request}")
@@ -186,7 +182,7 @@ class SuiGrpcClient(PysuiClient):
 
             case absreq.Service.SIGNATURE:
                 srv_fn, srv_req = request.to_request(
-                    stub=v2alpha.SignatureVerificationServiceStub(self._channel)
+                    stub=sui_prot.SignatureVerificationServiceStub(self._channel)
                 )
             case _:
                 raise NotImplementedError(f"{request.service} not implemented.")

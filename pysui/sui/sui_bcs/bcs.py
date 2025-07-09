@@ -24,8 +24,7 @@ from pysui.sui.sui_utils import (
     from_list_to_b58str,
 )
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta as v2base
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2alpha as v2alpha
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32
@@ -213,17 +212,15 @@ class ObjectReference(canoser.Struct):
 
     @classmethod
     @versionadded(version="0.87.0", reason="Support grpc argument inferencing")
-    def from_grpc_ref(
-        cls, indata: v2base.Object | v2alpha.OwnedObject
-    ) -> "ObjectReference":
+    def from_grpc_ref(cls, indata: sui_prot.Object) -> "ObjectReference":
         """from_grpc_ref init construct with gRPC Object
 
         :param indata: Object definition
-        :type indata: v2base.Object
+        :type indata: sui_prot.Object
         :return: The instantiated BCS object
         :rtype: ObjectReference
         """
-        if isinstance(indata, (v2base.Object, v2alpha.OwnedObject)):
+        if isinstance(indata, sui_prot.Object):
             return cls(
                 Address.from_str(indata.object_id),
                 indata.version,
@@ -291,12 +288,12 @@ class SharedObjectReference(canoser.Struct):
     @classmethod
     @versionadded(version="0.87.0", reason="Support argument inferencing")
     def from_grpc_ref(
-        cls, indata: v2base.Object, is_mutable: bool = False
+        cls, indata: sui_prot.Object, is_mutable: bool = False
     ) -> "SharedObjectReference":
         """from_grpc_ref init construct with gRPC Object.
 
         :param indata: The reference information for an Object
-        :type indata: v2base.Object
+        :type indata: sui_prot.Object
         :return: The instantiated BCS object
         :rtype: SharedObjectReference
         """
