@@ -21,19 +21,18 @@ Welcome to pysui's documentation!
    getting_started
    intro
    bc_queries
+   bc_txns
    logging
    pyconfig
    builders
    utilities
    graphql
-   graphql_prog_txn
    graphql_qnodes
    graphql_serial_exc
    grpc
    grpc_requests_list
    aliases
    multi_sig
-   prog_txn
    subscriptions
    modules
 

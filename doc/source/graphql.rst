@@ -17,7 +17,6 @@ Subject to Change
 pysui's GraphQL implementation, class names, etc. subject to change. This
 implementation is not production ready and should be considered experiemental.
 
-
 Key Dependencies
 ----------------
 

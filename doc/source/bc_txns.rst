@@ -5,9 +5,8 @@ Blockchain Transactions
 ``pysui`` supports Programmable Transaction Blocks (PTB), ``transaction`` for
 short, for the three client flavors (JSON RPC, GraphQL and gRPC).
 
-
-All transactions have parity in the fundamental commands. **Note** that the
-gRPC protocol only supports `async` command methods
+All transactions have parity for the fundamental commands. **Note** that the
+gRPC transaction _only_ supports `async` command methods
 
 Transaction Commands
 --------------------
@@ -47,343 +46,283 @@ Transaction Commands
 Executing Transactions
 ----------------------
 
+The various PTB implementations:
 
++--------------------------+---------------------------------------------------------------------+
+|  Command                 | Link                                                                |
++==========================+=====================================================================+
+| JSON RPC synchronous     | :py:class:`pysui.sui.sui_txn.sync_transaction.SuiTransaction`       |
++--------------------------+---------------------------------------------------------------------+
+| JSON RPC asynchronous    | :py:class:`pysui.sui.sui_txn.async_transaction.SuiTransactionAsync` |
++--------------------------+---------------------------------------------------------------------+
+| GraphQL  synchronous     | :py:class:`pysui.sui.sui_pgql.pgql_sync_txn.SuiTransaction`         |
++--------------------------+---------------------------------------------------------------------+
+| GraphQL  asynchronous    | :py:class:`pysui.sui.sui_pgql.pgql_async_txn.AsyncSuiTransaction`   |
++--------------------------+---------------------------------------------------------------------+
+| gRPC asynchronous        | :py:class:`pysui.sui.sui_grpc.pgrpc_async_txn.AsyncSuiTransaction`  |
++--------------------------+---------------------------------------------------------------------+
 
+See `JSON RPC Nuances`_ for additional considerations when using said client.
 
-:py:class:`pysui.sui.sui_builders.base_builder.SuiRequestType`
+The example below shows variations of building and executing a Transaction
+for each of the client flavors with a common `split_coin` and
+`transfer_objects` command set.
 
+Copy the example to a local script (e.g. ``client parity.py``) then
+execute via:
 
-JSON RPC fetch object
----------------------
-
-.. code-block:: Python
+.. code-block:: shell
    :linenos:
 
-    # Fundemental classes
-    from pysui import SuiConfig, SyncClient, ObjectID
+   python client_parity.py -s  # for JSON RPC and GraphQL synchronous clients
+   python client_parity.py -a  # for gRPC and GraphQL asynchronous clients
+   python client_parity.py -b  # for both synchronous and asynchronous clients
 
-    # The JSON RPC builders
-    import pysui.sui.sui_builders.get_builders as bn
 
-    def get_object_example():
-        """Fetch an object by ID."""
-
-        # Setup synchronous client using defaults in Mysten's client.yaml
-        client = SyncClient(SuiConfig.default_config())
-
-        # Setup the get object builder
-        builder = bn.GetObject(
-            object_id=ObjectID(
-                "0x09f29cd8795c171136f0da589516bfdf4ca0f77084550830fe20611e06018dc7"
-            )
-        )
-
-        # Execute and reviewe the results
-        result = client.execute(builder=builder)
-        if result.is_ok():
-            print(result.result_data.to_json(indent=2))
-        else:
-            print(result.result_string)
-
-gRPC fetch object
-------------------
-
-.. code-block:: Python
+.. code-block:: python
    :linenos:
 
-    # gRPC client is asynchronous only
+    #    Copyright Frank V. Castellucci
+    #    SPDX-License-Identifier: Apache-2.0
+
+    # -*- coding: utf-8 -*-
+
+    """Client Transaction Parity."""
+
     import asyncio
+    import sys
 
-    # Fundemental classes
-    from pysui import PysuiConfiguration, SuiGrpcClient
 
-    # The gRPC request nodes
+    # For Clients, Configurations and Results
+    from pysui import (
+        # For All
+        SuiRpcResult,
+        # For JSON RPC
+        SuiConfig,
+        SyncClient,
+        AsyncClient,
+        # For GraphQL and gRPC
+        PysuiConfiguration,
+        SyncGqlClient,
+        AsyncGqlClient,
+        SuiGrpcClient,
+    )
+
+    # For JSON RPC
+    import pysui.sui.sui_txn as jsonrpc
+
+    # For GraphQL
+    import pysui.sui.sui_pgql.pgql_query as qn
+    import pysui.sui.sui_pgql.pgql_sync_txn as gql_sync
+    import pysui.sui.sui_pgql.pgql_async_txn as gql_async
+
+    # For gRPC
     import pysui.sui.sui_grpc.pgrpc_requests as rn
+    import pysui.sui.sui_grpc.pgrpc_async_txn as grpc_async
 
-    async def get_object_example():
-        """Fetch an object by ID."""
 
-        # SUI_GRPC_GROUP is a named group in the configuration.
-        # Default configuration is located in the `~/.pysui` folder.
-
-        cfg = PysuiConfiguration(
-            group_name=PysuiConfiguration.SUI_GRPC_GROUP,
+    def json_rpc_example():
+        """Simple JSON RPC split and transfer."""
+        client = SyncClient(SuiConfig.default_config())
+        txer: jsonrpc.SyncTransaction = client.transaction()
+        split = txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
+        txer.transfer_objects(
+            transfers=[split],
+            recipient=client.config.active_address,
         )
-        client = SuiGrpcClient(pysui_config=cfg)
-
-        request = rn.GetObject(
-            object_id="0x09f29cd8795c171136f0da589516bfdf4ca0f77084550830fe20611e06018dc7"
-        )
-        result = await grpc_client.execute(request=request)
+        result: SuiRpcResult = txer.execute()
         if result.is_ok():
             print(result.result_data.to_json(indent=2))
         else:
             print(result.result_string)
 
-        client.close()
 
-    if __name__ == "__main__":
-        try:
-            asyncio.run(main(cfg))
-        except ValueError as ve:
-            print(ve)
+    async def json_rpc_example_async():
+        """Simple async JSON RPC split and transfer."""
+        client = AsyncClient(SuiConfig.default_config())
+        txer: jsonrpc.AsyncTransaction = client.transaction()
+        split = await txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
+        await txer.transfer_objects(
+            transfers=[split],
+            recipient=client.config.active_address,
+        )
+        result: SuiRpcResult = await txer.execute()
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)
 
-GraphQL fetch object
---------------------
 
-.. code-block:: Python
-   :linenos:
-
-    # Fundemental classes
-    from pysui import PysuiConfiguration, SyncGqlClient
-
-    # The GraphQL query nodes
-    import pysui.sui.sui_pgql.pgql_query as qn
-
-    def get_object_example():
-        """Fetch an object by ID."""
-
-        # SUI_GQL_RPC_GROUP is a named group in the configuration.
-        # Default configuration is located in the `~/.pysui` folder.
-
+    def graphql_example():
+        """Simple GraphQL split and transfer."""
         cfg = PysuiConfiguration(
             group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
         )
         client = SyncGqlClient(pysui_config=cfg)
 
-        query_node = qn.GetObject(
-            object_id="0x09f29cd8795c171136f0da589516bfdf4ca0f77084550830fe20611e06018dc7"
+        txer: gql_sync.SuiTransaction = client.transaction()
+        scres = txer.split_coin(coin=txer.gas, amounts=[1000000])
+        txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+        txdict = txer.build_and_sign()
+        result: SuiRpcResult = client.execute_query_node(
+            with_node=qn.ExecuteTransaction(**txdict)
         )
-        result = client.execute_query_node(with_node=query_node)
         if result.is_ok():
             print(result.result_data.to_json(indent=2))
         else:
             print(result.result_string)
 
-GraphQL query variations
-------------------------
 
-The SuiGQLClient encapsulates the ``gql`` Client and supports additional
-options to form and execute a query returning results
+    async def graphql_example_async():
+        """Simple async GraphQL split and transfer."""
+        cfg = PysuiConfiguration(
+            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+        )
+        client = AsyncGqlClient(pysui_config=cfg)
 
-.. code-block:: Python
+        txer: gql_async.AsyncSuiTransaction = client.transaction()
+        scres = await txer.split_coin(coin=txer.gas, amounts=[1000000])
+        await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+        txdict = await txer.build_and_sign()
+        result: SuiRpcResult = await client.execute_query_node(
+            with_node=qn.ExecuteTransaction(**txdict)
+        )
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)
 
-    # Execute a query in a string
-    def execute_query_string(
-        self,
-        *,
-        string: str,
-        schema_constraint: Optional[str] = None,
-        with_headers: Optional[dict] = None,
-        encode_fn: Optional[Callable[[dict], Any]] = None,
-    ) -> SuiRpcResult:
-        """Execute a GraphQL string query."""
 
-    # Execute a gql DocumentNode
-    def execute_document_node(
-        self,
-        *,
-        with_node: DocumentNode,
-        schema_constraint: Optional[str] = None,
-        with_headers: Optional[dict] = None,
-        encode_fn: Optional[Callable[[dict], Any]] = None,
-    ) -> SuiRpcResult:
-        """Execute a gql library document node."""
+    async def grpc_example_async():
+        """Simple async gRPC split and transfer."""
+        cfg = PysuiConfiguration(
+            group_name=PysuiConfiguration.SUI_GRPC_GROUP,
+        )
+        client: SuiGrpcClient = SuiGrpcClient(pysui_config=cfg)
+        txer: grpc_async.AsyncSuiTransaction = client.transaction()
+        scres = await txer.split_coin(coin=txer.gas, amounts=[1000000])
+        await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+        txdict = await txer.build_and_sign()
+        result: SuiRpcResult = await client.execute(request=rn.ExecuteTransaction(**txdict))
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_string)
 
-* ``execute_query_string`` convert a GraphQL query string to a gql
-  `DocumentNode <https://gql.readthedocs.io/en/stable/usage/basic_usage.html#>`_
-  and execute, returning a dictionary result by default
-* ``execute_document_node`` will execute a gql DocumentNode and return a
-  dictionary result if no ``encode_fn`` function is defined
-* ``encode_fn`` is an explict callable for encoding a query result that takes
-  a dictionary and returns Any. If specified along with a ``pysui`` QueryNode,
-  it will override the encode_fn method
 
-String queries
-++++++++++++++
+    def sync_main():
+        """Uncomment which to run."""
 
-**String** queries are just that: A string describing the query. When submitted
-to the ``SuiGQLClient.execute_query(with_string="query string")`` it will
-convert the sting to a **DocumentNode**, execute the query and either return
-the raw result or invoke the ``encode_fn`` if provided.
+        json_rpc_example()
+        graphql_example()
 
-.. code-block:: Python
 
-    #
-    """String query example."""
-    from pysui import PysuiConfiguration, SyncGqlClient
+    async def async_main():
+        """Uncomment which async protocol to run."""
+        await json_rpc_example_async()
+        await graphql_example_async()
+        await grpc_example_async()
 
-    def main(client: SyncGqlClient):
-        """Execute a static string query."""
-        _QUERY = """
-            query {
-                chainIdentifier
-                checkpointConnection (last: 1) {
-                    nodes {
-                        sequenceNumber
-                        timestamp
-                    }
-                }
-            }
-        """
-        qres = client.execute_query_string(string=_QUERY)
-        print(qres)
+
+    def main():
+        """Main entry point."""
+        args = sys.argv[1:]
+        try:
+            if args[0][1] == "s":
+                sync_main()
+            elif args[0][1] == "a":
+                asyncio.run(async_main())
+            elif args[0][1] == "b":
+                sync_main()
+                asyncio.run(async_main())
+        except Exception as e:
+            print(e)
+
 
     if __name__ == "__main__":
-        # Initialize synchronous client
-        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
-        client_init = SyncGqlClient(pysui_config=cfg)
-        main(client_init)
-
-DocumentNode queries
-++++++++++++++++++++
-
-**DocumentNode** queries are those that use the ``gql`` intermediate step of
-convering a query string to a DocumentNode using ``gql`` functions.
-
-.. code-block:: Python
-
-    #
-    """DocumentNode query example."""
-
-    from gql import gql
-    from pysui import PysuiConfiguration, SyncGqlClient
-
-    def main(client: SyncGqlClient):
-        """Execute a DocumentNode as result of `gql` compilation."""
-        _QUERY = """...""" # Same query string as used above
-        qres = client.execute_document_node(with_node=gql(_QUERY))
-        print(qres)
-
-    if __name__ == "__main__":
-        # Initialize synchronous client
-        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP )
-        client_init = SyncGqlClient(pysui_config=cfg)
-        main(client_init)
-
-pysui QueryNode queries
-+++++++++++++++++++++++
-
-pysui QueryNodes are those that subclass ``PGQL_QueryNode``. ``pysui`` provides
-a number of predefined QueryNode queries that attempt to achieve parity with
-most pysui SDK Builders, however some may not be supported.
-
-pysui QueryNodes (such as ``GetCoins`` above) take zero or more parameters
-depending on the query, and some provide paging control for large results.
-All pysui can QueryNodes provide an ``NODE.encode_fn(dict)`` static method
-to encode the dictionary result, from executing, to a encoding style of
-their own. This can be overriden as noted above.
+        main()
 
 
-pysui QueryNodes leverage gql's `DSL <https://gql.readthedocs.io/en/stable/advanced/dsl_module.html#>`_ to
-construct queries, fragments and inline fragments. Once constructed, pysui
-QueryNodes can be submitted to the client (SuiGQLClient or AsyncSuiGQLClient)
-``execute_query`` method.
+JSON RPC Nuances
+----------------
 
-When passing a QueryNode to ``execute_query`` a few things happen prior to
-submitting:
+GraphQL and gRPC PTBs eliminate the need to **wrap** transaction command
+arguments. You can use native Python types for command parameters and
+**move_call** arguments.
 
-#. The QueryNode's ``as_document_node`` is called to return a DocumentNode
-#. The result is checked and if it is the ``PGQL_NoOp`` type, a ``NoopGQL``
-   object is returned, otherwise...
-#. The DocumentNode is submitted for execution and ``gql`` returns a Python
-   dict of the result
-#. A check is then made to see if either ``encode_fn`` is provided or if the
-   QueryNode provides an ``encode_fn`` the function is called to prepare the
-   result and returns
-#. Otherwise the Python dict is returned
+JSON RPC
+++++++++
 
+.. code-block:: python
+    :linenos:
 
-Creating PGQL_QueryNode queries
-+++++++++++++++++++++++++++++++
+    txn.move_call(
+        target="0x0cce956e2b82b3844178b502e3a705dead7d2f766bfbe35626a0bbed06a42e9e::marketplace::buy_and_take",
+        arguments=[
+            ObjectID("0xb468f361f620ac05de721e487e0bdc9291c073a7d4aa7595862aeeba1d99d79e"),
+            ObjectID("0xfd542ebc0f6743962077861cfa5ca9f1f19de8de63c3b09a6d9d0053d0104908"),
+            ObjectID("0x97db1bba294cb30ce116cb94117714c64107eabf9a4843b155e90e0ae862ade5"),
+            SuiAddress(coin_object_id),
+            ObjectID(coin_object_id),
+            SuiU64(1350000000),
+        ],
+        type_arguments=[
+            "0x3dcfc5338d8358450b145629c985a9d6cb20f9c0ab6667e328e152cdfd8022cd::suifrens::SuiFren<0x3dcfc5338d8358450b145629c985a9d6cb20f9c0ab6667e328e152cdfd8022cd::capy::Capy>",
+            "0x2::sui::SUI",
+        ],
+    )
 
-Notes:
+GrqphQL and gRPC
+++++++++++++++++
 
-#. During the execute step, if a QueryNode has public property ``owner`` it is
-   first checked if the value is an alias and will resolve it to the
-   associated Sui address, otherwise the value is validated as a Sui
-   address literal.
-#. In the ``as_document_node`` call it does not have to be constructed
-   using DSL as the example below in Step 2 shows. It is
-   only required that the method returns a DocumentNode.
+.. code-block:: python
+    :linenos:
 
+    txn.move_call(
+        target="0x0cce956e2b82b3844178b502e3a705dead7d2f766bfbe35626a0bbed06a42e9e::marketplace::buy_and_take",
+        arguments=[
+            "0xb468f361f620ac05de721e487e0bdc9291c073a7d4aa7595862aeeba1d99d79e",
+            "0xfd542ebc0f6743962077861cfa5ca9f1f19de8de63c3b09a6d9d0053d0104908",
+            "0x97db1bba294cb30ce116cb94117714c64107eabf9a4843b155e90e0ae862ade5",
+            coin_object_id,
+            coin_object_id,
+            1350000000,
+        ],
+        type_arguments=[
+            "0x3dcfc5338d8358450b145629c985a9d6cb20f9c0ab6667e328e152cdfd8022cd::suifrens::SuiFren<0x3dcfc5338d8358450b145629c985a9d6cb20f9c0ab6667e328e152cdfd8022cd::capy::Capy>",
+            "0x2::sui::SUI",
+        ],
+    )
 
-Step 1
-^^^^^^
+JSON RPC Argument Conversions
++++++++++++++++++++++++++++++
 
-Note the required and optional methods from ``PGQL_QueryNode``:
++----------------------------------------------------------+-----------------------------+
+|     Types                                                |       Converts to           |
++==========================================================+=============================+
+| str, SuiString                                           | Passed as vector<u8>        |
++----------------------------------------------------------+-----------------------------+
+| int, SuiInteger                                          | Passed as minimal bit value |
++----------------------------------------------------------+-----------------------------+
+| bool, bytes, SuiBoolean                                  | Passed as raw value         |
++----------------------------------------------------------+-----------------------------+
+| SuiU8, SuiU16, SuiU32, SuiU64, SuiU128, SuiU256          | Passed as value  [#f1]_     |
++----------------------------------------------------------+-----------------------------+
+| list, SuiArray [#f2]_                                    | Members passed as values    |
++----------------------------------------------------------+-----------------------------+
+| OptionalU8, OptionalU16, OptionalU32,                    |                             |
+| OptionalU64, OptionalU128, OptionalU256                  | Passed as Optional<uX>      |
++----------------------------------------------------------+-----------------------------+
+| SuiAddress                                               | Passed as move address      |
++----------------------------------------------------------+-----------------------------+
+| ObjectID, SuiCoinObject, ObjectRead                      | Passed as reference [#f3]_  |
++----------------------------------------------------------+-----------------------------+
+| Result of previous command [#f4]_                        | Command Result index        |
++----------------------------------------------------------+-----------------------------+
 
-.. code-block:: Python
+.. rubric:: Footnotes
 
-    class PGQL_QueryNode(ABC):
-        """Base QueryNode class."""
-
-        @abstractmethod
-        def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-            """Returns a gql DocumentNode ready to execute.
-
-            This must be implemented in subclasses.
-
-            :param schema: The current Sui GraphQL schema
-            :type schema: DSLSchema
-            :return: A query processed into a gql DocumentNode
-            :rtype: DocumentNode
-            """
-
-        @staticmethod
-        def encode_fn() -> Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]:
-            """Return the serialization function in derived class or None.
-
-            This is optional,
-
-            :return: A function taking a dictionary as input and returning a PGQL_Type or Any, or None
-            :rtype: Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]
-            """
-            return None
-
-Step 2
-^^^^^^
-
-Derive and implement your construct. This example is a predefined pysui
-QueryNode that uses the ``gql`` DSL with the schema. It also has defined
-an encoding type.
-
-.. code-block:: Python
-
-    from typing import Optional, Callable, Union, Any
-    from gql.dsl import DSLQuery, dsl_gql, DSLSchema
-    from graphql import DocumentNode
-
-    from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode
-    import pysui.sui.sui_pgql.pgql_types as pgql_type
-
-    class GetCoinMetaData(PGQL_QueryNode):
-        """GetCoinMetaData returns meta data for a specific `coin_type`."""
-
-        def __init__(self, *, coin_type: Optional[str] = "0x2::sui::SUI") -> None:
-            """QueryNode initializer.
-
-            :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
-            :type coin_type: str, optional
-            """
-            self.coin_type = coin_type
-
-        def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-            """Build the DocumentNode."""
-            qres = schema.Query.coinMetadata(coinType=self.coin_type).select(
-                schema.CoinMetadata.decimals,
-                schema.CoinMetadata.name,
-                schema.CoinMetadata.symbol,
-                schema.CoinMetadata.description,
-                schema.CoinMetadata.iconUrl,
-                schema.CoinMetadata.supply,
-                object_data=schema.CoinMetadata.asMoveObject.select(
-                    schema.MoveObject.asObject.select(meta_object_id=schema.Object.location)
-                ),
-            )
-            return dsl_gql(DSLQuery(qres))
-
-        @staticmethod
-        def encode_fn() -> Callable[[dict], pgql_type.SuiCoinMetadataGQL]:
-            """Return the encoding function to create a SuiCoinMetadataGQL dataclass."""
-            return pgql_type.SuiCoinMetadataGQL.from_query
+.. [#f1] Explicit unsigned integer bit size types
+.. [#f2] Members must be scalars, SuiAddresses or results of previous commands. For Object vectors use :py:meth:`pysui.sui.sui_clients.transaction.SuiTransaction.make_move_vector`
+.. [#f3] Will determine if Shared object or not before transaction execution
+.. [#f4] Result may be a list, so understanding which commands return a zero, 1 or multiple(list) is important

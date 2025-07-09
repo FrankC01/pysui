@@ -43,18 +43,6 @@ Module: exec_builders - Sui Builders: Complex transaction.
 | :py:class:`pysui.sui.sui_builders.exec_builders.InspectTransaction`      |       |
 +--------------------------------------------------------------------------+-------+
 
-.. _subscription-filters:
-
-Module: subscription_builders - Sui Builders: For subscriptions and filters.
-----------------------------------------------------------------------------
-
-+---------------------------------------------------------------------------------+-------+
-|                                       Name                                      | Notes |
-+=================================================================================+=======+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.SubscribeEvent`         |       |
-+---------------------------------------------------------------------------------+-------+
-| :py:class:`pysui.sui.sui_builders.subscription_builders.SubscribeTransaction`   |       |
-+---------------------------------------------------------------------------------+-------+
 
 Module: get_builders - Sui Builders: Simple sui_getXXX calls.
 -------------------------------------------------------------
