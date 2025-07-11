@@ -222,6 +222,11 @@ class ResolvingArgParser:
                     self._argument_validate(inner_type, arg, in_optional, True)
                 )
             else:
+                # Occurs when vector argument only refers to typeParamater
+                if isinstance(inner_type, pgql_type.MoveAnyArg):
+                    raise NotImplementedError(
+                        f"Arg type {arg} not known from function signature."
+                    )
                 for inner_arg in arg:
                     if isinstance(inner_arg, bcs.Argument):
                         some_list.append(inner_arg)
