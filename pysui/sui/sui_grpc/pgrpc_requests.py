@@ -545,27 +545,6 @@ class GetPackage(absreq.PGRPC_Request):
         return stub.get_package, sui_prot.GetPackageRequest(package_id=self.package_id)
 
 
-# class GetModule(absreq.PGRPC_Request):
-
-#     RESULT_TYPE: betterproto2.Message = sui_prot.GetModuleResponse
-
-#     def __init__(self, *, package_id: str, module_name: str) -> None:
-#         """Initializer."""
-#         super().__init__(absreq.Service.MOVEPACKAGE)
-#         self.package_id = package_id
-#         self.module_name = module_name
-
-#     def to_request(
-#         self, *, stub: sui_prot.MovePackageServiceStub
-#     ) -> tuple[
-#         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
-#     ]:
-#         """."""
-#         return stub.get_module, sui_prot.GetModuleRequest(
-#             package_id=self.package_id, module_name=self.module_name
-#         )
-
-
 class GetDataType(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetDatatypeResponse

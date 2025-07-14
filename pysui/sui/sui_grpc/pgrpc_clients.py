@@ -88,7 +88,7 @@ class SuiGrpcClient(PysuiClient):
         """Fetch the current epoch gas price."""
         result = await self.execute(request=GetEpoch())
         if result.is_ok():
-            return result.result_data.reference_gas_price
+            return result.result_data.epoch.reference_gas_price
         raise ValueError(f"Error accessing gRPC {result.result_string}")
 
     async def protocol(self, epoch_number: Optional[int] = None) -> ProtocolConfig:
@@ -99,9 +99,9 @@ class SuiGrpcClient(PysuiClient):
                 field_mask=["protocol_config"],
             )
         )
-        if result.is_ok() and hasattr(result.result_data, "protocol_config"):
+        if result.is_ok() and hasattr(result.result_data.epoch, "protocol_config"):
             self._protocol_config = _map_pconstraints(
-                result.result_data.protocol_config
+                result.result_data.epoch.protocol_config
             )
             return self._protocol_config
         raise ValueError(f"protocol fetch returned {result.result_string}")

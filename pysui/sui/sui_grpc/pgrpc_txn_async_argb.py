@@ -140,7 +140,7 @@ class AsyncResolvingArgParser:
     ) -> tuple[Any, Any]:
         """."""
         match expected_type.scalar_type:
-            case "address" | "signature" | "ID":
+            case "address" | "signature" | "ID" | "UID":
                 if in_vector:
                     return bcs.Address.from_str, _pass_through
                 return bcs.Address.from_str, PureInput.as_input
@@ -416,6 +416,10 @@ class AsyncResolvingArgParser:
                     await self._argument_validate(inner_type, arg, in_optional, True)
                 )
             else:
+                if isinstance(inner_type, pgql_type.MoveAnyArg):
+                    raise NotImplementedError(
+                        f"Arg type {arg} not known from function signature."
+                    )
                 for inner_arg in arg:
                     if isinstance(inner_arg, bcs.Argument):
                         some_list.append(inner_arg)

@@ -5,11 +5,14 @@
 
 """Collection of reusable functions."""
 
-from typing import Optional, Callable, ParamSpec
+from typing import Any, Optional, Callable, ParamSpec
 from functools import partial
 from pysui.sui.sui_common.client import PysuiClient
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 import pysui.sui.sui_grpc.pgrpc_requests as rn
+import pysui.sui.sui_pgql.pgql_types as pgql_types
+import pysui.sui.sui_pgql.pgql_validators as tv
+import pysui.sui.sui_bcs.bcs as bcs
 
 _P = ParamSpec("P")
 
@@ -168,4 +171,83 @@ async def async_get_objects_by_ids(
     # and perform looped fetch
     return await async_cursored_collector(
         partial(rn.GetMultipleObjects, object_ids=object_ids), only_active
+    )
+
+
+def _normalize_arg(arg: sui_prot.OpenSignature) -> Any | None:
+    """."""
+    result: Any = None
+    # Handle scalar
+    if arg.body.type.name in bcs.TypeTag._UCASE_SCALARS or arg.body.type.name == "BOOL":
+        result = pgql_types.MoveScalarArg(
+            pgql_types.RefType.from_ref(""), arg.body.type.name.lower()
+        )
+    # Otherwise, if not last arg
+    elif arg.body.type_name != "0x2::tx_context::TxContext":
+        r_type = pgql_types.RefType.from_ref(
+            arg.reference.name if arg.reference else arg.reference
+        )
+        # Handle vector
+        if arg.body.type == sui_prot.OpenSignatureBodyType.VECTOR:
+            inner = arg.body.type_parameter_instantiation[0]
+            if not isinstance(inner, sui_prot.OpenSignature):
+                inner = sui_prot.OpenSignature(body=inner)
+            result = pgql_types.MoveVectorArg(r_type, _normalize_arg(inner))
+        # Else it's an object
+        # TODO: Optional and Receiving
+        else:
+            receiving: bool = False
+            optional: bool = False
+            package, package_module, package_struct = (
+                tv.TypeValidator.check_target_triplet(arg.body.type_name)
+            )
+            if package_module in ["object", "address", "string"] and package_struct in [
+                "ID",
+                "UID",
+                "address",
+                "String",
+            ]:
+                result = pgql_types.MoveScalarArg(r_type, package_struct)
+            else:
+                if package_module == "transfer" and package_struct == "Receiving":
+                    receiving = True
+                if package_module == "option" and package_struct == "Option":
+                    optional = True
+                hastype = bool(arg.body.type_parameter)
+                result = pgql_types.MoveObjectRefArg(
+                    r_type,
+                    package,
+                    package_module,
+                    package_struct,
+                    arg.body.type_parameter_instantiation,
+                    optional,
+                    receiving,
+                    hastype,
+                )
+
+    return result
+
+
+def normalize_move_func(
+    func: sui_prot.GetFunctionResponse,
+) -> pgql_types.MoveArgSummary:
+    """Convert gRPC function response to GraphQL MoveArgSummary
+
+    :param func: Retrieved move function details
+    :type func: sui_prot.GetFunctionResponse
+    """
+    arg_list: list[
+        pgql_types.MoveScalarArg
+        | pgql_types.MoveObjectRefArg
+        | pgql_types.MoveTypeArg
+        | pgql_types.MoveVectorArg
+        | pgql_types.MoveWitnessArg
+        | pgql_types.MoveAnyArg
+    ] = []
+
+    for arg in func.function.parameters:
+        if narg := _normalize_arg(arg):
+            arg_list.append(narg)
+    return pgql_types.MoveArgSummary(
+        func.function.type_parameters, arg_list, len(func.function.returns)
     )

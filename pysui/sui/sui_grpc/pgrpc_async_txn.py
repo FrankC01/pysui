@@ -19,6 +19,7 @@ from pysui.sui.sui_common.async_funcs import AsyncLRU
 import pysui.sui.sui_grpc.pgrpc_txn_async_argb as argbase
 
 import pysui.sui.sui_grpc.pgrpc_txb_gas as gd
+import pysui.sui.sui_grpc.pgrpc_utils as utils
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 
@@ -71,23 +72,25 @@ class AsyncSuiTransaction(txbase):
             tv.TypeValidator.check_target_triplet(target)
         )
 
-        result = await self.client.execute(
-            request=rn.GetFunction(
-                package=package,
-                module_name=package_module,
-                function_name=package_function,
+        try:
+            result = await self.client.execute(
+                request=rn.GetFunction(
+                    package_id=package,
+                    module_name=package_module,
+                    function_name=package_function,
+                )
             )
-        )
-        if result.is_ok() and not isinstance(result.result_data, pgql_type.NoopGQL):
-            mfunc: pgql_type.MoveFunctionGQL = result.result_data
-            return (
-                bcs.Address.from_str(package),
-                package_module,
-                package_function,
-                len(mfunc.returns),
-                mfunc.arg_summary(),
-            )
-        raise ValueError(f"Unresolvable target {target}")
+            if result.is_ok():
+                mfunc: sui_prot.GetFunctionResponse = result.result_data
+                return (
+                    bcs.Address.from_str(package),
+                    package_module,
+                    package_function,
+                    len(mfunc.function.returns),
+                    utils.normalize_move_func(mfunc),
+                )
+        except ValueError as ve:
+            raise ValueError(f"{target} {ve.args}")
 
     async def target_function_summary(
         self, target: str
@@ -267,7 +270,6 @@ class AsyncSuiTransaction(txbase):
         :return: Null argument. Can not be used in subsequent commands.
         :rtype: bcs.Argument
         """
-        raise NotImplementedError("Pending MovePackage service in gRPC")
         package, package_module, package_function, retcount, ars = (
             await self._function_meta_args(self._SPLIT_AND_KEEP)
         )

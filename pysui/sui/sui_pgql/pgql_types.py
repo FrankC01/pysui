@@ -1319,11 +1319,13 @@ class RefType(IntEnum):
     @classmethod
     def from_ref(cls, rstr: str) -> "RefType":
         """."""
-        return (
-            RefType.REF
-            if rstr == "&"
-            else RefType.MUT_REF if rstr == "&mut" else RefType.NO_REF
-        )
+        reftype = RefType.NO_REF
+        if rstr:
+            if rstr in ["&mut", "MUTABLE"]:
+                reftype = RefType.MUT_REF
+            elif rstr in ["&", "IMMUTABLE"]:
+                reftype = RefType.REF
+        return reftype
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
