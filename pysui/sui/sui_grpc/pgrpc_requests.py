@@ -247,6 +247,7 @@ class GetOwnedObjects(absreq.PGRPC_Request):
         *,
         owner: str,
         object_type: Optional[str] = None,
+        field_mask: Optional[list[str]] = None,
         page_size: Optional[int] = None,
         page_token: Optional[bytes] = None,
     ) -> None:
@@ -256,6 +257,9 @@ class GetOwnedObjects(absreq.PGRPC_Request):
         self.object_type = object_type
         self.page_size = page_size
         self.page_token = page_token
+        self.field_mask = self._field_mask(
+            field_mask if field_mask else OBJECT_DEFAULT_FIELDS
+        )
 
     def to_request(
         self, *, stub: sui_prot.LiveDataServiceStub
@@ -266,6 +270,7 @@ class GetOwnedObjects(absreq.PGRPC_Request):
         return stub.list_owned_objects, sui_prot.ListOwnedObjectsRequest(
             owner=self.owner,
             object_type=self.object_type,
+            read_mask=self.field_mask,
             page_size=self.page_size,
             page_token=self.page_token,
         )
@@ -274,11 +279,19 @@ class GetOwnedObjects(absreq.PGRPC_Request):
 class GetGas(GetOwnedObjects):
     """Get gas objects owned by address using GetOwnedObjects."""
 
-    def __init__(self, *, owner, page_size=None, page_token=None):
+    def __init__(
+        self,
+        *,
+        owner,
+        field_mask: Optional[list[str]] = None,
+        page_size=None,
+        page_token=None,
+    ):
         """Initializer."""
         super().__init__(
             owner=owner,
             object_type="0x2::coin::Coin<0x2::sui::SUI>",
+            field_mask=field_mask,
             page_size=page_size,
             page_token=page_token,
         )
@@ -287,11 +300,19 @@ class GetGas(GetOwnedObjects):
 class GetStaked(GetOwnedObjects):
     """Get staked coin objects owned by address using GetOwnedObjects."""
 
-    def __init__(self, *, owner, page_size=None, page_token=None):
+    def __init__(
+        self,
+        *,
+        owner,
+        field_mask: Optional[list[str]] = None,
+        page_size=None,
+        page_token=None,
+    ):
         """Initializer."""
         super().__init__(
             owner=owner,
             object_type="0x3::staking_pool::StakedSui",
+            field_mask=field_mask,
             page_size=page_size,
             page_token=page_token,
         )
