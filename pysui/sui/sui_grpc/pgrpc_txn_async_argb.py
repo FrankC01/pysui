@@ -103,7 +103,7 @@ class AsyncResolvingArgParser:
                 if not object_def or not object_def.previous_transaction:
                     raise ValueError(f"{arg} object not found")
 
-        if object_def.owner.kind in [
+        if object_def.owner.kind.name in [
             "ADDRESS",
             "IMMUTABLE",
             "OBJECT",

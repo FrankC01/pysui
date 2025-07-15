@@ -97,6 +97,7 @@ OBJECT_DEFAULT_FIELDS: list[str] = [
     "object_id",
     "object_type",
     "digest",
+    "balance",
     "json",
     "previous_transaction",
 ]
@@ -524,9 +525,9 @@ class SimulateTransaction(absreq.PGRPC_Request):
             )
         )
         self.checks_enables = (
-            sui_prot.SimulateTransactionRequestVmChecks.ENABLED
+            sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
             if checks_enabled
-            else sui_prot.SimulateTransactionRequestVmChecks.DISABLED
+            else sui_prot.SimulateTransactionRequestTransactionChecks.DISABLED
         )
         self.gas_selection = gas_selection
         self.field_mask = self._field_mask(field_mask)

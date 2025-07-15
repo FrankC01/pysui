@@ -3,12 +3,12 @@
 
 # -*- coding: utf-8 -*-
 
-import base64
+
 from typing import Optional, Union
 from pysui.sui.sui_common.txb_signing import SignerBlock
 from pysui.sui.sui_common.client import PysuiClient
 
-# TODO: Fixup curosors for gRPC in utils
+# TODO: Fixup cursors for gRPC in utils
 from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_all_owned_gas_objects,
     async_get_gas_objects_by_ids,
@@ -23,8 +23,8 @@ def _coins_for_budget(
     budget: int,
 ) -> list[bcs.ObjectReference]:
     """."""
-    coins.sort(key=lambda x: int(x.balance), reverse=True)
-    _coin_fit = [x for x in coins if int(x.balance) > budget]
+    coins.sort(key=lambda x: x.balance, reverse=True)
+    _coin_fit = [x for x in coins if x.balance > budget]
     if _coin_fit:
         _coin_fit = [_coin_fit[0]]
     else:
@@ -35,7 +35,7 @@ def _coins_for_budget(
                 break
             else:
                 _accum_coin.append(_coin)
-                _accum += int(_coin.balance)
+                _accum += _coin.balance
         if _accum < budget:
             raise ValueError(
                 f"Total gas available {_accum}, transaction requires {budget}"

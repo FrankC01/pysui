@@ -370,7 +370,6 @@ class AsyncSuiTransaction(txbase):
         :return: Result of command which is non-reusable
         :rtype: bcs.Argument
         """
-        raise NotImplementedError("Pending MovePackage service in gRPC")
         package, package_module, package_function = (
             tv.TypeValidator.check_target_triplet(self._PUBLIC_TRANSFER)
         )
@@ -395,7 +394,6 @@ class AsyncSuiTransaction(txbase):
         item_type: Optional[str] = None,
     ) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
-        raise NotImplementedError("Pending MovePackage service in gRPC")
         if all(isinstance(x, bcs.ObjectArg) for x in items):
             if item_type:
                 type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
@@ -430,7 +428,6 @@ class AsyncSuiTransaction(txbase):
             move method being called.
         :rtype: Union[bcs.Argument, list[bcs.Argument]]
         """
-        raise NotImplementedError("Pending MovePackage service in gRPC")
         type_arguments = type_arguments if type_arguments else []
         # Validate and get target meta arguments
         package, package_module, package_function, retcount, ars = (
@@ -511,7 +508,6 @@ class AsyncSuiTransaction(txbase):
         :return: The command result.
         :rtype: bcs.Argument
         """
-        raise NotImplementedError("Pending MovePackage service in gRPC")
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
             await self._function_meta_args(self._STAKE_REQUEST_TARGET)
@@ -536,16 +532,15 @@ class AsyncSuiTransaction(txbase):
         )
 
     async def unstake_coin(
-        self, *, staked_coin: Union[str, pgql_type.SuiStakedCoinGQL]
+        self, *, staked_coin: Union[str, sui_prot.Object]
     ) -> bcs.Argument:
         """unstake_coin Unstakes a Staked Sui Coin.
 
         :param staked_coin: The coin being unstaked
-        :type staked_coin: Union[str, pgql_type.SuiStakedCoinGQL]
+        :type staked_coin: Union[str, sui_prot.Object]
         :return: The Result argument
         :rtype: bcs.Argument
         """
-        raise NotImplementedError("Pending MovePackage service in gRPC")
         # Fetch pre-build meta arg summary
         package, package_module, package_function, retcount, ars = (
             await self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
