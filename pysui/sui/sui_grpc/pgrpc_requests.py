@@ -6,8 +6,10 @@
 """pysui gRPC Requests"""
 
 import base64
-from typing import Any, Callable, Optional
+import dataclasses
+from typing import Callable, Optional
 
+import dataclasses_json
 from deprecated.sphinx import versionadded, deprecated, versionchanged
 import betterproto2
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
@@ -19,6 +21,7 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
+    """Query the service for general information about its current state."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetServiceInfoResponse
 
@@ -38,6 +41,7 @@ class GetServiceInfo(absreq.PGRPC_Request):
 
 
 class GetCheckpoint(absreq.PGRPC_Request):
+    """Query for retrieving current or specific checkpoints."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.Checkpoint
 
@@ -66,6 +70,7 @@ class GetCheckpoint(absreq.PGRPC_Request):
 
 
 class GetEpoch(absreq.PGRPC_Request):
+    """Query for retrieving current or speciic Epochs."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.Epoch
 
@@ -91,6 +96,16 @@ class GetEpoch(absreq.PGRPC_Request):
         )
 
 
+class GetLatestSuiSystemState(GetEpoch):
+    """GetLatestSuiSystemState return the current Sui system state."""
+
+    def __init__(self):
+        super().__init__(field_mask=["system_state"])
+
+    def render(self, epoch: sui_prot.GetEpochResponse) -> sui_prot.SystemState:
+        return epoch.epoch.system_state
+
+
 OBJECT_DEFAULT_FIELDS: list[str] = [
     "owner",
     "version",
@@ -104,7 +119,7 @@ OBJECT_DEFAULT_FIELDS: list[str] = [
 
 
 class GetObject(absreq.PGRPC_Request):
-    """Get object request."""
+    """Query to retrieve the current version of an object."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.Object
 
@@ -132,8 +147,38 @@ class GetObject(absreq.PGRPC_Request):
         )
 
 
+# TODO: Move to gRPC types
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ObjectContentBCS:
+    """Raw object content BCS string."""
+
+    object_id: str  # Yes
+    bcs: str | bytes
+
+    def as_bytes(self) -> bytes:
+        """Convert BCS to bytes"""
+        return self.bcs if isinstance(self.bcs, bytes) else base64.b64decode(self.bcs)
+
+
+class GetObjectContent(GetObject):
+    """Returns a specific object's content BCS string."""
+
+    def __init__(self, *, object_id, as_bytes: Optional[bool] = True):
+        super().__init__(object_id=object_id, field_mask=["object_id", "bcs"])
+        self.as_bytes = as_bytes
+
+    def render(self, obj: sui_prot.GetObjectResponse) -> ObjectContentBCS:
+        bcs_res = (
+            obj.object.bcs.value
+            if self.as_bytes
+            else base64.b64encode(obj.object.bcs.value).decode()
+        )
+        return ObjectContentBCS(obj.object.object_id, bcs_res)
+
+
 class GetPastObject(absreq.PGRPC_Request):
-    """Get object request."""
+    """Query to retrieve a specific version of an object."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.Object
 
@@ -164,6 +209,7 @@ class GetPastObject(absreq.PGRPC_Request):
 
 
 class GetMultipleObjects(absreq.PGRPC_Request):
+    """Query to retrieve multiple objects current state."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetObjectsResponse
 
@@ -193,10 +239,37 @@ class GetMultipleObjects(absreq.PGRPC_Request):
         )
 
 
+# TODO: Move to gRPC types
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ObjectsContentBCS:
+    """Raw object content BCS string."""
+
+    objects_data: list[ObjectContentBCS]
+
+
+class GetMultipleObjectContent(GetMultipleObjects):
+    """Returns multiple object's content BCS string."""
+
+    def __init__(self, *, objects: list[str], as_bytes: Optional[bool] = True):
+        super().__init__(objects=objects, field_mask=["object_id", "bcs"])
+        self.as_bytes = as_bytes
+
+    def render(self, objs: sui_prot.BatchGetObjectsResponse) -> list[sui_prot.Bcs]:
+        obj_content: list[ObjectContentBCS] = []
+        for obj in objs.objects:
+            bcs_res = (
+                obj.object.bcs.value
+                if self.as_bytes
+                else base64.b64encode(obj.object.bcs.value).decode()
+            )
+            obj_content.append(ObjectContentBCS(obj.object.object_id, bcs_res))
+
+        return ObjectsContentBCS(obj_content)
+
+
 class GetMultiplePastObjects(absreq.PGRPC_Request):
-    """
-    Retrieve information about multiple objects by object ids.
-    """
+    """Retrieve information about multiple objects by object ids."""
 
     def __init__(
         self,
@@ -239,7 +312,8 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
         )
 
 
-class GetOwnedObjects(absreq.PGRPC_Request):
+class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
+    """Query to retrieve owned object by type."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ListOwnedObjectsResponse
 
@@ -277,8 +351,30 @@ class GetOwnedObjects(absreq.PGRPC_Request):
         )
 
 
-class GetGas(GetOwnedObjects):
-    """Get gas objects owned by address using GetOwnedObjects."""
+class GetCoins(GetObjectsOwnedByAddress):
+    """Query Sui coin objects by type owned by address using GetOwnedObjects."""
+
+    def __init__(
+        self,
+        *,
+        owner,
+        object_type: Optional[str] = None,
+        field_mask: Optional[list[str]] = None,
+        page_size=None,
+        page_token=None,
+    ):
+        """Initializer."""
+        super().__init__(
+            owner=owner,
+            object_type=object_type or "0x2::coin::Coin<0x2::sui::SUI>",
+            field_mask=field_mask,
+            page_size=page_size,
+            page_token=page_token,
+        )
+
+
+class GetGas(GetObjectsOwnedByAddress):
+    """Query Sui gas objects owned by address using GetCoins."""
 
     def __init__(
         self,
@@ -298,8 +394,8 @@ class GetGas(GetOwnedObjects):
         )
 
 
-class GetStaked(GetOwnedObjects):
-    """Get staked coin objects owned by address using GetOwnedObjects."""
+class GetStaked(GetObjectsOwnedByAddress):
+    """Query staked coin objects owned by address using GetOwnedObjects."""
 
     def __init__(
         self,
@@ -319,7 +415,8 @@ class GetStaked(GetOwnedObjects):
         )
 
 
-class GetCoinInfo(absreq.PGRPC_Request):
+class GetCoinMetaData(absreq.PGRPC_Request):
+    """Query to return information on specific coin type."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetCoinInfoResponse
 
@@ -344,6 +441,7 @@ class GetCoinInfo(absreq.PGRPC_Request):
 
 
 class GetBalance(absreq.PGRPC_Request):
+    """Query to retrieve the total balance by coin type for owner."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetBalanceResponse
 
@@ -369,7 +467,8 @@ class GetBalance(absreq.PGRPC_Request):
         )
 
 
-class GetBalances(absreq.PGRPC_Request):
+class GetAllCoinBalances(absreq.PGRPC_Request):
+    """Query to retrieve the total balance for all types for owner."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ListBalancesResponse
 
@@ -400,6 +499,7 @@ class GetBalances(absreq.PGRPC_Request):
 
 
 class GetTransaction(absreq.PGRPC_Request):
+    """Query to retrieve transaction details by it's digest."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ExecutedTransaction
 
@@ -426,6 +526,7 @@ class GetTransaction(absreq.PGRPC_Request):
 
 
 class GetTransactions(absreq.PGRPC_Request):
+    """Query to retrieve multiple transaction details by their digests."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetTransactionsResponse
 
@@ -452,6 +553,7 @@ class GetTransactions(absreq.PGRPC_Request):
 
 
 class ExecuteTransaction(absreq.PGRPC_Request):
+    """Executes a signed transaction block on the chain."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ExecuteTransactionResponse
 
@@ -504,6 +606,7 @@ class ExecuteTransaction(absreq.PGRPC_Request):
 
 
 class SimulateTransaction(absreq.PGRPC_Request):
+    """Simulates executnig a transaction block on the chain."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.SimulateTransactionResponse
 
@@ -546,6 +649,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
 
 
 class GetPackage(absreq.PGRPC_Request):
+    """Query a Move package by it's ID."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetPackageResponse
 
@@ -568,6 +672,7 @@ class GetPackage(absreq.PGRPC_Request):
 
 
 class GetDataType(absreq.PGRPC_Request):
+    """Query a Move module's DataType by it's name."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetDatatypeResponse
 
@@ -592,6 +697,7 @@ class GetDataType(absreq.PGRPC_Request):
 
 
 class GetFunction(absreq.PGRPC_Request):
+    """Query a Move module's function by it's name."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetFunctionResponse
 
@@ -618,6 +724,7 @@ class GetFunction(absreq.PGRPC_Request):
 
 
 class SubscribeCheckpoint(absreq.PGRPC_Request):
+    """Subscribe to a feed of checkpoints."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeCheckpointsResponse
 

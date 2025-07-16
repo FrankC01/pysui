@@ -191,6 +191,8 @@ class SuiGrpcClient(PysuiClient):
             logger.info(f"Request {request}")
             result = await srv_fn(srv_req, **kwargs)
             logger.info("Success")
+            if hasattr(request, "render"):
+                result = request.render(result)
             return SuiRpcResult(True, None, result)
         except (GRPCError, ValueError) as e:
             traceback_str = traceback.format_exc()
