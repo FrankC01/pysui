@@ -174,25 +174,49 @@ async def async_get_objects_by_ids(
     )
 
 
-def _normalize_arg(arg: sui_prot.OpenSignature) -> Any | None:
+def _normalize_inner_arg(
+    arg: sui_prot.OpenSignatureBody, in_optional: Optional[bool] = False
+) -> Any | None:
+    """."""
+    if arg.type.name in bcs.TypeTag._UCASE_SCALARS or arg.type.name in [
+        "BOOL",
+        "ADDRESS",
+    ]:
+        result = pgql_types.MoveScalarArg(
+            pgql_types.RefType.from_ref(""), arg.type.name.lower(), in_optional
+        )
+    else:
+        raise NotImplemented(f"Inner Arg for {arg.to_json()}")
+    return result
+
+
+def _normalize_arg(
+    arg: sui_prot.OpenSignature, in_optional: Optional[bool] = False
+) -> Any | None:
     """."""
     result: Any = None
     # Handle scalar
-    if arg.body.type.name in bcs.TypeTag._UCASE_SCALARS or arg.body.type.name == "BOOL":
+    if arg.body.type.name in bcs.TypeTag._UCASE_SCALARS or arg.body.type.name in [
+        "BOOL",
+        "ADDRESS",
+    ]:
         result = pgql_types.MoveScalarArg(
-            pgql_types.RefType.from_ref(""), arg.body.type.name.lower()
+            pgql_types.RefType.from_ref(""), arg.body.type.name.lower(), in_optional
         )
     # Otherwise, if not last arg
     elif arg.body.type_name != "0x2::tx_context::TxContext":
         r_type = pgql_types.RefType.from_ref(
-            arg.reference.name if arg.reference else arg.reference
+            arg.reference.name if arg.reference else pgql_types.RefType.NO_REF
         )
         # Handle vector
         if arg.body.type == sui_prot.OpenSignatureBodyType.VECTOR:
             inner = arg.body.type_parameter_instantiation[0]
             if not isinstance(inner, sui_prot.OpenSignature):
                 inner = sui_prot.OpenSignature(body=inner)
-            result = pgql_types.MoveVectorArg(r_type, _normalize_arg(inner))
+            result = pgql_types.MoveVectorArg(
+                r_type,
+                _normalize_arg(inner),
+            )
         # Else it's an object
         # TODO: Optional and Receiving
         else:
@@ -211,8 +235,13 @@ def _normalize_arg(arg: sui_prot.OpenSignature) -> Any | None:
             else:
                 if package_module == "transfer" and package_struct == "Receiving":
                     receiving = True
-                if package_module == "option" and package_struct == "Option":
-                    optional = True
+                if not in_optional:
+                    if package_module == "option" and package_struct == "Option":
+                        return _normalize_inner_arg(
+                            arg.body.type_parameter_instantiation[0], True
+                        )
+                else:
+                    optional = in_optional
                 hastype = bool(arg.body.type_parameter)
                 result = pgql_types.MoveObjectRefArg(
                     r_type,

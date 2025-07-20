@@ -14,7 +14,7 @@ from deprecated.sphinx import versionadded, deprecated, versionchanged
 import betterproto2
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
-
+from pysui.sui.sui_bcs.bcs import TransactionKind
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 # Ledger Service Commands
@@ -620,12 +620,13 @@ class SimulateTransaction(absreq.PGRPC_Request):
     ):
         """."""
         super().__init__(absreq.Service.LIVEDATA)
+        transaction = (
+            transaction
+            if isinstance(transaction, bytes)
+            else base64.b64decode(transaction)
+        )
         self.transaction = sui_prot.Transaction(
-            bcs=(
-                sui_prot.Bcs(value=transaction, name="Transaction")
-                if isinstance(transaction, bytes)
-                else sui_prot.Bcs(value=base64.b64decode(transaction))
-            )
+            bcs=(sui_prot.Bcs(value=transaction, name="Transaction"))
         )
         self.checks_enables = (
             sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
@@ -634,6 +635,67 @@ class SimulateTransaction(absreq.PGRPC_Request):
         )
         self.gas_selection = gas_selection
         self.field_mask = self._field_mask(field_mask)
+
+    def to_request(
+        self, *, stub: sui_prot.LiveDataServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        return stub.simulate_transaction, sui_prot.SimulateTransactionRequest(
+            transaction=self.transaction,
+            checks=self.checks_enables,
+            do_gas_selection=self.gas_selection,
+            read_mask=self.field_mask,
+        )
+
+
+class SimulateTransactionLKind(absreq.PGRPC_Request):
+    """Simulates executnig a transaction block on the chain."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.SimulateTransactionResponse
+
+    def __init__(
+        self,
+        *,
+        transaction: TransactionKind,
+        sender: str,
+        checks_enabled: Optional[bool] = True,
+        gas_selection: Optional[bool] = True,
+        field_mask: Optional[list[str]] = None,
+    ):
+        """."""
+        super().__init__(absreq.Service.LIVEDATA)
+        prgrm_txn = transaction.value
+        inputs: list[sui_prot.Input] = []
+        cmds: list[sui_prot.Command] = []
+        for input in prgrm_txn.Inputs:
+            if input.enum_name == "Pure":
+                inputs.append(
+                    sui_prot.Input(
+                        kind=sui_prot.InputInputKind.PURE, pure=bytes(input.value)
+                    )
+                )
+            elif input.enum_name == "Object":
+                oarg = input.value
+                inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
+        for cmd in prgrm_txn.Command:
+            cmds.append(cmd.value.to_grpc_command())
+        self.transaction = sui_prot.Transaction(
+            kind=sui_prot.TransactionKind(
+                programmable_transaction=sui_prot.ProgrammableTransaction(
+                    inputs=inputs, commands=cmds
+                )
+            ),
+            sender=sender,
+        )
+        self.checks_enables = (
+            sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
+            if checks_enabled
+            else sui_prot.SimulateTransactionRequestTransactionChecks.DISABLED
+        )
+        self.gas_selection = gas_selection
+        self.field_mask = self._field_mask(field_mask)
+        print(self.transaction.to_json(indent=2, include_default_values=True))
 
     def to_request(
         self, *, stub: sui_prot.LiveDataServiceStub

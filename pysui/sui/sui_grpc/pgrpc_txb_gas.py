@@ -46,12 +46,13 @@ def _coins_for_budget(
 
 async def _async_dry_run_for_budget(
     client: PysuiClient,
-    tx_bytes: bytes,
+    sender: str,
+    tx_kind: bcs.TransactionKind,
 ) -> int:
     """Perform a dry run when no budget specified."""
     result = await client.execute(
-        request=rn.SimulateTransaction(
-            transaction=tx_bytes, field_mask=["transaction.transaction"]
+        request=rn.SimulateTransactionLKind(
+            sender=sender, transaction=tx_kind, field_mask=["transaction.transaction"]
         )
     )
     if result.is_ok():
@@ -100,9 +101,9 @@ async def async_get_gas_data(
     else:
         use_coins = await async_get_all_owned_gas_objects(signing.payer_address, client)
     # TODO: Remove budget default when equivalent of DryRun/Simulate support TransactionKind
-    budget = budget or 50_000_000
+    # budget = budget or 1_000
     if not budget:
-        budget = await _async_dry_run_for_budget(client, tx_kind.serialize())
+        budget = await _async_dry_run_for_budget(client, signing.payer_address, tx_kind)
     # Remove conflicts with objects in use
     use_coins = [x for x in use_coins if x.object_id not in objects_in_use]
     # Make sure something left to pay for

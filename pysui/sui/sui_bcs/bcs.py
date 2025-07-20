@@ -166,6 +166,19 @@ class ObjectReference(canoser.Struct):
         ("ObjectDigest", Digest),
     ]
 
+    def to_grpc_input(self, objref_cname: str) -> sui_prot.Input:
+        """Create a gRPC input from ObjectReference"""
+        return sui_prot.Input(
+            kind=(
+                sui_prot.InputInputKind.IMMUTABLE_OR_OWNED
+                if objref_cname == "ImmOrOwnedObject"
+                else sui_prot.InputInputKind.RECEIVING
+            ),
+            object_id=self.ObjectID.to_address_str(),
+            digest=self.ObjectDigest.to_digest_str(),
+            version=self.SequenceNumber,
+        )
+
     @classmethod
     @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
     def from_generic_ref(cls, indata: GenericRef) -> "ObjectReference":
@@ -248,6 +261,15 @@ class SharedObjectReference(canoser.Struct):
         ("SequenceNumber", canoser.Uint64),
         ("Mutable", bool),
     ]
+
+    def to_grpc_input(self, objref_cname: str) -> sui_prot.Input:
+        """Create a gRPC input from ObjectReference"""
+        return sui_prot.Input(
+            kind=(sui_prot.InputInputKind.SHARED),
+            object_id=self.ObjectID.to_address_str(),
+            mutable=self.Mutable,
+            version=self.SequenceNumber,
+        )
 
     @classmethod
     @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
@@ -498,6 +520,16 @@ class TypeTag(canoser.RustEnum):
         """
         cls._enums[index] = (cls._enums[index][0], value)
 
+    def type_tag_to_str(self) -> str:
+        if self.enum_name == "Struct":
+            return self.value.to_type_str()
+        elif self.enum_name == "Vector":
+            return self.value[0].enum_name
+        elif not self.value:
+            return self.enum_name
+        else:
+            raise ValueError(f"Unexpected {self.to_json()}")
+
 
 @versionchanged(version="0.17.1", reason="Fixed nested types.")
 @versionchanged(
@@ -512,6 +544,27 @@ class StructTag(canoser.Struct):
         ("name", str),
         ("type_parameters", [TypeTag]),
     ]
+
+    def to_type_str(self) -> str | None:
+        """Convert structure back to string."""
+
+        def _make_str(sobj: StructTag, strbuf: str) -> str:
+            """Build it"""
+            strbuf += (
+                sobj.address.to_address_str() + "::" + sobj.module + "::" + sobj.name
+            )
+            if sobj.type_parameters:
+                inner_buf = "<"
+                for parm in sobj.type_parameters:
+                    if parm.enum_name == "Struct":
+                        inner_buf += _make_str(parm.value, "")
+                    else:
+                        raise ValueError("Expected Struct type tag")
+                    inner_buf += ","
+                strbuf += inner_buf[:-1] + ">"
+            return strbuf
+
+        return _make_str(self, "")
 
     @classmethod
     def from_type_str(cls, type_str: str) -> "StructTag":
@@ -733,6 +786,23 @@ class OptionalTypeFactory:
         return UnresolvedOptional(None)
 
 
+def _to_grpc_argument(arg: Argument) -> sui_prot.Argument:
+    _res: sui_prot.Argument = None
+    if arg.enum_name == "Input":
+        _res = sui_prot.Argument(
+            kind=sui_prot.ArgumentArgumentKind.INPUT, input=arg.value
+        )
+    elif arg.enum_name == "Result":
+        _res = sui_prot.Argument(
+            kind=sui_prot.ArgumentArgumentKind.RESULT, result=arg.value
+        )
+
+    elif arg.enum_name == "GasCoin":
+        _res = sui_prot.Argument(kind=sui_prot.ArgumentArgumentKind.GAS, input=None)
+
+    return _res
+
+
 class ProgrammableMoveCall(canoser.Struct):
     """A call to either an entry or a public Move function."""
 
@@ -749,11 +819,34 @@ class ProgrammableMoveCall(canoser.Struct):
         ("Arguments", [Argument]),
     ]
 
+    def to_grpc_command(self) -> sui_prot.MoveCall:
+        """Convert to gRPC Command"""
+        tyargs: list[str] = []
+
+        for targ in self.Type_Arguments:
+            tyargs.append(targ.type_tag_to_str())
+
+        return sui_prot.MoveCall(
+            package=self.Package.to_address_str(),
+            module=self.Module,
+            function=self.Function,
+            arguments=[_to_grpc_argument(x) for x in self.Arguments],
+            type_arguments=tyargs,
+        )
+
 
 class TransferObjects(canoser.Struct):
     """It sends n-objects to the specified address."""
 
     _fields = [("Objects", [Argument]), ("Address", Argument)]
+
+    def to_grpc_command(self) -> sui_prot.TransferObjects:
+        """Convert to gRPC TransferObjects Command"""
+
+        return sui_prot.TransferObjects(
+            objects=[_to_grpc_argument(x) for x in self.Objects],
+            address=_to_grpc_argument(self.Address),
+        )
 
 
 class SplitCoin(canoser.Struct):
@@ -761,11 +854,27 @@ class SplitCoin(canoser.Struct):
 
     _fields = [("FromCoin", Argument), ("Amount", [Argument])]
 
+    def to_grpc_command(self) -> sui_prot.SplitCoins:
+        """Convert to gRPC SplitCoins Command"""
+
+        return sui_prot.SplitCoins(
+            coin=_to_grpc_argument(self.FromCoin),
+            amounts=[_to_grpc_argument(x) for x in self.Amount],
+        )
+
 
 class MergeCoins(canoser.Struct):
     """It merges n-coins into the first coin."""
 
     _fields = [("ToCoin", Argument), ("FromCoins", [Argument])]
+
+    def to_grpc_command(self) -> sui_prot.MergeCoins:
+        """Convert to gRPC Command"""
+
+        return sui_prot.MergeCoins(
+            coin=_to_grpc_argument(self.ToCoin),
+            coins_to_merge=[_to_grpc_argument(x) for x in self.FromCoins],
+        )
 
 
 class Publish(canoser.Struct):
@@ -773,11 +882,30 @@ class Publish(canoser.Struct):
 
     _fields = [("Modules", [[canoser.Uint8]]), ("Dependents", [Address])]
 
+    def to_grpc_command(self) -> sui_prot.Publish:
+        """Convert to gRPC Command"""
+
+        return sui_prot.Publish(
+            modules=[bytes(x) for x in self.Modules],
+            dependencies=[x.to_str() for x in self.Dependents],
+        )
+
 
 class MakeMoveVec(canoser.Struct):
     """Given n-values of the same type, it constructs a vector."""
 
     _fields = [("TypeTag", OptionalTypeTag), ("Vector", [Argument])]
+
+    def to_grpc_command(self) -> sui_prot.MakeMoveVector:
+        """Convert to gRPC Command"""
+        type_str: str = None
+        if self.TypeTag and self.TypeTag.value:
+            type_str = self.TypeTag.value.type_tag_to_str()
+
+        return sui_prot.MakeMoveVector(
+            elements=[_to_grpc_argument(x) for x in self.Vector],
+            element_type=type_str,
+        )
 
 
 class Upgrade(canoser.Struct):
@@ -789,6 +917,14 @@ class Upgrade(canoser.Struct):
         ("Package", Address),
         ("UpgradeTicket", Argument),
     ]
+
+    def to_grpc_command(self) -> sui_prot.TransferObjects:
+        """Convert to gRPC Command"""
+
+        return sui_prot.TransferObjects(
+            objects=[_to_grpc_argument(x) for x in self.Objects],
+            address=_to_grpc_argument(self.Address),
+        )
 
 
 class Command(canoser.RustEnum):

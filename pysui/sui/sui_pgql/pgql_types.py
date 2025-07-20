@@ -1348,6 +1348,7 @@ class MoveScalarArg:
 
     ref: RefType
     scalar_type: str
+    optional: Optional[bool] = False
 
     @classmethod
     def from_str(cls, in_ref: str, in_type: str) -> "MoveScalarArg":

@@ -100,8 +100,9 @@ class AsyncResolvingArgParser:
             result = await self._client.execute(request=rn.GetObject(object_id=arg))
             if result.is_ok():
                 object_def = result.result_data
-                if not object_def or not object_def.previous_transaction:
+                if not object_def or not object_def.object.previous_transaction:
                     raise ValueError(f"{arg} object not found")
+                object_def = object_def.object
 
         if object_def.owner.kind.name in [
             "ADDRESS",
@@ -120,7 +121,7 @@ class AsyncResolvingArgParser:
                 )
             return b_obj_arg
 
-        if object_def.owner.kind == "SHARED":
+        if object_def.owner.kind.name == "SHARED":
             b_obj_arg = bcs.ObjectArg(
                 "SharedObject",
                 bcs.SharedObjectReference.from_grpc_ref(
@@ -179,8 +180,11 @@ class AsyncResolvingArgParser:
                             ),
                         ),
                     )
-                if in_optional:
-                    return _OPTIONAL_SCALARS_BCS.get(expected_type.scalar_type)
+                if in_optional or expected_type.optional:
+                    return (
+                        _OPTIONAL_SCALARS_BCS.get(expected_type.scalar_type),
+                        PureInput.as_input,
+                    )
                 else:
                     return (
                         _SCALARS.get(expected_type.scalar_type),
