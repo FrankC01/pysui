@@ -57,7 +57,7 @@ class PGRPC_Request(abc.ABC):
         pass
 
     @staticmethod
-    def _field_mask(field_mask: list[str]) -> FieldMask:
+    def _field_mask(field_mask: list[str]) -> FieldMask | None:
         """Convert list of strings to FieldMask"""
         if field_mask:
             return FieldMask(field_mask)
@@ -68,7 +68,7 @@ class PGRPC_Request(abc.ABC):
     def result_fields(cls) -> dict:
         """Return the field dictionary defined in the result so as to support FieldMasks."""
         mb: MessageBuilder = MessageBuilder()
-        return mb.build_result(cls.RESULT_TYPE)
+        return mb.build_result(cls.RESULT_TYPE)  # type: ignore
 
 
 class Visited:
@@ -90,7 +90,7 @@ class Visited:
         :type enum_cls: betterproto2.Enum
         """
         if not cls.get(enum_name):
-            defn: dict = {data.name: data.value for data in enum_cls}
+            defn: dict = {data.name: data.value for data in enum_cls}  # type: ignore
             # defn: dict = {
             #     name: member.value for name, member in enum_cls.__members__.items()
             # }
@@ -119,7 +119,7 @@ class FieldFetch:
     ):
         self.field_name: str = fname
         self.type_name: str = tname
-        self.message_class: betterproto2.Message = message_class
+        self.message_class: betterproto2.Message | None = message_class
         self.stack = stack
 
     def resolve(self) -> tuple[str, dict | str]:
@@ -161,7 +161,7 @@ class MessageBuilder:
     def evaluate(cls, ptype: betterproto2.Message) -> list[FieldFetch]:
         """."""
 
-        field_dict = ptype.__dataclass_fields__
+        field_dict: dict = ptype.__dataclass_fields__  # type: ignore
         cls_name = str(ptype).split(".")[-1].split("'")[0]
 
         result_list: list[FieldFetch] = []
@@ -185,8 +185,8 @@ class MessageBuilder:
                         filter(lambda e: e[0] == inner_type, PGRPC_Request._MODLIST)
                     ):
                         if issubclass(hit[0][1], enum.Enum):
-                            Visited.register_enum(inner_type, hit[0][1])
-                        result_list.append(FieldFetch(tname, inner_type, [], hit[0][1]))
+                            Visited.register_enum(inner_type, hit[0][1])  # type: ignore
+                        result_list.append(FieldFetch(tname, inner_type, [], hit[0][1]))  # type: ignore
                     else:
                         raise ValueError(f"Unknown type {inner_type}")
             elif ftypes.startswith("dict"):
@@ -196,8 +196,8 @@ class MessageBuilder:
                     filter(lambda e: e[0] == ftypes, PGRPC_Request._MODLIST)
                 ):
                     if issubclass(hit[0][1], enum.Enum):
-                        Visited.register_enum(ftypes, hit[0][1])
-                    result_list.append(FieldFetch(tname, ftypes, [], hit[0][1]))
+                        Visited.register_enum(ftypes, hit[0][1])  # type: ignore
+                    result_list.append(FieldFetch(tname, ftypes, [], hit[0][1]))  # type: ignore
                 else:
                     raise ValueError(f"Unknown type {ftypes}")
         return result_list

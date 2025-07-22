@@ -23,7 +23,7 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 class GetServiceInfo(absreq.PGRPC_Request):
     """Query the service for general information about its current state."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.GetServiceInfoResponse
+    RESULT_TYPE = sui_prot.GetServiceInfoResponse
 
     def __init__(self) -> None:
         """Initializer."""
@@ -695,6 +695,8 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
         )
         self.gas_selection = gas_selection
         self.field_mask = self._field_mask(field_mask)
+        # _json = self.transaction.to_dict()
+        # tx2 = sui_prot.Transaction.from_dict(_json)
         print(self.transaction.to_json(indent=2, include_default_values=True))
 
     def to_request(

@@ -66,7 +66,7 @@ class Digest(canoser.Struct):
 
     def to_digest_str(self) -> str:
         """Convert bytes to base58 digest str."""
-        return from_list_to_b58str(self.Digest)
+        return from_list_to_b58str(self.Digest)  # type: ignore
 
     @classmethod
     def from_str(cls, indata: str) -> "Digest":
@@ -142,7 +142,7 @@ class ArrayVar(canoser.Struct):
     def bcs_array_for(cls, *, base_class, ready_data: list, depth: int = 0):
         """."""
         deep_copy = copy.deepcopy(ArrayVar)
-        field_def: tuple[str, list] = ()
+        field_def: tuple[str, list] = ()  # type: ignore
         type_list = base_class
         data_list = ready_data
         if depth:
@@ -174,9 +174,9 @@ class ObjectReference(canoser.Struct):
                 if objref_cname == "ImmOrOwnedObject"
                 else sui_prot.InputInputKind.RECEIVING
             ),
-            object_id=self.ObjectID.to_address_str(),
-            digest=self.ObjectDigest.to_digest_str(),
-            version=self.SequenceNumber,
+            object_id=self.ObjectID.to_address_str(),  # type: ignore
+            digest=self.ObjectDigest.to_digest_str(),  # type: ignore
+            version=self.SequenceNumber,  # type: ignore
         )
 
     @classmethod
@@ -235,9 +235,9 @@ class ObjectReference(canoser.Struct):
         """
         if isinstance(indata, sui_prot.Object):
             return cls(
-                Address.from_str(indata.object_id),
+                Address.from_str(indata.object_id),  # type: ignore
                 indata.version,
-                Digest.from_str(indata.digest),
+                Digest.from_str(indata.digest),  # type: ignore
             )
         raise ValueError(f"{indata} is not valid")
 
@@ -266,9 +266,9 @@ class SharedObjectReference(canoser.Struct):
         """Create a gRPC input from ObjectReference"""
         return sui_prot.Input(
             kind=(sui_prot.InputInputKind.SHARED),
-            object_id=self.ObjectID.to_address_str(),
-            mutable=self.Mutable,
-            version=self.SequenceNumber,
+            object_id=self.ObjectID.to_address_str(),  # type: ignore
+            mutable=self.Mutable,  # type: ignore
+            version=self.SequenceNumber,  # type: ignore
         )
 
     @classmethod
@@ -284,7 +284,7 @@ class SharedObjectReference(canoser.Struct):
         mutable = False if indata.object_id in cls._IMMUTABLES else True
         return cls(
             Address.from_str(indata.object_id),
-            int(indata.owner.initial_shared_version),
+            int(indata.owner.initial_shared_version),  # type: ignore
             mutable,
         )
 
@@ -303,7 +303,7 @@ class SharedObjectReference(canoser.Struct):
         mutable = is_mutable if indata.object_id not in cls._IMMUTABLES else False
         return cls(
             Address.from_str(indata.object_id),
-            indata.object_owner.initial_version,
+            indata.object_owner.initial_version,  # type: ignore
             mutable,
         )
 
@@ -321,13 +321,13 @@ class SharedObjectReference(canoser.Struct):
         """
         mutable = is_mutable if indata.object_id not in cls._IMMUTABLES else False
         return cls(
-            Address.from_str(indata.object_id),
-            indata.owner.version,
+            Address.from_str(indata.object_id),  # type: ignore
+            indata.owner.version,  # type: ignore
             mutable,
         )
 
 
-class Uint53(canoser.int_type.IntType):
+class Uint53(canoser.int_type.IntType):  # type: ignore
     """Uint256 represents a 256 bit ulong as hack as canoser doesn't support."""
 
     byte_lens = 53
@@ -347,7 +347,7 @@ class Uint53(canoser.int_type.IntType):
         return value.to_bytes(32, byteorder="little", signed=False)
 
 
-class Uint256(canoser.int_type.IntType):
+class Uint256(canoser.int_type.IntType):  # type: ignore
     """Uint256 represents a 256 bit ulong as hack as canoser doesn't support."""
 
     byte_lens = 32
@@ -551,11 +551,11 @@ class StructTag(canoser.Struct):
         def _make_str(sobj: StructTag, strbuf: str) -> str:
             """Build it"""
             strbuf += (
-                sobj.address.to_address_str() + "::" + sobj.module + "::" + sobj.name
+                sobj.address.to_address_str() + "::" + sobj.module + "::" + sobj.name  # type: ignore
             )
-            if sobj.type_parameters:
+            if sobj.type_parameters:  # type: ignore
                 inner_buf = "<"
-                for parm in sobj.type_parameters:
+                for parm in sobj.type_parameters:  # type: ignore
                     if parm.enum_name == "Struct":
                         inner_buf += _make_str(parm.value, "")
                     else:
@@ -576,7 +576,7 @@ class StructTag(canoser.Struct):
         :rtype: StructTag
         """
 
-        def _reducer(accum: Union[TypeTag, list[TypeTag]], item: str) -> TypeTag:
+        def _reducer(accum: Union[TypeTag, list[TypeTag], None], item: str) -> TypeTag:
             """Accumulate nested type tags."""
             new_s = item.strip().split("::")
             if not accum:
@@ -787,7 +787,8 @@ class OptionalTypeFactory:
 
 
 def _to_grpc_argument(arg: Argument) -> sui_prot.Argument:
-    _res: sui_prot.Argument = None
+    """Transpose a Sui BCS Argument to a gRPC Argument."""
+    _res: sui_prot.Argument
     if arg.enum_name == "Input":
         _res = sui_prot.Argument(
             kind=sui_prot.ArgumentArgumentKind.INPUT, input=arg.value
@@ -796,9 +797,15 @@ def _to_grpc_argument(arg: Argument) -> sui_prot.Argument:
         _res = sui_prot.Argument(
             kind=sui_prot.ArgumentArgumentKind.RESULT, result=arg.value
         )
-
+    elif arg.enum_name == "NestedResult":
+        nrx, nry = arg.value
+        _res = sui_prot.Argument(
+            kind=sui_prot.ArgumentArgumentKind.RESULT, result=nrx, subresult=nry
+        )
     elif arg.enum_name == "GasCoin":
         _res = sui_prot.Argument(kind=sui_prot.ArgumentArgumentKind.GAS, input=None)
+    else:
+        raise ValueError(f"Unknown argument enum {arg.enum_name}")
 
     return _res
 
@@ -820,17 +827,17 @@ class ProgrammableMoveCall(canoser.Struct):
     ]
 
     def to_grpc_command(self) -> sui_prot.MoveCall:
-        """Convert to gRPC Command"""
+        """Convert to gRPC ProgrammableMoveCall Command"""
         tyargs: list[str] = []
 
-        for targ in self.Type_Arguments:
+        for targ in self.Type_Arguments:  # type: ignore
             tyargs.append(targ.type_tag_to_str())
 
         return sui_prot.MoveCall(
-            package=self.Package.to_address_str(),
-            module=self.Module,
-            function=self.Function,
-            arguments=[_to_grpc_argument(x) for x in self.Arguments],
+            package=self.Package.to_address_str(),  # type: ignore
+            module=self.Module,  # type: ignore
+            function=self.Function,  # type: ignore
+            arguments=[_to_grpc_argument(x) for x in self.Arguments],  # type: ignore
             type_arguments=tyargs,
         )
 
@@ -844,8 +851,8 @@ class TransferObjects(canoser.Struct):
         """Convert to gRPC TransferObjects Command"""
 
         return sui_prot.TransferObjects(
-            objects=[_to_grpc_argument(x) for x in self.Objects],
-            address=_to_grpc_argument(self.Address),
+            objects=[_to_grpc_argument(x) for x in self.Objects],  # type: ignore
+            address=_to_grpc_argument(self.Address),  # type: ignore
         )
 
 
@@ -858,8 +865,8 @@ class SplitCoin(canoser.Struct):
         """Convert to gRPC SplitCoins Command"""
 
         return sui_prot.SplitCoins(
-            coin=_to_grpc_argument(self.FromCoin),
-            amounts=[_to_grpc_argument(x) for x in self.Amount],
+            coin=_to_grpc_argument(self.FromCoin),  # type: ignore
+            amounts=[_to_grpc_argument(x) for x in self.Amount],  # type: ignore
         )
 
 
@@ -869,11 +876,11 @@ class MergeCoins(canoser.Struct):
     _fields = [("ToCoin", Argument), ("FromCoins", [Argument])]
 
     def to_grpc_command(self) -> sui_prot.MergeCoins:
-        """Convert to gRPC Command"""
+        """Convert to gRPC MergeCoins Command"""
 
         return sui_prot.MergeCoins(
-            coin=_to_grpc_argument(self.ToCoin),
-            coins_to_merge=[_to_grpc_argument(x) for x in self.FromCoins],
+            coin=_to_grpc_argument(self.ToCoin),  # type: ignore
+            coins_to_merge=[_to_grpc_argument(x) for x in self.FromCoins],  # type: ignore
         )
 
 
@@ -883,11 +890,11 @@ class Publish(canoser.Struct):
     _fields = [("Modules", [[canoser.Uint8]]), ("Dependents", [Address])]
 
     def to_grpc_command(self) -> sui_prot.Publish:
-        """Convert to gRPC Command"""
+        """Convert to gRPC Publish Command"""
 
         return sui_prot.Publish(
-            modules=[bytes(x) for x in self.Modules],
-            dependencies=[x.to_str() for x in self.Dependents],
+            modules=[bytes(x) for x in self.Modules],  # type: ignore
+            dependencies=[x.to_str() for x in self.Dependents],  # type: ignore
         )
 
 
@@ -897,13 +904,13 @@ class MakeMoveVec(canoser.Struct):
     _fields = [("TypeTag", OptionalTypeTag), ("Vector", [Argument])]
 
     def to_grpc_command(self) -> sui_prot.MakeMoveVector:
-        """Convert to gRPC Command"""
-        type_str: str = None
-        if self.TypeTag and self.TypeTag.value:
-            type_str = self.TypeTag.value.type_tag_to_str()
+        """Convert to gRPC MakeMoveVector Command"""
+        type_str: str | None = None
+        if self.TypeTag and self.TypeTag.value:  # type: ignore
+            type_str = self.TypeTag.value.type_tag_to_str()  # type: ignore
 
         return sui_prot.MakeMoveVector(
-            elements=[_to_grpc_argument(x) for x in self.Vector],
+            elements=[_to_grpc_argument(x) for x in self.Vector],  # type: ignore
             element_type=type_str,
         )
 
@@ -918,12 +925,14 @@ class Upgrade(canoser.Struct):
         ("UpgradeTicket", Argument),
     ]
 
-    def to_grpc_command(self) -> sui_prot.TransferObjects:
-        """Convert to gRPC Command"""
+    def to_grpc_command(self) -> sui_prot.Upgrade:
+        """Convert to gRPC Upgrade Command"""
 
-        return sui_prot.TransferObjects(
-            objects=[_to_grpc_argument(x) for x in self.Objects],
-            address=_to_grpc_argument(self.Address),
+        return sui_prot.Upgrade(
+            package=self.Package.to_address_str(),  # type: ignore
+            modules=[bytes(x) for x in self.Modules],  # type: ignore
+            dependencies=[x.to_str() for x in self.Dependents],  # type: ignore
+            ticket=_to_grpc_argument(self.UpgradeTicket),  # type: ignore
         )
 
 
@@ -1012,7 +1021,7 @@ class TransactionData(canoser.RustEnum):
             raise IndexError(
                 f"{cls.__name__} has only {len(cls._enums)} and index requested is greater {index}"
             )
-        return cls._enums[index]
+        return cls._enums[index]  # type: ignore
 
     @classmethod
     def from_bytes(cls, in_data: bytes) -> "TransactionData":
