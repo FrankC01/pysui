@@ -51,9 +51,7 @@ async def _async_dry_run_for_budget(
 ) -> int:
     """Perform a dry run when no budget specified."""
     result = await client.execute(
-        request=rn.SimulateTransactionLKind(
-            sender=sender, transaction=tx_kind, field_mask=["transaction.transaction"]
-        )
+        request=rn.SimulateTransactionLKind(sender=sender, transaction=tx_kind)
     )
     if result.is_ok():
         return result.result_data.transaction.transaction.gas_payment.budget

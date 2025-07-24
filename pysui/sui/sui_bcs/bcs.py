@@ -826,19 +826,21 @@ class ProgrammableMoveCall(canoser.Struct):
         ("Arguments", [Argument]),
     ]
 
-    def to_grpc_command(self) -> sui_prot.MoveCall:
+    def to_grpc_command(self) -> sui_prot.Command:
         """Convert to gRPC ProgrammableMoveCall Command"""
         tyargs: list[str] = []
 
         for targ in self.Type_Arguments:  # type: ignore
             tyargs.append(targ.type_tag_to_str())
 
-        return sui_prot.MoveCall(
-            package=self.Package.to_address_str(),  # type: ignore
-            module=self.Module,  # type: ignore
-            function=self.Function,  # type: ignore
-            arguments=[_to_grpc_argument(x) for x in self.Arguments],  # type: ignore
-            type_arguments=tyargs,
+        return sui_prot.Command(
+            move_call=sui_prot.MoveCall(
+                package=self.Package.to_address_str(),  # type: ignore
+                module=self.Module,  # type: ignore
+                function=self.Function,  # type: ignore
+                arguments=[_to_grpc_argument(x) for x in self.Arguments],  # type: ignore
+                type_arguments=tyargs,
+            )
         )
 
 
@@ -847,12 +849,14 @@ class TransferObjects(canoser.Struct):
 
     _fields = [("Objects", [Argument]), ("Address", Argument)]
 
-    def to_grpc_command(self) -> sui_prot.TransferObjects:
+    def to_grpc_command(self) -> sui_prot.Command:
         """Convert to gRPC TransferObjects Command"""
 
-        return sui_prot.TransferObjects(
-            objects=[_to_grpc_argument(x) for x in self.Objects],  # type: ignore
-            address=_to_grpc_argument(self.Address),  # type: ignore
+        return sui_prot.Command(
+            transfer_objects=sui_prot.TransferObjects(
+                objects=[_to_grpc_argument(x) for x in self.Objects],  # type: ignore
+                address=_to_grpc_argument(self.Address),  # type: ignore
+            )
         )
 
 
@@ -861,12 +865,13 @@ class SplitCoin(canoser.Struct):
 
     _fields = [("FromCoin", Argument), ("Amount", [Argument])]
 
-    def to_grpc_command(self) -> sui_prot.SplitCoins:
+    def to_grpc_command(self) -> sui_prot.Command:
         """Convert to gRPC SplitCoins Command"""
-
-        return sui_prot.SplitCoins(
-            coin=_to_grpc_argument(self.FromCoin),  # type: ignore
-            amounts=[_to_grpc_argument(x) for x in self.Amount],  # type: ignore
+        return sui_prot.Command(
+            split_coins=sui_prot.SplitCoins(
+                coin=_to_grpc_argument(self.FromCoin),  # type: ignore
+                amounts=[_to_grpc_argument(x) for x in self.Amount],  # type: ignore
+            )
         )
 
 
@@ -875,12 +880,14 @@ class MergeCoins(canoser.Struct):
 
     _fields = [("ToCoin", Argument), ("FromCoins", [Argument])]
 
-    def to_grpc_command(self) -> sui_prot.MergeCoins:
+    def to_grpc_command(self) -> sui_prot.Command:
         """Convert to gRPC MergeCoins Command"""
 
-        return sui_prot.MergeCoins(
-            coin=_to_grpc_argument(self.ToCoin),  # type: ignore
-            coins_to_merge=[_to_grpc_argument(x) for x in self.FromCoins],  # type: ignore
+        return sui_prot.Command(
+            merge_coins=sui_prot.MergeCoins(
+                coin=_to_grpc_argument(self.ToCoin),  # type: ignore
+                coins_to_merge=[_to_grpc_argument(x) for x in self.FromCoins],  # type: ignore
+            )
         )
 
 
@@ -889,12 +896,14 @@ class Publish(canoser.Struct):
 
     _fields = [("Modules", [[canoser.Uint8]]), ("Dependents", [Address])]
 
-    def to_grpc_command(self) -> sui_prot.Publish:
+    def to_grpc_command(self) -> sui_prot.Command:
         """Convert to gRPC Publish Command"""
 
-        return sui_prot.Publish(
-            modules=[bytes(x) for x in self.Modules],  # type: ignore
-            dependencies=[x.to_str() for x in self.Dependents],  # type: ignore
+        return sui_prot.Command(
+            publish=sui_prot.Publish(
+                modules=[bytes(x) for x in self.Modules],  # type: ignore
+                dependencies=[x.to_address_str() for x in self.Dependents],  # type: ignore
+            )
         )
 
 
@@ -903,15 +912,17 @@ class MakeMoveVec(canoser.Struct):
 
     _fields = [("TypeTag", OptionalTypeTag), ("Vector", [Argument])]
 
-    def to_grpc_command(self) -> sui_prot.MakeMoveVector:
+    def to_grpc_command(self) -> sui_prot.Command:
         """Convert to gRPC MakeMoveVector Command"""
         type_str: str | None = None
         if self.TypeTag and self.TypeTag.value:  # type: ignore
             type_str = self.TypeTag.value.type_tag_to_str()  # type: ignore
 
-        return sui_prot.MakeMoveVector(
-            elements=[_to_grpc_argument(x) for x in self.Vector],  # type: ignore
-            element_type=type_str,
+        return sui_prot.Command(
+            make_move_vector=sui_prot.MakeMoveVector(
+                elements=[_to_grpc_argument(x) for x in self.Vector],  # type: ignore
+                element_type=type_str,
+            )
         )
 
 
@@ -925,14 +936,16 @@ class Upgrade(canoser.Struct):
         ("UpgradeTicket", Argument),
     ]
 
-    def to_grpc_command(self) -> sui_prot.Upgrade:
+    def to_grpc_command(self) -> sui_prot.Command:
         """Convert to gRPC Upgrade Command"""
 
-        return sui_prot.Upgrade(
-            package=self.Package.to_address_str(),  # type: ignore
-            modules=[bytes(x) for x in self.Modules],  # type: ignore
-            dependencies=[x.to_str() for x in self.Dependents],  # type: ignore
-            ticket=_to_grpc_argument(self.UpgradeTicket),  # type: ignore
+        return sui_prot.Command(
+            upgrade=sui_prot.Upgrade(
+                package=self.Package.to_address_str(),  # type: ignore
+                modules=[bytes(x) for x in self.Modules],  # type: ignore
+                dependencies=[x.to_str() for x in self.Dependents],  # type: ignore
+                ticket=_to_grpc_argument(self.UpgradeTicket),  # type: ignore
+            )
         )
 
 

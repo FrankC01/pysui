@@ -688,6 +688,7 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
             ),
             sender=sender,
         )
+        # tx = sui_prot.Transaction.from_dict(self.transaction.to_dict())
         self.checks_enables = (
             sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
             if checks_enabled
@@ -695,9 +696,7 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
         )
         self.gas_selection = gas_selection
         self.field_mask = self._field_mask(field_mask)
-        # _json = self.transaction.to_dict()
-        # tx2 = sui_prot.Transaction.from_dict(_json)
-        print(self.transaction.to_json(indent=2, include_default_values=True))
+        # print(self.transaction.to_json(indent=2, include_default_values=True))
 
     def to_request(
         self, *, stub: sui_prot.LiveDataServiceStub
