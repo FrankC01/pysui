@@ -155,6 +155,7 @@ class ObjectContentBCS:
 
     object_id: str  # Yes
     bcs: str | bytes
+    version: int
 
     def as_bytes(self) -> bytes:
         """Convert BCS to bytes"""
@@ -165,7 +166,9 @@ class GetObjectContent(GetObject):
     """Returns a specific object's content BCS string."""
 
     def __init__(self, *, object_id, as_bytes: Optional[bool] = True):
-        super().__init__(object_id=object_id, field_mask=["object_id", "bcs"])
+        super().__init__(
+            object_id=object_id, field_mask=["object_id", "bcs", "version"]
+        )
         self.as_bytes = as_bytes
 
     def render(self, obj: sui_prot.GetObjectResponse) -> ObjectContentBCS:
@@ -174,7 +177,7 @@ class GetObjectContent(GetObject):
             if self.as_bytes
             else base64.b64encode(obj.object.bcs.value).decode()
         )
-        return ObjectContentBCS(obj.object.object_id, bcs_res)
+        return ObjectContentBCS(obj.object.object_id, bcs_res, obj.object.version)
 
 
 class GetPastObject(absreq.PGRPC_Request):
@@ -263,13 +266,17 @@ class GetMultipleObjectContent(GetMultipleObjects):
                 if self.as_bytes
                 else base64.b64encode(obj.object.bcs.value).decode()
             )
-            obj_content.append(ObjectContentBCS(obj.object.object_id, bcs_res))
+            obj_content.append(
+                ObjectContentBCS(obj.object.object_id, bcs_res, obj.object.version)
+            )
 
         return ObjectsContentBCS(obj_content)
 
 
 class GetMultiplePastObjects(absreq.PGRPC_Request):
     """Retrieve information about multiple objects by object ids."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetObjectsResponse
 
     def __init__(
         self,
@@ -708,6 +715,38 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
             checks=self.checks_enables,
             do_gas_selection=self.gas_selection,
             read_mask=self.field_mask,
+        )
+
+
+# TODO: Test with Devnet
+class GetPackageVersions(absreq.PGRPC_Request):
+    """Query a Move package's versions by it's storage ID."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.ListPackageVersionsResponse
+
+    def __init__(
+        self,
+        *,
+        package_storage_id: str,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.MOVEPACKAGE)
+        self.package_storage_id = package_storage_id
+        self.page_size = page_size
+        self.page_token = page_token
+
+    def to_request(
+        self, *, stub: sui_prot.MovePackageServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.list_package_versions, sui_prot.ListPackageVersionsRequest(
+            package_id=self.package_storage_id,
+            page_size=self.page_size,
+            page_token=self.page_token,
         )
 
 

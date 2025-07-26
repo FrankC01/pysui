@@ -35,6 +35,7 @@ __all__ = (
     "CoinDenyListError",
     "CoinMetadata",
     "CoinTreasury",
+    "CoinTreasurySupplyState",
     "Command",
     "CommandArgumentError",
     "CommandArgumentErrorCommandArgumentErrorKind",
@@ -289,6 +290,22 @@ class CheckpointCommitmentCheckpointCommitmentKind(betterproto2.Enum):
     """
     An elliptic curve multiset hash attesting to the set of objects that
     comprise the live state of the Sui blockchain.
+    """
+
+
+class CoinTreasurySupplyState(betterproto2.Enum):
+    """
+    Supply state of a coin, matching the Move SupplyState enum
+    """
+
+    UNKNOWN = 0
+    """
+    Supply is unknown or TreasuryCap still exists (minting still possible)
+    """
+
+    FIXED = 1
+    """
+    Supply is fixed (TreasuryCap consumed, no more minting possible)
     """
 
 
@@ -824,19 +841,19 @@ class UnchangedSharedObjectUnchangedSharedObjectKind(betterproto2.Enum):
     Read-only shared object from the input.
     """
 
-    MUTATE_DELETED = 2
+    MUTATE_CONSENSUS_STREAM_ENDED = 2
     """
-    Deleted shared objects that appear mutably/owned in the input.
+    Objects with ended consensus streams that appear mutably/owned in the input.
     """
 
-    READ_DELETED = 3
+    READ_CONSENSUS_STREAM_ENDED = 3
     """
-    Deleted shared objects that appear as read-only in the input.
+    Objects with ended consensus streams objects that appear as read-only in the input.
     """
 
     CANCELED = 4
     """
-    Shared objects that was congested and resulted in this transaction being
+    Consensus objects that were congested and resulted in this transaction being
     canceled.
     """
 
@@ -1687,7 +1704,8 @@ class CoinMetadata(betterproto2.Message):
 
     id: "str | None" = betterproto2.field(1, betterproto2.TYPE_STRING, optional=True)
     """
-    ObjectId of the `0x2::coin::CoinMetadata` object.
+    ObjectId of the `0x2::coin::CoinMetadata` object or
+    0x2::sui::coin_registry::CoinData object (when registered with CoinRegistry).
     """
 
     decimals: "int | None" = betterproto2.field(
@@ -1723,6 +1741,15 @@ class CoinMetadata(betterproto2.Message):
     URL for the token logo
     """
 
+    metadata_cap_id: "str | None" = betterproto2.field(
+        7, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    The MetadataCap ID if it has been claimed for this coin type.
+    This capability allows updating the coin's metadata fields.
+    Only populated when metadata is from CoinRegistry.
+    """
+
 
 default_message_pool.register_message("sui.rpc.v2beta2", "CoinMetadata", CoinMetadata)
 
@@ -1743,6 +1770,13 @@ class CoinTreasury(betterproto2.Message):
     )
     """
     Total available supply for this coin type.
+    """
+
+    supply_state: "CoinTreasurySupplyState | None" = betterproto2.field(
+        3, betterproto2.TYPE_ENUM, optional=True
+    )
+    """
+    Supply state indicating if the supply is fixed or can still be minted
     """
 
 
@@ -4740,7 +4774,7 @@ class RegulatedCoinMetadata(betterproto2.Message):
         2, betterproto2.TYPE_STRING, optional=True
     )
     """
-    The ID of the coin's `CoinMetadata` object.
+    The ID of the coin's `CoinMetadata` or `CoinData` object.
     """
 
     deny_cap_object: "str | None" = betterproto2.field(
