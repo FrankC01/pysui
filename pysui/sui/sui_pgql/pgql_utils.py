@@ -289,5 +289,5 @@ async def async_get_objects_by_ids(
     :rtype: list[pgql_type.ObjectReadGQL]
     """
     return await async_cursored_collector(
-        partial(qn.GetMultipleObjects, object_ids=object_ids), only_active
+        partial(qn.GetMultipleObjects, object_ids=object_ids), client, only_active
     )
