@@ -453,7 +453,7 @@ class TypeTag(canoser.RustEnum):
         "U16",
         "U32",
         "U64",
-        "uU28",
+        "U128",
         "U256",
     ]
 
