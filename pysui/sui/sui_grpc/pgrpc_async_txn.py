@@ -75,7 +75,7 @@ class AsyncSuiTransaction(txbase):
         try:
             result = await self.client.execute(
                 request=rn.GetFunction(
-                    package_id=package,
+                    package=package,
                     module_name=package_module,
                     function_name=package_function,
                 )

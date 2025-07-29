@@ -43,7 +43,7 @@ class GetServiceInfo(absreq.PGRPC_Request):
 class GetCheckpoint(absreq.PGRPC_Request):
     """Query for retrieving current or specific checkpoints."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.Checkpoint
+    RESULT_TYPE: betterproto2.Message = sui_prot.GetCheckpointResponse
 
     def __init__(
         self,
@@ -56,7 +56,7 @@ class GetCheckpoint(absreq.PGRPC_Request):
         super().__init__(absreq.Service.LEDGER)
         self.sequence = sequence
         self.digest = digest
-        self.field_mask = self._field_mask(field_mask)
+        self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
@@ -67,6 +67,27 @@ class GetCheckpoint(absreq.PGRPC_Request):
         return stub.get_checkpoint, sui_prot.GetCheckpointRequest(
             sequence_number=self.sequence, digest=self.digest, read_mask=self.field_mask
         )
+
+
+class GetLatestCheckpoint(GetCheckpoint):
+    """Alias for GetCheckpoint."""
+
+    def __init__(self, *, field_mask=None):
+        super().__init__(sequence=None, digest=None, field_mask=field_mask)
+
+
+class GetCheckpointBySequence(GetCheckpoint):
+    """Alias for GetCheckpoint"""
+
+    def __init__(self, *, sequence_number: int, field_mask=None):
+        super().__init__(sequence=sequence_number, digest=None, field_mask=field_mask)
+
+
+class GetCheckpointByDigest(GetCheckpoint):
+    """Alias for GetCheckpoint"""
+
+    def __init__(self, *, digest: str, field_mask=None):
+        super().__init__(sequence=None, digest=digest, field_mask=field_mask)
 
 
 class GetEpoch(absreq.PGRPC_Request):
@@ -102,8 +123,36 @@ class GetLatestSuiSystemState(GetEpoch):
     def __init__(self):
         super().__init__(field_mask=["system_state"])
 
-    def render(self, epoch: sui_prot.GetEpochResponse) -> sui_prot.SystemState:
-        return epoch.epoch.system_state
+    def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.SystemState:
+        return gepoch.epoch.system_state
+
+
+class GetValidatorsApy(GetEpoch):
+    """Get list of validator names and apy."""
+
+    def __init__(self):
+        super().__init__(field_mask=["system_state.validators"])
+
+    def render(self, gepoch: sui_prot.GetEpochResponse):
+        results: list[dict[str, float]] = []
+        # TODO: Get correct APY calc
+        for validator in gepoch.epoch.system_state.validators.active_validators:
+            results.append(
+                {
+                    "name": validator.name,
+                    "address": validator.address,
+                    "apy": validator.staking_pool.sui_balance
+                    / validator.staking_pool.rewards_pool,
+                }
+            )
+        return results
+
+
+class GetCurrentValidators(GetEpoch):
+    """Return all the currently active validators"""
+
+    def __init__(self):
+        super().__init__(field_mask=["system_state.validators.active_validators"])
 
 
 OBJECT_DEFAULT_FIELDS: list[str] = [
@@ -219,14 +268,14 @@ class GetMultipleObjects(absreq.PGRPC_Request):
     def __init__(
         self,
         *,
-        objects: list[str],
+        object_ids: list[str],
         field_mask: Optional[list[str]] = None,
     ) -> None:
         """Initializer."""
-        if len(objects) > 50:
-            raise ValueError(f"Max object ids 50, {len(objects)} submitted.")
+        if len(object_ids) > 50:
+            raise ValueError(f"Max object ids 50, {len(object_ids)} submitted.")
         super().__init__(absreq.Service.LEDGER)
-        self.objects = [sui_prot.GetObjectRequest(obj, None) for obj in objects]
+        self.objects = [sui_prot.GetObjectRequest(obj, None) for obj in object_ids]
         self.field_mask = self._field_mask(
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
@@ -239,6 +288,38 @@ class GetMultipleObjects(absreq.PGRPC_Request):
         """."""
         return stub.batch_get_objects, sui_prot.BatchGetObjectsRequest(
             requests=self.objects, read_mask=self.field_mask
+        )
+
+
+class GetDynamicFields(absreq.PGRPC_Request):
+    """Get dynamic fields of object."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.ListDynamicFieldsResponse
+
+    def __init__(
+        self,
+        object_id: str,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+        field_mask: Optional[list[str]] = None,
+    ):
+        super().__init__(absreq.Service.LIVEDATA)
+        self.parent = object_id
+        self.page_size = page_size
+        self.page_token = page_token
+        self.field_mask = self._field_mask(field_mask)
+
+    def to_request(
+        self, *, stub: sui_prot.LiveDataServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.list_dynamic_fields, sui_prot.ListDynamicFieldsRequest(
+            parent=self.parent,
+            page_size=self.page_size,
+            page_token=self.page_token,
+            read_mask=self.field_mask,
         )
 
 
@@ -365,7 +446,7 @@ class GetCoins(GetObjectsOwnedByAddress):
         self,
         *,
         owner,
-        object_type: Optional[str] = None,
+        coin_type: Optional[str] = None,
         field_mask: Optional[list[str]] = None,
         page_size=None,
         page_token=None,
@@ -373,7 +454,7 @@ class GetCoins(GetObjectsOwnedByAddress):
         """Initializer."""
         super().__init__(
             owner=owner,
-            object_type=object_type or "0x2::coin::Coin<0x2::sui::SUI>",
+            object_type=coin_type or "0x2::coin::Coin<0x2::sui::SUI>",
             field_mask=field_mask,
             page_size=page_size,
             page_token=page_token,
@@ -416,6 +497,26 @@ class GetStaked(GetObjectsOwnedByAddress):
         super().__init__(
             owner=owner,
             object_type="0x3::staking_pool::StakedSui",
+            field_mask=field_mask,
+            page_size=page_size,
+            page_token=page_token,
+        )
+
+
+class GetDelegatedStakes(GetStaked):
+    """Alias for GetStaked."""
+
+    def __init__(
+        self,
+        *,
+        owner,
+        field_mask: Optional[list[str]] = None,
+        page_size=None,
+        page_token=None,
+    ):
+        """Initializer"""
+        super().__init__(
+            owner=owner,
             field_mask=field_mask,
             page_size=page_size,
             page_token=page_token,
@@ -519,7 +620,11 @@ class GetTransaction(absreq.PGRPC_Request):
         """Initializer."""
         super().__init__(absreq.Service.LEDGER)
         self.digest = digest
-        self.field_mask = self._field_mask(field_mask)
+        self.field_mask = (
+            self._field_mask(field_mask)
+            if field_mask
+            else self._field_mask(["transaction", "effects"])
+        )
 
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
@@ -530,6 +635,13 @@ class GetTransaction(absreq.PGRPC_Request):
         return stub.get_transaction, sui_prot.GetTransactionRequest(
             digest=self.digest, read_mask=self.field_mask
         )
+
+
+class GetTx(GetTransaction):
+    """Alias for GetTransaction."""
+
+    def __init__(self, *, digest, field_mask=None):
+        super().__init__(digest=digest, field_mask=field_mask)
 
 
 class GetTransactions(absreq.PGRPC_Request):
@@ -546,7 +658,7 @@ class GetTransactions(absreq.PGRPC_Request):
         """Initializer."""
         super().__init__(absreq.Service.LEDGER)
         self.transactions = transactions
-        self.field_mask = self._field_mask(field_mask)
+        self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
@@ -557,6 +669,19 @@ class GetTransactions(absreq.PGRPC_Request):
         return stub.batch_get_transactions, sui_prot.BatchGetTransactionsRequest(
             digests=self.transactions, read_mask=self.field_mask
         )
+
+
+class GetMultipleTx(GetTransactions):
+    """Alias for GetTransactions."""
+
+    def __init__(self, *, transactions, field_mask=None):
+        super().__init__(transactions=transactions, field_mask=field_mask)
+
+
+class GetTxKind(GetTransaction):
+
+    def __init__(self, *, digest):
+        super().__init__(digest=digest, field_mask=["transaction.kind"])
 
 
 class ExecuteTransaction(absreq.PGRPC_Request):
@@ -597,7 +722,9 @@ class ExecuteTransaction(absreq.PGRPC_Request):
                         bcs=sui_prot.Bcs(value=sig, name="UserSignature")
                     )
                 )
-        self.field_mask = self._field_mask(field_mask)
+        self.field_mask = self._field_mask(field_mask) or self._field_mask(
+            ["transaction", "finality"]
+        )
 
     def to_request(
         self, *, stub: sui_prot.TransactionExecutionServiceStub
@@ -758,11 +885,11 @@ class GetPackage(absreq.PGRPC_Request):
     def __init__(
         self,
         *,
-        package_id: str,
+        package: str,
     ) -> None:
         """Initializer."""
         super().__init__(absreq.Service.MOVEPACKAGE)
-        self.package_id = package_id
+        self.package_id = package
 
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
@@ -778,10 +905,10 @@ class GetDataType(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetDatatypeResponse
 
-    def __init__(self, *, package_id: str, module_name: str, type_name: str) -> None:
+    def __init__(self, *, package: str, module_name: str, type_name: str) -> None:
         """Initializer."""
         super().__init__(absreq.Service.MOVEPACKAGE)
-        self.package_id = package_id
+        self.package = package
         self.module_name = module_name
         self.type_name = type_name
 
@@ -792,10 +919,55 @@ class GetDataType(absreq.PGRPC_Request):
     ]:
         """."""
         return stub.get_datatype, sui_prot.GetDatatypeRequest(
-            package_id=self.package_id,
+            package_id=self.package,
             module_name=self.module_name,
             name=self.type_name,
         )
+
+
+class GetStructure(GetDataType):
+    """Alias for GetDataType."""
+
+    def __init__(self, *, package: str, module_name: str, structure_name: str):
+        super().__init__(
+            package=package, module_name=module_name, type_name=structure_name
+        )
+
+
+# TODO: Move to gRPC types
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveStructuresGRPC:
+    """Module DataTypes."""
+
+    structures: list[sui_prot.DatatypeDescriptor]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveFunctionsGRPC:
+    """Module Functions."""
+
+    functions: list[sui_prot.FunctionDescriptor]
+
+
+class GetStructures(GetPackage):
+    """Alias for GetDataType."""
+
+    def __init__(self, *, package, module_name: str):
+        super().__init__(package=package)
+        self.module_name = module_name
+
+    def render(self, package: sui_prot.GetPackageResponse) -> MoveStructuresGRPC:
+        result = list(
+            filter(lambda x: x.name == self.module_name, package.package.modules)
+        )
+        if result:
+            return MoveStructuresGRPC(result[0].datatypes)
+        else:
+            raise ValueError(
+                f"Module '{self.module_name}' not found for {self.package_id}"
+            )
 
 
 class GetFunction(absreq.PGRPC_Request):
@@ -803,12 +975,10 @@ class GetFunction(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetFunctionResponse
 
-    def __init__(
-        self, *, package_id: str, module_name: str, function_name: str
-    ) -> None:
+    def __init__(self, *, package: str, module_name: str, function_name: str) -> None:
         """Initializer."""
         super().__init__(absreq.Service.MOVEPACKAGE)
-        self.package_id = package_id
+        self.package = package
         self.module_name = module_name
         self.function_name = function_name
 
@@ -819,10 +989,48 @@ class GetFunction(absreq.PGRPC_Request):
     ]:
         """."""
         return stub.get_function, sui_prot.GetFunctionRequest(
-            package_id=self.package_id,
+            package_id=self.package,
             module_name=self.module_name,
             name=self.function_name,
         )
+
+
+class GetFunctions(GetPackage):
+    """Alias for GetDataType."""
+
+    def __init__(self, *, package, module_name: str):
+        super().__init__(package=package)
+        self.module_name = module_name
+
+    def render(self, package: sui_prot.GetPackageResponse) -> MoveStructuresGRPC:
+        result = list(
+            filter(lambda x: x.name == self.module_name, package.package.modules)
+        )
+        if result:
+            return MoveFunctionsGRPC(result[0].functions)
+        else:
+            raise ValueError(
+                f"Module '{self.module_name}' not found for {self.package_id}"
+            )
+
+
+class GetModule(GetPackage):
+    """Alias for GetDataType."""
+
+    def __init__(self, *, package, module_name: str):
+        super().__init__(package=package)
+        self.module_name = module_name
+
+    def render(self, package: sui_prot.GetPackageResponse) -> sui_prot.Module:
+        result = list(
+            filter(lambda x: x.name == self.module_name, package.package.modules)
+        )
+        if result:
+            return result[0]
+        else:
+            raise ValueError(
+                f"Module '{self.module_name}' not found for {self.package_id}"
+            )
 
 
 class SubscribeCheckpoint(absreq.PGRPC_Request):

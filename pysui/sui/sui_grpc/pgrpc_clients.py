@@ -189,7 +189,6 @@ class SuiGrpcClient(PysuiClient):
 
         try:
             logger.info(f"Request {request}")
-            logger.info(srv_req.SerializeToString())
             result = await srv_fn(srv_req, **kwargs)
             logger.info("Success")
             if hasattr(request, "render"):

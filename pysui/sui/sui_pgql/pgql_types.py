@@ -1330,6 +1330,14 @@ class RefType(IntEnum):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class MoveParameterArg:
+    """."""
+
+    type_index: int
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class MoveTypeArg:
     """."""
 

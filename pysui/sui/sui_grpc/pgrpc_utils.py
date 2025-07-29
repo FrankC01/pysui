@@ -63,11 +63,11 @@ async def async_cursored_collector(
                 else result.result_data.objects
             )
             if (
-                hasattr(result.result_data, "page_token")
-                and result.result_data.page_token
+                hasattr(result.result_data, "next_page_token")
+                and result.result_data.next_page_token
             ):
-                result = await client.execute_query_node(
-                    with_node=pfn(page_token=result.result_data.page_token)
+                result = await client.execute(
+                    request=pfn(page_token=result.result_data.next_page_token)
                 )
             else:
                 break
@@ -105,7 +105,7 @@ async def async_get_all_owned_objects(
 ) -> list[sui_prot.Object]:
     """Asynchronous: Retrieves list of all object details for owner.
 
-    Uses cursor to ensure all asked for are retrieved from graph node and
+    Uses cursor to ensure all asked for are retrieved from node and
     only returns those that are not deleted or pruned.
 
     :param owner: The owner address id
@@ -119,7 +119,9 @@ async def async_get_all_owned_objects(
     :rtype: list[sui_prot.Object]
     """
     return await async_cursored_collector(
-        partial(rn.GetOwnedObjects, owner=owner), client, only_active
+        partial(rn.GetObjectsOwnedByAddress, owner=owner),
+        client,
+        only_active,
     )
 
 
@@ -178,15 +180,18 @@ def _normalize_inner_arg(
     arg: sui_prot.OpenSignatureBody, in_optional: Optional[bool] = False
 ) -> Any | None:
     """."""
-    if arg.type.name in bcs.TypeTag._UCASE_SCALARS or arg.type.name in [
-        "BOOL",
-        "ADDRESS",
+    result = None
+    if arg.type == sui_prot.OpenSignatureBodyType.PARAMETER:
+        result = pgql_types.MoveParameterArg(arg.type_parameter)
+    elif arg.type.name in bcs.TypeTag._UCASE_SCALARS or arg.type in [
+        sui_prot.OpenSignatureBodyType.BOOL,
+        sui_prot.OpenSignatureBodyType.ADDRESS,
     ]:
         result = pgql_types.MoveScalarArg(
             pgql_types.RefType.from_ref(""), arg.type.name.lower(), in_optional
         )
     else:
-        raise NotImplemented(f"Inner Arg for {arg.to_json()}")
+        raise NotImplementedError(f"Inner Arg for {arg.to_json()}")
     return result
 
 
@@ -204,7 +209,10 @@ def _normalize_arg(
             pgql_types.RefType.from_ref(""), arg.body.type.name.lower(), in_optional
         )
     # Otherwise, if not last arg
-    elif arg.body.type_name != "0x2::tx_context::TxContext":
+    elif not arg.body.type_name in [
+        "0x2::tx_context::TxContext",
+        "0x0000000000000000000000000000000000000000000000000000000000000002::tx_context::TxContext",
+    ]:
         r_type = pgql_types.RefType.from_ref(
             arg.reference.name if arg.reference else pgql_types.RefType.NO_REF
         )

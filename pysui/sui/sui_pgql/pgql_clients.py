@@ -140,7 +140,7 @@ class BaseSuiGQLClient(PysuiClient):
 
     @property
     def chain_environment(self) -> str:
-        """Fetch which environment (testnet, devenet) operating with."""
+        """Fetch which environment (testnet, devenet, etc.) operating with."""
         return self.rpc_config().gqlEnvironment
 
     def schema_version(self, for_version: Optional[str] = None) -> str:
