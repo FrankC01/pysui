@@ -472,7 +472,7 @@ class AsyncSuiTransaction(txbase):
             parms = [optional_object]
         elif isinstance(optional_object, (str, sui_prot.Object)):
             parms = [
-                await self._argparse.async_fetch_or_transpose_object(
+                await self._argparse.fetch_or_transpose_object(
                     optional_object, is_receiving, is_shared_mutable
                 )
             ]

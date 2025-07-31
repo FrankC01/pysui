@@ -346,7 +346,10 @@ class AsyncResolvingArgParser:
                             res_list.append(inner_list)
                         elif isinstance(in_arg, (str, bytes)):
                             res_list = await self._argument_builder(
-                                self._client, in_arg, in_meta, *inner_list
+                                # self._client,
+                                in_arg,
+                                in_meta,
+                                *inner_list,
                             )
                             break
                         else:

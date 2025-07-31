@@ -181,7 +181,7 @@ def _normalize_inner_arg(
 ) -> Any | None:
     """."""
     result = None
-    if arg.type == sui_prot.OpenSignatureBodyType.PARAMETER:
+    if arg.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
         result = pgql_types.MoveParameterArg(arg.type_parameter)
     elif arg.type.name in bcs.TypeTag._UCASE_SCALARS or arg.type in [
         sui_prot.OpenSignatureBodyType.BOOL,
@@ -208,6 +208,8 @@ def _normalize_arg(
         result = pgql_types.MoveScalarArg(
             pgql_types.RefType.from_ref(""), arg.body.type.name.lower(), in_optional
         )
+    elif arg.body.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
+        result = _normalize_inner_arg(arg.body)
     # Otherwise, if not last arg
     elif not arg.body.type_name in [
         "0x2::tx_context::TxContext",
@@ -265,14 +267,8 @@ def _normalize_arg(
     return result
 
 
-def normalize_move_func(
-    func: sui_prot.GetFunctionResponse,
-) -> pgql_types.MoveArgSummary:
-    """Convert gRPC function response to GraphQL MoveArgSummary
-
-    :param func: Retrieved move function details
-    :type func: sui_prot.GetFunctionResponse
-    """
+def _normalize_func(func: sui_prot.FunctionDescriptor) -> pgql_types.MoveArgSummary:
+    """Function converter."""
     arg_list: list[
         pgql_types.MoveScalarArg
         | pgql_types.MoveObjectRefArg
@@ -281,10 +277,27 @@ def normalize_move_func(
         | pgql_types.MoveWitnessArg
         | pgql_types.MoveAnyArg
     ] = []
-
-    for arg in func.function.parameters:
+    for arg in func.parameters:
         if narg := _normalize_arg(arg):
             arg_list.append(narg)
-    return pgql_types.MoveArgSummary(
-        func.function.type_parameters, arg_list, len(func.function.returns)
-    )
+    return pgql_types.MoveArgSummary(func.type_parameters, arg_list, len(func.returns))
+
+
+def normalize_move_func(
+    func: sui_prot.GetFunctionResponse,
+) -> pgql_types.MoveArgSummary:
+    """Convert gRPC function response to GraphQL MoveArgSummary
+
+    :param func: Retrieved move function details
+    :type func: sui_prot.GetFunctionResponse
+    """
+    return _normalize_func(func.function)
+
+
+def normalize_funcs_from_module(
+    module: sui_prot.Module,
+) -> list[pgql_types.MoveArgSummary]:
+    results: list[pgql_types.MoveArgSummary] = []
+    for func in module.functions:
+        results.append(_normalize_func(func))
+    return results
