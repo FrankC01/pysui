@@ -11,7 +11,7 @@ import betterproto2
 
 from ...message_pool import default_message_pool
 
-_COMPILER_VERSION = "0.7.0"
+_COMPILER_VERSION = "0.7.1"
 betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 

@@ -10,9 +10,7 @@ import asyncio
 from pysui import PysuiConfiguration, SuiRpcResult, SuiGrpcClient
 from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 
-import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_grpc.pgrpc_requests as rn
-import pysui.sui.sui_pgql.pgql_types as ptypes
 from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_all_owned_gas_objects,
     async_get_all_owned_objects,
@@ -200,16 +198,9 @@ async def do_event(_client: SuiGrpcClient):
     raise NotImplementedError(f"Mysten has not implemented query events in gRPC.")
 
 
-# TODO
-async def do_configs(client: SuiGrpcClient):
-    """Fetch the GraphQL, Protocol and System configurations."""
-    print(client.rpc_config.to_json(indent=2))
-
-
-# TODO
 async def do_service_config(client: SuiGrpcClient):
     """Fetch the GraphQL, Protocol and System configurations."""
-    print(client.rpc_config.serviceConfig.to_json(indent=2))
+    handle_result(await client.execute(request=rn.GetServiceInfo()))
 
 
 async def do_chain_id(client: SuiGrpcClient):
@@ -596,7 +587,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -632,11 +623,10 @@ async def main():
         # await do_dry_run(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)
-        await do_stake(client_init)
+        # await do_stake(client_init)
         # await do_unstake(client_init)
         ## Config
         # await do_chain_id(client_init)
-        # await do_configs(client_init)
         # await do_service_config(client_init)
         # await do_protcfg(client_init)
     except (ValueError, NotImplementedError) as ve:

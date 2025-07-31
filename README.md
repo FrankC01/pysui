@@ -26,6 +26,7 @@ Python Client SDK for Sui blockchain
 ## pysui SDK current (github)
 
 **Release-0.87.0**
+Includes support for gRPC BETA: queries, programmable transactions, subscriptions and transaction execution.
 
 ## PyPi current
 
@@ -59,7 +60,7 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 ### Discord
 
-Discord server [click here](https://discord.gg/uCGYfY4Ph4):
+Discord server invitation is [Found here](https://discord.gg/uCGYfY4Ph4):
 
 ### Local node support
 
@@ -68,5 +69,7 @@ Note: Only supported for JSON RPC clients, GraphQL not available for suibase at 
 We leverage [suibase](https://github.com/ChainMovers/suibase) for our testing and SuiConfig includes an option for interacting directly with local nodes created by `suibase`
 
 ## Sample utilities
+
+**Note**: Sample utiities are implemented using GraphQL
 
 See [samples](https://github.com/FrankC01/pysui/blob/main/samples/README.md)

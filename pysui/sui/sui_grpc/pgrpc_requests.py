@@ -336,7 +336,7 @@ class GetMultipleObjectContent(GetMultipleObjects):
     """Returns multiple object's content BCS string."""
 
     def __init__(self, *, objects: list[str], as_bytes: Optional[bool] = True):
-        super().__init__(objects=objects, field_mask=["object_id", "bcs"])
+        super().__init__(object_ids=objects, field_mask=["object_id", "bcs"])
         self.as_bytes = as_bytes
 
     def render(self, objs: sui_prot.BatchGetObjectsResponse) -> list[sui_prot.Bcs]:

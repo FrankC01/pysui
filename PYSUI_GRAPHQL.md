@@ -1,10 +1,10 @@
 # Sui GraphQL ALPHA
 
-MystenLabs announcement can be found [Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
+MystenLabs announcement can be [Found Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
 from JSON RPC to GraphQL RPC.
 
 Note: MystenLabs/Sui GraphQL Alpha is available on devnet, testnet and mainnet. Note that devnet alpha is usable but
-we recommend using testnet or mainnet beta for stability. 
+we recommend using testnet or mainnet beta for stability.
 
 ## Sui GraphQL IDEs
 

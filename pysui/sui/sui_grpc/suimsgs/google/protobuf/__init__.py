@@ -25,7 +25,7 @@ import dateutil.parser
 
 from ...message_pool import default_message_pool
 
-_COMPILER_VERSION = "0.7.0"
+_COMPILER_VERSION = "0.7.1"
 betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
@@ -37,7 +37,7 @@ class NullValue(betterproto2.Enum):
     The JSON representation for `NullValue` is JSON `null`.
     """
 
-    _ = 0
+    NULL_VALUE = 0
     """
     Null value.
     """

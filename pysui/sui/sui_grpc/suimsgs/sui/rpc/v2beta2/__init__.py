@@ -203,7 +203,7 @@ if TYPE_CHECKING:
     from betterproto2.grpc.grpclib_client import MetadataLike
     from grpclib.metadata import Deadline
 
-_COMPILER_VERSION = "0.7.0"
+_COMPILER_VERSION = "0.7.1"
 betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
@@ -212,7 +212,7 @@ class Ability(betterproto2.Enum):
     An `Ability` classifies what operations are permitted for a given type
     """
 
-    UNKNOWN = 0
+    ABILITY_UNKNOWN = 0
 
     COPY = 1
     """
@@ -236,7 +236,7 @@ class Ability(betterproto2.Enum):
 
 
 class ArgumentArgumentKind(betterproto2.Enum):
-    UNKNOWN = 0
+    ARGUMENT_KIND_UNKNOWN = 0
 
     GAS = 1
     """
@@ -256,7 +256,7 @@ class ArgumentArgumentKind(betterproto2.Enum):
 
 
 class ChangedObjectIdOperation(betterproto2.Enum):
-    UNKNOWN = 0
+    ID_OPERATION_UNKNOWN = 0
 
     NONE = 1
 
@@ -272,6 +272,12 @@ class ChangedObjectInputObjectState(betterproto2.Enum):
 
     EXISTS = 2
 
+    betterproto_proto_names = {
+        0: "INPUT_OBJECT_STATE_UNKNOWN",
+        1: "INPUT_OBJECT_STATE_DOES_NOT_EXIST",
+        2: "INPUT_OBJECT_STATE_EXISTS",
+    }
+
 
 class ChangedObjectOutputObjectState(betterproto2.Enum):
     UNKNOWN = 0
@@ -282,9 +288,16 @@ class ChangedObjectOutputObjectState(betterproto2.Enum):
 
     PACKAGE_WRITE = 3
 
+    betterproto_proto_names = {
+        0: "OUTPUT_OBJECT_STATE_UNKNOWN",
+        1: "OUTPUT_OBJECT_STATE_DOES_NOT_EXIST",
+        2: "OUTPUT_OBJECT_STATE_OBJECT_WRITE",
+        3: "OUTPUT_OBJECT_STATE_PACKAGE_WRITE",
+    }
+
 
 class CheckpointCommitmentCheckpointCommitmentKind(betterproto2.Enum):
-    UNKNOWN = 0
+    CHECKPOINT_COMMITMENT_KIND_UNKNOWN = 0
 
     ECMH_LIVE_OBJECT_SET = 1
     """
@@ -298,7 +311,7 @@ class CoinTreasurySupplyState(betterproto2.Enum):
     Supply state of a coin, matching the Move SupplyState enum
     """
 
-    UNKNOWN = 0
+    SUPPLY_STATE_UNKNOWN = 0
     """
     Supply is unknown or TreasuryCap still exists (minting still possible)
     """
@@ -310,7 +323,7 @@ class CoinTreasurySupplyState(betterproto2.Enum):
 
 
 class CommandArgumentErrorCommandArgumentErrorKind(betterproto2.Enum):
-    UNKNOWN = 0
+    COMMAND_ARGUMENT_ERROR_KIND_UNKNOWN = 0
 
     TYPE_MISMATCH = 1
     """
@@ -392,7 +405,7 @@ class CommandArgumentErrorCommandArgumentErrorKind(betterproto2.Enum):
 
 
 class DatatypeDescriptorDatatypeKind(betterproto2.Enum):
-    UNKNOWN = 0
+    DATATYPE_KIND_UNKNOWN = 0
 
     STRUCT = 1
 
@@ -400,7 +413,7 @@ class DatatypeDescriptorDatatypeKind(betterproto2.Enum):
 
 
 class DynamicFieldDynamicFieldKind(betterproto2.Enum):
-    UNKNOWN = 0
+    DYNAMIC_FIELD_KIND_UNKNOWN = 0
 
     FIELD = 1
 
@@ -408,7 +421,7 @@ class DynamicFieldDynamicFieldKind(betterproto2.Enum):
 
 
 class ErrorReason(betterproto2.Enum):
-    UNKNOWN = 0
+    ERROR_REASON_UNKNOWN = 0
 
     FIELD_INVALID = 1
 
@@ -416,7 +429,7 @@ class ErrorReason(betterproto2.Enum):
 
 
 class ExecutionErrorExecutionErrorKind(betterproto2.Enum):
-    UNKNOWN = 0
+    EXECUTION_ERROR_KIND_UNKNOWN = 0
 
     INSUFFICIENT_GAS = 1
     """
@@ -636,7 +649,7 @@ class ExecutionErrorExecutionErrorKind(betterproto2.Enum):
 
 
 class ExecutionTimeObservationExecutionTimeObservationKind(betterproto2.Enum):
-    UNKNOWN = 0
+    EXECUTION_TIME_OBSERVATION_KIND_UNKNOWN = 0
 
     MOVE_ENTRY_POINT = 1
 
@@ -654,7 +667,7 @@ class ExecutionTimeObservationExecutionTimeObservationKind(betterproto2.Enum):
 
 
 class FunctionDescriptorVisibility(betterproto2.Enum):
-    UNKNOWN = 0
+    VISIBILITY_UNKNOWN = 0
 
     PRIVATE = 1
 
@@ -664,7 +677,7 @@ class FunctionDescriptorVisibility(betterproto2.Enum):
 
 
 class InputInputKind(betterproto2.Enum):
-    UNKNOWN = 0
+    INPUT_KIND_UNKNOWN = 0
 
     PURE = 1
     """
@@ -688,7 +701,7 @@ class InputInputKind(betterproto2.Enum):
 
 
 class OpenSignatureReference(betterproto2.Enum):
-    UNKNOWN = 0
+    REFERENCE_UNKNOWN = 0
 
     IMMUTABLE = 1
 
@@ -696,7 +709,7 @@ class OpenSignatureReference(betterproto2.Enum):
 
 
 class OpenSignatureBodyType(betterproto2.Enum):
-    UNKNOWN = 0
+    TYPE_UNKNOWN = 0
 
     ADDRESS = 1
 
@@ -716,13 +729,13 @@ class OpenSignatureBodyType(betterproto2.Enum):
 
     VECTOR = 9
 
-    _ = 10
+    DATATYPE = 10
 
-    PARAMETER = 11
+    TYPE_PARAMETER = 11
 
 
 class OwnerOwnerKind(betterproto2.Enum):
-    UNKNOWN = 0
+    OWNER_KIND_UNKNOWN = 0
 
     ADDRESS = 1
 
@@ -736,7 +749,7 @@ class OwnerOwnerKind(betterproto2.Enum):
 
 
 class PackageUpgradeErrorPackageUpgradeErrorKind(betterproto2.Enum):
-    UNKNOWN = 0
+    PACKAGE_UPGRADE_ERROR_KIND_UNKNOWN = 0
 
     UNABLE_TO_FETCH_PACKAGE = 1
     """
@@ -805,7 +818,7 @@ class SimulateTransactionRequestTransactionChecks(betterproto2.Enum):
 
 
 class TransactionExpirationTransactionExpirationKind(betterproto2.Enum):
-    UNKNOWN = 0
+    TRANSACTION_EXPIRATION_KIND_UNKNOWN = 0
 
     NONE = 1
     """
@@ -820,7 +833,7 @@ class TransactionExpirationTransactionExpirationKind(betterproto2.Enum):
 
 
 class TypeArgumentErrorTypeArgumentErrorKind(betterproto2.Enum):
-    UNKNOWN = 0
+    TYPE_ARGUMENT_ERROR_KIND_UNKNOWN = 0
 
     TYPE_NOT_FOUND = 1
     """
@@ -834,7 +847,7 @@ class TypeArgumentErrorTypeArgumentErrorKind(betterproto2.Enum):
 
 
 class UnchangedSharedObjectUnchangedSharedObjectKind(betterproto2.Enum):
-    UNKNOWN = 0
+    UNCHANGED_SHARED_OBJECT_KIND_UNKNOWN = 0
 
     READ_ONLY_ROOT = 1
     """
