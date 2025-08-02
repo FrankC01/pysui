@@ -221,7 +221,7 @@ class AsyncResolvingArgParser:
         *,
         arg: Any,
         expected_type: pgql_type.MoveObjectRefArg,
-        _construct: Optional[tuple[Any, Any]] = None,
+        construct: Optional[tuple[Any, Any]] = None,
     ) -> bcs.ObjectArg:
         """Process an object reference."""
         if arg:
@@ -245,7 +245,7 @@ class AsyncResolvingArgParser:
         if not arg:
             etr = bcs.OptionalTypeFactory.as_optional()
             return etr
-        elif isinstance(arg, list) and arg[0] is None:
+        elif isinstance(arg, (list, bytes)) and arg[0] is None:
             etr = bcs.OptionalTypeFactory.as_optional()
             return etr
 
@@ -256,10 +256,11 @@ class AsyncResolvingArgParser:
                     arg=arg,
                     expected_type=expected_type.type_params[0],
                 )
+                etr = bcs.OptionalTypeFactory.as_unresolved_optional(inner_type)
             else:
                 inner_type = outer_fn(inner_fn(arg))
-            etr = bcs.OptionalTypeFactory.as_unresolved_optional(inner_type)
-            # etr = bcs.OptionalTypeFactory.as_optional(inner_type)
+                # etr = bcs.OptionalTypeFactory.as_unresolved_optional(inner_type)
+                etr = bcs.OptionalTypeFactory.as_optional(inner_type)
         elif isinstance(construct, list):
             for index, vconstruct in enumerate(construct):
                 convert, encode = vconstruct
@@ -279,7 +280,9 @@ class AsyncResolvingArgParser:
         """Convert user input argument to the BCS representation expected for transaction."""
         if inspect.iscoroutinefunction(processor_fn):
             # if inspect.isawaitable(processor_fn):
-            return await processor_fn(arg=arg, expected_type=arg_meta)
+            return await processor_fn(
+                arg=arg, expected_type=arg_meta, construct=constructor_fn
+            )
         if constructor_fn:
             return constructor_fn(processor_fn(arg))
         return arg

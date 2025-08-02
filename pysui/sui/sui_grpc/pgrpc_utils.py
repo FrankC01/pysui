@@ -195,6 +195,54 @@ def _normalize_inner_arg(
     return result
 
 
+def _normalize_object_type(
+    arg: sui_prot.OpenSignature, optional: bool, type_parms: Optional[Any] = None
+) -> pgql_types.MoveObjectRefArg | pgql_types.MoveScalarArg:
+    """."""
+    receiving: bool = False
+    package, package_module, package_struct = tv.TypeValidator.check_target_triplet(
+        arg.body.type_name
+    )
+    r_type = pgql_types.RefType.from_ref(
+        arg.reference.name if arg.reference else pgql_types.RefType.NO_REF
+    )
+
+    if package_module in ["object", "address", "string"] and package_struct in [
+        "ID",
+        "UID",
+        "address",
+        "String",
+    ]:
+        result = pgql_types.MoveScalarArg(r_type, package_struct, optional)
+    else:
+        hastype = bool(arg.body.type_parameter)
+        if package_module == "transfer" and package_struct == "Receiving":
+            receiving = True
+        result = pgql_types.MoveObjectRefArg(
+            r_type,
+            package,
+            package_module,
+            package_struct,
+            type_parms if type_parms else arg.body.type_parameter_instantiation,
+            optional,
+            receiving,
+            hastype,
+        )
+
+    return result
+
+
+def _normalize_optional(
+    arg: sui_prot.OpenSignature, in_optional: bool
+) -> pgql_types.MoveObjectRefArg:
+    """Return an MoveObjectRefArg."""
+
+    inner = _normalize_arg(
+        sui_prot.OpenSignature(body=arg.body.type_parameter_instantiation[0]), True
+    )
+    return _normalize_object_type(arg, True, [inner])
+
+
 def _normalize_arg(
     arg: sui_prot.OpenSignature, in_optional: Optional[bool] = False
 ) -> Any | None:
@@ -228,12 +276,9 @@ def _normalize_arg(
                 _normalize_arg(inner),
             )
         # Else it's an object
-        # TODO: Optional and Receiving
         else:
-            receiving: bool = False
-            optional: bool = False
-            package, package_module, package_struct = (
-                tv.TypeValidator.check_target_triplet(arg.body.type_name)
+            _, package_module, package_struct = tv.TypeValidator.check_target_triplet(
+                arg.body.type_name
             )
             if package_module in ["object", "address", "string"] and package_struct in [
                 "ID",
@@ -243,26 +288,13 @@ def _normalize_arg(
             ]:
                 result = pgql_types.MoveScalarArg(r_type, package_struct)
             else:
-                if package_module == "transfer" and package_struct == "Receiving":
-                    receiving = True
                 if not in_optional:
                     if package_module == "option" and package_struct == "Option":
-                        return _normalize_inner_arg(
-                            arg.body.type_parameter_instantiation[0], True
-                        )
+                        result = _normalize_optional(arg, in_optional)
+                    else:
+                        result = _normalize_object_type(arg, in_optional, None)
                 else:
-                    optional = in_optional
-                hastype = bool(arg.body.type_parameter)
-                result = pgql_types.MoveObjectRefArg(
-                    r_type,
-                    package,
-                    package_module,
-                    package_struct,
-                    arg.body.type_parameter_instantiation,
-                    optional,
-                    receiving,
-                    hastype,
-                )
+                    result = _normalize_object_type(arg, in_optional, None)
 
     return result
 

@@ -768,7 +768,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
             else sui_prot.SimulateTransactionRequestTransactionChecks.DISABLED
         )
         self.gas_selection = gas_selection
-        self.field_mask = self._field_mask(field_mask)
+        self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
         self, *, stub: sui_prot.LiveDataServiceStub
@@ -829,7 +829,7 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
             else sui_prot.SimulateTransactionRequestTransactionChecks.DISABLED
         )
         self.gas_selection = gas_selection
-        self.field_mask = self._field_mask(field_mask)
+        self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
         # print(self.transaction.to_json(indent=2, include_default_values=True))
 
     def to_request(
@@ -837,12 +837,13 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
-        return stub.simulate_transaction, sui_prot.SimulateTransactionRequest(
+        req = sui_prot.SimulateTransactionRequest(
             transaction=self.transaction,
             checks=self.checks_enables,
             do_gas_selection=self.gas_selection,
             read_mask=self.field_mask,
         )
+        return stub.simulate_transaction, req
 
 
 # TODO: Test with Devnet

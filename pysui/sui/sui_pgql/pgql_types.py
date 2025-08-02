@@ -1455,7 +1455,12 @@ class MoveVectorArg:
                     from_vec = ivec
             else:
                 key, value = next(iter(from_vec.items()))
-                if (
+                if key == "datatype":
+                    return cls(
+                        RefType.from_ref(in_ref),
+                        MoveObjectRefArg.from_body(None, value),
+                    )
+                elif (
                     len(from_vec) == 1
                     and key == "typeParameter"
                     and isinstance(value, int)

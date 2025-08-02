@@ -31,7 +31,7 @@ from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_utils import publish_buildg
 
 # Standard library logging setup
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class _TransactionBase:
