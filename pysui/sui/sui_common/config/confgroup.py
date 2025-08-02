@@ -6,6 +6,7 @@
 """Sui Configuration Group."""
 
 import base64
+from enum import IntEnum
 import hashlib
 import dataclasses
 from typing import Optional, Union
@@ -14,6 +15,12 @@ from pysui.abstracts.client_keypair import SignatureScheme
 import pysui.sui.sui_crypto as crypto
 import pysui.sui.sui_utils as utils
 from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
+
+
+class GroupProtocol(IntEnum):
+    GRAPHQL = 1
+    GRPC = 2
+    OTHER = 3
 
 
 @dataclasses.dataclass
@@ -52,6 +59,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
     key_list: list[ProfileKey]
     address_list: Optional[list[str]] = dataclasses.field(default_factory=list)
     profiles: Optional[list[Profile]] = dataclasses.field(default_factory=list)
+    protocol: Optional[GroupProtocol] = GroupProtocol.OTHER
 
     def _profile_exists(self, *, profile_name: str) -> Union[Profile, bool]:
         """Check if a profile, by name, exists."""
@@ -104,6 +112,18 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             self.using_address = self.address_list[aliindx]
             return _res.alias
         raise ValueError(f"Alias {change_to} not found in group")
+
+    @property
+    def group_protocol(self) -> GroupProtocol:
+        """Fetch the group protocol."""
+        return self.protocol
+
+    @group_protocol.setter
+    def group_protocol(self, new_protocol: GroupProtocol) -> GroupProtocol:
+        """Change the group protocol and return old."""
+        old_protocol = self.protocol
+        self.protocol = new_protocol
+        return old_protocol
 
     def address_for_alias(self, *, alias: str) -> str:
         """Get address associated with alias."""

@@ -97,6 +97,22 @@ class SuiClient(ClientMixin):
         self._fetch_common_descriptors()
         logger.info(f"Initialized asynchronous client for {config.rpc_url}")
 
+    @versionadded(version="0.87.0", reason="Parity with GraphQL and gRPC client.")
+    def transaction(self, **kwargs) -> Any:
+        """Return a synchronous SuiTransaction.
+
+        :param initial_sender: The address of the sender of the transaction, defaults to None
+        :type initial_sender: Union[str, SigningMultiSig], optional
+        :param compress_inputs: Reuse identical inputs, defaults to False
+        :type compress_inputs: bool,optional
+        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
+        :type merge_gas_budget: bool, optional
+        """
+        import pysui.sui.sui_txn.async_transaction as asynctxn
+
+        kwargs["client"] = self
+        return asynctxn.SuiTransaction(**kwargs)
+
     @property
     def is_synchronous(self) -> bool:
         """Return whether client is syncrhonous (True) or not (False)."""

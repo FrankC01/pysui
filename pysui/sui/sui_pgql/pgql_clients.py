@@ -26,6 +26,7 @@ from graphql.language.printer import print_ast
 import httpx
 
 from pysui import SuiRpcResult, PysuiConfiguration
+from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
@@ -79,7 +80,7 @@ class PGQL_Fragment(ABC):
     version="0.64.0",
     reason="BREAKING previous properteries now take schema version option",
 )
-class BaseSuiGQLClient:
+class BaseSuiGQLClient(PysuiClient):
     """Base GraphQL client."""
 
     def __init__(
@@ -92,9 +93,9 @@ class BaseSuiGQLClient:
     ):
         """."""
 
-        self._pysui_config: PysuiConfiguration = pysui_config
+        super().__init__(pysui_config=pysui_config, default_header=default_header)
         self._schema: scm.Schema = schema
-        self._default_header = default_header if default_header else {}
+
         # Schema persist
         if write_schema:
             def_env = self._schema.rpc_config.gqlEnvironment
@@ -107,10 +108,6 @@ class BaseSuiGQLClient:
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
     @property
-    def config(self) -> PysuiConfiguration:
-        """Fetch the Pysui configuration."""
-        return self._pysui_config
-
     def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
         return self._schema.rpc_config.checkpoints.nodes[0].reference_gas_price
@@ -143,7 +140,7 @@ class BaseSuiGQLClient:
 
     @property
     def chain_environment(self) -> str:
-        """Fetch which environment (testnet, devenet) operating with."""
+        """Fetch which environment (testnet, devenet, etc.) operating with."""
         return self.rpc_config().gqlEnvironment
 
     def schema_version(self, for_version: Optional[str] = None) -> str:
@@ -213,6 +210,22 @@ class SuiGQLClient(BaseSuiGQLClient):
             write_schema=write_schema,
             default_header=default_header,
         )
+
+    @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
+    def transaction(self, **kwargs) -> Any:
+        """Return a synchronous SuiTransaction.
+
+        :param initial_sender: The address of the sender of the transaction, defaults to None
+        :type initial_sender: Union[str, SigningMultiSig], optional
+        :param compress_inputs: Reuse identical inputs, defaults to False
+        :type compress_inputs: bool,optional
+        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
+        :type merge_gas_budget: bool, optional
+        """
+        import pysui.sui.sui_pgql.pgql_sync_txn as synctxn
+
+        kwargs["client"] = self
+        return synctxn.SuiTransaction(**kwargs)
 
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
@@ -416,6 +429,22 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             default_header=default_header,
         )
         self._slock = asyncio.Semaphore()
+
+    @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
+    def transaction(self, **kwargs) -> Any:
+        """Return a synchronous SuiTransaction.
+
+        :param initial_sender: The address of the sender of the transaction, defaults to None
+        :type initial_sender: Union[str, SigningMultiSig], optional
+        :param compress_inputs: Reuse identical inputs, defaults to False
+        :type compress_inputs: bool,optional
+        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
+        :type merge_gas_budget: bool, optional
+        """
+        import pysui.sui.sui_pgql.pgql_async_txn as asynctxn
+
+        kwargs["client"] = self
+        return asynctxn.AsyncSuiTransaction(**kwargs)
 
     @property
     def session(self) -> Any:

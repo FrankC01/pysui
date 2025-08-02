@@ -14,7 +14,7 @@ import hashlib
 import dataclasses_json
 import yaml
 
-from pysui.sui.sui_pgql.config.confgroup import (
+from pysui.sui.sui_common.config.confgroup import (
     ProfileGroup,
     ProfileKey,
     ProfileAlias,

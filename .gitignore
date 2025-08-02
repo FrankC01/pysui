@@ -29,6 +29,7 @@ ser_deser_txn.py
 ser_sample.json
 ser_txn.py
 *_schema-*.graphql
+pgql_bs_examp.py
 
 
 # pytest cruft
@@ -67,3 +68,4 @@ doc/source/pysui.sui.rst
 # Misc cruft
 *.txt
 !reqrtd.txt
+PysuiConfig.json

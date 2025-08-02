@@ -35,10 +35,15 @@ from pysui.sui.sui_clients.common import (
     handle_result,
 )
 
+from .version import __version__
+
+SDK_CURRENT_VERSION: list[str] = [int(x) for x in __version__.split(".")]
+
 from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient
 from pysui.sui.sui_clients.async_client import SuiClient as AsyncClient
 from pysui.sui.sui_clients.subscribe import SuiClient as Subscribe
-from pysui.sui.sui_pgql.config import PysuiConfiguration
 
+from pysui.sui.sui_common.config import PysuiConfiguration
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient as SyncGqlClient
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
+from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient

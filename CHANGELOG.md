@@ -9,11 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [gRPC beta support](https://github.com/FrankC01/pysui/issues/284)
+- JSON RPC, GraphQL and gRPC clients have method: `transaction(...)` which returns a SuiTransaction
+leveraging the client protocol.
+- Added [doc](https://github.com/FrankC01/pysui/issues/303)
+
 ### Fixed
 
 - Updated legacy faucet url for JSON RPC
+- [bug](https://github.com/FrankC01/pysui/issues/321) Fix to `transfer_sui` TransactionBuilder
 
 ### Changed
+
+- [change](https://github.com/FrankC01/pysui/issues/322) Add `type` to PysuiConfiguration groups
+- [change](https://github.com/FrankC01/pysui/issues/328) Add `__name__` to module loggers
 
 ### Removed
 
@@ -872,10 +881,10 @@ SuiConfig.user_config() regression.
 ### Changed
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/176):
-  * Added 'aliases' topic in documentation with more details and examples
+  - Added 'aliases' topic in documentation with more details and examples
 - Added optional 'make_active' flag to:
-  * SuiConfig.create_new_keypair_and_address
-  * SuiConfig.recover_keypair_and_address
+  - SuiConfig.create_new_keypair_and_address
+  - SuiConfig.recover_keypair_and_address
 
 ### Removed
 
@@ -1322,7 +1331,7 @@ use SuiTransaction:
 - `continue_on_close` argument to subscription `new_event_subscription()` and `new_transaction_subscription()`
 - `client.get_gas()`, `client.get_coin()` and `client.get_objects()` now include a `fetch_all` option.
 - `client.get_objects_for()` now handles large lists
-- Common convenient imports in pysui.__init__.py
+- Common convenient imports in `pysui.__init__.py`
 
 ### Fixed
 
@@ -1897,7 +1906,7 @@ BREAKING Changes
 - Added `checkpoint` field to results of GetTx (sui_getTransaction), None otherwise, as per Sui 0.27.0 updates
 - Added `executedEpoch` to Effects as per Sui 0.27.0 updates
 - CheckpointContents `user_signatures` change to support multi-sig as per Sui 0.27.0 updates
-- Remove redundant code for `sui_config.create_new_keypair_and_address `
+- Remove redundant code for `sui_config.create_new_keypair_and_address`
 - Refactor `sui_bcs.py`
 - Rename `sui_bcs.tkind_from_result` to `sui_bcw.bcs_txkind_from_result`
 

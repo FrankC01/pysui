@@ -4,7 +4,7 @@
 #    SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
-# bin/ghget.sh -o suiprot https://github.com/MystenLabs/sui/tree/main/crates/sui-rpc-api/proto
+# bin/ghget.sh -o suiprot https://github.com/MystenLabs/sui-apis/tree/main/proto
 
 set -euo pipefail
 

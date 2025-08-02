@@ -1319,11 +1319,21 @@ class RefType(IntEnum):
     @classmethod
     def from_ref(cls, rstr: str) -> "RefType":
         """."""
-        return (
-            RefType.REF
-            if rstr == "&"
-            else RefType.MUT_REF if rstr == "&mut" else RefType.NO_REF
-        )
+        reftype = RefType.NO_REF
+        if rstr:
+            if rstr in ["&mut", "MUTABLE"]:
+                reftype = RefType.MUT_REF
+            elif rstr in ["&", "IMMUTABLE"]:
+                reftype = RefType.REF
+        return reftype
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveParameterArg:
+    """."""
+
+    type_index: int
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1346,11 +1356,20 @@ class MoveScalarArg:
 
     ref: RefType
     scalar_type: str
+    optional: Optional[bool] = False
 
     @classmethod
     def from_str(cls, in_ref: str, in_type: str) -> "MoveScalarArg":
         """ "."""
         return cls(RefType.from_ref(in_ref), in_type)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveAnyArg:
+    """."""
+
+    ref: RefType
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1369,7 +1388,7 @@ class MoveObjectRefArg:
 
     @classmethod
     def from_body(cls, in_ref: str, in_type: dict) -> "MoveObjectRefArg":
-        """ "."""
+        """."""
         ref_type: RefType = (
             in_ref if isinstance(in_ref, RefType) else RefType.from_ref(in_ref)
         )
@@ -1420,7 +1439,7 @@ class MoveVectorArg:
     """."""
 
     ref: RefType
-    vec_arg: Union["MoveVectorArg", MoveScalarArg, MoveObjectRefArg]
+    vec_arg: Union["MoveVectorArg", MoveScalarArg, MoveObjectRefArg, MoveAnyArg]
 
     @classmethod
     def from_body(cls, in_ref: str, in_type: dict) -> "MoveVectorArg":
@@ -1434,6 +1453,24 @@ class MoveVectorArg:
                     )
                 else:
                     from_vec = ivec
+            else:
+                key, value = next(iter(from_vec.items()))
+                if key == "datatype":
+                    return cls(
+                        RefType.from_ref(in_ref),
+                        MoveObjectRefArg.from_body(None, value),
+                    )
+                elif (
+                    len(from_vec) == 1
+                    and key == "typeParameter"
+                    and isinstance(value, int)
+                ):
+                    return cls(
+                        RefType.from_ref(in_ref),
+                        MoveAnyArg(RefType.from_ref("")),
+                    )
+                else:
+                    raise ValueError(f"Can't resolve {from_vec}")
         return cls(
             RefType.from_ref(in_ref),
             (
@@ -1476,7 +1513,12 @@ class MoveArgSummary:
     type_parameters: list
     arg_list: list[
         Union[
-            MoveScalarArg, MoveObjectRefArg, MoveTypeArg, MoveVectorArg, MoveWitnessArg
+            MoveScalarArg,
+            MoveObjectRefArg,
+            MoveTypeArg,
+            MoveVectorArg,
+            MoveWitnessArg,
+            MoveAnyArg,
         ]
     ]
     returns: Optional[int] = None

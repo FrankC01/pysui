@@ -15,23 +15,24 @@ Welcome to pysui's documentation!
 `pysui` is the first unofficial SUI Pyton Client SDK!
 
 .. toctree::
-   :maxdepth: 9
+   :maxdepth: 1
    :caption: Contents:
 
    getting_started
    intro
+   bc_queries
+   bc_txns
    logging
+   pyconfig
    builders
    utilities
-   pyconfig
    graphql
-   graphql_prog_txn
    graphql_qnodes
    graphql_serial_exc
    grpc
+   grpc_requests_list
    aliases
    multi_sig
-   prog_txn
    subscriptions
    modules
 

@@ -10,7 +10,7 @@ import asyncio
 from typing import Any, Callable, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-from pysui.sui.sui_pgql.pgql_txn_base import _SuiTransactionBase as txbase
+from pysui.sui.sui_common.trxn_base import _SuiTransactionBase as txbase
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_txn.transaction_builder import PureInput
@@ -29,11 +29,15 @@ class AsyncSuiTransaction(txbase):
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
 
+    @deprecated(
+        version="0.87.0",
+        reason="GraphQL clients now create transactions. Use that instead",
+    )
     def __init__(
         self,
         **kwargs,
     ) -> None:
-        """__init__ Initialize the synchronous SuiTransaction.
+        """__init__ Initialize the asynchronous SuiTransaction.
 
         :param client: The asynchronous SuiGQLClient
         :type client: AsyncSuiGQLClient

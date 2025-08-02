@@ -508,7 +508,7 @@ async def do_dry_run(client: AsyncGqlClient):
     """Execute a dry run."""
 
     # Use synchronous transaction builder
-    txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
+    txer: AsyncSuiTransaction = client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
@@ -530,7 +530,7 @@ async def do_split_any_half(client: AsyncGqlClient):
     )
     if result.is_ok() and len(result.result_data.data) > 1:
         amount = int(int(result.result_data.data[0].balance) / 2)
-        txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
+        txer: AsyncSuiTransaction = client.transaction()
         scres = await txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
         await txer.transfer_objects(
             transfers=scres, recipient=client.config.active_address
@@ -544,7 +544,7 @@ async def do_split_any_half(client: AsyncGqlClient):
 
 async def do_execute(client: AsyncGqlClient):
     """Execute a transaction."""
-    txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
+    txer: AsyncSuiTransaction = client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     handle_result(
@@ -561,7 +561,7 @@ async def do_stake(client: AsyncGqlClient):
     or different validator change the vaddress
     """
     vaddress = "0x44b1b319e23495995fc837dafd28fc6af8b645edddff0fc1467f1ad631362c23"
-    txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
+    txer: AsyncSuiTransaction = client.transaction()
 
     # Take 1 Sui from gas
     stake_coin_split = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
@@ -592,7 +592,7 @@ async def do_unstake(client: AsyncGqlClient):
         with_node=qn.GetDelegatedStakes(owner=owner)
     )
     if result.is_ok() and result.result_data.staked_coins:
-        txer: AsyncSuiTransaction = AsyncSuiTransaction(client=client)
+        txer: AsyncSuiTransaction = client.transaction()
 
         # Unstake the first staked coin
         await txer.unstake_coin(
@@ -636,7 +636,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -658,7 +658,7 @@ async def main():
         # await do_digest_cp(client_init)
         # await do_checkpoints(client_init)
         # await do_owned_nameservice(client_init)
-        # await do_validators_apy(client_init)
+        await do_validators_apy(client_init)
         # await do_validators(client_init)
         # await do_all_validators(client_init)
         # await do_nameservice(client_init)

@@ -11,7 +11,7 @@ from math import ceil
 from functools import singledispatchmethod
 
 # Standard library logging setup
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 from pysui.sui.sui_bcs import bcs

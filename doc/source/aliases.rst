@@ -1,55 +1,70 @@
 
+=======
 Aliases
 =======
 
 General
 -------
 
-MystenLabs added aliases support to Sui 1.16.0.  Aliases are associations of an alias name to a Sui Address with
-the intent that you could use an alias name in places where you would otherwise use an address.
+MystenLabs added aliases support to Sui 1.16.0.  Aliases are associations of an
+alias name to a Sui Address with the intent that you could use an alias name
+in places where you would otherwise use an address.
 
-``pysui`` enhanced SuiConfiguration to support aliases in 0.41.0.
+Aliases are supported by both SuiConfig and PysuiConfiguration.
 
 Runtime
 -------
 
-When instantiating a configuration either through
-``SuiConfig.default_config()`` or ``SuiConfig.sui_base_config()`` then the configuration location is searched for
-a ``sui.aliases`` file. If found, the alias associations to addresses are loaded, otherwise aliases are
-generated for each address and saved out to the file ``sui.aliases``. If generated, this file conforms with
-what the ``sui`` binaries expect.
+GraphQL and gRPC
+++++++++++++++++
 
-As ``SuiConfig.user_config()`` is purley empemeral, generated aliases are **not** persisted, however all of the
-methods added to SuiConfiguration are supported.
+See the :doc:`PysuiConfiguration <pyconfig>` page for detailed information.
+
+JSON RPC
+++++++++
+
+When instantiating a configuration either through
+``SuiConfig.default_config()`` or ``SuiConfig.sui_base_config()`` then the
+configuration location is searched for a ``sui.aliases`` file. If found, the
+alias associations to addresses are loaded, otherwise aliases are generated for
+each address and saved out to the file ``sui.aliases`` in the Mysten Sui
+configuration folder.
+
+As ``SuiConfig.user_config()`` is purley empemeral, generated aliases are
+**not** persisted, however all of the methods added to SuiConfiguration
+are supported.
 
 New aliases
------------
+***********
 
 Support for creating new aliases along with new address/keypair creation has been added for:
     * create_new_keypair_and_address
     * recover_keypair_and_address
     * add_keypair_from_keystring
 
-If an alias name is not provided when calling these, one will be automatically generated.
+If an alias name is not provided when calling these, one will be automatically
+generated.
 
 Use for lookup and substitutions
---------------------------------
+********************************
 
 A number of associative lookups have been added to ``SuiConfiguration``:
     * addr4al - Given an alias name return the associated SuiAddress
     * kp4al - Given an alias name return the associated KeyPair
     * pk4al - Given an alias name return the associated PublicKey
-    * al4addr - Given a SuiAddress type or address string, return the assoicated alias name
+    * al4addr - Given a SuiAddress type or address string, return the
+      assoicated alias name
     * al4kp - Given a KeyPair type, return the assoicated alias name
     * al4pk - Given a PublicKey type, return the assoicated alias name
 
 Renaming aliases
-----------------
+****************
 
-To rename an alias, provide the existing name and a new name to ``SuiConfiguration.rename_alias()``.
+To rename an alias, provide the existing name and a new name
+to ``SuiConfiguration.rename_alias()``.
 
 Example
--------
+^^^^^^^
 
 .. code-block:: Python
     :linenos:

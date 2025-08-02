@@ -26,22 +26,15 @@ Python Client SDK for Sui blockchain
 ## pysui SDK current (github)
 
 **Release-0.87.0**
-
-- Supports _SUI 1.48.x JSON RPC API_, _SUI 1.50.x GRAPHQL_
-- JSON RPC API backwards compatable to _Sui 1.41.x_
+Includes support for gRPC BETA: queries, programmable transactions, subscriptions and transaction execution.
 
 ## PyPi current
 
-**Release-0.86.0 - Released 2025-06-18**
-
-- Supports _SUI 1.48.x JSON RPC API_, _SUI 1.50.x GRAPHQL_
-- JSON RPC API backwards compatable to _Sui 1.41.x_
-
-[BREAKING change](https://github.com/FrankC01/pysui/issues/313) The constructor of PysuiConfiguration no
-longer creates the PysuiConfig.json file if does not exist. First time users must call class method `PysuiConfiguration.initialize_config`.
-See [documentation](https://pysui.readthedocs.io/en/latest/pyconfig.html#first-time-instantiation).
+**Release-0.87.0 - Released 2025-08-04**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
+
+Includes support for gRPC BETA: queries, programmable transactions, subscriptions and transaction execution.
 
 ### FULL Documentation
 
@@ -69,7 +62,7 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 ### Discord
 
-Discord server [click here](https://discord.gg/uCGYfY4Ph4):
+Discord server invitation is [Found here](https://discord.gg/uCGYfY4Ph4):
 
 ### Local node support
 
@@ -78,5 +71,7 @@ Note: Only supported for JSON RPC clients, GraphQL not available for suibase at 
 We leverage [suibase](https://github.com/ChainMovers/suibase) for our testing and SuiConfig includes an option for interacting directly with local nodes created by `suibase`
 
 ## Sample utilities
+
+**Note**: Sample utiities are implemented using GraphQL
 
 See [samples](https://github.com/FrankC01/pysui/blob/main/samples/README.md)

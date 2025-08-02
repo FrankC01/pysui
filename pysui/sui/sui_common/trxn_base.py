@@ -21,8 +21,9 @@ from pysui.sui.sui_txresults.single_tx import (
     TransactionConstraints,
 )
 
-from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
-from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock, SigningMultiSig
+from .client import PysuiClient
+
+from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_txn.transaction_builder as tx_builder
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_bcs import bcs
@@ -30,7 +31,7 @@ from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_utils import publish_buildg
 
 # Standard library logging setup
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class _TransactionBase:
@@ -111,16 +112,7 @@ class _TransactionBase:
             pgql_type.MoveObjectRefArg(
                 pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
             ),
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF,
-                "0x2",
-                "sui",
-                "SUI",
-                [pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64")],
-                True,
-                False,
-                False,
-            ),
+            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
         ],
     )
 
@@ -166,10 +158,12 @@ class _TransactionBase:
     def __init__(
         self,
         *,
-        client: BaseSuiGQLClient,
+        client: PysuiClient,
         compress_inputs: Optional[bool] = True,
         builder: Optional[Any] = None,
         arg_parser: Optional[Any] = None,
+        txn_constraints: Optional[TransactionConstraints] = None,
+        gas_price: Optional[int] = None,
     ):
         """."""
         self.builder = builder or tx_builder.ProgrammableTransactionBuilder(
@@ -177,10 +171,8 @@ class _TransactionBase:
         )
         self._argparse = arg_parser
         self.client = client
-        self.constraints: TransactionConstraints = (
-            client.protocol().transaction_constraints
-        )
-        self._current_gas_price = client.current_gas_price()
+        self.constraints = txn_constraints
+        self._current_gas_price = gas_price
 
     @property
     def gas(self) -> bcs.Argument:
@@ -204,20 +196,45 @@ class _SuiTransactionBase(_TransactionBase):
     def __init__(
         self,
         *,
-        client: BaseSuiGQLClient,
+        client: PysuiClient,
         compress_inputs: Optional[bool] = True,
         initial_sender: Union[str, SigningMultiSig] = None,
         initial_sponsor: Union[str, SigningMultiSig] = None,
         builder: Optional[Any] = None,
         arg_parser: Optional[Any] = None,
         merge_gas_budget: Optional[bool] = False,
+        txn_constraints: Optional[TransactionConstraints] = None,
+        gas_price: Optional[int] = None,
     ) -> None:
-        """."""
+        """__init__ Initialize transaction base.
+
+        :param client: protocol client
+        :type client: PysuiClient
+        :param compress_inputs: reuse same inputs, defaults to True
+        :type compress_inputs: Optional[bool], optional
+        :param initial_sender: initial sender of transactions, defaults to None
+        :type initial_sender: Union[str, SigningMultiSig], optional
+        :param initial_sponsor: initial sponser of transactions, defaults to None
+        :type initial_sponsor: Union[str, SigningMultiSig], optional
+        :param builder: move call parameter builder, defaults to None
+        :type builder: Optional[Any], optional
+        :param arg_parser: transaction command argument parser validator, defaults to None
+        :type arg_parser: Optional[Any], optional
+        :param merge_gas_budget: global gas budget for each transaction, defaults to False
+        :type merge_gas_budget: Optional[bool], optional
+        :param txn_constraints: set transaction constraints, defaults to None
+        :type txn_constraints: Optional[TransactionConstraints], optional
+        :param gas_price: set gas price, defaults to None
+        :type gas_price: Optional[int], optional
+        """
         super().__init__(
             client=client,
             compress_inputs=compress_inputs,
             builder=builder,
             arg_parser=arg_parser,
+            txn_constraints=txn_constraints
+            or client.protocol().transaction_constraints,
+            gas_price=gas_price or client.current_gas_price,
         )
         self._sig_block = SignerBlock(
             sender=initial_sender or client.config.active_address,

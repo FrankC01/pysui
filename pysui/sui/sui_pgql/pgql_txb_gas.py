@@ -5,8 +5,10 @@
 
 import base64
 from typing import Optional, Union
-from pysui.sui.sui_pgql.pgql_txb_signing import SignerBlock
-from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
+from pysui.sui.sui_common.txb_signing import SignerBlock
+from pysui.sui.sui_common.client import PysuiClient
+
+# from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_pgql.pgql_utils import (
@@ -20,7 +22,7 @@ from pysui.sui.sui_bcs import bcs
 
 def _dry_run_for_budget(
     signing: SignerBlock,
-    client: BaseSuiGQLClient,
+    client: PysuiClient,
     tx_bytes: str,
     active_gas_price: int,
 ) -> int:
@@ -82,7 +84,7 @@ def _coins_for_budget(
 def get_gas_data(
     *,
     signing: SignerBlock,
-    client: BaseSuiGQLClient,
+    client: PysuiClient,
     budget: Optional[int] = None,
     use_coins: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
     objects_in_use: set[str],
@@ -141,7 +143,7 @@ def get_gas_data(
 
 async def _async_dry_run_for_budget(
     signing: SignerBlock,
-    client: BaseSuiGQLClient,
+    client: PysuiClient,
     tx_bytes: str,
     active_gas_price: int,
 ) -> int:
@@ -178,7 +180,7 @@ async def _async_dry_run_for_budget(
 async def async_get_gas_data(
     *,
     signing: SignerBlock,
-    client: BaseSuiGQLClient,
+    client: PysuiClient,
     budget: Optional[int] = None,
     use_coins: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
     objects_in_use: set[str],

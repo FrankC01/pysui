@@ -38,7 +38,7 @@ _SUI_PACAKGE_AUTHORIZE_UPGRADE: str = "authorize_upgrade"
 _SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 
 # Standard library logging setup
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @versionchanged(version="0.17.0", reason="Support bool arguments")
