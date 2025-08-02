@@ -9,18 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [gRPC beta support](https://github.com/FrankC01/pysui/issues/284)
 - JSON RPC, GraphQL and gRPC clients have method: `transaction(...)` which returns a SuiTransaction
 leveraging the client protocol.
-- [GraphQL beta support](https://github.com/FrankC01/pysui/issues/296)
-- [gRPC beta support](https://github.com/FrankC01/pysui/issues/284)
+- Added [doc](https://github.com/FrankC01/pysui/issues/303)
 
 ### Fixed
 
 - Updated legacy faucet url for JSON RPC
+- [bug](https://github.com/FrankC01/pysui/issues/321) Fix to `transfer_sui` TransactionBuilder
 
 ### Changed
 
-- [change](https://github.com/FrankC01/pysui/issues/322)
+- [change](https://github.com/FrankC01/pysui/issues/322) Add `type` to PysuiConfiguration groups
+- [change](https://github.com/FrankC01/pysui/issues/328) Add `__name__` to module loggers
 
 ### Removed
 

@@ -9,7 +9,11 @@ Note: MystenLabs/Sui gRPC is available on devnet, testnet and mainnet however; d
 
 **Note**: Functionality of pysui gRPC should be considered BETA, use in production at your own risk.
 
-With pysui 0.83.0 we released initial `pysui`'s gRPC client aligning with MystenLabs strategy. The timeline of changes will keep up with the Timeline as noted in the Sui gRPC overview. We are not yet stable however...
+With pysui 0.87.0 we released `pysui`'s BETA gRPC client aligning with MystenLabs strategy.
+The timeline of changes will keep up with the Timeline as noted in the Sui gRPC overview. We are not yet stable however...
+
+To utilize, updates to PysuiConfiguration are needed. Recommend using [tpysui](https://github.com/Suitters/tpysui)
+a TUI tool that has a convenient 'Add gRPC Group' button.
 
 We continue to monitor and support changes from MystenLabs as they occur.
 
