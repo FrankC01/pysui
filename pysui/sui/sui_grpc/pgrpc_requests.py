@@ -1057,3 +1057,56 @@ class SubscribeCheckpoint(absreq.PGRPC_Request):
         return stub.subscribe_checkpoints, sui_prot.SubscribeCheckpointsRequest(
             read_mask=self.field_mask
         )
+
+
+class VerifySignature(absreq.PGRPC_Request):
+    """Verify a signature."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.VerifySignatureResponse
+
+    def __init__(
+        self,
+        *,
+        address: str | None = None,
+        message_type: str,
+        message: str | bytes,
+        signature: str | bytes,
+    ):
+        """__init__ _summary_
+
+        :param message_type: Must be 'PersonalMessage' or 'Transaction'
+        :type message_type: str
+        :param message: The message base64 encoded string or bytes
+        :type message: str | bytes
+        :param signature: The signature base64 encoded string or bytes
+        :type signature: str | bytes
+        :param address: If provided, this address will be used to compare address derived from signature, defaults to None
+        :type address: str | None, optional
+        """
+        super().__init__(absreq.Service.SIGNATURE)
+        self.address = address
+        self.message_type = message_type
+        self.message = sui_prot.Bcs(
+            name=message_type,
+            value=base64.b64decode(message) if isinstance(message, str) else message,
+        )
+        self.signature = sui_prot.UserSignature(
+            bcs=sui_prot.Bcs(
+                name="UserSignature",
+                value=(
+                    base64.b64decode(signature)
+                    if isinstance(signature, str)
+                    else signature
+                ),
+            )
+        )
+
+    def to_request(
+        self, *, stub: sui_prot.SignatureVerificationServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.verify_signature, sui_prot.VerifySignatureRequest(
+            message=self.message, signature=self.signature, address=self.address
+        )

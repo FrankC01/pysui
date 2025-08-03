@@ -8,10 +8,8 @@ This change is part of the transitions from JSON RPC node interactions which
 is planned to sunset in 2026.
 
 ``pysui`` has added support for interacting with the Sui gRPC node. This is
-currently in beta and only available on testnet and mainnet.
-
-At the time of this writing, there are limitations to Sui gRPC and only offers
-simple data fetch and transaction execution interfaces.
+currently in beta and is available on devnet, testnet and mainnet. However;
+devnet is not fully supported at this time.
 
 Subject to Change
 --------------------
@@ -23,19 +21,7 @@ be considered experiemental.
 pysui gRPC services
 --------------------
 
-
-There are currently 2 gRPC services partially (testnet and mainnet only)
-available in pysui:
-
-#. Ledger
-    Provides basic data query methods
-#. Transaction
-    Provides methods to submit transactions
-
-These clients are encapsulated by the main pysui gRPC client.
-See gRPC Requests for more details.
-
-
+Mysten Labs exposed the following  `Services  <https://docs.sui.io/concepts/grpc-overview#grpc-on-sui>`_
 
 Notes:
 

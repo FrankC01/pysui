@@ -109,3 +109,5 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint`        |
 +--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.VerifySignature`            |
++--------------------------------------------------------------------------+

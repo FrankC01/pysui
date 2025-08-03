@@ -496,11 +496,19 @@ async def do_execute(client: SuiGrpcClient):
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    bdict = await txer.build_and_sign()
+    # Demonstrate verifying signature
     handle_result(
         await client.execute(
-            request=rn.ExecuteTransaction(**await txer.build_and_sign())
+            request=rn.VerifySignature(
+                address=client.config.active_address,
+                message_type="Transaction",
+                message=bdict["tx_bytestr"],
+                signature=bdict["sig_array"][0],
+            )
         )
     )
+    handle_result(await client.execute(request=rn.ExecuteTransaction(**bdict)))
 
 
 async def do_stake(client: SuiGrpcClient):
@@ -573,7 +581,6 @@ async def main():
     try:
         client_init = SuiGrpcClient(
             pysui_config=PysuiConfiguration(
-                from_cfg_path=".",
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP,
                 # profile_name="devnet",
                 profile_name="testnet",
@@ -632,7 +639,8 @@ async def main():
     except (ValueError, NotImplementedError) as ve:
         print(ve)
     finally:
-        client_init.close()
+        if client_init:
+            client_init.close()
 
 
 if __name__ == "__main__":
