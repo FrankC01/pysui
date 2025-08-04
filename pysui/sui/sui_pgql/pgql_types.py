@@ -1204,7 +1204,7 @@ class ProtocolConfigGQL:
 
         # Set appropriate features
         feat_dict: dict = {k.key: k.value for k in self.featureFlags}
-        self.transaction_constraints.receive_objects = feat_dict["receive_objects"]
+        self.transaction_constraints.receive_objects = feat_dict.get("receive_objects", False)
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":
