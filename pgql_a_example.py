@@ -623,7 +623,7 @@ async def main():
             write_schema=False,
             pysui_config=PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
-                # profile_name="devnet",
+                profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",
             ),
@@ -636,7 +636,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -658,7 +658,7 @@ async def main():
         # await do_digest_cp(client_init)
         # await do_checkpoints(client_init)
         # await do_owned_nameservice(client_init)
-        await do_validators_apy(client_init)
+        # await do_validators_apy(client_init)
         # await do_validators(client_init)
         # await do_all_validators(client_init)
         # await do_nameservice(client_init)

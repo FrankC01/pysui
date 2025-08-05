@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Documentation
+- [change](https://github.com/FrankC01/pysui/issues/327) `SuiGrpcClient` added `default_headers`
+argument to constructor which will be included in every request unless they are overriddent
+by the `metadata` kwarg on `async client.execute`
 
 ### Removed
 

@@ -62,9 +62,7 @@ class SuiGrpcClient(PysuiClient):
     """Asynchronous gRPC client."""
 
     def __init__(
-        self,
-        *,
-        pysui_config: PysuiConfiguration,
+        self, *, pysui_config: PysuiConfiguration, default_header: dict | None = None
     ):
         """Initializes client.
 
@@ -82,6 +80,7 @@ class SuiGrpcClient(PysuiClient):
             )
         self._channels: list[Channel] = []
         self._protocol_config: ProtocolConfig = None
+        self._default_header = default_header or dict()
 
     @property
     async def current_gas_price(self) -> int:
@@ -141,11 +140,17 @@ class SuiGrpcClient(PysuiClient):
     async def execute(self, *, request: absreq.PGRPC_Request, **kwargs) -> SuiRpcResult:
         """execute calls the request's service
 
+        kwargs can include:
+            timeout: "float | None" = None,
+            deadline: "grpclib.metadata.Deadline | None" = None,
+            metadata: "dict | None" = None, # Sets additional headers
+
         :param request: Pysui gRPC request
         :type request: PGRPC_Request
         :return: Results of execution
         :rtype: SuiRpcResult
         """
+        kwargs["metadata"] = self._default_header | kwargs.get("metadata", {})
         srv_fn: Callable[[betterproto2.Message], betterproto2.Message]
         srv_req: betterproto2.Message
         match request.service:

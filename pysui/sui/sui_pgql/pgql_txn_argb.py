@@ -345,12 +345,6 @@ class ResolvingArgParser:
                 )
             elif sig_arg_len == 1:
                 inner_type = outer_fn(inner_fn(arg))
-
-            # if inner_fn is self._object_processor:
-            #     inner_type = self._object_processor(
-            #         arg=arg,
-            #         expected_type=expected_type.type_params[0],
-            #     )
             else:
                 inner_type = outer_fn(inner_fn(arg))
             etr = bcs.OptionalTypeFactory.as_optional(inner_type)
@@ -381,8 +375,6 @@ class ResolvingArgParser:
             )
         elif sig_arg_len == 1:
             return constructor_fn(processor_fn(arg))
-        # if constructor_fn:
-        #     return constructor_fn(processor_fn(arg))
         return arg
 
     def _list_arg_builder(self, in_meta: any, convert_args: list, arg: list) -> list:

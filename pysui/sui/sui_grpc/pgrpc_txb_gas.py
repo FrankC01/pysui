@@ -23,14 +23,15 @@ def _coins_for_budget(
     budget: int,
 ) -> list[bcs.ObjectReference]:
     """."""
-    coins.sort(key=lambda x: x.balance, reverse=True)
-    _coin_fit = [x for x in coins if x.balance > budget]
+    coins.sort(key=lambda x: x.balance, reverse=True)  # type: ignore
+    _coin_fit = [x for x in coins if x.balance > budget]  # type: ignore
     if _coin_fit:
         _coin_fit = [_coin_fit[0]]
     else:
         _accum: int = 0
         _accum_coin: list = []
         for _coin in coins:
+            assert _coin.balance is not None
             if _accum >= budget:
                 break
             else:

@@ -14,7 +14,7 @@ import pysui.sui.sui_pgql.pgql_types as pgql_types
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_bcs.bcs as bcs
 
-_P = ParamSpec("P")
+P = ParamSpec("P")
 
 
 def active_types_only(
@@ -31,13 +31,11 @@ def active_types_only(
         if x := next(filter(lambda x: x is not None, objects), False):
             if hasattr(x, "previous_transaction"):
                 return [x for x in objects if x and x.previous_transaction]
-            elif hasattr(x, "previous_transaction_digest"):
-                return [x for x in objects if x and x.previous_transaction_digest]
     return objects
 
 
 async def async_cursored_collector(
-    pfn: Callable[_P, list],
+    pfn: Callable[P, list],
     client: PysuiClient,
     only_active: Optional[bool] = True,
 ) -> list:
@@ -54,7 +52,7 @@ async def async_cursored_collector(
     :rtype: list
     """
     collection = list = []
-    result = await client.execute(request=pfn())
+    result = await client.execute(request=pfn())  # type: ignore
     while True:
         if result.is_ok():
             collection.extend(
@@ -66,8 +64,8 @@ async def async_cursored_collector(
                 hasattr(result.result_data, "next_page_token")
                 and result.result_data.next_page_token
             ):
-                result = await client.execute(
-                    request=pfn(page_token=result.result_data.next_page_token)
+                result = await client.execute(  # type: ignore
+                    request=pfn(page_token=result.result_data.next_page_token)  # type: ignore
                 )
             else:
                 break
@@ -96,7 +94,7 @@ async def async_get_all_owned_gas_objects(
     :rtype: list[sui_prot.Object]
     """
     return await async_cursored_collector(
-        partial(rn.GetGas, owner=owner), client, only_active
+        partial(rn.GetGas, owner=owner), client, only_active  # type: ignore
     )
 
 
@@ -119,7 +117,7 @@ async def async_get_all_owned_objects(
     :rtype: list[sui_prot.Object]
     """
     return await async_cursored_collector(
-        partial(rn.GetObjectsOwnedByAddress, owner=owner),
+        partial(rn.GetObjectsOwnedByAddress, owner=owner),  # type: ignore
         client,
         only_active,
     )
@@ -147,7 +145,7 @@ async def async_get_gas_objects_by_ids(
     # and perform looped fetch
     # Also need to filter for coins only
     return await async_cursored_collector(
-        partial(rn.GetMultipleObjects, object_ids=gas_ids), client, only_active
+        partial(rn.GetMultipleObjects, object_ids=gas_ids), client, only_active  # type: ignore
     )
 
 
@@ -172,7 +170,7 @@ async def async_get_objects_by_ids(
     # TODO: This call has no pagination, need to get max id constraint
     # and perform looped fetch
     return await async_cursored_collector(
-        partial(rn.GetMultipleObjects, object_ids=object_ids), only_active
+        partial(rn.GetMultipleObjects, object_ids=object_ids), client, only_active  # type: ignore
     )
 
 
@@ -182,13 +180,13 @@ def _normalize_inner_arg(
     """."""
     result = None
     if arg.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
-        result = pgql_types.MoveParameterArg(arg.type_parameter)
-    elif arg.type.name in bcs.TypeTag._UCASE_SCALARS or arg.type in [
+        result = pgql_types.MoveParameterArg(arg.type_parameter)  # type: ignore
+    elif arg.type.name in bcs.TypeTag._UCASE_SCALARS or arg.type in [  # type: ignore
         sui_prot.OpenSignatureBodyType.BOOL,
         sui_prot.OpenSignatureBodyType.ADDRESS,
     ]:
         result = pgql_types.MoveScalarArg(
-            pgql_types.RefType.from_ref(""), arg.type.name.lower(), in_optional
+            pgql_types.RefType.from_ref(""), arg.type.name.lower(), in_optional  # type: ignore
         )
     else:
         raise NotImplementedError(f"Inner Arg for {arg.to_json()}")
@@ -201,10 +199,10 @@ def _normalize_object_type(
     """."""
     receiving: bool = False
     package, package_module, package_struct = tv.TypeValidator.check_target_triplet(
-        arg.body.type_name
+        arg.body.type_name  # type: ignore
     )
     r_type = pgql_types.RefType.from_ref(
-        arg.reference.name if arg.reference else pgql_types.RefType.NO_REF
+        arg.reference.name if arg.reference else pgql_types.RefType.NO_REF  # type: ignore
     )
 
     if package_module in ["object", "address", "string"] and package_struct in [
@@ -215,6 +213,7 @@ def _normalize_object_type(
     ]:
         result = pgql_types.MoveScalarArg(r_type, package_struct, optional)
     else:
+        assert arg.body is not None
         hastype = bool(arg.body.type_parameter)
         if package_module == "transfer" and package_struct == "Receiving":
             receiving = True
@@ -236,11 +235,11 @@ def _normalize_optional(
     arg: sui_prot.OpenSignature, in_optional: bool
 ) -> pgql_types.MoveObjectRefArg:
     """Return an MoveObjectRefArg."""
-
+    assert arg.body is not None
     inner = _normalize_arg(
         sui_prot.OpenSignature(body=arg.body.type_parameter_instantiation[0]), True
     )
-    return _normalize_object_type(arg, True, [inner])
+    return _normalize_object_type(arg, True, [inner])  # type: ignore
 
 
 def _normalize_arg(
@@ -249,6 +248,8 @@ def _normalize_arg(
     """."""
     result: Any = None
     # Handle scalar
+    assert arg.body is not None
+    assert arg.body.type is not None
     if arg.body.type.name in bcs.TypeTag._UCASE_SCALARS or arg.body.type.name in [
         "BOOL",
         "ADDRESS",
@@ -264,7 +265,7 @@ def _normalize_arg(
         "0x0000000000000000000000000000000000000000000000000000000000000002::tx_context::TxContext",
     ]:
         r_type = pgql_types.RefType.from_ref(
-            arg.reference.name if arg.reference else pgql_types.RefType.NO_REF
+            arg.reference.name if arg.reference else pgql_types.RefType.NO_REF  # type: ignore
         )
         # Handle vector
         if arg.body.type == sui_prot.OpenSignatureBodyType.VECTOR:
@@ -273,12 +274,12 @@ def _normalize_arg(
                 inner = sui_prot.OpenSignature(body=inner)
             result = pgql_types.MoveVectorArg(
                 r_type,
-                _normalize_arg(inner),
+                _normalize_arg(inner),  # type: ignore
             )
         # Else it's an object
         else:
             _, package_module, package_struct = tv.TypeValidator.check_target_triplet(
-                arg.body.type_name
+                arg.body.type_name  # type: ignore
             )
             if package_module in ["object", "address", "string"] and package_struct in [
                 "ID",
@@ -290,9 +291,9 @@ def _normalize_arg(
             else:
                 if not in_optional:
                     if package_module == "option" and package_struct == "Option":
-                        result = _normalize_optional(arg, in_optional)
+                        result = _normalize_optional(arg, False)
                     else:
-                        result = _normalize_object_type(arg, in_optional, None)
+                        result = _normalize_object_type(arg, False, None)
                 else:
                     result = _normalize_object_type(arg, in_optional, None)
 
@@ -323,6 +324,7 @@ def normalize_move_func(
     :param func: Retrieved move function details
     :type func: sui_prot.GetFunctionResponse
     """
+    assert func.function is not None
     return _normalize_func(func.function)
 
 
