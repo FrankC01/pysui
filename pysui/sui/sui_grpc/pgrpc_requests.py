@@ -795,6 +795,7 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
         sender: str,
         checks_enabled: Optional[bool] = True,
         gas_selection: Optional[bool] = True,
+        txn_expires_after: Optional[int] = None,
         field_mask: Optional[list[str]] = None,
     ):
         """."""
@@ -802,6 +803,7 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
         prgrm_txn = transaction.value
         inputs: list[sui_prot.Input] = []
         cmds: list[sui_prot.Command] = []
+        trx_exp = None
         for input in prgrm_txn.Inputs:
             if input.enum_name == "Pure":
                 inputs.append(
@@ -814,12 +816,18 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
                 inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
         for cmd in prgrm_txn.Command:
             cmds.append(cmd.value.to_grpc_command())
+        if txn_expires_after:
+            trx_exp = sui_prot.TransactionExpiration(
+                kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
+                epoch=txn_expires_after,
+            )
         self.transaction = sui_prot.Transaction(
             kind=sui_prot.TransactionKind(
                 programmable_transaction=sui_prot.ProgrammableTransaction(
                     inputs=inputs, commands=cmds
                 )
             ),
+            expiration=trx_exp,
             sender=sender,
         )
         # tx = sui_prot.Transaction.from_dict(self.transaction.to_dict())
