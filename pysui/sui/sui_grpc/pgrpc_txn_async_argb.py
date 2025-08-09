@@ -181,10 +181,7 @@ class AsyncResolvingArgParser:
                         ),
                     )
                 if in_optional or expected_type.optional:
-                    return (
-                        _OPTIONAL_SCALARS_BCS.get(expected_type.scalar_type),
-                        PureInput.as_input,
-                    )
+                    return _OPTIONAL_SCALARS_BCS.get(expected_type.scalar_type)
                 else:
                     return (
                         _SCALARS.get(expected_type.scalar_type),
