@@ -6,6 +6,7 @@
 """Sample module for incremental buildout of Async Sui GraphQL RPC for Pysui 1.0.0."""
 
 import asyncio
+import base64
 
 from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient, SyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
@@ -507,7 +508,6 @@ async def do_package(client: AsyncGqlClient):
 async def do_dry_run(client: AsyncGqlClient):
     """Execute a dry run."""
 
-    # Use synchronous transaction builder
     txer: AsyncSuiTransaction = client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
@@ -517,6 +517,27 @@ async def do_dry_run(client: AsyncGqlClient):
             with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
         )
     )
+
+
+async def do_dry_run_txkind(txer: AsyncSuiTransaction):
+    """Execute a dry run with just the TransactionKind."""
+
+    raw_kind = txer.raw_kind()
+    # print(raw_kind.to_json(indent=2))
+    raw_ser = raw_kind.serialize()
+    raw_b64 = base64.b64encode(raw_ser).decode()
+    # print(raw_b64)
+    dr_tk = qn.DryRunTransactionKind(tx_bytestr=raw_b64)
+    handle_result(await txer.client.execute_query_node(with_node=dr_tk))
+
+
+async def inspect_example(client: AsyncGqlClient):
+    """Execute a dryrun just on the TransactionKind of a transaction."""
+
+    txer: AsyncSuiTransaction = client.transaction()
+    scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    await do_dry_run_txkind(txer)
 
 
 async def do_split_any_half(client: AsyncGqlClient):
@@ -636,7 +657,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -669,6 +690,7 @@ async def main():
         # await do_funcs(client_init)
         # await do_module(client_init)
         # await do_package(client_init)
+        await inspect_example(client_init)
         # await do_dry_run(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)

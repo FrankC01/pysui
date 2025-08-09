@@ -10,8 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - gRPC: VerifySignature request
+- [change](https://github.com/FrankC01/pysui/issues/333) gRPC: `txn_expires_after: Optional[int] = None` to SimulateTransactionLKind request 
 
 ### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/334) Fix optional scalar issue.
 
 ### Changed
 
