@@ -30,7 +30,7 @@ Includes support for gRPC BETA: queries, programmable transactions, subscription
 
 ## PyPi current
 
-**Release-0.87.0 - Released 2025-08-04**
+**Release-0.88.0 - Released 2025-08-11**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 

@@ -775,12 +775,13 @@ class SimulateTransaction(absreq.PGRPC_Request):
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
-        return stub.simulate_transaction, sui_prot.SimulateTransactionRequest(
+        simtdata = sui_prot.SimulateTransactionRequest(
             transaction=self.transaction,
             checks=self.checks_enables,
             do_gas_selection=self.gas_selection,
             read_mask=self.field_mask,
         )
+        return stub.simulate_transaction, simtdata
 
 
 class SimulateTransactionLKind(absreq.PGRPC_Request):

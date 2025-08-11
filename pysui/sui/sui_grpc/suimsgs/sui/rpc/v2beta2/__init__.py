@@ -168,8 +168,8 @@ __all__ = (
     "TypeArgumentErrorTypeArgumentErrorKind",
     "TypeOrigin",
     "TypeParameter",
-    "UnchangedSharedObject",
-    "UnchangedSharedObjectUnchangedSharedObjectKind",
+    "UnchangedConsensusObject",
+    "UnchangedConsensusObjectUnchangedConsensusObjectKind",
     "Upgrade",
     "UserSignature",
     "Validator",
@@ -391,9 +391,9 @@ class CommandArgumentErrorCommandArgumentErrorKind(betterproto2.Enum):
     Immutable objects cannot be passed by mutable reference, `&mut`.
     """
 
-    SHARED_OBJECT_OPERATION_NOT_ALLOWED = 12
+    CONSENSUS_OBJECT_OPERATION_NOT_ALLOWED = 12
     """
-    Shared object operations such as wrapping, freezing, or converting to owned are not
+    Consensus object operations such as wrapping, freezing, or converting to owned are not
     allowed.
     """
 
@@ -611,19 +611,19 @@ class ExecutionErrorExecutionErrorKind(betterproto2.Enum):
     Sui Move bytecode verification timed out.
     """
 
-    SHARED_OBJECT_OPERATION_NOT_ALLOWED = 32
+    CONSENSUS_OBJECT_OPERATION_NOT_ALLOWED = 32
     """
-    The requested shared object operation is not allowed.
+    The requested consensus object operation is not allowed.
     """
 
     INPUT_OBJECT_DELETED = 33
     """
-    Requested shared object has been deleted.
+    Requested consensus object has been deleted.
     """
 
-    EXECUTION_CANCELED_DUE_TO_SHARED_OBJECT_CONGESTION = 34
+    EXECUTION_CANCELED_DUE_TO_CONSENSUS_OBJECT_CONGESTION = 34
     """
-    Certificate is canceled due to congestion on shared objects.
+    Certificate is canceled due to congestion on consensus objects.
     """
 
     ADDRESS_DENIED_FOR_COIN = 35
@@ -846,12 +846,12 @@ class TypeArgumentErrorTypeArgumentErrorKind(betterproto2.Enum):
     """
 
 
-class UnchangedSharedObjectUnchangedSharedObjectKind(betterproto2.Enum):
-    UNCHANGED_SHARED_OBJECT_KIND_UNKNOWN = 0
+class UnchangedConsensusObjectUnchangedConsensusObjectKind(betterproto2.Enum):
+    UNCHANGED_CONSENSUS_OBJECT_KIND_UNKNOWN = 0
 
     READ_ONLY_ROOT = 1
     """
-    Read-only shared object from the input.
+    Read-only consensus object from the input.
     """
 
     MUTATE_CONSENSUS_STREAM_ENDED = 2
@@ -2011,7 +2011,7 @@ class ConsensusCommitPrologue(betterproto2.Message):
         6, betterproto2.TYPE_MESSAGE, optional=True
     )
     """
-    Stores consensus handler determined shared object version assignments.
+    Stores consensus handler determined consensus object version assignments.
 
     Present in V3, V4.
     """
@@ -5522,12 +5522,12 @@ class TransactionEffects(betterproto2.Message):
     Objects whose state are changed by this transaction.
     """
 
-    unchanged_shared_objects: "list[UnchangedSharedObject]" = betterproto2.field(
+    unchanged_consensus_objects: "list[UnchangedConsensusObject]" = betterproto2.field(
         13, betterproto2.TYPE_MESSAGE, repeated=True
     )
     """
-    Shared objects that are not mutated in this transaction. Unlike owned objects,
-    read-only shared objects' version are not committed in the transaction,
+    Consensus objects that are not mutated in this transaction. Unlike owned objects,
+    read-only consensus objects' version are not committed in the transaction,
     and in order for a node to catch up and execute it without consensus sequencing,
     the version needs to be committed in the effects.
     """
@@ -5831,34 +5831,34 @@ default_message_pool.register_message("sui.rpc.v2beta2", "TypeParameter", TypePa
 
 
 @dataclass(eq=False, repr=False)
-class UnchangedSharedObject(betterproto2.Message):
+class UnchangedConsensusObject(betterproto2.Message):
     """
-    A shared object that wasn't changed during execution.
+    A consensus object that wasn't changed during execution.
     """
 
-    kind: "UnchangedSharedObjectUnchangedSharedObjectKind | None" = betterproto2.field(
-        1, betterproto2.TYPE_ENUM, optional=True
+    kind: "UnchangedConsensusObjectUnchangedConsensusObjectKind | None" = (
+        betterproto2.field(1, betterproto2.TYPE_ENUM, optional=True)
     )
 
     object_id: "str | None" = betterproto2.field(
         2, betterproto2.TYPE_STRING, optional=True
     )
     """
-    ObjectId of the shared object.
+    ObjectId of the consensus object.
     """
 
     version: "int | None" = betterproto2.field(
         3, betterproto2.TYPE_UINT64, optional=True
     )
     """
-    Version of the shared object.
+    Version of the consensus object.
     """
 
     digest: "str | None" = betterproto2.field(
         4, betterproto2.TYPE_STRING, optional=True
     )
     """
-    Digest of the shared object.
+    Digest of the consensus object.
     """
 
     object_type: "str | None" = betterproto2.field(
@@ -5871,7 +5871,7 @@ class UnchangedSharedObject(betterproto2.Message):
 
 
 default_message_pool.register_message(
-    "sui.rpc.v2beta2", "UnchangedSharedObject", UnchangedSharedObject
+    "sui.rpc.v2beta2", "UnchangedConsensusObject", UnchangedConsensusObject
 )
 
 
