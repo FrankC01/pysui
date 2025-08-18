@@ -105,6 +105,9 @@ class AsyncSuiTransaction(txbase):
         txn_expires_after: Optional[int] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
         """Generate the TransactionData structure."""
+        if not self.builder.commands and not self.builder.inputs:
+            raise ValueError("Empty Transaction.")
+
         obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
         gas_data: bcs.GasData = await gd.async_get_gas_data(
@@ -602,8 +605,8 @@ class AsyncSuiTransaction(txbase):
         modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
-            result = await self.client.execute_query_node(
-                with_node=rn.GetObject(object_id=upgrade_cap)
+            result = await self.client.execute(
+                request=rn.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")
@@ -612,19 +615,20 @@ class AsyncSuiTransaction(txbase):
                     f"Fetching upgrade cap {upgrade_cap} returned no data."
                 )
 
-            upgrade_cap = result.result_data
+            upgrade_cap: sui_prot.Object = result.result_data.object
         # Isolate the struct type from supposed UpgradeCap
         _, _, package_struct = tv.TypeValidator.check_target_triplet(
             upgrade_cap.object_type
         )
         # If all upgradecap items check out
+        jdict = upgrade_cap.json.to_dict()["structValue"]["fields"]
         if (
-            upgrade_cap.content.keys() >= {"package", "version", "policy"}
+            jdict.keys() >= {"package", "version", "policy"}
             and package_struct == "UpgradeCap"
         ):
             # Prep args
             cap_obj_arg, policy_arg = await self._argparse.build_args(
-                [upgrade_cap, upgrade_cap.content["policy"]],
+                [upgrade_cap, jdict["policy"]["numberValue"]],
                 txbase._PUBLISH_UPGRADE,
             )
             # Capture input offsets to preserve location of upgrade_cap ObjectArg
@@ -638,7 +642,7 @@ class AsyncSuiTransaction(txbase):
                 self.builder.publish_upgrade(
                     modules,
                     dependencies,
-                    bcs.Address.from_str(upgrade_cap.content["package"]),
+                    bcs.Address.from_str(jdict["package"]["stringValue"]),
                     auth_cmd,
                 ),
             )
@@ -667,9 +671,9 @@ class AsyncSuiTransaction(txbase):
         :type package_id: str
         :param upgrade_cap: The upgrade capability object
         :type upgrade_cap: str
-        :param authorize_upgrade_fn: Function to be called that generates custom authorization 'move_call'
+        :param authorize_upgrade_fn: Async function to be called that generates custom authorization 'move_call'
         :type authorize_upgrade_fn: Callable[[&quot;AsyncSuiTransaction&quot;, Any, bcs.Digest], bcs.Argument]
-        :param commit_upgrade_fn: Function to be called that generates custom commitment 'move_call'
+        :param commit_upgrade_fn: Async function to be called that generates custom commitment 'move_call'
         :type commit_upgrade_fn: Callable[[&quot;AsyncSuiTransactions&quot;, Any, bcs.Argument], bcs.Argument]
         :param args_list: Additional `sui move build` arguments, defaults to None
         :type args_list: Optional[list[str]], optional
@@ -679,29 +683,30 @@ class AsyncSuiTransaction(txbase):
         modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
-            result = await self.client.execute_query_node(
-                with_node=rn.GetObject(object_id=upgrade_cap)
+            result = await self.client.execute(
+                request=rn.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")
 
-            upgrade_cap = result.result_data
+            upgrade_cap: sui_prot.Object = result.result_data.object
         # Isolate the struct type from supposed UpgradeCap
         _, _, package_struct = tv.TypeValidator.check_target_triplet(
             upgrade_cap.object_type
         )
         # If all upgradecap items check out
+        jdict = upgrade_cap.json.to_dict()["structValue"]["fields"]
         if (
-            upgrade_cap.content.keys() >= {"package", "version", "policy"}
+            jdict.keys() >= {"package", "version", "policy"}
             and package_struct == "UpgradeCap"
         ):
-            upgrade_ticket = authorize_upgrade_fn(self, upgrade_cap, digest)
+            upgrade_ticket = await authorize_upgrade_fn(self, upgrade_cap, digest)
             # Extrack the auth_cmd cap input
             package_id = bcs.Address.from_str(package_id)
             # Upgrade
             receipt = self.builder.publish_upgrade(
                 modules, dependencies, package_id, upgrade_ticket
             )
-            return commit_upgrade_fn(self, upgrade_cap, receipt)
+            return await commit_upgrade_fn(self, upgrade_cap, receipt)
         else:
             raise ValueError(f"Not a valid upgrade cap.")

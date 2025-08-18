@@ -943,7 +943,7 @@ class Upgrade(canoser.Struct):
             upgrade=sui_prot.Upgrade(
                 package=self.Package.to_address_str(),  # type: ignore
                 modules=[bytes(x) for x in self.Modules],  # type: ignore
-                dependencies=[x.to_str() for x in self.Dependents],  # type: ignore
+                dependencies=[x.to_address_str() for x in self.Dependents],  # type: ignore
                 ticket=_to_grpc_argument(self.UpgradeTicket),  # type: ignore
             )
         )

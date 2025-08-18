@@ -839,7 +839,6 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
         )
         self.gas_selection = gas_selection
         self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
-        # print(self.transaction.to_json(indent=2, include_default_values=True))
 
     def to_request(
         self, *, stub: sui_prot.LiveDataServiceStub
@@ -852,6 +851,7 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
             do_gas_selection=self.gas_selection,
             read_mask=self.field_mask,
         )
+        # print(req.to_json(indent=2))
         return stub.simulate_transaction, req
 
 

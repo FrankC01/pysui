@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.89.0] - Unpublished
+
+### Added
+
+### Fixed
+
+- Typo in wallet `execute-signed-tx` text
+- [bug](https://github.com/FrankC01/pysui/issues/335) pysui PTB gRPC transaction `publish_upgrade` fix
+
+### Changed
+
+- Set `grpc_a_example.py` to default to devnet node
+
+### Removed
+
 ## [0.88.0] - 2025-08-03
 
 ### Added

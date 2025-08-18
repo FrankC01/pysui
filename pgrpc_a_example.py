@@ -92,7 +92,7 @@ async def do_gas_ids(client: SuiGrpcClient):
             await client.execute(request=rn.GetMultipleObjects(object_ids=cids))
         )
     elif result.is_err():
-        print(f"Error calling GraphQL {result.result_string}")
+        print(f"Error calling gRPC {result.result_string}")
     else:
         print(f"Data return from call is empty {result.result_data.objects}")
 
@@ -199,7 +199,7 @@ async def do_event(_client: SuiGrpcClient):
 
 
 async def do_service_config(client: SuiGrpcClient):
-    """Fetch the GraphQL, Protocol and System configurations."""
+    """Fetch the gRPC, Protocol and System configurations."""
     handle_result(await client.execute(request=rn.GetServiceInfo()))
 
 
@@ -582,8 +582,8 @@ async def main():
         client_init = SuiGrpcClient(
             pysui_config=PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP,
-                # profile_name="devnet",
-                profile_name="testnet",
+                profile_name="devnet",
+                # profile_name="testnet",
                 # profile_name="mainnet",
             ),
         )

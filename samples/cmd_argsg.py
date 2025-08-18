@@ -547,7 +547,7 @@ def _build_gql_cmds(subparser) -> None:
     # Execute transaction
     subp = subparser.add_parser(
         "execute-signed-tx",
-        help="Dry run a transaction block (TransactionData).",
+        help="Execute a signed transaction on blockchain.",
     )
     subp.add_argument(
         "-t",
