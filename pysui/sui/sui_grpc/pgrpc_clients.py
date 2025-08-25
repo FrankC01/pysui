@@ -189,6 +189,10 @@ class SuiGrpcClient(PysuiClient):
                 srv_fn, srv_req = request.to_request(
                     stub=sui_prot.SignatureVerificationServiceStub(self._channel)
                 )
+            case absreq.Service.NAMESERVICE:
+                srv_fn, srv_req = request.to_request(
+                    stub=sui_prot.NameServiceStub(self._channel)
+                )
             case _:
                 raise NotImplementedError(f"{request.service} not implemented.")
 

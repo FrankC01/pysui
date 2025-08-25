@@ -25,6 +25,7 @@ class Service(enum.IntEnum):
     MOVEPACKAGE = 3
     SUBSCRIPTION = 4
     SIGNATURE = 5
+    NAMESERVICE = 6
 
 
 class PGRPC_Request(abc.ABC):

@@ -1119,3 +1119,51 @@ class VerifySignature(absreq.PGRPC_Request):
         return stub.verify_signature, sui_prot.VerifySignatureRequest(
             message=self.message, signature=self.signature, address=self.address
         )
+
+
+class NameLookup(absreq.PGRPC_Request):
+    """Do a name lookup."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.LookupNameResponse
+
+    def __init__(self, *, name: str | None = None):
+        """Name lookup constructor.
+
+        :param name: Name to find address for. Accepts '@name' or 'name.sui' forms, defaults to None
+        :type name: str | None, optional
+        """
+        super().__init__(absreq.Service.NAMESERVICE)
+        self.name = name
+
+    def to_request(
+        self, *, stub: sui_prot.NameServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.lookup_name, sui_prot.LookupNameRequest(name=self.name)
+
+
+class ReverseNameLookup(absreq.PGRPC_Request):
+    """Do a name lookup from address."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.ReverseLookupNameResponse
+
+    def __init__(self, *, address: str | None = None):
+        """Reverse Name lookup constructor.
+
+        :param name: Address to find name for, defaults to None
+        :type name: str | None, optional
+        """
+        super().__init__(absreq.Service.NAMESERVICE)
+        self.address = address
+
+    def to_request(
+        self, *, stub: sui_prot.NameServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.reverse_lookup_name, sui_prot.ReverseLookupNameRequest(
+            address=self.name
+        )

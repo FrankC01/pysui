@@ -58,9 +58,9 @@ bcstoj="samples.bcstoj:main"
 mtobcs="samples.mtobcs:main"
 
 [tool.setuptools.packages.find]
-
-
+include = ["pysui*","samples*"]
 exclude = [
+    "env*",
     "out*",
     "temp*",
     "test*",

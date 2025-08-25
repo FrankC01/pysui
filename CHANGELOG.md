@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/338) gRPC added NameService support
+
 ### Fixed
 
 - Typo in wallet `execute-signed-tx` text
+- Remove extra files from distribution build
+- GraphQL: DynamicField results not getting processed
 - [bug](https://github.com/FrankC01/pysui/issues/335) pysui PTB gRPC transaction `publish_upgrade` fix
 
 ### Changed

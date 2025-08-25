@@ -1204,7 +1204,9 @@ class ProtocolConfigGQL:
 
         # Set appropriate features
         feat_dict: dict = {k.key: k.value for k in self.featureFlags}
-        self.transaction_constraints.receive_objects = feat_dict.get("receive_objects", False)
+        self.transaction_constraints.receive_objects = feat_dict.get(
+            "receive_objects", False
+        )
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":
@@ -1775,7 +1777,7 @@ class DynamicFieldsGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "DynamicFieldsGQL":
-        if in_data.get("objects"):
+        if in_data.get("object"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
             fdict["next_cursor"] = PagingCursor(
