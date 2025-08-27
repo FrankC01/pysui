@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/337) Added optional `timeout:float` argument to
+GraohQL client constructor and execute methods.
+
 ### Fixed
 
 - Typo in wallet `execute-signed-tx` text

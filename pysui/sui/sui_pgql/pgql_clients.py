@@ -193,6 +193,7 @@ class SuiGQLClient(BaseSuiGQLClient):
         version="0.85.0",
         reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
     )
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     def __init__(
         self,
         *,
@@ -200,13 +201,16 @@ class SuiGQLClient(BaseSuiGQLClient):
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
         proxies: Optional[dict] = None,
+        timeout: float | None = None,
     ):
         """Sui GraphQL Client initializer."""
         gurl = pysui_config.url
         genv = pysui_config.active_profile
         super().__init__(
             pysui_config=pysui_config,
-            schema=scm.Schema(gql_url=gurl, gql_env=genv, proxies=proxies),
+            schema=scm.Schema(
+                gql_url=gurl, gql_env=genv, proxies=proxies, timeout=timeout
+            ),
             write_schema=write_schema,
             default_header=default_header,
         )
@@ -230,11 +234,13 @@ class SuiGQLClient(BaseSuiGQLClient):
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
     )
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     def _execute(
         self,
         node: DocumentNode,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
+        timeout: float | None = None,
     ) -> SuiRpcResult:
         """_execute Execute a GQL Document Node
 
@@ -248,9 +254,9 @@ class SuiGQLClient(BaseSuiGQLClient):
         :rtype: SuiRpcResult
         """
         try:
-            sres = self.client().execute(
-                node, extra_args=with_headers or self._default_header
-            )
+            extra_args = with_headers or self._default_header
+            extra_args["timeout"] = timeout or self._schema.timeout
+            sres = self.client().execute(node, extra_args=extra_args)
             return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
 
         except texc.TransportQueryError as gte:
@@ -283,12 +289,14 @@ class SuiGQLClient(BaseSuiGQLClient):
             )
 
     @versionadded(version="0.56.0", reason="Unique function for string processing")
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     def execute_query_string(
         self,
         *,
         string: str,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
+        timeout: float | None = None,
     ) -> SuiRpcResult:
         """execute_query_string Executes a GraphQL query string.
 
@@ -298,23 +306,27 @@ class SuiGQLClient(BaseSuiGQLClient):
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :param timeout: Timeout for execution overriding default set for client, defaults to None
+        :type timeout: Optional[float], optional
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
         if isinstance(string, str):
-            return self._execute(gql(string), with_headers, encode_fn)
+            return self._execute(gql(string), with_headers, encode_fn, timeout)
         else:
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
     @versionadded(
         version="0.56.0", reason="Unique function for DocumentNode processing"
     )
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     def execute_document_node(
         self,
         *,
         with_node: DocumentNode,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
+        timeout: float | None = None,
     ) -> SuiRpcResult:
         """execute_document_node Executes a gql DocumentNode.
 
@@ -324,23 +336,27 @@ class SuiGQLClient(BaseSuiGQLClient):
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :param timeout: Timeout for execution overriding default set for client, defaults to None
+        :type timeout: Optional[float], optional
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
         if isinstance(with_node, DocumentNode):
-            return self._execute(with_node, with_headers, encode_fn)
+            return self._execute(with_node, with_headers, encode_fn, timeout)
         else:
             return SuiRpcResult(False, "Not a valid gql DocumentNode", with_node)
 
     @versionadded(
         version="0.56.0", reason="Unique function for PGQL_QueryNode processing"
     )
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     def execute_query_node(
         self,
         *,
         with_node: PGQL_QueryNode,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
+        timeout: float | None = None,
     ) -> SuiRpcResult:
         """execute_query_node Execute a pysui GraphQL QueryNode.
 
@@ -350,6 +366,8 @@ class SuiGQLClient(BaseSuiGQLClient):
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :param timeout: Timeout for execution overriding default set for client, defaults to None
+        :type timeout: Optional[float], optional
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
@@ -358,7 +376,7 @@ class SuiGQLClient(BaseSuiGQLClient):
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
-            return self._execute(qdoc_node, with_headers, encode_fn)
+            return self._execute(qdoc_node, with_headers, encode_fn, timeout)
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
@@ -406,6 +424,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         version="0.85.0",
         reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
     )
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     def __init__(
         self,
         *,
@@ -413,12 +432,14 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         write_schema: Optional[bool] = False,
         default_header: Optional[dict] = None,
         proxies: Optional[dict] = None,
+        timeout: float | None = None,
     ):
         """Async Sui GraphQL Client initializer."""
         scm_mgr: scm.Schema = scm.Schema(
             gql_url=pysui_config.url,
             gql_env=pysui_config.active_profile,
             proxies=proxies,
+            timeout=timeout,
         )
         scm_mgr.set_async_client(proxies)
 
@@ -464,6 +485,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         node: DocumentNode,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
+        timeout: float | None = None,
     ) -> SuiRpcResult:
         """_execute Execute a GQL Document Node.
 
@@ -479,9 +501,9 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         try:
             async with self._slock:
                 _session = await self.async_client()
-                sres = await _session.execute(
-                    node, extra_args=with_headers or self._default_header
-                )
+                extra_args = with_headers or self._default_header
+                extra_args["timeout"] = timeout or self._schema.timeout
+                sres = await _session.execute(node, extra_args=extra_args)
 
                 return SuiRpcResult(
                     True, None, sres if not encode_fn else encode_fn(sres)
@@ -516,12 +538,14 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             )
 
     @versionadded(version="0.56.0", reason="Unique function for string processing")
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     async def execute_query_string(
         self,
         *,
         string: str,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
+        timeout: float | None = None,
     ) -> SuiRpcResult:
         """execute_query_string Executes a GraphQL query string.
 
@@ -531,23 +555,27 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :param timeout: Timeout for execution overriding default set for client, defaults to None
+        :type timeout: Optional[float], optional
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
         if isinstance(string, str):
-            return await self._execute(gql(string), with_headers, encode_fn)
+            return await self._execute(gql(string), with_headers, encode_fn, timeout)
         else:
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
     @versionadded(
         version="0.56.0", reason="Unique function for DocumentNode processing"
     )
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     async def execute_document_node(
         self,
         *,
         with_node: DocumentNode,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
+        timeout: float | None = None,
     ) -> SuiRpcResult:
         """execute_document_node Executes a gql DocumentNode.
 
@@ -557,23 +585,27 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :param timeout: Timeout for execution overriding default set for client, defaults to None
+        :type timeout: Optional[float], optional
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
         if isinstance(with_node, DocumentNode):
-            return await self._execute(with_node, with_headers, encode_fn)
+            return await self._execute(with_node, with_headers, encode_fn, timeout)
         else:
             return SuiRpcResult(False, "Not a valid gql DocumentNode", with_node)
 
     @versionadded(
         version="0.56.0", reason="Unique function for PGQL_QueryNode processing"
     )
+    @versionchanged(version="0.89.0", reason="Added timeout argument")
     async def execute_query_node(
         self,
         *,
         with_node: PGQL_QueryNode,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
+        timeout: float | None = None,
     ) -> SuiRpcResult:
         """execute_query_node Execute a pysui GraphQL QueryNode.
 
@@ -583,6 +615,8 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :param timeout: Timeout for execution overriding default set for client, defaults to None
+        :type timeout: Optional[float], optional
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
@@ -591,7 +625,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = encode_fn or with_node.encode_fn()
-            return await self._execute(qdoc_node, with_headers, encode_fn)
+            return await self._execute(qdoc_node, with_headers, encode_fn, timeout)
 
         except ValueError as ve:
             return SuiRpcResult(

@@ -29,11 +29,23 @@ class Schema:
         version="0.85.0",
         reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
     )
-    def __init__(self, *, gql_url: str, gql_env: str, proxies: Optional[dict] = None):
+    def __init__(
+        self,
+        *,
+        gql_url: str,
+        gql_env: str,
+        proxies: Optional[dict] = None,
+        timeout: float | None = None,
+    ):
         """."""
+        self.timeout: float = timeout or 120.0
         _init_client: Client = Client(
             transport=HTTPXTransport(
-                url=gql_url, verify=True, http2=True, timeout=120.0, proxies=proxies
+                url=gql_url,
+                verify=True,
+                http2=True,
+                timeout=self.timeout,
+                proxies=proxies,
             ),
             fetch_schema_from_transport=True,
         )
@@ -100,7 +112,7 @@ class Schema:
                 url=self._graph_url,
                 verify=True,
                 http2=True,
-                timeout=120.0,
+                timeout=self.timeout,
                 proxies=proxies,
             ),
         )
