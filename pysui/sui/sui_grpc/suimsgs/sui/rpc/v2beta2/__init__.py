@@ -208,7 +208,7 @@ if TYPE_CHECKING:
     from betterproto2.grpc.grpclib_client import MetadataLike
     from grpclib.metadata import Deadline
 
-_COMPILER_VERSION = "0.7.1"
+_COMPILER_VERSION = "0.8.0"
 betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
@@ -277,11 +277,21 @@ class ChangedObjectInputObjectState(betterproto2.Enum):
 
     EXISTS = 2
 
-    betterproto_proto_names = {
-        0: "INPUT_OBJECT_STATE_UNKNOWN",
-        1: "INPUT_OBJECT_STATE_DOES_NOT_EXIST",
-        2: "INPUT_OBJECT_STATE_EXISTS",
-    }
+    @classmethod
+    def betterproto_value_to_renamed_proto_names(cls) -> dict[int, str]:
+        return {
+            0: "INPUT_OBJECT_STATE_UNKNOWN",
+            1: "INPUT_OBJECT_STATE_DOES_NOT_EXIST",
+            2: "INPUT_OBJECT_STATE_EXISTS",
+        }
+
+    @classmethod
+    def betterproto_renamed_proto_names_to_value(cls) -> dict[str, int]:
+        return {
+            "INPUT_OBJECT_STATE_UNKNOWN": 0,
+            "INPUT_OBJECT_STATE_DOES_NOT_EXIST": 1,
+            "INPUT_OBJECT_STATE_EXISTS": 2,
+        }
 
 
 class ChangedObjectOutputObjectState(betterproto2.Enum):
@@ -293,12 +303,23 @@ class ChangedObjectOutputObjectState(betterproto2.Enum):
 
     PACKAGE_WRITE = 3
 
-    betterproto_proto_names = {
-        0: "OUTPUT_OBJECT_STATE_UNKNOWN",
-        1: "OUTPUT_OBJECT_STATE_DOES_NOT_EXIST",
-        2: "OUTPUT_OBJECT_STATE_OBJECT_WRITE",
-        3: "OUTPUT_OBJECT_STATE_PACKAGE_WRITE",
-    }
+    @classmethod
+    def betterproto_value_to_renamed_proto_names(cls) -> dict[int, str]:
+        return {
+            0: "OUTPUT_OBJECT_STATE_UNKNOWN",
+            1: "OUTPUT_OBJECT_STATE_DOES_NOT_EXIST",
+            2: "OUTPUT_OBJECT_STATE_OBJECT_WRITE",
+            3: "OUTPUT_OBJECT_STATE_PACKAGE_WRITE",
+        }
+
+    @classmethod
+    def betterproto_renamed_proto_names_to_value(cls) -> dict[str, int]:
+        return {
+            "OUTPUT_OBJECT_STATE_UNKNOWN": 0,
+            "OUTPUT_OBJECT_STATE_DOES_NOT_EXIST": 1,
+            "OUTPUT_OBJECT_STATE_OBJECT_WRITE": 2,
+            "OUTPUT_OBJECT_STATE_PACKAGE_WRITE": 3,
+        }
 
 
 class CheckpointCommitmentCheckpointCommitmentKind(betterproto2.Enum):

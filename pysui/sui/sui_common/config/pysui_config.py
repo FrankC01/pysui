@@ -118,6 +118,18 @@ class PysuiConfiguration:
                 prf.url = "fullnode.testnet.sui.io:443"
             elif prf.profile_name == "mainnet":
                 prf.url = "fullnode.mainnet.sui.io:443"
+        # Append archive profiles
+        group_cfg.add_profile(
+            new_prf=cfg_group.Profile(
+                profile_name="main-arch", url="archive.mainnet.sui.io:443"
+            )
+        )
+        group_cfg.add_profile(
+            new_prf=cfg_group.Profile(
+                profile_name="test-arch", url="archive.testnet.sui.io:443"
+            )
+        )
+
         return group_cfg
 
     @versionadded(

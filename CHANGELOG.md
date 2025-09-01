@@ -5,12 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.89.0] - Unpublished
+## [0.89.0] - 2025-09-01
 
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/337) Added optional `timeout:float` argument to
 GraohQL client constructor and execute methods.
+- [enhancement](https://github.com/FrankC01/pysui/issues/340) Include Mysten gRPC archive nodes to `PysuiConfiguration.initialize_config`
 
 ### Fixed
 
@@ -22,6 +23,7 @@ GraohQL client constructor and execute methods.
 ### Changed
 
 - Set `grpc_a_example.py` to default to devnet node
+- Bumped betterproto2 to 0.8.0
 
 ### Removed
 
