@@ -90,7 +90,7 @@ class SuiClient(ClientMixin):
             http2=True,
             timeout=120.0,
             verify=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
-            proxies=proxies,
+            proxy=proxies,
         )
         self._fetch_common_descriptors()
         logger.info(f"Initialized synchronous client for {config.rpc_url}")
@@ -424,7 +424,8 @@ class SuiClient(ClientMixin):
                 if "status" in s1j:
                     if s1j.get("status") == "Success":
                         return SuiRpcResult(True, None, FaucetGasRequest.from_dict(s1j))
-
+                    else:
+                        return SuiRpcResult(False, s1.text)
                 if s1.status_code == 429:
                     return SuiRpcResult(False, s1.reason_phrase)
             else:
