@@ -153,7 +153,7 @@ options to form and execute a query returning results
     def execute_document_node(
         self,
         *,
-        with_node: DocumentNode,
+        with_node: GraphQLRequest,
         schema_constraint: Optional[str] = None,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
@@ -163,7 +163,7 @@ options to form and execute a query returning results
 * ``execute_query_string`` convert a GraphQL query string to a gql
   `DocumentNode <https://gql.readthedocs.io/en/stable/usage/basic_usage.html#>`_
   and execute, returning a dictionary result by default
-* ``execute_document_node`` will execute a gql DocumentNode and return a
+* ``execute_document_node`` will execute a gql GraphQLRequest and return a
   dictionary result if no ``encode_fn`` function is defined
 * ``encode_fn`` is an explict callable for encoding a query result that takes
   a dictionary and returns Any. If specified along with a ``pysui`` QueryNode,
@@ -174,7 +174,7 @@ String queries
 
 **String** queries are just that: A string describing the query. When submitted
 to the ``SuiGQLClient.execute_query(with_string="query string")`` it will
-convert the sting to a **DocumentNode**, execute the query and either return
+convert the sting to a **GraphQLRequest**, execute the query and either return
 the raw result or invoke the ``encode_fn`` if provided.
 
 .. code-block:: Python
@@ -205,11 +205,11 @@ the raw result or invoke the ``encode_fn`` if provided.
         client_init = SyncGqlClient(pysui_config=cfg)
         main(client_init)
 
-DocumentNode queries
-++++++++++++++++++++
+GraphQLRequest queries
+++++++++++++++++++++++
 
-**DocumentNode** queries are those that use the ``gql`` intermediate step of
-convering a query string to a DocumentNode using ``gql`` functions.
+**GraphQLRequest** queries are those that use the ``gql`` intermediate step of
+convering a query string to a GraphQLRequest using ``gql`` functions.
 
 .. code-block:: Python
 
@@ -253,7 +253,7 @@ QueryNodes can be submitted to the client (SuiGQLClient or AsyncSuiGQLClient)
 When passing a QueryNode to ``execute_query`` a few things happen prior to
 submitting:
 
-#. The QueryNode's ``as_document_node`` is called to return a DocumentNode
+#. The QueryNode's ``as_document_node`` is called to return a GraphQLRequest
 #. The result is checked and if it is the ``PGQL_NoOp`` type, a ``NoopGQL``
    object is returned, otherwise...
 #. The DocumentNode is submitted for execution and ``gql`` returns a Python
@@ -275,7 +275,7 @@ Notes:
    address literal.
 #. In the ``as_document_node`` call it does not have to be constructed
    using DSL as the example below in Step 2 shows. It is
-   only required that the method returns a DocumentNode.
+   only required that the method returns a GraphQLRequest.
 
 
 Step 1
@@ -289,15 +289,15 @@ Note the required and optional methods from ``PGQL_QueryNode``:
         """Base QueryNode class."""
 
         @abstractmethod
-        def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
             """Returns a gql DocumentNode ready to execute.
 
             This must be implemented in subclasses.
 
             :param schema: The current Sui GraphQL schema
             :type schema: DSLSchema
-            :return: A query processed into a gql DocumentNode
-            :rtype: DocumentNode
+            :return: A query processed into a gql GraphQLRequest
+            :rtype: GraphQLRequest
             """
 
         @staticmethod
@@ -321,8 +321,8 @@ an encoding type.
 .. code-block:: Python
 
     from typing import Optional, Callable, Union, Any
+    from gql import GraphQLRequest
     from gql.dsl import DSLQuery, dsl_gql, DSLSchema
-    from graphql import DocumentNode
 
     from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode
     import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -338,7 +338,7 @@ an encoding type.
             """
             self.coin_type = coin_type
 
-        def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+        def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
             """Build the DocumentNode."""
             qres = schema.Query.coinMetadata(coinType=self.coin_type).select(
                 schema.CoinMetadata.decimals,
