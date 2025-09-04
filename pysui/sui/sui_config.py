@@ -225,9 +225,9 @@ class SuiConfig(ClientConfiguration):
         else:
             if alias in aliases:
                 raise ValueError(f"Alias {alias} already exists.")
-            if SUI_MIN_ALIAS_LEN <= len(alias) <= SUI_MAX_ALIAS_LEN:
+            if not (SUI_MIN_ALIAS_LEN <= len(alias) <= SUI_MAX_ALIAS_LEN):
                 raise ValueError(
-                    f"Invalid alias string length, must be betwee {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
+                    f"Invalid alias string length, must be between {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
                 )
         return alias
 
