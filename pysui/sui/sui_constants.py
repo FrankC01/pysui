@@ -84,10 +84,10 @@ MAINNET_FAUCET_URL: str = ""
 MAINNET_SOCKET_URL: str = "wss://fullnode.mainnet.sui.io:443"
 """Testnet socket url."""
 
-EMPEHMERAL_PATH: str = "ephemeral"
+EPHEMERAL_PATH: str = "ephemeral"
 """A user memory only configuration path"""
 
-EMPEHMERAL_USER: str = "user"
+EPHEMERAL_USER: str = "user"
 """A user memory only configuration"""
 
 # Alias length
