@@ -323,17 +323,21 @@ async def do_refgas(client: SuiGrpcClient):
 
 
 async def do_nameservice(client: SuiGrpcClient):
-    """Fetch name service by name."""
-    raise NotImplementedError(
-        f"Mysten has not implemented fetching specific NamedService."
-    )
+    """Fetch name service by name.
+
+    Replace name argument in request to valid name.
+
+    """
+    handle_result(await client.execute(request=rn.NameLookup(name="")))
 
 
 async def do_owned_nameservice(client: SuiGrpcClient):
-    """Fetch owned named services."""
-    raise NotImplementedError(
-        f"Mysten has not implemented fetching owned NamedServices."
-    )
+    """Fetch owned named services by address.
+
+    Replace address argument in request to valid Sui address string.
+
+    """
+    handle_result(await client.execute(request=rn.ReverseNameLookup(address="")))
 
 
 async def do_validators_apy(client: SuiGrpcClient):

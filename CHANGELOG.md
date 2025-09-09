@@ -9,9 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- gRPC: `NameLookup` and `ReverseNameLookup` added to requests
+
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/341) JSON RPC: Client get_gas_from_faucet not handling exception
+- [bug](https://github.com/FrankC01/pysui/issues/342) The alias length check maybe has a bug. Thank you `surmountme`!
 
 ### Changed
 
