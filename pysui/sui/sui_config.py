@@ -31,8 +31,8 @@ from pysui.sui.sui_constants import (
     SUI_MIN_ALIAS_LEN,
     SUI_MAX_ALIAS_LEN,
     DEFAULT_ALIAS_PATH_STRING,
-    EMPEHMERAL_PATH,
-    EMPEHMERAL_USER,
+    EPHEMERAL_PATH,
+    EPHEMERAL_USER,
     LOCALNET_PROXY_SUI_URL,
     LOCALNET_SUI_URL,
     MAINNET_SUI_URL,
@@ -147,7 +147,7 @@ class SuiConfig(ClientConfiguration):
     @versionadded(version="0.41.0", reason="Support aliases.")
     def _write_aliases(self):
         """Write alias file."""
-        if self._current_env != EMPEHMERAL_USER and self._has_aliases:
+        if self._current_env != EPHEMERAL_USER and self._has_aliases:
             alias_filepath = self.alias_file
             logger.debug(f"Writing aliases to {alias_filepath}")
             with open(alias_filepath, "w", encoding="utf8") as alias_store:
@@ -324,7 +324,7 @@ class SuiConfig(ClientConfiguration):
                         {address.address: address},
                     ]
                 )
-                if self._current_env != EMPEHMERAL_USER:
+                if self._current_env != EPHEMERAL_USER:
                     logger.debug(f"Writing new keypair to {self.keystore_file}")
                     self._write_keypairs()
                 if make_active or not self.active_address:
@@ -401,7 +401,7 @@ class SuiConfig(ClientConfiguration):
                         {address.address: address},
                     ]
                 )
-                if install and self._current_env != EMPEHMERAL_USER:
+                if install and self._current_env != EPHEMERAL_USER:
                     logger.debug(f"Writing new keypair to {self.keystore_file}")
                     self._write_keypairs()
                 if make_active or not self.active_address:
@@ -472,7 +472,7 @@ class SuiConfig(ClientConfiguration):
                 {to_addy.address: to_addy},
             ]
         )
-        if install and self._current_env != EMPEHMERAL_USER:
+        if install and self._current_env != EPHEMERAL_USER:
             logger.debug(f"Writing new keypair to {self.keystore_file}")
             self._write_keypairs()
         if make_active or not self.active_address:
@@ -639,12 +639,12 @@ class SuiConfig(ClientConfiguration):
         logger.debug(f"Initializing user configuration for rpc url: {rpc_url}")
         prv_keys = prv_keys or []
         config = super(ClientConfiguration, cls).__new__(cls)
-        config.__init__(EMPEHMERAL_PATH, EMPEHMERAL_PATH)
-        _set_env_vars(EMPEHMERAL_PATH, EMPEHMERAL_PATH)
-        config._current_env = EMPEHMERAL_USER
+        config.__init__(EPHEMERAL_PATH, EPHEMERAL_PATH)
+        _set_env_vars(EPHEMERAL_PATH, EPHEMERAL_PATH)
+        config._current_env = EPHEMERAL_USER
         config._current_url = rpc_url
         config._current_graphql_url = gql_url
-        config._current_env = EMPEHMERAL_USER
+        config._current_env = EPHEMERAL_USER
         if rpc_url == DEVNET_SUI_URL:
             config._faucet_url = DEVNET_FAUCET_URLV1
             config._socket_url = ws_url or DEVNET_SOCKET_URL
@@ -652,14 +652,14 @@ class SuiConfig(ClientConfiguration):
             config._faucet_url = TESTNET_FAUCET_URLV1
             config._socket_url = ws_url or TESTNET_SOCKET_URL
         elif rpc_url == MAINNET_SUI_URL:
-            config._faucet_url = EMPEHMERAL_PATH
+            config._faucet_url = EPHEMERAL_PATH
             config._socket_url = ws_url or MAINNET_SOCKET_URL
         elif rpc_url == LOCALNET_SUI_URL or rpc_url == LOCALNET_PROXY_SUI_URL:
             config._faucet_url = LOCALNET_FAUCET_URL
             config._socket_url = ws_url or LOCALNET_SOCKET_URL
         else:
-            config._faucet_url = EMPEHMERAL_USER
-            config._socket_url = ws_url or EMPEHMERAL_USER
+            config._faucet_url = EPHEMERAL_USER
+            config._socket_url = ws_url or EPHEMERAL_USER
         config._local_running = False
         if prv_keys:
             config._cref_matrix = emphemeral_keys_and_addresses(prv_keys)
