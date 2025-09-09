@@ -38,7 +38,7 @@ Requires:
 
 `pip install -r requirements.txt`
 
-### Load anciallary development packages
+### Load ancillary development packages
 
 `pip install -r requirements-dev.txt` .
 

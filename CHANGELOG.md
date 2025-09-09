@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.89.1] - 2025-09-09
+
+### Changed
+
+- upgrade httpx dependency
+
 ## [0.89.0] - 2025-09-01
 
 ### Added
@@ -32,7 +38,7 @@ GraohQL client constructor and execute methods.
 ### Added
 
 - gRPC: VerifySignature request
-- [change](https://github.com/FrankC01/pysui/issues/333) gRPC: `txn_expires_after: Optional[int] = None` to SimulateTransactionLKind request 
+- [change](https://github.com/FrankC01/pysui/issues/333) gRPC: `txn_expires_after: Optional[int] = None` to SimulateTransactionLKind request
 
 ### Fixed
 
