@@ -15,15 +15,15 @@ Subject to Change
 ------------------
 
 pysui's GraphQL implementation, class names, etc. subject to change. This
-implementation is not production ready and should be considered experiemental.
+implementation is not production ready and should be considered BETA.
 
 Key Dependencies
 ----------------
 
-pysui uses `gql <https://pypi.org/project/gql/>`_ for GraphQL queries and eventually mutations and subscriptions. Includes DSL.
+pysui uses `gql <https://pypi.org/project/gql/>`_ for GraphQL queries, mutations and eventually  subscriptions. Includes DSL.
 
 You can use the capabilities of this library to create your own query strings,
-DocumentNodes or QueryNodes.
+GraphQLRequest or QueryNodes.
 
 Running Samples
 ---------------
