@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.90.0] - Unpublished
 
+Bumped dependentices version, if cloning or branching from repo recommended to re-run `pip install -r requirements.txt`
+
 ### Added
 
 ### Fixed
