@@ -434,8 +434,12 @@ class SuiClient(ClientMixin):
             return SuiRpcResult(False, f"JSON Decoder Error {jexc.doc}", vars(jexc))
         except httpx.ReadTimeout as hexc:
             return SuiRpcResult(False, "HTTP read timeout error", vars(hexc))
+        except httpx.RequestError as rexc:
+            return SuiRpcResult(False, "HTTP request error", vars(rexc))
         except TypeError as texc:
             return SuiRpcResult(False, "Type error", vars(texc))
+        except Exception as exc:
+            return SuiRpcResult(False, f"Unhandled exception: {str(exc)}", vars(exc))
 
     @deprecated(version="0.53.0", reason="Transition to GraphQL QueryNode")
     def get_object(
