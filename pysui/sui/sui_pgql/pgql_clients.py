@@ -12,13 +12,15 @@ import asyncio
 from time import sleep
 from typing import Callable, Any, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded
-from gql import Client, gql
+
+from gql import Client, gql, GraphQLRequest
 from gql.client import ReconnectingAsyncClientSession
 from gql.transport import exceptions as texc
 from gql.dsl import (
     DSLSchema,
 )
-from graphql import DocumentNode, print_ast
+
+from graphql import print_ast
 from graphql.error.syntax_error import GraphQLSyntaxError
 from graphql.utilities.print_schema import print_schema
 from graphql.language.printer import print_ast
@@ -40,15 +42,15 @@ class PGQL_QueryNode(ABC):
     """Base query class."""
 
     @abstractmethod
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Returns a gql DocumentNode ready to execute.
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Returns a gql GraphQLRequest ready to execute.
 
         This must be implemented in subclasses.
 
         :param schema: The current Sui GraphQL schema
         :type schema: DSLSchema
-        :return: A query processed into a gql DocumentNode
-        :rtype: DocumentNode
+        :return: A query processed into a gql GraphQLRequest
+        :rtype: GraphQLRequest
         """
 
     @staticmethod
@@ -64,8 +66,8 @@ class PGQL_QueryNode(ABC):
 class PGQL_NoOp(PGQL_QueryNode):
     """Noop query class."""
 
-    def as_document_node(self) -> DocumentNode:
-        """Returns a gql DocumentNode ready to execute.
+    def as_document_node(self) -> GraphQLRequest:
+        """Returns a gql GraphQLRequest ready to execute.
 
         This must be implemented in subclasses.
         """
@@ -164,15 +166,17 @@ class BaseSuiGQLClient(PysuiClient):
             )
             setattr(qnode, "owner", resolved_owner)
 
-    def _qnode_pre_run(self, qnode: PGQL_QueryNode) -> Union[DocumentNode, ValueError]:
+    def _qnode_pre_run(
+        self, qnode: PGQL_QueryNode
+    ) -> Union[GraphQLRequest, ValueError]:
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
             self._qnode_owner(qnode)
             dnode = qnode.as_document_node(self.schema())
-            if isinstance(dnode, DocumentNode):
+            if isinstance(dnode, GraphQLRequest):
                 return dnode
             else:
-                raise ValueError("QueryNode did not produce a gql DocumentNode")
+                raise ValueError("QueryNode did not produce a gql GraphQLRequest")
         else:
             raise ValueError("Not a valid PGQL_QueryNode")
 
@@ -237,15 +241,15 @@ class SuiGQLClient(BaseSuiGQLClient):
     @versionchanged(version="0.89.0", reason="Added timeout argument")
     def _execute(
         self,
-        node: DocumentNode,
+        node: GraphQLRequest,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
         timeout: float | None = None,
     ) -> SuiRpcResult:
         """_execute Execute a GQL Document Node
 
-        :param node: GQL DocumentNode
-        :type node: DocumentNode
+        :param node: GQL GraphQLRequest
+        :type node: GraphQLRequest
         :param with_headers: Add extra arguments for http client headers, default to None
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
@@ -317,21 +321,21 @@ class SuiGQLClient(BaseSuiGQLClient):
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
     @versionadded(
-        version="0.56.0", reason="Unique function for DocumentNode processing"
+        version="0.56.0", reason="Unique function for GraphQLRequest processing"
     )
     @versionchanged(version="0.89.0", reason="Added timeout argument")
     def execute_document_node(
         self,
         *,
-        with_node: DocumentNode,
+        with_node: GraphQLRequest,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
         timeout: float | None = None,
     ) -> SuiRpcResult:
-        """execute_document_node Executes a gql DocumentNode.
+        """execute_document_node Executes a gql GraphQLRequest.
 
-        :param with_node: The gql GraphQL DocumentNode
-        :type with_node: DocumentNode
+        :param with_node: The gql GraphQL GraphQLRequest
+        :type with_node: GraphQLRequest
         :param with_headers: Add extra arguments for http client headers, default to None
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
@@ -341,10 +345,10 @@ class SuiGQLClient(BaseSuiGQLClient):
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
-        if isinstance(with_node, DocumentNode):
+        if isinstance(with_node, GraphQLRequest):
             return self._execute(with_node, with_headers, encode_fn, timeout)
         else:
-            return SuiRpcResult(False, "Not a valid gql DocumentNode", with_node)
+            return SuiRpcResult(False, "Not a valid gql GraphQLRequest", with_node)
 
     @versionadded(
         version="0.56.0", reason="Unique function for PGQL_QueryNode processing"
@@ -482,15 +486,15 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
     )
     async def _execute(
         self,
-        node: DocumentNode,
+        node: GraphQLRequest,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
         timeout: float | None = None,
     ) -> SuiRpcResult:
         """_execute Execute a GQL Document Node.
 
-        :param node: GQL DocumentNode
-        :type node: DocumentNode
+        :param node: GQL GraphQLRequest
+        :type node: GraphQLRequest
         :param with_headers: Add extra arguments for http client headers
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
@@ -566,21 +570,21 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
     @versionadded(
-        version="0.56.0", reason="Unique function for DocumentNode processing"
+        version="0.56.0", reason="Unique function for GraphQLRequest processing"
     )
     @versionchanged(version="0.89.0", reason="Added timeout argument")
     async def execute_document_node(
         self,
         *,
-        with_node: DocumentNode,
+        with_node: GraphQLRequest,
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
         timeout: float | None = None,
     ) -> SuiRpcResult:
-        """execute_document_node Executes a gql DocumentNode.
+        """execute_document_node Executes a gql GraphQLRequest.
 
-        :param with_node: The gql GraphQL DocumentNode
-        :type with_node: DocumentNode
+        :param with_node: The gql GraphQL GraphQLRequest
+        :type with_node: GraphQLRequest
         :param with_headers: Add extra arguments for http client headers, default to None
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
@@ -590,10 +594,10 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
-        if isinstance(with_node, DocumentNode):
+        if isinstance(with_node, GraphQLRequest):
             return await self._execute(with_node, with_headers, encode_fn, timeout)
         else:
-            return SuiRpcResult(False, "Not a valid gql DocumentNode", with_node)
+            return SuiRpcResult(False, "Not a valid gql GraphQLRequest", with_node)
 
     @versionadded(
         version="0.56.0", reason="Unique function for PGQL_QueryNode processing"

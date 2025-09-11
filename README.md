@@ -25,8 +25,8 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.89.0**
-Includes support for gRPC BETA: queries, programmable transactions, subscriptions,archive nodes and transaction execution.
+**Release-0.90.0**
+Bumped dependentices version, recommended to re-run `pip install -r requirements.txt`
 
 ## PyPi current
 

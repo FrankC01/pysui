@@ -33,7 +33,7 @@ from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_constants import (
     DEFAULT_ALIAS_PATH_STRING,
     DEFAULT_DEVNET_PATH_STRING,
-    EMPEHMERAL_PATH,
+    EPHEMERAL_PATH,
     PYSUI_EXEC_ENV,
     SUI_BASE_ACTIVE,
     SUI_BASE_EXEC_PATH,
@@ -186,7 +186,7 @@ def publish_build(
     args_list: list[str],
 ) -> Union[CompiledPackageRaw, Exception]:
     """Build and collect module base64 strings and dependencies ObjectIDs."""
-    if os.environ[PYSUI_EXEC_ENV] == EMPEHMERAL_PATH:
+    if os.environ[PYSUI_EXEC_ENV] == EPHEMERAL_PATH:
         raise ValueError(f"Configuration does not support publishing")
     # Compile the package
     path_to_package = _compile_project(path_to_package, args_list)

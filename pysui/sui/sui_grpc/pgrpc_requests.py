@@ -1132,7 +1132,6 @@ class NameLookup(absreq.PGRPC_Request):
         :param name: Name to find address for. Accepts '@name' or 'name.sui' forms, defaults to None
         :type name: str | None, optional
         """
-        raise NotImplementedError("Waiting for gRPC deployment of feature.")
         super().__init__(absreq.Service.NAMESERVICE)
         self.name = name
 
@@ -1156,7 +1155,6 @@ class ReverseNameLookup(absreq.PGRPC_Request):
         :param name: Address to find name for, defaults to None
         :type name: str | None, optional
         """
-        raise NotImplementedError("Waiting for gRPC deployment of feature.")
         super().__init__(absreq.Service.NAMESERVICE)
         self.address = address
 

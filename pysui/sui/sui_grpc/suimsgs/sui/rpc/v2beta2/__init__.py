@@ -122,6 +122,7 @@ __all__ = (
     "MultisigMember",
     "MultisigMemberPublicKey",
     "MultisigMemberSignature",
+    "NameRecord",
     "NameServiceStub",
     "Object",
     "ObjectReference",
@@ -329,6 +330,11 @@ class CheckpointCommitmentCheckpointCommitmentKind(betterproto2.Enum):
     """
     An elliptic curve multiset hash attesting to the set of objects that
     comprise the live state of the Sui blockchain.
+    """
+
+    CHECKPOINT_ARTIFACTS = 2
+    """
+    Digest of the checkpoint artifacts.
     """
 
 
@@ -3900,11 +3906,11 @@ default_message_pool.register_message(
 
 @dataclass(eq=False, repr=False)
 class LookupNameResponse(betterproto2.Message):
-    address: "str | None" = betterproto2.field(
-        1, betterproto2.TYPE_STRING, optional=True
+    record: "NameRecord | None" = betterproto2.field(
+        1, betterproto2.TYPE_MESSAGE, optional=True
     )
     """
-    The linked address
+    The record for the requested name
     """
 
 
@@ -4309,6 +4315,69 @@ class MultisigMemberSignature(betterproto2.Message):
 default_message_pool.register_message(
     "sui.rpc.v2beta2", "MultisigMemberSignature", MultisigMemberSignature
 )
+
+
+@dataclass(eq=False, repr=False)
+class NameRecord(betterproto2.Message):
+    id: "str | None" = betterproto2.field(1, betterproto2.TYPE_STRING, optional=True)
+    """
+    Id of this record.
+
+    Note that records are stored on chain as dynamic fields of the type
+    `Field<Domain,NameRecord>`.
+    """
+
+    name: "str | None" = betterproto2.field(2, betterproto2.TYPE_STRING, optional=True)
+    """
+    The SuiNS name of this record
+    """
+
+    registration_nft_id: "str | None" = betterproto2.field(
+        3, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    The ID of the `RegistrationNFT` assigned to this record.
+
+    The owner of the corrisponding `RegistrationNFT` has the rights to
+    be able to change and adjust the `target_address` of this domain.
+
+    It is possible that the ID changes if the record expires and is
+    purchased by someone else.
+    """
+
+    expiration_timestamp: "datetime.datetime | None" = betterproto2.field(
+        4,
+        betterproto2.TYPE_MESSAGE,
+        unwrap=lambda: ___google__protobuf__.Timestamp,
+        optional=True,
+    )
+    """
+    Timestamp when the record expires.
+
+    This is either the expiration of the record itself or the expiration of
+    this record's parent if this is a leaf record.
+    """
+
+    target_address: "str | None" = betterproto2.field(
+        5, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    The target address that this name points to
+    """
+
+    data: "dict[str, str]" = betterproto2.field(
+        6,
+        betterproto2.TYPE_MAP,
+        map_meta=betterproto2.map_meta(
+            betterproto2.TYPE_STRING, betterproto2.TYPE_STRING
+        ),
+    )
+    """
+    Additional data which may be stored in a record
+    """
+
+
+default_message_pool.register_message("sui.rpc.v2beta2", "NameRecord", NameRecord)
 
 
 @dataclass(eq=False, repr=False)
@@ -4884,9 +4953,11 @@ default_message_pool.register_message(
 
 @dataclass(eq=False, repr=False)
 class ReverseLookupNameResponse(betterproto2.Message):
-    name: "str | None" = betterproto2.field(1, betterproto2.TYPE_STRING, optional=True)
+    record: "NameRecord | None" = betterproto2.field(
+        1, betterproto2.TYPE_MESSAGE, optional=True
+    )
     """
-    The linked SuiNS name
+    The record for the SuiNS name linked to the requested address
     """
 
 
