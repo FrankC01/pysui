@@ -7,7 +7,7 @@
 
 from typing import Optional, Callable, Union, Any
 from deprecated.sphinx import versionadded, deprecated, versionchanged
-from gql import gql
+from gql import gql, GraphQLRequest
 from gql.dsl import (
     DSLQuery,
     dsl_gql,
@@ -16,7 +16,7 @@ from gql.dsl import (
     DSLInlineFragment,
     DSLMutation,
 )
-from graphql import DocumentNode
+
 
 from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode, PGQL_NoOp
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -35,8 +35,8 @@ class GetCoinMetaData(PGQL_QueryNode):
         """
         self.coin_type = coin_type
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build the DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build the GraphQLRequest."""
         qres = schema.Query.coinMetadata(coinType=self.coin_type).select(
             schema.CoinMetadata.decimals,
             schema.CoinMetadata.name,
@@ -74,8 +74,8 @@ class GetAllCoinBalances(PGQL_QueryNode):
         self.owner = owner
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -112,8 +112,8 @@ class GetCoinSummary(PGQL_QueryNode):
         self.owner = owner
         self.coin_id = coin_id
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
 
         _QUERY = """
             {
@@ -165,8 +165,8 @@ class GetCoins(PGQL_QueryNode):
         self.coin_type = coin_type
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -195,8 +195,8 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
     def __init__(self) -> None:
         """QueryNode initializer."""
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         qres = schema.Query.epoch.alias("qres").select(
             schema.Epoch.totalTransactions,
             schema.Epoch.systemStateVersion,
@@ -275,8 +275,8 @@ class GetObject(PGQL_QueryNode):
         """
         self.object_id = TypeValidator.check_object_id(object_id)
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode"""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest"""
         std_object = frag.StandardObject()
         base_object = frag.BaseObject()
         return dsl_gql(
@@ -309,8 +309,8 @@ class GetObjectContent(PGQL_QueryNode):
         """
         self.object_id = TypeValidator.check_object_id(object_id)
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode"""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest"""
         return dsl_gql(
             DSLQuery(
                 object=schema.Query.object(address=self.object_id).select(
@@ -354,8 +354,8 @@ class GetMultipleObjectContent(PGQL_QueryNode):
         self.object_ids = [TypeValidator.check_object_id(x) for x in object_ids]
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode"""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest"""
         pg_cursor = frag.PageCursor().fragment(schema)
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -406,8 +406,8 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
         self.owner = owner
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -459,8 +459,8 @@ class GetMultipleGasObjects(PGQL_QueryNode):
         self.coin_ids = TypeValidator.check_object_ids(coin_object_ids)
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -504,8 +504,8 @@ class GetMultipleObjects(PGQL_QueryNode):
         self.object_ids = TypeValidator.check_object_ids(object_ids)
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -548,8 +548,8 @@ class GetPastObject(PGQL_QueryNode):
         self.object_id = TypeValidator.check_object_id(object_id)
         self.version = version
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         std_object = frag.StandardObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
 
@@ -595,7 +595,7 @@ class GetMultipleVersionedObjects(PGQL_QueryNode):
 
         self.version_list = for_versions
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         std_object = frag.StandardObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
@@ -636,7 +636,7 @@ class GetDynamicFields(PGQL_QueryNode):
         self.object_id = object_id
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Return a query for dynamic fields."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -729,8 +729,8 @@ class GetEvents(PGQL_QueryNode):
         self.event_filter = event_filter
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -765,11 +765,11 @@ class GetTx(PGQL_QueryNode):
         """
         self.digest = digest
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Builds the GQL DocumentNode
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Builds the GQL GraphQLRequest
 
-        :return: The transaction query DocumentNode for specific digest
-        :rtype: DocumentNode
+        :return: The transaction query GraphQLRequest for specific digest
+        :rtype: GraphQLRequest
         """
         std_txn = frag.StandardTransaction().fragment(schema)
         tx_effects = frag.StandardTxEffects().fragment(schema)
@@ -809,11 +809,11 @@ class GetMultipleTx(PGQL_QueryNode):
         self.next_page = next_page
         self.qfilter = qfilter
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Builds the GQL DocumentNode
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Builds the GQL GraphQLRequest
 
-        :return: The transactions query DocumentNode
-        :rtype: DocumentNode
+        :return: The transactions query GraphQLRequest
+        :rtype: GraphQLRequest
         """
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -862,11 +862,11 @@ class GetFilteredTx(PGQL_QueryNode):
         self.next_page = next_page
         self.filter = tx_filter
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Builds the GQL DocumentNode
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Builds the GQL GraphQLRequest
 
-        :return: The transactions query DocumentNode
-        :rtype: DocumentNode
+        :return: The transactions query GraphQLRequest
+        :rtype: GraphQLRequest
         """
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -908,11 +908,11 @@ class GetTxKind(PGQL_QueryNode):
         """QueryNode initializer."""
         self.digest = digest
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Builds the GQL DocumentNode
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Builds the GQL GraphQLRequest
 
-        :return: The transaction query DocumentNode for specific digest
-        :rtype: DocumentNode
+        :return: The transaction query GraphQLRequest for specific digest
+        :rtype: GraphQLRequest
         """
         tx_kind = frag.StandardTransactionKind().fragment(schema)
         prg_kind = frag.ProgrammableTxKind().fragment(schema)
@@ -947,7 +947,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
         self.owner = owner
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -1018,7 +1018,7 @@ class GetLatestCheckpointSequence(PGQL_QueryNode):
     def __init__(self):
         """__init__ QueryNode initializer."""
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         std_checkpoint = frag.StandardCheckpoint()
         pg_cursor = frag.PageCursor()
         qres = schema.Query.checkpoints(last=1).select(
@@ -1045,7 +1045,7 @@ class GetCheckpointByDigest(PGQL_QueryNode):
         """
         self.digest = digest
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         std_checkpoint = frag.StandardCheckpoint()
         pg_cursor = frag.PageCursor()
         qres = schema.Query.checkpoint(id={"digest": self.digest}).select(
@@ -1072,7 +1072,7 @@ class GetCheckpointBySequence(PGQL_QueryNode):
         """
         self.sequence_number = sequence_number
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         std_checkpoint = frag.StandardCheckpoint()
         pg_cursor = frag.PageCursor()
         qres = schema.Query.checkpoint(
@@ -1095,7 +1095,7 @@ class GetCheckpoints(PGQL_QueryNode):
         """QueryNode initializer."""
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -1134,7 +1134,7 @@ class GetProtocolConfig(PGQL_QueryNode):
         """
         self.version = version
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         std_prot_cfg = frag.StandardProtocolConfig().fragment(schema)
         qres = schema.Query.protocolConfig(protocolVersion=self.version).select(
             std_prot_cfg
@@ -1153,7 +1153,7 @@ class GetReferenceGasPrice(PGQL_QueryNode):
     def __init__(self):
         """QueryNode initializer."""
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         return dsl_gql(
             DSLQuery(schema.Query.epoch.select(schema.Epoch.referenceGasPrice))
         )
@@ -1173,7 +1173,7 @@ class GetNameServiceAddress(PGQL_QueryNode):
         """__init__ QueryNode initializer."""
         self.name = name
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         return dsl_gql(
             DSLQuery(
                 schema.Query.resolveSuinsAddress(domain=self.name).select(
@@ -1196,8 +1196,8 @@ class GetNameServiceNames(PGQL_QueryNode):
         """QueryNode initializer."""
         self.owner = owner
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
-        """Build DocumentNode."""
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
         return dsl_gql(
             DSLQuery(
                 schema.Query.address(address=self.owner).select(
@@ -1219,7 +1219,7 @@ class GetValidatorsApy(PGQL_QueryNode):
         """QueryNode initializer."""
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -1265,7 +1265,7 @@ class GetCurrentValidators(PGQL_QueryNode):
         """QueryNode initializer."""
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -1319,7 +1319,7 @@ class GetStructure(PGQL_QueryNode):
         self.module = module_name
         self.struct = structure_name
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         struc = frag.MoveStructure()
 
@@ -1363,7 +1363,7 @@ class GetMoveDataType(PGQL_QueryNode):
         self.module = module_name
         self.data_type_name = data_type_name
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         struc = frag.MoveStructure().fragment(schema)
         enum = frag.MoveEnum().fragment(schema)
@@ -1407,7 +1407,7 @@ class GetStructures(PGQL_QueryNode):
         self.module = module_name
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -1456,7 +1456,7 @@ class GetFunction(PGQL_QueryNode):
         self.module = module_name
         self.function = function_name
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         func = frag.MoveFunction().fragment(schema)
 
@@ -1496,7 +1496,7 @@ class GetFunctions(PGQL_QueryNode):
         self.module = module_name
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -1544,7 +1544,7 @@ class GetModule(PGQL_QueryNode):
         self.package = package
         self.module = module_name
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         func = frag.MoveFunction().fragment(schema)
         struc = frag.MoveStructure().fragment(schema)
@@ -1580,7 +1580,7 @@ class GetPackage(PGQL_QueryNode):
         self.package = package
         self.next_page = next_page
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
@@ -1650,7 +1650,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
         self.tx_meta = tx_meta if tx_meta else {}
         self.tx_skipchecks = skip_checks
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         std_txn = frag.StandardTransaction().fragment(schema)
         base_obj = frag.BaseObject().fragment(schema)
@@ -1693,7 +1693,7 @@ class DryRunTransaction(PGQL_QueryNode):
         """__init__ Initialize DryRunTransaction object."""
         self.tx_data = tx_bytestr
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         std_txn = frag.StandardTransaction().fragment(schema)
         base_obj = frag.BaseObject().fragment(schema)
@@ -1733,7 +1733,7 @@ class ExecuteTransaction(PGQL_QueryNode):
         self.tx_data: str = tx_bytestr
         self.sigs: list[str] = sig_array
 
-    def as_document_node(self, schema: DSLSchema) -> DocumentNode:
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
 
         qres = schema.Mutation.executeTransactionBlock(

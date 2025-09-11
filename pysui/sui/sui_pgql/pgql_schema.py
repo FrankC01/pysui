@@ -45,9 +45,12 @@ class Schema:
                 verify=True,
                 http2=True,
                 timeout=self.timeout,
-                proxies=proxies,
+                proxy=proxies,
             ),
             fetch_schema_from_transport=True,
+            introspection_args={
+                "input_value_deprecation": False,
+            },
         )
         with _init_client as session:
             _long_version = session.transport.response_headers[
