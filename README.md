@@ -30,7 +30,7 @@ Bumped dependentices version, recommended to re-run `pip install -r requirements
 
 ## PyPi current
 
-**Release-0.89.0 - Released 2025-09-01**
+**Release-0.90.0 - Released 2025-09-13**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
