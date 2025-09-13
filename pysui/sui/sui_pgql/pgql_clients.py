@@ -112,7 +112,7 @@ class BaseSuiGQLClient(PysuiClient):
     @property
     def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
-        return self._schema.rpc_config.checkpoints.nodes[0].reference_gas_price
+        return self._schema.rpc_config.checkpoint.reference_gas_price
 
     def rpc_config(self) -> SuiConfigGQL:
         """Fetch the graphql configuration."""
@@ -122,7 +122,7 @@ class BaseSuiGQLClient(PysuiClient):
         self, for_version: Optional[str] = None
     ) -> pgql_type.TransactionConstraints:
         """Fetch the protocol constraint block."""
-        return self._schema.rpc_config.protocolConfig
+        return self._schema.rpc_config.protocolConfigs
 
     def url(self) -> str:
         """Fetch the active GraphQL URL."""
