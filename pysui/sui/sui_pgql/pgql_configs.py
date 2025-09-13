@@ -195,6 +195,6 @@ class SuiConfigBetaGQL:
 
 def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable]:
     """Get the configuration for Sui GraphQL."""
-    if env == "betatest" or env == "betamain":
+    if env in ["devnet-beta", "testnet-beta", "mainnet-beta", "betatest", "betamain"]:
         return _QUERY_BETA, SuiConfigBetaGQL.from_query
     return _QUERY, SuiConfigGQL.from_query
