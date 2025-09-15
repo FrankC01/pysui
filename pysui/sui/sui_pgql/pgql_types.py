@@ -394,6 +394,7 @@ class ObjectReadGQL(PGQL_Type):
     content: Optional[dict] = None
     owner_id: Optional[str] = None
     previous_transaction_digest: Optional[str] = None
+    object_kind: Optional[str] = ""  # Yes
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadGQL":
@@ -430,6 +431,10 @@ class ObjectReadGQL(PGQL_Type):
                         res_dict["object_owner"] = SuiObjectOwnedParent(
                             owner_kind, owner["parent_id"]["address"]
                         )
+                    # case "Parent":
+                    #     res_dict["object_owner"] = SuiObjectOwnedParent(
+                    #         owner_kind, owner["parent"]["parent_id"]
+                    #     )
                     case "Immutable":
                         res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
                 # Flatten dictionary
@@ -445,27 +450,17 @@ class ObjectReadsGQL(PGQL_Type):
     """Collection of object data objects."""
 
     data: list[ObjectReadGQL]
-    next_cursor: Optional[PagingCursor] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadsGQL":
         """Serializes query result to list of Sui objects.
 
-        The in_data is a dictionary with either 'multiGetObjects:list' and no cursor
-        or 'objects:list' with cursor
+        The in_data is a dictionary with 'multiGetObjects:list'
         """
-        if mgo := in_data.get("multiGetObjects"):
-            dlist: list[ObjectReadGQL] = [
-                ObjectReadGQL.from_query(i_obj) for i_obj in mgo
-            ]
-            return ObjectReadsGQL(dlist)
-        else:
-            obj_mbase = in_data.pop("objects")
-            ncurs: PagingCursor = PagingCursor.from_dict(obj_mbase["cursor"])
-            dlist: list[ObjectReadGQL] = [
-                ObjectReadGQL.from_query(i_obj) for i_obj in obj_mbase["objects_data"]
-            ]
-            return ObjectReadsGQL(dlist, ncurs)
+        dlist: list[ObjectReadGQL] = [
+            ObjectReadGQL.from_query(i_obj) for i_obj in in_data.pop("multiGetObjects")
+        ]
+        return ObjectReadsGQL(dlist)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
