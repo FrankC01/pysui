@@ -89,7 +89,6 @@ class GetAllCoinBalances(PGQL_QueryNode):
         balance_connection.select(
             cursor=schema.BalanceConnection.pageInfo.select(pg_cursor.fragment(schema)),
             type_balances=schema.BalanceConnection.nodes.select(
-                schema.Balance.coinObjectCount,
                 schema.Balance.totalBalance,
                 schema.Balance.coinType.select(coin_type=schema.MoveType.repr),
             ),
@@ -149,14 +148,14 @@ class GetCoins(PGQL_QueryNode):
         self,
         *,
         owner: str,
-        coin_type: Optional[str] = "0x2::sui::SUI",
+        coin_type: Optional[str] = "0x2::coin::Coin<0x2::sui::SUI>",
         next_page: Optional[pgql_type.PagingCursor] = None,
     ):
         """QueryNode initializer.
 
         :param owner: Owner's Sui address
         :type owner: str
-        :param coin_type: The coin type to use in filtering, defaults to "0x2::sui::SUI"
+        :param coin_type: The fully qualified coin type to use in filtering, defaults to "0x2::coin::Coin<0x2::sui::SUI>"
         :type coin_type: str, optional
         :param next_page: pgql_type.PagingCursor to advance query, defaults to None
         :type next_page: pgql_type.PagingCursor
@@ -171,16 +170,21 @@ class GetCoins(PGQL_QueryNode):
             return PGQL_NoOp
 
         qres = schema.Query.address(address=self.owner).alias("qres")
-        coin_connection = schema.Address.coins(type=self.coin_type).alias("coins")
+        coin_connection = schema.Address.objects(filter={"type": self.coin_type}).alias(
+            "coins"
+        )
         if self.next_page:
             coin_connection(after=self.next_page.endCursor)
 
         std_coin = frag.StandardCoin()
         pg_cursor = frag.PageCursor()
+
         coin_connection.select(std_coin.fragment(schema))
         qres.select(coin_connection)
         return dsl_gql(
-            std_coin.fragment(schema), pg_cursor.fragment(schema), DSLQuery(qres)
+            std_coin.fragment(schema),
+            pg_cursor.fragment(schema),
+            DSLQuery(qres),
         )
 
     @staticmethod
@@ -442,6 +446,7 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
 @versionchanged(
     version="0.84.0", reason="Reference https://github.com/FrankC01/pysui/issues/297"
 )
+@versionchanged(version="0.91.0", reason="Paging no longer supported")
 class GetMultipleGasObjects(PGQL_QueryNode):
     """Return basic Sui gas represnetation for each coin_id string."""
 
@@ -449,33 +454,26 @@ class GetMultipleGasObjects(PGQL_QueryNode):
         self,
         *,
         coin_object_ids: list[str],
-        next_page: Optional[pgql_type.PagingCursor] = None,
     ):
         """QueryNode initializer.
 
         :param coin_object_ids: list of object ids to fetch
         :type coin_object_ids: list[str]
+        :param next_page: Ignored
+        :type next_page: Ignored
         """
-        self.coin_ids = TypeValidator.check_object_ids(coin_object_ids)
-        self.next_page = next_page
+        self.coin_ids: list[str] = TypeValidator.check_object_ids(coin_object_ids)
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
 
-        std_coin = frag.StandardCoinObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        qres = schema.Query.objects(filter={"objectIds": self.coin_ids})
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
+        std_coin = frag.BaseSuiObjectForCoin().fragment(schema)
+        coin_ids = [{"address": cid} for cid in self.coin_ids]
+        qres = schema.Query.multiGetObjects(keys=coin_ids)
+        qres.select(std_coin)
 
-        qres = schema.Query.objects(filter={"objectIds": self.coin_ids}).select(
-            std_coin
-        )
         return dsl_gql(
             std_coin,
-            pg_cursor,
             DSLQuery(qres),
         )
 
@@ -485,6 +483,7 @@ class GetMultipleGasObjects(PGQL_QueryNode):
         return pgql_type.SuiCoinFromObjectsGQL.from_query
 
 
+@versionchanged(version="0.91.0", reason="Paging no longer supported")
 class GetMultipleObjects(PGQL_QueryNode):
     """Returns object data for list of object ids."""
 
@@ -492,7 +491,6 @@ class GetMultipleObjects(PGQL_QueryNode):
         self,
         *,
         object_ids: list[str],
-        next_page: Optional[pgql_type.PagingCursor] = None,
     ):
         """QueryNode initializer.
 
@@ -502,27 +500,17 @@ class GetMultipleObjects(PGQL_QueryNode):
         :type next_page: pgql_type.PagingCursor
         """
         self.object_ids = TypeValidator.check_object_ids(object_ids)
-        self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        qres = schema.Query.objects(filter={"objectIds": self.object_ids})
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
+        obj_ids = [{"address": cid} for cid in self.object_ids]
+        qres = schema.Query.multiGetObjects(keys=obj_ids)
 
         std_object = frag.StandardObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        qres.select(
-            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
-            objects_data=schema.ObjectConnection.nodes.select(std_object),
-        )
+        qres.select(std_object)
 
         return dsl_gql(
-            pg_cursor,
             std_object,
             base_object,
             DSLQuery(qres),
@@ -572,6 +560,10 @@ class GetPastObject(PGQL_QueryNode):
 
 
 @versionadded(version="0.76.0", reason="Sui 1.40.0 introduced")
+@versionchanged(
+    version="0.91.0",
+    reason="GraphQL beta changed object_id to address in dictionary argument",
+)
 class GetMultipleVersionedObjects(PGQL_QueryNode):
     """GetMultipleVersionedObjects When executed, return the object information for a specified version.
 
@@ -585,7 +577,7 @@ class GetMultipleVersionedObjects(PGQL_QueryNode):
 
         Where each `dict` (key) is of construct:
         {
-            objectId:str, # Object id
+            address:str, # Object id
             version:int   # Version to fetch
         }
 

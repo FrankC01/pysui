@@ -151,13 +151,13 @@ class SuiCoinObjectGQL(PGQL_Type):
         match owner_kind:
             case "AddressOwner":
                 ser_dict["object_owner"] = SuiObjectOwnedAddress(
-                    owner_kind, owner["owner"]["address_id"]
+                    owner_kind, owner["address_id"]["address"]
                 )
             case "Shared":
                 ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
-            case "Parent":
+            case "ObjectOwner":
                 ser_dict["object_owner"] = SuiObjectOwnedParent(
-                    owner_kind, owner["owner"]["parent_id"]
+                    owner_kind, owner["parent_id"]["address"]
                 )
             case "Immutable":
                 ser_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
@@ -171,30 +171,28 @@ class SuiCoinFromObjectsGQL(PGQL_Type):
     """Collection of sui coin from objects."""
 
     data: list[Union[SuiCoinObjectGQL, ObjectReadDeletedGQL]]
-    next_cursor: PagingCursor
+    next_cursor: Optional[PagingCursor] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SuiCoinFromObjectsGQL":
         if in_data:
             ser_dict: dict = {}
-            ncurs: PagingCursor = PagingCursor.from_dict(
-                in_data["objects"].pop("cursor")
-            )
             _fast_flat(in_data, ser_dict)
             mid_list: list[dict] = []
-            for node in ser_dict["coin_objects"]:
-                ser_coin_dict: dict = node["asMoveObject"]["asCoin"]
+            for node in ser_dict["multiGetObjects"]:
+                ser_coin_dict: dict = node["asMoveObject"]
+                mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
                 # _fast_flat(node, ser_dict)
                 # If fetching by ID it may not exist
-                if (
-                    ser_coin_dict.get("status") == "HISTORICAL"
-                    or ser_coin_dict.get("status") == "INDEXED"
-                ):
-                    mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
-                elif ser_coin_dict.get("status") == "WRAPPED_OR_DELETED":
-                    # ser_coin_dict.pop("amo")
-                    mid_list.append(ObjectReadDeletedGQL.from_dict(ser_coin_dict))
-            return clz.from_dict({"data": mid_list, "next_cursor": ncurs})
+                # if (
+                #     ser_coin_dict.get("status") == "HISTORICAL"
+                #     or ser_coin_dict.get("status") == "INDEXED"
+                # ):
+                #     mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
+                # elif ser_coin_dict.get("status") == "WRAPPED_OR_DELETED":
+                #     # ser_coin_dict.pop("amo")
+                #     mid_list.append(ObjectReadDeletedGQL.from_dict(ser_coin_dict))
+            return clz.from_dict({"data": mid_list, "next_cursor": None})
         return NoopGQL.from_query()
 
 
@@ -364,7 +362,6 @@ class ObjectReadGQL(PGQL_Type):
     version: int  # Yes
     object_id: str  # Yes
     object_digest: str  # Yes
-    object_kind: str  # Yes
 
     storage_rebate: str  # Yes
     bcs: str  # Yes
@@ -381,6 +378,7 @@ class ObjectReadGQL(PGQL_Type):
     content: Optional[dict] = None
     owner_id: Optional[str] = None
     previous_transaction_digest: Optional[str] = None
+    object_kind: Optional[str] = ""  # Yes
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadGQL":
@@ -409,14 +407,18 @@ class ObjectReadGQL(PGQL_Type):
                 match owner_kind:
                     case "AddressOwner":
                         res_dict["object_owner"] = SuiObjectOwnedAddress(
-                            owner_kind, owner["owner"]["address_id"]
+                            owner_kind, owner["address_id"]["address"]
                         )
                     case "Shared":
                         res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
-                    case "Parent":
+                    case "ObjectOwner":
                         res_dict["object_owner"] = SuiObjectOwnedParent(
-                            owner_kind, owner["parent"]["parent_id"]
+                            owner_kind, owner["parent_id"]["address"]
                         )
+                    # case "Parent":
+                    #     res_dict["object_owner"] = SuiObjectOwnedParent(
+                    #         owner_kind, owner["parent"]["parent_id"]
+                    #     )
                     case "Immutable":
                         res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
                 # Flatten dictionary
@@ -432,21 +434,17 @@ class ObjectReadsGQL(PGQL_Type):
     """Collection of object data objects."""
 
     data: list[ObjectReadGQL]
-    next_cursor: PagingCursor
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadsGQL":
         """Serializes query result to list of Sui objects.
 
-        The in_data is a dictionary with 2 keys: 'cursor' and 'objects_data'
+        The in_data is a dictionary with 'multiGetObjects:list'
         """
-        in_data = in_data.pop("objects")
-        # Get cursor
-        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
         dlist: list[ObjectReadGQL] = [
-            ObjectReadGQL.from_query(i_obj) for i_obj in in_data["objects_data"]
+            ObjectReadGQL.from_query(i_obj) for i_obj in in_data.pop("multiGetObjects")
         ]
-        return ObjectReadsGQL(dlist, ncurs)
+        return ObjectReadsGQL(dlist)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -588,7 +586,7 @@ class BalanceGQL(PGQL_Type):
     """Balance representation class."""
 
     coin_type: str
-    coin_object_count: int
+
     total_balance: str
     owner: Optional[str] = ""
 
