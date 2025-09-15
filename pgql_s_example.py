@@ -706,7 +706,7 @@ if __name__ == "__main__":
     try:
         cfg = PysuiConfiguration(
             group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
-            profile_name="devnet",
+            profile_name="devnet-beta",
             # profile_name="testnet",
             # profile_name="mainnet",
             # persist=True,
@@ -721,10 +721,10 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
-        # do_sysstate(client_init)
+        # do_sysstate(client_init) # TODO: Needs update from Mysten, missing active validators
         # do_all_balances(client_init)
         # do_object(client_init)
         # do_object_content(client_init)
@@ -733,7 +733,7 @@ if __name__ == "__main__":
         # do_multiple_object_versions(client_init)
         # do_multiple_object_content(client_init)
         # do_objects_for(client_init)
-        # do_dynamics(client_init)
+        do_dynamics(client_init)
         # do_event(client_init)
         # do_tx(client_init)
         # do_txs(client_init)

@@ -385,6 +385,7 @@ class ObjectReadGQL(PGQL_Type):
     content: Optional[dict] = None
     owner_id: Optional[str] = None
     previous_transaction_digest: Optional[str] = None
+    object_kind: Optional[str] = ""  # Yes
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadGQL":
@@ -421,6 +422,10 @@ class ObjectReadGQL(PGQL_Type):
                         res_dict["object_owner"] = SuiObjectOwnedParent(
                             owner_kind, owner["parent_id"]["address"]
                         )
+                    # case "Parent":
+                    #     res_dict["object_owner"] = SuiObjectOwnedParent(
+                    #         owner_kind, owner["parent"]["parent_id"]
+                    #     )
                     case "Immutable":
                         res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
                 # Flatten dictionary
@@ -436,7 +441,6 @@ class ObjectReadsGQL(PGQL_Type):
     """Collection of object data objects."""
 
     data: list[ObjectReadGQL]
-    next_cursor: Optional[PagingCursor] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadsGQL":
