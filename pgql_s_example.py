@@ -45,7 +45,7 @@ def do_coins_for_type(client: SyncGqlClient):
         client.execute_query_node(
             with_node=qn.GetCoins(
                 owner=client.config.active_address,
-                coin_type="0x2::sui::SUI",
+                coin_type="0x2::coin::Coin<0x2::sui::SUI>",
             )
         )
     )
@@ -131,9 +131,7 @@ def do_object(client: SyncGqlClient):
 
     To run, replace object_id with object you are interested in.
     """
-    gobj = qn.GetObject(
-        object_id="0x04cc525490ed375c21d1ec17841cb3b8363b463613b8673ce4620c4b885acb02"
-    )
+    gobj = qn.GetObject(object_id="0x6")
     # print(client.query_node_to_string(query_node=gobj))
     handle_result(client.execute_query_node(with_node=gobj))
 
@@ -145,8 +143,8 @@ def do_past_object(client: SyncGqlClient):
     handle_result(
         client.execute_query_node(
             with_node=qn.GetPastObject(
-                object_id="0x04cc525490ed375c21d1ec17841cb3b8363b463613b8673ce4620c4b885acb02",
-                version=17078252,
+                object_id="0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+                version=3,
             )
         )
     )
@@ -158,8 +156,8 @@ def do_multiple_object_versions(client: SyncGqlClient):
     """
     object_versions = [
         {
-            "objectId": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
-            "version": 43,
+            "address": "0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+            "version": 3,
         }
     ]
     handle_result(
@@ -188,8 +186,8 @@ def do_objects_for(client: SyncGqlClient):
         client.execute_query_node(
             with_node=qn.GetMultipleObjects(
                 object_ids=[
-                    "0x622bd4386896675a1e31d489b789a3b848468c85f081537cbab076092b0727ed",
-                    "0x365d59f8994c6d18c682a9cede48cfd9313b72d4f9de029529e388898113231b",
+                    "0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+                    "0x285c48a3bc7440f08ad91caf6955f8b9b8c2db69e4b4c5071aa94c2468689d93",
                 ]
             )
         )
@@ -693,7 +691,7 @@ if __name__ == "__main__":
     try:
         cfg = PysuiConfiguration(
             group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
-            profile_name="devnet",
+            profile_name="devnet-beta",
             # profile_name="testnet",
             # profile_name="mainnet",
             # persist=True,
@@ -708,17 +706,17 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
-        # do_sysstate(client_init)
+        # do_sysstate(client_init) # TODO: Needs update from Mysten, missing active validators
         # do_all_balances(client_init)
-        # do_object(client_init)
+        # do_object(client_init) # TODO: Check on Object.status
         # do_objects(client_init)
         # do_past_object(client_init)
         # do_multiple_object_versions(client_init)
         # do_objects_for(client_init)
-        # do_dynamics(client_init)
+        do_dynamics(client_init)
         # do_event(client_init)
         # do_tx(client_init)
         # do_txs(client_init)

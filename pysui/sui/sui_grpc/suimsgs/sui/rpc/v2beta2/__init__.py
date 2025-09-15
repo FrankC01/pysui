@@ -353,6 +353,11 @@ class CoinTreasurySupplyState(betterproto2.Enum):
     Supply is fixed (TreasuryCap consumed, no more minting possible)
     """
 
+    BURN_ONLY = 2
+    """
+    Supply can only decrease (burning allowed, minting not allowed)
+    """
+
 
 class CommandArgumentErrorCommandArgumentErrorKind(betterproto2.Enum):
     COMMAND_ARGUMENT_ERROR_KIND_UNKNOWN = 0
