@@ -47,7 +47,7 @@ async def do_coins_for_type(client: AsyncGqlClient):
         await client.execute_query_node(
             with_node=qn.GetCoins(
                 owner=client.config.active_address,
-                coin_type="0x2::sui::SUI",
+                coin_type="0x2::coin::Coin<0x2::sui::SUI>",
             )
         )
     )
@@ -158,8 +158,8 @@ async def do_past_object(client: AsyncGqlClient):
     handle_result(
         await client.execute_query_node(
             with_node=qn.GetPastObject(
-                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
-                version=17078252,
+                object_id="0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+                version=3,
             )
         )
     )
@@ -171,7 +171,7 @@ async def do_multiple_object_versions(client: AsyncGqlClient):
     """
     object_versions = [
         {
-            "objectId": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
+            "address": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
             "version": 43,
         }
     ]
@@ -191,9 +191,8 @@ async def do_objects_for(client: AsyncGqlClient):
         await client.execute_query_node(
             with_node=qn.GetMultipleObjects(
                 object_ids=[
-                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-                    "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
-                    "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
+                    "0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+                    "0x285c48a3bc7440f08ad91caf6955f8b9b8c2db69e4b4c5071aa94c2468689d93",
                 ]
             )
         )
