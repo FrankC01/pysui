@@ -7,6 +7,7 @@
 
 from functools import cache
 from typing import Any
+from deprecated.sphinx import versionchanged
 from pysui.sui.sui_pgql.pgql_clients import PGQL_Fragment
 from gql.dsl import DSLFragment, DSLInlineFragment, DSLMetaField, DSLSchema, DSLField
 
@@ -43,31 +44,27 @@ class PageCursor(PGQL_Fragment):
         )
 
 
-class StandardCoin(PGQL_Fragment):
-    """StandardCoin reusable fragment."""
+class BaseSuiObjectForCoin(PGQL_Fragment):
+    """Base Sui Object Used since beta."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
-        pg_cursor = PageCursor()
         return (
-            DSLFragment("CoinStandard")
-            .on(schema.CoinConnection)
+            DSLFragment("BaseSuiObjectForCoin")
+            .on(schema.Object)
             .select(
-                cursor=schema.CoinConnection.pageInfo.select(
-                    pg_cursor.fragment(schema)
-                ),
-                coin_objects=schema.CoinConnection.nodes.select(
-                    schema.Coin.version,
-                    schema.Coin.hasPublicTransfer,
-                    schema.Coin.previousTransactionBlock.select(
-                        previous_transaction=schema.TransactionBlock.digest
+                schema.Object.asMoveObject.select(
+                    schema.MoveObject.version,
+                    schema.MoveObject.hasPublicTransfer,
+                    schema.MoveObject.previousTransaction.select(
+                        previous_transaction=schema.Transaction.digest
                     ),
-                    schema.Coin.owner.select(
+                    schema.MoveObject.owner.select(
                         DSLInlineFragment()
                         .on(schema.AddressOwner)
                         .select(
-                            schema.AddressOwner.owner.select(
-                                address_id=schema.Owner.address
+                            address_id=schema.AddressOwner.address.select(
+                                schema.Address.address
                             ),
                             obj_owner_kind=DSLMetaField("__typename"),
                         ),
@@ -83,84 +80,80 @@ class StandardCoin(PGQL_Fragment):
                             obj_owner_kind=DSLMetaField("__typename"),
                         ),
                         DSLInlineFragment()
-                        .on(schema.Parent)
+                        .on(schema.ObjectOwner)
                         .select(
-                            schema.Parent.parent.select(parent_id=schema.Owner.address),
+                            parent_id=schema.ObjectOwner.address.select(
+                                schema.Address.address
+                            ),
                             obj_owner_kind=DSLMetaField("__typename"),
                         ),
                     ),
-                    schema.Coin.contents.select(
-                        schema.MoveValue.type.select(coin_type=schema.MoveType.repr)
+                    schema.MoveObject.contents.select(
+                        schema.MoveValue.type.select(coin_type=schema.MoveType.repr),
+                        schema.MoveValue.json,
                     ),
-                    object_digest=schema.Coin.digest,
-                    balance=schema.Coin.coinBalance,
-                    coin_object_id=schema.Coin.address,
-                ),
+                    object_digest=schema.MoveObject.digest,
+                    coin_object_id=schema.MoveObject.address,
+                )
             )
         )
 
 
-class StandardCoinObject(PGQL_Fragment):
+@versionchanged(version="0.91.0", reason="GraphQL Beta")
+class StandardCoin(PGQL_Fragment):
     """StandardCoin reusable fragment."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
         pg_cursor = PageCursor()
         return (
-            DSLFragment("CoinStandard")
-            .on(schema.ObjectConnection)
+            DSLFragment("StandardCoin")
+            .on(schema.MoveObjectConnection)
             .select(
-                cursor=schema.ObjectConnection.pageInfo.select(
+                cursor=schema.MoveObjectConnection.pageInfo.select(
                     pg_cursor.fragment(schema)
                 ),
-                coin_objects=schema.ObjectConnection.nodes.select(
-                    schema.Object.asMoveObject.select(
-                        schema.MoveObject.asCoin.select(
-                            schema.Coin.status,
-                            schema.Coin.version,
-                            schema.Coin.hasPublicTransfer,
-                            schema.Coin.previousTransactionBlock.select(
-                                previous_transaction=schema.TransactionBlock.digest
+                coin_objects=schema.MoveObjectConnection.nodes.select(
+                    schema.MoveObject.version,
+                    schema.MoveObject.hasPublicTransfer,
+                    schema.MoveObject.previousTransaction.select(
+                        previous_transaction=schema.Transaction.digest
+                    ),
+                    schema.MoveObject.owner.select(
+                        DSLInlineFragment()
+                        .on(schema.AddressOwner)
+                        .select(
+                            address_id=schema.AddressOwner.address.select(
+                                schema.Address.address
                             ),
-                            schema.Coin.owner.select(
-                                DSLInlineFragment()
-                                .on(schema.AddressOwner)
-                                .select(
-                                    schema.AddressOwner.owner.select(
-                                        address_id=schema.Owner.address
-                                    ),
-                                    obj_owner_kind=DSLMetaField("__typename"),
-                                ),
-                                DSLInlineFragment()
-                                .on(schema.Shared)
-                                .select(
-                                    initial_version=schema.Shared.initialSharedVersion,
-                                    obj_owner_kind=DSLMetaField("__typename"),
-                                ),
-                                DSLInlineFragment()
-                                .on(schema.Immutable)
-                                .select(
-                                    obj_owner_kind=DSLMetaField("__typename"),
-                                ),
-                                DSLInlineFragment()
-                                .on(schema.Parent)
-                                .select(
-                                    schema.Parent.parent.select(
-                                        parent_id=schema.Owner.address
-                                    ),
-                                    obj_owner_kind=DSLMetaField("__typename"),
-                                ),
-                            ),
-                            schema.Coin.contents.select(
-                                schema.MoveValue.type.select(
-                                    coin_type=schema.MoveType.repr
-                                )
-                            ),
-                            object_digest=schema.Coin.digest,
-                            balance=schema.Coin.coinBalance,
-                            coin_object_id=schema.Coin.address,
+                            obj_owner_kind=DSLMetaField("__typename"),
                         ),
-                    )
+                        DSLInlineFragment()
+                        .on(schema.Shared)
+                        .select(
+                            initial_version=schema.Shared.initialSharedVersion,
+                            obj_owner_kind=DSLMetaField("__typename"),
+                        ),
+                        DSLInlineFragment()
+                        .on(schema.Immutable)
+                        .select(
+                            obj_owner_kind=DSLMetaField("__typename"),
+                        ),
+                        DSLInlineFragment()
+                        .on(schema.ObjectOwner)
+                        .select(
+                            parent_id=schema.ObjectOwner.address.select(
+                                schema.Address.address
+                            ),
+                            obj_owner_kind=DSLMetaField("__typename"),
+                        ),
+                    ),
+                    schema.MoveObject.contents.select(
+                        schema.MoveValue.type.select(coin_type=schema.MoveType.repr),
+                        schema.MoveValue.json,
+                    ),
+                    object_digest=schema.MoveObject.digest,
+                    coin_object_id=schema.MoveObject.address,
                 ),
             )
         )
@@ -178,7 +171,6 @@ class BaseObject(PGQL_Fragment):
                 schema.Object.version,
                 object_digest=schema.Object.digest,
                 object_id=schema.Object.address,
-                object_kind=schema.Object.status,
             )
         )
 
@@ -193,14 +185,14 @@ class StandardObject(PGQL_Fragment):
             DSLFragment("ObjectStandard")
             .on(schema.Object)
             .select(
-                schema.Object.bcs,
+                schema.Object.objectBcs.alias("bcs"),
                 base_object.fragment(schema),
                 schema.Object.owner.select(
                     DSLInlineFragment()
                     .on(schema.AddressOwner)
                     .select(
-                        schema.AddressOwner.owner.select(
-                            address_id=schema.Owner.address
+                        address_id=schema.AddressOwner.address.select(
+                            schema.Address.address
                         ),
                         obj_owner_kind=DSLMetaField("__typename"),
                     ),
@@ -216,15 +208,17 @@ class StandardObject(PGQL_Fragment):
                         obj_owner_kind=DSLMetaField("__typename"),
                     ),
                     DSLInlineFragment()
-                    .on(schema.Parent)
+                    .on(schema.ObjectOwner)
                     .select(
-                        schema.Parent.parent.select(parent_id=schema.Owner.address),
+                        parent_id=schema.ObjectOwner.address.select(
+                            schema.Address.address
+                        ),
                         obj_owner_kind=DSLMetaField("__typename"),
                     ),
                 ),
                 storage_rebate=schema.Object.storageRebate,
-                prior_transaction=schema.Object.previousTransactionBlock.select(
-                    previous_transaction_digest=schema.TransactionBlock.digest
+                prior_transaction=schema.Object.previousTransaction.select(
+                    previous_transaction_digest=schema.Transaction.digest
                 ),
                 as_move_content=schema.Object.asMoveObject.select(
                     has_public_transfer=schema.MoveObject.hasPublicTransfer,
@@ -236,7 +230,7 @@ class StandardObject(PGQL_Fragment):
                     ),
                 ),
                 as_move_package=schema.Object.asMovePackage.select(
-                    bcs=schema.MovePackage.bcs
+                    bcs=schema.MovePackage.moduleBcs
                 ),
             )
         )
