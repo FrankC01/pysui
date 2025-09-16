@@ -99,7 +99,7 @@ def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 
-    __ALIAS_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9._-]*$")
+    __ALIAS_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z][\w.-]*$")
 
     @versionchanged(version="0.29.0", reason="Now accepts ws url.")
     @versionchanged(version="0.53.0", reason="Added GraphQL url property.")
@@ -249,8 +249,7 @@ class SuiConfig(ClientConfiguration):
             and isinstance(new_alias, str)
             and SUI_MIN_ALIAS_LEN <= len(new_alias) <= SUI_MAX_ALIAS_LEN
         ):
-            re_alias = self.__ALIAS_PATTERN.findall(new_alias)
-            if not re_alias or len(re_alias[0]) != len(new_alias):
+            if not self.__ALIAS_PATTERN.fullmatch(new_alias):
                 raise ValueError(f"Invalid new_alias {new_alias} for alias")
             self._replace_alias_key(
                 self._cref_result_for(old_alias, CrefType.ALIAS, CrefType.INDEX),
