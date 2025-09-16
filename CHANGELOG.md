@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.90.0] - Unpublished
+## [0.90.0] - 2025-09-13
 
 Bumped dependentices version, if cloning or branching from repo recommended to re-run `pip install -r requirements.txt`
 
@@ -14,10 +14,13 @@ Bumped dependentices version, if cloning or branching from repo recommended to r
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/341) JSON RPC: Client get_gas_from_faucet not handling exception
+- [bug](https://github.com/FrankC01/pysui/pull/345) Typo in global constants
+- [bug](https://github.com/FrankC01/pysui/pull/343) Fix alias length validation logic in JSON RPC configuration operation
 
 ### Changed
 
-- Bumped gql, httpx, h2, websockets, pysui-fastcrypto
+- [change](https://github.com/FrankC01/pysui/pull/347) Bumped gql, httpx, h2, websockets, pysui-fastcrypto
+- [change](https://github.com/FrankC01/pysui/pull/348) JSON RPC address print
 
 ### Removed
 

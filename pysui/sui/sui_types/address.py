@@ -39,6 +39,10 @@ class SuiAddress(SuiBaseType):
         # Alias for transaction validation
         self.address = testvalid
 
+    def __repr__(self):
+        #return the sui address 
+        return f" Sui address= {self.address}"
+
     @property
     def signer(self) -> str:
         """Alias for signer in transaction validation."""
