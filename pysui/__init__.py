@@ -15,7 +15,7 @@ import sys
 import logging
 
 logger = logging.getLogger("pysui")
-if not logging.getLogger().handlers:
+if not logger.handlers:
     logger.addHandler(logging.NullHandler())
     logger.propagate = False
 
