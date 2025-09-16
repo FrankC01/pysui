@@ -423,7 +423,7 @@ class SuiConfig(ClientConfiguration):
         keystring: Union[str, dict],
         install: bool = False,
         make_active: Optional[bool] = False,
-        alias: Optional[str] = False,
+        alias: Optional[str] = None,
     ) -> SuiAddress:
         """add_keypair_from_keystring Adds a KeyPair from Sui keystring.
 
