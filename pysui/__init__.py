@@ -13,7 +13,6 @@
 """pysui package."""
 import sys
 import logging
-from pysui.version import __version__
 
 logger = logging.getLogger("pysui")
 if not logging.getLogger().handlers:
