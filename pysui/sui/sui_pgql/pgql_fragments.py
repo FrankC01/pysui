@@ -417,7 +417,11 @@ class ProgrammableTxKind(PGQL_Fragment):
                         )
                     ),
                 ),
+<<<<<<< HEAD
                 schema.ProgrammableTransaction.commands.select(
+=======
+                schema.ProgrammableTransaction.transactions.select(
+>>>>>>> 30fdd47 (GraphQL Beta Transition)
                     DSLInlineFragment()
                     .on(schema.CommandConnection)
                     .select(
@@ -715,7 +719,10 @@ class StandardTransactionKind(PGQL_Fragment):
             DSLFragment("TxKind")
             .on(schema.Transaction)
             .select(
+<<<<<<< HEAD
                 schema.Transaction.digest,
+=======
+>>>>>>> 30fdd47 (GraphQL Beta Transition)
                 schema.Transaction.kind.select(
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransaction)
@@ -752,7 +759,11 @@ class StandardCheckpoint(PGQL_Fragment):
                 schema.Checkpoint.timestamp,
                 schema.Checkpoint.previousCheckpointDigest,
                 schema.Checkpoint.networkTotalTransactions,
+<<<<<<< HEAD
                 transaction_blocks=schema.Checkpoint.transactions.select(
+=======
+                transaction_blocks=schema.Checkpoint.transactionBlocks.select(
+>>>>>>> 30fdd47 (GraphQL Beta Transition)
                     cursor=schema.TransactionConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),

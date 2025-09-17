@@ -812,9 +812,12 @@ class GetMultipleTx(PGQL_QueryNode):
             cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionConnection.nodes.select(
                 schema.Transaction.digest,
+<<<<<<< HEAD
                 schema.Transaction.kind.select(
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
+=======
+>>>>>>> 30fdd47 (GraphQL Beta Transition)
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
                 ),
@@ -877,6 +880,7 @@ class GetFilteredTx(PGQL_QueryNode):
         qres.select(
             cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionConnection.nodes.select(
+<<<<<<< HEAD
                 schema.Transaction.digest,
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
@@ -893,6 +897,15 @@ class GetFilteredTx(PGQL_QueryNode):
                         schema.ExecutionError.constant,
                         schema.ExecutionError.message,
                     ),
+=======
+                schema.TransactionBlock.digest,
+                schema.TransactionBlock.signatures,
+                schema.TransactionBlock.kind.select(tx_kind=DSLMetaField("__typename")),
+                schema.TransactionBlock.effects.select(
+                    schema.TransactionBlockEffects.status,
+                    schema.TransactionBlockEffects.timestamp,
+                    schema.TransactionBlockEffects.errors,
+>>>>>>> 30fdd47 (GraphQL Beta Transition)
                 ),
             ),
         )
