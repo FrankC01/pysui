@@ -482,7 +482,7 @@ class EventGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "EventGQL":
         """Serializes query result to list of Sui objects."""
-        in_mod_id = in_data.pop("sendingModule")
+        in_mod_id = in_data.pop("transactionModule")
         to_merge: dict = {}
         _fast_flat(in_mod_id, to_merge)
         in_data |= to_merge
@@ -723,8 +723,8 @@ class TransactionResultGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionResultGQL":
         """."""
-        if in_data.get("transactionBlock"):
-            txblock = in_data.pop("transactionBlock")
+        if in_data.get("transaction"):
+            txblock = in_data.pop("transaction")
             txblock["transaction_kind"] = txblock.pop("kind")["tx_kind"]
             return TransactionResultGQL.from_dict(txblock)
         return NoopGQL.from_query()
@@ -810,7 +810,7 @@ class TransactionSummariesGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionSummariesGQL":
         """."""
-        in_data = in_data.pop("transactionBlocks")
+        in_data = in_data.pop("transactions")
         ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
         tsummary = [
             TransactionSummaryGQL.from_query(x) for x in in_data.pop("tx_blocks")

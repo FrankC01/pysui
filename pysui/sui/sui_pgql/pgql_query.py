@@ -609,6 +609,9 @@ class GetMultipleVersionedObjects(PGQL_QueryNode):
         return pgql_type.ObjectVersionReadsGQL.from_query
 
 
+@versionchanged(
+    version="0.91.0", reason="Name MoveValue dropped 'data', using json instead"
+)
 class GetDynamicFields(PGQL_QueryNode):
     """GetDynamicFields when executed, returns the list of dynamic field objects owned by an object."""
 
@@ -648,7 +651,7 @@ class GetDynamicFields(PGQL_QueryNode):
                     name_type=schema.MoveValue.type.select(
                         name_layout=schema.MoveType.layout,
                     ),
-                    name_data=schema.MoveValue.data,
+                    name_data=schema.MoveValue.json,
                 ),
                 field_kind=DSLMetaField("__typename"),
                 field_data=schema.DynamicField.value.select(
@@ -682,6 +685,7 @@ class GetDynamicFields(PGQL_QueryNode):
         return pgql_type.DynamicFieldsGQL.from_query
 
 
+@versionchanged(version="0.91.0", reason="Event filter parms changed in GraphQL Beta")
 class GetEvents(PGQL_QueryNode):
     """GetEvents When executed, return list of events for the filter choice."""
 
@@ -695,21 +699,27 @@ class GetEvents(PGQL_QueryNode):
 
         Choice is one key/value pair of:
             {
-                'sender': 'SOME_SUI_ACCOUNT'
+                'afterCheckpoint': 'CHECKPOINT (int)'
             },
             {
-                'transactionDigest': 'SOME_SUI_TX_DIGEST'
+                'atCheckpoint': 'CHECKPOINT (int)'
             },
             {
-                'emittingModule': 'FULLY QUALIFIED MODULE'
+                'beforeCheckpoint': 'CHECKPOINT (int)'
             },
             {
-                'eventType': 'FULLY QUALIFED EVENT TYPE'
+                'sender': 'SOME_SUI_ACCOUNT (str)'
+            },
+            {
+                'module': 'FULLY QUALIFIED MODULE (str)'
+            },
+            {
+                'type': 'FULLY QUALIFED EVENT TYPE (str)'
             }
 
         Example filter:
           {
-              "eventType": "0x3::validator::StakingRequestEvent"
+              "type": "0x3::validator::StakingRequestEvent"
           }
 
         :param event_filter: Filter key/values aligned to Sui GraphQL schema's EventFilter
@@ -746,6 +756,7 @@ class GetEvents(PGQL_QueryNode):
         return pgql_type.EventsGQL.from_query
 
 
+@versionchanged(version="0.91.0", reason="GraphQL Beta changes to fields.")
 class GetTx(PGQL_QueryNode):
     """GetTx When executed, return the transaction response object."""
 
@@ -768,7 +779,7 @@ class GetTx(PGQL_QueryNode):
         std_object = frag.StandardObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
-        qres = schema.Query.transactionBlock(digest=self.digest)
+        qres = schema.Query.transaction(digest=self.digest)
         qres.select(std_txn)
         return dsl_gql(
             std_txn,
@@ -810,20 +821,29 @@ class GetMultipleTx(PGQL_QueryNode):
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
-        qres = schema.Query.transactionBlocks(filter=self.qfilter)
+        qres = schema.Query.transactions(filter=self.qfilter)
         if self.next_page:
             qres(after=self.next_page.endCursor)
 
         pg_cursor = frag.PageCursor().fragment(schema)
         qres.select(
-            cursor=schema.TransactionBlockConnection.pageInfo.select(pg_cursor),
-            tx_blocks=schema.TransactionBlockConnection.nodes.select(
-                schema.TransactionBlock.digest,
-                schema.TransactionBlock.signatures,
-                schema.TransactionBlock.effects.select(
-                    schema.TransactionBlockEffects.status,
-                    schema.TransactionBlockEffects.timestamp,
-                    schema.TransactionBlockEffects.errors,
+            cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
+            tx_blocks=schema.TransactionConnection.nodes.select(
+                schema.Transaction.digest,
+                schema.Transaction.signatures.select(
+                    schema.UserSignature.signatureBytes
+                ),
+                schema.Transaction.effects.select(
+                    schema.TransactionEffects.status,
+                    schema.TransactionEffects.timestamp,
+                    schema.TransactionEffects.executionError.select(
+                        schema.ExecutionError.abortCode,
+                        schema.ExecutionError.sourceLineNumber,
+                        schema.ExecutionError.instructionOffset,
+                        schema.ExecutionError.identifier,
+                        schema.ExecutionError.constant,
+                        schema.ExecutionError.message,
+                    ),
                 ),
             ),
         )
@@ -870,8 +890,8 @@ class GetFilteredTx(PGQL_QueryNode):
         pg_cursor = frag.PageCursor().fragment(schema)
 
         qres.select(
-            cursor=schema.TransactionBlockConnection.pageInfo.select(pg_cursor),
-            tx_blocks=schema.TransactionBlockConnection.nodes.select(
+            cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
+            tx_blocks=schema.TransactionConnection.nodes.select(
                 schema.TransactionBlock.digest,
                 schema.TransactionBlock.signatures,
                 schema.TransactionBlock.kind.select(tx_kind=DSLMetaField("__typename")),
