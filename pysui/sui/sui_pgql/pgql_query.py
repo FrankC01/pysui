@@ -814,6 +814,7 @@ class GetMultipleTx(PGQL_QueryNode):
                 schema.Transaction.digest,
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                 schema.Transaction.kind.select(
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
@@ -824,6 +825,8 @@ class GetMultipleTx(PGQL_QueryNode):
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
+=======
+>>>>>>> bafbf78 (GraphQL Beta Transition)
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
                 ),
@@ -888,6 +891,7 @@ class GetFilteredTx(PGQL_QueryNode):
             tx_blocks=schema.TransactionConnection.nodes.select(
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
                 schema.Transaction.digest,
@@ -908,6 +912,8 @@ class GetFilteredTx(PGQL_QueryNode):
                     ),
 <<<<<<< HEAD
 =======
+=======
+>>>>>>> bafbf78 (GraphQL Beta Transition)
                 schema.TransactionBlock.digest,
                 schema.TransactionBlock.signatures,
                 schema.TransactionBlock.kind.select(tx_kind=DSLMetaField("__typename")),

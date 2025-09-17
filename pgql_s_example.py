@@ -288,7 +288,11 @@ def do_tx(client: SyncGqlClient):
 
     handle_result(
         client.execute_query_node(
+<<<<<<< HEAD
             with_node=qn.GetTx(digest="HUBRYJeTCmcXTSW4Q5peCSDBXzvX8JDhw7uf7gVrYibw")
+=======
+            with_node=qn.GetTx(digest="4PBvkpoVr5TKgxkVyo3AHAMkwwQ7BrSbkwjDiZiKxn6h")
+>>>>>>> bafbf78 (GraphQL Beta Transition)
         )
     )
 
@@ -733,10 +737,10 @@ if __name__ == "__main__":
         # do_multiple_object_versions(client_init)
         # do_multiple_object_content(client_init)
         # do_objects_for(client_init)
-        do_dynamics(client_init)
+        # do_dynamics(client_init)
         # do_event(client_init)
         # do_tx(client_init)
-        # do_txs(client_init)
+        do_txs(client_init)
         # do_filter_txs(client_init)
         # do_tx_kind(client_init)
         # do_staked_sui(client_init)

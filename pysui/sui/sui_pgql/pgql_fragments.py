@@ -419,6 +419,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                 ),
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                 schema.ProgrammableTransaction.commands.select(
 =======
                 schema.ProgrammableTransaction.transactions.select(
@@ -426,6 +427,9 @@ class ProgrammableTxKind(PGQL_Fragment):
 =======
                 schema.ProgrammableTransaction.commands.select(
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
+=======
+                schema.ProgrammableTransaction.transactions.select(
+>>>>>>> bafbf78 (GraphQL Beta Transition)
                     DSLInlineFragment()
                     .on(schema.CommandConnection)
                     .select(
@@ -725,12 +729,15 @@ class StandardTransactionKind(PGQL_Fragment):
             .select(
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                 schema.Transaction.digest,
 =======
 >>>>>>> 30fdd47 (GraphQL Beta Transition)
 =======
                 schema.Transaction.digest,
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
+=======
+>>>>>>> bafbf78 (GraphQL Beta Transition)
                 schema.Transaction.kind.select(
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransaction)
@@ -772,10 +779,13 @@ class StandardCheckpoint(PGQL_Fragment):
                 transaction_blocks=schema.Checkpoint.transactions.select(
 =======
                 transaction_blocks=schema.Checkpoint.transactionBlocks.select(
+<<<<<<< HEAD
 >>>>>>> 30fdd47 (GraphQL Beta Transition)
 =======
                 transaction_blocks=schema.Checkpoint.transactions.select(
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
+=======
+>>>>>>> bafbf78 (GraphQL Beta Transition)
                     cursor=schema.TransactionConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),
