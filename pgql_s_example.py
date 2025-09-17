@@ -202,7 +202,7 @@ def do_dynamics(client: SyncGqlClient):
     handle_result(
         client.execute_query_node(
             with_node=qn.GetDynamicFields(
-                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed"
+                object_id="0xb0e372e6abc2dfa87b19e8e4a29b74be7f68b21d8a6a7e005c256d02ef19911d"
             )
         )
     )
@@ -212,7 +212,7 @@ def do_event(client: SyncGqlClient):
     """."""
     res = client.execute_query_node(
         with_node=qn.GetEvents(
-            event_filter={"eventType": "0x3::validator::StakingRequestEvent"}
+            event_filter={"type": "0x3::validator::StakingRequestEvent"}
         )
     )
     if res.is_ok():
@@ -260,7 +260,7 @@ def do_tx(client: SyncGqlClient):
 
     handle_result(
         client.execute_query_node(
-            with_node=qn.GetTx(digest="CqKm8efZcFJAFkfsygHmE8kHzWQJNPygSz8zmMginmHa")
+            with_node=qn.GetTx(digest="4PBvkpoVr5TKgxkVyo3AHAMkwwQ7BrSbkwjDiZiKxn6h")
         )
     )
 
@@ -716,10 +716,10 @@ if __name__ == "__main__":
         # do_past_object(client_init)
         # do_multiple_object_versions(client_init)
         # do_objects_for(client_init)
-        do_dynamics(client_init)
+        # do_dynamics(client_init)
         # do_event(client_init)
         # do_tx(client_init)
-        # do_txs(client_init)
+        do_txs(client_init)
         # do_filter_txs(client_init)
         # do_tx_kind(client_init)
         # do_staked_sui(client_init)
