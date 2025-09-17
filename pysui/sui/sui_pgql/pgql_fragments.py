@@ -236,6 +236,7 @@ class StandardObject(PGQL_Fragment):
         )
 
 
+@versionchanged(version="0.91.0", reason="GraphQL Beta changes to fields.")
 class StandardEvent(PGQL_Fragment):
     """StandardEvent reusable fragment."""
 
@@ -245,7 +246,7 @@ class StandardEvent(PGQL_Fragment):
             DSLFragment("EventStandard")
             .on(schema.Event)
             .select(
-                schema.Event.sendingModule.select(
+                schema.Event.transactionModule.select(
                     schema.MoveModule.package.select(
                         package_id=schema.MovePackage.address
                     ),
@@ -258,6 +259,7 @@ class StandardEvent(PGQL_Fragment):
         )
 
 
+@versionchanged(version="0.91.0", reason="GraphQL Beta changes to fields.")
 class StandardTxEffects(PGQL_Fragment):
     """StandardTxEffects reusable fragment."""
 
@@ -270,29 +272,38 @@ class StandardTxEffects(PGQL_Fragment):
 
         return (
             DSLFragment("TxEffects")
-            .on(schema.TransactionBlockEffects)
+            .on(schema.TransactionEffects)
             .select(
-                schema.TransactionBlockEffects.status,
-                schema.TransactionBlockEffects.errors,
-                schema.TransactionBlockEffects.timestamp,
-                schema.TransactionBlockEffects.balanceChanges.select(
+                schema.TransactionEffects.status,
+                schema.TransactionEffects.executionError.select(
+                    schema.ExecutionError.abortCode,
+                    schema.ExecutionError.sourceLineNumber,
+                    schema.ExecutionError.instructionOffset,
+                    schema.ExecutionError.identifier,
+                    schema.ExecutionError.constant,
+                    schema.ExecutionError.message,
+                    # schema.ExecutionError.module.select(
+                    # )
+                ),
+                schema.TransactionEffects.timestamp,
+                schema.TransactionEffects.balanceChanges.select(
                     schema.BalanceChangeConnection.nodes.select(
                         schema.BalanceChange.coinType.select(
                             coin_type=schema.MoveType.repr
                         ),
                         balance_change=schema.BalanceChange.amount,
                         change_to=schema.BalanceChange.owner.select(
-                            object_id=schema.Owner.address
+                            object_id=schema.Address.address
                         ),
                     )
                 ),
-                schema.TransactionBlockEffects.gasEffects.select(
+                schema.TransactionEffects.gasEffects.select(
                     schema.GasEffects.gasObject.select(
                         gas_object_id=schema.Object.address,
                     ),
                     schema.GasEffects.gasSummary.select(gas_cost),
                 ),
-                schema.TransactionBlockEffects.objectChanges.select(
+                schema.TransactionEffects.objectChanges.select(
                     schema.ObjectChangeConnection.nodes.select(
                         address=schema.ObjectChange.address,
                         deleted=schema.ObjectChange.idDeleted,
@@ -301,7 +312,7 @@ class StandardTxEffects(PGQL_Fragment):
                         output_state=schema.ObjectChange.outputState.select(base_obj),
                     )
                 ),
-                schema.TransactionBlockEffects.checkpoint.select(
+                schema.TransactionEffects.checkpoint.select(
                     schema.Checkpoint.sequenceNumber,
                     schema.Checkpoint.networkTotalTransactions,
                     schema.Checkpoint.timestamp,
@@ -315,6 +326,7 @@ class StandardTxEffects(PGQL_Fragment):
         )
 
 
+@versionchanged(version="0.91.0", reason="GraphQL Beta changes to fields.")
 class StandardTransaction(PGQL_Fragment):
     """StandardTransaction reusable fragment."""
 
@@ -324,18 +336,20 @@ class StandardTransaction(PGQL_Fragment):
         tx_effects = StandardTxEffects().fragment(schema)
         return (
             DSLFragment("TxStandard")
-            .on(schema.TransactionBlock)
+            .on(schema.Transaction)
             .select(
-                schema.TransactionBlock.digest,
-                schema.TransactionBlock.signatures,
-                schema.TransactionBlock.kind.select(
+                schema.Transaction.digest,
+                schema.Transaction.signatures.select(
+                    schema.UserSignature.signatureBytes
+                ),
+                schema.Transaction.kind.select(
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
-                schema.TransactionBlock.sender.select(
+                schema.Transaction.sender.select(
                     submitter_address=schema.Address.address
                 ),
-                schema.TransactionBlock.expiration.select(schema.Epoch.epochId),
-                schema.TransactionBlock.gasInput.select(
+                schema.Transaction.expiration.select(schema.Epoch.epochId),
+                schema.Transaction.gasInput.select(
                     transaction_budget=schema.GasInput.gasBudget,
                     price=schema.GasInput.gasPrice,
                     sponsor=schema.GasInput.gasSponsor.select(
@@ -347,7 +361,7 @@ class StandardTransaction(PGQL_Fragment):
                         )
                     ),
                 ),
-                schema.TransactionBlock.effects.select(tx_effects),
+                schema.Transaction.effects.select(tx_effects),
             )
         )
 
@@ -360,9 +374,9 @@ class ProgrammableTxKind(PGQL_Fragment):
         """."""
         return (
             DSLFragment("PrgTxKind")
-            .on(schema.ProgrammableTransactionBlock)
+            .on(schema.ProgrammableTransaction)
             .select(
-                schema.ProgrammableTransactionBlock.inputs.select(
+                schema.ProgrammableTransaction.inputs.select(
                     DSLInlineFragment()
                     .on(schema.TransactionInputConnection)
                     .select(
@@ -397,7 +411,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                         )
                     ),
                 ),
-                schema.ProgrammableTransactionBlock.transactions.select(
+                schema.ProgrammableTransaction.transactions.select(
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransactionConnection)
                     .select(
@@ -685,11 +699,11 @@ class StandardTransactionKind(PGQL_Fragment):
         ccp_kind = ConsensusCommitPrologueKind().fragment(schema)
         return (
             DSLFragment("TxKind")
-            .on(schema.TransactionBlock)
+            .on(schema.Transaction)
             .select(
-                schema.TransactionBlock.kind.select(
+                schema.Transaction.kind.select(
                     DSLInlineFragment()
-                    .on(schema.ProgrammableTransactionBlock)
+                    .on(schema.ProgrammableTransaction)
                     .select(prg_kind),
                     DSLInlineFragment()
                     .on(schema.ConsensusCommitPrologueTransaction)
@@ -724,11 +738,11 @@ class StandardCheckpoint(PGQL_Fragment):
                 schema.Checkpoint.previousCheckpointDigest,
                 schema.Checkpoint.networkTotalTransactions,
                 transaction_blocks=schema.Checkpoint.transactionBlocks.select(
-                    cursor=schema.TransactionBlockConnection.pageInfo.select(
+                    cursor=schema.TransactionConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),
-                    tx_digests=schema.TransactionBlockConnection.nodes.select(
-                        schema.TransactionBlock.digest
+                    tx_digests=schema.TransactionConnection.nodes.select(
+                        schema.Transaction.digest
                     ),
                 ),
             )
