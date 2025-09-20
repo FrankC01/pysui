@@ -813,11 +813,17 @@ class GetMultipleTx(PGQL_QueryNode):
             tx_blocks=schema.TransactionConnection.nodes.select(
                 schema.Transaction.digest,
 <<<<<<< HEAD
+<<<<<<< HEAD
                 schema.Transaction.kind.select(
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
 =======
 >>>>>>> 30fdd47 (GraphQL Beta Transition)
+=======
+                schema.Transaction.kind.select(
+                    DSLMetaField("__typename").alias("tx_kind")
+                ),
+>>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
                 ),
@@ -881,6 +887,9 @@ class GetFilteredTx(PGQL_QueryNode):
             cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionConnection.nodes.select(
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
                 schema.Transaction.digest,
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
@@ -897,6 +906,7 @@ class GetFilteredTx(PGQL_QueryNode):
                         schema.ExecutionError.constant,
                         schema.ExecutionError.message,
                     ),
+<<<<<<< HEAD
 =======
                 schema.TransactionBlock.digest,
                 schema.TransactionBlock.signatures,
@@ -906,6 +916,8 @@ class GetFilteredTx(PGQL_QueryNode):
                     schema.TransactionBlockEffects.timestamp,
                     schema.TransactionBlockEffects.errors,
 >>>>>>> 30fdd47 (GraphQL Beta Transition)
+=======
+>>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
                 ),
             ),
         )
