@@ -17,7 +17,7 @@ from gql.transport.httpx import HTTPXAsyncTransport
 from gql.dsl import (
     DSLSchema,
 )
-from pysui.sui.sui_pgql.pgql_configs import SuiConfigBetaGQL, pgql_config, SuiConfigGQL
+from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL, pgql_config, SuiConfigGQL
 
 
 class Schema:
@@ -59,7 +59,7 @@ class Schema:
             _base_version = ".".join(_long_version.split(".")[:2])
             _schema: DSLSchema = DSLSchema(_init_client.schema)
             qstr, fndeser = pgql_config(gql_env, _base_version)
-            _rpc_config: SuiConfigBetaGQL = fndeser(session.execute(gql(qstr)))
+            _rpc_config: SuiConfigGQL = fndeser(session.execute(gql(qstr)))
             _rpc_config.gqlEnvironment = gql_env
             self._base_version: str = _base_version
             self._build_version: str = _long_version
@@ -116,6 +116,6 @@ class Schema:
                 verify=True,
                 http2=True,
                 timeout=self.timeout,
-                proxies=proxies,
+                proxy=proxies,
             ),
         )

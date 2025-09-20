@@ -8,6 +8,10 @@
 import asyncio
 import base64
 
+# import logging
+
+# logging.basicConfig(level=logging.DEBUG)
+
 from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient, SyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
@@ -276,7 +280,7 @@ async def do_filter_txs(client: AsyncGqlClient):
 
     See Sui GraphQL schema for TransactionBlockFilter options.
     """
-    obj_filter = {"changedObject": "ENTER OBJECT_ID HERE"}
+    obj_filter = {"affectedObject": "ENTER OBJECT_ID HERE"}
     result = await client.execute_query_node(
         with_node=qn.GetFilteredTx(tx_filter=obj_filter)
     )
@@ -333,20 +337,6 @@ async def do_sequence_cp(client: AsyncGqlClient):
         print(result.result_string)
 
 
-async def do_digest_cp(client: AsyncGqlClient):
-    """."""
-    result = await client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
-    if result.is_ok():
-        cp: ptypes.CheckpointGQL = result.result_data
-        handle_result(
-            await client.execute_query_node(
-                with_node=qn.GetCheckpointByDigest(digest=cp.digest)
-            )
-        )
-    else:
-        print(result.result_string)
-
-
 async def do_checkpoints(client: AsyncGqlClient):
     """."""
     handle_result(await client.execute_query_node(with_node=qn.GetCheckpoints()))
@@ -373,11 +363,6 @@ async def do_owned_nameservice(client: AsyncGqlClient):
             with_node=qn.GetNameServiceNames(owner=client.config.active_address)
         )
     )
-
-
-async def do_validators_apy(client: AsyncGqlClient):
-    """Fetch the most current validators apy and identity."""
-    handle_result(await client.execute_query_node(with_node=qn.GetValidatorsApy()))
 
 
 async def do_validators(client: AsyncGqlClient):
@@ -646,6 +631,7 @@ async def main():
                 profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",
+                # persist=True,
             ),
         )
         print(f"Active chain profile   '{client_init.chain_environment}'")
@@ -675,10 +661,9 @@ async def main():
         # await do_staked_sui(client_init)
         # await do_latest_cp(client_init)
         # await do_sequence_cp(client_init)
-        # await do_digest_cp(client_init)
+
         # await do_checkpoints(client_init)
         # await do_owned_nameservice(client_init)
-        # await do_validators_apy(client_init)
         # await do_validators(client_init)
         # await do_all_validators(client_init)
         # await do_nameservice(client_init)
@@ -689,7 +674,7 @@ async def main():
         # await do_funcs(client_init)
         # await do_module(client_init)
         # await do_package(client_init)
-        await inspect_example(client_init)
+        # await inspect_example(client_init)
         # await do_dry_run(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)

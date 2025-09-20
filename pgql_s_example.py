@@ -6,6 +6,11 @@
 """Sample module for incremental buildout of Sui GraphQL RPC for Pysui 1.0.0."""
 
 import base64
+
+# import logging
+
+# logging.basicConfig(level=logging.DEBUG)
+
 from pysui import PysuiConfiguration, SuiRpcResult, SyncGqlClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 
@@ -249,7 +254,7 @@ def do_chain_id(client: SyncGqlClient):
 
     Demonstrates overriding serialization
     """
-    print(client.chain_id())
+    print(f"Chain Identifier: {client.chain_id()}")
 
 
 def do_tx(client: SyncGqlClient):
@@ -292,7 +297,9 @@ def do_filter_txs(client: SyncGqlClient):
 
     See Sui GraphQL schema for TransactionBlockFilter options.
     """
-    obj_filter = {"changedObject": "ENTER OBJECT_ID HERE"}
+    obj_filter = {
+        "affectedObject": "0x065f4c3414e14b74215f9fa585b7f0880228f37f2b0fb962282f752ada3c1ceb"
+    }
     result = client.execute_query_node(with_node=qn.GetFilteredTx(tx_filter=obj_filter))
     while result.is_ok():
         txs: ptypes.TransactionSummariesGQL = result.result_data
@@ -310,8 +317,13 @@ def do_filter_txs(client: SyncGqlClient):
 
 
 def do_tx_kind(client: SyncGqlClient):
-    """Fetch the PTB details from transaction."""
-    qnode = qn.GetTxKind(digest="ENTER TRANSACTION DIGESST HERE")
+    """Fetch the PTB details from transaction.
+
+    Substitute a valid transaction digest from operating environment.
+    """
+    qnode = qn.GetTxKind(
+        digest="6UfWSAfUArkkKc24DeRDje2mtQdZar8H2J21ZsMgTexK"
+    )  # split and transfer
     handle_result(client.execute_query_node(with_node=qnode))
 
 
@@ -347,23 +359,6 @@ def do_sequence_cp(client: SyncGqlClient):
         print(result.result_string)
 
 
-def do_digest_cp(client: SyncGqlClient):
-    """Fetch a checkpoint by checkpoint digest.
-
-    Uses the most recent checkpoint's digest (inefficient for example only)
-    """
-    result = client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
-    if result.is_ok():
-        cp: ptypes.CheckpointGQL = result.result_data
-        handle_result(
-            client.execute_query_node(
-                with_node=qn.GetCheckpointByDigest(digest=cp.digest)
-            )
-        )
-    else:
-        print(result.result_string)
-
-
 def do_checkpoints(client: SyncGqlClient):
     """Get a batch of checkpoints."""
     handle_result(client.execute_query_node(with_node=qn.GetCheckpoints()))
@@ -390,11 +385,6 @@ def do_owned_nameservice(client: SyncGqlClient):
             with_node=qn.GetNameServiceNames(owner=client.config.active_address)
         )
     )
-
-
-def do_validators_apy(client: SyncGqlClient):
-    """Fetch the most current validators apy and identity."""
-    handle_result(client.execute_query_node(with_node=qn.GetValidatorsApy()))
 
 
 def do_validators(client: SyncGqlClient):
@@ -425,7 +415,7 @@ def do_all_validators(client: SyncGqlClient):
 
 def do_protcfg(client: SyncGqlClient):
     """Fetch the most current system state summary."""
-    handle_result(client.execute_query_node(with_node=qn.GetProtocolConfig(version=30)))
+    handle_result(client.execute_query_node(with_node=qn.GetProtocolConfig(version=96)))
 
 
 def do_struct(client: SyncGqlClient):
@@ -464,9 +454,9 @@ def do_func(client: SyncGqlClient):
     """
     result = client.execute_query_node(
         with_node=qn.GetFunction(
-            package="0xce936b3b14d08848177b930e1944490bc445492b786c293a5a3588c892c1ebf4",
-            module_name="fungible",
-            function_name="mint",
+            package="0x2",
+            module_name="coin",
+            function_name="balance",
         )
     )
     if result.is_ok():
@@ -492,7 +482,7 @@ def do_module(client: SyncGqlClient):
     result = client.execute_query_node(
         with_node=qn.GetModule(
             package="0x2",
-            module_name="prover",
+            module_name="coin",
         )
     )
     if result.is_ok():
@@ -691,7 +681,7 @@ if __name__ == "__main__":
     try:
         cfg = PysuiConfiguration(
             group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
-            profile_name="devnet-beta",
+            profile_name="devnet",
             # profile_name="testnet",
             # profile_name="mainnet",
             # persist=True,
@@ -706,12 +696,12 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        # do_gas(client_init)
+        do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init) # TODO: Needs update from Mysten, missing active validators
         # do_all_balances(client_init)
-        # do_object(client_init) # TODO: Check on Object.status
+        # do_object(client_init)
         # do_objects(client_init)
         # do_past_object(client_init)
         # do_multiple_object_versions(client_init)
@@ -719,19 +709,17 @@ if __name__ == "__main__":
         # do_dynamics(client_init)
         # do_event(client_init)
         # do_tx(client_init)
-        do_txs(client_init)
+        # do_txs(client_init)
         # do_filter_txs(client_init)
         # do_tx_kind(client_init)
         # do_staked_sui(client_init)
         # do_latest_cp(client_init)
         # do_sequence_cp(client_init)
-        # do_digest_cp(client_init)
         # do_checkpoints(client_init)
-        # do_nameservice(client_init)
-        # do_owned_nameservice(client_init)
-        # do_validators_apy(client_init)
-        # do_validators(client_init)
-        # do_all_validators(client_init)
+        # do_nameservice(client_init) # TODO: Only get name from address? No reverse Address from Name?
+        # do_owned_nameservice(client_init) # TODO: Address only carries 1 defaultSuinsName?
+        # do_validators(client_init)  # TODO: missing active validators
+        # do_all_validators(client_init) # TODO: missing active validators
         # do_refgas(client_init)
         # do_struct(client_init)
         # do_structs(client_init)
@@ -739,14 +727,14 @@ if __name__ == "__main__":
         # do_funcs(client_init)
         # do_module(client_init)
         # do_package(client_init)
-        # do_dry_run_new(client_init)
-        # do_dry_run_kind_new(client_init)
-        # do_execute_new(client_init)
-        # merge_some(client_init)
-        # split_any_half(client_init)
-        # split_1_half(client_init)
-        # do_stake(client_init)
-        # do_unstake(client_init)
+        # do_dry_run_new(client_init)  # TODO: Needs rework
+        # do_dry_run_kind_new(client_init) # TODO: Needs Mysten implementation
+        # do_execute_new(client_init) # TODO: Requires dry run
+        # merge_some(client_init) # TODO: Requires dry run
+        # split_any_half(client_init) # TODO: Requires dry run
+        # split_1_half(client_init) # TODO: Requires dry run
+        # do_stake(client_init) # TODO: Requires dry run
+        # do_unstake(client_init) # TODO: Requires dry run
         ## Config
         # do_chain_id(client_init)
         # do_configs(client_init)
