@@ -94,11 +94,11 @@ class PysuiConfiguration:
         group_cfg.group_protocol = cfg_group.GroupProtocol.GRAPHQL
         for prf in group_cfg.profiles:
             if prf.profile_name == "devnet":
-                prf.url = "https://sui-devnet.mystenlabs.com/graphql"
+                prf.url = "https://graphql.devnet.sui.io/graphql"
             elif prf.profile_name == "testnet":
-                prf.url = "https://sui-testnet.mystenlabs.com/graphql"
+                prf.url = "https://graphql.testnet.sui.io/graphql"
             elif prf.profile_name == "mainnet":
-                prf.url = "https://sui-mainnet.mystenlabs.com/graphql"
+                prf.url = "https://graphql.mainnet.sui.io/graphql"
         return group_cfg
 
     @classmethod
