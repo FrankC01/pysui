@@ -34,6 +34,7 @@ __all__ = (
     "CleverError",
     "CoinDenyListError",
     "CoinMetadata",
+    "CoinMetadataMetadataCapState",
     "CoinTreasury",
     "CoinTreasurySupplyState",
     "Command",
@@ -142,6 +143,7 @@ __all__ = (
     "Publish",
     "RandomnessStateUpdate",
     "RegulatedCoinMetadata",
+    "RegulatedCoinMetadataCoinRegulatedState",
     "ReverseLookupNameRequest",
     "ReverseLookupNameResponse",
     "SignatureScheme",
@@ -335,6 +337,33 @@ class CheckpointCommitmentCheckpointCommitmentKind(betterproto2.Enum):
     CHECKPOINT_ARTIFACTS = 2
     """
     Digest of the checkpoint artifacts.
+    """
+
+
+class CoinMetadataMetadataCapState(betterproto2.Enum):
+    """
+    Information about the state of the coin's MetadataCap
+    """
+
+    METADATA_CAP_STATE_UNKNOWN = 0
+    """
+    Indicates the state of the MetadataCap is unknown.
+    Set when the coin has not been migrated to the CoinRegistry.
+    """
+
+    CLAIMED = 1
+    """
+    Indicates the MetadataCap has been claimed.
+    """
+
+    UNCLAIMED = 2
+    """
+    Indicates the MetadataCap has not been claimed.
+    """
+
+    DELETED = 3
+    """
+    Indicates the MetadataCap has been deleted.
     """
 
 
@@ -816,6 +845,30 @@ class PackageUpgradeErrorPackageUpgradeErrorKind(betterproto2.Enum):
     PACKAGE_ID_DOES_NOT_MATCH = 6
     """
     Package ID does not match `PackageId` in upgrade ticket.
+    """
+
+
+class RegulatedCoinMetadataCoinRegulatedState(betterproto2.Enum):
+    """
+    Indicates the state of the regulation of the coin.
+    """
+
+    COIN_REGULATED_STATE_UNKNOWN = 0
+    """
+    Indicates the regulation state of the coin is unknown.
+    This is set when a coin has not been migrated to the
+    coin registry and has no `0x2::coin::RegulatedCoinMetadata`
+    object.
+    """
+
+    REGULATED = 1
+    """
+    Indicates a coin is regulated. RegulatedCoinMetadata will be populated.
+    """
+
+    UNREGULATED = 2
+    """
+    Indicates a coin is unregulated.
     """
 
 
@@ -1755,7 +1808,7 @@ class CoinMetadata(betterproto2.Message):
     id: "str | None" = betterproto2.field(1, betterproto2.TYPE_STRING, optional=True)
     """
     ObjectId of the `0x2::coin::CoinMetadata` object or
-    0x2::sui::coin_registry::CoinData object (when registered with CoinRegistry).
+    0x2::sui::coin_registry::Currency object (when registered with CoinRegistry).
     """
 
     decimals: "int | None" = betterproto2.field(
@@ -1798,6 +1851,13 @@ class CoinMetadata(betterproto2.Message):
     The MetadataCap ID if it has been claimed for this coin type.
     This capability allows updating the coin's metadata fields.
     Only populated when metadata is from CoinRegistry.
+    """
+
+    metadata_cap_state: "CoinMetadataMetadataCapState | None" = betterproto2.field(
+        8, betterproto2.TYPE_ENUM, optional=True
+    )
+    """
+    State of the MetadataCap for this coin type.
     """
 
 
@@ -3093,8 +3153,12 @@ class GetCoinInfoResponse(betterproto2.Message):
     )
     """
     If this coin type is a regulated coin, this field will be
-    populated with information about its `0x2::coin::RegulatedCoinMetadata`
-    object.
+    populated with information either from its Currency object
+    in the CoinRegistry, or from its `0x2::coin::RegulatedCoinMetadata`
+    object for coins that have not been migrated to the CoinRegistry
+
+    If this coin is not known to be regulated, only the
+    coin_regulated_state field will be populated.
     """
 
 
@@ -4919,6 +4983,7 @@ class RegulatedCoinMetadata(betterproto2.Message):
     id: "str | None" = betterproto2.field(1, betterproto2.TYPE_STRING, optional=True)
     """
     ObjectId of the `0x2::coin::RegulatedCoinMetadata` object.
+    Only present for coins that have not been migrated to CoinRegistry.
     """
 
     coin_metadata_object: "str | None" = betterproto2.field(
@@ -4933,6 +4998,27 @@ class RegulatedCoinMetadata(betterproto2.Message):
     )
     """
     The ID of the coin's `DenyCap` object.
+    """
+
+    allow_global_pause: "bool | None" = betterproto2.field(
+        4, betterproto2.TYPE_BOOL, optional=True
+    )
+    """
+    Whether the coin can be globally paused
+    """
+
+    variant: "int | None" = betterproto2.field(
+        5, betterproto2.TYPE_UINT32, optional=True
+    )
+    """
+    Variant of the regulated coin metadata
+    """
+
+    coin_regulated_state: "RegulatedCoinMetadataCoinRegulatedState | None" = (
+        betterproto2.field(6, betterproto2.TYPE_ENUM, optional=True)
+    )
+    """
+    Indicates the coin's regulated state.
     """
 
 

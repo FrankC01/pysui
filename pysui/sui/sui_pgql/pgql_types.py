@@ -248,32 +248,49 @@ class SuiCoinObjectSummaryGQL(PGQL_Type):
 class SuiStakedCoinGQL:
     """Staked coin object."""
 
-    poolId: str
+    coin_type: str
     version: int
-    has_public_transfer: bool
-    principal: str
-    estimated_reward: str
-    activated: dict
-    requested: dict
-    status: str
-    object_id: str
     object_digest: str
-    object_owner: SuiObjectOwnedAddress
+    has_public_transfer: bool
+    coin_object_id: str
+    pool_id: str
+    principal: str
+    stake_activation_epoch: str
+    object_owner: Union[
+        SuiObjectOwnedAddress,
+        SuiObjectOwnedShared,
+        SuiObjectOwnedParent,
+        SuiObjectOwnedImmutable,
+    ]
+    previous_transaction: Optional[str] = dataclasses.field(default="")
+
+    @property
+    def object_id(self) -> str:
+        """Get as object_id."""
+        return self.coin_object_id
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SuiStakedCoinGQL":
-        """Serializes query result to list of SuiStaked gas coin objects."""
-        if len(in_data):
-            owners_dict = in_data.pop("owner")
-            if owners_dict["obj_owner_kind"] == "AddressOwner":
-                owners_dict["address_id"] = owners_dict.pop("owner")["address_id"]
-            else:
-                raise ValueError(
-                    f"{owners_dict['obj_owner_kind']} for StakedSui not supported"
+        """From raw GraphQL result data."""
+        ser_dict: dict[str, Union[str, int]] = {}
+        owner = in_data.pop("owner")
+        owner_kind = owner["obj_owner_kind"]
+        _fast_flat(in_data, ser_dict)
+        match owner_kind:
+            case "AddressOwner":
+                ser_dict["object_owner"] = SuiObjectOwnedAddress(
+                    owner_kind, owner["address_id"]["address"]
                 )
-            in_data["object_owner"] = owners_dict
-            return SuiStakedCoinGQL.from_dict(in_data)
-        return NoopGQL.from_query()
+            case "Shared":
+                ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
+            case "ObjectOwner":
+                ser_dict["object_owner"] = SuiObjectOwnedParent(
+                    owner_kind, owner["parent_id"]["address"]
+                )
+            case "Immutable":
+                ser_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
+        # ser_dict = ser_dict | res_dict
+        return clz.from_dict(ser_dict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -281,7 +298,6 @@ class SuiStakedCoinGQL:
 class SuiStakedCoinsGQL(PGQL_Type):
     """Collection of staked coin objects."""
 
-    owner: str
     staked_coins: list[SuiStakedCoinGQL]
     next_cursor: PagingCursor
 
@@ -292,15 +308,15 @@ class SuiStakedCoinsGQL(PGQL_Type):
         The in_data is a dictionary with 2 keys: 'cursor' and 'coin_objects'
         """
         if len(in_data):
-            in_data = in_data.pop("address")
-            next_cursor = in_data["stakedSuis"].pop("cursor")
+            in_data = in_data.pop("objects")
+            next_cursor = in_data.pop("cursor")
             staked_coins = [
-                SuiStakedCoinGQL.from_query(x)
-                for x in in_data["stakedSuis"].pop("staked_coin")
+                SuiStakedCoinGQL.from_query(x.get("asMoveObject"))
+                for x in in_data.pop("staked_coin")
             ]
             return SuiStakedCoinsGQL.from_dict(
                 {
-                    "owner": in_data["address"],
+                    # "owner": in_data["address"],
                     "stakedCoins": staked_coins,
                     "nextCursor": next_cursor,
                 }
@@ -378,7 +394,6 @@ class ObjectReadGQL(PGQL_Type):
     content: Optional[dict] = None
     owner_id: Optional[str] = None
     previous_transaction_digest: Optional[str] = None
-    object_kind: Optional[str] = ""  # Yes
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadGQL":
@@ -415,10 +430,6 @@ class ObjectReadGQL(PGQL_Type):
                         res_dict["object_owner"] = SuiObjectOwnedParent(
                             owner_kind, owner["parent_id"]["address"]
                         )
-                    # case "Parent":
-                    #     res_dict["object_owner"] = SuiObjectOwnedParent(
-                    #         owner_kind, owner["parent"]["parent_id"]
-                    #     )
                     case "Immutable":
                         res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
                 # Flatten dictionary
@@ -434,17 +445,27 @@ class ObjectReadsGQL(PGQL_Type):
     """Collection of object data objects."""
 
     data: list[ObjectReadGQL]
+    next_cursor: Optional[PagingCursor] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadsGQL":
         """Serializes query result to list of Sui objects.
 
-        The in_data is a dictionary with 'multiGetObjects:list'
+        The in_data is a dictionary with either 'multiGetObjects:list' and no cursor
+        or 'objects:list' with cursor
         """
-        dlist: list[ObjectReadGQL] = [
-            ObjectReadGQL.from_query(i_obj) for i_obj in in_data.pop("multiGetObjects")
-        ]
-        return ObjectReadsGQL(dlist)
+        if mgo := in_data.get("multiGetObjects"):
+            dlist: list[ObjectReadGQL] = [
+                ObjectReadGQL.from_query(i_obj) for i_obj in mgo
+            ]
+            return ObjectReadsGQL(dlist)
+        else:
+            obj_mbase = in_data.pop("objects")
+            ncurs: PagingCursor = PagingCursor.from_dict(obj_mbase["cursor"])
+            dlist: list[ObjectReadGQL] = [
+                ObjectReadGQL.from_query(i_obj) for i_obj in obj_mbase["objects_data"]
+            ]
+            return ObjectReadsGQL(dlist, ncurs)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -831,6 +852,17 @@ class OwnedOrImmutableInputGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ReceivingInputGQL:
+    """ProgrammableTransactionBlock input class."""
+
+    address: str
+    version: int
+    digest: str
+    input_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class SharedObjectInputGQL:
     """ProgrammableTransactionBlock input class."""
 
@@ -884,7 +916,7 @@ class TransactionMoveCallGQL:
     function_name: str
     arguments: list[Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]]
     tx_typename: str
-    typeArguments: Optional[list[dict]]
+    typeArguments: Optional[list[dict]] = None
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -967,6 +999,55 @@ class ProgrammableTransactionBlockGQL:
         ]
     ]
 
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ProgrammableTransactionBlockGQL":
+        ins_list: list = []
+        cmd_list: list = []
+        router = {
+            "TransferObjectsCommand": TransactioTransferObjectslGQL,
+            "SplitCoinsCommand": TransactionSplitCoinsGQL,
+            "MergeCoinsCommand": TransactionMergeCoinsGQL,
+            "PublishCommand": TransactionPublishGQL,
+            "UpgradeCommand": TransactionUpgradeGQL,
+            "MakeMoveVecCommand": TransactionMakeMoveVecGQL,
+        }
+        if in_data:
+            for ins in in_data["inputs"]:
+                match ins["input_typename"]:
+                    case "OwnedOrImmutable":
+                        in_dict = ins["object"]
+                        in_dict["input_typename"] = ins["input_typename"]
+                        ins_list.append(OwnedOrImmutableInputGQL.from_dict(in_dict))
+                    case "Receiving":
+                        in_dict = ins["object"]
+                        in_dict["input_typename"] = ins["input_typename"]
+                        ins_list.append(ReceivingInputGQL.from_dict(in_dict))
+                    case "SharedInput":
+                        ins_list.append(SharedObjectInputGQL.from_dict(ins))
+                    case "Pure":
+                        ins_list.append(PureInputGQL.from_dict(ins))
+            for cmds in in_data["transactions"]:
+                cmd_name = cmds["tx_typename"]
+                match cmd_name:
+                    case "MoveCallCommand":
+                        mvc_dict = {
+                            "package": cmds["function"]["module"]["package"]["address"],
+                            "module": cmds["function"]["module"]["name"],
+                            "function_name": cmds["function"]["name"],
+                            "arguments": cmds["arguments"],
+                            "tx_typename": cmd_name,
+                        }
+                        cmd_list.append(TransactionMoveCallGQL.from_dict(mvc_dict))
+                    case _:
+                        if c_clz := router.get(cmds["tx_typename"]):
+                            cmd_list.append(c_clz.from_dict(cmds))
+                        else:
+                            raise ValueError(f"Not handling {cmd_name}")
+
+            return clz(ins_list, cmd_list)
+
+        return NoopGQL.from_query()
+
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
@@ -1027,17 +1108,19 @@ class TransactionKindGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionKindGQL":
         """."""
-        tx_block = in_data.get("transactionBlock") if in_data else None
+        tx_block = in_data.get("transaction") if in_data else None
         if tx_block:
             tx_type = tx_block["kind"].pop("tx_kind")
             tx_block["timestamp"] = tx_block.pop("effects")["timestamp"]
             tx_block["transaction_kind"] = tx_type
             match tx_type:
-                case "ProgrammableTransactionBlock":
-                    tx_block["kind"]["inputs"] = tx_block["kind"]["inputs"]["nodes"]
-                    tx_block["kind"]["transactions"] = tx_block["kind"]["transactions"][
-                        "nodes"
-                    ]
+                case "ProgrammableTransaction":
+                    tx_block["kind"] = ProgrammableTransactionBlockGQL.from_query(
+                        {
+                            "inputs": tx_block["kind"]["inputs"]["nodes"],
+                            "transactions": tx_block["kind"]["commands"]["nodes"],
+                        }
+                    )
                 case "GenesisTransaction" | "ConsensusCommitPrologueTransaction":
                     pass
                 case _:
@@ -1208,7 +1291,7 @@ class ProtocolConfigGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":
-        return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfig"))
+        return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfigs"))
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1724,33 +1807,6 @@ class ValidatorSetsGQL:
             ValidatorFullGQL.from_query(x) for x in fdict["validators"]
         ]
         return ValidatorSetsGQL.from_dict(fdict)
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class ValidatorApyGQL:
-    """Sui ValidatorApy representation."""
-
-    name: str
-    apy: int
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class ValidatorApysGQL:
-    """Sui ValidatorApy representation."""
-
-    validators_apy: list[ValidatorApyGQL]
-    next_cursor: PagingCursor
-
-    @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorApysGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-        fdict["next_cursor"] = PagingCursor(
-            fdict.pop("hasNextPage"), fdict.pop("endCursor")
-        )
-        return ValidatorApysGQL.from_dict(fdict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
