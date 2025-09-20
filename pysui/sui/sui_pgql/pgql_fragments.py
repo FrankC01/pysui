@@ -417,7 +417,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                         )
                     ),
                 ),
-                schema.ProgrammableTransaction.transactions.select(
+                schema.ProgrammableTransaction.commands.select(
                     DSLInlineFragment()
                     .on(schema.CommandConnection)
                     .select(
@@ -715,6 +715,7 @@ class StandardTransactionKind(PGQL_Fragment):
             DSLFragment("TxKind")
             .on(schema.Transaction)
             .select(
+                schema.Transaction.digest,
                 schema.Transaction.kind.select(
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransaction)
