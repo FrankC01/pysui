@@ -420,6 +420,7 @@ class ProgrammableTxKind(PGQL_Fragment):
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                 schema.ProgrammableTransaction.commands.select(
 =======
                 schema.ProgrammableTransaction.transactions.select(
@@ -430,6 +431,9 @@ class ProgrammableTxKind(PGQL_Fragment):
 =======
                 schema.ProgrammableTransaction.transactions.select(
 >>>>>>> bafbf78 (GraphQL Beta Transition)
+=======
+                schema.ProgrammableTransaction.commands.select(
+>>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
                     DSLInlineFragment()
                     .on(schema.CommandConnection)
                     .select(
@@ -730,6 +734,7 @@ class StandardTransactionKind(PGQL_Fragment):
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                 schema.Transaction.digest,
 =======
 >>>>>>> 30fdd47 (GraphQL Beta Transition)
@@ -738,6 +743,9 @@ class StandardTransactionKind(PGQL_Fragment):
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
 =======
 >>>>>>> bafbf78 (GraphQL Beta Transition)
+=======
+                schema.Transaction.digest,
+>>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
                 schema.Transaction.kind.select(
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransaction)
@@ -776,6 +784,7 @@ class StandardCheckpoint(PGQL_Fragment):
                 schema.Checkpoint.networkTotalTransactions,
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                 transaction_blocks=schema.Checkpoint.transactions.select(
 =======
                 transaction_blocks=schema.Checkpoint.transactionBlocks.select(
@@ -786,6 +795,9 @@ class StandardCheckpoint(PGQL_Fragment):
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
 =======
 >>>>>>> bafbf78 (GraphQL Beta Transition)
+=======
+                transaction_blocks=schema.Checkpoint.transactions.select(
+>>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
                     cursor=schema.TransactionConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),
