@@ -25,8 +25,12 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.90.0**
-Bumped dependentices version, recommended to re-run `pip install -r requirements.txt`
+**Release-0.91.0**
+
+**BREAKING CHANGES**
+Cutover to GraphQL Beta from Mysten has changed some pre-packaged query outputs.
+See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md) for important
+information regarding profile (URLs).
 
 ## PyPi current
 
