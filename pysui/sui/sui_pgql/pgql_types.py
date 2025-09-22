@@ -785,19 +785,23 @@ class ExecutionResultGQL(PGQL_Type):
     """Execution result representation class."""
 
     status: str
+
     lamport_version: int
     digest: str
     bcs: str
+    execution_error: Optional[dict] = None
     errors: Optional[list[str]] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ExecutionResultGQL":
         """."""
         if in_data:
-            in_data = in_data.get("executeTransactionBlock")
+            in_data = in_data.get("executeTransaction")
             if in_data:
+                ex_err = in_data["effects"].pop("execution_errors")
                 fdict: dict = {}
                 _fast_flat(in_data, fdict)
+                fdict["execution_error"] = ex_err
                 return ExecutionResultGQL.from_dict(fdict)
         return NoopGQL.from_query()
 
