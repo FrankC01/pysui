@@ -1653,17 +1653,25 @@ class ExecuteTransaction(PGQL_QueryNode):
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
 
-        qres = schema.Mutation.executeTransactionBlock(
-            txBytes=self.tx_data, signatures=self.sigs
+        qres = schema.Mutation.executeTransaction(
+            transactionDataBcs=self.tx_data, signatures=self.sigs
         ).select(
             schema.ExecutionResult.errors,
             schema.ExecutionResult.effects.select(
-                schema.TransactionBlockEffects.status,
-                schema.TransactionBlockEffects.lamportVersion,
-                schema.TransactionBlockEffects.transactionBlock.select(
-                    schema.TransactionBlock.digest
+                schema.TransactionEffects.status,
+                schema.TransactionEffects.lamportVersion,
+                schema.TransactionEffects.digest,
+                schema.TransactionEffects.transaction.select(
+                    bcs=schema.Transaction.transactionBcs
                 ),
-                schema.TransactionBlockEffects.bcs,
+                execution_errors=schema.TransactionEffects.executionError.select(
+                    schema.ExecutionError.abortCode,
+                    schema.ExecutionError.sourceLineNumber,
+                    schema.ExecutionError.instructionOffset,
+                    schema.ExecutionError.identifier,
+                    schema.ExecutionError.constant,
+                    schema.ExecutionError.message,
+                ),
             ),
         )
         return dsl_gql(DSLMutation(qres))
