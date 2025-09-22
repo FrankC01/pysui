@@ -116,6 +116,6 @@ class Schema:
                 verify=True,
                 http2=True,
                 timeout=self.timeout,
-                proxies=proxies,
+                proxy=proxies,
             ),
         )
