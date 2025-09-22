@@ -265,7 +265,7 @@ def do_tx(client: SyncGqlClient):
 
     handle_result(
         client.execute_query_node(
-            with_node=qn.GetTx(digest="4PBvkpoVr5TKgxkVyo3AHAMkwwQ7BrSbkwjDiZiKxn6h")
+            with_node=qn.GetTx(digest="HUBRYJeTCmcXTSW4Q5peCSDBXzvX8JDhw7uf7gVrYibw")
         )
     )
 
@@ -613,7 +613,9 @@ def split_any_half(client: SyncGqlClient):
         txer: SuiTransaction = client.transaction()
         scres = txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
         txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
-        txdict = txer.build_and_sign()
+        txdict = txer.build_and_sign(
+            use_gas_objects=[result.result_data.data[1]], gas_budget="4000000"
+        )
         result = handle_result(
             client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
         )
@@ -731,7 +733,7 @@ if __name__ == "__main__":
         # do_dry_run_kind_new(client_init) # TODO: Needs Mysten implementation
         # do_execute_new(client_init) # TODO: Requires dry run
         # merge_some(client_init) # TODO: Requires dry run
-        # split_any_half(client_init) # TODO: Requires dry run
+        # split_any_half(client_init)  # TODO: Requires dry run
         # split_1_half(client_init) # TODO: Requires dry run
         # do_stake(client_init) # TODO: Requires dry run
         # do_unstake(client_init) # TODO: Requires dry run
