@@ -758,7 +758,7 @@ if __name__ == "__main__":
         # do_dry_run_kind_new(client_init) # TODO: Needs Mysten implementation
         # do_execute_new(client_init) # TODO: Requires dry run
         # merge_some(client_init) # TODO: Requires dry run
-        # split_any_half(client_init) # TODO: Requires dry run
+        # split_any_half(client_init)  # TODO: Requires dry run
         # split_1_half(client_init) # TODO: Requires dry run
         # do_stake(client_init) # TODO: Requires dry run
         # do_unstake(client_init) # TODO: Requires dry run
