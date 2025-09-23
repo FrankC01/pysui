@@ -331,7 +331,6 @@ class ObjectContentBCS(PGQL_Type):
 
     address: str  # Yes
     bcs: str
-    status: Optional[str] = None
     previous_transaction_digest: Optional[str] = None
 
     def as_bytes(self) -> bytes:
@@ -351,22 +350,14 @@ class ObjectContentBCS(PGQL_Type):
 class ObjectsContentBCS(PGQL_Type):
     """Raw object content BCS string."""
 
-    next_cursor: PagingCursor
     objects_data: list[ObjectContentBCS]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectsContentBCS":
         """."""
         if len(in_data):
-            next_cursor = PagingCursor.from_dict(in_data["objects"].pop("cursor"))
-
-            to_merge: dict = {}
-            _fast_flat(in_data, to_merge)
-            to_merge["objects_data"] = [
-                ObjectContentBCS.from_query(x) for x in to_merge["objects_data"]
-            ]
-            to_merge["next_cursor"] = next_cursor
-            return clz.from_dict(to_merge)
+            objs = [ObjectContentBCS.from_query(x) for x in in_data["multiGetObjects"]]
+            return clz(objs)
         return NoopGQL.from_query()
 
 
@@ -1153,12 +1144,10 @@ class ValidatorGQL(PGQL_Type):
     next_epoch_gas_price: str
     commission_rate: str
     next_epoch_commission_rate: int
-    at_risk: Optional[int]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorGQL":
         """."""
-        in_data["validatorAddress"] = in_data["address"]["validatorAddress"]
         return ValidatorGQL.from_dict(in_data)
 
 
@@ -1178,8 +1167,7 @@ class ValidatorSetGQL(PGQL_Type):
     def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
         """."""
         in_data["validators"] = [
-            ValidatorGQL.from_query(v_obj)
-            for v_obj in in_data["validators"]["validators"]
+            ValidatorGQL.from_query(v_obj) for v_obj in in_data["validators"]
         ]
         return ValidatorSetGQL.from_dict(in_data)
 

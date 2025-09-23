@@ -143,6 +143,18 @@ async def do_object(client: AsyncGqlClient):
     )
 
 
+async def do_object_content(client: AsyncGqlClient):
+    """Fetch minimal object content, basically just reference information.
+
+    Set 'obect_id' to object address of choice.
+    """
+    gobj = qn.GetObjectContent(
+        object_id="0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+    )
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(await client.execute_query_node(with_node=gobj))
+
+
 async def do_objects(client: AsyncGqlClient):
     """Fetch all objects held by owner."""
     try:
@@ -184,6 +196,17 @@ async def do_multiple_object_versions(client: AsyncGqlClient):
             with_node=qn.GetMultipleVersionedObjects(for_versions=object_versions)
         )
     )
+
+
+async def do_multiple_object_content(client: AsyncGqlClient):
+    """Fetch minimal object content, basically just reference information."""
+    gobj = qn.GetMultipleObjectContent(
+        object_ids=[
+            "0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+        ]
+    )
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(await client.execute_query_node(with_node=gobj))
 
 
 async def do_objects_for(client: AsyncGqlClient):
@@ -278,7 +301,7 @@ async def do_txs(client: AsyncGqlClient):
 async def do_filter_txs(client: AsyncGqlClient):
     """Fetch all transactions matching filter.
 
-    See Sui GraphQL schema for TransactionBlockFilter options.
+    See Sui GraphQL schema for TransactionFilter options.
     """
     obj_filter = {"affectedObject": "ENTER OBJECT_ID HERE"}
     result = await client.execute_query_node(
@@ -648,9 +671,11 @@ async def main():
         # await do_sysstate(client_init)
         # await do_all_balances(client_init)
         # await do_object(client_init)
+        # await do_object_content(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)
         # await do_multiple_object_versions(client_init)
+        # await do_multiple_object_content(client_init)
         # await do_objects_for(client_init)
         # await do_dynamics(client_init)
         # await do_event(client_init)
