@@ -724,7 +724,7 @@ if __name__ == "__main__":
         do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
-        # do_sysstate(client_init) # TODO: Needs update from Mysten, missing active validators
+        # do_sysstate(client_init)
         # do_all_balances(client_init)
         # do_object(client_init)
         # do_object_content(client_init)
