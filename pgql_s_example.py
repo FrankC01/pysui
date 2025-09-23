@@ -141,6 +141,18 @@ def do_object(client: SyncGqlClient):
     handle_result(client.execute_query_node(with_node=gobj))
 
 
+def do_object_content(client: SyncGqlClient):
+    """Fetch minimal object content, basically just reference information.
+
+    Set 'obect_id' to object address of choice.
+    """
+    gobj = qn.GetObjectContent(
+        object_id="0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+    )
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(client.execute_query_node(with_node=gobj))
+
+
 def do_past_object(client: SyncGqlClient):
     """Fetch a past object.
     To run, change the objectID str and version int.
@@ -170,6 +182,17 @@ def do_multiple_object_versions(client: SyncGqlClient):
             with_node=qn.GetMultipleVersionedObjects(for_versions=object_versions)
         )
     )
+
+
+def do_multiple_object_content(client: SyncGqlClient):
+    """Fetch minimal object content, basically just reference information."""
+    gobj = qn.GetMultipleObjectContent(
+        object_ids=[
+            "0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+        ]
+    )
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(client.execute_query_node(with_node=gobj))
 
 
 def do_objects(client: SyncGqlClient):
@@ -295,7 +318,7 @@ def do_txs(client: SyncGqlClient):
 def do_filter_txs(client: SyncGqlClient):
     """Fetch all transactions matching filter.
 
-    See Sui GraphQL schema for TransactionBlockFilter options.
+    See Sui GraphQL schema for TransactionFilter options.
     """
     obj_filter = {
         "affectedObject": "0x065f4c3414e14b74215f9fa585b7f0880228f37f2b0fb962282f752ada3c1ceb"
@@ -701,12 +724,14 @@ if __name__ == "__main__":
         do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
-        # do_sysstate(client_init) # TODO: Needs update from Mysten, missing active validators
+        # do_sysstate(client_init)
         # do_all_balances(client_init)
         # do_object(client_init)
+        # do_object_content(client_init)
         # do_objects(client_init)
         # do_past_object(client_init)
         # do_multiple_object_versions(client_init)
+        # do_multiple_object_content(client_init)
         # do_objects_for(client_init)
         # do_dynamics(client_init)
         # do_event(client_init)

@@ -59,8 +59,8 @@ class StandardCoin(PGQL_Fragment):
                 coin_objects=schema.CoinConnection.nodes.select(
                     schema.Coin.version,
                     schema.Coin.hasPublicTransfer,
-                    schema.Coin.previousTransactionBlock.select(
-                        previous_transaction=schema.TransactionBlock.digest
+                    schema.Coin.previousTransaction.select(
+                        previous_transaction=schema.Transaction.digest
                     ),
                     schema.Coin.owner.select(
                         DSLInlineFragment()
@@ -119,8 +119,8 @@ class StandardCoinObject(PGQL_Fragment):
                             schema.Coin.status,
                             schema.Coin.version,
                             schema.Coin.hasPublicTransfer,
-                            schema.Coin.previousTransactionBlock.select(
-                                previous_transaction=schema.TransactionBlock.digest
+                            schema.Coin.previousTransaction.select(
+                                previous_transaction=schema.Transaction.digest
                             ),
                             schema.Coin.owner.select(
                                 DSLInlineFragment()
@@ -223,8 +223,8 @@ class StandardObject(PGQL_Fragment):
                     ),
                 ),
                 storage_rebate=schema.Object.storageRebate,
-                prior_transaction=schema.Object.previousTransactionBlock.select(
-                    previous_transaction_digest=schema.TransactionBlock.digest
+                prior_transaction=schema.Object.previousTransaction.select(
+                    previous_transaction_digest=schema.Transaction.digest
                 ),
                 as_move_content=schema.Object.asMoveObject.select(
                     has_public_transfer=schema.MoveObject.hasPublicTransfer,
@@ -276,12 +276,12 @@ class StandardTxEffects(PGQL_Fragment):
 
         return (
             DSLFragment("TxEffects")
-            .on(schema.TransactionBlockEffects)
+            .on(schema.TransactionEffects)
             .select(
-                schema.TransactionBlockEffects.status,
-                schema.TransactionBlockEffects.errors,
-                schema.TransactionBlockEffects.timestamp,
-                schema.TransactionBlockEffects.balanceChanges.select(
+                schema.TransactionEffects.status,
+                schema.TransactionEffects.errors,
+                schema.TransactionEffects.timestamp,
+                schema.TransactionEffects.balanceChanges.select(
                     schema.BalanceChangeConnection.nodes.select(
                         schema.BalanceChange.coinType.select(
                             coin_type=schema.MoveType.repr
@@ -292,13 +292,13 @@ class StandardTxEffects(PGQL_Fragment):
                         ),
                     )
                 ),
-                schema.TransactionBlockEffects.gasEffects.select(
+                schema.TransactionEffects.gasEffects.select(
                     schema.GasEffects.gasObject.select(
                         gas_object_id=schema.Object.address,
                     ),
                     schema.GasEffects.gasSummary.select(gas_cost),
                 ),
-                schema.TransactionBlockEffects.objectChanges.select(
+                schema.TransactionEffects.objectChanges.select(
                     schema.ObjectChangeConnection.nodes.select(
                         address=schema.ObjectChange.address,
                         deleted=schema.ObjectChange.idDeleted,
@@ -307,7 +307,7 @@ class StandardTxEffects(PGQL_Fragment):
                         output_state=schema.ObjectChange.outputState.select(base_obj),
                     )
                 ),
-                schema.TransactionBlockEffects.checkpoint.select(
+                schema.TransactionEffects.checkpoint.select(
                     schema.Checkpoint.sequenceNumber,
                     schema.Checkpoint.networkTotalTransactions,
                     schema.Checkpoint.timestamp,
@@ -330,18 +330,18 @@ class StandardTransaction(PGQL_Fragment):
         tx_effects = StandardTxEffects().fragment(schema)
         return (
             DSLFragment("TxStandard")
-            .on(schema.TransactionBlock)
+            .on(schema.Transaction)
             .select(
-                schema.TransactionBlock.digest,
-                schema.TransactionBlock.signatures,
-                schema.TransactionBlock.kind.select(
+                schema.Transaction.digest,
+                schema.Transaction.signatures,
+                schema.Transaction.kind.select(
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
-                schema.TransactionBlock.sender.select(
+                schema.Transaction.sender.select(
                     submitter_address=schema.Address.address
                 ),
-                schema.TransactionBlock.expiration.select(schema.Epoch.epochId),
-                schema.TransactionBlock.gasInput.select(
+                schema.Transaction.expiration.select(schema.Epoch.epochId),
+                schema.Transaction.gasInput.select(
                     transaction_budget=schema.GasInput.gasBudget,
                     price=schema.GasInput.gasPrice,
                     sponsor=schema.GasInput.gasSponsor.select(
@@ -353,7 +353,7 @@ class StandardTransaction(PGQL_Fragment):
                         )
                     ),
                 ),
-                schema.TransactionBlock.effects.select(tx_effects),
+                schema.Transaction.effects.select(tx_effects),
             )
         )
 
@@ -366,9 +366,9 @@ class ProgrammableTxKind(PGQL_Fragment):
         """."""
         return (
             DSLFragment("PrgTxKind")
-            .on(schema.ProgrammableTransactionBlock)
+            .on(schema.ProgrammableTransaction)
             .select(
-                schema.ProgrammableTransactionBlock.inputs.select(
+                schema.ProgrammableTransaction.inputs.select(
                     DSLInlineFragment()
                     .on(schema.TransactionInputConnection)
                     .select(
@@ -403,7 +403,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                         )
                     ),
                 ),
-                schema.ProgrammableTransactionBlock.transactions.select(
+                schema.ProgrammableTransaction.transactions.select(
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransactionConnection)
                     .select(
@@ -691,11 +691,11 @@ class StandardTransactionKind(PGQL_Fragment):
         ccp_kind = ConsensusCommitPrologueKind().fragment(schema)
         return (
             DSLFragment("TxKind")
-            .on(schema.TransactionBlock)
+            .on(schema.Transaction)
             .select(
-                schema.TransactionBlock.kind.select(
+                schema.Transaction.kind.select(
                     DSLInlineFragment()
-                    .on(schema.ProgrammableTransactionBlock)
+                    .on(schema.ProgrammableTransaction)
                     .select(prg_kind),
                     DSLInlineFragment()
                     .on(schema.ConsensusCommitPrologueTransaction)
@@ -730,11 +730,11 @@ class StandardCheckpoint(PGQL_Fragment):
                 schema.Checkpoint.previousCheckpointDigest,
                 schema.Checkpoint.networkTotalTransactions,
                 transaction_blocks=schema.Checkpoint.transactionBlocks.select(
-                    cursor=schema.TransactionBlockConnection.pageInfo.select(
+                    cursor=schema.TransactionConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),
-                    tx_digests=schema.TransactionBlockConnection.nodes.select(
-                        schema.TransactionBlock.digest
+                    tx_digests=schema.TransactionConnection.nodes.select(
+                        schema.Transaction.digest
                     ),
                 ),
             )
