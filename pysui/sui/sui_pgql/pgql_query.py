@@ -229,26 +229,23 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
                 schema.ValidatorSet.inactivePoolsSize,
                 schema.ValidatorSet.validatorCandidatesSize,
                 validators=schema.ValidatorSet.activeValidators.select(
-                    validators=schema.ValidatorConnection.nodes.select(
-                        schema.Validator.description,
-                        schema.Validator.projectUrl,
-                        schema.Validator.commissionRate,
-                        schema.Validator.stakingPoolSuiBalance,
-                        schema.Validator.pendingStake,
-                        schema.Validator.pendingPoolTokenWithdraw,
-                        schema.Validator.pendingTotalSuiWithdraw,
-                        schema.Validator.votingPower,
-                        schema.Validator.gasPrice,
-                        schema.Validator.atRisk,
-                        schema.Validator.nextEpochStake,
-                        schema.Validator.nextEpochCommissionRate,
-                        schema.Validator.nextEpochGasPrice,
-                        schema.Validator.address.select(
-                            validatorAddress=schema.Address.address
-                        ),
-                        validatorName=schema.Validator.name,
-                    ),
+                    # validators=schema.ValidatorConnection.nodes.select(
+                    schema.Validator.description,
+                    schema.Validator.projectUrl,
+                    schema.Validator.commissionRate,
+                    schema.Validator.stakingPoolSuiBalance,
+                    schema.Validator.pendingStake,
+                    schema.Validator.pendingPoolTokenWithdraw,
+                    schema.Validator.pendingTotalSuiWithdraw,
+                    schema.Validator.votingPower,
+                    schema.Validator.gasPrice,
+                    schema.Validator.nextEpochStake,
+                    schema.Validator.nextEpochCommissionRate,
+                    schema.Validator.nextEpochGasPrice,
+                    validatorAddress=schema.Validator.address,
+                    validatorName=schema.Validator.name,
                 ),
+                # ),
             ),
             schema.Epoch.storageFund.select(
                 schema.StorageFund.totalObjectStorageRebates,
@@ -319,14 +316,13 @@ class GetObjectContent(PGQL_QueryNode):
             DSLQuery(
                 object=schema.Query.object(address=self.object_id).select(
                     schema.Object.address,
-                    schema.Object.status,
                     schema.Object.asMoveObject.select(
                         schema.MoveObject.contents.select(
                             schema.MoveValue.bcs,
                         )
                     ),
-                    prior_transaction=schema.Object.previousTransactionBlock.select(
-                        previous_transaction_digest=schema.TransactionBlock.digest
+                    prior_transaction=schema.Object.previousTransaction.select(
+                        previous_transaction_digest=schema.Transaction.digest
                     ),
                 ),
             )
@@ -348,7 +344,6 @@ class GetMultipleObjectContent(PGQL_QueryNode):
         self,
         *,
         object_ids: list[str],
-        next_page: Optional[pgql_type.PagingCursor] = None,
     ):
         """QueryNode initializer.
 
@@ -356,36 +351,23 @@ class GetMultipleObjectContent(PGQL_QueryNode):
         :type object_id: str
         """
         self.object_ids = [TypeValidator.check_object_id(x) for x in object_ids]
-        self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest"""
-        pg_cursor = frag.PageCursor().fragment(schema)
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        qres = schema.Query.objects(filter={"objectIds": self.object_ids})
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
-
-        qres.select(
-            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
-            objects_data=schema.ObjectConnection.nodes.select(
-                schema.Object.address,
-                schema.Object.status,
-                schema.Object.asMoveObject.select(
-                    schema.MoveObject.contents.select(
-                        schema.MoveValue.bcs,
-                    )
-                ),
-                prior_transaction=schema.Object.previousTransactionBlock.select(
-                    previous_transaction_digest=schema.TransactionBlock.digest
-                ),
+        obj_ids = [{"address": cid} for cid in self.object_ids]
+        object_content = schema.Query.multiGetObjects(keys=obj_ids).select(
+            schema.Object.address,
+            schema.Object.asMoveObject.select(
+                schema.MoveObject.contents.select(
+                    schema.MoveValue.bcs,
+                )
             ),
-        ),
+            prior_transaction=schema.Object.previousTransaction.select(
+                previous_transaction_digest=schema.Transaction.digest
+            ),
+        )
         return dsl_gql(
-            pg_cursor,
-            DSLQuery(qres),
+            DSLQuery(object_content),
         )
 
     @staticmethod
