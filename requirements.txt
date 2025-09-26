@@ -1,4 +1,4 @@
-betterproto2[grpclib] < 1.0.0, >= 0.8.0s
+betterproto2[grpclib] < 1.0.0, >= 0.9.0s
 dataclasses_json < 0.7.0, >= 0.6.6
 pyyaml < 6.2, >= 6.0.1
 httpx < 0.29, >=0.28.1

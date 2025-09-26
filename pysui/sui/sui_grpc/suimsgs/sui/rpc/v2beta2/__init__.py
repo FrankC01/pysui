@@ -204,14 +204,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import betterproto2
+from betterproto2 import grpclib as betterproto2_grpclib
 
 from ....message_pool import default_message_pool
 
 if TYPE_CHECKING:
-    from betterproto2.grpc.grpclib_client import MetadataLike
+    from betterproto2.grpclib.grpclib_client import MetadataLike
     from grpclib.metadata import Deadline
 
-_COMPILER_VERSION = "0.8.0"
+_COMPILER_VERSION = "0.9.0"
 betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
@@ -6898,7 +6899,7 @@ default_message_pool.register_message(
 )
 
 
-class LedgerServiceStub(betterproto2.ServiceStub):
+class LedgerServiceStub(betterproto2_grpclib.ServiceStub):
     async def get_service_info(
         self,
         message: "GetServiceInfoRequest | None" = None,
@@ -7026,7 +7027,7 @@ class LedgerServiceStub(betterproto2.ServiceStub):
         )
 
 
-class LiveDataServiceStub(betterproto2.ServiceStub):
+class LiveDataServiceStub(betterproto2_grpclib.ServiceStub):
     async def list_dynamic_fields(
         self,
         message: "ListDynamicFieldsRequest",
@@ -7130,7 +7131,7 @@ class LiveDataServiceStub(betterproto2.ServiceStub):
         )
 
 
-class MovePackageServiceStub(betterproto2.ServiceStub):
+class MovePackageServiceStub(betterproto2_grpclib.ServiceStub):
     async def get_package(
         self,
         message: "GetPackageRequest",
@@ -7200,7 +7201,7 @@ class MovePackageServiceStub(betterproto2.ServiceStub):
         )
 
 
-class NameServiceStub(betterproto2.ServiceStub):
+class NameServiceStub(betterproto2_grpclib.ServiceStub):
     async def lookup_name(
         self,
         message: "LookupNameRequest",
@@ -7236,7 +7237,7 @@ class NameServiceStub(betterproto2.ServiceStub):
         )
 
 
-class SignatureVerificationServiceStub(betterproto2.ServiceStub):
+class SignatureVerificationServiceStub(betterproto2_grpclib.ServiceStub):
     async def verify_signature(
         self,
         message: "VerifySignatureRequest",
@@ -7259,7 +7260,7 @@ class SignatureVerificationServiceStub(betterproto2.ServiceStub):
         )
 
 
-class SubscriptionServiceStub(betterproto2.ServiceStub):
+class SubscriptionServiceStub(betterproto2_grpclib.ServiceStub):
     async def subscribe_checkpoints(
         self,
         message: "SubscribeCheckpointsRequest",
@@ -7293,7 +7294,7 @@ class SubscriptionServiceStub(betterproto2.ServiceStub):
             yield response
 
 
-class TransactionExecutionServiceStub(betterproto2.ServiceStub):
+class TransactionExecutionServiceStub(betterproto2_grpclib.ServiceStub):
     async def execute_transaction(
         self,
         message: "ExecuteTransactionRequest",

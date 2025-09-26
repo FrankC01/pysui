@@ -9,10 +9,10 @@ import abc
 from dataclasses import Field
 import enum
 from inspect import getmembers
-from types import GeneratorType
 from typing import Callable, Optional
 
 import betterproto2
+from betterproto2 import grpclib as betterproto2_grpclib
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 import pysui.sui.sui_grpc.suimsgs.google.protobuf as goog_prot
@@ -49,7 +49,7 @@ class PGRPC_Request(abc.ABC):
     def to_request(
         self,
         *,
-        stub: betterproto2.ServiceStub,
+        stub: betterproto2_grpclib.ServiceStub,
         field_mask: Optional[list] = None,
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
