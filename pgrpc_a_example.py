@@ -585,7 +585,7 @@ async def main():
     try:
         client_init = SuiGrpcClient(
             pysui_config=PysuiConfiguration(
-                group_name=PysuiConfiguration.SUI_GRPC_GROUP,
+                group_name=PysuiConfiguration.SUI_GRPC_GROUP,  # Default gRPC group
                 profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",

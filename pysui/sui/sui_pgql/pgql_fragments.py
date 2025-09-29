@@ -417,23 +417,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                         )
                     ),
                 ),
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                schema.ProgrammableTransaction.commands.select(
-=======
-                schema.ProgrammableTransaction.transactions.select(
->>>>>>> 30fdd47 (GraphQL Beta Transition)
-=======
-                schema.ProgrammableTransaction.commands.select(
->>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
-                schema.ProgrammableTransaction.transactions.select(
->>>>>>> bafbf78 (GraphQL Beta Transition)
-=======
-                schema.ProgrammableTransaction.commands.select(
->>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
+                schema.ProgrammableTransactionBlock.transactions.select(
                     DSLInlineFragment()
                     .on(schema.CommandConnection)
                     .select(
@@ -731,22 +715,7 @@ class StandardTransactionKind(PGQL_Fragment):
             DSLFragment("TxKind")
             .on(schema.Transaction)
             .select(
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                schema.Transaction.digest,
-=======
->>>>>>> 30fdd47 (GraphQL Beta Transition)
-=======
-                schema.Transaction.digest,
->>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
->>>>>>> bafbf78 (GraphQL Beta Transition)
-=======
-                schema.Transaction.digest,
->>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-                schema.Transaction.kind.select(
+                schema.TransactionBlock.kind.select(
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransaction)
                     .select(prg_kind),
@@ -782,23 +751,8 @@ class StandardCheckpoint(PGQL_Fragment):
                 schema.Checkpoint.timestamp,
                 schema.Checkpoint.previousCheckpointDigest,
                 schema.Checkpoint.networkTotalTransactions,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                transaction_blocks=schema.Checkpoint.transactions.select(
-=======
                 transaction_blocks=schema.Checkpoint.transactionBlocks.select(
-<<<<<<< HEAD
->>>>>>> 30fdd47 (GraphQL Beta Transition)
-=======
-                transaction_blocks=schema.Checkpoint.transactions.select(
->>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
->>>>>>> bafbf78 (GraphQL Beta Transition)
-=======
-                transaction_blocks=schema.Checkpoint.transactions.select(
->>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-                    cursor=schema.TransactionConnection.pageInfo.select(
+                    cursor=schema.TransactionBlockConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),
                     tx_digests=schema.TransactionConnection.nodes.select(

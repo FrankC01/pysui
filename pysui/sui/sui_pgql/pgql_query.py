@@ -816,6 +816,7 @@ class GetMultipleTx(PGQL_QueryNode):
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                 schema.Transaction.kind.select(
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
@@ -833,6 +834,11 @@ class GetMultipleTx(PGQL_QueryNode):
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
 >>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
+=======
+                schema.Transaction.kind.select(
+                    DSLMetaField("__typename").alias("tx_kind")
+                ),
+>>>>>>> ce970dba354731f7e46fb0edc8b767482908e8ef
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
                 ),
@@ -899,10 +905,13 @@ class GetFilteredTx(PGQL_QueryNode):
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
 =======
 >>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
+=======
+>>>>>>> ce970dba354731f7e46fb0edc8b767482908e8ef
                 schema.Transaction.digest,
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
@@ -921,6 +930,7 @@ class GetFilteredTx(PGQL_QueryNode):
                     ),
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 =======
 >>>>>>> bafbf78 (GraphQL Beta Transition)
@@ -936,6 +946,8 @@ class GetFilteredTx(PGQL_QueryNode):
 >>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
 =======
 >>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
+=======
+>>>>>>> ce970dba354731f7e46fb0edc8b767482908e8ef
                 ),
             ),
         )
