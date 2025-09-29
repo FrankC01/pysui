@@ -1166,27 +1166,16 @@ class GetCurrentValidators(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
 
-        active_vals = schema.ValidatorSet.activeValidators
-        if self.next_page:
-            active_vals(after=self.next_page.endCursor)
-
-        pg_cursor = frag.PageCursor().fragment(schema)
         val = frag.Validator().fragment(schema)
-        valset = frag.ValidatorSet().fragment(schema, active_vals)
+        valset = frag.ValidatorSet().fragment(schema)
         return dsl_gql(
             valset,
-            pg_cursor,
             val,
             DSLQuery(
-                schema.Query.checkpoint.select(
-                    schema.Checkpoint.epoch.select(
-                        schema.Epoch.validatorSet.select(valset)
-                    )
-                )
+                schema.Query.epoch.select(schema.Epoch.validatorSet.select(valset))
             ),
+            # DSLQuery(schema.Query.epoch.select(schema.Epoch.validatorSet.select(val))),
         )
 
     @staticmethod

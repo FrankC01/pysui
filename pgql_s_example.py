@@ -214,8 +214,8 @@ def do_objects_for(client: SyncGqlClient):
         client.execute_query_node(
             with_node=qn.GetMultipleObjects(
                 object_ids=[
-                    "0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
-                    "0x285c48a3bc7440f08ad91caf6955f8b9b8c2db69e4b4c5071aa94c2468689d93",
+                    "0x01c65900c1c67b8e442676d981ed6752fe2317fbaa444c7a2e1f0ee4736caaa4",
+                    "0x0e2b194679b1d071f7b39570acc3dd7623361daa9507ef6bda98d0ecfcfc5255",
                 ]
             )
         )
@@ -321,7 +321,7 @@ def do_filter_txs(client: SyncGqlClient):
     See Sui GraphQL schema for TransactionFilter options.
     """
     obj_filter = {
-        "affectedObject": "0x065f4c3414e14b74215f9fa585b7f0880228f37f2b0fb962282f752ada3c1ceb"
+        "affectedObject": "0x01c65900c1c67b8e442676d981ed6752fe2317fbaa444c7a2e1f0ee4736caaa4"
     }
     result = client.execute_query_node(with_node=qn.GetFilteredTx(tx_filter=obj_filter))
     while result.is_ok():
@@ -345,7 +345,7 @@ def do_tx_kind(client: SyncGqlClient):
     Substitute a valid transaction digest from operating environment.
     """
     qnode = qn.GetTxKind(
-        digest="6UfWSAfUArkkKc24DeRDje2mtQdZar8H2J21ZsMgTexK"
+        digest="AztzzDzm9r3L1QqZZZMzbporo1HSbjSKT2KGSWX1ujVB"
     )  # split and transfer
     handle_result(client.execute_query_node(with_node=qnode))
 
@@ -413,27 +413,6 @@ def do_owned_nameservice(client: SyncGqlClient):
 def do_validators(client: SyncGqlClient):
     """Fetch the most current validator detail."""
     handle_result(client.execute_query_node(with_node=qn.GetCurrentValidators()))
-
-
-def do_all_validators(client: SyncGqlClient):
-    """Fetch all validators and show name and data."""
-    all_vals: list[ptypes.ValidatorFullGQL] = []
-    valres = client.execute_query_node(with_node=qn.GetCurrentValidators())
-    while valres.is_ok():
-        all_vals.extend(valres.result_data.validators)
-        if valres.result_data.next_cursor.hasNextPage:
-            valres = client.execute_query_node(
-                with_node=qn.GetCurrentValidators(
-                    next_page=valres.result_data.next_cursor,
-                )
-            )
-        else:
-            break
-    print(f"Total validators {len(all_vals)}")
-    for val in all_vals:
-        print(
-            f"Address: {val.validator_address} Apy: {val.apy} Name: {val.validator_name}"
-        )
 
 
 def do_protcfg(client: SyncGqlClient):
@@ -743,10 +722,9 @@ if __name__ == "__main__":
         # do_latest_cp(client_init)
         # do_sequence_cp(client_init)
         # do_checkpoints(client_init)
-        # do_nameservice(client_init) # TODO: Only get name from address? No reverse Address from Name?
-        # do_owned_nameservice(client_init) # TODO: Address only carries 1 defaultSuinsName?
-        # do_validators(client_init)  # TODO: missing active validators
-        # do_all_validators(client_init) # TODO: missing active validators
+        # do_nameservice(client_init)
+        # do_owned_nameservice(client_init)
+        # do_validators(client_init)
         # do_refgas(client_init)
         # do_struct(client_init)
         # do_structs(client_init)

@@ -393,27 +393,6 @@ async def do_validators(client: AsyncGqlClient):
     handle_result(await client.execute_query_node(with_node=qn.GetCurrentValidators()))
 
 
-async def do_all_validators(client: AsyncGqlClient):
-    """Fetch all validators and show name and data."""
-    all_vals: list[ptypes.ValidatorFullGQL] = []
-    valres = await client.execute_query_node(with_node=qn.GetCurrentValidators())
-    while valres.is_ok():
-        all_vals.extend(valres.result_data.validators)
-        if valres.result_data.next_cursor.hasNextPage:
-            valres = await client.execute_query_node(
-                with_node=qn.GetCurrentValidators(
-                    next_page=valres.result_data.next_cursor,
-                )
-            )
-        else:
-            break
-    print(f"Total validators {len(all_vals)}")
-    for val in all_vals:
-        print(
-            f"Address: {val.validator_address} Apy: {val.apy} Name: {val.validator_name}"
-        )
-
-
 async def do_protcfg(client: AsyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(
@@ -690,7 +669,6 @@ async def main():
         # await do_checkpoints(client_init)
         # await do_owned_nameservice(client_init)
         # await do_validators(client_init)
-        # await do_all_validators(client_init)
         # await do_nameservice(client_init)
         # await do_refgas(client_init)
         # await do_struct(client_init)
