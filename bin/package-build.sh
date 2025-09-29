@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Copyright (c) Frank V. Castellucci
 # License: Apache-2.0
 
@@ -12,13 +13,12 @@ then
     rm -rf "pysui.egg-info"
     echo "Building pysui....."
     python3 -m build . --wheel
-    tout=$(twine check "dist/*")
-    if echo $tout | grep -q "PASSED"; then
+    if twine check "dist/*"; then
             echo "Build successful!"
             exit 0
         else
             echo "Bad Build. Fix errors and rerun"
-            exit -1
+            exit 1
     fi
 else
     echo "Command must run from pysui folder."

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Copyright (c) Frank V. Castellucci
 # License: Apache-2.0
 
@@ -22,15 +23,14 @@ then
     # Generate html docs
     cd doc
     echo "Building HTML"
-    gen_html=$(make html)
-    cd ..
-    if echo $gen_html | grep -q "build succeeded"; then
+    if make html >/dev/null 2>&1; then
         echo "Docs build success"
+        cd ..
         exit 0
     else
-        echo $gen_html
-        echo "Fix errors and rerun"
-        exit -1
+        echo "Build failed"
+        cd ..
+        exit 1
     fi
 else
     echo "Command must run from pysui folder."

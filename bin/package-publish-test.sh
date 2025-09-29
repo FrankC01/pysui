@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Copyright (c) Frank V. Castellucci
 # License: Apache-2.0
 
@@ -14,7 +15,7 @@ then
         tout=$(twine upload -r testpypi "dist/*")
         if echo $tout | grep -q "ERROR"; then
             echo "Publish failed. Fix errors and rerun"
-            exit -1
+            exit 1
         else
             echo "Upload passed!"
             exit 0
