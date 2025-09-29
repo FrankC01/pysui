@@ -950,22 +950,14 @@ class Validator(PGQL_Fragment):
             .on(schema.Validator)
             .select(
                 schema.Validator.name.alias("validator_name"),
-                schema.Validator.address.select(
-                    schema.Address.address.alias("validator_address")
-                ),
+                schema.Validator.address.alias("validator_address"),
                 schema.Validator.description,
                 schema.Validator.imageUrl,
                 schema.Validator.projectUrl,
-                schema.Validator.operationCap.select(
-                    schema.MoveObject.address.alias("operating_cap_address")
-                ),
                 schema.Validator.stakingPoolSuiBalance,
                 schema.Validator.stakingPoolActivationEpoch,
                 schema.Validator.stakingPoolId.alias("staking_pool_address"),
                 schema.Validator.exchangeRatesSize,
-                schema.Validator.exchangeRatesTable.select(
-                    schema.Owner.address.alias("exchange_rates_address")
-                ),
                 schema.Validator.rewardsPool,
                 schema.Validator.poolTokenBalance,
                 schema.Validator.pendingStake,
@@ -977,8 +969,6 @@ class Validator(PGQL_Fragment):
                 schema.Validator.nextEpochStake,
                 schema.Validator.nextEpochGasPrice,
                 schema.Validator.nextEpochCommissionRate,
-                schema.Validator.atRisk,
-                schema.Validator.apy,
             )
         )
 
@@ -987,10 +977,10 @@ class ValidatorSet(PGQL_Fragment):
     """ValidatorSet reusable fragment."""
 
     @cache
-    def fragment(self, schema: DSLSchema, active_vals: DSLField) -> DSLFragment:
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
         """."""
         pg_cursor = PageCursor()
-        vals = Validator()
+        vals = Validator().fragment(schema)
         return (
             DSLFragment("ValidatorSet")
             .on(schema.ValidatorSet)
@@ -1003,13 +993,6 @@ class ValidatorSet(PGQL_Fragment):
                 schema.ValidatorSet.inactivePoolsId,
                 schema.ValidatorSet.validatorCandidatesId,
                 schema.ValidatorSet.validatorCandidatesSize,
-                active_vals.select(
-                    cursor=schema.ValidatorConnection.pageInfo.select(
-                        pg_cursor.fragment(schema)
-                    ),
-                    validators=schema.ValidatorConnection.nodes.select(
-                        vals.fragment(schema)
-                    ),
-                ),
+                validators=schema.ValidatorSet.activeValidators.select(vals),
             )
         )

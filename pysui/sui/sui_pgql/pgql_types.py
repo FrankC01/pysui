@@ -1753,22 +1753,11 @@ class ValidatorFullGQL:
     nextEpochStake: str
     nextEpochGasPrice: str
     nextEpochCommissionRate: 1200
-    apy: int
-    atRisk: Optional[int] = None
-    operating_cap_address: Optional[str] = None
-    exchange_rates_address: Optional[str] = None
-    staking_pool_address: Optional[str] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorFullGQL":
         fdict: dict = {}
         _fast_flat(in_data, fdict)
-        if "operatingCap" in fdict:
-            fdict["operating_cap_address"] = None
-            fdict.pop("operatingCap")
-        # if "exchangeRate" in fdict:
-        #     fdict["exchange_rates_address"] = None
-        #     fdict.pop("exchangeRate")
         return ValidatorFullGQL.from_dict(fdict)
 
 
@@ -1786,15 +1775,11 @@ class ValidatorSetsGQL:
     validatorCandidatesId: str
     validatorCandidatesSize: int
     validators: list[ValidatorFullGQL]
-    next_cursor: PagingCursor
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorSetsGQL":
         fdict: dict = {}
         _fast_flat(in_data, fdict)
-        fdict["next_cursor"] = PagingCursor(
-            fdict.pop("hasNextPage"), fdict.pop("endCursor")
-        )
         fdict["validators"] = [
             ValidatorFullGQL.from_query(x) for x in fdict["validators"]
         ]
