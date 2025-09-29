@@ -5,6 +5,7 @@
 
 """pysui gRPC Clients"""
 
+import asyncio
 from collections.abc import Callable
 import dataclasses
 import logging
@@ -180,7 +181,7 @@ class SuiGrpcClient(PysuiClient):
                     result = srv_fn(srv_req, **kwargs)
                     logger.info("Success")
                     return SuiRpcResult(True, None, result)
-                except (GRPCError, ValueError) as e:
+                except (GRPCError, ValueError, asyncio.exceptions.CancelledError) as e:
                     traceback_str = traceback.format_exc()
                     logger.error(traceback_str)
                     return SuiRpcResult(False, e.args)
