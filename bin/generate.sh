@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Copyright (c) Frank V. Castellucci
 # License: Apache-2.0
 

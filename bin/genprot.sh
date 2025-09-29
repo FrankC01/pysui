@@ -1,5 +1,5 @@
 #! /bin/bash
-
+set -euo pipefail
 #    Copyright Frank V. Castellucci
 #    SPDX-License-Identifier: Apache-2.0
 
