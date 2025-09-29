@@ -14,7 +14,7 @@ then
         tout=$(twine upload "dist/*")
         if echo $tout | grep -q "ERROR"; then
             echo "Publish failed. Fix errors and rerun"
-            exit -1
+            exit 1
         else
             echo "Upload passed!"
             exit 0

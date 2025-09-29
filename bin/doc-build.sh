@@ -30,7 +30,7 @@ then
     else
         echo $gen_html
         echo "Fix errors and rerun"
-        exit -1
+        exit 1
     fi
 else
     echo "Command must run from pysui folder."

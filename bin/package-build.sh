@@ -18,7 +18,7 @@ then
             exit 0
         else
             echo "Bad Build. Fix errors and rerun"
-            exit -1
+            exit 1
     fi
 else
     echo "Command must run from pysui folder."
