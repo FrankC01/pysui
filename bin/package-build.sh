@@ -13,8 +13,7 @@ then
     rm -rf "pysui.egg-info"
     echo "Building pysui....."
     python3 -m build . --wheel
-    tout=$(twine check "dist/*")
-    if echo $tout | grep -q "PASSED"; then
+    if twine check "dist/*"; then
             echo "Build successful!"
             exit 0
         else

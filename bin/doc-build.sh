@@ -23,14 +23,13 @@ then
     # Generate html docs
     cd doc
     echo "Building HTML"
-    gen_html=$(make html)
-    cd ..
-    if echo $gen_html | grep -q "build succeeded"; then
+    if make html >/dev/null 2>&1; then
         echo "Docs build success"
+        cd ..
         exit 0
     else
-        echo $gen_html
-        echo "Fix errors and rerun"
+        echo "Build failed"
+        cd ..
         exit 1
     fi
 else

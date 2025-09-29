@@ -9,16 +9,14 @@ base_dir=${PWD##*/}
 if test "$base_dir" = "pysui";
 then
     echo "Publishing to PyPi"
-    tout=$(twine check "dist/*")
-    if echo $tout | grep -q "PASSED"; then
+    if twine check "dist/*"; then
         echo "Valid build... uploading to pypi"
-        tout=$(twine upload "dist/*")
-        if echo $tout | grep -q "ERROR"; then
-            echo "Publish failed. Fix errors and rerun"
-            exit 1
-        else
+        if twine upload "dist/*"; then
             echo "Upload passed!"
             exit 0
+        else
+            echo "Publish failed. Fix errors and rerun"
+            exit 1
         fi
     fi
 else
