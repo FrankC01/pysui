@@ -355,7 +355,7 @@ async def do_validators(client: SuiGrpcClient):
 
 async def do_all_validators(client: SuiGrpcClient):
     """Fetch all validators and show name and data."""
-    do_validators(client)
+    await do_validators(client)
 
 
 async def do_protcfg(client: SuiGrpcClient):
