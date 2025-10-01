@@ -321,6 +321,20 @@ class StandardTxEffects(PGQL_Fragment):
                         schema.Epoch.endTimestamp,
                     ),
                 ),
+                schema.TransactionEffects.events.select(
+                    schema.EventConnection.nodes.select(
+                        schema.Event.sequenceNumber,
+                        schema.Event.timestamp,
+                        schema.Event.contents.select(schema.MoveValue.json),
+                        schema.Event.transactionModule.select(
+                            schema.MoveModule.package.select(
+                                schema.MovePackage.version,
+                                package_id=schema.MovePackage.address,
+                            ),
+                            module_name=schema.MoveModule.name,
+                        ),
+                    )
+                ),
             )
         )
 

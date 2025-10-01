@@ -702,7 +702,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        # do_gas(client_init)
+        do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
@@ -735,13 +735,13 @@ if __name__ == "__main__":
         # do_module(client_init)
         # do_package(client_init)
         # do_dry_run_new(client_init)
-        do_dry_run_kind_new(client_init)  # TODO: Needs Mysten implementation
-        # do_execute_new(client_init) # TODO: Requires dry run
-        # merge_some(client_init) # TODO: Requires dry run
-        # split_any_half(client_init)  # TODO: Requires dry run
-        # split_1_half(client_init) # TODO: Requires dry run
-        # do_stake(client_init) # TODO: Requires dry run
-        # do_unstake(client_init) # TODO: Requires dry run
+        # do_dry_run_kind_new(client_init)
+        # do_execute_new(client_init)
+        # merge_some(client_init)
+        # split_any_half(client_init)
+        # split_1_half(client_init)
+        # do_stake(client_init)
+        # do_unstake(client_init)
         ## Config
         # do_chain_id(client_init)
         # do_configs(client_init)

@@ -786,6 +786,7 @@ class DryRunResultTransactionGQL(PGQL_Type):
     gas_effects: dict
     balance_changes: dict
     object_changes: ObjectChanges
+    events: Optional[dict] = None
     execution_error: Optional[dict] = None
 
     @classmethod
