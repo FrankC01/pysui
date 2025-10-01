@@ -667,7 +667,8 @@ class SuiCoinMetadataGQL(PGQL_Type):
 @dataclasses.dataclass
 class ObjectContent:
     has_public_transfer: bool
-    as_object: dict
+    content: dict
+    object_type: str
 
     # "as_object": {
     #     "content": {
@@ -679,7 +680,16 @@ class ObjectContent:
     #     },
     # },
     def object_type(self) -> str:
-        return self.as_object["object_type_repr"]["object_type"]
+        return self.object_type
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectContent":
+        res_dict: dict = {}
+        content = in_data.get("as_object").pop("content")
+        # Flatten dictionary
+        _fast_flat(in_data, res_dict)
+        res_dict["content"] = content
+        return clz.from_dict(res_dict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -689,10 +699,10 @@ class ObjectState:
     version: int
     object_digest: str
     object_id: str
-    object_kind: str
     owner: dict
     storage_rebate: str
     prior_transaction: dict
+
     as_move_content: Optional[ObjectContent] = None
     as_move_package: Optional[dict] = None
 
@@ -701,6 +711,12 @@ class ObjectState:
 
     def is_object(self) -> bool:
         return self.as_move_content if self.as_move_content else False
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectState":
+        if obj_cont := in_data.get("as_move_content"):
+            in_data["as_move_content"] = ObjectContent.from_query(obj_cont)
+        return clz.from_dict(in_data)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -712,11 +728,25 @@ class ObjectChange:
     input_state: Optional[ObjectState]
     output_state: Optional[ObjectState]
 
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectChange":
+        if ist := in_data.get("input_state"):
+            in_data["input_state"] = ObjectState.from_query(ist)
+        if ost := in_data.get("output_state"):
+            in_data["output_state"] = ObjectState.from_query(ost)
+        return clz.from_dict(in_data)
+
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ObjectChanges:
     nodes: list[ObjectChange]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectChanges":
+        """."""
+        in_data["nodes"] = [ObjectChange.from_query(x) for x in in_data["nodes"]]
+        return clz.from_dict(in_data)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -743,7 +773,31 @@ class TransactionResultGQL(PGQL_Type):
 
     def object_changes(self) -> ObjectChanges:
         """Return data structured object changes."""
-        return ObjectChanges.from_dict(self.effects["objectChanges"])
+        return ObjectChanges.from_query(self.effects["objectChanges"])
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class DryRunResultTransactionGQL(PGQL_Type):
+    """Dry Run relevant Transaction details"""
+
+    status: str
+    timestamp: str
+    gas_effects: dict
+    balance_changes: dict
+    object_changes: ObjectChanges
+    execution_error: Optional[dict] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "DryRunResultTransactionGQL":
+        """."""
+        if tx_data := in_data.get("transactionBlock"):
+            # tx_data["transaction_kind"] = tx_data.pop("kind")["tx_kind"]
+            tx_data["objectChanges"] = ObjectChanges.from_query(
+                tx_data["objectChanges"]
+            )
+            return clz.from_dict(tx_data)
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -751,8 +805,8 @@ class TransactionResultGQL(PGQL_Type):
 class DryRunResultGQL(PGQL_Type):
     """DryRun result representation class."""
 
-    transaction_block: TransactionResultGQL
-    results: Optional[list[dict]]
+    transaction_block: DryRunResultTransactionGQL
+    results: Optional[list[dict]] = None
     error: Optional[str] = None
 
     @classmethod
@@ -763,7 +817,7 @@ class DryRunResultGQL(PGQL_Type):
             if in_data:
                 dr_err = in_data.pop("error")
                 dr_res = in_data.pop("results")
-                tblock = TransactionResultGQL.from_query(in_data)
+                tblock = DryRunResultTransactionGQL.from_query(in_data)
                 return DryRunResultGQL.from_dict(
                     {"error": dr_err, "results": dr_res, "transaction_block": tblock}
                 )
@@ -1783,6 +1837,7 @@ class ValidatorSetsGQL:
         fdict["validators"] = [
             ValidatorFullGQL.from_query(x) for x in fdict["validators"]
         ]
+
         return ValidatorSetsGQL.from_dict(fdict)
 
 

@@ -147,7 +147,7 @@ def do_object_content(client: SyncGqlClient):
     Set 'obect_id' to object address of choice.
     """
     gobj = qn.GetObjectContent(
-        object_id="0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+        object_id="0x05b9047053c3491b49347779342658d9655400e3d42aef85807c437edd73b2a2"
     )
     # print(client.query_node_to_string(query_node=gobj))
     handle_result(client.execute_query_node(with_node=gobj))
@@ -286,9 +286,9 @@ def do_tx(client: SyncGqlClient):
     To run, replace digest value with a valid one for network you are working with
     """
 
-    handle_result(
+    res = handle_result(
         client.execute_query_node(
-            with_node=qn.GetTx(digest="HUBRYJeTCmcXTSW4Q5peCSDBXzvX8JDhw7uf7gVrYibw")
+            with_node=qn.GetTx(digest="7AWa6ZF7BKmAqcZ5j7A9aUdhEZDwbq5fMyBfmbAnncrb")
         )
     )
 
@@ -321,7 +321,7 @@ def do_filter_txs(client: SyncGqlClient):
     See Sui GraphQL schema for TransactionFilter options.
     """
     obj_filter = {
-        "affectedObject": "0x01c65900c1c67b8e442676d981ed6752fe2317fbaa444c7a2e1f0ee4736caaa4"
+        "affectedObject": "0x05b9047053c3491b49347779342658d9655400e3d42aef85807c437edd73b2a2"
     }
     result = client.execute_query_node(with_node=qn.GetFilteredTx(tx_filter=obj_filter))
     while result.is_ok():
@@ -519,12 +519,15 @@ def do_dry_run_kind_new(client: SyncGqlClient):
     This uses the new SuiTransaction (GraphQL RPC based)
     """
 
-    txer = SuiTransaction(client=client)
+    txer: SuiTransaction = client.transaction()
     scres = txer.split_coin(coin=txer.gas, amounts=[1000000, 1000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     handle_result(
         client.execute_query_node(
-            with_node=qn.DryRunTransactionKind(tx_bytestr=txer.build_for_dryrun())
+            with_node=qn.DryRunTransactionKind(
+                tx_bytestr=txer.raw_kind(),
+                tx_meta={"sender": client.config.active_address},
+            )
         )
     )
 
@@ -534,12 +537,11 @@ def do_dry_run_new(client: SyncGqlClient):
 
     This uses the new SuiTransaction (GraphQL RPC based)
     """
-    txer = SuiTransaction(client=client)
+    txer: SuiTransaction = client.transaction()
     scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
     tx_b64 = base64.b64encode(txer.transaction_data().serialize()).decode()
-    print(tx_b64)
     handle_result(
         client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=tx_b64))
     )
@@ -700,7 +702,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
@@ -732,8 +734,8 @@ if __name__ == "__main__":
         # do_funcs(client_init)
         # do_module(client_init)
         # do_package(client_init)
-        # do_dry_run_new(client_init)  # TODO: Needs rework
-        # do_dry_run_kind_new(client_init) # TODO: Needs Mysten implementation
+        # do_dry_run_new(client_init)
+        do_dry_run_kind_new(client_init)  # TODO: Needs Mysten implementation
         # do_execute_new(client_init) # TODO: Requires dry run
         # merge_some(client_init) # TODO: Requires dry run
         # split_any_half(client_init)  # TODO: Requires dry run

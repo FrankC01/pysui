@@ -497,10 +497,11 @@ async def do_dry_run(client: AsyncGqlClient):
     txer: AsyncSuiTransaction = client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    tx_data = await txer.transaction_data()
 
     handle_result(
         await client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
+            with_node=qn.DryRunTransaction(tx_bytestr=tx_data.serialize())
         )
     )
 
@@ -508,13 +509,12 @@ async def do_dry_run(client: AsyncGqlClient):
 async def do_dry_run_txkind(txer: AsyncSuiTransaction):
     """Execute a dry run with just the TransactionKind."""
 
-    raw_kind = txer.raw_kind()
-    # print(raw_kind.to_json(indent=2))
-    raw_ser = raw_kind.serialize()
-    raw_b64 = base64.b64encode(raw_ser).decode()
-    # print(raw_b64)
-    dr_tk = qn.DryRunTransactionKind(tx_bytestr=raw_b64)
-    handle_result(await txer.client.execute_query_node(with_node=dr_tk))
+    dry_run = qn.DryRunTransactionKind(
+        tx_bytestr=txer.raw_kind(),
+        tx_meta={"sender": txer.client.config.active_address},
+    )
+
+    handle_result(await txer.client.execute_query_node(with_node=dry_run))
 
 
 async def inspect_example(client: AsyncGqlClient):

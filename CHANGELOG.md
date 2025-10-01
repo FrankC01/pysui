@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.91.0] - Unpublished
+
+**Breaking Changes**
+The transition from GraphQL ALPHA to GraphQL BETA introduced many input and output changes.
+
+- You will need to update the GraphQL URLs in PysuiConfig.json at a minimum. See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
+- Be sure to test thoroughly and report any issues on `pysui` github or our discord channel.
+
+### Added
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/351) GraphQL change to httpx kwargs, was failing on Async 'proxies'
+
+### Changed
+
+### Removed
+
 ## [0.90.1] - 2025-09-22
 
 Bumped dependentices version, if cloning or branching from repo recommended to re-run `pip install -r requirements.txt`

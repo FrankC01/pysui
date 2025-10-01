@@ -219,7 +219,7 @@ async def do_tx(client: SuiGrpcClient):
         await client.execute(
             # Also can use rn.GetTx alias
             request=rn.GetTransaction(
-                digest="46XDTZjqTeHgU7w5VvKBDB7vAXcKTfzpRpHhSTSCZvE4"
+                digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"
             )
         )
     )
@@ -234,7 +234,7 @@ async def do_txs(client: SuiGrpcClient):
         await client.execute(
             # Also can use rn.GetMulipleTx alias
             request=rn.GetTransactions(
-                transactions=["325GN6KLEWaNifWFJLm2XdMMvtwVdAJjUjYLfGttEeCc"]
+                transactions=["4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"]
             )
         )
     )
@@ -251,7 +251,7 @@ async def do_tx_kind(client: SuiGrpcClient):
     """Fetch the PTB details from transaction."""
     handle_result(
         await client.execute(
-            request=rn.GetTxKind(digest="325GN6KLEWaNifWFJLm2XdMMvtwVdAJjUjYLfGttEeCc")
+            request=rn.GetTxKind(digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe")
         )
     )
 
@@ -600,7 +600,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -633,7 +633,7 @@ async def main():
         # await do_funcs(client_init)
         # await do_module(client_init)
         # await do_package(client_init)
-        # await do_dry_run(client_init)
+        await do_dry_run(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)
         # await do_stake(client_init)

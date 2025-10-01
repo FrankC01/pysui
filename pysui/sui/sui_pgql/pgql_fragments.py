@@ -165,7 +165,7 @@ class BaseObject(PGQL_Fragment):
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
         return (
-            DSLFragment("ObjectBase")
+            DSLFragment("BaseObject")
             .on(schema.Object)
             .select(
                 schema.Object.version,
@@ -275,6 +275,7 @@ class StandardTxEffects(PGQL_Fragment):
             .on(schema.TransactionEffects)
             .select(
                 schema.TransactionEffects.status,
+                # schema.TransactionEffects.transaction.select(schema.Transaction.),
                 schema.TransactionEffects.executionError.select(
                     schema.ExecutionError.abortCode,
                     schema.ExecutionError.sourceLineNumber,
@@ -282,8 +283,6 @@ class StandardTxEffects(PGQL_Fragment):
                     schema.ExecutionError.identifier,
                     schema.ExecutionError.constant,
                     schema.ExecutionError.message,
-                    # schema.ExecutionError.module.select(
-                    # )
                 ),
                 schema.TransactionEffects.timestamp,
                 schema.TransactionEffects.balanceChanges.select(
@@ -947,6 +946,8 @@ class ValidatorSet(PGQL_Fragment):
                 schema.ValidatorSet.inactivePoolsId,
                 schema.ValidatorSet.validatorCandidatesId,
                 schema.ValidatorSet.validatorCandidatesSize,
-                validators=schema.ValidatorSet.activeValidators.select(vals),
+                schema.ValidatorSet.activeValidators.select(
+                    validators=schema.ValidatorConnection.nodes.select(vals)
+                ),
             )
         )

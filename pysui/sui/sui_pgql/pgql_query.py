@@ -6,6 +6,7 @@
 """QueryNode generators."""
 
 from typing import Optional, Callable, Union, Any
+import base64
 from deprecated.sphinx import versionadded, deprecated, versionchanged
 from gql import gql, GraphQLRequest
 from gql.dsl import (
@@ -17,11 +18,13 @@ from gql.dsl import (
     DSLMutation,
 )
 
-
+import betterproto2
 from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode, PGQL_NoOp
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_fragments as frag
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
+from pysui.sui.sui_bcs.bcs import TransactionKind
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 
 class GetCoinMetaData(PGQL_QueryNode):
@@ -812,33 +815,9 @@ class GetMultipleTx(PGQL_QueryNode):
             cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionConnection.nodes.select(
                 schema.Transaction.digest,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                 schema.Transaction.kind.select(
                     DSLMetaField("__typename").alias("tx_kind")
                 ),
-=======
->>>>>>> 30fdd47 (GraphQL Beta Transition)
-=======
-                schema.Transaction.kind.select(
-                    DSLMetaField("__typename").alias("tx_kind")
-                ),
->>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
->>>>>>> bafbf78 (GraphQL Beta Transition)
-=======
-                schema.Transaction.kind.select(
-                    DSLMetaField("__typename").alias("tx_kind")
-                ),
->>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
-                schema.Transaction.kind.select(
-                    DSLMetaField("__typename").alias("tx_kind")
-                ),
->>>>>>> ce970dba354731f7e46fb0edc8b767482908e8ef
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
                 ),
@@ -901,17 +880,6 @@ class GetFilteredTx(PGQL_QueryNode):
         qres.select(
             cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
             tx_blocks=schema.TransactionConnection.nodes.select(
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
->>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
->>>>>>> ce970dba354731f7e46fb0edc8b767482908e8ef
                 schema.Transaction.digest,
                 schema.Transaction.signatures.select(
                     schema.UserSignature.signatureBytes
@@ -928,26 +896,6 @@ class GetFilteredTx(PGQL_QueryNode):
                         schema.ExecutionError.constant,
                         schema.ExecutionError.message,
                     ),
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> bafbf78 (GraphQL Beta Transition)
-                schema.TransactionBlock.digest,
-                schema.TransactionBlock.signatures,
-                schema.TransactionBlock.kind.select(tx_kind=DSLMetaField("__typename")),
-                schema.TransactionBlock.effects.select(
-                    schema.TransactionBlockEffects.status,
-                    schema.TransactionBlockEffects.timestamp,
-                    schema.TransactionBlockEffects.errors,
->>>>>>> 30fdd47 (GraphQL Beta Transition)
-=======
->>>>>>> ab55794 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
->>>>>>> b7a28a8 (Validating GraphQL Beta. Updates to gRPC protobuffs)
-=======
->>>>>>> ce970dba354731f7e46fb0edc8b767482908e8ef
                 ),
             ),
         )
@@ -1562,21 +1510,28 @@ class GetPackage(PGQL_QueryNode):
         return pgql_type.MovePackageGQL.from_query
 
 
+@versionchanged(
+    version="0.91.0", reason="tx_bytestr arg now requires bcs.TransactionKind"
+)
 class DryRunTransactionKind(PGQL_QueryNode):
     """DryRunTransactionKind query node."""
 
     def __init__(
         self,
         *,
-        tx_bytestr: str,
+        tx_bytestr: TransactionKind,
         tx_meta: Optional[dict] = None,
         skip_checks: Optional[bool] = True,
     ) -> None:
         """__init__ Initialize DryRunTransactionKind object.
 
+        BREAKING CHANGE
         for the `tx_meta` argument, it expects a dictionary with one or more keys set.
         {
-            sender: The Sui address string for the sender (defaults to 0x0),
+            sender: The Sui address (str) for the sender (defaults to 0x0),
+            epoch_expiration: The epoch (int) after which this transaction won't be signed
+
+            NOT IMPLEMENTED YET (ignored). MAY OBSOLETE SOME... TBD
             gasPrice: The gas price integer (defaults to reference gas price)
             gasObjects: list[dict] A list of gas object references, defaults to mock Coin object. Reference dict:
                 {
@@ -1588,84 +1543,142 @@ class DryRunTransactionKind(PGQL_QueryNode):
             gasSponsor: The Sui address string of the sponsor, defaults to the sender
         }
         """
-
-        self.tx_data = tx_bytestr
+        assert isinstance(tx_bytestr, TransactionKind)
+        self.tx_data: TransactionKind = tx_bytestr
+        self.transaction: sui_prot.Transaction = None
         self.tx_meta = tx_meta if tx_meta else {}
         self.tx_skipchecks = skip_checks
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-        std_txn = frag.StandardTransaction().fragment(schema)
+
+        prgrm_txn = self.tx_data.value
+        inputs: list[sui_prot.Input] = []
+        cmds: list[sui_prot.Command] = []
+        trx_exp = None
+        for input in prgrm_txn.Inputs:
+            if input.enum_name == "Pure":
+                inputs.append(
+                    sui_prot.Input(
+                        kind=sui_prot.InputInputKind.PURE, pure=bytes(input.value)
+                    )
+                )
+            elif input.enum_name == "Object":
+                oarg = input.value
+                inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
+        for cmd in prgrm_txn.Command:
+            cmds.append(cmd.value.to_grpc_command())
+        self.transaction = sui_prot.Transaction(
+            kind=sui_prot.TransactionKind(
+                programmable_transaction=sui_prot.ProgrammableTransaction(
+                    inputs=inputs, commands=cmds
+                )
+            ),
+            expiration=trx_exp,
+        )
+        if self.tx_meta:
+            if sender := self.tx_meta.get("sender"):
+                self.transaction.sender = sender
+            if txn_expires_after := self.tx_meta.get("epoch_expiration"):
+                trx_exp = sui_prot.TransactionExpiration(
+                    kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
+                    epoch=txn_expires_after,
+                )
+                self.transaction.expiration = txn_expires_after
+
         base_obj = frag.BaseObject().fragment(schema)
         standard_obj = frag.StandardObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
         tx_effects = frag.StandardTxEffects().fragment(schema)
 
         qres = (
-            schema.Query.dryRunTransactionBlock(
-                txBytes=self.tx_data,
-                txMeta=self.tx_meta,
-                skipChecks=self.tx_skipchecks,
+            schema.Query.simulateTransaction(
+                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE)
             )
             .alias("dryRun")
             .select(
                 schema.SimulationResult.error,
-                schema.SimulationResult.results.select(
-                    schema.DryRunEffect.returnValues.select(
-                        schema.DryRunReturn.type.select(schema.MoveType.repr),
-                        schema.DryRunReturn.bcs,
+                results=schema.SimulationResult.outputs.select(
+                    schema.CommandResult.returnValues.select(
+                        schema.CommandOutput.value.select(
+                            schema.MoveValue.type.select(schema.MoveType.repr),
+                            schema.MoveValue.bcs,
+                        ),
                     )
                 ),
-                transactionBlock=schema.SimulationResult.transaction.select(std_txn),
+                transactionBlock=schema.SimulationResult.effects.select(tx_effects),
             )
         )
         return dsl_gql(
-            base_obj, standard_obj, gas_cost, std_txn, tx_effects, DSLQuery(qres)
+            base_obj,
+            standard_obj,
+            gas_cost,
+            tx_effects,
+            DSLQuery(qres),
         )
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization MovePackage."""
-        return pgql_type.SimulationResultGQL.from_query
+        return pgql_type.DryRunResultGQL.from_query
 
 
 class DryRunTransaction(PGQL_QueryNode):
     """DryRunTransaction query node."""
 
-    def __init__(self, *, tx_bytestr) -> None:
-        """__init__ Initialize DryRunTransaction object."""
+    def __init__(self, *, tx_bytestr: bytes | str) -> None:
+        """__init__ Initialize the dry run query.
+
+        :param tx_bytestr: Either the serialized bytes of a bcs TransactionData or base64 string of same
+        :type tx_bytestr: bytes | str
+        """
         self.tx_data = tx_bytestr
+        transaction = (
+            tx_bytestr
+            if isinstance(tx_bytestr, bytes)
+            else base64.b64decode(tx_bytestr)
+        )
+        self.transaction = sui_prot.Transaction(
+            bcs=(sui_prot.Bcs(value=transaction, name="Transaction"))
+        )
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-        std_txn = frag.StandardTransaction().fragment(schema)
         base_obj = frag.BaseObject().fragment(schema)
         standard_obj = frag.StandardObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
         tx_effects = frag.StandardTxEffects().fragment(schema)
 
         qres = (
-            schema.Query.simulateTransaction(transactionDataBcs=self.tx_data)
+            schema.Query.simulateTransaction(
+                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE)
+            )
             .alias("dryRun")
             .select(
                 schema.SimulationResult.error,
-                schema.SimulationResult.results.select(
-                    schema.DryRunEffect.returnValues.select(
-                        schema.DryRunReturn.type.select(schema.MoveType.repr),
-                        schema.DryRunReturn.bcs,
+                results=schema.SimulationResult.outputs.select(
+                    schema.CommandResult.returnValues.select(
+                        schema.CommandOutput.value.select(
+                            schema.MoveValue.type.select(schema.MoveType.repr),
+                            schema.MoveValue.bcs,
+                        ),
                     )
                 ),
-                transactionBlock=schema.SimulationResult.transaction.select(std_txn),
+                transactionBlock=schema.SimulationResult.effects.select(tx_effects),
             )
         )
         return dsl_gql(
-            base_obj, standard_obj, gas_cost, std_txn, tx_effects, DSLQuery(qres)
+            base_obj,
+            standard_obj,
+            gas_cost,
+            tx_effects,
+            DSLQuery(qres),
         )
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization MovePackage."""
-        return pgql_type.SimulationResultGQL.from_query
+        return pgql_type.DryRunResultGQL.from_query
 
 
 class ExecuteTransaction(PGQL_QueryNode):
