@@ -183,7 +183,7 @@ class SerialTransactionExecutor:
                     exe_res.append((ExecutorError.EXECUTING_ERROR, results[0]))
                     continue
                 results: ptypes.ExecutionResultGQL = results[0]
-                await self.apply_effects(results.bcs)
+                await self.apply_effects(results.effects_bcs)
                 end_time = time.time()
                 ser_txn_exc_logger.info(f"tx execution time {end_time-start_time}")
                 exe_res.append(results)
