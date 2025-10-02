@@ -140,11 +140,15 @@ class TransactionEffectsV1(can.Struct):
         ("status", ExecutionStatus),
         ("executedEpoch", bcs.U64),
         ("gasUsed", GasCostSummary),
+        # (
+        #     "modifiedAtVersions",
+        #     [("ObjectID", bcs.Address), ("SequenceNumber", bcs.U64)],
+        # ),
         (
             "modifiedAtVersions",
-            [("ObjectAddress", bcs.Address), ("ObjectVersion", bcs.U64)],
+            [(bcs.Address, bcs.U64)],
         ),
-        ("sharedObjects", bcs.SharedObjectReference),
+        ("sharedObjects", [bcs.SharedObjectReference]),
         ("transactionDigest", bcs.Digest),
         ("created", [(bcs.ObjectReference, Owner)]),
         ("mutated", [(bcs.ObjectReference, Owner)]),
@@ -152,7 +156,7 @@ class TransactionEffectsV1(can.Struct):
         ("deleted", [bcs.ObjectReference]),
         ("unwrappedDeleted", [bcs.ObjectReference]),
         ("wrapped", [bcs.ObjectReference]),
-        ("gasObject", [(bcs.ObjectReference, Owner)]),
+        ("gasObject", (bcs.ObjectReference, Owner)),
         ("eventsDigest", OptionalDigest),
         ("dependencies", [bcs.Digest]),
     ]

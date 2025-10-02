@@ -151,13 +151,13 @@ class SuiCoinObjectGQL(PGQL_Type):
         match owner_kind:
             case "AddressOwner":
                 ser_dict["object_owner"] = SuiObjectOwnedAddress(
-                    owner_kind, owner["owner"]["address_id"]
+                    owner_kind, owner["address_id"]["address"]
                 )
             case "Shared":
                 ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
-            case "Parent":
+            case "ObjectOwner":
                 ser_dict["object_owner"] = SuiObjectOwnedParent(
-                    owner_kind, owner["owner"]["parent_id"]
+                    owner_kind, owner["parent_id"]["address"]
                 )
             case "Immutable":
                 ser_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
@@ -171,30 +171,28 @@ class SuiCoinFromObjectsGQL(PGQL_Type):
     """Collection of sui coin from objects."""
 
     data: list[Union[SuiCoinObjectGQL, ObjectReadDeletedGQL]]
-    next_cursor: PagingCursor
+    next_cursor: Optional[PagingCursor] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SuiCoinFromObjectsGQL":
         if in_data:
             ser_dict: dict = {}
-            ncurs: PagingCursor = PagingCursor.from_dict(
-                in_data["objects"].pop("cursor")
-            )
             _fast_flat(in_data, ser_dict)
             mid_list: list[dict] = []
-            for node in ser_dict["coin_objects"]:
-                ser_coin_dict: dict = node["asMoveObject"]["asCoin"]
+            for node in ser_dict["multiGetObjects"]:
+                ser_coin_dict: dict = node["asMoveObject"]
+                mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
                 # _fast_flat(node, ser_dict)
                 # If fetching by ID it may not exist
-                if (
-                    ser_coin_dict.get("status") == "HISTORICAL"
-                    or ser_coin_dict.get("status") == "INDEXED"
-                ):
-                    mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
-                elif ser_coin_dict.get("status") == "WRAPPED_OR_DELETED":
-                    # ser_coin_dict.pop("amo")
-                    mid_list.append(ObjectReadDeletedGQL.from_dict(ser_coin_dict))
-            return clz.from_dict({"data": mid_list, "next_cursor": ncurs})
+                # if (
+                #     ser_coin_dict.get("status") == "HISTORICAL"
+                #     or ser_coin_dict.get("status") == "INDEXED"
+                # ):
+                #     mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
+                # elif ser_coin_dict.get("status") == "WRAPPED_OR_DELETED":
+                #     # ser_coin_dict.pop("amo")
+                #     mid_list.append(ObjectReadDeletedGQL.from_dict(ser_coin_dict))
+            return clz.from_dict({"data": mid_list, "next_cursor": None})
         return NoopGQL.from_query()
 
 
@@ -250,32 +248,49 @@ class SuiCoinObjectSummaryGQL(PGQL_Type):
 class SuiStakedCoinGQL:
     """Staked coin object."""
 
-    poolId: str
+    coin_type: str
     version: int
-    has_public_transfer: bool
-    principal: str
-    estimated_reward: str
-    activated: dict
-    requested: dict
-    status: str
-    object_id: str
     object_digest: str
-    object_owner: SuiObjectOwnedAddress
+    has_public_transfer: bool
+    coin_object_id: str
+    pool_id: str
+    principal: str
+    stake_activation_epoch: str
+    object_owner: Union[
+        SuiObjectOwnedAddress,
+        SuiObjectOwnedShared,
+        SuiObjectOwnedParent,
+        SuiObjectOwnedImmutable,
+    ]
+    previous_transaction: Optional[str] = dataclasses.field(default="")
+
+    @property
+    def object_id(self) -> str:
+        """Get as object_id."""
+        return self.coin_object_id
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SuiStakedCoinGQL":
-        """Serializes query result to list of SuiStaked gas coin objects."""
-        if len(in_data):
-            owners_dict = in_data.pop("owner")
-            if owners_dict["obj_owner_kind"] == "AddressOwner":
-                owners_dict["address_id"] = owners_dict.pop("owner")["address_id"]
-            else:
-                raise ValueError(
-                    f"{owners_dict['obj_owner_kind']} for StakedSui not supported"
+        """From raw GraphQL result data."""
+        ser_dict: dict[str, Union[str, int]] = {}
+        owner = in_data.pop("owner")
+        owner_kind = owner["obj_owner_kind"]
+        _fast_flat(in_data, ser_dict)
+        match owner_kind:
+            case "AddressOwner":
+                ser_dict["object_owner"] = SuiObjectOwnedAddress(
+                    owner_kind, owner["address_id"]["address"]
                 )
-            in_data["object_owner"] = owners_dict
-            return SuiStakedCoinGQL.from_dict(in_data)
-        return NoopGQL.from_query()
+            case "Shared":
+                ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
+            case "ObjectOwner":
+                ser_dict["object_owner"] = SuiObjectOwnedParent(
+                    owner_kind, owner["parent_id"]["address"]
+                )
+            case "Immutable":
+                ser_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
+        # ser_dict = ser_dict | res_dict
+        return clz.from_dict(ser_dict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -283,7 +298,6 @@ class SuiStakedCoinGQL:
 class SuiStakedCoinsGQL(PGQL_Type):
     """Collection of staked coin objects."""
 
-    owner: str
     staked_coins: list[SuiStakedCoinGQL]
     next_cursor: PagingCursor
 
@@ -294,15 +308,15 @@ class SuiStakedCoinsGQL(PGQL_Type):
         The in_data is a dictionary with 2 keys: 'cursor' and 'coin_objects'
         """
         if len(in_data):
-            in_data = in_data.pop("address")
-            next_cursor = in_data["stakedSuis"].pop("cursor")
+            in_data = in_data.pop("objects")
+            next_cursor = in_data.pop("cursor")
             staked_coins = [
-                SuiStakedCoinGQL.from_query(x)
-                for x in in_data["stakedSuis"].pop("staked_coin")
+                SuiStakedCoinGQL.from_query(x.get("asMoveObject"))
+                for x in in_data.pop("staked_coin")
             ]
             return SuiStakedCoinsGQL.from_dict(
                 {
-                    "owner": in_data["address"],
+                    # "owner": in_data["address"],
                     "stakedCoins": staked_coins,
                     "nextCursor": next_cursor,
                 }
@@ -317,7 +331,6 @@ class ObjectContentBCS(PGQL_Type):
 
     address: str  # Yes
     bcs: str
-    status: Optional[str] = None
     previous_transaction_digest: Optional[str] = None
 
     def as_bytes(self) -> bytes:
@@ -337,22 +350,14 @@ class ObjectContentBCS(PGQL_Type):
 class ObjectsContentBCS(PGQL_Type):
     """Raw object content BCS string."""
 
-    next_cursor: PagingCursor
     objects_data: list[ObjectContentBCS]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectsContentBCS":
         """."""
         if len(in_data):
-            next_cursor = PagingCursor.from_dict(in_data["objects"].pop("cursor"))
-
-            to_merge: dict = {}
-            _fast_flat(in_data, to_merge)
-            to_merge["objects_data"] = [
-                ObjectContentBCS.from_query(x) for x in to_merge["objects_data"]
-            ]
-            to_merge["next_cursor"] = next_cursor
-            return clz.from_dict(to_merge)
+            objs = [ObjectContentBCS.from_query(x) for x in in_data["multiGetObjects"]]
+            return clz(objs)
         return NoopGQL.from_query()
 
 
@@ -364,7 +369,6 @@ class ObjectReadGQL(PGQL_Type):
     version: int  # Yes
     object_id: str  # Yes
     object_digest: str  # Yes
-    object_kind: str  # Yes
 
     storage_rebate: str  # Yes
     bcs: str  # Yes
@@ -409,13 +413,13 @@ class ObjectReadGQL(PGQL_Type):
                 match owner_kind:
                     case "AddressOwner":
                         res_dict["object_owner"] = SuiObjectOwnedAddress(
-                            owner_kind, owner["owner"]["address_id"]
+                            owner_kind, owner["address_id"]["address"]
                         )
                     case "Shared":
                         res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
-                    case "Parent":
+                    case "ObjectOwner":
                         res_dict["object_owner"] = SuiObjectOwnedParent(
-                            owner_kind, owner["parent"]["parent_id"]
+                            owner_kind, owner["parent_id"]["address"]
                         )
                     case "Immutable":
                         res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
@@ -432,21 +436,27 @@ class ObjectReadsGQL(PGQL_Type):
     """Collection of object data objects."""
 
     data: list[ObjectReadGQL]
-    next_cursor: PagingCursor
+    next_cursor: Optional[PagingCursor] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectReadsGQL":
         """Serializes query result to list of Sui objects.
 
-        The in_data is a dictionary with 2 keys: 'cursor' and 'objects_data'
+        The in_data is a dictionary with either 'multiGetObjects:list' and no cursor
+        or 'objects:list' with cursor
         """
-        in_data = in_data.pop("objects")
-        # Get cursor
-        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
-        dlist: list[ObjectReadGQL] = [
-            ObjectReadGQL.from_query(i_obj) for i_obj in in_data["objects_data"]
-        ]
-        return ObjectReadsGQL(dlist, ncurs)
+        if mgo := in_data.get("multiGetObjects"):
+            dlist: list[ObjectReadGQL] = [
+                ObjectReadGQL.from_query(i_obj) for i_obj in mgo
+            ]
+            return ObjectReadsGQL(dlist)
+        else:
+            obj_mbase = in_data.pop("objects")
+            ncurs: PagingCursor = PagingCursor.from_dict(obj_mbase["cursor"])
+            dlist: list[ObjectReadGQL] = [
+                ObjectReadGQL.from_query(i_obj) for i_obj in obj_mbase["objects_data"]
+            ]
+            return ObjectReadsGQL(dlist, ncurs)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -484,7 +494,7 @@ class EventGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "EventGQL":
         """Serializes query result to list of Sui objects."""
-        in_mod_id = in_data.pop("sendingModule")
+        in_mod_id = in_data.pop("transactionModule")
         to_merge: dict = {}
         _fast_flat(in_mod_id, to_merge)
         in_data |= to_merge
@@ -588,7 +598,7 @@ class BalanceGQL(PGQL_Type):
     """Balance representation class."""
 
     coin_type: str
-    coin_object_count: int
+
     total_balance: str
     owner: Optional[str] = ""
 
@@ -657,7 +667,8 @@ class SuiCoinMetadataGQL(PGQL_Type):
 @dataclasses.dataclass
 class ObjectContent:
     has_public_transfer: bool
-    as_object: dict
+    content: dict
+    object_type: str
 
     # "as_object": {
     #     "content": {
@@ -669,7 +680,16 @@ class ObjectContent:
     #     },
     # },
     def object_type(self) -> str:
-        return self.as_object["object_type_repr"]["object_type"]
+        return self.object_type
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectContent":
+        res_dict: dict = {}
+        content = in_data.get("as_object").pop("content")
+        # Flatten dictionary
+        _fast_flat(in_data, res_dict)
+        res_dict["content"] = content
+        return clz.from_dict(res_dict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -679,10 +699,10 @@ class ObjectState:
     version: int
     object_digest: str
     object_id: str
-    object_kind: str
     owner: dict
     storage_rebate: str
     prior_transaction: dict
+
     as_move_content: Optional[ObjectContent] = None
     as_move_package: Optional[dict] = None
 
@@ -691,6 +711,12 @@ class ObjectState:
 
     def is_object(self) -> bool:
         return self.as_move_content if self.as_move_content else False
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectState":
+        if obj_cont := in_data.get("as_move_content"):
+            in_data["as_move_content"] = ObjectContent.from_query(obj_cont)
+        return clz.from_dict(in_data)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -702,11 +728,25 @@ class ObjectChange:
     input_state: Optional[ObjectState]
     output_state: Optional[ObjectState]
 
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectChange":
+        if ist := in_data.get("input_state"):
+            in_data["input_state"] = ObjectState.from_query(ist)
+        if ost := in_data.get("output_state"):
+            in_data["output_state"] = ObjectState.from_query(ost)
+        return clz.from_dict(in_data)
+
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ObjectChanges:
     nodes: list[ObjectChange]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ObjectChanges":
+        """."""
+        in_data["nodes"] = [ObjectChange.from_query(x) for x in in_data["nodes"]]
+        return clz.from_dict(in_data)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -725,15 +765,40 @@ class TransactionResultGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionResultGQL":
         """."""
-        if in_data.get("transactionBlock"):
-            txblock = in_data.pop("transactionBlock")
+        if in_data.get("transaction"):
+            txblock = in_data.pop("transaction")
             txblock["transaction_kind"] = txblock.pop("kind")["tx_kind"]
             return TransactionResultGQL.from_dict(txblock)
         return NoopGQL.from_query()
 
     def object_changes(self) -> ObjectChanges:
         """Return data structured object changes."""
-        return ObjectChanges.from_dict(self.effects["objectChanges"])
+        return ObjectChanges.from_query(self.effects["objectChanges"])
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class DryRunResultTransactionGQL(PGQL_Type):
+    """Dry Run relevant Transaction details"""
+
+    status: str
+    timestamp: str
+    gas_effects: dict
+    balance_changes: dict
+    object_changes: ObjectChanges
+    events: Optional[dict] = None
+    execution_error: Optional[dict] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "DryRunResultTransactionGQL":
+        """."""
+        if tx_data := in_data.get("transactionBlock"):
+            # tx_data["transaction_kind"] = tx_data.pop("kind")["tx_kind"]
+            tx_data["objectChanges"] = ObjectChanges.from_query(
+                tx_data["objectChanges"]
+            )
+            return clz.from_dict(tx_data)
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -741,8 +806,8 @@ class TransactionResultGQL(PGQL_Type):
 class DryRunResultGQL(PGQL_Type):
     """DryRun result representation class."""
 
-    transaction_block: TransactionResultGQL
-    results: Optional[list[dict]]
+    transaction_block: DryRunResultTransactionGQL
+    results: Optional[list[dict]] = None
     error: Optional[str] = None
 
     @classmethod
@@ -753,7 +818,7 @@ class DryRunResultGQL(PGQL_Type):
             if in_data:
                 dr_err = in_data.pop("error")
                 dr_res = in_data.pop("results")
-                tblock = TransactionResultGQL.from_query(in_data)
+                tblock = DryRunResultTransactionGQL.from_query(in_data)
                 return DryRunResultGQL.from_dict(
                     {"error": dr_err, "results": dr_res, "transaction_block": tblock}
                 )
@@ -766,19 +831,24 @@ class ExecutionResultGQL(PGQL_Type):
     """Execution result representation class."""
 
     status: str
+
     lamport_version: int
     digest: str
     bcs: str
+    effects_bcs: str
+    execution_error: Optional[dict] = None
     errors: Optional[list[str]] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ExecutionResultGQL":
         """."""
         if in_data:
-            in_data = in_data.get("executeTransactionBlock")
+            in_data = in_data.get("executeTransaction")
             if in_data:
+                ex_err = in_data["effects"].pop("execution_errors")
                 fdict: dict = {}
                 _fast_flat(in_data, fdict)
+                fdict["execution_error"] = ex_err
                 return ExecutionResultGQL.from_dict(fdict)
         return NoopGQL.from_query()
 
@@ -812,7 +882,7 @@ class TransactionSummariesGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionSummariesGQL":
         """."""
-        in_data = in_data.pop("transactionBlocks")
+        in_data = in_data.pop("transactions")
         ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
         tsummary = [
             TransactionSummaryGQL.from_query(x) for x in in_data.pop("tx_blocks")
@@ -823,6 +893,17 @@ class TransactionSummariesGQL(PGQL_Type):
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class OwnedOrImmutableInputGQL:
+    """ProgrammableTransactionBlock input class."""
+
+    address: str
+    version: int
+    digest: str
+    input_typename: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ReceivingInputGQL:
     """ProgrammableTransactionBlock input class."""
 
     address: str
@@ -886,7 +967,7 @@ class TransactionMoveCallGQL:
     function_name: str
     arguments: list[Union[ArgInputRefGQL, ArgResultRefGQL, ArgGasCoinRefGQL]]
     tx_typename: str
-    typeArguments: Optional[list[dict]]
+    typeArguments: Optional[list[dict]] = None
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -969,6 +1050,55 @@ class ProgrammableTransactionBlockGQL:
         ]
     ]
 
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ProgrammableTransactionBlockGQL":
+        ins_list: list = []
+        cmd_list: list = []
+        router = {
+            "TransferObjectsCommand": TransactioTransferObjectslGQL,
+            "SplitCoinsCommand": TransactionSplitCoinsGQL,
+            "MergeCoinsCommand": TransactionMergeCoinsGQL,
+            "PublishCommand": TransactionPublishGQL,
+            "UpgradeCommand": TransactionUpgradeGQL,
+            "MakeMoveVecCommand": TransactionMakeMoveVecGQL,
+        }
+        if in_data:
+            for ins in in_data["inputs"]:
+                match ins["input_typename"]:
+                    case "OwnedOrImmutable":
+                        in_dict = ins["object"]
+                        in_dict["input_typename"] = ins["input_typename"]
+                        ins_list.append(OwnedOrImmutableInputGQL.from_dict(in_dict))
+                    case "Receiving":
+                        in_dict = ins["object"]
+                        in_dict["input_typename"] = ins["input_typename"]
+                        ins_list.append(ReceivingInputGQL.from_dict(in_dict))
+                    case "SharedInput":
+                        ins_list.append(SharedObjectInputGQL.from_dict(ins))
+                    case "Pure":
+                        ins_list.append(PureInputGQL.from_dict(ins))
+            for cmds in in_data["transactions"]:
+                cmd_name = cmds["tx_typename"]
+                match cmd_name:
+                    case "MoveCallCommand":
+                        mvc_dict = {
+                            "package": cmds["function"]["module"]["package"]["address"],
+                            "module": cmds["function"]["module"]["name"],
+                            "function_name": cmds["function"]["name"],
+                            "arguments": cmds["arguments"],
+                            "tx_typename": cmd_name,
+                        }
+                        cmd_list.append(TransactionMoveCallGQL.from_dict(mvc_dict))
+                    case _:
+                        if c_clz := router.get(cmds["tx_typename"]):
+                            cmd_list.append(c_clz.from_dict(cmds))
+                        else:
+                            raise ValueError(f"Not handling {cmd_name}")
+
+            return clz(ins_list, cmd_list)
+
+        return NoopGQL.from_query()
+
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
@@ -1029,17 +1159,19 @@ class TransactionKindGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "TransactionKindGQL":
         """."""
-        tx_block = in_data.get("transactionBlock") if in_data else None
+        tx_block = in_data.get("transaction") if in_data else None
         if tx_block:
             tx_type = tx_block["kind"].pop("tx_kind")
             tx_block["timestamp"] = tx_block.pop("effects")["timestamp"]
             tx_block["transaction_kind"] = tx_type
             match tx_type:
-                case "ProgrammableTransactionBlock":
-                    tx_block["kind"]["inputs"] = tx_block["kind"]["inputs"]["nodes"]
-                    tx_block["kind"]["transactions"] = tx_block["kind"]["transactions"][
-                        "nodes"
-                    ]
+                case "ProgrammableTransaction":
+                    tx_block["kind"] = ProgrammableTransactionBlockGQL.from_query(
+                        {
+                            "inputs": tx_block["kind"]["inputs"]["nodes"],
+                            "transactions": tx_block["kind"]["commands"]["nodes"],
+                        }
+                    )
                 case "GenesisTransaction" | "ConsensusCommitPrologueTransaction":
                     pass
                 case _:
@@ -1068,12 +1200,10 @@ class ValidatorGQL(PGQL_Type):
     next_epoch_gas_price: str
     commission_rate: str
     next_epoch_commission_rate: int
-    at_risk: Optional[int]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorGQL":
         """."""
-        in_data["validatorAddress"] = in_data["address"]["validatorAddress"]
         return ValidatorGQL.from_dict(in_data)
 
 
@@ -1093,8 +1223,7 @@ class ValidatorSetGQL(PGQL_Type):
     def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
         """."""
         in_data["validators"] = [
-            ValidatorGQL.from_query(v_obj)
-            for v_obj in in_data["validators"]["validators"]
+            ValidatorGQL.from_query(v_obj) for v_obj in in_data["validators"]
         ]
         return ValidatorSetGQL.from_dict(in_data)
 
@@ -1210,7 +1339,7 @@ class ProtocolConfigGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":
-        return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfig"))
+        return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfigs"))
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1680,22 +1809,11 @@ class ValidatorFullGQL:
     nextEpochStake: str
     nextEpochGasPrice: str
     nextEpochCommissionRate: 1200
-    apy: int
-    atRisk: Optional[int] = None
-    operating_cap_address: Optional[str] = None
-    exchange_rates_address: Optional[str] = None
-    staking_pool_address: Optional[str] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorFullGQL":
         fdict: dict = {}
         _fast_flat(in_data, fdict)
-        if "operatingCap" in fdict:
-            fdict["operating_cap_address"] = None
-            fdict.pop("operatingCap")
-        # if "exchangeRate" in fdict:
-        #     fdict["exchange_rates_address"] = None
-        #     fdict.pop("exchangeRate")
         return ValidatorFullGQL.from_dict(fdict)
 
 
@@ -1713,46 +1831,16 @@ class ValidatorSetsGQL:
     validatorCandidatesId: str
     validatorCandidatesSize: int
     validators: list[ValidatorFullGQL]
-    next_cursor: PagingCursor
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorSetsGQL":
         fdict: dict = {}
         _fast_flat(in_data, fdict)
-        fdict["next_cursor"] = PagingCursor(
-            fdict.pop("hasNextPage"), fdict.pop("endCursor")
-        )
         fdict["validators"] = [
             ValidatorFullGQL.from_query(x) for x in fdict["validators"]
         ]
+
         return ValidatorSetsGQL.from_dict(fdict)
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class ValidatorApyGQL:
-    """Sui ValidatorApy representation."""
-
-    name: str
-    apy: int
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class ValidatorApysGQL:
-    """Sui ValidatorApy representation."""
-
-    validators_apy: list[ValidatorApyGQL]
-    next_cursor: PagingCursor
-
-    @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorApysGQL":
-        fdict: dict = {}
-        _fast_flat(in_data, fdict)
-        fdict["next_cursor"] = PagingCursor(
-            fdict.pop("hasNextPage"), fdict.pop("endCursor")
-        )
-        return ValidatorApysGQL.from_dict(fdict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

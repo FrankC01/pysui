@@ -8,7 +8,6 @@ from typing import Optional, Union
 from pysui.sui.sui_common.txb_signing import SignerBlock
 from pysui.sui.sui_common.client import PysuiClient
 
-# from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_pgql.pgql_utils import (
@@ -23,37 +22,34 @@ from pysui.sui.sui_bcs import bcs
 def _dry_run_for_budget(
     signing: SignerBlock,
     client: PysuiClient,
-    tx_bytes: str,
+    tx_bytes: bcs.TransactionKind,
     active_gas_price: int,
 ) -> int:
     """Perform a dry run when no budget specified."""
-    result = client.execute_query_node(
-        with_node=qn.DryRunTransactionKind(
-            tx_bytestr=tx_bytes,
-            tx_meta={
-                "sender": signing.sender_str,
-                "gasPrice": active_gas_price,
-                "gasSponsor": signing.sponsor_str,
-            },
-            skip_checks=False,
-        )
+    query = qn.DryRunTransactionKind(
+        tx_bytestr=tx_bytes,
+        tx_meta={
+            "sender": signing.sender_str,
+            "gasPrice": active_gas_price,
+            "gasSponsor": signing.sponsor_str,
+        },
+        skip_checks=False,
     )
+    result = client.execute_query_node(with_node=query)
     if result.is_ok():
         c_cost: int = int(
-            result.result_data.transaction_block.effects["gasEffects"]["gasSummary"][
+            result.result_data.transaction_block.gas_effects["gasSummary"][
                 "computationCost"
             ]
         )
         s_cost: int = int(
-            result.result_data.transaction_block.effects["gasEffects"]["gasSummary"][
+            result.result_data.transaction_block.gas_effects["gasSummary"][
                 "storageCost"
             ]
         )
         return c_cost + s_cost
     else:
-        raise ValueError(
-            f"Error running DryRunTransactionBlock: {result.result_string}"
-        )
+        raise ValueError(f"Error running DryRunTransactionKind: {result.result_string}")
 
 
 def _coins_for_budget(
@@ -124,7 +120,8 @@ def get_gas_data(
         budget = _dry_run_for_budget(
             signing,
             client,
-            base64.b64encode(tx_kind.serialize()).decode(),
+            tx_kind,
+            # base64.b64encode(tx_kind.serialize()).decode(),
             active_gas_price,
         )
     # Remove conflicts with objects in use
@@ -161,12 +158,12 @@ async def _async_dry_run_for_budget(
     )
     if result.is_ok():
         c_cost: int = int(
-            result.result_data.transaction_block.effects["gasEffects"]["gasSummary"][
+            result.result_data.transaction_block.gas_effects["gasSummary"][
                 "computationCost"
             ]
         )
         s_cost: int = int(
-            result.result_data.transaction_block.effects["gasEffects"]["gasSummary"][
+            result.result_data.transaction_block.gas_effects["gasSummary"][
                 "storageCost"
             ]
         )
@@ -225,7 +222,7 @@ async def async_get_gas_data(
         budget = await _async_dry_run_for_budget(
             signing,
             client,
-            base64.b64encode(tx_kind.serialize()).decode(),
+            tx_kind,
             active_gas_price,
         )
     # Remove conflicts with objects in use

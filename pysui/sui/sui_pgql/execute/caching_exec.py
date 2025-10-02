@@ -119,7 +119,7 @@ class AsyncCachingTransactionExecutor:
 
         # Deserialize tx effects and get updated gas coin information
         tx_effects = bcst.TransactionEffects.deserialize(
-            base64.b64decode(res.result_data.bcs)
+            base64.b64decode(res.result_data.effects_bcs)
         ).value
         _, effchange = tx_effects.changedObjects[tx_effects.gasObjectIndex.value]
         edigest, _ = effchange.outputState.value

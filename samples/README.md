@@ -37,17 +37,23 @@ Converts a python BCS module to a JSON document (*.json)
 
 Generate python BCS constructs from published move struct or enum
 
-This requires a json file identifying _one or more_ structures/enums to process. For example, using testnet, this json identifies the CETUS protocol pool (assume file name is `cetus_pool.json`):
+This requires a json file identifying _one or more_ structures/enums to process. For example, using devnet, this json identifies the a example contract strucutre (assume file name is `parm_object.json`):
 
 ```json
-[
-    "0x0c7ae833c220aa73a3643a0d508afa4ac5d50d97312ea4584e35f9eb21b9df12::pool::Pool"
-]
+{
+    "targets" : [
+        {
+            "type": "Structure",
+            "value":"0x379096e390310dd7690802fe356ffcf2d7eb7adef458762cd761352b090a1cb1::parms::ParmObject",
+            "out_file": "parm_object.py"
+        }
+    ]
+}
 ```
 
-`mtobcs --profile testnet -m cetus_pool.json`
+`mtobcs --profile devnet -m parm_object.json`
 
-This will generate a `pool_pool_0x0c7ae833c220aa73a3643a0d508afa4ac5d50d97312ea4584e35f9eb21b9df12.py` file containing the BCS equivalent.
+This will generate a `parm_object.py` file containing the BCS equivalent.
 
 **Note:** If running from cloned repo, examples are started with `python -m ....`
 
@@ -100,8 +106,6 @@ commands:
     transfer-sui        Transfer SUI 'mist(s)' to a Sui address. If owwner or alias not provided, defaults to active-address.
     pay                 Send coin of any type to recipient(s). If owwner or alias not provided, defaults to active-address.
     gql-query           Execute a GraphQL query.
-    tx-dryrun-data      Dry run a transaction block (TransactionData).
-    tx-dryrun-kind      Dry run a transaction block kind (TransactionKind).
     execute-signed-tx   Dry run a transaction block (TransactionData).
     package             Show normalized package information
     publish             Publish a SUI package. If owwner or alias not provided, defaults to active-address.

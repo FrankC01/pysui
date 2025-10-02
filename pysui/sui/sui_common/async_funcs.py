@@ -189,7 +189,7 @@ async def merge_sui(
 
     # Deserialize tx effects and get updated gas coin information
     tx_effects = bcst.TransactionEffects.deserialize(
-        base64.b64decode(res.result_data.bcs)
+        base64.b64decode(res.result_data.effects_bcs)
     ).value
     # If failed, stop ops
     if tx_effects.status.enum_name != "Success":

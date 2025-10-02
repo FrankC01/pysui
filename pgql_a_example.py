@@ -8,6 +8,10 @@
 import asyncio
 import base64
 
+# import logging
+
+# logging.basicConfig(level=logging.DEBUG)
+
 from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient, SyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
@@ -47,7 +51,7 @@ async def do_coins_for_type(client: AsyncGqlClient):
         await client.execute_query_node(
             with_node=qn.GetCoins(
                 owner=client.config.active_address,
-                coin_type="0x2::sui::SUI",
+                coin_type="0x2::coin::Coin<0x2::sui::SUI>",
             )
         )
     )
@@ -139,6 +143,18 @@ async def do_object(client: AsyncGqlClient):
     )
 
 
+async def do_object_content(client: AsyncGqlClient):
+    """Fetch minimal object content, basically just reference information.
+
+    Set 'obect_id' to object address of choice.
+    """
+    gobj = qn.GetObjectContent(
+        object_id="0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+    )
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(await client.execute_query_node(with_node=gobj))
+
+
 async def do_objects(client: AsyncGqlClient):
     """Fetch all objects held by owner."""
     try:
@@ -158,8 +174,8 @@ async def do_past_object(client: AsyncGqlClient):
     handle_result(
         await client.execute_query_node(
             with_node=qn.GetPastObject(
-                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed",
-                version=17078252,
+                object_id="0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+                version=3,
             )
         )
     )
@@ -171,7 +187,7 @@ async def do_multiple_object_versions(client: AsyncGqlClient):
     """
     object_versions = [
         {
-            "objectId": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
+            "address": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
             "version": 43,
         }
     ]
@@ -180,6 +196,17 @@ async def do_multiple_object_versions(client: AsyncGqlClient):
             with_node=qn.GetMultipleVersionedObjects(for_versions=object_versions)
         )
     )
+
+
+async def do_multiple_object_content(client: AsyncGqlClient):
+    """Fetch minimal object content, basically just reference information."""
+    gobj = qn.GetMultipleObjectContent(
+        object_ids=[
+            "0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+        ]
+    )
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(await client.execute_query_node(with_node=gobj))
 
 
 async def do_objects_for(client: AsyncGqlClient):
@@ -191,9 +218,8 @@ async def do_objects_for(client: AsyncGqlClient):
         await client.execute_query_node(
             with_node=qn.GetMultipleObjects(
                 object_ids=[
-                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-                    "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
-                    "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
+                    "0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+                    "0x285c48a3bc7440f08ad91caf6955f8b9b8c2db69e4b4c5071aa94c2468689d93",
                 ]
             )
         )
@@ -275,9 +301,9 @@ async def do_txs(client: AsyncGqlClient):
 async def do_filter_txs(client: AsyncGqlClient):
     """Fetch all transactions matching filter.
 
-    See Sui GraphQL schema for TransactionBlockFilter options.
+    See Sui GraphQL schema for TransactionFilter options.
     """
-    obj_filter = {"changedObject": "ENTER OBJECT_ID HERE"}
+    obj_filter = {"affectedObject": "ENTER OBJECT_ID HERE"}
     result = await client.execute_query_node(
         with_node=qn.GetFilteredTx(tx_filter=obj_filter)
     )
@@ -334,20 +360,6 @@ async def do_sequence_cp(client: AsyncGqlClient):
         print(result.result_string)
 
 
-async def do_digest_cp(client: AsyncGqlClient):
-    """."""
-    result = await client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
-    if result.is_ok():
-        cp: ptypes.CheckpointGQL = result.result_data
-        handle_result(
-            await client.execute_query_node(
-                with_node=qn.GetCheckpointByDigest(digest=cp.digest)
-            )
-        )
-    else:
-        print(result.result_string)
-
-
 async def do_checkpoints(client: AsyncGqlClient):
     """."""
     handle_result(await client.execute_query_node(with_node=qn.GetCheckpoints()))
@@ -376,35 +388,9 @@ async def do_owned_nameservice(client: AsyncGqlClient):
     )
 
 
-async def do_validators_apy(client: AsyncGqlClient):
-    """Fetch the most current validators apy and identity."""
-    handle_result(await client.execute_query_node(with_node=qn.GetValidatorsApy()))
-
-
 async def do_validators(client: AsyncGqlClient):
     """Fetch the most current validator detail."""
     handle_result(await client.execute_query_node(with_node=qn.GetCurrentValidators()))
-
-
-async def do_all_validators(client: AsyncGqlClient):
-    """Fetch all validators and show name and data."""
-    all_vals: list[ptypes.ValidatorFullGQL] = []
-    valres = await client.execute_query_node(with_node=qn.GetCurrentValidators())
-    while valres.is_ok():
-        all_vals.extend(valres.result_data.validators)
-        if valres.result_data.next_cursor.hasNextPage:
-            valres = await client.execute_query_node(
-                with_node=qn.GetCurrentValidators(
-                    next_page=valres.result_data.next_cursor,
-                )
-            )
-        else:
-            break
-    print(f"Total validators {len(all_vals)}")
-    for val in all_vals:
-        print(
-            f"Address: {val.validator_address} Apy: {val.apy} Name: {val.validator_name}"
-        )
 
 
 async def do_protcfg(client: AsyncGqlClient):
@@ -511,10 +497,11 @@ async def do_dry_run(client: AsyncGqlClient):
     txer: AsyncSuiTransaction = client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    tx_data = await txer.transaction_data()
 
     handle_result(
         await client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
+            with_node=qn.DryRunTransaction(tx_bytestr=tx_data.serialize())
         )
     )
 
@@ -522,13 +509,12 @@ async def do_dry_run(client: AsyncGqlClient):
 async def do_dry_run_txkind(txer: AsyncSuiTransaction):
     """Execute a dry run with just the TransactionKind."""
 
-    raw_kind = txer.raw_kind()
-    # print(raw_kind.to_json(indent=2))
-    raw_ser = raw_kind.serialize()
-    raw_b64 = base64.b64encode(raw_ser).decode()
-    # print(raw_b64)
-    dr_tk = qn.DryRunTransactionKind(tx_bytestr=raw_b64)
-    handle_result(await txer.client.execute_query_node(with_node=dr_tk))
+    dry_run = qn.DryRunTransactionKind(
+        tx_bytestr=txer.raw_kind(),
+        tx_meta={"sender": txer.client.config.active_address},
+    )
+
+    handle_result(await txer.client.execute_query_node(with_node=dry_run))
 
 
 async def inspect_example(client: AsyncGqlClient):
@@ -647,6 +633,7 @@ async def main():
                 profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",
+                # persist=True,
             ),
         )
         print(f"Active chain profile   '{client_init.chain_environment}'")
@@ -663,9 +650,11 @@ async def main():
         # await do_sysstate(client_init)
         # await do_all_balances(client_init)
         # await do_object(client_init)
+        # await do_object_content(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)
         # await do_multiple_object_versions(client_init)
+        # await do_multiple_object_content(client_init)
         # await do_objects_for(client_init)
         # await do_dynamics(client_init)
         # await do_event(client_init)
@@ -676,12 +665,10 @@ async def main():
         # await do_staked_sui(client_init)
         # await do_latest_cp(client_init)
         # await do_sequence_cp(client_init)
-        # await do_digest_cp(client_init)
+
         # await do_checkpoints(client_init)
         # await do_owned_nameservice(client_init)
-        # await do_validators_apy(client_init)
         # await do_validators(client_init)
-        # await do_all_validators(client_init)
         # await do_nameservice(client_init)
         # await do_refgas(client_init)
         # await do_struct(client_init)

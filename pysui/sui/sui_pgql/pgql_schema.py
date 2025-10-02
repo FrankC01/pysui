@@ -17,7 +17,7 @@ from gql.transport.httpx import HTTPXAsyncTransport
 from gql.dsl import (
     DSLSchema,
 )
-from pysui.sui.sui_pgql.pgql_configs import pgql_config, SuiConfigGQL
+from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL, pgql_config, SuiConfigGQL
 
 
 class Schema:

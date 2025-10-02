@@ -34,6 +34,7 @@ __all__ = (
     "CleverError",
     "CoinDenyListError",
     "CoinMetadata",
+    "CoinMetadataMetadataCapState",
     "CoinTreasury",
     "CoinTreasurySupplyState",
     "Command",
@@ -142,6 +143,7 @@ __all__ = (
     "Publish",
     "RandomnessStateUpdate",
     "RegulatedCoinMetadata",
+    "RegulatedCoinMetadataCoinRegulatedState",
     "ReverseLookupNameRequest",
     "ReverseLookupNameResponse",
     "SignatureScheme",
@@ -202,14 +204,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import betterproto2
+from betterproto2 import grpclib as betterproto2_grpclib
 
 from ....message_pool import default_message_pool
 
 if TYPE_CHECKING:
-    from betterproto2.grpc.grpclib_client import MetadataLike
+    from betterproto2.grpclib.grpclib_client import MetadataLike
     from grpclib.metadata import Deadline
 
-_COMPILER_VERSION = "0.8.0"
+_COMPILER_VERSION = "0.9.0"
 betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
@@ -338,6 +341,33 @@ class CheckpointCommitmentCheckpointCommitmentKind(betterproto2.Enum):
     """
 
 
+class CoinMetadataMetadataCapState(betterproto2.Enum):
+    """
+    Information about the state of the coin's MetadataCap
+    """
+
+    METADATA_CAP_STATE_UNKNOWN = 0
+    """
+    Indicates the state of the MetadataCap is unknown.
+    Set when the coin has not been migrated to the CoinRegistry.
+    """
+
+    CLAIMED = 1
+    """
+    Indicates the MetadataCap has been claimed.
+    """
+
+    UNCLAIMED = 2
+    """
+    Indicates the MetadataCap has not been claimed.
+    """
+
+    DELETED = 3
+    """
+    Indicates the MetadataCap has been deleted.
+    """
+
+
 class CoinTreasurySupplyState(betterproto2.Enum):
     """
     Supply state of a coin, matching the Move SupplyState enum
@@ -351,6 +381,11 @@ class CoinTreasurySupplyState(betterproto2.Enum):
     FIXED = 1
     """
     Supply is fixed (TreasuryCap consumed, no more minting possible)
+    """
+
+    BURN_ONLY = 2
+    """
+    Supply can only decrease (burning allowed, minting not allowed)
     """
 
 
@@ -811,6 +846,30 @@ class PackageUpgradeErrorPackageUpgradeErrorKind(betterproto2.Enum):
     PACKAGE_ID_DOES_NOT_MATCH = 6
     """
     Package ID does not match `PackageId` in upgrade ticket.
+    """
+
+
+class RegulatedCoinMetadataCoinRegulatedState(betterproto2.Enum):
+    """
+    Indicates the state of the regulation of the coin.
+    """
+
+    COIN_REGULATED_STATE_UNKNOWN = 0
+    """
+    Indicates the regulation state of the coin is unknown.
+    This is set when a coin has not been migrated to the
+    coin registry and has no `0x2::coin::RegulatedCoinMetadata`
+    object.
+    """
+
+    REGULATED = 1
+    """
+    Indicates a coin is regulated. RegulatedCoinMetadata will be populated.
+    """
+
+    UNREGULATED = 2
+    """
+    Indicates a coin is unregulated.
     """
 
 
@@ -1750,7 +1809,7 @@ class CoinMetadata(betterproto2.Message):
     id: "str | None" = betterproto2.field(1, betterproto2.TYPE_STRING, optional=True)
     """
     ObjectId of the `0x2::coin::CoinMetadata` object or
-    0x2::sui::coin_registry::CoinData object (when registered with CoinRegistry).
+    0x2::sui::coin_registry::Currency object (when registered with CoinRegistry).
     """
 
     decimals: "int | None" = betterproto2.field(
@@ -1793,6 +1852,13 @@ class CoinMetadata(betterproto2.Message):
     The MetadataCap ID if it has been claimed for this coin type.
     This capability allows updating the coin's metadata fields.
     Only populated when metadata is from CoinRegistry.
+    """
+
+    metadata_cap_state: "CoinMetadataMetadataCapState | None" = betterproto2.field(
+        8, betterproto2.TYPE_ENUM, optional=True
+    )
+    """
+    State of the MetadataCap for this coin type.
     """
 
 
@@ -3088,8 +3154,12 @@ class GetCoinInfoResponse(betterproto2.Message):
     )
     """
     If this coin type is a regulated coin, this field will be
-    populated with information about its `0x2::coin::RegulatedCoinMetadata`
-    object.
+    populated with information either from its Currency object
+    in the CoinRegistry, or from its `0x2::coin::RegulatedCoinMetadata`
+    object for coins that have not been migrated to the CoinRegistry
+
+    If this coin is not known to be regulated, only the
+    coin_regulated_state field will be populated.
     """
 
 
@@ -4914,6 +4984,7 @@ class RegulatedCoinMetadata(betterproto2.Message):
     id: "str | None" = betterproto2.field(1, betterproto2.TYPE_STRING, optional=True)
     """
     ObjectId of the `0x2::coin::RegulatedCoinMetadata` object.
+    Only present for coins that have not been migrated to CoinRegistry.
     """
 
     coin_metadata_object: "str | None" = betterproto2.field(
@@ -4928,6 +4999,27 @@ class RegulatedCoinMetadata(betterproto2.Message):
     )
     """
     The ID of the coin's `DenyCap` object.
+    """
+
+    allow_global_pause: "bool | None" = betterproto2.field(
+        4, betterproto2.TYPE_BOOL, optional=True
+    )
+    """
+    Whether the coin can be globally paused
+    """
+
+    variant: "int | None" = betterproto2.field(
+        5, betterproto2.TYPE_UINT32, optional=True
+    )
+    """
+    Variant of the regulated coin metadata
+    """
+
+    coin_regulated_state: "RegulatedCoinMetadataCoinRegulatedState | None" = (
+        betterproto2.field(6, betterproto2.TYPE_ENUM, optional=True)
+    )
+    """
+    Indicates the coin's regulated state.
     """
 
 
@@ -6807,7 +6899,7 @@ default_message_pool.register_message(
 )
 
 
-class LedgerServiceStub(betterproto2.ServiceStub):
+class LedgerServiceStub(betterproto2_grpclib.ServiceStub):
     async def get_service_info(
         self,
         message: "GetServiceInfoRequest | None" = None,
@@ -6935,7 +7027,7 @@ class LedgerServiceStub(betterproto2.ServiceStub):
         )
 
 
-class LiveDataServiceStub(betterproto2.ServiceStub):
+class LiveDataServiceStub(betterproto2_grpclib.ServiceStub):
     async def list_dynamic_fields(
         self,
         message: "ListDynamicFieldsRequest",
@@ -7039,7 +7131,7 @@ class LiveDataServiceStub(betterproto2.ServiceStub):
         )
 
 
-class MovePackageServiceStub(betterproto2.ServiceStub):
+class MovePackageServiceStub(betterproto2_grpclib.ServiceStub):
     async def get_package(
         self,
         message: "GetPackageRequest",
@@ -7109,7 +7201,7 @@ class MovePackageServiceStub(betterproto2.ServiceStub):
         )
 
 
-class NameServiceStub(betterproto2.ServiceStub):
+class NameServiceStub(betterproto2_grpclib.ServiceStub):
     async def lookup_name(
         self,
         message: "LookupNameRequest",
@@ -7145,7 +7237,7 @@ class NameServiceStub(betterproto2.ServiceStub):
         )
 
 
-class SignatureVerificationServiceStub(betterproto2.ServiceStub):
+class SignatureVerificationServiceStub(betterproto2_grpclib.ServiceStub):
     async def verify_signature(
         self,
         message: "VerifySignatureRequest",
@@ -7168,7 +7260,7 @@ class SignatureVerificationServiceStub(betterproto2.ServiceStub):
         )
 
 
-class SubscriptionServiceStub(betterproto2.ServiceStub):
+class SubscriptionServiceStub(betterproto2_grpclib.ServiceStub):
     async def subscribe_checkpoints(
         self,
         message: "SubscribeCheckpointsRequest",
@@ -7202,7 +7294,7 @@ class SubscriptionServiceStub(betterproto2.ServiceStub):
             yield response
 
 
-class TransactionExecutionServiceStub(betterproto2.ServiceStub):
+class TransactionExecutionServiceStub(betterproto2_grpclib.ServiceStub):
     async def execute_transaction(
         self,
         message: "ExecuteTransactionRequest",

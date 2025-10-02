@@ -537,6 +537,7 @@ def dryrun_kind(client: SuiGQLClient, args: argparse.Namespace) -> None:
         "gasBudget": args.budget,
         "gasObjects": [x for x in args.gas_objects] if args.gas_objects else [],
     }
+
     handle_result(
         client.execute_query_node(
             with_node=qn.DryRunTransactionKind(tx_bytestr=args.txb, tx_meta=options)

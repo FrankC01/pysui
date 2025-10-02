@@ -6,6 +6,11 @@
 """Sample module for incremental buildout of Sui GraphQL RPC for Pysui 1.0.0."""
 
 import base64
+
+# import logging
+
+# logging.basicConfig(level=logging.DEBUG)
+
 from pysui import PysuiConfiguration, SuiRpcResult, SyncGqlClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
 
@@ -45,7 +50,7 @@ def do_coins_for_type(client: SyncGqlClient):
         client.execute_query_node(
             with_node=qn.GetCoins(
                 owner=client.config.active_address,
-                coin_type="0x2::sui::SUI",
+                coin_type="0x2::coin::Coin<0x2::sui::SUI>",
             )
         )
     )
@@ -131,8 +136,18 @@ def do_object(client: SyncGqlClient):
 
     To run, replace object_id with object you are interested in.
     """
-    gobj = qn.GetObject(
-        object_id="0x04cc525490ed375c21d1ec17841cb3b8363b463613b8673ce4620c4b885acb02"
+    gobj = qn.GetObject(object_id="0x6")
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(client.execute_query_node(with_node=gobj))
+
+
+def do_object_content(client: SyncGqlClient):
+    """Fetch minimal object content, basically just reference information.
+
+    Set 'obect_id' to object address of choice.
+    """
+    gobj = qn.GetObjectContent(
+        object_id="0x05b9047053c3491b49347779342658d9655400e3d42aef85807c437edd73b2a2"
     )
     # print(client.query_node_to_string(query_node=gobj))
     handle_result(client.execute_query_node(with_node=gobj))
@@ -145,8 +160,8 @@ def do_past_object(client: SyncGqlClient):
     handle_result(
         client.execute_query_node(
             with_node=qn.GetPastObject(
-                object_id="0x04cc525490ed375c21d1ec17841cb3b8363b463613b8673ce4620c4b885acb02",
-                version=17078252,
+                object_id="0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+                version=3,
             )
         )
     )
@@ -158,8 +173,8 @@ def do_multiple_object_versions(client: SyncGqlClient):
     """
     object_versions = [
         {
-            "objectId": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
-            "version": 43,
+            "address": "0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
+            "version": 3,
         }
     ]
     handle_result(
@@ -167,6 +182,17 @@ def do_multiple_object_versions(client: SyncGqlClient):
             with_node=qn.GetMultipleVersionedObjects(for_versions=object_versions)
         )
     )
+
+
+def do_multiple_object_content(client: SyncGqlClient):
+    """Fetch minimal object content, basically just reference information."""
+    gobj = qn.GetMultipleObjectContent(
+        object_ids=[
+            "0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+        ]
+    )
+    # print(client.query_node_to_string(query_node=gobj))
+    handle_result(client.execute_query_node(with_node=gobj))
 
 
 def do_objects(client: SyncGqlClient):
@@ -188,8 +214,8 @@ def do_objects_for(client: SyncGqlClient):
         client.execute_query_node(
             with_node=qn.GetMultipleObjects(
                 object_ids=[
-                    "0x622bd4386896675a1e31d489b789a3b848468c85f081537cbab076092b0727ed",
-                    "0x365d59f8994c6d18c682a9cede48cfd9313b72d4f9de029529e388898113231b",
+                    "0x01c65900c1c67b8e442676d981ed6752fe2317fbaa444c7a2e1f0ee4736caaa4",
+                    "0x0e2b194679b1d071f7b39570acc3dd7623361daa9507ef6bda98d0ecfcfc5255",
                 ]
             )
         )
@@ -204,7 +230,7 @@ def do_dynamics(client: SyncGqlClient):
     handle_result(
         client.execute_query_node(
             with_node=qn.GetDynamicFields(
-                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed"
+                object_id="0xb0e372e6abc2dfa87b19e8e4a29b74be7f68b21d8a6a7e005c256d02ef19911d"
             )
         )
     )
@@ -214,7 +240,7 @@ def do_event(client: SyncGqlClient):
     """."""
     res = client.execute_query_node(
         with_node=qn.GetEvents(
-            event_filter={"eventType": "0x3::validator::StakingRequestEvent"}
+            event_filter={"type": "0x3::validator::StakingRequestEvent"}
         )
     )
     if res.is_ok():
@@ -251,7 +277,7 @@ def do_chain_id(client: SyncGqlClient):
 
     Demonstrates overriding serialization
     """
-    print(client.chain_id())
+    print(f"Chain Identifier: {client.chain_id()}")
 
 
 def do_tx(client: SyncGqlClient):
@@ -260,9 +286,9 @@ def do_tx(client: SyncGqlClient):
     To run, replace digest value with a valid one for network you are working with
     """
 
-    handle_result(
+    res = handle_result(
         client.execute_query_node(
-            with_node=qn.GetTx(digest="CqKm8efZcFJAFkfsygHmE8kHzWQJNPygSz8zmMginmHa")
+            with_node=qn.GetTx(digest="7AWa6ZF7BKmAqcZ5j7A9aUdhEZDwbq5fMyBfmbAnncrb")
         )
     )
 
@@ -292,9 +318,11 @@ def do_txs(client: SyncGqlClient):
 def do_filter_txs(client: SyncGqlClient):
     """Fetch all transactions matching filter.
 
-    See Sui GraphQL schema for TransactionBlockFilter options.
+    See Sui GraphQL schema for TransactionFilter options.
     """
-    obj_filter = {"changedObject": "ENTER OBJECT_ID HERE"}
+    obj_filter = {
+        "affectedObject": "0x05b9047053c3491b49347779342658d9655400e3d42aef85807c437edd73b2a2"
+    }
     result = client.execute_query_node(with_node=qn.GetFilteredTx(tx_filter=obj_filter))
     while result.is_ok():
         txs: ptypes.TransactionSummariesGQL = result.result_data
@@ -312,8 +340,13 @@ def do_filter_txs(client: SyncGqlClient):
 
 
 def do_tx_kind(client: SyncGqlClient):
-    """Fetch the PTB details from transaction."""
-    qnode = qn.GetTxKind(digest="ENTER TRANSACTION DIGESST HERE")
+    """Fetch the PTB details from transaction.
+
+    Substitute a valid transaction digest from operating environment.
+    """
+    qnode = qn.GetTxKind(
+        digest="AztzzDzm9r3L1QqZZZMzbporo1HSbjSKT2KGSWX1ujVB"
+    )  # split and transfer
     handle_result(client.execute_query_node(with_node=qnode))
 
 
@@ -349,23 +382,6 @@ def do_sequence_cp(client: SyncGqlClient):
         print(result.result_string)
 
 
-def do_digest_cp(client: SyncGqlClient):
-    """Fetch a checkpoint by checkpoint digest.
-
-    Uses the most recent checkpoint's digest (inefficient for example only)
-    """
-    result = client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
-    if result.is_ok():
-        cp: ptypes.CheckpointGQL = result.result_data
-        handle_result(
-            client.execute_query_node(
-                with_node=qn.GetCheckpointByDigest(digest=cp.digest)
-            )
-        )
-    else:
-        print(result.result_string)
-
-
 def do_checkpoints(client: SyncGqlClient):
     """Get a batch of checkpoints."""
     handle_result(client.execute_query_node(with_node=qn.GetCheckpoints()))
@@ -394,40 +410,14 @@ def do_owned_nameservice(client: SyncGqlClient):
     )
 
 
-def do_validators_apy(client: SyncGqlClient):
-    """Fetch the most current validators apy and identity."""
-    handle_result(client.execute_query_node(with_node=qn.GetValidatorsApy()))
-
-
 def do_validators(client: SyncGqlClient):
     """Fetch the most current validator detail."""
     handle_result(client.execute_query_node(with_node=qn.GetCurrentValidators()))
 
 
-def do_all_validators(client: SyncGqlClient):
-    """Fetch all validators and show name and data."""
-    all_vals: list[ptypes.ValidatorFullGQL] = []
-    valres = client.execute_query_node(with_node=qn.GetCurrentValidators())
-    while valres.is_ok():
-        all_vals.extend(valres.result_data.validators)
-        if valres.result_data.next_cursor.hasNextPage:
-            valres = client.execute_query_node(
-                with_node=qn.GetCurrentValidators(
-                    next_page=valres.result_data.next_cursor,
-                )
-            )
-        else:
-            break
-    print(f"Total validators {len(all_vals)}")
-    for val in all_vals:
-        print(
-            f"Address: {val.validator_address} Apy: {val.apy} Name: {val.validator_name}"
-        )
-
-
 def do_protcfg(client: SyncGqlClient):
     """Fetch the most current system state summary."""
-    handle_result(client.execute_query_node(with_node=qn.GetProtocolConfig(version=30)))
+    handle_result(client.execute_query_node(with_node=qn.GetProtocolConfig(version=96)))
 
 
 def do_struct(client: SyncGqlClient):
@@ -466,9 +456,9 @@ def do_func(client: SyncGqlClient):
     """
     result = client.execute_query_node(
         with_node=qn.GetFunction(
-            package="0xce936b3b14d08848177b930e1944490bc445492b786c293a5a3588c892c1ebf4",
-            module_name="fungible",
-            function_name="mint",
+            package="0x2",
+            module_name="coin",
+            function_name="balance",
         )
     )
     if result.is_ok():
@@ -494,7 +484,7 @@ def do_module(client: SyncGqlClient):
     result = client.execute_query_node(
         with_node=qn.GetModule(
             package="0x2",
-            module_name="prover",
+            module_name="coin",
         )
     )
     if result.is_ok():
@@ -529,12 +519,15 @@ def do_dry_run_kind_new(client: SyncGqlClient):
     This uses the new SuiTransaction (GraphQL RPC based)
     """
 
-    txer = SuiTransaction(client=client)
+    txer: SuiTransaction = client.transaction()
     scres = txer.split_coin(coin=txer.gas, amounts=[1000000, 1000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     handle_result(
         client.execute_query_node(
-            with_node=qn.DryRunTransactionKind(tx_bytestr=txer.build_for_dryrun())
+            with_node=qn.DryRunTransactionKind(
+                tx_bytestr=txer.raw_kind(),
+                tx_meta={"sender": client.config.active_address},
+            )
         )
     )
 
@@ -544,12 +537,11 @@ def do_dry_run_new(client: SyncGqlClient):
 
     This uses the new SuiTransaction (GraphQL RPC based)
     """
-    txer = SuiTransaction(client=client)
+    txer: SuiTransaction = client.transaction()
     scres = txer.split_coin(coin=txer.gas, amounts=[1000000000])
     txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 
     tx_b64 = base64.b64encode(txer.transaction_data().serialize()).decode()
-    print(tx_b64)
     handle_result(
         client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=tx_b64))
     )
@@ -625,7 +617,9 @@ def split_any_half(client: SyncGqlClient):
         txer: SuiTransaction = client.transaction()
         scres = txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
         txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
-        txdict = txer.build_and_sign()
+        txdict = txer.build_and_sign(
+            use_gas_objects=[result.result_data.data[1]], gas_budget="4000000"
+        )
         result = handle_result(
             client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
         )
@@ -714,9 +708,11 @@ if __name__ == "__main__":
         # do_sysstate(client_init)
         # do_all_balances(client_init)
         # do_object(client_init)
+        # do_object_content(client_init)
         # do_objects(client_init)
         # do_past_object(client_init)
         # do_multiple_object_versions(client_init)
+        # do_multiple_object_content(client_init)
         # do_objects_for(client_init)
         # do_dynamics(client_init)
         # do_event(client_init)
@@ -727,13 +723,10 @@ if __name__ == "__main__":
         # do_staked_sui(client_init)
         # do_latest_cp(client_init)
         # do_sequence_cp(client_init)
-        # do_digest_cp(client_init)
         # do_checkpoints(client_init)
         # do_nameservice(client_init)
         # do_owned_nameservice(client_init)
-        # do_validators_apy(client_init)
         # do_validators(client_init)
-        # do_all_validators(client_init)
         # do_refgas(client_init)
         # do_struct(client_init)
         # do_structs(client_init)
