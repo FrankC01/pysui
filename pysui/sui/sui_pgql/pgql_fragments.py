@@ -764,8 +764,8 @@ class StandardCheckpoint(PGQL_Fragment):
                 schema.Checkpoint.timestamp,
                 schema.Checkpoint.previousCheckpointDigest,
                 schema.Checkpoint.networkTotalTransactions,
-                transaction_blocks=schema.Checkpoint.transactionBlocks.select(
-                    cursor=schema.TransactionBlockConnection.pageInfo.select(
+                transaction_blocks=schema.Checkpoint.transactions.select(
+                    cursor=schema.TransactionConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
                     ),
                     tx_digests=schema.TransactionConnection.nodes.select(

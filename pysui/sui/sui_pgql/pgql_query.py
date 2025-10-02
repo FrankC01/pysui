@@ -1703,6 +1703,7 @@ class ExecuteTransaction(PGQL_QueryNode):
                 schema.TransactionEffects.transaction.select(
                     bcs=schema.Transaction.transactionBcs
                 ),
+                effects_bcs=schema.TransactionEffects.effectsBcs,
                 execution_errors=schema.TransactionEffects.executionError.select(
                     schema.ExecutionError.abortCode,
                     schema.ExecutionError.sourceLineNumber,

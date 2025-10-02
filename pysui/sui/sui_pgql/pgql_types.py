@@ -835,6 +835,7 @@ class ExecutionResultGQL(PGQL_Type):
     lamport_version: int
     digest: str
     bcs: str
+    effects_bcs: str
     execution_error: Optional[dict] = None
     errors: Optional[list[str]] = None
 

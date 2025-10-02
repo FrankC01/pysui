@@ -485,64 +485,64 @@ def _build_gql_cmds(subparser) -> None:
     subp.set_defaults(subcommand="query")
 
     # Dry Run Data
-    subp = subparser.add_parser(
-        "tx-dryrun-data",
-        help="Dry run a transaction block (TransactionData).",
-    )
-    subp.add_argument(
-        "-t",
-        "--txb",
-        required=True,
-        help="The base64 transaction block data bytes.",
-        action=validator.ValidateB64,
-    )
-    subp.set_defaults(subcommand="dryrun-data")
+    # subp = subparser.add_parser(
+    #     "tx-dryrun-data",
+    #     help="Dry run a transaction block (TransactionData).",
+    # )
+    # subp.add_argument(
+    #     "-t",
+    #     "--txb",
+    #     required=True,
+    #     help="The base64 transaction block data bytes.",
+    #     action=validator.ValidateB64,
+    # )
+    # subp.set_defaults(subcommand="dryrun-data")
 
     # Dry Run Kind
-    subp = subparser.add_parser(
-        "tx-dryrun-kind",
-        help="Dry run a transaction block kind (TransactionKind).",
-    )
-    subp.add_argument(
-        "-t",
-        "--txb",
-        required=True,
-        help="The base64 transaction block kind bytes. ",
-        action=validator.ValidateB64,
-    )
-    subp.add_argument(
-        "--sender",
-        required=False,
-        help="Optionally set the sender's sui address",
-        action=validator.ValidateAddress,
-    )
-    subp.add_argument(
-        "--gas-price",
-        required=False,
-        help="Optionally set the transaction gas price (in mists)",
-        type=int,
-    )
-    subp.add_argument(
-        "--gas-objects",
-        required=False,
-        nargs="+",
-        help="Optionally set the transaction gas objects to use",
-        action=validator.ValidateObjectID,
-    )
-    subp.add_argument(
-        "--budget",
-        required=False,
-        help="Optionally set the transactions budget (in mists)",
-        type=int,
-    )
+    # subp = subparser.add_parser(
+    #     "tx-dryrun-kind",
+    #     help="Dry run a transaction block kind (TransactionKind).",
+    # )
+    # subp.add_argument(
+    #     "-t",
+    #     "--txb",
+    #     required=True,
+    #     help="The base64 transaction block kind bytes. ",
+    #     action=validator.ValidateB64,
+    # )
+    # subp.add_argument(
+    #     "--sender",
+    #     required=False,
+    #     help="Optionally set the sender's sui address",
+    #     action=validator.ValidateAddress,
+    # )
+    # subp.add_argument(
+    #     "--gas-price",
+    #     required=False,
+    #     help="Optionally set the transaction gas price (in mists)",
+    #     type=int,
+    # )
+    # subp.add_argument(
+    #     "--gas-objects",
+    #     required=False,
+    #     nargs="+",
+    #     help="Optionally set the transaction gas objects to use",
+    #     action=validator.ValidateObjectID,
+    # )
+    # subp.add_argument(
+    #     "--budget",
+    #     required=False,
+    #     help="Optionally set the transactions budget (in mists)",
+    #     type=int,
+    # )
 
-    subp.add_argument(
-        "--sponsor",
-        required=False,
-        help="Optionally set the sponsor's sui address",
-        action=validator.ValidateAddress,
-    )
-    subp.set_defaults(subcommand="dryrun-kind")
+    # subp.add_argument(
+    #     "--sponsor",
+    #     required=False,
+    #     help="Optionally set the sponsor's sui address",
+    #     action=validator.ValidateAddress,
+    # )
+    # subp.set_defaults(subcommand="dryrun-kind")
 
     # Execute transaction
     subp = subparser.add_parser(

@@ -125,7 +125,7 @@ async def _process_txn(
         )
     )
     tx_effects = bcst.TransactionEffects.deserialize(
-        base64.b64decode(results.result_data.bcs)
+        base64.b64decode(results.result_data.effects_bcs)
     ).value
     if tx_effects.status.enum_name != "Success":
         logger.info(f"Splay failed {tx_effects.status.to_json(indent=2)}")
