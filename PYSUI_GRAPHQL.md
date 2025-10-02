@@ -1,4 +1,4 @@
-# Sui GraphQL ALPHA
+# Sui GraphQL BETA
 
 MystenLabs announcement can be [Found Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
 from JSON RPC to GraphQL RPC.
@@ -7,8 +7,8 @@ Note: MystenLabs/Sui GraphQL Beta is available on devnet, testnet and mainnet.
 
 ## PysuiConfiguration: GraphQL URL CHANGES
 
-If you were previously setup PysuiConfiguration with GraphQL Alpha profiles you'll **need to update**
-them. Here are approahes you can use:
+If you were previously setup PysuiConfiguration with GraphQL _Alpha_ profiles you'll **need to update**
+them. Here are approaches you can use:
 
 1. Using an editor of your choice open up ~/.pysui/PysuiConfig.json (default) and replace any GraphQL profile URLs
   to those shown in the next section.

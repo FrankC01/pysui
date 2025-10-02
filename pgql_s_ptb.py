@@ -6,7 +6,7 @@
 """Sample module for pysui beta Transaction Builder leveraging Sui GraphQL."""
 
 import base64
-from pysui import SuiConfig, SyncGqlClient, PysuiConfiguration
+from pysui import SyncGqlClient, PysuiConfiguration
 from pysui.sui.sui_clients.common import SuiRpcResult
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
@@ -36,7 +36,10 @@ def transaction_inspect(txb: SuiTransaction):
     # Execute the dry run
     handle_result(
         txb.client.execute_query_node(
-            with_node=qn.DryRunTransactionKind(tx_bytestr=txb.build_for_dryrun())
+            with_node=qn.DryRunTransactionKind(
+                tx_bytestr=txb.raw_kind(),
+                tx_meta={"sender": txb.client.config.active_address},
+            )
         )
     )
 
@@ -79,7 +82,7 @@ def transaction_execute(txer: SuiTransaction):
 
 def demo_tx_split(client: SyncGqlClient):
     """Demonstrate GraphQL Beta PTB with split and transfer."""
-    txb = SuiTransaction(client=client)
+    txb: SuiTransaction = client.transaction()
     scoin = txb.split_coin(
         coin=txb.gas,
         amounts=[100000000],
@@ -99,7 +102,7 @@ def demo_tx_split(client: SyncGqlClient):
 
 def demo_tx_split_equal(client: SyncGqlClient):
     """Demonstrate GraphQL Beta PTB with split coin to equal parts and keeps in owner."""
-    txb = SuiTransaction(client=client)
+    txb: SuiTransaction = client.transaction()
     scoin = txb.split_coin_equal(
         coin="<ENTER COID ID TO SPLIT STRING>",
         split_count=3,
@@ -125,7 +128,7 @@ def demo_tx_unstake(client: SyncGqlClient):
     )
     # Only execute if staked coin found
     if skblk.staked_coins:
-        txb = SuiTransaction(client=client)
+        txb: SuiTransaction = client.transaction()
         txb.unstake_coin(staked_coin=skblk.staked_coins[0])
         transaction_inspect(txb)
         # transaction_dryrun(txb)
@@ -142,7 +145,7 @@ def demo_tx_unstake(client: SyncGqlClient):
 
 def demo_tx_transfer_sui(client: SyncGqlClient):
     """Demonstrate GraphQL Beta PTB with transferring sui."""
-    txb = SuiTransaction(client=client)
+    txb: SuiTransaction = client.transaction()
     txb.transfer_sui(
         recipient="<ENTER RECIPIENT ADDRESS STRING>",
         from_coin=txb.gas,
@@ -161,7 +164,7 @@ def demo_tx_transfer_sui(client: SyncGqlClient):
 
 def demo_tx_public_transfer(client: SyncGqlClient):
     """Demonstrate GraphQL Beta PTB with public transfer object."""
-    txb = SuiTransaction(client=client)
+    txb: SuiTransaction = client.transaction()
     txb.public_transfer_object(
         object_to_send="<ENTER OBJECT ID TO SEND STRING>",
         recipient="<ENTER RECIPIENT ADDRESS STRING>",
@@ -180,7 +183,7 @@ def demo_tx_public_transfer(client: SyncGqlClient):
 
 def demo_tx_publish(client: SyncGqlClient):
     """Demonstrate publishing a package."""
-    txb = SuiTransaction(client=client)
+    txb: SuiTransaction = client.transaction()
     upg_cap = txb.publish(project_path="<ENTER SUI MOVE PROJECT PATH>")
     txb.transfer_objects(transfers=[upg_cap], recipient=client.config.active_address)
 
