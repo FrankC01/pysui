@@ -15,6 +15,8 @@ The transition from GraphQL ALPHA to GraphQL BETA introduced a number of input a
 
 ### Added
 
+- Support for Mysten GraphQL Beta
+
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/351) GraphQL change to httpx kwargs, was failing on Async 'proxies'

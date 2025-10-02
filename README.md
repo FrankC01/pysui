@@ -32,10 +32,9 @@ Python Client SDK for Sui blockchain
 - Transition to GraphQL BETA support. This will require changing the GraphQL URLs in `PysuiConfig.json`.
   See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
 
-
 ## PyPi current
 
-**Release-0.91.0 - Released 2025-09-22**
+**Release-0.91.0 - Released 2025-10-02**
 
 **BREAKING CHANGES**
 
