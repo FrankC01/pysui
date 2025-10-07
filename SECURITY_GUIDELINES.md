@@ -4,7 +4,7 @@
 
 PySui project uses dual security scanning tools:
 - **Bandit** - Python code security analysis
-- **Snyk** - Dependency vulnerability scanning + License compliance
+- **pip-audit** - Dependency vulnerability scanning
 
 ## Quick Start
 
@@ -15,8 +15,8 @@ pip install -r requirements-dev.txt
 # Run code security scanning (Bandit)
 bandit -r pysui/ --severity-level medium
 
-# Run dependency security scanning (Snyk)
-snyk test
+# Run dependency security scanning (pip-audit)
+pip-audit
 ```
 
 ## Recommended Scanning Commands
@@ -34,23 +34,34 @@ bandit -r pysui/ --severity-level low --confidence-level low
 bandit -r pysui/ --severity-level medium --format json --output bandit-report.json
 ```
 
-### 🔗 Snyk (Dependency Security)
+### 🔗 pip-audit (Dependency Security)
+
+PySui uses **setuptools + pyproject.toml** for dependency management, with a traditional `requirements.txt` file. Here are the recommended scanning approaches:
 
 ```bash
-# First-time authentication required
-snyk auth [token]
+# Scan pyproject.toml dependencies (recommended for PySui)
+pip-audit --requirement <(python -c "import sys; sys.path.append('pysui'); from sui_constants import DEFAULT_SUI_CLIENT_CONFIG; print('pyproject.toml')")
 
-# Scan dependency vulnerabilities
-snyk test
+# Scan traditional requirements.txt
+pip-audit -r requirements.txt
 
-# Scan all projects (if multiple)
-snyk test --all-projects
+# Scan installed packages in current environment
+pip-audit
+
+# Scan development dependencies
+pip-audit -r requirements-dev.txt
 
 # Generate detailed report
-snyk test --json > snyk-report.json
+pip-audit --format=json --output audit-report.json
 
-# Check license compliance
-snyk test --license-check
+# Check for fixes available
+pip-audit --fix
+
+# Dry run fix check
+pip-audit --fix --dry-run
+
+# Scan project directory (detects dependency files automatically)
+pip-audit --path .
 ```
 
 ### 🔄 Combined Scanning
@@ -58,7 +69,7 @@ snyk test --license-check
 ```bash
 # Complete security scan (code + dependencies)
 bandit -r pysui/ --severity-level medium
-snyk test --license-check
+pip-audit -r requirements.txt -r requirements-dev.txt
 ```
 
 ## Common Security Issues
@@ -70,20 +81,30 @@ snyk test --license-check
 3. **Network Communication** - SSL/TLS configuration issues
 4. **Cryptographic Operations** - Insecure hash algorithms, random number generation
 
-### 🔗 Snyk Detected Issues
+### 🔗 pip-audit Detected Issues
 
 1. **Dependency Vulnerabilities** - Security vulnerabilities in third-party libraries
-2. **License Compliance** - Open source license conflicts
-3. **Outdated Versions** - Known vulnerabilities in old versions
-4. **Supply Chain Security** - Security issues in dependencies of dependencies
+2. **Outdated Versions** - Known vulnerabilities in old versions
+3. **Supply Chain Security** - Security issues in dependencies of dependencies
+4. **Package Integrity** - Verification of package hashes and sources
 
 ## Special Focus for PySui
 
-**Blockchain Project Specific Risks**:
+### Package Management Setup
+PySui uses a hybrid dependency management approach:
+- **Primary**: `pyproject.toml` with setuptools backend
+- **Traditional**: `requirements.txt` for runtime dependencies
+- **Development**: `requirements-dev.txt` for development tools
+
+### Blockchain Project Specific Risks
 - **Cryptography Library Security** - pysui-fastcrypto, betterproto2
-- **Network Communication** - httpx, websockets, gRPC
+- **Network Communication** - httpx, websockets, gRPC (via betterproto2)
 - **Serialization** - canoser, PyYAML
-- **Configuration Management** - Sensitive information storage
+- **Data Handling** - dataclasses_json, jsonschema
+- **Protocol Buffers** - betterproto2[grpclib]
+- **GraphQL Client** - gql[httpx,websockets]
+- **Encoding** - base58
+- **Versioning** - setuptools-scm for dynamic versioning
 
 ## Excluding Unnecessary Checks
 
@@ -99,14 +120,24 @@ bandit -r pysui/ --exclude tests/,samples/
 bandit -r pysui/ --skip B101,B601
 ```
 
-#### Snyk Exclusions
+#### pip-audit Exclusions
 
 ```bash
-# Exclude development dependencies
-snyk test --exclude=dev
+# Scan only specific requirements files
+pip-audit --requirement requirements.txt --requirement requirements-dev.txt
 
-# Ignore specific vulnerabilities (use with caution)
-snyk test --exclude=SNYK-PYTHON-PYYAML-590148
+# Skip editable installs
+pip-audit --skip-editable
+
+# Exclude specific packages (use with caution)
+pip-audit --ignore-vuln PYSEC-2023-123
+
+# Use custom policy file
+pip-audit --policy custom-policy.toml
+
+# Focus on specific dependency type
+pip-audit --requirement requirements.txt  # Runtime deps only
+pip-audit --requirement requirements-dev.txt  # Dev deps only
 ```
 
 ## Reporting Security Issues
@@ -120,8 +151,8 @@ When security vulnerabilities are discovered:
 
 ### 🛠️ Tool Documentation
 - [Bandit Official Documentation](https://bandit.readthedocs.io/)
-- [Snyk Official Documentation](https://support.snyk.io/)
-- [Snyk CLI Guide](https://docs.snyk.io/snyk-cli/)
+- [pip-audit Official Documentation](https://pip.pypa.io/en/stable/topics/pip-audit/)
+- [pip-audit GitHub](https://github.com/trailofbits/pip-audit)
 
 ### 📚 Security Resources
 - [Python Security Best Practices](https://docs.python.org/3/library/security.html)

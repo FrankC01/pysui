@@ -5,7 +5,7 @@ pythonpath = ["pysui", "abstracts", "sui", "sui/sui_types"]
 
 # Optional: Security scanning
 # Code security: bandit -r pysui/ --severity-level medium
-# Dependency security: snyk test --license-check
+# Dependency security: pip-audit
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel","setuptools-scm>=8.0"]
