@@ -14,12 +14,17 @@ from typing import Callable, Optional
 import betterproto2
 from betterproto2 import grpclib as betterproto2_grpclib
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+
+try:
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+except:
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+
 import pysui.sui.sui_grpc.suimsgs.google.protobuf as goog_prot
 
 
 class Service(enum.IntEnum):
-    LIVEDATA = 0
+    STATE = 0
     LEDGER = 1
     TRANSACTION = 2
     MOVEPACKAGE = 3

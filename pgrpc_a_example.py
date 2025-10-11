@@ -15,7 +15,11 @@ from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_all_owned_gas_objects,
     async_get_all_owned_objects,
 )
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+
+try:
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+except:
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -600,7 +604,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -633,7 +637,7 @@ async def main():
         # await do_funcs(client_init)
         # await do_module(client_init)
         # await do_package(client_init)
-        await do_dry_run(client_init)
+        # await do_dry_run(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)
         # await do_stake(client_init)

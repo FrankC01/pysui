@@ -1513,6 +1513,7 @@ class GetPackage(PGQL_QueryNode):
 @versionchanged(
     version="0.91.0", reason="tx_bytestr arg now requires bcs.TransactionKind"
 )
+@versionchanged(version="0.92.0", reason="Sui GraphQL requires sender set in tx_meta.")
 class DryRunTransactionKind(PGQL_QueryNode):
     """DryRunTransactionKind query node."""
 
@@ -1520,7 +1521,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
         self,
         *,
         tx_bytestr: TransactionKind,
-        tx_meta: Optional[dict] = None,
+        tx_meta: dict,
         skip_checks: Optional[bool] = True,
     ) -> None:
         """__init__ Initialize DryRunTransactionKind object.
@@ -1528,7 +1529,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
         BREAKING CHANGE
         for the `tx_meta` argument, it expects a dictionary with one or more keys set.
         {
-            sender: The Sui address (str) for the sender (defaults to 0x0),
+            sender: The Sui address (str) for the sender. THIS IS CURRENTLY REQUIRED,
             epoch_expiration: The epoch (int) after which this transaction won't be signed
 
             NOT IMPLEMENTED YET (ignored). MAY OBSOLETE SOME... TBD
@@ -1546,7 +1547,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
         assert isinstance(tx_bytestr, TransactionKind)
         self.tx_data: TransactionKind = tx_bytestr
         self.transaction: sui_prot.Transaction = None
-        self.tx_meta = tx_meta if tx_meta else {}
+        self.tx_meta = tx_meta
         self.tx_skipchecks = skip_checks
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
@@ -1576,15 +1577,16 @@ class DryRunTransactionKind(PGQL_QueryNode):
             ),
             expiration=trx_exp,
         )
-        if self.tx_meta:
-            if sender := self.tx_meta.get("sender"):
-                self.transaction.sender = sender
+        if self.tx_meta and (is_sender := self.tx_meta.get("sender")):
+            self.transaction.sender = is_sender
             if txn_expires_after := self.tx_meta.get("epoch_expiration"):
                 trx_exp = sui_prot.TransactionExpiration(
                     kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
                     epoch=txn_expires_after,
                 )
                 self.transaction.expiration = txn_expires_after
+        else:
+            raise ValueError("Requires 'sender' set in tx_meta dict")
 
         base_obj = frag.BaseObject().fragment(schema)
         standard_obj = frag.StandardObject().fragment(schema)

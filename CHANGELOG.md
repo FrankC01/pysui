@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.92.0] - Unpublished
+
+### Added
+
+- `v2` gRPC protos included, `v2beta` to be sunset
+
+### Fixed
+
+- GraphQL Mysten fixed issue with fetching 0x2::sui::SUI by address in testnet
+
+### Changed
+
+- gRPC LiveDataService renamed to StateService for `v2` protos
+- gRPC SimulateTransaction moved to TransactionService for `v2` protos
+- DryRunTransactionKind tx_meta requires 'sender' set. This is due to a constraint in Sui GraphQL.
+
+### Removed
+
 ## [0.91.0] - 2025-10-02
 
 **Breaking Changes**

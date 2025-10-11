@@ -25,12 +25,9 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.91.0**
+**Release-0.92.0**
 
-**BREAKING CHANGES**
-
-- Transition to GraphQL BETA support. This will require changing the GraphQL URLs in `PysuiConfig.json`.
-  See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
+DryRunTransactionKind `tx_meta` argument requires 'sender' This is due to a constraint in Sui GraphQL.
 
 ## PyPi current
 
