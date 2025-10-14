@@ -936,6 +936,7 @@ class Validator(PGQL_Fragment):
                 schema.Validator.nextEpochStake,
                 schema.Validator.nextEpochGasPrice,
                 schema.Validator.nextEpochCommissionRate,
+                # schema.Validator.atRisk,
             )
         )
 

@@ -1809,6 +1809,7 @@ class ValidatorFullGQL:
     nextEpochStake: str
     nextEpochGasPrice: str
     nextEpochCommissionRate: 1200
+    # atRisk: int
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorFullGQL":

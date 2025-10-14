@@ -29,6 +29,10 @@ Python Client SDK for Sui blockchain
 
 DryRunTransactionKind `tx_meta` argument requires 'sender' This is due to a constraint in Sui GraphQL.
 
+**ANNOUNCE** This release will be the last one for JSON RPC issues. Strongly advised
+to move to pysui gRPC or GraphQL.
+
+
 ## PyPi current
 
 **Release-0.91.0 - Released 2025-10-02**

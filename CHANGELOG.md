@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.92.0] - Unpublished
 
+**ANNOUNCE** This release will be the last one for JSON RPC issues. Strongly advised
+to move to pysui gRPC or GraphQL.
+
 ### Added
 
 - `v2` gRPC protos included, `v2beta` to be sunset
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/361) JSON RPC: [PR](https://github.com/FrankC01/pysui/pull/355) broke
+  connectivity.
 - GraphQL Mysten fixed issue with fetching 0x2::sui::SUI by address in testnet
 
 ### Changed

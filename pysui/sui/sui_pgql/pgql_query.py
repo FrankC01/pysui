@@ -1178,7 +1178,6 @@ class GetCurrentValidators(PGQL_QueryNode):
             DSLQuery(
                 schema.Query.epoch.select(schema.Epoch.validatorSet.select(valset))
             ),
-            # DSLQuery(schema.Query.epoch.select(schema.Epoch.validatorSet.select(val))),
         )
 
     @staticmethod
