@@ -727,9 +727,7 @@ class ExecuteTransaction(absreq.PGRPC_Request):
                         bcs=sui_prot.Bcs(value=sig, name="UserSignature")
                     )
                 )
-        self.field_mask = self._field_mask(field_mask) or self._field_mask(
-            ["transaction", "finality"]
-        )
+        self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
         self, *, stub: sui_prot.TransactionExecutionServiceStub

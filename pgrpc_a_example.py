@@ -593,8 +593,6 @@ async def main():
                 profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",
-                # profile_name="test-arch",
-                # profile_name="main-arch",
             ),
         )
         print(f"Active chain profile   '{client_init.config.active_profile}'")
