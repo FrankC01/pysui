@@ -3,7 +3,7 @@
 MystenLabs announcement can be [Found Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
 from JSON RPC to GraphQL RPC.
 
-Note: MystenLabs/Sui GraphQL Beta is available on devnet, testnet and mainnet. 
+Note: MystenLabs/Sui GraphQL Beta is available on devnet, testnet and mainnet.
 
 ## PysuiConfiguration: GraphQL URL CHANGES
 
@@ -13,7 +13,7 @@ them. Here are approaches you can use:
 1. Using an editor of your choice open up ~/.pysui/PysuiConfig.json (default) and replace any GraphQL profile URLs
   to those shown in the next section.
 2. Use [tpysui](https://pypi.org/project/tpysui/) `tpysui` is the Pysui configuration editor. Open (Ctrl+f) the
-  appropriate PysuiConfig.json and edit profile URLs.
+  appropriate PysuiConfig.json and edit profile URLs. See [tpysui docs](https://github.com/Suitters/tpysui/blob/main/docs/tpysui.rst)
 
 ## Sui GraphQL URL AND IDEs CHANGES
 

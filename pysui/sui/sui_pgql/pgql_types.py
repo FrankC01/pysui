@@ -1222,10 +1222,12 @@ class ValidatorSetGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
         """."""
-        in_data["validators"] = [
-            ValidatorGQL.from_query(v_obj) for v_obj in in_data["validators"]
-        ]
-        return ValidatorSetGQL.from_dict(in_data)
+        if i_val := in_data.pop("activeValidators"):
+            in_data["validators"] = [
+                ValidatorGQL.from_query(v_obj) for v_obj in i_val["validators"]
+            ]
+            return ValidatorSetGQL.from_dict(in_data)
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
