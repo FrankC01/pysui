@@ -6,6 +6,7 @@
 """Pysui Transaction builder that leverages Sui gRPC."""
 
 import base64
+import inspect
 from typing import Any, Callable, Optional, Union
 from pysui.sui.sui_common.trxn_base import _SuiTransactionBase as txbase
 from pysui.sui.sui_common.txb_pure import PureInput
@@ -58,8 +59,22 @@ class AsyncSuiTransaction(txbase):
         :param gas_price: set gas price, defaults to None
         :type gas_price: Optional[int], optional
         """
-        super().__init__(**kwargs)
-        self._argparse = argbase.AsyncResolvingArgParser(self.client)
+        frame = inspect.currentframe()
+        try:
+            caller = frame.f_back
+            if (
+                caller.f_code.co_filename.endswith("pgrpc_clients.py")
+                and caller.f_code.co_name == "transaction"
+            ):
+                super().__init__(**kwargs)
+                self._argparse = argbase.AsyncResolvingArgParser(self.client)
+            else:
+                raise ValueError(
+                    "AsyncSuiTransaction must be created from SuiGrpcClient.transaction(). "
+                    + f"Correct code in {caller.f_code.co_filename} around {caller.f_code.co_firstlineno}"
+                )
+        finally:
+            del frame
 
     @AsyncLRU(maxsize=256)
     async def _function_meta_args(

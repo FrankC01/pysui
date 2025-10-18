@@ -6,8 +6,10 @@
 """Pysui Transaction builder that leverages Sui GraphQL."""
 
 import base64
-from typing import Any, Callable, Optional, Union
 from functools import cache
+import inspect
+from typing import Any, Callable, Optional, Union
+
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_common.trxn_base import _SuiTransactionBase as txbase
 
@@ -23,10 +25,6 @@ import pysui.sui.sui_pgql.pgql_txn_argb as argbase
 class SuiTransaction(txbase):
     """."""
 
-    @deprecated(
-        version="0.87.0",
-        reason="GraphQL clients now create transactions. Use that instead",
-    )
     def __init__(
         self,
         **kwargs,
@@ -42,8 +40,23 @@ class SuiTransaction(txbase):
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
         """
-        super().__init__(**kwargs)
-        self._argparse = argbase.ResolvingArgParser(self.client)
+        frame = inspect.currentframe()
+
+        try:
+            caller = frame.f_back
+            if (
+                caller.f_code.co_filename.endswith("pgql_clients.py")
+                and caller.f_code.co_name == "transaction"
+            ):
+                super().__init__(**kwargs)
+                self._argparse = argbase.ResolvingArgParser(self.client)
+            else:
+                raise ValueError(
+                    "SuiTransaction must be created from SyncGqlClient.transaction(). "
+                    + f"Correct code in {caller.f_code.co_filename} around {caller.f_code.co_firstlineno}"
+                )
+        finally:
+            del frame
 
     @cache
     def _function_meta_args(
