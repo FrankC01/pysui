@@ -25,9 +25,7 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.92.0**
-
-**ANNOUNCE: In this release JSON RPC support is EOL. Strongly advised to move to pysui gRPC or GraphQL.**
+**Release-0.93.0**
 
 ## PyPi current
 
