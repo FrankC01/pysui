@@ -32,12 +32,19 @@ and then install packages into it.
       environents
 
 
-
 #. Install pysui
 
     Regardless, you can install ``pysui`` from PyPi:
 
     ``pip install pysui``
+
+
+
+#. Follow the steps in the section **First time instantiation** on the :doc:`PysuiConfiguration <pyconfig>` page.
+
+  If you have not previously setup ``pysui``, this creates the base PysuiConfiguration for GraphQL
+  and gRPC protocols.
+
 
 #. Test install
     Having setup your environment, you can verify all is well with a sample
