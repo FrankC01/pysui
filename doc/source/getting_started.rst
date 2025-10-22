@@ -29,15 +29,15 @@ and then install packages into it.
 
     * You want to use the publish Sui package builder, and/or...
     * You want to use the Sui generated configuration for keystores and active
-      environents
+      environments
 
 
 #. Install pysui
 
     Regardless, you can install ``pysui`` from PyPi:
 
-    ``pip install pysui``
-
+    ``pip install pysui`` if first time install or 
+    ``pip install -U --upgrade-strategy eager pysui`` if upgrading.
 
 
 #. Follow the steps in the section **First time instantiation** on the :doc:`PysuiConfiguration <pyconfig>` page.

@@ -16,7 +16,8 @@ Python Client SDK for Sui blockchain
 
 ### With Rust on machine
 
-`pip install pysui`
+`pip install pysui` if first time or
+`pip install -U --upgrade-strategy eager pysui` if upgrading.
 
 ### Without Rust on machine
 
