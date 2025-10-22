@@ -540,7 +540,7 @@ def dryrun_kind(client: SuiGQLClient, args: argparse.Namespace) -> None:
 
     handle_result(
         client.execute_query_node(
-            with_node=qn.DryRunTransactionKind(tx_bytestr=args.txb, tx_meta=options)
+            with_node=qn.DryRunTransactionKind(tx_kind=args.txb, tx_meta=options)
         )
     )
 

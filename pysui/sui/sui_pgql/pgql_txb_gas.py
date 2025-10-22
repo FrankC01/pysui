@@ -27,7 +27,7 @@ def _dry_run_for_budget(
 ) -> int:
     """Perform a dry run when no budget specified."""
     query = qn.DryRunTransactionKind(
-        tx_bytestr=tx_bytes,
+        tx_kind=tx_bytes,
         tx_meta={
             "sender": signing.sender_str,
             "gasPrice": active_gas_price,
@@ -147,7 +147,7 @@ async def _async_dry_run_for_budget(
     """Perform a dry run when no budget specified."""
     result = await client.execute_query_node(
         with_node=qn.DryRunTransactionKind(
-            tx_bytestr=tx_bytes,
+            tx_kind=tx_bytes,
             tx_meta={
                 "sender": signing.sender_str,
                 "gasPrice": active_gas_price,

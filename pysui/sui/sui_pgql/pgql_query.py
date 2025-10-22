@@ -1513,13 +1513,14 @@ class GetPackage(PGQL_QueryNode):
     version="0.91.0", reason="tx_bytestr arg now requires bcs.TransactionKind"
 )
 @versionchanged(version="0.92.0", reason="Sui GraphQL requires sender set in tx_meta.")
+@versionchanged(version="0.93.0", reason="tx_bytestr arg changed to tx_kind.")
 class DryRunTransactionKind(PGQL_QueryNode):
     """DryRunTransactionKind query node."""
 
     def __init__(
         self,
         *,
-        tx_bytestr: TransactionKind,
+        tx_kind: TransactionKind,
         tx_meta: dict,
         skip_checks: Optional[bool] = True,
     ) -> None:
@@ -1543,8 +1544,8 @@ class DryRunTransactionKind(PGQL_QueryNode):
             gasSponsor: The Sui address string of the sponsor, defaults to the sender
         }
         """
-        assert isinstance(tx_bytestr, TransactionKind)
-        self.tx_data: TransactionKind = tx_bytestr
+        assert isinstance(tx_kind, TransactionKind)
+        self.tx_data: TransactionKind = tx_kind
         self.transaction: sui_prot.Transaction = None
         self.tx_meta = tx_meta
         self.tx_skipchecks = skip_checks

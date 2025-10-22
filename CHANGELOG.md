@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.93.0] - Unpublished
 
+**Breaking Changes**
+GraphQL and gRPC: Transactions are built from client being used. SuiTransaction, and variants,
+will now fail if constructed directly.
+
+GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `tx_kind`
+
 ### Added
 
 ### Fixed

@@ -510,7 +510,7 @@ async def do_dry_run_txkind(txer: AsyncSuiTransaction):
     """Execute a dry run with just the TransactionKind."""
 
     dry_run = qn.DryRunTransactionKind(
-        tx_bytestr=txer.raw_kind(),
+        tx_kind=txer.raw_kind(),
         tx_meta={"sender": txer.client.config.active_address},
     )
 
