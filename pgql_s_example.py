@@ -735,7 +735,7 @@ if __name__ == "__main__":
         # do_module(client_init)
         # do_package(client_init)
         # do_dry_run_new(client_init)
-        do_dry_run_kind_new(client_init)
+        # do_dry_run_kind_new(client_init)
         # do_execute_new(client_init)
         # merge_some(client_init)
         # split_any_half(client_init)
