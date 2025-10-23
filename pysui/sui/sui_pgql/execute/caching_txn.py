@@ -109,7 +109,7 @@ class CachingTransaction(txbase):
         gas_data: bcs.GasData = bcs.GasData(
             [use_gas_object],
             bcs.Address.from_str(signer_block.payer_address),
-            self.gas_price,
+            self.client.current_gas_price,
             gas_budget,
         )
         return bcs.TransactionData(

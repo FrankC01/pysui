@@ -104,7 +104,7 @@ class AsyncCachingTransactionExecutor:
             return ret_coin
         # Otherwise smash lowest to highesst and return it
         coin_list.sort(key=lambda x: int(x.balance), reverse=True)
-        tx = AsyncSuiTransaction(client=self._client)
+        tx = self._client.transaction()
 
         use_as_gas = coin_list.pop(0)
         logger.debug(f"_smash_gas merging coins to version {use_as_gas.version}")

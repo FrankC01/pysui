@@ -17,10 +17,13 @@ GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/368) SerialTransactionExecutor was not fetchinig current gas price
+
 ### Changed
 
 - [change](https://github.com/FrankC01/pysui/issues/366) Added exemption in standalone transaction construction.
   Must use appropriate client (GraphQL or gRPC) `transaction(...)` method. Exception thrown otherwise.
+- Updated v2 protobuffs from Mysten
 
 ### Removed
 
