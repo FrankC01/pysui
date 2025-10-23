@@ -2437,6 +2437,13 @@ class EndOfEpochTransactionKind(betterproto2.Message):
     Create and initialize the Coin Registry object.
     """
 
+    display_registry_create: "___google__protobuf__.Empty | None" = betterproto2.field(
+        207, betterproto2.TYPE_MESSAGE, optional=True, group="kind"
+    )
+    """
+    Create and initialize the Display Registry object.
+    """
+
 
 default_message_pool.register_message(
     "sui.rpc.v2beta2", "EndOfEpochTransactionKind", EndOfEpochTransactionKind

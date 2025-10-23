@@ -174,9 +174,9 @@ async def do_objects_for(client: SuiGrpcClient):
         await client.execute(
             request=rn.GetMultipleObjects(
                 object_ids=[
-                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-                    "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
-                    "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
+                    "0xb13248a6ed0cfe600fc9af1b4a12a7a22a44065070c57483e92e602c39c89b10",
+                    "0xb9fc4cfbc77e594bee70c4014c545c38a654a2fc3fb7ac99759af2622cfec8d1",
+                    "0xc299d0c17962366b46351bbe43d0178e306c8305d6a08168ce70a1b354cb3af4",
                 ]
             )
         )
@@ -306,13 +306,14 @@ async def do_digest_cp(client: SuiGrpcClient):
 
 
 async def do_checkpoints(client: SuiGrpcClient):
-    """Uses subscriptions for checkpoints."""
+    """Uses subscriptions for checkpoints.
+    Note: Mysten Lab servers have rate restrictions."""
     fields = ["sequenceNumber", "digest", "summary.timestamp"]
     gobj = rn.SubscribeCheckpoint(field_mask=fields)
     so_res = await client.execute(request=gobj)
 
     # List maximum of 3
-    max_try = 3
+    max_try = 2
     in_try = 0
     async for cpoint in so_res.result_data:
         print(cpoint.to_json(indent=2))
@@ -652,4 +653,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (ValueError, asyncio.CancelledError, Exception) as rte:
+        print(rte)

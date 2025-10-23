@@ -542,6 +542,11 @@ class EndOfEpochTransactionKindKind(betterproto2.Enum):
     Create and initialize the Coin Registry object.
     """
 
+    DISPLAY_REGISTRY_CREATE = 11
+    """
+    Create and initialize the Display Registry object.
+    """
+
 
 class ErrorReason(betterproto2.Enum):
     ERROR_REASON_UNKNOWN = 0
