@@ -239,7 +239,7 @@ class SuiCoinObjectSummaryGQL(PGQL_Type):
         """Serializes query result to sui coin summary."""
         ser_dict: dict = {}
         _fast_flat(in_data, ser_dict)
-        ser_dict = ser_dict["nodes"][0]["asCoin"]
+        ser_dict.pop("id")
         return clz.from_dict(ser_dict)
 
 
