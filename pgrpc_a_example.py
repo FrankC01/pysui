@@ -16,10 +16,7 @@ from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_all_owned_objects,
 )
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:

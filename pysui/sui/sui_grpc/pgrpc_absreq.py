@@ -15,10 +15,7 @@ import betterproto2
 from betterproto2 import grpclib as betterproto2_grpclib
 from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 import pysui.sui.sui_grpc.suimsgs.google.protobuf as goog_prot
 

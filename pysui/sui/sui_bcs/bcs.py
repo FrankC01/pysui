@@ -25,10 +25,7 @@ from pysui.sui.sui_utils import (
 )
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 _ADDRESS_LENGTH: int = 32
 _DIGEST_LENGTH: int = 32

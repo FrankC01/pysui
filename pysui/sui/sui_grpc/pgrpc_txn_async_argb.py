@@ -13,10 +13,7 @@ import canoser.int_type as cint
 from pysui.sui.sui_common.txb_pure import PureInput
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 import pysui.sui.sui_types as suit

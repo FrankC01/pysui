@@ -24,10 +24,8 @@ from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
 from grpclib.client import Channel

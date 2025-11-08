@@ -22,10 +22,7 @@ import pysui.sui.sui_grpc.pgrpc_txn_async_argb as argbase
 import pysui.sui.sui_grpc.pgrpc_txb_gas as gd
 import pysui.sui.sui_grpc.pgrpc_utils as utils
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
 class AsyncSuiTransaction(txbase):

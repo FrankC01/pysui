@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.93.0] - Unpublished
+## [0.93.0] - 2025-11-04
 
 **Breaking Changes**
 GraphQL and gRPC: Transactions are built from client being used. SuiTransaction, and variants,
@@ -15,16 +15,21 @@ GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `
 
 ### Added
 
+- GraphQL: `atRisk` and `exchangeRateTableAddress` to Validator
+- GraphQL: `GetValidatorExchangeRates`. Given a validator's exchange object, return rate information by Epoch
+
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/368) SerialTransactionExecutor was not fetchinig current gas price
 
 ### Changed
 
+- [change](https://github.com/FrankC01/pysui/issues/367) dropped `v2beta` protos
 - [change](https://github.com/FrankC01/pysui/issues/369) Updated `smash` and `splay` utilities to GraphQL Beta
-- [change](https://github.com/FrankC01/pysui/issues/366) Added exemption in standalone transaction construction.
+- [change](https://github.com/FrankC01/pysui/issues/366) Added exception in standalone transaction construction.
   Must use appropriate client (GraphQL or gRPC) `transaction(...)` method. Exception thrown otherwise.
-- Updated v2 protobuffs from Mysten
+- GraphQL: Rename `tx_bytestr` to `tx_kind` in DryRunTransactionKind
+- Updated v2 protobuffs from Mysten for gRPC
 
 ### Removed
 

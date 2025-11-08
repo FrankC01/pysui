@@ -36,13 +36,15 @@ GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `
 
 ## PyPi current
 
-**Release-0.92.0 - Released 2025-10-16**
+**Release-0.93.0 - Released 2025-11-04**
 
-In this release JSON RPC support is EOL. Strongly advised to move to pysui gRPC or GraphQL.
+**Breaking Changes**
+GraphQL and gRPC: Transactions are built from client being used. SuiTransaction, and variants,
+will now fail if constructed directly.
 
-**NOTE**: DryRunTransactionKind `tx_meta` argument requires 'sender' This is due to a constraint in Sui GraphQL.
-
+GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `tx_kind`
 Transition to GraphQL BETA support. This will require changing the GraphQL URLs in `PysuiConfig.json`.
+
 See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)

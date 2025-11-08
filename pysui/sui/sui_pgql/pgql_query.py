@@ -5,9 +5,9 @@
 
 """QueryNode generators."""
 
-from typing import Optional, Callable, Union, Any
+from typing import Optional, Callable, Union
 import base64
-from deprecated.sphinx import versionadded, deprecated, versionchanged
+from deprecated.sphinx import versionadded, versionchanged
 from gql import gql, GraphQLRequest
 from gql.dsl import (
     DSLQuery,
@@ -24,7 +24,8 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_fragments as frag
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 from pysui.sui.sui_bcs.bcs import TransactionKind
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+from pysui.sui.sui_types.scalars import SuiU64
 
 
 class GetCoinMetaData(PGQL_QueryNode):
@@ -1161,18 +1162,26 @@ class GetNameServiceNames(PGQL_QueryNode):
 class GetCurrentValidators(PGQL_QueryNode):
     """Return the set of validators from the current Epoch."""
 
-    def __init__(self, next_page: Optional[pgql_type.PagingCursor] = None):
+    def __init__(self, next_page: pgql_type.PagingCursor | None = None):
         """QueryNode initializer."""
-        self.next_page = next_page
+        self.pager = next_page
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-
+        if self.pager and not self.pager.hasNextPage:
+            return PGQL_NoOp
         val = frag.Validator().fragment(schema)
-        valset = frag.ValidatorSet().fragment(schema)
+        pageinfo = frag.PageCursor().fragment(schema)
+        if self.pager:
+            valset = frag.ValidatorSet().fragment(
+                schema=schema, after=self.pager.endCursor
+            )
+        else:
+            valset = frag.ValidatorSet().fragment(schema=schema)
         return dsl_gql(
             valset,
             val,
+            pageinfo,
             DSLQuery(
                 schema.Query.epoch.select(schema.Epoch.validatorSet.select(valset))
             ),
@@ -1182,6 +1191,45 @@ class GetCurrentValidators(PGQL_QueryNode):
     def encode_fn() -> Union[Callable[[dict], pgql_type.ValidatorSetsGQL], None]:
         """Return the serialization function for ValidatorSetsGQL."""
         return pgql_type.ValidatorSetsGQL.from_query
+
+
+class GetValidatorExchangeRates(PGQL_QueryNode):
+    """Returns the exchange rate dynamic fields by Epoch (base64 BCS u64 encoded)."""
+
+    def __init__(self, *, validator_exchange_address: str, epoch_ids: list[int]):
+        """QueryNode initializer."""
+        self.exchange_address = validator_exchange_address
+        self.epoch_ids = epoch_ids
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        if not self.epoch_ids or not isinstance(self.epoch_ids[0], int):
+            raise ValueError(
+                f"Expected list of ints for epoch_ids found {self.epoch_ids}"
+            )
+        qres = schema.Query.address(address=self.exchange_address)
+        for eint in self.epoch_ids:
+            name = base64.b64encode(SuiU64(eint).to_bytes()).decode()
+            tag = "EPOCH_" + str(eint)
+            qres.select(
+                schema.Address.dynamicField(name={"bcs": name, "type": "u64"})
+                .select(
+                    schema.DynamicField.value.select(
+                        DSLInlineFragment()
+                        .on(schema.MoveValue)
+                        .select(schema.MoveValue.json)
+                    )
+                )
+                .alias(tag)
+            )
+        return dsl_gql(DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> (
+        Union[Callable[[dict], pgql_type.ValidatorExchangeRatesGQL], None]
+    ):
+        """Return the serialization function for ValidatorExchangeRatesGQL."""
+        return pgql_type.ValidatorExchangeRatesGQL.from_query
 
 
 class GetStructure(PGQL_QueryNode):

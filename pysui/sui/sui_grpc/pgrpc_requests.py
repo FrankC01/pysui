@@ -10,19 +10,11 @@ import dataclasses
 from typing import Callable, Optional
 
 import dataclasses_json
-from deprecated.sphinx import versionadded, deprecated, versionchanged
 import betterproto2
-from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_bcs.bcs import TransactionKind
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
-
-
-# Ledger Service Commands
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
 class GetServiceInfo(absreq.PGRPC_Request):

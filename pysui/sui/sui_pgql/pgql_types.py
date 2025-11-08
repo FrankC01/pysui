@@ -1789,12 +1789,44 @@ class MovePackageGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ValidatorExchangeRateGQL:
+    identifier: str
+    pool_token_amount: str | None = None
+    sui_amount: str | None = None
+
+    @classmethod
+    def from_query(clz, name: str, in_data: dict) -> "ValidatorExchangeRateGQL":
+        idict = {"identifier": name}
+        if in_data:
+            idict = idict | in_data["value"]["json"]
+        return clz.from_dict(idict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ValidatorExchangeRatesGQL:
+    """Sui Validator Exchange Rates List"""
+
+    exchange_rates: list[ValidatorExchangeRateGQL | None]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ValidatorExchangeRatesGQL":
+        in_data = in_data.pop("address")
+        ex_list: list[ValidatorExchangeRateGQL] = []
+        for key, value in in_data.items():
+            ex_list.append(ValidatorExchangeRateGQL.from_query(key, value))
+        return clz(ex_list)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class ValidatorFullGQL:
     """Sui ValidatorSet representation."""
 
     validator_name: str
     validator_address: str
     description: str
+    exchangeRateTableAddress: str
     imageUrl: str
     projectUrl: str
     stakingPoolSuiBalance: str
@@ -1811,7 +1843,7 @@ class ValidatorFullGQL:
     nextEpochStake: str
     nextEpochGasPrice: str
     nextEpochCommissionRate: 1200
-    # atRisk: int
+    atRisk: int
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorFullGQL":
@@ -1834,14 +1866,19 @@ class ValidatorSetsGQL:
     validatorCandidatesId: str
     validatorCandidatesSize: int
     validators: list[ValidatorFullGQL]
+    next_cursor: PagingCursor
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorSetsGQL":
         fdict: dict = {}
+        cursor: PagingCursor = PagingCursor.from_dict(
+            in_data["epoch"]["validatorSet"]["activeValidators"].pop("cursor")
+        )
         _fast_flat(in_data, fdict)
         fdict["validators"] = [
             ValidatorFullGQL.from_query(x) for x in fdict["validators"]
         ]
+        fdict["next_cursor"] = cursor
 
         return ValidatorSetsGQL.from_dict(fdict)
 

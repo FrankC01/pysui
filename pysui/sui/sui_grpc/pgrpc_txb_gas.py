@@ -15,10 +15,7 @@ from pysui.sui.sui_grpc.pgrpc_utils import (
 )
 from pysui.sui.sui_bcs import bcs
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 

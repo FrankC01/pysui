@@ -9,10 +9,8 @@ from typing import Any, Optional, Callable, ParamSpec
 from functools import partial
 from pysui.sui.sui_common.client import PysuiClient
 
-try:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-except:
-    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_pgql.pgql_types as pgql_types
 import pysui.sui.sui_pgql.pgql_validators as tv
