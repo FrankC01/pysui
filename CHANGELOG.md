@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.93.0] - 2025-11-04
+## [0.93.0] - 2025-11-11
 
 **Breaking Changes**
 GraphQL and gRPC: Transactions are built from client being used. SuiTransaction, and variants,
@@ -32,6 +32,8 @@ GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `
 - Updated v2 protobuffs from Mysten for gRPC
 
 ### Removed
+
+- gRPC: GetValidatorApy removed, apy field not longer available
 
 ## [0.92.0] - 2025-10-16
 

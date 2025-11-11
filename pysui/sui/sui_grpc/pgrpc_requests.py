@@ -124,27 +124,6 @@ class GetLatestSuiSystemState(GetEpoch):
         return gepoch.epoch.system_state
 
 
-class GetValidatorsApy(GetEpoch):
-    """Get list of validator names and apy."""
-
-    def __init__(self):
-        super().__init__(field_mask=["system_state.validators"])
-
-    def render(self, gepoch: sui_prot.GetEpochResponse):
-        results: list[dict[str, float]] = []
-        # TODO: Get correct APY calc
-        for validator in gepoch.epoch.system_state.validators.active_validators:
-            results.append(
-                {
-                    "name": validator.name,
-                    "address": validator.address,
-                    "apy": validator.staking_pool.sui_balance
-                    / validator.staking_pool.rewards_pool,
-                }
-            )
-        return results
-
-
 class GetCurrentValidators(GetEpoch):
     """Return all the currently active validators"""
 

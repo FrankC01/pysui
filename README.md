@@ -36,7 +36,7 @@ GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `
 
 ## PyPi current
 
-**Release-0.93.0 - Released 2025-11-04**
+**Release-0.93.0 - Released 2025-11-11**
 
 **Breaking Changes**
 GraphQL and gRPC: Transactions are built from client being used. SuiTransaction, and variants,

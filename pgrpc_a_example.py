@@ -342,14 +342,6 @@ async def do_owned_nameservice(client: SuiGrpcClient):
     handle_result(await client.execute(request=rn.ReverseNameLookup(address="")))
 
 
-async def do_validators_apy(client: SuiGrpcClient):
-    """Fetch the most current validators apy and identity."""
-    results = await client.execute(request=rn.GetValidatorsApy())
-    if results.is_ok():
-        for val in results.result_data:
-            print(val)
-
-
 async def do_validators(client: SuiGrpcClient):
     """Fetch the most current validator detail."""
     handle_result(await client.execute(request=rn.GetCurrentValidators()))
@@ -622,7 +614,6 @@ async def main():
         # await do_digest_cp(client_init)
         # await do_checkpoints(client_init)
         # await do_owned_nameservice(client_init)
-        # await do_validators_apy(client_init)
         # await do_validators(client_init)
         # await do_all_validators(client_init)
         # await do_nameservice(client_init)
