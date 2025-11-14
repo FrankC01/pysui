@@ -35,7 +35,9 @@ def _dry_run_for_budget(
         },
         skip_checks=False,
     )
+    # print(client.query_node_to_string(query_node=query))
     result = client.execute_query_node(with_node=query)
+
     if result.is_ok():
         c_cost: int = int(
             result.result_data.transaction_block.gas_effects["gasSummary"][

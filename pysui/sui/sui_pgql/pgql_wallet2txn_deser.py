@@ -306,7 +306,7 @@ def deserialize_to_transaction(
     """
     wallet: deser.SuiBuilder = deser.SuiBuilder.from_json(wallet_json)
     client: SuiGQLClient = kwargs["client"]
-    sui_txn = SuiTransaction(**kwargs)
+    sui_txn = client.transaction()
     sponsor: deser.SuiGasData = None
 
     try:

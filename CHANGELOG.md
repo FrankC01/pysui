@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.0] - Unpublished
+
+### Added
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/371) pysui `wallet` not creating transaction from client
+
+### Changed
+
+### Removed
+
 ## [0.93.0] - 2025-11-11
 
 **Breaking Changes**

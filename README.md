@@ -26,13 +26,8 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.93.0**
+**Release-0.94.0**
 
-**Breaking Changes**
-GraphQL and gRPC: Transactions are built from client being used. SuiTransaction, and variants,
-will now fail if constructed directly.
-
-GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `tx_kind`
 
 ## PyPi current
 

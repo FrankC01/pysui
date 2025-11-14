@@ -286,7 +286,7 @@ def transfer_object(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn = SuiTransaction(client=client, initial_sender=for_owner)
+    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
     txn.transfer_objects(transfers=[args.transfer], recipient=args.recipient)
 
     transaction_execute(
@@ -306,7 +306,7 @@ def transfer_sui(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn = SuiTransaction(client=client, initial_sender=for_owner)
+    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
     txn.transfer_sui(
         recipient=args.recipient,
         from_coin=args.takes,
@@ -329,7 +329,7 @@ def merge_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
     # print(args)
-    txn = SuiTransaction(client=client, initial_sender=for_owner)
+    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
     txn.merge_coins(merge_to=args.primary_coin, merge_from=[args.coin_to_merge])
     transaction_execute(
         txb=txn,
@@ -350,7 +350,7 @@ def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
 
     use_gas_coin = None
     # Use generic gas if no explicit coin provided.
-    txn = SuiTransaction(client=client, initial_sender=for_owner)
+    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
     if args.coin_object_id:
         target_coin = args.coin_object_id
         use_gas_coin = [args.gas]
@@ -403,7 +403,7 @@ def split_coin_equally(client: SuiGQLClient, args: argparse.Namespace) -> None:
         for_owner = client.config.active_address
 
     # print(args)
-    txn = SuiTransaction(client=client, initial_sender=for_owner)
+    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
     txn.split_coin_equal(coin=args.coin_object_id, split_count=int(args.split_count))
     transaction_execute(
         txb=txn,
@@ -423,7 +423,7 @@ def publish(client: SuiGQLClient, args: argparse.Namespace) -> None:
         for_owner = client.config.active_address
     # print(args)
     try:
-        txn = SuiTransaction(client=client, initial_sender=for_owner)
+        txn = client.transaction(initial_sender=for_owner)
         upc = txn.publish(project_path=args.package)
         txn.transfer_objects(transfers=[upc], recipient=for_owner)
         transaction_execute(
@@ -464,7 +464,7 @@ def move_call(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         type_arguments = []
 
-    txn = SuiTransaction(client=client, initial_sender=for_owner)
+    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
     res = txn.move_call(
         target=target, arguments=arguments, type_arguments=type_arguments
     )
@@ -485,7 +485,7 @@ def sui_pay(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn = SuiTransaction(client=client, initial_sender=for_owner)
+    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
     if len(args.input_coins) == len(args.mists) == len(args.recipients):
         for x in range(len(args.input_coins)):
             i_coin = txn.split_coin(

@@ -251,7 +251,7 @@ class AsyncSuiTransaction(txbase):
         .. code-block:: python
 
             # Transfer all coins to one recipient
-            txer = SuiTransaction(client)
+            txer = client.transaction()
             scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000, 1000000000])
             await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 

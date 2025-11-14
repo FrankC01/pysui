@@ -229,7 +229,7 @@ class SuiTransaction(txbase):
         .. code-block:: python
 
             # Transfer all coins to one recipient
-            txer = SuiTransaction(client)
+            txer = client.transaction()
             scres = txer.split_coin(coin=primary_coin, amounts=[1000000000, 1000000000])
             txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 

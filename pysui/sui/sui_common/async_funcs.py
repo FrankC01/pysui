@@ -243,7 +243,6 @@ async def split_to_distribution(
             and effects.status.enum_name != "Success"
         ):
             logger.debug(f"Have coin to splay{mcoin.coin_object_id}")
-            # tx:AsyncSuiTransaction = client.transaction() # tx: = AsyncSuiTransaction(client=client)
 
     else:
         raise merge_tuple[0]
