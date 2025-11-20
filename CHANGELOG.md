@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/371) pysui `wallet` not creating transaction from client
+- typo's in `splay` utility help documentation
 
 ### Changed
 

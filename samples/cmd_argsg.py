@@ -905,14 +905,14 @@ def build_splay_parser(
     dest_arg_group.add_argument(
         "-n",
         "--number",
-        help="marges all or -c owner coins then splays into 'n' coins to itself. Mutually exclusive with '-r/--recipients",
+        help="marges all or -o owner coins then splays into 'n' coins to itself. Mutually exclusive with '-r/--recipients",
         action=validator.ValidatePositive,
     )
     dest_arg_group.add_argument(
         "-r",
         "--recipients",
         nargs="+",
-        help="merges all or -c owner coins then splays evenly to these recipients. Mutually exclusive with '-n/--number",
+        help="merges all or -o owner coins then splays evenly to these recipients. Mutually exclusive with '-n/--number",
         action=validator.ValidateAddress,
     )
     parser.add_argument(
