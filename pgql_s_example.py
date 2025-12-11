@@ -56,6 +56,17 @@ def do_coins_for_type(client: SyncGqlClient):
     )
 
 
+def do_objects_for_type(client: SyncGqlClient):
+    """Fetch objects of specific type."""
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.GetObjectsForType(
+                object_type="0x2::coin::Coin<0x2::sui::SUI>",
+            )
+        )
+    )
+
+
 def do_gas(client: SyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     # Returns the first 'page' of coins only
@@ -741,6 +752,7 @@ if __name__ == "__main__":
         # do_sysstate(client_init)
         # do_all_balances(client_init)
         # do_object(client_init)
+        # do_objects_for_type(client_init)
         # do_object_content(client_init)
         # do_objects(client_init)
         # do_past_object(client_init)

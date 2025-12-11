@@ -472,6 +472,44 @@ class CommandArgumentErrorCommandArgumentErrorKind(betterproto2.Enum):
     multiple arguments.
     """
 
+    INVALID_TRANSFER_OBJECT = 14
+    """
+    Object passed to TransferObject does not have public transfer, i.e. the `store` ability
+    """
+
+    INVALID_MAKE_MOVE_VEC_NON_OBJECT_ARGUMENT = 15
+    """
+    First argument to MakeMoveVec is not an object. If no type is specified for MakeMoveVec,
+    all arguments must be the same object type.
+    """
+
+    ARGUMENT_WITHOUT_VALUE = 16
+    """
+    Specified argument location does not have a value and cannot be used
+    """
+
+    CANNOT_MOVE_BORROWED_VALUE = 17
+    """
+    Cannot move a borrowed value. The value's type does resulted in this argument usage being
+    inferred as a move. This is likely due to the type not having the `copy` ability; although
+    in rare cases, it could also be this is the last usage of a value without the `drop`
+    ability.
+    """
+
+    CANNOT_WRITE_TO_EXTENDED_REFERENCE = 18
+    """
+    Cannot write to an argument location that is still borrowed, and where that borrow is an
+    extension of that reference. This is likely due to this argument being used in a Move call
+    that returns a reference, and that reference is used in a later command.
+    """
+
+    INVALID_REFERENCE_ARGUMENT = 19
+    """
+    The argument specified cannot be used as a reference argument in the Move call. Either the
+    argument is a mutable reference and it conflicts with another argument to the call, or the
+    argument is mutable and another reference extends it and will be used in a later command.
+    """
+
 
 class DatatypeDescriptorDatatypeKind(betterproto2.Enum):
     DATATYPE_KIND_UNKNOWN = 0

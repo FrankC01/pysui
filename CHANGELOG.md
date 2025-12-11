@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.94.0] - Unpublished
+## [0.94.0] - 2025-12-11
 
 ### Added
+
+- [enhancement](https://github.com/FrankC01/pysui/issues/362) Support gRPC archive transactions
+- [enhancement](https://github.com/FrankC01/pysui/issues/372) GraphQL query: GetObjectsForType
 
 ### Fixed
 
@@ -15,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - typo's in `splay` utility help documentation
 
 ### Changed
+
+- Updated Mysten gRPC protobuffs
+- GraphQL: Mysten removed events and timestamp from transaction simulation results, defaults to None in `DryRunResultTransactionGQL`
 
 ### Removed
 
@@ -153,7 +159,7 @@ GraohQL client constructor and execute methods.
 ### Added
 
 - gRPC: VerifySignature request
-- [change](https://github.com/FrankC01/pysui/issues/333) gRPC: `txn_expires_after: Optional[int] = None` to SimulateTransactionLKind request 
+- [change](https://github.com/FrankC01/pysui/issues/333) gRPC: `txn_expires_after: Optional[int] = None` to SimulateTransactionLKind request
 
 ### Fixed
 

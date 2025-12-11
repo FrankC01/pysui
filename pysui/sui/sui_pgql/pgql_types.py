@@ -782,11 +782,12 @@ class DryRunResultTransactionGQL(PGQL_Type):
     """Dry Run relevant Transaction details"""
 
     status: str
-    timestamp: str
+
     gas_effects: dict
     balance_changes: dict
     object_changes: ObjectChanges
     events: Optional[dict] = None
+    timestamp: Optional[str] = None
     execution_error: Optional[dict] = None
 
     @classmethod

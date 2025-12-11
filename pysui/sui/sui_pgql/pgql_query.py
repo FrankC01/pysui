@@ -143,6 +143,34 @@ class GetCoinSummary(PGQL_QueryNode):
         return pgql_type.SuiCoinObjectSummaryGQL.from_query
 
 
+class GetObjectsForType(PGQL_QueryNode):
+    """GetObjectsForType Returnns all objects of a specific type."""
+
+    def __init__(
+        self,
+        *,
+        object_type: str,
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ):
+        """QueryNode initializer
+
+        :param object_type: The fully qualified type (i.e. `"0x2::coin::Coin<0x2::sui::SUI>"`)
+        :type object_type: str
+        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
+        :type next_page: pgql_type.PagingCursor
+        """
+        self.object_type = object_type
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.SuiCoinObjectsGQL]:
+        """Return the serializer to SuiCoinObjectsGQL function."""
+        return pgql_type.SuiCoinObjectsGQL.from_query
+
+
 class GetCoins(PGQL_QueryNode):
     """GetCoins Returns all Coin objects of a specific type for owner."""
 
@@ -296,6 +324,54 @@ class GetObject(PGQL_QueryNode):
     def encode_fn() -> Callable[[dict], pgql_type.ObjectReadGQL]:
         """Return the serializer to ObjectReadGQL function."""
         return pgql_type.ObjectReadGQL.from_query
+
+
+class GetObjectsForType(PGQL_QueryNode):
+    """GetObjectsForType Returnns all objects of a specific type."""
+
+    def __init__(
+        self,
+        *,
+        object_type: str,
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ):
+        """QueryNode initializer
+
+        :param object_type: The fully qualified type (i.e. `"0x2::coin::Coin<0x2::sui::SUI>"`)
+        :type object_type: str
+        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
+        :type next_page: pgql_type.PagingCursor
+        """
+        self.object_type = object_type
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
+        std_object = frag.StandardObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+
+        if self.next_page:
+            obj_connection = schema.Query.objects(
+                filter={"type": self.object_type}, after=self.next_page.endCursor
+            )
+        else:
+            obj_connection = schema.Query.objects(
+                filter={"type": self.object_type}
+            ).select(
+                cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+                objects_data=schema.ObjectConnection.nodes.select(std_object),
+            )
+
+        return dsl_gql(pg_cursor, std_object, base_object, DSLQuery(obj_connection))
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.ObjectReadsGQL]:
+        """Return the serializer to ObjectReadsGQL function."""
+        return pgql_type.ObjectReadsGQL.from_query
 
 
 @versionchanged(

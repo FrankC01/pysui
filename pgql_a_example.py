@@ -57,6 +57,17 @@ async def do_coins_for_type(client: AsyncGqlClient):
     )
 
 
+async def do_objects_for_type(client: AsyncGqlClient):
+    """Fetch objects of specific type."""
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.GetObjectsForType(
+                object_type="0x2::coin::Coin<0x2::sui::SUI>",
+            )
+        )
+    )
+
+
 async def do_gas(client: AsyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     result = handle_result(
@@ -683,6 +694,7 @@ async def main():
         # await do_sysstate(client_init)
         # await do_all_balances(client_init)
         # await do_object(client_init)
+        # await do_objects_for_type(client_init)
         # await do_object_content(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)
