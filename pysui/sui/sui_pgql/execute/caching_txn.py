@@ -109,7 +109,7 @@ class CachingTransaction(txbase):
         gas_data: bcs.GasData = bcs.GasData(
             [use_gas_object],
             bcs.Address.from_str(signer_block.payer_address),
-            self.gas_price,
+            self.client.current_gas_price,
             gas_budget,
         )
         return bcs.TransactionData(
@@ -217,7 +217,7 @@ class CachingTransaction(txbase):
         .. code-block:: python
 
             # Transfer all coins to one recipient
-            txer = SuiTransaction(client)
+            txer = client.transaction(client)
             scres = txer.split_coin(coin=primary_coin, amounts=[1000000000, 1000000000])
             txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 

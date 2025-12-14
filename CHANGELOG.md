@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.94.0] - 2025-12-11
+
+### Added
+
+- [enhancement](https://github.com/FrankC01/pysui/issues/362) Support gRPC archive transactions
+- [enhancement](https://github.com/FrankC01/pysui/issues/372) GraphQL query: GetObjectsForType
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/371) pysui `wallet` not creating transaction from client
+- typo's in `splay` utility help documentation
+
+### Changed
+
+- Updated Mysten gRPC protobuffs
+- GraphQL: Mysten removed events and timestamp from transaction simulation results, defaults to None in `DryRunResultTransactionGQL`
+
+### Removed
+
+## [0.93.0] - 2025-11-11
+
+**Breaking Changes**
+GraphQL and gRPC: Transactions are built from client being used. SuiTransaction, and variants,
+will now fail if constructed directly.
+
+GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `tx_kind`
+
+### Added
+
+- GraphQL: `atRisk` and `exchangeRateTableAddress` to Validator
+- GraphQL: `GetValidatorExchangeRates`. Given a validator's exchange object, return rate information by Epoch
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/368) SerialTransactionExecutor was not fetchinig current gas price
+
+### Changed
+
+- [change](https://github.com/FrankC01/pysui/issues/367) dropped `v2beta` protos
+- [change](https://github.com/FrankC01/pysui/issues/369) Updated `smash` and `splay` utilities to GraphQL Beta
+- [change](https://github.com/FrankC01/pysui/issues/366) Added exception in standalone transaction construction.
+  Must use appropriate client (GraphQL or gRPC) `transaction(...)` method. Exception thrown otherwise.
+- GraphQL: Rename `tx_bytestr` to `tx_kind` in DryRunTransactionKind
+- Updated v2 protobuffs from Mysten for gRPC
+
+### Removed
+
+- gRPC: GetValidatorApy removed, apy field not longer available
+
+## [0.92.0] - 2025-10-16
+
+**ANNOUNCE: In this release JSON RPC support is EOL. Strongly advised to move to pysui gRPC or GraphQL.**
+
+- You will need to update the GraphQL URLs in PysuiConfig.json at a minimum. See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
+
+### Added
+
+- `v2` gRPC protos included, `v2beta` to be sunset
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/363) gRPC: 'finality' dropped from field_mask (read_mask)
+- [bug](https://github.com/FrankC01/pysui/issues/361) JSON RPC: [PR](https://github.com/FrankC01/pysui/pull/355) broke
+  connectivity.
+- GraphQL Mysten fixed issue with fetching 0x2::sui::SUI by address in testnet
+
+### Changed
+
+- gRPC LiveDataService renamed to StateService for `v2` protos
+- gRPC SimulateTransaction moved to TransactionService for `v2` protos
+- DryRunTransactionKind tx_meta requires 'sender' set. This is due to a constraint in Sui GraphQL.
+
+### Removed
+
 ## [0.91.0] - 2025-10-02
 
 **Breaking Changes**
@@ -85,7 +159,7 @@ GraohQL client constructor and execute methods.
 ### Added
 
 - gRPC: VerifySignature request
-- [change](https://github.com/FrankC01/pysui/issues/333) gRPC: `txn_expires_after: Optional[int] = None` to SimulateTransactionLKind request 
+- [change](https://github.com/FrankC01/pysui/issues/333) gRPC: `txn_expires_after: Optional[int] = None` to SimulateTransactionLKind request
 
 ### Fixed
 

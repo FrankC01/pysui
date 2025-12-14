@@ -15,7 +15,8 @@ from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_all_owned_gas_objects,
     async_get_all_owned_objects,
 )
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -170,9 +171,9 @@ async def do_objects_for(client: SuiGrpcClient):
         await client.execute(
             request=rn.GetMultipleObjects(
                 object_ids=[
-                    "0x0847e1e02965e3f6a8b237152877a829755fd2f7cfb7da5a859f203a8d4316f0",
-                    "0x68e961e3af906b160e1ff21137304537fa6b31f5a4591ef3acf9664eb6e3cd2b",
-                    "0x77851d73e7c1227c048fc7cbf21ff9053faa872950dd33f5d0cb5b40a79d9d99",
+                    "0xb13248a6ed0cfe600fc9af1b4a12a7a22a44065070c57483e92e602c39c89b10",
+                    "0xb9fc4cfbc77e594bee70c4014c545c38a654a2fc3fb7ac99759af2622cfec8d1",
+                    "0xc299d0c17962366b46351bbe43d0178e306c8305d6a08168ce70a1b354cb3af4",
                 ]
             )
         )
@@ -302,13 +303,14 @@ async def do_digest_cp(client: SuiGrpcClient):
 
 
 async def do_checkpoints(client: SuiGrpcClient):
-    """Uses subscriptions for checkpoints."""
+    """Uses subscriptions for checkpoints.
+    Note: Mysten Lab servers have rate restrictions."""
     fields = ["sequenceNumber", "digest", "summary.timestamp"]
     gobj = rn.SubscribeCheckpoint(field_mask=fields)
     so_res = await client.execute(request=gobj)
 
     # List maximum of 3
-    max_try = 3
+    max_try = 2
     in_try = 0
     async for cpoint in so_res.result_data:
         print(cpoint.to_json(indent=2))
@@ -338,14 +340,6 @@ async def do_owned_nameservice(client: SuiGrpcClient):
 
     """
     handle_result(await client.execute(request=rn.ReverseNameLookup(address="")))
-
-
-async def do_validators_apy(client: SuiGrpcClient):
-    """Fetch the most current validators apy and identity."""
-    results = await client.execute(request=rn.GetValidatorsApy())
-    if results.is_ok():
-        for val in results.result_data:
-            print(val)
 
 
 async def do_validators(client: SuiGrpcClient):
@@ -589,8 +583,8 @@ async def main():
                 profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",
-                # profile_name="test-arch",
-                # profile_name="main-arch",
+                # profile_name="testnet-arch",
+                # profile_name="mainnet-arch",
             ),
         )
         print(f"Active chain profile   '{client_init.config.active_profile}'")
@@ -600,7 +594,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -622,7 +616,6 @@ async def main():
         # await do_digest_cp(client_init)
         # await do_checkpoints(client_init)
         # await do_owned_nameservice(client_init)
-        # await do_validators_apy(client_init)
         # await do_validators(client_init)
         # await do_all_validators(client_init)
         # await do_nameservice(client_init)
@@ -633,7 +626,7 @@ async def main():
         # await do_funcs(client_init)
         # await do_module(client_init)
         # await do_package(client_init)
-        await do_dry_run(client_init)
+        # await do_dry_run(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)
         # await do_stake(client_init)
@@ -650,4 +643,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (ValueError, asyncio.CancelledError, Exception) as rte:
+        print(rte)

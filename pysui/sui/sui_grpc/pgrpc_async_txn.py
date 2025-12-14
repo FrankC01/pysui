@@ -6,6 +6,7 @@
 """Pysui Transaction builder that leverages Sui gRPC."""
 
 import base64
+import inspect
 from typing import Any, Callable, Optional, Union
 from pysui.sui.sui_common.trxn_base import _SuiTransactionBase as txbase
 from pysui.sui.sui_common.txb_pure import PureInput
@@ -20,7 +21,8 @@ import pysui.sui.sui_grpc.pgrpc_txn_async_argb as argbase
 
 import pysui.sui.sui_grpc.pgrpc_txb_gas as gd
 import pysui.sui.sui_grpc.pgrpc_utils as utils
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
 class AsyncSuiTransaction(txbase):
@@ -54,8 +56,22 @@ class AsyncSuiTransaction(txbase):
         :param gas_price: set gas price, defaults to None
         :type gas_price: Optional[int], optional
         """
-        super().__init__(**kwargs)
-        self._argparse = argbase.AsyncResolvingArgParser(self.client)
+        frame = inspect.currentframe()
+        try:
+            caller = frame.f_back
+            if (
+                caller.f_code.co_filename.endswith("pgrpc_clients.py")
+                and caller.f_code.co_name == "transaction"
+            ):
+                super().__init__(**kwargs)
+                self._argparse = argbase.AsyncResolvingArgParser(self.client)
+            else:
+                raise ValueError(
+                    "AsyncSuiTransaction must be created from SuiGrpcClient.transaction(). "
+                    + f"Correct code in {caller.f_code.co_filename} around {caller.f_code.co_firstlineno}"
+                )
+        finally:
+            del frame
 
     @AsyncLRU(maxsize=256)
     async def _function_meta_args(
@@ -235,7 +251,7 @@ class AsyncSuiTransaction(txbase):
         .. code-block:: python
 
             # Transfer all coins to one recipient
-            txer = SuiTransaction(client)
+            txer = client.transaction()
             scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000, 1000000000])
             await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 

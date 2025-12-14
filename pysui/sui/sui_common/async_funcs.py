@@ -14,7 +14,7 @@ from typing import Any, Coroutine, Optional, cast
 
 
 logger = logging.getLogger("async_funcs")
-
+from pysui import AsyncGqlClient
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_bcs.bcs_txne as bcst
@@ -110,7 +110,7 @@ class OperationStatus(IntEnum):
 
 async def merge_sui(
     *,
-    client: Any,
+    client: AsyncGqlClient,
     address: str,
     merge_only: Optional[list[str]] = None,
     exclude: Optional[list[str]] = None,
@@ -173,7 +173,7 @@ async def merge_sui(
     # Otherwise smash lowest to highesst and return it
     coin_list.sort(key=lambda x: int(x.balance), reverse=True)
 
-    tx = AsyncSuiTransaction(client=client)
+    tx: AsyncSuiTransaction = client.transaction()
 
     use_as_gas = coin_list.pop(0)
     logger.debug(f"{len(coin_list)} coins merging to {use_as_gas.coin_object_id}")
@@ -243,7 +243,6 @@ async def split_to_distribution(
             and effects.status.enum_name != "Success"
         ):
             logger.debug(f"Have coin to splay{mcoin.coin_object_id}")
-            tx = AsyncSuiTransaction(client=client)
 
     else:
         raise merge_tuple[0]

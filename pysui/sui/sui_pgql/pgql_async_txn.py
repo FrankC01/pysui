@@ -7,6 +7,7 @@
 
 import base64
 import asyncio
+import inspect
 from typing import Any, Callable, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
@@ -29,10 +30,6 @@ class AsyncSuiTransaction(txbase):
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
 
-    @deprecated(
-        version="0.87.0",
-        reason="GraphQL clients now create transactions. Use that instead",
-    )
     def __init__(
         self,
         **kwargs,
@@ -48,8 +45,22 @@ class AsyncSuiTransaction(txbase):
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
         """
-        super().__init__(**kwargs)
-        self._argparse = argbase.AsyncResolvingArgParser(self.client)
+        frame = inspect.currentframe()
+        try:
+            caller = frame.f_back
+            if (
+                caller.f_code.co_filename.endswith("pgql_clients.py")
+                and caller.f_code.co_name == "transaction"
+            ):
+                super().__init__(**kwargs)
+                self._argparse = argbase.AsyncResolvingArgParser(self.client)
+            else:
+                raise ValueError(
+                    "AsyncSuiTransaction must be created from AsyncGqlClient.transaction(). "
+                    + f"Correct code in {caller.f_code.co_filename} around {caller.f_code.co_firstlineno}"
+                )
+        finally:
+            del frame
 
     @AsyncLRU(maxsize=256)
     async def _function_meta_args(
@@ -225,7 +236,7 @@ class AsyncSuiTransaction(txbase):
         .. code-block:: python
 
             # Transfer all coins to one recipient
-            txer = SuiTransaction(client)
+            txer = client.transaction()
             scres = txer.split_coin(coin=primary_coin, amounts=[1000000000, 1000000000])
             txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
 

@@ -460,7 +460,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
     @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
     def transaction(self, **kwargs) -> Any:
-        """Return a synchronous SuiTransaction.
+        """Return an asynchronous SuiTransaction.
 
         :param initial_sender: The address of the sender of the transaction, defaults to None
         :type initial_sender: Union[str, SigningMultiSig], optional

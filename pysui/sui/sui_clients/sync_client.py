@@ -88,10 +88,11 @@ class SuiClient(ClientMixin):
         super().__init__(config, request_type)
         # Use the most secure SSL protocol available
         # PROTOCOL_TLS_CLIENT (Python 3.12+) is more secure than PROTOCOL_TLS
-        if hasattr(ssl, 'PROTOCOL_TLS_CLIENT'):
-            ssl_protocol = ssl.PROTOCOL_TLS_CLIENT
-        else:
-            ssl_protocol = ssl.PROTOCOL_TLS
+        # if hasattr(ssl, 'PROTOCOL_TLS_CLIENT'):
+        #     ssl_protocol = ssl.PROTOCOL_TLS_CLIENT
+        # else:
+        #     ssl_protocol = ssl.PROTOCOL_TLS
+        ssl_protocol = ssl.PROTOCOL_TLS
 
         self._client = httpx.Client(
             http2=True,

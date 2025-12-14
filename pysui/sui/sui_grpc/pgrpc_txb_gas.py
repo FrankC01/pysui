@@ -14,7 +14,9 @@ from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_gas_objects_by_ids,
 )
 from pysui.sui.sui_bcs import bcs
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
+
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 

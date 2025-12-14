@@ -239,7 +239,7 @@ class SuiCoinObjectSummaryGQL(PGQL_Type):
         """Serializes query result to sui coin summary."""
         ser_dict: dict = {}
         _fast_flat(in_data, ser_dict)
-        ser_dict = ser_dict["nodes"][0]["asCoin"]
+        ser_dict.pop("id")
         return clz.from_dict(ser_dict)
 
 
@@ -782,11 +782,12 @@ class DryRunResultTransactionGQL(PGQL_Type):
     """Dry Run relevant Transaction details"""
 
     status: str
-    timestamp: str
+
     gas_effects: dict
     balance_changes: dict
     object_changes: ObjectChanges
     events: Optional[dict] = None
+    timestamp: Optional[str] = None
     execution_error: Optional[dict] = None
 
     @classmethod
@@ -1222,10 +1223,12 @@ class ValidatorSetGQL(PGQL_Type):
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
         """."""
-        in_data["validators"] = [
-            ValidatorGQL.from_query(v_obj) for v_obj in in_data["validators"]
-        ]
-        return ValidatorSetGQL.from_dict(in_data)
+        if i_val := in_data.pop("activeValidators"):
+            in_data["validators"] = [
+                ValidatorGQL.from_query(v_obj) for v_obj in i_val["validators"]
+            ]
+            return ValidatorSetGQL.from_dict(in_data)
+        return NoopGQL.from_query()
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1787,12 +1790,44 @@ class MovePackageGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class ValidatorExchangeRateGQL:
+    identifier: str
+    pool_token_amount: str | None = None
+    sui_amount: str | None = None
+
+    @classmethod
+    def from_query(clz, name: str, in_data: dict) -> "ValidatorExchangeRateGQL":
+        idict = {"identifier": name}
+        if in_data:
+            idict = idict | in_data["value"]["json"]
+        return clz.from_dict(idict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ValidatorExchangeRatesGQL:
+    """Sui Validator Exchange Rates List"""
+
+    exchange_rates: list[ValidatorExchangeRateGQL | None]
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "ValidatorExchangeRatesGQL":
+        in_data = in_data.pop("address")
+        ex_list: list[ValidatorExchangeRateGQL] = []
+        for key, value in in_data.items():
+            ex_list.append(ValidatorExchangeRateGQL.from_query(key, value))
+        return clz(ex_list)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class ValidatorFullGQL:
     """Sui ValidatorSet representation."""
 
     validator_name: str
     validator_address: str
     description: str
+    exchangeRateTableAddress: str
     imageUrl: str
     projectUrl: str
     stakingPoolSuiBalance: str
@@ -1809,6 +1844,7 @@ class ValidatorFullGQL:
     nextEpochStake: str
     nextEpochGasPrice: str
     nextEpochCommissionRate: 1200
+    atRisk: int
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorFullGQL":
@@ -1831,14 +1867,19 @@ class ValidatorSetsGQL:
     validatorCandidatesId: str
     validatorCandidatesSize: int
     validators: list[ValidatorFullGQL]
+    next_cursor: PagingCursor
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorSetsGQL":
         fdict: dict = {}
+        cursor: PagingCursor = PagingCursor.from_dict(
+            in_data["epoch"]["validatorSet"]["activeValidators"].pop("cursor")
+        )
         _fast_flat(in_data, fdict)
         fdict["validators"] = [
             ValidatorFullGQL.from_query(x) for x in fdict["validators"]
         ]
+        fdict["next_cursor"] = cursor
 
         return ValidatorSetsGQL.from_dict(fdict)
 

@@ -56,6 +56,17 @@ def do_coins_for_type(client: SyncGqlClient):
     )
 
 
+def do_objects_for_type(client: SyncGqlClient):
+    """Fetch objects of specific type."""
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.GetObjectsForType(
+                object_type="0x2::coin::Coin<0x2::sui::SUI>",
+            )
+        )
+    )
+
+
 def do_gas(client: SyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     # Returns the first 'page' of coins only
@@ -410,9 +421,42 @@ def do_owned_nameservice(client: SyncGqlClient):
     )
 
 
+def do_all_validators(client: SyncGqlClient):
+    """Fetch all validators from current Epoch."""
+    result = client.execute_query_node(with_node=qn.GetCurrentValidators())
+    while result.is_ok():
+        v_set: ptypes.ValidatorSetsGQL = result.result_data
+        print(v_set.to_json(indent=2))
+        if v_set.next_cursor.hasNextPage:
+            result = client.execute_query_node(
+                with_node=qn.GetCurrentValidators(next_page=v_set.next_cursor)
+            )
+        else:
+            break
+
+
 def do_validators(client: SyncGqlClient):
     """Fetch the most current validator detail."""
     handle_result(client.execute_query_node(with_node=qn.GetCurrentValidators()))
+
+
+def do_validator_xchange_rates(client: SyncGqlClient):
+    """Get exchange rate table entries."""
+
+    # Get list of validators
+    result = client.execute_query_node(with_node=qn.GetCurrentValidators())
+    if result.is_ok():
+        # Extract the first validator's exchange rate object
+        v_set: ptypes.ValidatorSetsGQL = result.result_data
+        if v_set.validators:
+            vexr_addy = v_set.validators[0].exchangeRateTableAddress
+            er_results = client.execute_query_node(
+                with_node=qn.GetValidatorExchangeRates(
+                    validator_exchange_address=vexr_addy, epoch_ids=[0, 1, 2]
+                )
+            )
+            if er_results.is_ok():
+                print(er_results.result_data.to_json(indent=2))
 
 
 def do_protcfg(client: SyncGqlClient):
@@ -525,7 +569,7 @@ def do_dry_run_kind_new(client: SyncGqlClient):
     handle_result(
         client.execute_query_node(
             with_node=qn.DryRunTransactionKind(
-                tx_bytestr=txer.raw_kind(),
+                tx_kind=txer.raw_kind(),
                 tx_meta={"sender": client.config.active_address},
             )
         )
@@ -708,6 +752,7 @@ if __name__ == "__main__":
         # do_sysstate(client_init)
         # do_all_balances(client_init)
         # do_object(client_init)
+        # do_objects_for_type(client_init)
         # do_object_content(client_init)
         # do_objects(client_init)
         # do_past_object(client_init)
@@ -726,7 +771,9 @@ if __name__ == "__main__":
         # do_checkpoints(client_init)
         # do_nameservice(client_init)
         # do_owned_nameservice(client_init)
+        # do_all_validators(client_init)
         # do_validators(client_init)
+        # do_validator_xchange_rates(client_init)
         # do_refgas(client_init)
         # do_struct(client_init)
         # do_structs(client_init)

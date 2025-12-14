@@ -27,7 +27,7 @@ def _dry_run_for_budget(
 ) -> int:
     """Perform a dry run when no budget specified."""
     query = qn.DryRunTransactionKind(
-        tx_bytestr=tx_bytes,
+        tx_kind=tx_bytes,
         tx_meta={
             "sender": signing.sender_str,
             "gasPrice": active_gas_price,
@@ -35,7 +35,9 @@ def _dry_run_for_budget(
         },
         skip_checks=False,
     )
+    # print(client.query_node_to_string(query_node=query))
     result = client.execute_query_node(with_node=query)
+
     if result.is_ok():
         c_cost: int = int(
             result.result_data.transaction_block.gas_effects["gasSummary"][
@@ -147,7 +149,7 @@ async def _async_dry_run_for_budget(
     """Perform a dry run when no budget specified."""
     result = await client.execute_query_node(
         with_node=qn.DryRunTransactionKind(
-            tx_bytestr=tx_bytes,
+            tx_kind=tx_bytes,
             tx_meta={
                 "sender": signing.sender_str,
                 "gasPrice": active_gas_price,

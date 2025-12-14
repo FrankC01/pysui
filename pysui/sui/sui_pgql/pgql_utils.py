@@ -59,7 +59,10 @@ def sync_cursored_collector(
                 if only_active
                 else result.result_data.data
             )
-            if result.result_data.next_cursor.hasNextPage:
+            if (
+                hasattr(result.result_data, "hasNextPage")
+                and result.result_data.next_cursor.hasNextPage
+            ):
                 result = client.execute_query_node(
                     with_node=pfn(next_page=result.result_data.next_cursor)
                 )

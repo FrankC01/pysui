@@ -23,7 +23,7 @@ from tests.test_utils import gas_not_in
 def test_split_transfer(sui_client: SyncGqlClient) -> None:
     """Test splitting and transfers."""
 
-    txer = tx.SuiTransaction(client=sui_client)
+    txer: tx.SuiTransaction = sui_client.transaction()
     scoin = txer.split_coin(coin=txer.gas, amounts=[1000000000])
     txer.transfer_objects(transfers=[scoin], recipient=sui_client.config.active_address)
     res = sui_client.execute_query_node(
@@ -39,7 +39,7 @@ def test_split_transfer(sui_client: SyncGqlClient) -> None:
 
 def test_merge_coin(sui_client: SyncGqlClient) -> None:
     """Test merging coins."""
-    txer = tx.SuiTransaction(client=sui_client)
+    txer: tx.SuiTransaction = sui_client.transaction()
     res = sui_client.execute_query_node(
         with_node=qn.GetCoins(owner=sui_client.config.active_address)
     )
@@ -50,7 +50,7 @@ def test_merge_coin(sui_client: SyncGqlClient) -> None:
 
 def test_move_vec(sui_client: SyncGqlClient) -> None:
     """."""
-    txer = tx.SuiTransaction(client=sui_client)
+    txer: tx.SuiTransaction = sui_client.transaction()
     res = sui_client.execute_query_node(
         with_node=qn.GetCoins(owner=sui_client.config.active_address)
     )
@@ -64,6 +64,6 @@ def test_move_vec(sui_client: SyncGqlClient) -> None:
 
 def test_publish(sui_client: SyncGqlClient) -> None:
     """."""
-    txer = tx.SuiTransaction(client=sui_client)
+    txer: tx.SuiTransaction = sui_client.transaction()
     cwd = os.getcwd() + "/tests/sui-test"
     txer.publish(project_path=cwd)

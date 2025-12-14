@@ -10,14 +10,11 @@ import dataclasses
 from typing import Callable, Optional
 
 import dataclasses_json
-from deprecated.sphinx import versionadded, deprecated, versionchanged
 import betterproto2
-from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_bcs.bcs import TransactionKind
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2beta2 as sui_prot
 
-# Ledger Service Commands
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
@@ -125,27 +122,6 @@ class GetLatestSuiSystemState(GetEpoch):
 
     def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.SystemState:
         return gepoch.epoch.system_state
-
-
-class GetValidatorsApy(GetEpoch):
-    """Get list of validator names and apy."""
-
-    def __init__(self):
-        super().__init__(field_mask=["system_state.validators"])
-
-    def render(self, gepoch: sui_prot.GetEpochResponse):
-        results: list[dict[str, float]] = []
-        # TODO: Get correct APY calc
-        for validator in gepoch.epoch.system_state.validators.active_validators:
-            results.append(
-                {
-                    "name": validator.name,
-                    "address": validator.address,
-                    "apy": validator.staking_pool.sui_balance
-                    / validator.staking_pool.rewards_pool,
-                }
-            )
-        return results
 
 
 class GetCurrentValidators(GetEpoch):
@@ -303,14 +279,14 @@ class GetDynamicFields(absreq.PGRPC_Request):
         page_token: Optional[bytes] = None,
         field_mask: Optional[list[str]] = None,
     ):
-        super().__init__(absreq.Service.LIVEDATA)
+        super().__init__(absreq.Service.STATE)
         self.parent = object_id
         self.page_size = page_size
         self.page_token = page_token
         self.field_mask = self._field_mask(field_mask)
 
     def to_request(
-        self, *, stub: sui_prot.LiveDataServiceStub
+        self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
@@ -415,7 +391,7 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
         page_token: Optional[bytes] = None,
     ) -> None:
         """Initializer."""
-        super().__init__(absreq.Service.LIVEDATA)
+        super().__init__(absreq.Service.STATE)
         self.owner = owner
         self.object_type = object_type
         self.page_size = page_size
@@ -425,7 +401,7 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
         )
 
     def to_request(
-        self, *, stub: sui_prot.LiveDataServiceStub
+        self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
@@ -534,11 +510,11 @@ class GetCoinMetaData(absreq.PGRPC_Request):
         coin_type: Optional[str] = "0x2::sui::SUI",
     ) -> None:
         """Initializer."""
-        super().__init__(absreq.Service.LIVEDATA)
+        super().__init__(absreq.Service.STATE)
         self.coin_type = coin_type
 
     def to_request(
-        self, *, stub: sui_prot.LiveDataServiceStub
+        self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
@@ -560,12 +536,12 @@ class GetBalance(absreq.PGRPC_Request):
         coin_type: str,
     ) -> None:
         """Initializer."""
-        super().__init__(absreq.Service.LIVEDATA)
+        super().__init__(absreq.Service.STATE)
         self.owner = owner
         self.coin_type = coin_type
 
     def to_request(
-        self, *, stub: sui_prot.LiveDataServiceStub
+        self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
@@ -588,13 +564,13 @@ class GetAllCoinBalances(absreq.PGRPC_Request):
         page_token: Optional[bytes] = None,
     ) -> None:
         """Initializer."""
-        super().__init__(absreq.Service.LIVEDATA)
+        super().__init__(absreq.Service.STATE)
         self.owner = owner
         self.page_size = page_size
         self.page_token = page_token
 
     def to_request(
-        self, *, stub: sui_prot.LiveDataServiceStub
+        self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
@@ -722,9 +698,7 @@ class ExecuteTransaction(absreq.PGRPC_Request):
                         bcs=sui_prot.Bcs(value=sig, name="UserSignature")
                     )
                 )
-        self.field_mask = self._field_mask(field_mask) or self._field_mask(
-            ["transaction", "finality"]
-        )
+        self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
         self, *, stub: sui_prot.TransactionExecutionServiceStub
@@ -753,7 +727,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
         field_mask: Optional[list[str]] = None,
     ):
         """."""
-        super().__init__(absreq.Service.LIVEDATA)
+        super().__init__(absreq.Service.TRANSACTION)
         transaction = (
             transaction
             if isinstance(transaction, bytes)
@@ -771,7 +745,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
         self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
-        self, *, stub: sui_prot.LiveDataServiceStub
+        self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
@@ -800,7 +774,7 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
         field_mask: Optional[list[str]] = None,
     ):
         """."""
-        super().__init__(absreq.Service.LIVEDATA)
+        super().__init__(absreq.Service.TRANSACTION)
         prgrm_txn = transaction.value
         inputs: list[sui_prot.Input] = []
         cmds: list[sui_prot.Command] = []
@@ -841,7 +815,7 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
         self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
-        self, *, stub: sui_prot.LiveDataServiceStub
+        self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:

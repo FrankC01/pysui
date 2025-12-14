@@ -57,6 +57,17 @@ async def do_coins_for_type(client: AsyncGqlClient):
     )
 
 
+async def do_objects_for_type(client: AsyncGqlClient):
+    """Fetch objects of specific type."""
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.GetObjectsForType(
+                object_type="0x2::coin::Coin<0x2::sui::SUI>",
+            )
+        )
+    )
+
+
 async def do_gas(client: AsyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     result = handle_result(
@@ -388,9 +399,42 @@ async def do_owned_nameservice(client: AsyncGqlClient):
     )
 
 
+async def do_all_validators(client: AsyncGqlClient):
+    """Fetch all validators from current Epoch."""
+    result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
+    while result.is_ok():
+        v_set: ptypes.ValidatorSetsGQL = result.result_data
+        print(v_set.to_json(indent=2))
+        if v_set.next_cursor.hasNextPage:
+            result = await client.execute_query_node(
+                with_node=qn.GetCurrentValidators(next_page=v_set.next_cursor)
+            )
+        else:
+            break
+
+
 async def do_validators(client: AsyncGqlClient):
     """Fetch the most current validator detail."""
     handle_result(await client.execute_query_node(with_node=qn.GetCurrentValidators()))
+
+
+async def do_validator_xchange_rates(client: AsyncGqlClient):
+    """Get exchange rate table entries."""
+
+    # Get list of validators
+    result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
+    if result.is_ok():
+        # Extract the first validator's exchange rate object
+        v_set: ptypes.ValidatorSetsGQL = result.result_data
+        if v_set.validators:
+            vexr_addy = v_set.validators[0].exchangeRateTableAddress
+            er_results = await client.execute_query_node(
+                with_node=qn.GetValidatorExchangeRates(
+                    validator_exchange_address=vexr_addy, epoch_ids=[0, 1, 2]
+                )
+            )
+            if er_results.is_ok():
+                print(er_results.result_data.to_json(indent=2))
 
 
 async def do_protcfg(client: AsyncGqlClient):
@@ -510,7 +554,7 @@ async def do_dry_run_txkind(txer: AsyncSuiTransaction):
     """Execute a dry run with just the TransactionKind."""
 
     dry_run = qn.DryRunTransactionKind(
-        tx_bytestr=txer.raw_kind(),
+        tx_kind=txer.raw_kind(),
         tx_meta={"sender": txer.client.config.active_address},
     )
 
@@ -650,6 +694,7 @@ async def main():
         # await do_sysstate(client_init)
         # await do_all_balances(client_init)
         # await do_object(client_init)
+        # await do_objects_for_type(client_init)
         # await do_object_content(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)
@@ -668,7 +713,9 @@ async def main():
 
         # await do_checkpoints(client_init)
         # await do_owned_nameservice(client_init)
+        # await do_all_validators(client_init)
         # await do_validators(client_init)
+        # await do_validator_xchange_rates(client_init)
         # await do_nameservice(client_init)
         # await do_refgas(client_init)
         # await do_struct(client_init)

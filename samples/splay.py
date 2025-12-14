@@ -181,7 +181,7 @@ async def splay_n_to_self(
         distro = amount_per if amount_per else int(balance / explicit_count)
         total_distro = distro * explicit_count
         if balance >= total_distro:
-            txn = AsyncSuiTransaction(client=client)
+            txn: AsyncSuiTransaction = client.transaction()
             amounts = [distro for x in range(explicit_count)]
             r_coins = await txn.split_coin(coin=txn.gas, amounts=amounts)
             await txn.transfer_objects(
@@ -233,7 +233,7 @@ async def splay_n_to_others(
         distro = amount_per if amount_per else int(balance / r_count)
         total_distro = distro * r_count
         if balance >= total_distro:
-            txn = AsyncSuiTransaction(client=client)
+            txn: AsyncSuiTransaction = client.transaction()
             if r_count == 1:
                 r_coins = await txn.split_coin(coin=txn.gas, amounts=[distro])
                 await txn.transfer_objects(transfers=r_coins, recipient=recipients[0])

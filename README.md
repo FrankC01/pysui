@@ -16,7 +16,8 @@ Python Client SDK for Sui blockchain
 
 ### With Rust on machine
 
-`pip install pysui`
+`pip install pysui` if first time or
+`pip install -U --upgrade-strategy eager pysui` if upgrading.
 
 ### Without Rust on machine
 
@@ -25,20 +26,15 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.91.0**
-
-**BREAKING CHANGES**
-
-- Transition to GraphQL BETA support. This will require changing the GraphQL URLs in `PysuiConfig.json`.
-  See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
+**Release-0.94.0**
 
 ## PyPi current
 
-**Release-0.91.0 - Released 2025-10-02**
+**Release-0.94.0 - Released 2025-12-10**
 
-**BREAKING CHANGES**
-
+GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `tx_kind`
 Transition to GraphQL BETA support. This will require changing the GraphQL URLs in `PysuiConfig.json`.
+
 See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
