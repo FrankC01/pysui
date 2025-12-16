@@ -4,5 +4,5 @@
 # -*- coding: utf-8 -*-
 
 # Read in command line and posting to PyPi
-__version__ = "0.94.0"
+__version__ = "0.95.0"
 """Pysui Version."""
