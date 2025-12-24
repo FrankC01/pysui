@@ -5,7 +5,10 @@
 
 __all__ = (
     "Ability",
+    "AccumulatorWrite",
+    "AccumulatorWriteAccumulatorOperation",
     "ActiveJwk",
+    "AddressAliasesVersion",
     "Argument",
     "ArgumentArgumentKind",
     "AuthenticatorStateExpire",
@@ -68,6 +71,8 @@ __all__ = (
     "FieldDescriptor",
     "FunctionDescriptor",
     "FunctionDescriptorVisibility",
+    "FundsWithdrawal",
+    "FundsWithdrawalSource",
     "GasCostSummary",
     "GasPayment",
     "GenesisTransaction",
@@ -96,6 +101,7 @@ __all__ = (
     "IndexError",
     "Input",
     "InputInputKind",
+    "InputMutability",
     "Jwk",
     "JwkId",
     "LedgerServiceStub",
@@ -246,6 +252,14 @@ class Ability(betterproto2.Enum):
     """
 
 
+class AccumulatorWriteAccumulatorOperation(betterproto2.Enum):
+    ACCUMULATOR_OPERATION_UNKNOWN = 0
+
+    MERGE = 1
+
+    SPLIT = 2
+
+
 class ArgumentArgumentKind(betterproto2.Enum):
     ARGUMENT_KIND_UNKNOWN = 0
 
@@ -309,6 +323,8 @@ class ChangedObjectOutputObjectState(betterproto2.Enum):
 
     PACKAGE_WRITE = 3
 
+    ACCUMULATOR_WRITE = 4
+
     @classmethod
     def betterproto_value_to_renamed_proto_names(cls) -> dict[int, str]:
         return {
@@ -316,6 +332,7 @@ class ChangedObjectOutputObjectState(betterproto2.Enum):
             1: "OUTPUT_OBJECT_STATE_DOES_NOT_EXIST",
             2: "OUTPUT_OBJECT_STATE_OBJECT_WRITE",
             3: "OUTPUT_OBJECT_STATE_PACKAGE_WRITE",
+            4: "OUTPUT_OBJECT_STATE_ACCUMULATOR_WRITE",
         }
 
     @classmethod
@@ -325,6 +342,7 @@ class ChangedObjectOutputObjectState(betterproto2.Enum):
             "OUTPUT_OBJECT_STATE_DOES_NOT_EXIST": 1,
             "OUTPUT_OBJECT_STATE_OBJECT_WRITE": 2,
             "OUTPUT_OBJECT_STATE_PACKAGE_WRITE": 3,
+            "OUTPUT_OBJECT_STATE_ACCUMULATOR_WRITE": 4,
         }
 
 
@@ -585,6 +603,11 @@ class EndOfEpochTransactionKindKind(betterproto2.Enum):
     Create and initialize the Display Registry object.
     """
 
+    ADDRESS_ALIAS_STATE_CREATE = 12
+    """
+    Create and initialize the Address Alias State object.
+    """
+
 
 class ErrorReason(betterproto2.Enum):
     ERROR_REASON_UNKNOWN = 0
@@ -808,10 +831,33 @@ class ExecutionErrorExecutionErrorKind(betterproto2.Enum):
     """
 
     MOVE_VECTOR_ELEM_TOO_BIG = 38
+    """
+    Move vector element (passed to MakeMoveVec) with size {value_size} is larger \\
+    than the maximum size {max_scaled_size}. Note that this maximum is scaled based on the \\
+    type of the vector element.
+    """
 
     MOVE_RAW_VALUE_TOO_BIG = 39
+    """
+    Move value (possibly an upgrade ticket or a dev-inspect value) with size {value_size} \\
+    is larger than the maximum size  {max_scaled_size}. Note that this maximum is scaled based \\
+    on the type of the value.
+    """
 
     INVALID_LINKAGE = 40
+    """
+    A valid linkage was unable to be determined for the transaction or one of its commands.
+    """
+
+    INSUFFICIENT_FUNDS_FOR_WITHDRAW = 41
+    """
+    Insufficient funds for transaction withdrawal
+    """
+
+    NON_EXCLUSIVE_WRITE_INPUT_OBJECT_MODIFIED = 42
+    """
+    An input object with non-exclusive write mutability was modified
+    """
 
 
 class ExecutionTimeObservationExecutionTimeObservationKind(betterproto2.Enum):
@@ -842,6 +888,14 @@ class FunctionDescriptorVisibility(betterproto2.Enum):
     FRIEND = 3
 
 
+class FundsWithdrawalSource(betterproto2.Enum):
+    SOURCE_UNKNOWN = 0
+
+    SENDER = 1
+
+    SPONSOR = 2
+
+
 class InputInputKind(betterproto2.Enum):
     INPUT_KIND_UNKNOWN = 0
 
@@ -863,6 +917,26 @@ class InputInputKind(betterproto2.Enum):
     RECEIVING = 4
     """
     A Move object that is attempted to be received in this transaction.
+    """
+
+    FUNDS_WITHDRAWAL = 5
+    """
+    Reservation to withdraw balance from a funds accumulator
+    """
+
+
+class InputMutability(betterproto2.Enum):
+    MUTABILITY_UNKNOWN = 0
+
+    IMMUTABLE = 1
+
+    MUTABLE = 2
+
+    NON_EXCLUSIVE_WRITE = 3
+    """
+    Non-exclusive write is used to allow multiple transactions to
+    simultaneously add disjoint dynamic fields to an object.
+    (Currently only used by settlement transactions).
     """
 
 
@@ -1021,6 +1095,19 @@ class TransactionExpirationTransactionExpirationKind(betterproto2.Enum):
     is greater than or equal to the current epoch.
     """
 
+    VALID_DURING = 3
+    """
+    This variant enables gas payments from address balances.
+
+    When transactions use address balances for gas payment instead of explicit gas coins,
+    we lose the natural transaction uniqueness and replay prevention that comes from
+    mutation of gas coin objects.
+
+    By bounding expiration and providing a nonce, validators must only retain
+    executed digests for the maximum possible expiry range to differentiate
+    retries from unique transactions with otherwise identical inputs.
+    """
+
 
 class TransactionKindKind(betterproto2.Enum):
     KIND_UNKNOWN = 0
@@ -1132,6 +1219,28 @@ class UnchangedConsensusObjectUnchangedConsensusObjectKind(betterproto2.Enum):
 
 
 @dataclass(eq=False, repr=False)
+class AccumulatorWrite(betterproto2.Message):
+    address: "str | None" = betterproto2.field(
+        1, betterproto2.TYPE_STRING, optional=True
+    )
+
+    accumulator_type: "str | None" = betterproto2.field(
+        2, betterproto2.TYPE_STRING, optional=True
+    )
+
+    operation: "AccumulatorWriteAccumulatorOperation | None" = betterproto2.field(
+        3, betterproto2.TYPE_ENUM, optional=True
+    )
+
+    value: "int | None" = betterproto2.field(5, betterproto2.TYPE_UINT64, optional=True)
+
+
+default_message_pool.register_message(
+    "sui.rpc.v2", "AccumulatorWrite", AccumulatorWrite
+)
+
+
+@dataclass(eq=False, repr=False)
 class ActiveJwk(betterproto2.Message):
     """
     A new JWK.
@@ -1154,6 +1263,18 @@ class ActiveJwk(betterproto2.Message):
 
 
 default_message_pool.register_message("sui.rpc.v2", "ActiveJwk", ActiveJwk)
+
+
+@dataclass(eq=False, repr=False)
+class AddressAliasesVersion(betterproto2.Message):
+    version: "int | None" = betterproto2.field(
+        1, betterproto2.TYPE_UINT64, optional=True
+    )
+
+
+default_message_pool.register_message(
+    "sui.rpc.v2", "AddressAliasesVersion", AddressAliasesVersion
+)
 
 
 @dataclass(eq=False, repr=False)
@@ -1486,6 +1607,13 @@ class ChangedObject(betterproto2.Message):
     Owner of the object after this transaction executed.
     """
 
+    accumulator_write: "AccumulatorWrite | None" = betterproto2.field(
+        12, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    The contents of the accumulator write when `output_state` is `OUTPUT_OBJECT_STATE_ACCUMULATOR_WRITE`
+    """
+
     id_operation: "ChangedObjectIdOperation | None" = betterproto2.field(
         10, betterproto2.TYPE_ENUM, optional=True
     )
@@ -1721,6 +1849,16 @@ class CheckpointedTransactionInfo(betterproto2.Message):
     )
     """
     Set of user signatures that authorized the transaction.
+    """
+
+    address_aliases_versions: "list[AddressAliasesVersion]" = betterproto2.field(
+        4, betterproto2.TYPE_MESSAGE, repeated=True
+    )
+    """
+    The `AddressAliases` object version, if any, that was used to verify the
+    UserSignature at the same position in `signatures`.
+
+    This field is present when CheckpointContents.version is >= 2.
     """
 
 
@@ -3039,6 +3177,24 @@ default_message_pool.register_message(
 
 
 @dataclass(eq=False, repr=False)
+class FundsWithdrawal(betterproto2.Message):
+    amount: "int | None" = betterproto2.field(
+        1, betterproto2.TYPE_UINT64, optional=True
+    )
+
+    coin_type: "str | None" = betterproto2.field(
+        2, betterproto2.TYPE_STRING, optional=True
+    )
+
+    source: "FundsWithdrawalSource | None" = betterproto2.field(
+        3, betterproto2.TYPE_ENUM, optional=True
+    )
+
+
+default_message_pool.register_message("sui.rpc.v2", "FundsWithdrawal", FundsWithdrawal)
+
+
+@dataclass(eq=False, repr=False)
 class GasCostSummary(betterproto2.Message):
     """
     Summary of gas charges.
@@ -3704,6 +3860,23 @@ class Input(betterproto2.Message):
     """
     Controls whether the caller asks for a mutable reference to the shared
     object.
+    """
+
+    mutability: "InputMutability | None" = betterproto2.field(
+        7, betterproto2.TYPE_ENUM, optional=True
+    )
+    """
+    NOTE: For backwards compatibility purposes the addition of the new
+    `NON_EXCLUSIVE_WRITE` mutability variant requires providing a new field.
+    The old `mutable` field will continue to be populated and respected as an
+    input for the time being.
+    """
+
+    funds_withdrawal: "FundsWithdrawal | None" = betterproto2.field(
+        8, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    Fund Reservation information if `kind` is `FUNDS_WITHDRAWAL`.
     """
 
     literal: "___google__protobuf__.Value | None" = betterproto2.field(
@@ -5976,6 +6149,52 @@ class TransactionExpiration(betterproto2.Message):
     )
 
     epoch: "int | None" = betterproto2.field(2, betterproto2.TYPE_UINT64, optional=True)
+    """
+    Maximum epoch in which a transaction can be executed. The provided maximal epoch
+    must be greater than or equal to the current epoch for a transaction to execute.
+    """
+
+    min_epoch: "int | None" = betterproto2.field(
+        3, betterproto2.TYPE_UINT64, optional=True
+    )
+    """
+    Minimal epoch in which a transaction can be executed. The provided minimal epoch
+    must be less than or equal to the current epoch for a transaction to execute.
+    """
+
+    min_timestamp: "datetime.datetime | None" = betterproto2.field(
+        4,
+        betterproto2.TYPE_MESSAGE,
+        unwrap=lambda: ___google__protobuf__.Timestamp,
+        optional=True,
+    )
+    """
+    Minimal UNIX timestamp in which a transaction can be executed. The
+    provided minimal timestamp must be less than or equal to the current
+    clock.
+    """
+
+    max_timestamp: "datetime.datetime | None" = betterproto2.field(
+        5,
+        betterproto2.TYPE_MESSAGE,
+        unwrap=lambda: ___google__protobuf__.Timestamp,
+        optional=True,
+    )
+    """
+    Maximum UNIX timestamp in which a transaction can be executed. The
+    provided maximal timestamp must be greater than or equal to the current
+    clock.
+    """
+
+    chain: "str | None" = betterproto2.field(6, betterproto2.TYPE_STRING, optional=True)
+    """
+    ChainId of the network this transaction is intended for in order to prevent cross-chain replay
+    """
+
+    nonce: "int | None" = betterproto2.field(7, betterproto2.TYPE_UINT32, optional=True)
+    """
+    User-provided uniqueness identifier to differentiate otherwise identical transactions
+    """
 
 
 default_message_pool.register_message(
