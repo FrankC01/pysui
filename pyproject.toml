@@ -3,6 +3,10 @@
 testpaths = ["tests", "tests/sync_tests", "tests/integration_sync"]
 pythonpath = ["pysui", "abstracts", "sui", "sui/sui_types"]
 
+# Optional: Security scanning
+# Code security: bandit -r pysui/ --severity-level medium
+# Dependency security: pip-audit
+
 [build-system]
 requires = ["setuptools>=61.0", "wheel","setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
