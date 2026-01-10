@@ -1389,7 +1389,23 @@ class Balance(betterproto2.Message):
         3, betterproto2.TYPE_UINT64, optional=True
     )
     """
-    Shows the total balance of the coin in its smallest unit.
+    The total balance of `coin_type` in its smallest unit.
+    This is the sum of all spendable amounts of `coin_type` (`address_balance`
+    and `coin_balance`).
+    """
+
+    address_balance: "int | None" = betterproto2.field(
+        4, betterproto2.TYPE_UINT64, optional=True
+    )
+    """
+    The balance of `Balance<T>` in this address's Address Balance.
+    """
+
+    coin_balance: "int | None" = betterproto2.field(
+        5, betterproto2.TYPE_UINT64, optional=True
+    )
+    """
+    The balance of all `Coin<T>` objects owned by this address.
     """
 
 

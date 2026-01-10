@@ -460,7 +460,10 @@ async def do_dry_run(client: SuiGrpcClient):
     handle_result(
         await client.execute(
             request=rn.SimulateTransactionLKind(
-                transaction=txer.raw_kind(), sender=client.config.active_address
+                transaction=txer.raw_kind(),
+                sender=client.config.active_address,
+                checks_enabled=True,
+                gas_selection=True,
             )
         )
     )

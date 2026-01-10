@@ -13,7 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated Mysten gRPC protobuffs
+- gRPC: Updated Mysten gRPC protobuffs
+- GraphQL: Enabled `skip_checks` and `do_gas_selection` on `DryRunTransaction`
+- GraphQL: Enabled `skip_checks` and `do_gas_selection` on `DryRunTransactionKind`
 
 ### Removed
 

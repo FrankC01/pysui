@@ -570,6 +570,8 @@ def do_dry_run_kind_new(client: SyncGqlClient):
         client.execute_query_node(
             with_node=qn.DryRunTransactionKind(
                 tx_kind=txer.raw_kind(),
+                skip_checks=True,
+                do_gas_selection=False,
                 tx_meta={"sender": client.config.active_address},
             )
         )

@@ -1636,6 +1636,7 @@ class GetPackage(PGQL_QueryNode):
 )
 @versionchanged(version="0.92.0", reason="Sui GraphQL requires sender set in tx_meta.")
 @versionchanged(version="0.93.0", reason="tx_bytestr arg changed to tx_kind.")
+@versionchanged(version="0.95.0", reason="Enabled `skip_checks` and `do_gas_selection")
 class DryRunTransactionKind(PGQL_QueryNode):
     """DryRunTransactionKind query node."""
 
@@ -1645,6 +1646,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
         tx_kind: TransactionKind,
         tx_meta: dict,
         skip_checks: Optional[bool] = True,
+        do_gas_selection: Optional[bool] = False,
     ) -> None:
         """__init__ Initialize DryRunTransactionKind object.
 
@@ -1671,6 +1673,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
         self.transaction: sui_prot.Transaction = None
         self.tx_meta = tx_meta
         self.tx_skipchecks = skip_checks
+        self.tx_do_gas_selection = do_gas_selection
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
@@ -1717,7 +1720,9 @@ class DryRunTransactionKind(PGQL_QueryNode):
 
         qres = (
             schema.Query.simulateTransaction(
-                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE)
+                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
+                checksEnabled=self.tx_skipchecks,
+                doGasSelection=self.tx_do_gas_selection,
             )
             .alias("dryRun")
             .select(
@@ -1747,10 +1752,17 @@ class DryRunTransactionKind(PGQL_QueryNode):
         return pgql_type.DryRunResultGQL.from_query
 
 
+@versionchanged(version="0.95.0", reason="Enabled `skip_checks` and `do_gas_selection")
 class DryRunTransaction(PGQL_QueryNode):
     """DryRunTransaction query node."""
 
-    def __init__(self, *, tx_bytestr: bytes | str) -> None:
+    def __init__(
+        self,
+        *,
+        tx_bytestr: bytes | str,
+        skip_checks: Optional[bool] = True,
+        do_gas_selection: Optional[bool] = False,
+    ) -> None:
         """__init__ Initialize the dry run query.
 
         :param tx_bytestr: Either the serialized bytes of a bcs TransactionData or base64 string of same
@@ -1765,6 +1777,8 @@ class DryRunTransaction(PGQL_QueryNode):
         self.transaction = sui_prot.Transaction(
             bcs=(sui_prot.Bcs(value=transaction, name="Transaction"))
         )
+        self.tx_skipchecks = skip_checks
+        self.tx_do_gas_selection = do_gas_selection
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
@@ -1775,7 +1789,9 @@ class DryRunTransaction(PGQL_QueryNode):
 
         qres = (
             schema.Query.simulateTransaction(
-                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE)
+                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
+                checksEnabled=self.tx_skipchecks,
+                doGasSelection=self.tx_do_gas_selection,
             )
             .alias("dryRun")
             .select(
