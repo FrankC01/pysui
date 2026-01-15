@@ -30,10 +30,7 @@ Python Client SDK for Sui blockchain
 
 ## PyPi current
 
-**Release-0.94.0 - Released 2025-12-10**
-
-GraphQL: For DryRunTransactionKind, argument name changed from `tx_bytestr` to `tx_kind`
-Transition to GraphQL BETA support. This will require changing the GraphQL URLs in `PysuiConfig.json`.
+**Release-0.95.0 - Released 2026-01-15**
 
 See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
 
