@@ -32,6 +32,7 @@ _QUERY_BETA = """
             maxOutputNodes
             maxTransactionPayloadSize
             maxQueryPayloadSize
+            maxMultiGetSize
             maxTypeArgumentDepth
             maxTypeArgumentWidth
             maxTypeNodes
@@ -61,6 +62,7 @@ class ServiceConfigGQL:
     maxQueryNodes: int
     maxOutputNodes: int
     maxQueryPayloadSize: int
+    maxMultiGetSize: int
     # defaultPageSize: int
     # maxPageSize: str
     maxTypeArgumentDepth: int

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.0] - 2026-03-04
+
+### Added
+
+- GraphQL: `maxMultiGetSize` to serviceConfig (via `client.rpc_config().serviceConfig`)
+- GraphQL: Added support for new Sui Move package scheme for publishing
+- gRPC:  Added support for new Sui Move package scheme for publishing
+
+### Fixed
+
+- GraphQL: Removed 'error' field from immediate Simulate and Execute results.
+
+### Changed
+
+### Removed
+
 ## [0.95.0] - 2026-01-15
 
 ### Added

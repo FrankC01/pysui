@@ -809,7 +809,7 @@ class DryRunResultGQL(PGQL_Type):
 
     transaction_block: DryRunResultTransactionGQL
     results: Optional[list[dict]] = None
-    error: Optional[str] = None
+    # error: Optional[str] = None
 
     @classmethod
     def from_query(clz, in_data: dict) -> "DryRunResultGQL":
@@ -817,11 +817,11 @@ class DryRunResultGQL(PGQL_Type):
         if in_data:
             in_data = in_data.get("dryRun")
             if in_data:
-                dr_err = in_data.pop("error")
+                # dr_err = in_data.pop("error")
                 dr_res = in_data.pop("results")
                 tblock = DryRunResultTransactionGQL.from_query(in_data)
                 return DryRunResultGQL.from_dict(
-                    {"error": dr_err, "results": dr_res, "transaction_block": tblock}
+                    {"results": dr_res, "transaction_block": tblock}
                 )
         return NoopGQL.from_query()
 

@@ -608,6 +608,11 @@ class EndOfEpochTransactionKindKind(betterproto2.Enum):
     Create and initialize the Address Alias State object.
     """
 
+    WRITE_ACCUMULATOR_STORAGE_COST = 13
+    """
+    Write the end-of-epoch-computed storage cost for accumulator objects.
+    """
+
 
 class ErrorReason(betterproto2.Enum):
     ERROR_REASON_UNKNOWN = 0
@@ -1169,6 +1174,11 @@ class TransactionKindKind(betterproto2.Enum):
     CONSENSUS_COMMIT_PROLOGUE_V4 = 10
     """
     V4 consensus commit update.
+    """
+
+    PROGRAMMABLE_SYSTEM_TRANSACTION = 11
+    """
+    A system transaction comprised of a list of native commands and Move calls.
     """
 
 
@@ -2734,6 +2744,13 @@ class EndOfEpochTransactionKind(betterproto2.Message):
     )
     """
     Start version of the Bridge object
+    """
+
+    storage_cost: "int | None" = betterproto2.field(
+        7, betterproto2.TYPE_UINT64, optional=True, group="data"
+    )
+    """
+    Contains the end-of-epoch-computed storage cost for accumulator objects.
     """
 
 

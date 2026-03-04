@@ -1726,7 +1726,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
             )
             .alias("dryRun")
             .select(
-                schema.SimulationResult.error,
+                # schema.SimulationResult.error,
                 results=schema.SimulationResult.outputs.select(
                     schema.CommandResult.returnValues.select(
                         schema.CommandOutput.value.select(
@@ -1795,7 +1795,7 @@ class DryRunTransaction(PGQL_QueryNode):
             )
             .alias("dryRun")
             .select(
-                schema.SimulationResult.error,
+                # schema.SimulationResult.error,
                 results=schema.SimulationResult.outputs.select(
                     schema.CommandResult.returnValues.select(
                         schema.CommandOutput.value.select(
@@ -1835,7 +1835,7 @@ class ExecuteTransaction(PGQL_QueryNode):
         qres = schema.Mutation.executeTransaction(
             transactionDataBcs=self.tx_data, signatures=self.sigs
         ).select(
-            schema.ExecutionResult.errors,
+            # schema.ExecutionResult.errors,
             schema.ExecutionResult.effects.select(
                 schema.TransactionEffects.status,
                 schema.TransactionEffects.lamportVersion,

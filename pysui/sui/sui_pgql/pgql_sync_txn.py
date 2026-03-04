@@ -586,6 +586,14 @@ class SuiTransaction(txbase):
         :rtype: bcs.Argument
         """
         modules, dependencies, _digest = self._compile_source(project_path, args_list)
+        # u8_modules: list[list[int]] = []
+        # for mods in modules:
+        #     # u8_modules.append(list(mods[0]))
+        #     nmod: list[bcs.U8] = None
+        #     u8_modules.append([bcs.U8.int_unsafe(x) for x in mods])
+        # for i in mods:
+        #     u8_modules.append([bcs.U8.int_unsafe(x) for x in i])
+
         return self.builder.publish(modules, dependencies)
 
     def publish_upgrade(

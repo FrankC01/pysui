@@ -28,7 +28,7 @@ import pysui.sui.sui_txn.transaction_builder as tx_builder
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_types.scalars import SuiString
-from pysui.sui.sui_utils import publish_buildg
+from pysui.sui.sui_utils import publish_buildg2
 
 # Standard library logging setup
 logger = logging.getLogger(__name__)
@@ -407,10 +407,11 @@ class _SuiTransactionBase(_TransactionBase):
         """
         src_path = Path(os.path.expanduser(project_path))
         args_list = args_list if args_list else []
-        compiled_package = publish_buildg(
+        compiled_package = publish_buildg2(
             self.client.config.model.sui_binary,
             src_path,
             args_list,
+            self.client.config.active_profile,
         )
         dependencies = [
             bcs.Address.from_str(x if isinstance(x, str) else x.value)
