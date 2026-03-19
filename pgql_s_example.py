@@ -121,6 +121,15 @@ def do_sysstate(client: SyncGqlClient):
     handle_result(client.execute_query_node(with_node=qn.GetLatestSuiSystemState()))
 
 
+def do_address_balance(client: SyncGqlClient):
+    """."""
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.GetAddressCoinBalance(address=client.config.active_address)
+        )
+    )
+
+
 def do_all_balances(client: SyncGqlClient):
     """Fetch all coin types for active address and total balances.
 
@@ -748,10 +757,11 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
+        do_address_balance(client_init)
         # do_all_balances(client_init)
         # do_object(client_init)
         # do_objects_for_type(client_init)

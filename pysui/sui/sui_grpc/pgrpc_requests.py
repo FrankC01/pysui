@@ -8,7 +8,7 @@
 import base64
 import dataclasses
 from typing import Callable, Optional
-
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 import dataclasses_json
 import betterproto2
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
@@ -524,6 +524,35 @@ class GetCoinMetaData(absreq.PGRPC_Request):
         )
 
 
+@versionadded(version="0.97.0", reason="Parity with GraphQL.")
+class GetAddressCoinBalance(absreq.PGRPC_Request):
+    """Query to fetch the total address and coin balance for specific coin type."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.GetBalanceResponse
+
+    def __init__(
+        self,
+        *,
+        address: str,
+        coin_type: Optional[str] = "0x2::sui::SUI",
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.STATE)
+        self.address = address
+        self.coin_type = coin_type
+
+    def to_request(
+        self, *, stub: sui_prot.StateServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.get_balance, sui_prot.GetBalanceRequest(
+            owner=self.address, coin_type=self.coin_type
+        )
+
+
+@deprecated(version="0.97.0", reason="Use GetAddressCoinBalance. Parity with GraphQL.")
 class GetBalance(absreq.PGRPC_Request):
     """Query to retrieve the total balance by coin type for owner."""
 

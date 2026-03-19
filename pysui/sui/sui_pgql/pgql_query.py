@@ -58,6 +58,51 @@ class GetCoinMetaData(PGQL_QueryNode):
         return pgql_type.SuiCoinMetadataGQL.from_query
 
 
+class GetAddressCoinBalance(PGQL_QueryNode):
+    """GetAddressCoinBalance Returns an addresses balance for specific coin type.
+
+    The resulting balance is the sum of the `address` balance and any coin balances of `coin_type`.
+    """
+
+    def __init__(self, *, address: str, coin_type: Optional[str] = "0x2::sui::SUI"):
+        """__init__ _summary_
+
+        :param address: _description_
+        :type address: str
+        :param coin_type: _description_, defaults to "0x2::sui::SUI"
+        :type coin_type: _type_, optional
+        """
+        self.address = address
+        self.coin_type = coin_type
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+        _QUERY = """
+            {
+            address(address:"OWNER") {
+                address
+                balance(coinType: "COIN_TYPE") {
+                            coinType {
+                                coinType:repr
+                            }
+                            addressBalance
+                            coinBalance
+                            totalBalance
+                        }
+                    } 
+            }           
+        """
+        _QUERY = _QUERY.replace("OWNER", self.address).replace(
+            "COIN_TYPE", self.coin_type
+        )
+        return gql(_QUERY)
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.AddressBalancesGQL]:
+        """Return the serializer to BalancesGQL function."""
+        return pgql_type.AddressBalancesGQL.from_query
+
+
 class GetAllCoinBalances(PGQL_QueryNode):
     """GetAllCoins Returns the total coin balances, for all coin types, for owner.
 

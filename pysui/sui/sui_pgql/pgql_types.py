@@ -616,6 +616,29 @@ class BalanceGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class AddressBalancesGQL(PGQL_Type):
+    """Single coin type address balance."""
+
+    address: str
+    address_balance: int
+    coin_type: str
+    coin_balance: int
+    total_balance: int
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "AddressBalancesGQL":
+        """."""
+        res_dict: dict = {}
+        # Flatten dictionary
+        _fast_flat(in_data, res_dict)
+        res_dict["addressBalance"] = int(res_dict["addressBalance"])
+        res_dict["coinBalance"] = int(res_dict["coinBalance"])
+        res_dict["totalBalance"] = int(res_dict["totalBalance"])
+        return AddressBalancesGQL.from_dict(res_dict)
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class BalancesGQL(PGQL_Type):
     """Collection of balance objects."""
 

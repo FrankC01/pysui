@@ -50,6 +50,7 @@ __all__ = (
     "ConsensusDeterminedVersionAssignments",
     "DatatypeDescriptor",
     "DatatypeDescriptorDatatypeKind",
+    "Display",
     "DynamicField",
     "DynamicFieldDynamicFieldKind",
     "EndOfEpochData",
@@ -2579,6 +2580,34 @@ default_message_pool.register_message(
 
 
 @dataclass(eq=False, repr=False)
+class Display(betterproto2.Message):
+    """
+    A rendered JSON blob based on an on-chain template.
+    """
+
+    output: "___google__protobuf__.Value | None" = betterproto2.field(
+        1, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    Output for all successfully substituted display fields. Unsuccessful
+    fields will be `null`, and will be accompanied by a field in `errors`,
+    explaining the error.
+    """
+
+    errors: "___google__protobuf__.Value | None" = betterproto2.field(
+        2, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    If any fields failed to render, this will contain a mapping from failed
+    field names to error messages. If all fields succeed, this will either be
+    `null` or not set.
+    """
+
+
+default_message_pool.register_message("sui.rpc.v2", "Display", Display)
+
+
+@dataclass(eq=False, repr=False)
 class DynamicField(betterproto2.Message):
     kind: "DynamicFieldDynamicFieldKind | None" = betterproto2.field(
         1, betterproto2.TYPE_ENUM, optional=True
@@ -4876,6 +4905,14 @@ class Object(betterproto2.Message):
     Current balance if this object is a `0x2::coin::Coin<T>`
     """
 
+    display: "Display | None" = betterproto2.field(
+        102, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    JSON rendering of the object based on an on-chain template.
+    This will not be set if the value's type does not have an associated `Display` template.
+    """
+
 
 default_message_pool.register_message("sui.rpc.v2", "Object", Object)
 
@@ -5467,6 +5504,15 @@ class SimulateTransactionResponse(betterproto2.Message):
     command_outputs: "list[CommandResult]" = betterproto2.field(
         2, betterproto2.TYPE_MESSAGE, repeated=True
     )
+
+    suggested_gas_price: "int | None" = betterproto2.field(
+        3, betterproto2.TYPE_UINT64, optional=True
+    )
+    """
+    A suggested gas price to use, that is above RGP, in order to provide a
+    better chance of the transaction being included in the presence of
+    congested objects.
+    """
 
 
 default_message_pool.register_message(

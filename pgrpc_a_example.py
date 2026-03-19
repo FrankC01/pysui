@@ -103,13 +103,22 @@ async def do_sysstate(client: SuiGrpcClient):
     handle_result(await client.execute(request=rn.GetLatestSuiSystemState()))
 
 
+async def do_address_balance(client: SuiGrpcClient):
+    """Fetch all coin types and there total balances for owner."""
+    handle_result(
+        await client.execute(
+            request=rn.GetAddressCoinBalance(
+                address=client.config.active_address, coin_type="0x2::sui::SUI"
+            )
+        )
+    )
+
+
 async def do_all_balances(client: SuiGrpcClient):
     """Fetch all coin types and there total balances for owner."""
     handle_result(
         await client.execute(
-            request=rn.GetBalance(
-                owner=client.config.active_address, coin_type="0x2::sui::SUI"
-            )
+            request=rn.GetAllCoinBalances(owner=client.config.active_address)
         )
     )
 
@@ -601,6 +610,7 @@ async def main():
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
+        # await do_address_balance(client_init)
         # await do_all_balances(client_init)
         # await do_object(client_init)
         # await do_objects(client_init)

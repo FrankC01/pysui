@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.97.0] - Unpublished
+
+### Added
+
+- Support for Sui Address coin balance. See [Mysten changes here](https://docs.sui.io/guides/developer/address-balances-migration)
+  - GraphQL Query: `GetAddressCoinBalance`
+  - gRPC Request: `GetAddressCoinBalance` (deprecates `GetBalance` request)
+
+### Fixed
+
+### Changed
+
+- gRPC: Updated protos
+
+### Removed
+
+
 ## [0.96.0] - 2026-03-04
 
 ### Added
