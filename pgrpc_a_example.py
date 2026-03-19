@@ -108,7 +108,7 @@ async def do_address_balance(client: SuiGrpcClient):
     handle_result(
         await client.execute(
             request=rn.GetAddressCoinBalance(
-                address=client.config.active_address, coin_type="0x2::sui::SUI"
+                owner=client.config.active_address, coin_type="0x2::sui::SUI"
             )
         )
     )

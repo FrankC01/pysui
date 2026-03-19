@@ -533,12 +533,12 @@ class GetAddressCoinBalance(absreq.PGRPC_Request):
     def __init__(
         self,
         *,
-        address: str,
+        owner: str,
         coin_type: Optional[str] = "0x2::sui::SUI",
     ) -> None:
         """Initializer."""
         super().__init__(absreq.Service.STATE)
-        self.address = address
+        self.owner = owner
         self.coin_type = coin_type
 
     def to_request(
@@ -548,7 +548,7 @@ class GetAddressCoinBalance(absreq.PGRPC_Request):
     ]:
         """."""
         return stub.get_balance, sui_prot.GetBalanceRequest(
-            owner=self.address, coin_type=self.coin_type
+            owner=self.owner, coin_type=self.coin_type
         )
 
 

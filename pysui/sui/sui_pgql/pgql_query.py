@@ -64,15 +64,15 @@ class GetAddressCoinBalance(PGQL_QueryNode):
     The resulting balance is the sum of the `address` balance and any coin balances of `coin_type`.
     """
 
-    def __init__(self, *, address: str, coin_type: Optional[str] = "0x2::sui::SUI"):
+    def __init__(self, *, owner: str, coin_type: Optional[str] = "0x2::sui::SUI"):
         """__init__ _summary_
 
-        :param address: _description_
-        :type address: str
+        :param owner: Address holding balances
+        :type owner: str
         :param coin_type: _description_, defaults to "0x2::sui::SUI"
         :type coin_type: _type_, optional
         """
-        self.address = address
+        self.owner = owner
         self.coin_type = coin_type
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
@@ -92,7 +92,7 @@ class GetAddressCoinBalance(PGQL_QueryNode):
                     } 
             }           
         """
-        _QUERY = _QUERY.replace("OWNER", self.address).replace(
+        _QUERY = _QUERY.replace("OWNER", self.owner).replace(
             "COIN_TYPE", self.coin_type
         )
         return gql(_QUERY)
