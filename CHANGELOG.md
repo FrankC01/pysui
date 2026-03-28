@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Sui Address coin balance. See [Mysten changes here](https://docs.sui.io/guides/developer/address-balances-migration)
   - GraphQL Query: `GetAddressCoinBalance`
   - gRPC Request: `GetAddressCoinBalance` (deprecates `GetBalance` request)
+  - new pysui PTB call (GraphQL and gRPC) `balance_from`
 
 ### Fixed
 

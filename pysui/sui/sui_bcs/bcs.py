@@ -622,12 +622,66 @@ class StructTag(canoser.Struct):
         split_type = type_str.split("::")
         return cls(Address.from_str(split_type[0]), split_type[1], split_type[2], [])
 
+    @classmethod
+    def sui_coin(cls) -> TypeTag:
+        """Standard Sui Struct TypeTag."""
+        return TypeTag("Struct", cls.from_type_str("0x2::sui::SUI"))
+
 
 # Overcome forward reference at init time with these injections
 TypeTag.update_value_at(6, [TypeTag])
 TypeTag.update_value_at(7, StructTag)
 
 
+@versionadded(version="0.97.0", reason="Support for Address balance management.")
+class Reservation(canoser.RustEnum):
+    """A balance Amount reservation."""
+
+    _enums = [("Amount", U64)]
+
+
+@versionadded(version="0.97.0", reason="Support for Address balance management.")
+class WithdrawalType(canoser.RustEnum):
+    """Withdrawal type_tag."""
+
+    _enums = [("Balance", TypeTag)]
+
+
+@versionadded(version="0.97.0", reason="Support for Address balance management.")
+class WithdrawFrom(canoser.RustEnum):
+    """Source of withdrawal."""
+
+    _enums = [("SENDER", None), ("SPONSOR", None)]
+
+
+@versionadded(version="0.97.0", reason="Support for Address balance management.")
+class FundsWithdrawal(canoser.Struct):
+    """FundsWithdrawal struct for either address or coin withdrawal."""
+
+    _fields = [
+        ("Reservation", Reservation),
+        ("Type_", WithdrawalType),
+        ("Source", WithdrawFrom),
+    ]
+
+    def to_grpc_input(self) -> sui_prot.Input:
+        """Create a gRPC input from FundsWithdrawal"""
+        amount = self.Reservation.value
+        c_type = self.Type_.value.type_tag_to_str()
+        if self.Source.enum_name == "SENDER":
+            source = sui_prot.FundsWithdrawalSource.SENDER
+        elif self.Source.enum_name == "SPONSOR":
+            source = sui_prot.FundsWithdrawalSource.SPONSOR
+
+        return sui_prot.Input(
+            kind=sui_prot.InputInputKind.FUNDS_WITHDRAWAL,
+            funds_withdrawal=sui_prot.FundsWithdrawal(
+                amount=amount, coin_type=c_type, source=source
+            ),
+        )
+
+
+# @versionchanged(version="0.97.0", reason="Support for Address balance management.")
 class ObjectArg(canoser.RustEnum):
     """ObjectArg enum for type of object and it's reference data when used in MoveCall."""
 
@@ -686,6 +740,7 @@ class BuilderArg(canoser.RustEnum):
         ("Object", Address),
         ("Pure", [canoser.Uint8]),
         ("ForcedNonUniquePure", None),
+        ("Withdrawal", FundsWithdrawal),
         ("Unresolved", str),
     ]
 
@@ -696,15 +751,14 @@ class BuilderArg(canoser.RustEnum):
         return id(self)
 
 
+@versionchanged(version="0.97.0", reason="Support for Address balance management.")
 class CallArg(canoser.RustEnum):
-    """CallArg represents an argument (parameters) of a MoveCall.
-
-    Pure type is for scalars, or native, values.
-    """
+    """CallArg represents an argument (parameters) of a MoveCall."""
 
     _enums = [
         ("Pure", [canoser.Uint8]),
         ("Object", ObjectArg),
+        ("FundsWithdrawal", FundsWithdrawal),
         ("UnresolvedObject", UnresolvedObjectArg),
     ]
 

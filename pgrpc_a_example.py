@@ -9,6 +9,7 @@ import asyncio
 
 from pysui import PysuiConfiguration, SuiRpcResult, SuiGrpcClient
 from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
+from pysui.sui.sui_common.trxn_base import FundsSource
 
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 from pysui.sui.sui_grpc.pgrpc_utils import (
@@ -585,6 +586,86 @@ async def do_unstake(client: SuiGrpcClient):
         print(f"No staked Sui for {owner}")
 
 
+async def do_sui_coin_to_account(client: SuiGrpcClient):
+    """."""
+    # Print before
+    print("Before Sui coin balances")
+    await do_address_balance(client)
+    txer: AsyncSuiTransaction = await client.transaction()
+    # Pull amount from transaction Gas
+    scres = await txer.split_coin(coin=txer.gas, amounts=[1000000])
+    await txer.move_call(
+        target="0x2::coin::send_funds",
+        type_arguments=["0x2::sui::SUI"],
+        arguments=[scres, client.config.active_address],
+    )
+
+    # Uncomment to dry run
+    handle_result(
+        await client.execute(
+            request=rn.SimulateTransactionLKind(
+                transaction=txer.raw_kind(),
+                sender=client.config.active_address,
+                gas_selection=False,
+            )
+        )
+    )
+
+    # Uncomment to Execute
+    # txdict = await txer.build_and_sign()
+    # result = await client.execute(request=rn.ExecuteTransaction(**txdict))
+    # if result.is_ok():
+    #     print("After transfer to address Sui coin balances")
+    #     await do_address_balance(client)
+
+
+async def do_account_to_sui_coin(client: SuiGrpcClient):
+    """Moves account balance to Sui coin and transfer to current address."""
+    # If set_balance is None, will use the total account balance
+    set_balance: int = 1000000
+    # Print before
+    print("Before Sui coin balances")
+
+    curr_balance_res = handle_result(
+        await client.execute(
+            request=rn.GetAddressCoinBalance(
+                owner=client.config.active_address, coin_type="0x2::sui::SUI"
+            )
+        )
+    )
+    # Validate existing funds exist.
+    if curr_balance_res.is_ok():
+        if not set_balance:
+            set_balance = curr_balance_res.result_data.balance.address_balance
+        else:
+            if set_balance > curr_balance_res.result_data.balance.address_balance:
+                raise ValueError(
+                    f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.balance.address_balance}"
+                )
+        txer: AsyncSuiTransaction = await client.transaction()
+        coin = await txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
+        await txer.transfer_objects(
+            transfers=[coin], recipient=client.config.active_address
+        )
+
+        # Uncomment to dry run
+        handle_result(
+            await client.execute(
+                request=rn.SimulateTransactionLKind(
+                    transaction=txer.raw_kind(),
+                    sender=client.config.active_address,
+                    gas_selection=False,
+                )
+            )
+        )
+        # Uncomment to Execute
+        # txdict = await txer.build_and_sign()
+        # result = await client.execute(request=rn.ExecuteTransaction(**txdict))
+        # if result.is_ok():
+        #     print("After transfer to address Sui coin balances")
+        #     await do_address_balance(client)
+
+
 async def main():
     """Example main."""
     client_init: SuiGrpcClient = None
@@ -644,6 +725,8 @@ async def main():
         # await do_execute(client_init)
         # await do_stake(client_init)
         # await do_unstake(client_init)
+        # await do_sui_coin_to_account(client_init)
+        # await do_account_to_sui_coin(client_init)
         ## Config
         # await do_chain_id(client_init)
         # await do_service_config(client_init)

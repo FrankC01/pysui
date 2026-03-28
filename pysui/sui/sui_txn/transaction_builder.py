@@ -362,6 +362,14 @@ class ProgrammableTransactionBuilder:
         barg = bcs.BuilderArg("Object", oval)
         return self.input_obj(barg, object_arg)
 
+    def input_obj_from_withdrawal(
+        self, with_drawal: bcs.FundsWithdrawal
+    ) -> bcs.Argument:
+        """."""
+        out_index = len(self.inputs)
+        self.inputs[f"Poof_{out_index}"] = bcs.CallArg("FundsWithdrawal", with_drawal)
+        return bcs.Argument("Input", out_index)
+
     def command(
         self, command_obj: bcs.Command, nresults: int = 1
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
@@ -451,6 +459,8 @@ class ProgrammableTransactionBuilder:
                 arg.value, bcs.ObjectArg
             ):
                 argrefs.append(self.input_pure(PureInput.as_input(arg)))
+            elif isinstance(arg, bcs.FundsWithdrawal):
+                argrefs.append(self.input_obj_from_withdrawal(arg))
             elif isinstance(arg, tuple):
                 argrefs.append(self.input_obj(*arg))
             elif isinstance(arg, bcs.Argument):

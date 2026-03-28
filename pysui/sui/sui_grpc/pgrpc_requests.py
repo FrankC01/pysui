@@ -13,6 +13,7 @@ import dataclasses_json
 import betterproto2
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_bcs.bcs import TransactionKind
+from pysui.sui.sui_bcs import bcs
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
@@ -138,6 +139,7 @@ OBJECT_DEFAULT_FIELDS: list[str] = [
     "object_type",
     "digest",
     "balance",
+    "display",
     "json",
     "previous_transaction",
 ]
@@ -818,6 +820,9 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
             elif input.enum_name == "Object":
                 oarg = input.value
                 inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
+            elif input.enum_name == "FundsWithdrawal":
+                fwid: bcs.FundsWithdrawl = input.value
+                inputs.append(fwid.to_grpc_input())
         for cmd in prgrm_txn.Command:
             cmds.append(cmd.value.to_grpc_command())
         if txn_expires_after:

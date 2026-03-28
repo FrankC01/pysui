@@ -13,6 +13,7 @@ import base64
 
 from pysui import PysuiConfiguration, SuiRpcResult, SyncGqlClient
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
+from pysui.sui.sui_common.trxn_base import FundsSource
 
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
@@ -736,6 +737,72 @@ def do_unstake(client: SyncGqlClient):
         print(f"No staked Sui for {owner}")
 
 
+def do_sui_coin_to_account(client: SyncGqlClient):
+    """Moves Sui mists to an account."""
+    # Print before
+    print("Before Sui coin balances")
+    do_address_balance(client)
+    txer: SuiTransaction = client.transaction()
+    # Pull amount from transaction Gas
+    scres = txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
+    txer.move_call(
+        target="0x2::coin::send_funds",
+        type_arguments=["0x2::sui::SUI"],
+        arguments=[scres, client.config.active_address],
+    )
+    # Uncomment to dry run
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
+        )
+    )
+    # Uncomment to Execute
+    # txdict = txer.build_and_sign()
+    # result = client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+    # if result.is_ok():
+    #     print("After transfer to address Sui coin balances")
+    #     do_address_balance(client)
+
+
+def do_account_to_sui_coin(client: SyncGqlClient):
+    """Moves account balance to Sui coin and transfer to current address."""
+    # If set_balance is None, will use the total account balance
+    set_balance: int = 1000000
+    # Print before
+    print("Before Sui coin balances")
+    curr_balance_res = handle_result(
+        client.execute_query_node(
+            with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
+        )
+    )
+    # Validate existing funds exist.
+    if curr_balance_res.is_ok():
+        if not set_balance:
+            set_balance = curr_balance_res.result_data.address_balance
+        else:
+            if set_balance > curr_balance_res.result_data.address_balance:
+                raise ValueError(
+                    f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.address_balance}"
+                )
+        txer: SuiTransaction = client.transaction()
+        coin = txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
+        txer.transfer_objects(transfers=[coin], recipient=client.config.active_address)
+        print(txer.raw_kind().to_json(indent=2))
+        # Uncomment to dry run
+        # handle_result(
+        #     client.execute_query_node(
+        #         with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
+        #     )
+        # )
+
+        # Uncomment to Execute
+        # txdict = txer.build_and_sign()
+        # result = client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+        # if result.is_ok():
+        #     print("After transfer to address Sui coin balances")
+        #     do_address_balance(client)
+
+
 if __name__ == "__main__":
 
     client_init: SyncGqlClient = None
@@ -757,7 +824,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        do_gas(client_init)
+        # do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
@@ -801,6 +868,8 @@ if __name__ == "__main__":
         # split_1_half(client_init)
         # do_stake(client_init)
         # do_unstake(client_init)
+        # do_sui_coin_to_account(client_init)
+        do_account_to_sui_coin(client_init)
         ## Config
         # do_chain_id(client_init)
         # do_configs(client_init)

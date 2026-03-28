@@ -12,7 +12,8 @@ import base64
 
 # logging.basicConfig(level=logging.DEBUG)
 
-from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient, SyncGqlClient
+from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient
+from pysui.sui.sui_common.trxn_base import FundsSource
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -123,6 +124,15 @@ async def do_sysstate(client: AsyncGqlClient):
     """Fetch the most current system state summary."""
     handle_result(
         await client.execute_query_node(with_node=qn.GetLatestSuiSystemState())
+    )
+
+
+async def do_address_balance(client: AsyncGqlClient):
+    """."""
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
+        )
     )
 
 
@@ -667,6 +677,75 @@ async def do_unstake(client: AsyncGqlClient):
         print(f"No staked Sui for {owner}")
 
 
+async def do_sui_coin_to_account(client: AsyncGqlClient):
+    """Moves Sui mists to an account."""
+    # Print before
+    print("Before Sui coin balances")
+    await do_address_balance(client)
+    txer: AsyncSuiTransaction = client.transaction()
+    # Pull amount from transaction Gas
+    scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
+    await txer.move_call(
+        target="0x2::coin::send_funds",
+        type_arguments=["0x2::sui::SUI"],
+        arguments=[scres, client.config.active_address],
+    )
+    # Uncomment to dry run
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
+        )
+    )
+    # Uncomment to Execute
+    # txdict = await txer.build_and_sign()
+    # result = await client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+    # if result.is_ok():
+    #     print("After transfer to address Sui coin balances")
+    #     await do_address_balance(client)
+
+
+async def do_account_to_sui_coin(client: AsyncGqlClient):
+    """Moves account balance to Sui coin and transfer to current address."""
+    # If set_balance is None, will use the total account balance
+    set_balance: int = 1000000
+    # Print before
+    print("Before Sui coin balances")
+    curr_balance_res = handle_result(
+        await client.execute_query_node(
+            with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
+        )
+    )
+    # Validate existing funds exist.
+    if curr_balance_res.is_ok():
+        if not set_balance:
+            set_balance = curr_balance_res.result_data.address_balance
+        else:
+            if set_balance > curr_balance_res.result_data.address_balance:
+                raise ValueError(
+                    f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.address_balance}"
+                )
+        txer: AsyncSuiTransaction = client.transaction()
+        coin = await txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
+        await txer.transfer_objects(
+            transfers=[coin], recipient=client.config.active_address
+        )
+        # Uncomment to dry run
+        handle_result(
+            await client.execute_query_node(
+                with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
+            )
+        )
+        # Uncomment to Execute
+        # txdict = await txer.build_and_sign()
+        # result = await client.execute_query_node(
+        #     with_node=qn.ExecuteTransaction(**txdict)
+        # )
+        # if not result.is_ok():
+        #     print(f"Error in execution {result.result_string}")
+        # else:
+        #     print(result.result_data.to_json(indent=2))
+
+
 async def main():
     """."""
     try:
@@ -692,6 +771,7 @@ async def main():
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
+        # await do_address_balance(client_init)
         # await do_all_balances(client_init)
         # await do_object(client_init)
         # await do_objects_for_type(client_init)
@@ -730,6 +810,8 @@ async def main():
         # await do_execute(client_init)
         # await do_stake(client_init)
         # await do_unstake(client_init)
+        # await do_sui_coin_to_account(client_init)
+        # await do_account_to_sui_coin(client_init)
         ## Config
         # await do_chain_id(client_init)
         # await do_configs(client_init)

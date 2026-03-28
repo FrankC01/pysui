@@ -1737,6 +1737,9 @@ class DryRunTransactionKind(PGQL_QueryNode):
             elif input.enum_name == "Object":
                 oarg = input.value
                 inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
+            elif input.enum_name == "FundsWithdrawal":
+                inputs.append(input.value.to_grpc_input())
+
         for cmd in prgrm_txn.Command:
             cmds.append(cmd.value.to_grpc_command())
         self.transaction = sui_prot.Transaction(

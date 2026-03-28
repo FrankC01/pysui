@@ -9,6 +9,7 @@
 import base64
 import hashlib
 import os
+from enum import IntEnum
 from pathlib import Path
 from typing import Any, Optional, Union
 import logging
@@ -188,6 +189,13 @@ class _TransactionBase:
     def gas_price(self, new_price: int):
         """Set the gas price."""
         self._current_gas_price = new_price
+
+
+class FundsSource(IntEnum):
+    """Enumeration of Sender or Sponser funds source."""
+
+    SENDER = 0
+    SPONSOR = 1
 
 
 class _SuiTransactionBase(_TransactionBase):
