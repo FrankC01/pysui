@@ -132,6 +132,8 @@ class SuiGrpcClient(PysuiClient):
         :type arg_parser: Optional[Any], optional
         :param merge_gas_budget: global gas budget for each transaction, defaults to False
         :type merge_gas_budget: Optional[bool], optional
+        :param use_account_for_gas: Enable using address account balance for gas, defaults to False
+        :type use_account_for_gas: Optional[bool], optional
         :return: gRPC Transaction builder
         :rtype: AsyncSuiTransaction
         """

@@ -470,8 +470,16 @@ def do_validator_xchange_rates(client: SyncGqlClient):
 
 
 def do_protcfg(client: SyncGqlClient):
-    """Fetch the most current system state summary."""
-    handle_result(client.execute_query_node(with_node=qn.GetProtocolConfig(version=96)))
+    """Fetch the most current system state summary.
+
+    By default, the current protocol version is used. You
+    can set an `int` value otherwise to get past protocol states.
+    """
+
+    pcfg = client.protocol().protocolVersion
+    handle_result(
+        client.execute_query_node(with_node=qn.GetProtocolConfig(version=pcfg))
+    )
 
 
 def do_struct(client: SyncGqlClient):
@@ -753,9 +761,14 @@ def do_sui_coin_to_account(client: SyncGqlClient):
     # Uncomment to dry run
     handle_result(
         client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
+            with_node=qn.DryRunTransactionKind(
+                tx_kind=txer.raw_kind(),
+                tx_meta={"sender": client.config.active_address},
+                do_gas_selection=True,
+            )
         )
     )
+
     # Uncomment to Execute
     # txdict = txer.build_and_sign()
     # result = client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
@@ -765,16 +778,17 @@ def do_sui_coin_to_account(client: SyncGqlClient):
 
 
 def do_account_to_sui_coin(client: SyncGqlClient):
-    """Moves account balance to Sui coin and transfer to current address."""
+    """Moves account balance to Sui coin and transfer to current address.
+
+    Execution, vs. DryRun, Execution also demonstrates funding the transaction with sender account balance vs. gas coins.
+    """
     # If set_balance is None, will use the total account balance
     set_balance: int = 1000000
-    # Print before
-    print("Before Sui coin balances")
-    curr_balance_res = handle_result(
-        client.execute_query_node(
-            with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
-        )
+    # Get the current balance
+    curr_balance_res = client.execute_query_node(
+        with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
     )
+
     # Validate existing funds exist.
     if curr_balance_res.is_ok():
         if not set_balance:
@@ -784,23 +798,26 @@ def do_account_to_sui_coin(client: SyncGqlClient):
                 raise ValueError(
                     f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.address_balance}"
                 )
-        txer: SuiTransaction = client.transaction()
+        txer: SuiTransaction = client.transaction(use_account_for_gas=True)
         coin = txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
         txer.transfer_objects(transfers=[coin], recipient=client.config.active_address)
-        print(txer.raw_kind().to_json(indent=2))
+
         # Uncomment to dry run
-        # handle_result(
-        #     client.execute_query_node(
-        #         with_node=qn.DryRunTransaction(tx_bytestr=txer.build())
-        #     )
-        # )
+        handle_result(
+            client.execute_query_node(
+                with_node=qn.DryRunTransactionKind(
+                    tx_kind=txer.raw_kind(),
+                    tx_meta={"sender": client.config.active_address},
+                    do_gas_selection=True,
+                )
+            )
+        )
 
         # Uncomment to Execute
-        # txdict = txer.build_and_sign()
-        # result = client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
-        # if result.is_ok():
-        #     print("After transfer to address Sui coin balances")
-        #     do_address_balance(client)
+        # txdict = txer.build_sign_with_account_gas()
+        # handle_result(
+        #     client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+        # )
 
 
 if __name__ == "__main__":
@@ -824,7 +841,7 @@ if __name__ == "__main__":
         ## QueryNodes (fetch)
         # do_coin_meta(client_init)
         # do_coins_for_type(client_init)
-        # do_gas(client_init)
+        do_gas(client_init)
         # do_all_gas(client_init)
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
@@ -869,7 +886,7 @@ if __name__ == "__main__":
         # do_stake(client_init)
         # do_unstake(client_init)
         # do_sui_coin_to_account(client_init)
-        do_account_to_sui_coin(client_init)
+        # do_account_to_sui_coin(client_init)
         ## Config
         # do_chain_id(client_init)
         # do_configs(client_init)

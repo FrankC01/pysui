@@ -1109,6 +1109,33 @@ class GetDelegatedStakes(PGQL_QueryNode):
         return pgql_type.SuiStakedCoinsGQL.from_query
 
 
+class GetBasicCurrentEpochInfo(PGQL_QueryNode):
+    """GetBasicCurrentEpochInfo minimal current Epoch information."""
+
+    def __init__(self):
+        """."""
+
+    def as_document_node(self, schema):
+        _QUERY = """
+            {  
+            epoch {
+                epochId
+                referenceGasPrice
+                startTimestamp
+                endTimestamp
+            }
+            }            
+        """
+        return gql(_QUERY)
+
+    @staticmethod
+    def encode_fn() -> (
+        Union[Callable[[dict], pgql_type.BasicCurrentEpochInfoGQL], None]
+    ):
+        """Return the serializer to SuiStakedCoinsGQL function."""
+        return pgql_type.BasicCurrentEpochInfoGQL.from_query
+
+
 class GetLatestCheckpointSequence(PGQL_QueryNode):
     """GetLatestCheckpointSequence return the sequence number of the latest checkpoint that has been executed."""
 
@@ -1116,14 +1143,12 @@ class GetLatestCheckpointSequence(PGQL_QueryNode):
         """__init__ QueryNode initializer."""
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        std_checkpoint = frag.StandardCheckpoint()
-        pg_cursor = frag.PageCursor()
+        std_checkpoint = frag.StandardCheckpoint().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
         qres = schema.Query.checkpoints(last=1).select(
-            schema.CheckpointConnection.nodes.select(std_checkpoint.fragment(schema))
+            schema.CheckpointConnection.nodes.select(std_checkpoint)
         )
-        return dsl_gql(
-            pg_cursor.fragment(schema), std_checkpoint.fragment(schema), DSLQuery(qres)
-        )
+        return dsl_gql(pg_cursor, std_checkpoint, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.CheckpointGQL], None]:

@@ -448,9 +448,14 @@ async def do_validator_xchange_rates(client: AsyncGqlClient):
 
 
 async def do_protcfg(client: AsyncGqlClient):
-    """Fetch the most current system state summary."""
+    """Fetch the most current system state summary.
+
+    By default, the current protocol version is used. You
+    can set an `int` value otherwise to get past protocol states.
+    """
+    pcfg = client.protocol().protocolVersion
     handle_result(
-        await client.execute_query_node(with_node=qn.GetProtocolConfig(version=30))
+        await client.execute_query_node(with_node=qn.GetProtocolConfig(version=pcfg))
     )
 
 
@@ -705,15 +710,15 @@ async def do_sui_coin_to_account(client: AsyncGqlClient):
 
 
 async def do_account_to_sui_coin(client: AsyncGqlClient):
-    """Moves account balance to Sui coin and transfer to current address."""
+    """Moves account balance to Sui coin and transfer to current address.
+
+    Execution, vs. DryRun, also demonstrates funding the transaction with sender account balance vs. gas coins.
+    """
     # If set_balance is None, will use the total account balance
     set_balance: int = 1000000
-    # Print before
-    print("Before Sui coin balances")
-    curr_balance_res = handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
-        )
+    # Get the current balance
+    curr_balance_res = await client.execute_query_node(
+        with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
     )
     # Validate existing funds exist.
     if curr_balance_res.is_ok():
@@ -724,7 +729,8 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
                 raise ValueError(
                     f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.address_balance}"
                 )
-        txer: AsyncSuiTransaction = client.transaction()
+        # Enable the transaction to use account for gas payments.
+        txer: AsyncSuiTransaction = client.transaction(use_account_for_gas=True)
         coin = await txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
         await txer.transfer_objects(
             transfers=[coin], recipient=client.config.active_address
@@ -732,18 +738,19 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
         # Uncomment to dry run
         handle_result(
             await client.execute_query_node(
-                with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
+                with_node=qn.DryRunTransactionKind(
+                    tx_kind=txer.raw_kind(),
+                    tx_meta={"sender": client.config.active_address},
+                    do_gas_selection=True,
+                )
             )
         )
+
         # Uncomment to Execute
-        # txdict = await txer.build_and_sign()
-        # result = await client.execute_query_node(
-        #     with_node=qn.ExecuteTransaction(**txdict)
+        # txdict = await txer.build_sign_with_account_gas()
+        # handle_result(
+        #     await client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
         # )
-        # if not result.is_ok():
-        #     print(f"Error in execution {result.result_string}")
-        # else:
-        #     print(result.result_data.to_json(indent=2))
 
 
 async def main():

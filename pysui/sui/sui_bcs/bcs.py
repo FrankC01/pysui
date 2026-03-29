@@ -7,6 +7,7 @@
 
 import binascii
 import copy
+import secrets
 import uuid
 from typing import Any, Union
 import json
@@ -241,6 +242,10 @@ class ObjectReference(canoser.Struct):
                 Digest.from_str(indata.digest),  # type: ignore
             )
         raise ValueError(f"{indata} is not valid")
+
+
+_ZERO_32 = list(bytes(32))
+OBJECT_ZERO_REF = ObjectReference(Address(_ZERO_32), 0, Digest(_ZERO_32))
 
 
 class SharedObjectReference(canoser.Struct):
@@ -1047,10 +1052,60 @@ class TransactionKind(canoser.RustEnum):
         return cls.deserialize(in_data)
 
 
-class TransactionExpiration(canoser.RustEnum):
-    """."""
+class O64(canoser.RustOptional):
+    _type = canoser.Uint64
 
-    _enums = [("None", None), ("Epoch", canoser.Uint64)]
+
+class ValidDuring(canoser.Struct):
+    """Supports using address balance for gas."""
+
+    _fields = [
+        ("min_epoch", O64),
+        ("max_epoch", O64),
+        # Min, Max TS not supported yet
+        ("min_timestamp", O64),
+        ("max_timestamp", O64),
+        ("chain_id", Digest),
+        ("nonce", U32),
+    ]
+
+    @classmethod
+    def gen_valid_during(
+        cls, *, min_epoch: int, max_epoch: int, chain_id: str
+    ) -> "ValidDuring":
+        """Generate for gas usage"""
+        nonce = int.from_bytes(secrets.token_bytes(4), "little")
+        assert (isinstance(chain_id, str), len(chain_id)) == (True, 44)
+        assert (isinstance(min_epoch, int), U64.check_value(min_epoch)) == (True, None)
+        assert (isinstance(max_epoch, int), U64.check_value(max_epoch)) == (True, None)
+        return cls(
+            O64(min_epoch),
+            O64(max_epoch),
+            O64(None),
+            O64(None),
+            Digest.from_str(chain_id),
+            nonce,
+        )
+
+
+class TransactionExpiration(canoser.RustEnum):
+    """Transaction expiration ."""
+
+    _enums = [
+        ("None", None),
+        ("Epoch", canoser.Uint64),
+        ("ValidDuring", ValidDuring),
+    ]
+
+    @classmethod
+    def gen_valid_during_expiration(
+        cls, min_epoch: int, max_epoch: int, chain_id: str
+    ) -> "TransactionExpiration":
+        """."""
+        vd_exp = ValidDuring.gen_valid_during(
+            min_epoch=min_epoch, max_epoch=max_epoch, chain_id=chain_id
+        )
+        return TransactionExpiration("ValidDuring", vd_exp)
 
 
 class TransactionDataV1(canoser.Struct):

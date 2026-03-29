@@ -165,6 +165,7 @@ class _TransactionBase:
         arg_parser: Optional[Any] = None,
         txn_constraints: Optional[TransactionConstraints] = None,
         gas_price: Optional[int] = None,
+        use_account_for_gas: Optional[bool] = False,
     ):
         """."""
         self.builder = builder or tx_builder.ProgrammableTransactionBuilder(
@@ -174,6 +175,7 @@ class _TransactionBase:
         self.client = client
         self.constraints = txn_constraints
         self._current_gas_price = gas_price
+        self.use_account_for_gas = use_account_for_gas
 
     @property
     def gas(self) -> bcs.Argument:
@@ -213,6 +215,7 @@ class _SuiTransactionBase(_TransactionBase):
         merge_gas_budget: Optional[bool] = False,
         txn_constraints: Optional[TransactionConstraints] = None,
         gas_price: Optional[int] = None,
+        use_account_for_gas: Optional[bool] = False,
     ) -> None:
         """__init__ Initialize transaction base.
 
@@ -234,6 +237,8 @@ class _SuiTransactionBase(_TransactionBase):
         :type txn_constraints: Optional[TransactionConstraints], optional
         :param gas_price: set gas price, defaults to None
         :type gas_price: Optional[int], optional
+        :param use_account_for_gas: Enable using address account balance for gas, defaults to False
+        :type use_account_for_gas: Optional[bool], optional
         """
         super().__init__(
             client=client,
@@ -243,6 +248,7 @@ class _SuiTransactionBase(_TransactionBase):
             txn_constraints=txn_constraints
             or client.protocol().transaction_constraints,
             gas_price=gas_price or client.current_gas_price,
+            use_account_for_gas=use_account_for_gas,
         )
         self._sig_block = SignerBlock(
             sender=initial_sender or client.config.active_address,

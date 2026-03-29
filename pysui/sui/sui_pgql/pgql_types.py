@@ -295,6 +295,25 @@ class SuiStakedCoinGQL:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class BasicCurrentEpochInfoGQL(PGQL_Type):
+    """Basic info from current epoch."""
+
+    epoch_id: int
+    reference_gas_price: int
+    start_timestamp: str
+    end_timestampt: Optional[str] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "BasicCurrentEpochInfoGQL":
+        """."""
+        if in_data:
+            in_data = in_data.pop("epoch")
+            return BasicCurrentEpochInfoGQL.from_dict(in_data)
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class SuiStakedCoinsGQL(PGQL_Type):
     """Collection of staked coin objects."""
 
@@ -1305,6 +1324,7 @@ class TransactionConstraints:
     max_type_arguments: Optional[int] = 0
     max_tx_gas: Optional[int] = 0
     receive_objects: bool = False
+    enable_address_balance_gas_payments: bool = False
 
 
 @dataclasses_json.dataclass_json
@@ -1359,8 +1379,13 @@ class ProtocolConfigGQL:
 
         # Set appropriate features
         feat_dict: dict = {k.key: k.value for k in self.featureFlags}
+        # Receive objects
         self.transaction_constraints.receive_objects = feat_dict.get(
             "receive_objects", False
+        )
+        # Use account balance for gas payments
+        self.transaction_constraints.enable_address_balance_gas_payments = (
+            feat_dict.get("enable_address_balance_gas_payments", False)
         )
 
     @classmethod

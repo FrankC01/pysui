@@ -232,6 +232,8 @@ class SuiGQLClient(BaseSuiGQLClient):
         :type compress_inputs: bool,optional
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
+        :param use_account_for_gas: Enable using address account balance for gas, defaults to False
+        :type use_account_for_gas: Optional[bool], optional
         """
         import pysui.sui.sui_pgql.pgql_sync_txn as synctxn
 
@@ -468,6 +470,8 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         :type compress_inputs: bool,optional
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
+        :param use_account_for_gas: Enable using address account balance for gas, defaults to False
+        :type use_account_for_gas: Optional[bool], optional
         """
         import pysui.sui.sui_pgql.pgql_async_txn as asynctxn
 

@@ -620,18 +620,15 @@ async def do_sui_coin_to_account(client: SuiGrpcClient):
 
 
 async def do_account_to_sui_coin(client: SuiGrpcClient):
-    """Moves account balance to Sui coin and transfer to current address."""
+    """Moves account balance to Sui coin and transfer to current address.
+
+    Execution, vs. DryRun, also demonstrates funding the transaction with sender account balance vs. gas coins.
+    """
     # If set_balance is None, will use the total account balance
     set_balance: int = 1000000
-    # Print before
-    print("Before Sui coin balances")
-
-    curr_balance_res = handle_result(
-        await client.execute(
-            request=rn.GetAddressCoinBalance(
-                owner=client.config.active_address, coin_type="0x2::sui::SUI"
-            )
-        )
+    # Get the current balance
+    curr_balance_res = await client.execute(
+        request=rn.GetAddressCoinBalance(owner=client.config.active_address)
     )
     # Validate existing funds exist.
     if curr_balance_res.is_ok():
@@ -642,28 +639,26 @@ async def do_account_to_sui_coin(client: SuiGrpcClient):
                 raise ValueError(
                     f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.balance.address_balance}"
                 )
-        txer: AsyncSuiTransaction = await client.transaction()
+        # Enable the transaction to use account for gas payments.
+        txer: AsyncSuiTransaction = await client.transaction(use_account_for_gas=True)
         coin = await txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
         await txer.transfer_objects(
             transfers=[coin], recipient=client.config.active_address
         )
-
         # Uncomment to dry run
         handle_result(
             await client.execute(
                 request=rn.SimulateTransactionLKind(
                     transaction=txer.raw_kind(),
                     sender=client.config.active_address,
-                    gas_selection=False,
+                    gas_selection=True,
                 )
             )
         )
+
         # Uncomment to Execute
-        # txdict = await txer.build_and_sign()
-        # result = await client.execute(request=rn.ExecuteTransaction(**txdict))
-        # if result.is_ok():
-        #     print("After transfer to address Sui coin balances")
-        #     await do_address_balance(client)
+        # txdict = await txer.build_sign_with_account_gas()
+        # handle_result(await client.execute(request=rn.ExecuteTransaction(**txdict)))
 
 
 async def main():
