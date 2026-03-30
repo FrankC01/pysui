@@ -735,7 +735,12 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
         await txer.transfer_objects(
             transfers=[coin], recipient=client.config.active_address
         )
+
         # Uncomment to dry run
+        # As we are using the address balance to pay for transaction
+        # we want to get an estimate that reflects that, so setting `do_gas_selection=True` does
+        # that.
+
         handle_result(
             await client.execute_query_node(
                 with_node=qn.DryRunTransactionKind(
@@ -747,6 +752,8 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
         )
 
         # Uncomment to Execute
+        # Using the new build and signing method
+
         # txdict = await txer.build_sign_with_account_gas()
         # handle_result(
         #     await client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
@@ -774,7 +781,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -818,7 +825,7 @@ async def main():
         # await do_stake(client_init)
         # await do_unstake(client_init)
         # await do_sui_coin_to_account(client_init)
-        # await do_account_to_sui_coin(client_init)
+        await do_account_to_sui_coin(client_init)
         ## Config
         # await do_chain_id(client_init)
         # await do_configs(client_init)

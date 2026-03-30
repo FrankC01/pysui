@@ -201,9 +201,14 @@ if __name__ == "__main__":
     client_init = SyncGqlClient(
         write_schema=False,
         pysui_config=PysuiConfiguration(
-            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP
+            group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+            profile_name="devnet",
+            # profile_name="testnet",
+            # profile_name="mainnet",
+            # persist=True,
         ),
     )
+    print(f"Active chain profile   '{client_init.chain_environment}'")
     print(f"Default schema base version '{client_init.base_schema_version}'")
     print(f"Default schema build version '{client_init.schema_version()}'")
     try:

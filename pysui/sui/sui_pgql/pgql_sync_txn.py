@@ -174,6 +174,76 @@ class SuiTransaction(txbase):
             )
         raise ValueError(_res.result_string)
 
+    def transaction_data_with_account_gas(
+        self,
+        *,
+        min_epoch_expiration: Optional[int] = None,
+        gas_budget: Optional[int] = None,
+    ) -> bcs.TransactionData:
+        """transaction_data_with_account_gas Constructs a BCS TransactionData object.
+
+        If gas_budget not provided, pysui will call DryRunTransactionBlock to calculate.
+
+        :param min_epoch_expiration: Specify the transaction expiration epoch ID, defaults to None
+        :type min_epoch_expiration: Optional[int],optional
+        :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
+        :type gas_budget: Optional[str], optional
+        :return: The TransactionData BCS structure
+        :rtype: bcs.TransactionData
+        """
+        return self._build_txn_data_with_account_gas(min_epoch_expiration, gas_budget)
+
+    def build_with_account_gas(
+        self,
+        *,
+        min_epoch_expiration: Optional[int] = None,
+        gas_budget: Optional[int] = None,
+    ) -> str:
+        """build_with_account_gas Creates the BCS TransactionData using account balance for gas, serialize to base64 string and return.
+
+        :param min_epoch_expiration: Minimal epoch number to set expiration for transaction for transaction budget, defaults to current epoch
+        :type min_epoch_expiration: Optional[int], optional
+        :param gas_budget: Sets the budget, defaults to None
+        :type gas_budget: Optional[int], optional
+        :return: Base64 encoded transaction bytes
+        :rtype: str
+        """
+        txn_data = self.transaction_data_with_account_gas(
+            min_epoch_expiration=min_epoch_expiration, gas_budget=gas_budget
+        )
+        return base64.b64encode(txn_data.serialize()).decode()
+
+    def build_sign_with_account_gas(
+        self,
+        *,
+        min_epoch_expiration: Optional[int] = None,
+        gas_budget: Optional[int] = None,
+    ) -> dict:
+        """build_sign_with_account_gas Leverages account balance, vs gas coins, to pay for transaction.
+
+        If `gas_budget` not set, a dry run with execute to determine budget
+
+        :param min_epoch_expiration: Minimal epoch number to set expiration for transaction for transaction budget, defaults to current epoch
+        :type min_epoch_expiration: Optional[int], optional
+        :param gas_budget: Sets the budget, defaults to None
+        :type gas_budget: Optional[int], optional
+        :return: Dict of
+            {
+                "tx_bytestr": base64 encoded transaction bytes,
+                "sig_array": array of base64 encoded signature bytes
+
+            }
+        :rtype: dict[str, str]
+        """
+        txn_bytes = self.build_with_account_gas(
+            min_epoch_expiration=min_epoch_expiration, gas_budget=gas_budget
+        )
+
+        sigs = self.signer_block.get_signatures(
+            config=self.client.config, tx_bytes=txn_bytes
+        )
+        return {self._BUILD_BYTE_STR: txn_bytes, self._SIG_ARRAY: sigs}
+
     def _build_txn_data(
         self,
         gas_budget: str = "",
@@ -284,36 +354,6 @@ class SuiTransaction(txbase):
             gas_budget=gas_budget,
             use_gas_objects=use_gas_objects,
             txn_expires_after=txn_expires_after,
-        )
-        tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
-        sigs = self.signer_block.get_signatures(
-            config=self.client.config, tx_bytes=tx_bytes
-        )
-        return {self._BUILD_BYTE_STR: tx_bytes, self._SIG_ARRAY: sigs}
-
-    def build_sign_with_account_gas(
-        self,
-        min_epoch_expiration: Optional[int] = None,
-        gas_budget: Optional[int] = None,
-    ) -> dict:
-        """build_sign_with_account_gas Leverages account balance, vs gas coins, to pay for transaction.
-
-        If `gas_budget` not set, a dry run with execute to determine budget
-
-        :param min_epoch_expiration: Minimal epoch number to set expiration for transaction for transaction budget, defaults to current epoch
-        :type min_epoch_expiration: Optional[int], optional
-        :param gas_budget: Sets the budget, defaults to None
-        :type gas_budget: Optional[int], optional
-        :return: Dict of
-            {
-                "tx_bytestr": base64 encoded transaction bytes,
-                "sig_array": array of base64 encoded signature bytes
-
-            }
-        :rtype: dict[str, str]
-        """
-        txn_kind = self._build_txn_data_with_account_gas(
-            min_epoch_expiration, gas_budget
         )
         tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
         sigs = self.signer_block.get_signatures(

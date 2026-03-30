@@ -51,11 +51,6 @@ distribution:
 You can then `pip install <LOCAL-PATH-TO-PYSUI-REPO>` to your own virtual environment
 assuming you've set one up for own app/library development.
 
-### Protobuf generation
-
-`bin/ghget.sh -o suiprot https://github.com/MystenLabs/sui/tree/main/crates/sui-rpc-api/proto`
-`bin/genprot.sh`
-
 ### Run sample wallet app for help
 
 See [README](https://github.com/FrankC01/pysui/blob/main/README.md)

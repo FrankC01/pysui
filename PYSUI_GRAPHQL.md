@@ -3,8 +3,6 @@
 MystenLabs announcement can be [Found Here](https://github.com/mystenLabs/sui/issues/13700). This change transitions
 from JSON RPC to GraphQL RPC.
 
-Note: MystenLabs/Sui GraphQL Beta is available on devnet, testnet and mainnet.
-
 ## PysuiConfiguration: GraphQL URL CHANGES
 
 If you were previously setup PysuiConfiguration with GraphQL _Alpha_ profiles you'll **need to update**

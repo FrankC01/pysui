@@ -646,6 +646,10 @@ async def do_account_to_sui_coin(client: SuiGrpcClient):
             transfers=[coin], recipient=client.config.active_address
         )
         # Uncomment to dry run
+        # As we are using the address balance to pay for transaction
+        # we want to get an estimate that reflects that, so setting `do_gas_selection=True` does
+        # that.
+
         handle_result(
             await client.execute(
                 request=rn.SimulateTransactionLKind(
@@ -656,7 +660,7 @@ async def do_account_to_sui_coin(client: SuiGrpcClient):
             )
         )
 
-        # Uncomment to Execute
+        # Uncomment to Execute using the new build and signing method
         # txdict = await txer.build_sign_with_account_gas()
         # handle_result(await client.execute(request=rn.ExecuteTransaction(**txdict)))
 

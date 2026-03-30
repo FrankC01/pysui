@@ -3,8 +3,6 @@
 MystenLabs gRPC BETA overview can be [Found Here](https://docs.sui.io/concepts/grpc-overview). This change transitions
 from JSON RPC to gRPC.
 
-Note: MystenLabs/Sui gRPC is available on devnet, testnet and mainnet.
-
 ## pysui gRPC support
 
 **Note**: Functionality of pysui gRPC should be considered BETA, use in production at your own risk.

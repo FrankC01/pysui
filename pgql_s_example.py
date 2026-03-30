@@ -803,6 +803,10 @@ def do_account_to_sui_coin(client: SyncGqlClient):
         txer.transfer_objects(transfers=[coin], recipient=client.config.active_address)
 
         # Uncomment to dry run
+        # As we are using the address balance to pay for transaction
+        # we want to get an estimate that reflects that, so setting `do_gas_selection=True` does
+        # that.
+
         handle_result(
             client.execute_query_node(
                 with_node=qn.DryRunTransactionKind(
@@ -813,7 +817,8 @@ def do_account_to_sui_coin(client: SyncGqlClient):
             )
         )
 
-        # Uncomment to Execute
+        # Uncomment to Execute using the new build and signing method
+
         # txdict = txer.build_sign_with_account_gas()
         # handle_result(
         #     client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
