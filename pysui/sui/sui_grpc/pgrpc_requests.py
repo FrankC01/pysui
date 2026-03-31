@@ -582,6 +582,39 @@ class GetBalance(absreq.PGRPC_Request):
         )
 
 
+@versionadded(version="0.97.0", reason="Parity with GraphQL.")
+class GetAddressCoinBalances(absreq.PGRPC_Request):
+    """Query to retrieve the total balance for all types for owner."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.ListBalancesResponse
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.STATE)
+        self.owner = owner
+        self.page_size = page_size
+        self.page_token = page_token
+
+    def to_request(
+        self, *, stub: sui_prot.StateServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.list_balances, sui_prot.ListBalancesRequest(
+            owner=self.owner,
+            page_size=self.page_size,
+            page_token=self.page_token,
+        )
+
+
+@deprecated(version="0.97.0", reason="Use GetAddressCoinBalances. Parity with GraphQL.")
 class GetAllCoinBalances(absreq.PGRPC_Request):
     """Query to retrieve the total balance for all types for owner."""
 

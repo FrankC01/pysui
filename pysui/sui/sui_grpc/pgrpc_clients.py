@@ -56,8 +56,7 @@ def _map_pconstraints(in_bound: sui_prot.ProtocolConfig):
         elif res := in_bound.attributes.get(item, None):
             ordered_list.append(int(res))
         else:
-            raise ValueError(f"{item} not found in gRPC protocol configuration.")
-
+            ordered_list.append(res)
     return ProtocolConfig(TransactionConstraints(*ordered_list))
 
 

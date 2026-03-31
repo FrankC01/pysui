@@ -7,7 +7,7 @@
 
 from typing import Optional, Callable, Union
 import base64
-from deprecated.sphinx import versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged, deprecated
 from gql import gql, GraphQLRequest
 from gql.dsl import (
     DSLQuery,
@@ -61,7 +61,7 @@ class GetCoinMetaData(PGQL_QueryNode):
 class GetAddressCoinBalance(PGQL_QueryNode):
     """GetAddressCoinBalance Returns an addresses balance for specific coin type.
 
-    The resulting balance is the sum of the `address` balance and any coin balances of `coin_type`.
+    The resulting total balance is the sum of the `address` balance and any coin balances of `coin_type`.
     """
 
     def __init__(self, *, owner: str, coin_type: Optional[str] = "0x2::sui::SUI"):
@@ -80,7 +80,6 @@ class GetAddressCoinBalance(PGQL_QueryNode):
         _QUERY = """
             {
             address(address:"OWNER") {
-                address
                 balance(coinType: "COIN_TYPE") {
                             coinType {
                                 coinType:repr
@@ -98,11 +97,15 @@ class GetAddressCoinBalance(PGQL_QueryNode):
         return gql(_QUERY)
 
     @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.AddressBalancesGQL]:
+    def encode_fn() -> Callable[[dict], pgql_type.AddressBalanceGQL]:
         """Return the serializer to BalancesGQL function."""
-        return pgql_type.AddressBalancesGQL.from_query
+        return pgql_type.AddressBalanceGQL.from_query
 
 
+@deprecated(
+    version="0.97.0",
+    reason="Use new GetAddressCoinBalances query instead supporting Sui address balances.",
+)
 class GetAllCoinBalances(PGQL_QueryNode):
     """GetAllCoins Returns the total coin balances, for all coin types, for owner.
 
@@ -138,6 +141,56 @@ class GetAllCoinBalances(PGQL_QueryNode):
         balance_connection.select(
             cursor=schema.BalanceConnection.pageInfo.select(pg_cursor.fragment(schema)),
             type_balances=schema.BalanceConnection.nodes.select(
+                schema.Balance.totalBalance,
+                schema.Balance.coinType.select(coin_type=schema.MoveType.repr),
+            ),
+        )
+        qres.select(owner_address=schema.Address.address, balances=balance_connection)
+
+        return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.BalancesGQL]:
+        """Return the serializer to BalancesGQL function."""
+        return pgql_type.BalancesGQL.from_query
+
+
+class GetAddressCoinBalances(PGQL_QueryNode):
+    """GetAddressCoinBlances Returns the address and total coin balance, for all coin types of for owner.
+
+    This is different from legacy Builder as only a list of coin type summaries are returned.
+    """
+
+    def __init__(
+        self, *, owner: str, next_page: Optional[pgql_type.PagingCursor] = None
+    ):
+        """QueryNode initializer.
+
+        :param owner: the owner's Sui address
+        :type owner: str
+        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
+        :type next_page: pgql_type.PagingCursor
+        """
+        self.owner = owner
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
+        qres = schema.Query.address(address=self.owner).alias("qres")
+        balance_connection = schema.Address.balances
+        if self.next_page:
+            balance_connection(after=self.next_page.endCursor)
+
+        pg_cursor = frag.PageCursor()
+
+        balance_connection.select(
+            cursor=schema.BalanceConnection.pageInfo.select(pg_cursor.fragment(schema)),
+            type_balances=schema.BalanceConnection.nodes.select(
+                schema.Balance.addressBalance,
+                schema.Balance.coinBalance,
                 schema.Balance.totalBalance,
                 schema.Balance.coinType.select(coin_type=schema.MoveType.repr),
             ),

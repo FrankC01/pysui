@@ -131,19 +131,19 @@ def do_address_balance(client: SyncGqlClient):
     )
 
 
-def do_all_balances(client: SyncGqlClient):
-    """Fetch all coin types for active address and total balances.
+def do_address_balances(client: SyncGqlClient):
+    """Fetch all coin types and balances for active address and total balances.
 
     Demonstrates paging as well
     """
     result = client.execute_query_node(
-        with_node=qn.GetAllCoinBalances(owner=client.config.active_address)
+        with_node=qn.GetAddressCoinBalances(owner=client.config.active_address)
     )
     handle_result(result)
     if result.is_ok():
         while result.result_data.next_cursor.hasNextPage:
             result = client.execute_query_node(
-                with_node=qn.GetAllCoinBalances(
+                with_node=qn.GetAddressCoinBalances(
                     owner=client.config.active_address,
                     next_page=result.result_data.next_cursor,
                 )
@@ -791,12 +791,14 @@ def do_account_to_sui_coin(client: SyncGqlClient):
 
     # Validate existing funds exist.
     if curr_balance_res.is_ok():
+        if curr_balance_res.result_data.balance.address_balance is None:
+            raise ValueError(f"{client.config.active_address} Has no account balance")
         if not set_balance:
-            set_balance = curr_balance_res.result_data.address_balance
+            set_balance = curr_balance_res.result_data.balance.address_balance
         else:
-            if set_balance > curr_balance_res.result_data.address_balance:
+            if set_balance > curr_balance_res.result_data.balance.address_balance:
                 raise ValueError(
-                    f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.address_balance}"
+                    f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.balance.address_balance}"
                 )
         txer: SuiTransaction = client.transaction(use_account_for_gas=True)
         coin = txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
@@ -851,7 +853,7 @@ if __name__ == "__main__":
         # do_gas_ids(client_init)
         # do_sysstate(client_init)
         # do_address_balance(client_init)
-        # do_all_balances(client_init)
+        # do_address_balances(client_init)
         # do_object(client_init)
         # do_objects_for_type(client_init)
         # do_object_content(client_init)

@@ -617,9 +617,9 @@ class BalanceGQL(PGQL_Type):
     """Balance representation class."""
 
     coin_type: str
-
-    total_balance: str
-    owner: Optional[str] = ""
+    address_balance: int
+    coin_balance: int
+    total_balance: int
 
     @classmethod
     def from_query(clz, in_data: dict) -> "BalanceGQL":
@@ -627,33 +627,27 @@ class BalanceGQL(PGQL_Type):
 
         The in_data is a dictionary with nested dictionaries
         """
-        res_dict: dict = {}
         # Flatten dictionary
+        res_dict: dict = {}
         _fast_flat(in_data, res_dict)
+        res_dict["addressBalance"] = int(res_dict["addressBalance"])
+        res_dict["coinBalance"] = int(res_dict["coinBalance"])
+        res_dict["totalBalance"] = int(res_dict["totalBalance"])
         return BalanceGQL.from_dict(res_dict)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
-class AddressBalancesGQL(PGQL_Type):
+class AddressBalanceGQL(PGQL_Type):
     """Single coin type address balance."""
 
-    address: str
-    address_balance: int
-    coin_type: str
-    coin_balance: int
-    total_balance: int
+    balance: BalanceGQL
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "AddressBalancesGQL":
+    def from_query(clz, in_data: dict) -> "AddressBalanceGQL":
         """."""
-        res_dict: dict = {}
-        # Flatten dictionary
-        _fast_flat(in_data, res_dict)
-        res_dict["addressBalance"] = int(res_dict["addressBalance"])
-        res_dict["coinBalance"] = int(res_dict["coinBalance"])
-        res_dict["totalBalance"] = int(res_dict["totalBalance"])
-        return AddressBalancesGQL.from_dict(res_dict)
+        bal_ref: BalanceGQL = {"balance": BalanceGQL.from_query(in_data.pop("address"))}
+        return AddressBalanceGQL.from_dict(bal_ref)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)

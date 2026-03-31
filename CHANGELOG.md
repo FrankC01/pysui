@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `sui_prot_versions.py` utility to list current protocol id for each profile (i.e. devnet, etc.). **In repo only**
 - Support for Sui Address coin balance. See [Mysten changes here](https://docs.sui.io/guides/developer/address-balances-migration)
-  - GraphQL Query: `GetAddressCoinBalance`
-  - gRPC Request: `GetAddressCoinBalance` (deprecates `GetBalance` request)
+  - GraphQL Query: `GetAddressCoinBalance`, `GetAddressCoinBalances` (deprecates `GetBalance` and `GetAllCoinBalances` queries)
+  - gRPC Request: `GetAddressCoinBalance`, `GetAddressCoinBalances` (deprecates `GetBalance` and `GetAllCoinBalances` requests)
   - new pysui PTB call (GraphQL and gRPC) `balance_from` Withdraws `Coin<T>` from transaction source Sender or Sponsor account
   - GraphQL and gRPC: Transaction support for paying gas from account balance
     - `client.transaction(use_account_for_gas=True)` or `await client.transaction(use_account_for_gas=True)` to enable

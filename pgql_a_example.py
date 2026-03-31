@@ -136,19 +136,19 @@ async def do_address_balance(client: AsyncGqlClient):
     )
 
 
-async def do_all_balances(client: AsyncGqlClient):
+async def do_address_balances(client: AsyncGqlClient):
     """Fetch all coin types and there total balances for owner.
 
     Demonstrates paging as well
     """
     result = await client.execute_query_node(
-        with_node=qn.GetAllCoinBalances(owner=client.config.active_address)
+        with_node=qn.GetAddressCoinBalances(owner=client.config.active_address)
     )
     handle_result(result)
     if result.is_ok():
         while result.result_data.next_cursor.hasNextPage:
             result = await client.execute_query_node(
-                with_node=qn.GetAllCoinBalances(
+                with_node=qn.GetAddressCoinBalances(
                     owner=client.config.active_address,
                     next_page=result.result_data.next_cursor,
                 )
@@ -722,12 +722,14 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
     )
     # Validate existing funds exist.
     if curr_balance_res.is_ok():
+        if curr_balance_res.result_data.balance.address_balance is None:
+            raise ValueError(f"{client.config.active_address} Has no account balance")
         if not set_balance:
-            set_balance = curr_balance_res.result_data.address_balance
+            set_balance = curr_balance_res.result_data.balance.address_balance
         else:
-            if set_balance > curr_balance_res.result_data.address_balance:
+            if set_balance > curr_balance_res.result_data.balance.address_balance:
                 raise ValueError(
-                    f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.address_balance}"
+                    f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.balance.address_balance}"
                 )
         # Enable the transaction to use account for gas payments.
         txer: AsyncSuiTransaction = client.transaction(use_account_for_gas=True)
@@ -781,12 +783,12 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
         # await do_address_balance(client_init)
-        # await do_all_balances(client_init)
+        # await do_address_balances(client_init)
         # await do_object(client_init)
         # await do_objects_for_type(client_init)
         # await do_object_content(client_init)
@@ -825,7 +827,7 @@ async def main():
         # await do_stake(client_init)
         # await do_unstake(client_init)
         # await do_sui_coin_to_account(client_init)
-        await do_account_to_sui_coin(client_init)
+        # await do_account_to_sui_coin(client_init)
         ## Config
         # await do_chain_id(client_init)
         # await do_configs(client_init)

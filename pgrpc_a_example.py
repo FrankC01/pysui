@@ -115,11 +115,11 @@ async def do_address_balance(client: SuiGrpcClient):
     )
 
 
-async def do_all_balances(client: SuiGrpcClient):
+async def do_address_balances(client: SuiGrpcClient):
     """Fetch all coin types and there total balances for owner."""
     handle_result(
         await client.execute(
-            request=rn.GetAllCoinBalances(owner=client.config.active_address)
+            request=rn.GetAddressCoinBalances(owner=client.config.active_address)
         )
     )
 
@@ -613,10 +613,7 @@ async def do_sui_coin_to_account(client: SuiGrpcClient):
 
     # Uncomment to Execute
     # txdict = await txer.build_and_sign()
-    # result = await client.execute(request=rn.ExecuteTransaction(**txdict))
-    # if result.is_ok():
-    #     print("After transfer to address Sui coin balances")
-    #     await do_address_balance(client)
+    # handle_result(await client.execute(request=rn.ExecuteTransaction(**txdict)))
 
 
 async def do_account_to_sui_coin(client: SuiGrpcClient):
@@ -632,6 +629,9 @@ async def do_account_to_sui_coin(client: SuiGrpcClient):
     )
     # Validate existing funds exist.
     if curr_balance_res.is_ok():
+        if curr_balance_res.result_data.balance.address_balance is None:
+            raise ValueError(f"{client.config.active_address} Has no account balance")
+
         if not set_balance:
             set_balance = curr_balance_res.result_data.balance.address_balance
         else:
@@ -661,6 +661,7 @@ async def do_account_to_sui_coin(client: SuiGrpcClient):
         )
 
         # Uncomment to Execute using the new build and signing method
+
         # txdict = await txer.build_sign_with_account_gas()
         # handle_result(await client.execute(request=rn.ExecuteTransaction(**txdict)))
 
@@ -675,8 +676,6 @@ async def main():
                 profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",
-                # profile_name="testnet-arch",
-                # profile_name="mainnet-arch",
             ),
         )
         print(f"Active chain profile   '{client_init.config.active_profile}'")
@@ -691,7 +690,7 @@ async def main():
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
         # await do_address_balance(client_init)
-        # await do_all_balances(client_init)
+        # await do_address_balances(client_init)
         # await do_object(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)
