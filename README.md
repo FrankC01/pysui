@@ -27,7 +27,7 @@ Python Client SDK for Sui blockchain
 ## pysui SDK current (github)
 
 **Release-0.97.0**
-Adding support for Mysten `address balance`
+Added support for Mysten `address balance`
 
 ## PyPi current
 
