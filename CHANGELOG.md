@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.97.0] - Unpublished
+## [0.97.0] - 2026-04-06
 
 ### Added
 
@@ -17,6 +17,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - GraphQL and gRPC: Transaction support for paying gas from account balance
     - `client.transaction(use_account_for_gas=True)` or `await client.transaction(use_account_for_gas=True)` to enable
     - `txdict = txer.build_sign_with_account_gas()` or `txdict = await txer.build_sign_with_account_gas()`
+
+Example (GraphQL):
+
+```python
+def handle_result(result: SuiRpcResult) -> SuiRpcResult:
+    """."""
+    if result.is_ok():
+        if hasattr(result.result_data, "to_json"):
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_data)
+    else:
+        print(result.result_string)
+        if result.result_data and hasattr(result.result_data, "to_json"):
+            print(result.result_data.to_json(indent=2))
+        else:
+            print(result.result_data)
+    return result
+
+def do_sui_coin_to_account(client: SyncGqlClient):
+    """Moves Sui mists to an account."""
+    # Print before
+    print("Before Sui coin balances")
+    do_address_balance(client)
+    txer: SuiTransaction = client.transaction()
+    # Pull amount from transaction Gas
+    scres = txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
+    txer.move_call(
+        target="0x2::coin::send_funds",
+        type_arguments=["0x2::sui::SUI"],
+        arguments=[scres, client.config.active_address],
+    )
+    # Uncomment to dry run
+    handle_result(
+        client.execute_query_node(
+            with_node=qn.DryRunTransactionKind(
+                tx_kind=txer.raw_kind(),
+                tx_meta={"sender": client.config.active_address},
+                do_gas_selection=True,
+            )
+        )
+    )
+
+    # Uncomment to Execute
+    # txdict = txer.build_and_sign()
+    # result = client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+    # if result.is_ok():
+    #     print("After transfer to address Sui coin balances")
+    #     do_address_balance(client)
+def do_account_to_sui_coin(client: SyncGqlClient):
+    """Moves account balance to Sui coin and transfer to current address.
+
+    Execution, vs. DryRun, Execution also demonstrates funding the transaction with sender account balance vs. gas coins.
+    """
+    # If set_balance is None, will use the total account balance
+    set_balance: int = 1000000
+    # Get the current balance
+    curr_balance_res = client.execute_query_node(
+        with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
+    )
+
+    # Validate existing funds exist.
+    if curr_balance_res.is_ok():
+        if curr_balance_res.result_data.balance.address_balance is None:
+            raise ValueError(f"{client.config.active_address} Has no account balance")
+        if not set_balance:
+            set_balance = curr_balance_res.result_data.balance.address_balance
+        else:
+            if set_balance > curr_balance_res.result_data.balance.address_balance:
+                raise ValueError(
+                    f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.balance.address_balance}"
+                )
+
+        # Enable transaction to use account balance for gas payment
+        txer: SuiTransaction = client.transaction(use_account_for_gas=True)
+        
+        coin = txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
+        txer.transfer_objects(transfers=[coin], recipient=client.config.active_address)
+
+        # Uncomment to dry run
+        # As we are using the address balance to pay for transaction
+        # we want to get an estimate that reflects that, so setting `do_gas_selection=True` does
+        # that.
+
+        handle_result(
+            client.execute_query_node(
+                with_node=qn.DryRunTransactionKind(
+                    tx_kind=txer.raw_kind(),
+                    tx_meta={"sender": client.config.active_address},
+                    do_gas_selection=True,
+                )
+            )
+        )
+
+        # Uncomment to Execute using the new build and signing method
+
+        # txdict = txer.build_sign_with_account_gas()
+        # handle_result(
+        #     client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+        # )
+```
 
 ### Fixed
 

@@ -31,7 +31,9 @@ Added support for Mysten `address balance`
 
 ## PyPi current
 
-**Release-0.96.0 - Released 2026-03-04**
+**Release-0.97.0 - Released 2026-04-06**
+
+Added support for Mysten `address balance`
 
 See [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
 
