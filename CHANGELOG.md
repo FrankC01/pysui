@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.98.0] - Unpublished
+
+### Added
+
+### Fixed
+
+### Changed
+
+- Fix for .readthedocs.yaml ubuntu build
+- Bump pysui-fastcrypto build to >= 0.7.2 (requirements.txt and pyproject.toml)
+
+### Removed
+
 ## [0.97.0] - 2026-04-06
 
 ### Added
@@ -126,7 +139,6 @@ def do_account_to_sui_coin(client: SyncGqlClient):
 - gRPC: Updated protos
 
 ### Removed
-
 
 ## [0.96.0] - 2026-03-04
 
