@@ -29,6 +29,7 @@ from pysui.sui.sui_excepts import (
 from pysui.sui.sui_pgql.pgql_utils import (
     get_all_owned_gas_objects,
     get_all_owned_objects,
+    get_all_address_balances,
 )
 
 _SUI_COIN_TYPE: str = (
@@ -134,15 +135,12 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
             else:
                 status = "Pruned"
             balance = int(gas_object.balance)
-            all_total += balance
-            total += balance if gas_object.previous_transaction else 0
+            # all_total += balance
+            # total += balance if gas_object.previous_transaction else 0
             print(
                 f"{gas_object.coin_object_id:^66s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:>8.4f}    {status}"
             )
-        print(f"   All gas {all_total:12} -> {all_total/SUI_COIN_DENOMINATOR:>8.4f}")
-        print(f"Active gas {total:12} -> {total/SUI_COIN_DENOMINATOR:>8.4f}")
-        print()
-        return total
+        return None
 
     for_owner: str = None
     if args.owner:
@@ -155,9 +153,39 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
     all_gas = []
     try:
         all_gas = get_all_owned_gas_objects(for_owner, client, not args.include_pruned)
-        _detail_gas_objects(all_gas)
+        abal_res = client.execute_query_node(
+            with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
+        )
+        if abal_res.is_ok():
+            _detail_gas_objects(all_gas)
+            balances = abal_res.result_data.balance
+            print(
+                f"\nCoin-All gas: {balances.coin_balance:12} -> {balances.coin_balance/SUI_COIN_DENOMINATOR:>8.4f}"
+            )
+            print(
+                f"Addr-All gas: {balances.address_balance:12} -> {balances.address_balance/SUI_COIN_DENOMINATOR:>8.4f}"
+            )
+            print(
+                f"   Total gas: {balances.total_balance:12} -> {balances.total_balance/SUI_COIN_DENOMINATOR:>8.4f}\n"
+            )
+        else:
+            print(f"Error retrieving address balance {abal_res.result_string}")
     except ValueError as ve:
         raise ve
+
+
+def address_coins(client: SuiGQLClient, args: argparse.Namespace) -> None:
+    """Fetch all balance summaries by coin type."""
+    for_owner: str = None
+    if args.owner:
+        for_owner = args.owner
+    elif args.alias:
+        for_owner = client.config.address_for_alias(alias_name=args.alias)
+    else:
+        for_owner = client.config.active_address
+    balances = get_all_address_balances(for_owner, client)
+    for bal in balances:
+        print(bal.to_json(indent=2))
 
 
 def sui_new_address(client: SuiGQLClient, args: argparse.Namespace) -> None:
@@ -606,6 +634,7 @@ SUI_CMD_DISPATCH = {
     "active-address": sui_active_address,
     "addresses": sui_addresses,
     "gas": sui_gas,
+    "coins": address_coins,
     "new-address": sui_new_address,  # TODO: Fix
     "object": sui_object,
     "objects": sui_objects,

@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Wallet adds `coins` command to print summary of each coin type owned by address.
+
 ### Fixed
 
 ### Changed
 
+- Wallet shows address balance along with individual coin balance in `gas` command
 - Fix for .readthedocs.yaml ubuntu build
 - Bump pysui-fastcrypto build to >= 0.7.2 (requirements.txt and pyproject.toml)
 

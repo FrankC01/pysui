@@ -135,6 +135,25 @@ def get_all_owned_gas_objects(
     )
 
 
+def get_all_address_balances(
+    owner: str, client: BaseSuiGQLClient
+) -> list[pgql_type.BalanceGQL]:
+    """Retrieve ALL address coin balance summaries."""
+    all_bal: list[pgql_type.BalanceGQL] = []
+    result = client.execute_query_node(with_node=qn.GetAddressCoinBalances(owner=owner))
+    if result.is_ok():
+        all_bal.extend(result.result_data.data)
+        if result.result_data.next_cursor.hasNextPage:
+            result = client.execute_query_node(
+                with_node=qn.GetAddressCoinBalances(
+                    owner=client.config.active_address,
+                    next_page=result.result_data.next_cursor,
+                )
+            )
+
+    return all_bal
+
+
 def get_all_owned_objects(
     owner: str, client: BaseSuiGQLClient, only_active: Optional[bool] = True
 ) -> list[pgql_type.ObjectReadGQL]:
@@ -225,6 +244,27 @@ async def async_get_all_owned_gas_objects(
     return await async_cursored_collector(
         partial(qn.GetCoins, owner=owner), client, only_active
     )
+
+
+async def async_get_all_address_balances(
+    owner: str, client: BaseSuiGQLClient
+) -> list[pgql_type.BalanceGQL]:
+    """Retrieve ALL address coin balance summaries."""
+    all_bal: list[pgql_type.BalanceGQL] = []
+    result = await client.execute_query_node(
+        with_node=qn.GetAddressCoinBalances(owner=owner)
+    )
+    if result.is_ok():
+        all_bal.extend(result.result_data.data)
+        if result.result_data.next_cursor.hasNextPage:
+            result = await client.execute_query_node(
+                with_node=qn.GetAddressCoinBalances(
+                    owner=client.config.active_address,
+                    next_page=result.result_data.next_cursor,
+                )
+            )
+
+    return all_bal
 
 
 async def async_get_all_owned_objects(

@@ -85,6 +85,27 @@ def _build_read_cmds(subparser) -> None:
         action="store_true",
     )
     subp.set_defaults(subcommand="gas")
+    # Address coins by type
+    subp = subparser.add_parser(
+        "coins",
+        help="Shows coin type balances (object and address). If owwner or alias not provided, defaults to active-address.",
+    )
+    addy_arg_group = subp.add_mutually_exclusive_group(required=False)
+    addy_arg_group.add_argument(
+        "-o",
+        "--owner",
+        required=False,
+        help="Sui address of gas owner. Optional.",
+        action=validator.ValidateAddress,
+    )
+    addy_arg_group.add_argument(
+        "-a",
+        "--alias",
+        required=False,
+        help="Alias of owner address. Optional.",
+        action=validator.ValidateAlias,
+    )
+    subp.set_defaults(subcommand="coins")
     # Object
     subp = subparser.add_parser("object", help="Show object by id")
     subp.add_argument("-i", "--id", required=True, action=validator.ValidateObjectID)
