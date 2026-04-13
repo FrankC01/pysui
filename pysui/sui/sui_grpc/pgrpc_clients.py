@@ -31,7 +31,7 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from grpclib.client import Channel
 
 from pysui import SuiRpcResult, PysuiConfiguration
-from pysui.sui.sui_pgql.pgql_types import TransactionConstraints
+from pysui.sui.sui_common.sui_txn_types import TransactionConstraints
 
 logger = logging.getLogger("pgrpc_client")
 
@@ -72,7 +72,7 @@ class SuiGrpcClient(PysuiClient):
         :type pysui_config: PysuiConfiguration
         :parm grpc_node_url: gRPC URL
         """
-        self._pysui_config: PysuiConfiguration = pysui_config
+        super().__init__(pysui_config=pysui_config, default_header=default_header)
 
         if url := _clean_url(self._pysui_config.active_group.active_profile.url):
             self._channel: Channel = Channel(host=url[0], port=url[1], ssl=True)
@@ -82,7 +82,6 @@ class SuiGrpcClient(PysuiClient):
             )
         self._channels: list[Channel] = []
         self._protocol_config: ProtocolConfig = None
-        self._default_header = default_header or dict()
 
     @property
     async def current_gas_price(self) -> int:

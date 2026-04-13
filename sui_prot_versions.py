@@ -7,15 +7,16 @@
 
 import asyncio
 
-from pysui import PysuiConfiguration, SuiRpcResult, SuiGrpcClient
+from pysui import PysuiConfiguration, SuiRpcResult, SuiGrpcClient, client_factory
+from pysui.sui.sui_common.client import PysuiClient
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 
 
 async def _protocol_version_for(profile_name: str):
     """Extract the protocol version for the particular profile."""
     try:
-        client = SuiGrpcClient(
-            pysui_config=PysuiConfiguration(
+        client: PysuiClient = client_factory(
+            PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP, profile_name=profile_name
             )
         )

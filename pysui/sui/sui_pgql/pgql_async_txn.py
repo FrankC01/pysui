@@ -15,7 +15,7 @@ from pysui.sui.sui_common.trxn_base import _SuiTransactionBase as txbase
 from pysui.sui.sui_common.trxn_base import FundsSource
 
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_txn.transaction_builder import PureInput
+from pysui.sui.sui_common.txb_pure import PureInput
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn

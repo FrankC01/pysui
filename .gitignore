@@ -1,6 +1,9 @@
 # macos cruft
 .DS_Store
 
+# Claude
+CLAUDE.md
+memory
 # Virtual environment
 pysuienv
 env

@@ -6,7 +6,7 @@
 """Sample module for pysui beta Transaction Builder leveraging Sui GraphQL."""
 
 from pysui import SyncGqlClient, PysuiConfiguration
-from pysui.sui.sui_clients.common import SuiRpcResult
+from pysui import SuiRpcResult
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction

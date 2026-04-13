@@ -6,13 +6,13 @@
 """Pysui generic client abstraction."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 from pysui import PysuiConfiguration
-import pysui.sui.sui_pgql.pgql_types as pgql_type
+from pysui.sui.sui_common.sui_txn_types import TransactionConstraints
 
 
 class PysuiClient(ABC):
-    """Abstract Client."""
+    """Abstract async client base shared by GraphQL and gRPC protocol layers."""
 
     def __init__(
         self,
@@ -38,5 +38,15 @@ class PysuiClient(ABC):
     @abstractmethod
     def protocol(
         self, for_version: Optional[str] = None
-    ) -> pgql_type.TransactionConstraints:
+    ) -> TransactionConstraints:
         """Fetch the protocol constraint block."""
+        pass
+
+    @abstractmethod
+    def transaction(self, **kwargs) -> Any:
+        """Return a transaction builder for this client's protocol."""
+        pass
+
+    def close(self) -> None:
+        """Release resources held by this client. Override if cleanup is needed."""
+        pass

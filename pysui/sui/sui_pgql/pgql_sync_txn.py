@@ -8,6 +8,7 @@
 import base64
 from functools import cache
 import inspect
+import warnings
 from typing import Any, Callable, Optional, Union
 
 from deprecated.sphinx import versionchanged, versionadded, deprecated
@@ -16,7 +17,7 @@ from pysui.sui.sui_common.trxn_base import FundsSource
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
-from pysui.sui.sui_txn.transaction_builder import PureInput
+from pysui.sui.sui_common.txb_pure import PureInput
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -44,6 +45,13 @@ class SuiTransaction(txbase):
         :param use_account_for_gas: Enable using address account balance for gas, defaults to False
         :type use_account_for_gas: Optional[bool], optional
         """
+        warnings.warn(
+            "SuiTransaction (synchronous) is deprecated since version 0.98.0. "
+            "Use client_factory(PysuiConfiguration()) and AsyncSuiTransaction instead. "
+            "SuiTransaction will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         frame = inspect.currentframe()
 
         try:

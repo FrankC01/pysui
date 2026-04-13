@@ -28,6 +28,93 @@ Python Client SDK for Sui blockchain
 
 **Release-0.98.0**
 
+### Client Instantiation Migration Guide
+
+Release 0.98.0 introduces `client_factory` and `PysuiConfiguration` as the preferred way to create clients.
+The legacy `SuiConfig`, `SuiClient` (JSON-RPC), and `SuiGQLClient` (synchronous GraphQL) are deprecated
+and will be removed in a future release.
+
+#### Before (deprecated)
+
+**JSON-RPC synchronous client:**
+```python
+from pysui import SuiConfig
+from pysui.sui.sui_clients.sync_client import SuiClient
+
+config = SuiConfig.default_config()
+client = SuiClient(config=config)
+```
+
+**JSON-RPC asynchronous client:**
+```python
+from pysui import SuiConfig
+from pysui.sui.sui_clients.async_client import SuiClient
+
+config = SuiConfig.default_config()
+client = SuiClient(config=config)
+```
+
+**GraphQL synchronous client:**
+```python
+from pysui import PysuiConfiguration
+from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+
+client = SuiGQLClient(pysui_config=PysuiConfiguration())
+```
+
+**GraphQL asynchronous client (direct instantiation):**
+```python
+from pysui import PysuiConfiguration
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
+
+client = AsyncSuiGQLClient(pysui_config=PysuiConfiguration())
+```
+
+**gRPC asynchronous client (direct instantiation):**
+```python
+from pysui import PysuiConfiguration
+from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
+
+client = SuiGrpcClient(pysui_config=PysuiConfiguration())
+```
+
+#### After (recommended)
+
+Use `client_factory` with `PysuiConfiguration`. The active group's `group_protocol` setting
+determines whether a `AsyncSuiGQLClient` (GraphQL) or `SuiGrpcClient` (gRPC) is returned.
+Both implement the `PysuiClient` abstract interface.
+
+**Default active group (protocol auto-detected from config):**
+```python
+from pysui import PysuiConfiguration, client_factory
+
+config = PysuiConfiguration()
+client = client_factory(config)   # Returns AsyncSuiGQLClient or SuiGrpcClient
+```
+
+**Non-standard group with explicit protocol:**
+```python
+from pysui import PysuiConfiguration, GroupProtocol, client_factory
+
+config = PysuiConfiguration()
+# group_name selects a named profile group; protocol must be specified explicitly
+client = client_factory(config, group_name="my-custom-group", protocol=GroupProtocol.GRAPHQL)
+```
+
+**Async usage pattern:**
+```python
+import asyncio
+from pysui import PysuiConfiguration, client_factory
+
+async def main():
+    config = PysuiConfiguration()
+    client = client_factory(config)
+    txn = client.transaction(sender=config.active_address)
+    # ... build and execute transaction ...
+
+asyncio.run(main())
+```
+
 ## PyPi current
 
 **Release-0.97.0 - Released 2026-04-06**

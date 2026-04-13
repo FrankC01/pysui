@@ -11,7 +11,7 @@ import logging
 import asyncio
 from time import sleep
 from typing import Callable, Any, Optional, Union
-from deprecated.sphinx import versionchanged, versionadded
+from deprecated.sphinx import versionchanged, versionadded, deprecated
 
 from gql import Client, gql, GraphQLRequest
 from gql.client import ReconnectingAsyncClientSession
@@ -201,6 +201,10 @@ class SuiGQLClient(BaseSuiGQLClient):
         reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
     )
     @versionchanged(version="0.89.0", reason="Added timeout argument")
+    @deprecated(
+        version="0.98.0",
+        reason="SuiGQLClient (synchronous) is deprecated. Use client_factory(PysuiConfiguration()) which returns an async client. SuiGQLClient will be removed in a future release.",
+    )
     def __init__(
         self,
         *,

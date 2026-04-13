@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Wallet adds `coins` command to print summary of each coin type owned by address.
+- Begin refactoring the GraphQL and gRPC clients for uniform usage
+  - `SuiGQLClient` (synchronous GraphQL client) deprecated since 0.98.0; use `client_factory(PysuiConfiguration())` which returns an async client; targeted for removal in v1.0.0
+  - Added `PysuiClient` abstract base class (`sui_common/client.py`) as shared interface for all async clients
+  - Moved `TransactionConstraints` to `sui_common/sui_txn_types.py`; backwards-compat re-export kept in `pgql_types.py`
+  - Added `client_factory(pysui_config, *, group_name=None, protocol=None)` in `sui_common/factory.py`; dispatches to `AsyncSuiGQLClient` or `SuiGrpcClient` based on active group protocol
+  - Exposed `PysuiClient`, `GroupProtocol`, and `client_factory` from top-level `pysui` package
+  - `SuiConfig` (JSON-RPC config), `SuiClient` sync/async (JSON-RPC), `SuiGQLClient` (sync GraphQL), and `SuiTransaction` (sync GraphQL) marked `DeprecationWarning` since 0.98.0; targeted for removal in v1.0.0
+  - Removed live-node integration tests (`test_argprep_sync.py`, `test_argprep_async.py`, `test_utils.py`) and their conftest fixtures; integration test strategy will be rethought for v0.99.0
+  - Added `tests/test_factory.py` with 6 offline unit tests covering `client_factory` dispatch, error cases, and top-level `pysui` exports; no network required
 
 ### Fixed
 

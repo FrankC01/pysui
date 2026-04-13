@@ -96,6 +96,13 @@ def _set_env_vars(client_config_path: Path, sui_exec_path: Path):
 
 
 # pylint:disable=too-many-instance-attributes,attribute-defined-outside-init,too-many-arguments,unnecessary-dunder-call
+@deprecated(
+    version="0.98.0",
+    reason=(
+        "SuiConfig is deprecated. Use PysuiConfiguration instead. "
+        "JSON-RPC support will be removed in a future release."
+    ),
+)
 class SuiConfig(ClientConfiguration):
     """Sui default configuration class."""
 

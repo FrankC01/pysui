@@ -78,6 +78,10 @@ class SuiClient(ClientMixin):
         version="0.85.0",
         reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
     )
+    @deprecated(
+        version="0.98.0",
+        reason="JSON-RPC SuiClient (asynchronous) is deprecated. Use client_factory(PysuiConfiguration()) instead. JSON-RPC support will be removed in a future release.",
+    )
     def __init__(
         self,
         config: SuiConfig,

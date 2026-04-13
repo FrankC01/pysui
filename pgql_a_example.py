@@ -12,7 +12,8 @@ import base64
 
 # logging.basicConfig(level=logging.DEBUG)
 
-from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient
+from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient, client_factory
+from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_common.trxn_base import FundsSource
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
@@ -765,15 +766,14 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
 async def main():
     """."""
     try:
-        client_init = AsyncGqlClient(
-            write_schema=False,
-            pysui_config=PysuiConfiguration(
+        client_init: PysuiClient = client_factory(
+            PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
                 profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",
                 # persist=True,
-            ),
+            )
         )
         print(f"Active chain profile   '{client_init.chain_environment}'")
         print(f"Default schema base version '{client_init.base_schema_version}'")

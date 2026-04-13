@@ -7,7 +7,8 @@
 
 import asyncio
 
-from pysui import PysuiConfiguration, SuiRpcResult, SuiGrpcClient
+from pysui import PysuiConfiguration, SuiRpcResult, SuiGrpcClient, client_factory
+from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 from pysui.sui.sui_common.trxn_base import FundsSource
 
@@ -668,15 +669,15 @@ async def do_account_to_sui_coin(client: SuiGrpcClient):
 
 async def main():
     """Example main."""
-    client_init: SuiGrpcClient = None
+    client_init: PysuiClient = None
     try:
-        client_init = SuiGrpcClient(
-            pysui_config=PysuiConfiguration(
-                group_name=PysuiConfiguration.SUI_GRPC_GROUP,  # Default gRPC group
+        client_init = client_factory(
+            PysuiConfiguration(
+                group_name=PysuiConfiguration.SUI_GRPC_GROUP,
                 profile_name="devnet",
                 # profile_name="testnet",
                 # profile_name="mainnet",
-            ),
+            )
         )
         print(f"Active chain profile   '{client_init.config.active_profile}'")
         print(f"Active Address '{client_init.config.active_address}'")
