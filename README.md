@@ -28,6 +28,10 @@ Python Client SDK for Sui blockchain
 
 **Release-0.98.0**
 
+## PyPi current
+
+**Release-0.98.0 - Released 2026-04-13**
+
 ### Client Instantiation Migration Guide
 
 Release 0.98.0 introduces `client_factory` and `PysuiConfiguration` as the preferred way to create clients.
@@ -114,10 +118,6 @@ async def main():
 
 asyncio.run(main())
 ```
-
-## PyPi current
-
-**Release-0.97.0 - Released 2026-04-06**
 
 Added support for Mysten `address balance`
 
