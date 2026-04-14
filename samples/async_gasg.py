@@ -38,13 +38,13 @@ from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
 from samples.cmd_argsg import build_async_gas_parser, pre_config_pull
 
 
-from pysui import PysuiConfiguration, AsyncGqlClient, __version__
+from pysui import PysuiConfiguration, AsyncGqlClient, PysuiClient, client_factory, __version__
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 
 async def _get_all_gas_objects(
-    client: AsyncGqlClient, address_id: str
+    client: PysuiClient, address_id: str
 ) -> list[pgql_type.SuiCoinObjectGQL]:
     """Retreive all Gas Objects."""
     try:
@@ -77,7 +77,7 @@ def print_gas(gasses: list[pgql_type.SuiCoinObjectGQL]) -> int:
 
 
 async def get_all_gas(
-    client: AsyncGqlClient,
+    client: PysuiClient,
 ) -> dict[str, list[pgql_type.SuiCoinObjectGQL]]:
     """get_all_gas Gets all SuiGas for each address in configuration.
 
@@ -96,7 +96,7 @@ async def get_all_gas(
     return return_map
 
 
-async def main_run(client: AsyncGqlClient):
+async def main_run(client: PysuiClient):
     """Main Asynchronous entry point."""
     gasses = asyncio.create_task(get_all_gas(client))
     result = await gasses
@@ -129,7 +129,7 @@ def main():
     if parsed.version:
         sdk_version()
         return
-    arpc = AsyncGqlClient(pysui_config=cfg)
+    arpc = client_factory(cfg)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

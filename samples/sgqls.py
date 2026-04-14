@@ -17,7 +17,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui import PysuiConfiguration, SyncGqlClient
+from pysui import PysuiConfiguration, AsyncGqlClient
 
 
 def build_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespace:
@@ -49,7 +49,7 @@ def gen_schemas(prf_list: list[str], cfg: PysuiConfiguration):
     current_profile = cfg.active_profile
     for prf in prf_list:
         cfg.make_active(profile_name=prf, persist=False)
-        SyncGqlClient(pysui_config=cfg, write_schema=True)
+        AsyncGqlClient(pysui_config=cfg, write_schema=True)
     cfg.make_active(profile_name=current_profile)
 
 

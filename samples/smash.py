@@ -36,7 +36,7 @@ logger.info("Initializing smash.")
 import pysui.sui.sui_common.async_funcs as asfn
 import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-from pysui import PysuiConfiguration, AsyncGqlClient, __version__, SuiRpcResult
+from pysui import PysuiConfiguration, PysuiClient, client_factory, __version__, SuiRpcResult
 from samples.cmd_argsg import build_smash_parser, pre_config_pull
 
 
@@ -47,7 +47,7 @@ def sdk_version():
 
 async def main_run(
     *,
-    client: AsyncGqlClient,
+    client: PysuiClient,
     includes: list[str],
     excludes: list[str],
     wait: bool,
@@ -104,7 +104,7 @@ def main():
     print(
         f"Smashing coins for alias: {cfg.active_address_alias} with address: {cfg.active_address}"
     )
-    arpc = AsyncGqlClient(pysui_config=cfg)
+    arpc = client_factory(cfg)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:

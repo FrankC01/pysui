@@ -27,7 +27,7 @@ from pysui.sui.sui_common.validators import (
     ValidateFile,
     valid_sui_address,
 )
-from pysui import PysuiConfiguration, AsyncGqlClient
+from pysui import PysuiConfiguration, client_factory
 from pysui.sui.sui_common.move_to_bcs import MoveDataType
 import pysui.sui.sui_common.mtobcs_types as mtypes
 from samples.cmd_argsg import pre_config_pull
@@ -125,7 +125,7 @@ async def _execute():
             json.loads(json_file.read_text(encoding="utf8"))
         )
         output_folder = parsed.target_output_folder
-        client = AsyncGqlClient(pysui_config=cfg)
+        client = client_factory(cfg)
         # Emit python modules for each identified move program structure
         for package in package_targets.targets:
             fname = package.out_file

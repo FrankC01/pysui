@@ -4,17 +4,17 @@
 # -*- coding: utf-8 -*-
 
 
-"""Commands and dispath dict."""
+"""Commands and dispatch dict."""
 import argparse
+import asyncio
 import json
 from pathlib import Path
 import pprint
 import sys
 from pysui import __version__, SuiRpcResult
 
-from pysui import PysuiConfiguration
-from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-from pysui.sui.sui_pgql.pgql_sync_txn import SuiTransaction
+from pysui import PysuiConfiguration, PysuiClient
+from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 
@@ -27,9 +27,9 @@ from pysui.sui.sui_excepts import (
     SuiMiisingModuleByteCode,
 )
 from pysui.sui.sui_pgql.pgql_utils import (
-    get_all_owned_gas_objects,
-    get_all_owned_objects,
-    get_all_address_balances,
+    async_get_all_owned_gas_objects,
+    async_get_all_owned_objects,
+    async_get_all_address_balances,
 )
 
 _SUI_COIN_TYPE: str = (
@@ -57,33 +57,29 @@ def handle_result(result: SuiRpcResult) -> SuiRpcResult:
     return result
 
 
-def transaction_execute(
-    *, txb: SuiTransaction, use_gas_objects: list[str] = None, gas_budget: str = None
+async def transaction_execute(
+    *, txb: AsyncSuiTransaction, use_gas_objects: list[str] = None, gas_budget: str = None
 ):
     """Uses fully built and serialized TransactionData for ExecuteTransaction."""
-    # Build and sign
-    txdict = txb.build_and_sign(use_gas_objects=use_gas_objects, gas_budget=gas_budget)
-    # Execute the transaction
+    txdict = await txb.build_and_sign(use_gas_objects=use_gas_objects, gas_budget=gas_budget)
     handle_result(
-        txb.client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+        await txb.client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
     )
 
 
-def sdk_version(_client: SuiGQLClient, _args: argparse.Namespace) -> None:
-    """Dispay version(s)."""
-    print(
-        f"pysui SDK version: {__version__} SUI GraphQL Schema version {_client.schema_version()}"
-    )
+async def sdk_version(client: PysuiClient, _args: argparse.Namespace) -> None:
+    """Display version(s)."""
+    print(f"pysui SDK version: {__version__} SUI GraphQL Schema version {client.schema_version()}")
 
 
-def sui_active_address(client: SuiGQLClient, _args: argparse.Namespace) -> None:
+async def sui_active_address(client: PysuiClient, _args: argparse.Namespace) -> None:
     """Print active address."""
     print()
     print(f"Active address = {client.config.active_address}")
 
 
-def sui_addresses(client: SuiGQLClient, args: argparse.Namespace) -> None:
-    """Print all address."""
+async def sui_addresses(client: PysuiClient, args: argparse.Namespace) -> None:
+    """Print all addresses."""
     print()
     addyt = "Addresses"
     pubkt = "Public Key (flag + key)"
@@ -111,12 +107,10 @@ def sui_addresses(client: SuiGQLClient, args: argparse.Namespace) -> None:
         print(addyl)
 
 
-def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def sui_gas(client: PysuiClient, args: argparse.Namespace) -> None:
     """Get gas for address."""
 
     def _detail_gas_objects(gas_objects: list[ptypes.SuiCoinObjectGQL]) -> None:
-        total = 0
-        all_total = 0
         print()
         header_object_id = "Gas Object ID"
         header_mist = "Mist"
@@ -135,8 +129,6 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
             else:
                 status = "Pruned"
             balance = int(gas_object.balance)
-            # all_total += balance
-            # total += balance if gas_object.previous_transaction else 0
             print(
                 f"{gas_object.coin_object_id:^66s} has {balance:12} -> {balance/SUI_COIN_DENOMINATOR:>8.4f}    {status}"
             )
@@ -150,10 +142,9 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    all_gas = []
     try:
-        all_gas = get_all_owned_gas_objects(for_owner, client, not args.include_pruned)
-        abal_res = client.execute_query_node(
+        all_gas = await async_get_all_owned_gas_objects(for_owner, client, not args.include_pruned)
+        abal_res = await client.execute_query_node(
             with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
         )
         if abal_res.is_ok():
@@ -174,7 +165,7 @@ def sui_gas(client: SuiGQLClient, args: argparse.Namespace) -> None:
         raise ve
 
 
-def address_coins(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def address_coins(client: PysuiClient, args: argparse.Namespace) -> None:
     """Fetch all balance summaries by coin type."""
     for_owner: str = None
     if args.owner:
@@ -183,12 +174,12 @@ def address_coins(client: SuiGQLClient, args: argparse.Namespace) -> None:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
         for_owner = client.config.active_address
-    balances = get_all_address_balances(for_owner, client)
+    balances = await async_get_all_address_balances(for_owner, client)
     for bal in balances:
         print(bal.to_json(indent=2))
 
 
-def sui_new_address(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def sui_new_address(client: PysuiClient, args: argparse.Namespace) -> None:
     """Generate a new SUI address."""
     _config: PysuiConfiguration = client.config
     if args.ed25519:
@@ -213,14 +204,11 @@ def sui_new_address(client: SuiGQLClient, args: argparse.Namespace) -> None:
         print(f"Alias generated {_config.alias_for_address(address=address)}")
 
 
-def sui_package(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def sui_package(client: PysuiClient, args: argparse.Namespace) -> None:
     """Get a package object."""
-    result: SuiRpcResult = client.execute_query_node(
-        with_node=qn.GetPackage(
-            package=args.id,
-        )
+    result: SuiRpcResult = await client.execute_query_node(
+        with_node=qn.GetPackage(package=args.id)
     )
-
     if result.is_ok():
         print(result.result_data.to_json(indent=2))
         print()
@@ -228,17 +216,14 @@ def sui_package(client: SuiGQLClient, args: argparse.Namespace) -> None:
         print(f"{result.result_string}")
 
 
-def sui_object(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def sui_object(client: PysuiClient, args: argparse.Namespace) -> None:
     """Show specific object."""
     if args.version:
-        sobject = client.execute_query_node(
-            with_node=qn.GetPastObject(
-                object_id=args.id,
-                version=args.version,
-            )
+        sobject = await client.execute_query_node(
+            with_node=qn.GetPastObject(object_id=args.id, version=args.version)
         )
     else:
-        sobject = client.execute_query_node(with_node=qn.GetObject(object_id=args.id))
+        sobject = await client.execute_query_node(with_node=qn.GetObject(object_id=args.id))
 
     if sobject.is_ok():
         print("Object")
@@ -267,8 +252,8 @@ def _objects_header_print() -> None:
     print()
 
 
-def sui_objects(client: SuiGQLClient, args: argparse.Namespace) -> None:
-    """Show specific Sui object."""
+async def sui_objects(client: PysuiClient, args: argparse.Namespace) -> None:
+    """Show specific Sui objects."""
     for_owner: str = None
     if args.owner:
         for_owner = args.owner
@@ -277,7 +262,7 @@ def sui_objects(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    all_objects: list = get_all_owned_objects(
+    all_objects: list = await async_get_all_owned_objects(
         for_owner, client, not args.include_pruned
     )
 
@@ -298,14 +283,8 @@ def sui_objects(client: SuiGQLClient, args: argparse.Namespace) -> None:
             )
 
 
-def transfer_object(client: SuiGQLClient, args: argparse.Namespace) -> None:
-    """transfer_object.
-
-    :param client: _description_
-    :type client: SyncClient
-    :param args: _description_
-    :type args: argparse.Namespace
-    """
+async def transfer_object(client: PysuiClient, args: argparse.Namespace) -> None:
+    """Transfer an object."""
     for_owner: str = None
     if args.owner:
         for_owner = args.owner
@@ -314,17 +293,16 @@ def transfer_object(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
-    txn.transfer_objects(transfers=[args.transfer], recipient=args.recipient)
-
-    transaction_execute(
+    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    await txn.transfer_objects(transfers=[args.transfer], recipient=args.recipient)
+    await transaction_execute(
         txb=txn,
         gas_budget=args.budget,
         use_gas_objects=[args.gas] if args.gas else None,
     )
 
 
-def transfer_sui(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def transfer_sui(client: PysuiClient, args: argparse.Namespace) -> None:
     """Transfer gas object."""
     for_owner: str = None
     if args.owner:
@@ -334,20 +312,20 @@ def transfer_sui(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
-    txn.transfer_sui(
+    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    await txn.transfer_sui(
         recipient=args.recipient,
         from_coin=args.takes,
         amount=int(args.mists),
     )
-    transaction_execute(
+    await transaction_execute(
         txb=txn,
         gas_budget=args.budget,
         use_gas_objects=[args.gas] if args.gas else None,
     )
 
 
-def merge_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def merge_coin(client: PysuiClient, args: argparse.Namespace) -> None:
     """Merge two coins together."""
     for_owner: str = None
     if args.owner:
@@ -356,17 +334,17 @@ def merge_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
         for_owner = client.config.active_address
-    # print(args)
-    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
-    txn.merge_coins(merge_to=args.primary_coin, merge_from=[args.coin_to_merge])
-    transaction_execute(
+
+    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    await txn.merge_coins(merge_to=args.primary_coin, merge_from=[args.coin_to_merge])
+    await transaction_execute(
         txb=txn,
         gas_budget=args.budget,
         use_gas_objects=[args.gas] if args.gas else None,
     )
 
 
-def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def split_coin(client: PysuiClient, args: argparse.Namespace) -> None:
     """Split coin into amounts."""
     for_owner: str = None
     if args.owner:
@@ -377,8 +355,7 @@ def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
         for_owner = client.config.active_address
 
     use_gas_coin = None
-    # Use generic gas if no explicit coin provided.
-    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
     if args.coin_object_id:
         target_coin = args.coin_object_id
         use_gas_coin = [args.gas]
@@ -389,8 +366,7 @@ def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
         total_mist = 0
         for mist in args.mists:
             total_mist += int(mist)
-        assets = get_all_owned_gas_objects(owner=for_owner, client=client)
-        # Best funded assets to use for gas
+        assets = await async_get_all_owned_gas_objects(owner=for_owner, client=client)
         if assets:
             target_coin = txn.gas
             if len(assets) == 1:
@@ -408,19 +384,19 @@ def split_coin(client: SuiGQLClient, args: argparse.Namespace) -> None:
         else:
             raise ValueError(f"{for_owner} has no Sui coins")
 
-    coins = txn.split_coin(coin=target_coin, amounts=[int(x) for x in args.mists])
+    coins = await txn.split_coin(coin=target_coin, amounts=[int(x) for x in args.mists])
     if not isinstance(coins, list):
-        txn.transfer_objects(transfers=[coins], recipient=for_owner)
+        await txn.transfer_objects(transfers=[coins], recipient=for_owner)
     else:
-        txn.transfer_objects(transfers=coins, recipient=for_owner)
-    transaction_execute(
+        await txn.transfer_objects(transfers=coins, recipient=for_owner)
+    await transaction_execute(
         txb=txn,
         gas_budget=args.budget,
         use_gas_objects=use_gas_coin,
     )
 
 
-def split_coin_equally(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def split_coin_equally(client: PysuiClient, args: argparse.Namespace) -> None:
     """Split coin equally across counts."""
     for_owner: str = None
     if args.owner:
@@ -430,17 +406,16 @@ def split_coin_equally(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    # print(args)
-    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
-    txn.split_coin_equal(coin=args.coin_object_id, split_count=int(args.split_count))
-    transaction_execute(
+    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    await txn.split_coin_equal(coin=args.coin_object_id, split_count=int(args.split_count))
+    await transaction_execute(
         txb=txn,
         gas_budget=args.budget,
         use_gas_objects=[args.gas] if args.gas else None,
     )
 
 
-def publish(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def publish(client: PysuiClient, args: argparse.Namespace) -> None:
     """Publish a sui package."""
     for_owner: str = None
     if args.owner:
@@ -449,12 +424,11 @@ def publish(client: SuiGQLClient, args: argparse.Namespace) -> None:
         for_owner = client.config.address_for_alias(alias_name=args.alias)
     else:
         for_owner = client.config.active_address
-    # print(args)
     try:
         txn = client.transaction(initial_sender=for_owner)
-        upc = txn.publish(project_path=args.package)
-        txn.transfer_objects(transfers=[upc], recipient=for_owner)
-        transaction_execute(
+        upc = await txn.publish(project_path=args.package)
+        await txn.transfer_objects(transfers=[upc], recipient=for_owner)
+        await transaction_execute(
             txb=txn,
             gas_budget=args.budget,
             use_gas_objects=[args.gas] if args.gas else None,
@@ -467,7 +441,7 @@ def publish(client: SuiGQLClient, args: argparse.Namespace) -> None:
         print(exc.args, file=sys.stderr)
 
 
-def move_call(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def move_call(client: PysuiClient, args: argparse.Namespace) -> None:
     """Invoke a Sui move smart contract function."""
     for_owner: str = None
     if args.owner:
@@ -478,32 +452,19 @@ def move_call(client: SuiGQLClient, args: argparse.Namespace) -> None:
         for_owner = client.config.active_address
 
     target = args.package_object_id + "::" + args.module + "::" + args.function
-    if args.args:
-        arguments = []
-        for arg in args.args:
-            if hasattr(arg, "value"):
-                arguments.append(arg)
-            else:
-                arguments.append(arg)
-    else:
-        arguments = []
-    if args.type_arguments:
-        type_arguments = [x for x in args.type_arguments if x]
-    else:
-        type_arguments = []
+    arguments = [arg for arg in args.args] if args.args else []
+    type_arguments = [x for x in args.type_arguments if x] if args.type_arguments else []
 
-    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
-    res = txn.move_call(
-        target=target, arguments=arguments, type_arguments=type_arguments
-    )
-    transaction_execute(
+    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    await txn.move_call(target=target, arguments=arguments, type_arguments=type_arguments)
+    await transaction_execute(
         txb=txn,
         gas_budget=args.budget,
         use_gas_objects=[args.gas] if args.gas else None,
     )
 
 
-def sui_pay(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def sui_pay(client: PysuiClient, args: argparse.Namespace) -> None:
     """Payments for one or more recipients from one or more coins for one or more amounts."""
     for_owner: str = None
     if args.owner:
@@ -513,33 +474,32 @@ def sui_pay(client: SuiGQLClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn: SuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
     if len(args.input_coins) == len(args.mists) == len(args.recipients):
         for x in range(len(args.input_coins)):
-            i_coin = txn.split_coin(
+            i_coin = await txn.split_coin(
                 coin=args.input_coins[x], amounts=[int(args.mists[x])]
             )
-            txn.transfer_objects(transfers=i_coin, recipient=args.recipients[x])
+            await txn.transfer_objects(transfers=i_coin, recipient=args.recipients[x])
     else:
         print("Lengths of --input-coins, --amounts and --recipients must be equal.")
         return
-    transaction_execute(
+    await transaction_execute(
         txb=txn,
         gas_budget=args.budget,
         use_gas_objects=[args.gas] if args.gas else None,
     )
 
 
-def qgl_query(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def qgl_query(client: PysuiClient, args: argparse.Namespace) -> None:
     """Run a GQL Query."""
     target: Path = args.query_file
     try:
-        result = client.execute_query_string(string=target.read_text(encoding="utf8"))
+        result = await client.execute_query_string(string=target.read_text(encoding="utf8"))
         if result.is_ok():
             if args.json:
                 print(json.dumps(result.result_data, indent=2))
             elif args.pretty:
-                # pprint.pprint(result.result_data, indent=2, compact=False)
                 pprint.pprint(result.result_data)
             else:
                 print(result.result_data)
@@ -549,14 +509,14 @@ def qgl_query(client: SuiGQLClient, args: argparse.Namespace) -> None:
         print(exc.args)
 
 
-def dryrun_data(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def dryrun_data(client: PysuiClient, args: argparse.Namespace) -> None:
     """Dry run a transaction block's bytes."""
     handle_result(
-        client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=args.txb))
+        await client.execute_query_node(with_node=qn.DryRunTransaction(tx_bytestr=args.txb))
     )
 
 
-def dryrun_kind(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def dryrun_kind(client: PysuiClient, args: argparse.Namespace) -> None:
     """Dry run a transaction block's kind bytes."""
     options = {
         "sender": args.sender,
@@ -565,41 +525,38 @@ def dryrun_kind(client: SuiGQLClient, args: argparse.Namespace) -> None:
         "gasBudget": args.budget,
         "gasObjects": [x for x in args.gas_objects] if args.gas_objects else [],
     }
-
     handle_result(
-        client.execute_query_node(
+        await client.execute_query_node(
             with_node=qn.DryRunTransactionKind(tx_kind=args.txb, tx_meta=options)
         )
     )
 
 
-def execute_txn(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def execute_txn(client: PysuiClient, args: argparse.Namespace) -> None:
     """Execute a transaction block."""
     handle_result(
-        client.execute_query_node(
-            with_node=qn.ExecuteTransaction(
-                tx_bytestr=args.txb, sig_array=args.signatures
-            )
+        await client.execute_query_node(
+            with_node=qn.ExecuteTransaction(tx_bytestr=args.txb, sig_array=args.signatures)
         )
     )
 
 
-def txn_count(client: SuiGQLClient, _args: argparse.Namespace) -> None:
+async def txn_count(client: PysuiClient, _args: argparse.Namespace) -> None:
     """Transaction information request handler."""
-    result = client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
+    result = await client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
     if result.is_ok():
         print(f"\nTotal count: {result.result_data.networkTotalTransactions}")
     else:
         print(f"Error: {result.result_string}")
 
 
-def txn_txn(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def txn_txn(client: PysuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
-    result = client.execute_query_node(with_node=qn.GetTx(digest=args.digest))
+    result = await client.execute_query_node(with_node=qn.GetTx(digest=args.digest))
     handle_result(result)
 
 
-def alias_list(client: SuiGQLClient, args: argparse.Namespace) -> None:
+async def alias_list(client: PysuiClient, args: argparse.Namespace) -> None:
     """List address aliases."""
     print()
     for alias_obj in client.config.active_group.alias_list:
@@ -610,8 +567,8 @@ def alias_list(client: SuiGQLClient, args: argparse.Namespace) -> None:
         print(f"PublicKey:  {alias_obj.public_key_base64}\n")
 
 
-def alias_rename(client: SuiGQLClient, args: argparse.Namespace) -> None:
-    """List address aliases."""
+async def alias_rename(client: PysuiClient, args: argparse.Namespace) -> None:
+    """Rename an address alias."""
     print()
     try:
         client.config.address_for_alias(alias_name=args.existing)
@@ -619,7 +576,6 @@ def alias_rename(client: SuiGQLClient, args: argparse.Namespace) -> None:
         print(ve.args)
         return
     try:
-
         assoc_addy = client.config.rename_alias(
             existing_alias=args.existing, new_alias=args.to, persist=True
         )
@@ -635,7 +591,7 @@ SUI_CMD_DISPATCH = {
     "addresses": sui_addresses,
     "gas": sui_gas,
     "coins": address_coins,
-    "new-address": sui_new_address,  # TODO: Fix
+    "new-address": sui_new_address,
     "object": sui_object,
     "objects": sui_objects,
     "package": sui_package,

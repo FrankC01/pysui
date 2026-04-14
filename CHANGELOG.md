@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.0] - Unpublished
+
+### Added
+
+- Added `tests/test_deprecations.py` with 8 offline unit tests (no network required):
+  - `TransactionConstraints` backwards-compat re-export from `pgql_types.py` resolves to canonical `sui_common/sui_txn_types.py` location
+  - `PysuiClient` ABC enforcement: missing abstract methods raise `TypeError`; fully-implemented subclass instantiates correctly
+  - `DeprecationWarning` verified on `SuiConfig`, `SuiClient` sync/async (JSON-RPC), `SuiGQLClient` (sync GraphQL), and `SuiTransaction` (sync GraphQL)
+
+### Fixed
+
+### Changed
+
+- Migrated sample apps from direct client instantiation to `client_factory`:
+  - `samples/async_gasg.py`: `AsyncGqlClient(pysui_config=cfg)` → `client_factory(cfg)`; function signatures updated to `PysuiClient`
+  - `samples/smash.py`: same factory swap; `main_run` signature updated to `PysuiClient`
+  - `samples/splay.py`: same factory swap; all internal function signatures updated to `PysuiClient`
+  - `samples/mtobcs.py`: same factory swap
+  - `samples/sgqls.py`: `SyncGqlClient(write_schema=True)` replaced with `AsyncGqlClient(write_schema=True)`
+  - `samples/cmdsg.py`: all 22 command functions converted to `async def`; `SuiGQLClient` → `PysuiClient`, `SuiTransaction` → `AsyncSuiTransaction`; sync utility imports replaced with async equivalents (`async_get_all_owned_gas_objects`, `async_get_all_owned_objects`, `async_get_all_address_balances`); all `execute_query_node`, `execute_query_string`, and transaction builder calls awaited
+  - `samples/walletg.py`: `SyncGqlClient` replaced with `client_factory`; `main()` now delegates to `async def _run()` via `asyncio.run()`
+
+### Removed
+
+- `pgql_s_example.py`: removed synchronous GraphQL example script; superseded by async client via `client_factory`
+
 ## [0.98.0] - 2026-04-13
 
 ### Added

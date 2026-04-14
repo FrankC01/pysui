@@ -39,7 +39,7 @@ import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
-from pysui import PysuiConfiguration, AsyncGqlClient, __version__, SuiRpcResult
+from pysui import PysuiConfiguration, PysuiClient, client_factory, __version__, SuiRpcResult
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 from samples.cmd_argsg import build_splay_parser, pre_config_pull
 
@@ -50,7 +50,7 @@ def sdk_version():
 
 
 async def merge_for_gas(
-    client: AsyncGqlClient,
+    client: PysuiClient,
     merge_includes: Optional[str],
     merge_excludes: Optional[str],
     wait: Optional[bool] = False,
@@ -97,7 +97,7 @@ async def merge_for_gas(
 
 
 async def _process_txn(
-    client: AsyncGqlClient,
+    client: PysuiClient,
     txn: AsyncSuiTransaction,
     budget: int,
     gas_coin: Union[pgql_type.SuiCoinObjectGQL, pgql_type.SuiCoinObjectSummaryGQL],
@@ -145,7 +145,7 @@ async def _process_txn(
 
 
 async def splay_n_to_self(
-    client: AsyncGqlClient,
+    client: PysuiClient,
     mgas: asyncio.Task,
     explicit_count: int,
     budget: int,
@@ -197,7 +197,7 @@ async def splay_n_to_self(
 
 
 async def splay_n_to_others(
-    client: AsyncGqlClient,
+    client: PysuiClient,
     recipients: list[str],
     mgas: asyncio.Task,
     budget: int,
@@ -263,7 +263,7 @@ async def splay_n_to_others(
 
 def _reconcille_args(
     *,
-    client: AsyncGqlClient,
+    client: PysuiClient,
     budget: int,
     send_to: Optional[list[str]] = None,
     merge_only: Optional[str] = None,
@@ -314,7 +314,7 @@ def _reconcille_args(
 
 async def main_run(
     *,
-    client: AsyncGqlClient,
+    client: PysuiClient,
     budget: int,
     send_to: Optional[list[str]] = None,
     merge_only: Optional[str] = None,
@@ -357,7 +357,7 @@ def main():
     print(
         f"splaying coins for alias: {cfg.active_address_alias} with address: {cfg.active_address}"
     )
-    arpc = AsyncGqlClient(pysui_config=cfg)
+    arpc = client_factory(cfg)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:

@@ -26,7 +26,7 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.98.0**
+**Release-0.99.0**
 
 ## PyPi current
 
