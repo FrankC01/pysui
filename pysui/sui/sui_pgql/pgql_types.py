@@ -862,6 +862,10 @@ class DryRunResultGQL(PGQL_Type):
         return NoopGQL.from_query()
 
 
+#: Alias for DryRunResultGQL; use this with SimulateTransaction / SimulateTransactionKind.
+SimulateResultGQL = DryRunResultGQL
+
+
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ExecutionResultGQL(PGQL_Type):

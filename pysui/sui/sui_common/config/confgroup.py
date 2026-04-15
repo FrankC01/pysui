@@ -23,6 +23,12 @@ class GroupProtocol(IntEnum):
     OTHER = 3
 
 
+SUI_JSON_RPC_GROUP: str = "sui_json_config"
+SUI_GQL_RPC_GROUP: str = "sui_gql_config"
+SUI_GRPC_GROUP: str = "sui_grpc_config"
+SUI_USER_GROUP: str = "user"
+
+
 @dataclasses.dataclass
 class ProfileAlias(dataclasses_json.DataClassJsonMixin):
     """Holds alias for base64 public key."""
@@ -60,6 +66,12 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
     address_list: Optional[list[str]] = dataclasses.field(default_factory=list)
     profiles: Optional[list[Profile]] = dataclasses.field(default_factory=list)
     protocol: Optional[GroupProtocol] = GroupProtocol.OTHER
+
+    def __post_init__(self):
+        if self.group_name == SUI_GQL_RPC_GROUP:
+            self.protocol = GroupProtocol.GRAPHQL
+        elif self.group_name == SUI_GRPC_GROUP:
+            self.protocol = GroupProtocol.GRPC
 
     def _profile_exists(self, *, profile_name: str) -> Union[Profile, bool]:
         """Check if a profile, by name, exists."""

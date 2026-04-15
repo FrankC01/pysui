@@ -7,6 +7,7 @@
 
 from typing import Optional, Callable, Union
 import base64
+import warnings
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 from gql import gql, GraphQLRequest
 from gql.dsl import (
@@ -1791,6 +1792,11 @@ class DryRunTransactionKind(PGQL_QueryNode):
             gasSponsor: The Sui address string of the sponsor, defaults to the sender
         }
         """
+        warnings.warn(
+            "DryRunTransactionKind is deprecated; use SimulateTransactionKind instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         assert isinstance(tx_kind, TransactionKind)
         self.tx_data: TransactionKind = tx_kind
         self.transaction: sui_prot.Transaction = None
@@ -1894,6 +1900,11 @@ class DryRunTransaction(PGQL_QueryNode):
         :param tx_bytestr: Either the serialized bytes of a bcs TransactionData or base64 string of same
         :type tx_bytestr: bytes | str
         """
+        warnings.warn(
+            "DryRunTransaction is deprecated; use SimulateTransaction instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.tx_data = tx_bytestr
         transaction = (
             tx_bytestr
@@ -1944,6 +1955,196 @@ class DryRunTransaction(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization MovePackage."""
+        return pgql_type.DryRunResultGQL.from_query
+
+
+@versionadded(version="0.99.0", reason="Replaces deprecated DryRunTransactionKind.")
+class SimulateTransactionKind(PGQL_QueryNode):
+    """SimulateTransactionKind query node.
+
+    Simulates a transaction using a TransactionKind (programmable transaction), returning
+    execution effects without committing to the chain.
+    """
+
+    def __init__(
+        self,
+        *,
+        tx_kind: TransactionKind,
+        tx_meta: dict,
+        skip_checks: Optional[bool] = True,
+        do_gas_selection: Optional[bool] = False,
+    ) -> None:
+        """__init__ Initialize SimulateTransactionKind object.
+
+        :param tx_kind: The programmable TransactionKind BCS object
+        :type tx_kind: TransactionKind
+        :param tx_meta: Dict with at minimum ``sender`` (str Sui address). Optional keys:
+            ``epoch_expiration`` (int), ``gasPrice``, ``gasObjects``, ``gasBudget``, ``gasSponsor``
+        :type tx_meta: dict
+        :param skip_checks: Whether to skip transaction checks, defaults to True
+        :type skip_checks: Optional[bool]
+        :param do_gas_selection: Whether to perform gas selection, defaults to False
+        :type do_gas_selection: Optional[bool]
+        """
+        assert isinstance(tx_kind, TransactionKind)
+        self.tx_data: TransactionKind = tx_kind
+        self.transaction: sui_prot.Transaction = None
+        self.tx_meta = tx_meta
+        self.tx_skipchecks = skip_checks
+        self.tx_do_gas_selection = do_gas_selection
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+
+        prgrm_txn = self.tx_data.value
+        inputs: list[sui_prot.Input] = []
+        cmds: list[sui_prot.Command] = []
+        trx_exp = None
+        for input in prgrm_txn.Inputs:
+            if input.enum_name == "Pure":
+                inputs.append(
+                    sui_prot.Input(
+                        kind=sui_prot.InputInputKind.PURE, pure=bytes(input.value)
+                    )
+                )
+            elif input.enum_name == "Object":
+                oarg = input.value
+                inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
+            elif input.enum_name == "FundsWithdrawal":
+                inputs.append(input.value.to_grpc_input())
+
+        for cmd in prgrm_txn.Command:
+            cmds.append(cmd.value.to_grpc_command())
+        self.transaction = sui_prot.Transaction(
+            kind=sui_prot.TransactionKind(
+                programmable_transaction=sui_prot.ProgrammableTransaction(
+                    inputs=inputs, commands=cmds
+                )
+            ),
+            expiration=trx_exp,
+        )
+        if self.tx_meta and (is_sender := self.tx_meta.get("sender")):
+            self.transaction.sender = is_sender
+            if txn_expires_after := self.tx_meta.get("epoch_expiration"):
+                trx_exp = sui_prot.TransactionExpiration(
+                    kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
+                    epoch=txn_expires_after,
+                )
+                self.transaction.expiration = txn_expires_after
+        else:
+            raise ValueError("Requires 'sender' set in tx_meta dict")
+
+        base_obj = frag.BaseObject().fragment(schema)
+        standard_obj = frag.StandardObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
+        tx_effects = frag.StandardTxEffects().fragment(schema)
+
+        qres = (
+            schema.Query.simulateTransaction(
+                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
+                checksEnabled=self.tx_skipchecks,
+                doGasSelection=self.tx_do_gas_selection,
+            )
+            .alias("dryRun")
+            .select(
+                results=schema.SimulationResult.outputs.select(
+                    schema.CommandResult.returnValues.select(
+                        schema.CommandOutput.value.select(
+                            schema.MoveValue.type.select(schema.MoveType.repr),
+                            schema.MoveValue.bcs,
+                        ),
+                    )
+                ),
+                transactionBlock=schema.SimulationResult.effects.select(tx_effects),
+            )
+        )
+        return dsl_gql(
+            base_obj,
+            standard_obj,
+            gas_cost,
+            tx_effects,
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
+        """Return the serialization function."""
+        return pgql_type.DryRunResultGQL.from_query
+
+
+@versionadded(version="0.99.0", reason="Replaces deprecated DryRunTransaction.")
+class SimulateTransaction(PGQL_QueryNode):
+    """SimulateTransaction query node.
+
+    Simulates a fully serialized transaction (BCS bytes or base64 string), returning
+    execution effects without committing to the chain.
+    """
+
+    def __init__(
+        self,
+        *,
+        tx_bytestr: bytes | str,
+        skip_checks: Optional[bool] = True,
+        do_gas_selection: Optional[bool] = False,
+    ) -> None:
+        """__init__ Initialize the SimulateTransaction query.
+
+        :param tx_bytestr: Serialized BCS bytes of a TransactionData, or base64 string of same
+        :type tx_bytestr: bytes | str
+        :param skip_checks: Whether to skip transaction checks, defaults to True
+        :type skip_checks: Optional[bool]
+        :param do_gas_selection: Whether to perform gas selection, defaults to False
+        :type do_gas_selection: Optional[bool]
+        """
+        self.tx_data = tx_bytestr
+        transaction = (
+            tx_bytestr
+            if isinstance(tx_bytestr, bytes)
+            else base64.b64decode(tx_bytestr)
+        )
+        self.transaction = sui_prot.Transaction(
+            bcs=(sui_prot.Bcs(value=transaction, name="Transaction"))
+        )
+        self.tx_skipchecks = skip_checks
+        self.tx_do_gas_selection = do_gas_selection
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        base_obj = frag.BaseObject().fragment(schema)
+        standard_obj = frag.StandardObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
+        tx_effects = frag.StandardTxEffects().fragment(schema)
+
+        qres = (
+            schema.Query.simulateTransaction(
+                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
+                checksEnabled=self.tx_skipchecks,
+                doGasSelection=self.tx_do_gas_selection,
+            )
+            .alias("dryRun")
+            .select(
+                results=schema.SimulationResult.outputs.select(
+                    schema.CommandResult.returnValues.select(
+                        schema.CommandOutput.value.select(
+                            schema.MoveValue.type.select(schema.MoveType.repr),
+                            schema.MoveValue.bcs,
+                        ),
+                    )
+                ),
+                transactionBlock=schema.SimulationResult.effects.select(tx_effects),
+            )
+        )
+        return dsl_gql(
+            base_obj,
+            standard_obj,
+            gas_cost,
+            tx_effects,
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
+        """Return the serialization function."""
         return pgql_type.DryRunResultGQL.from_query
 
 

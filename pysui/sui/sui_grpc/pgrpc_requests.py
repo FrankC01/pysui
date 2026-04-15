@@ -822,8 +822,9 @@ class SimulateTransaction(absreq.PGRPC_Request):
         return stub.simulate_transaction, simtdata
 
 
-class SimulateTransactionLKind(absreq.PGRPC_Request):
-    """Simulates executnig a transaction block on the chain."""
+@versionadded(version="0.99.0", reason="Replaces deprecated SimulateTransactionLKind.")
+class SimulateTransactionKind(absreq.PGRPC_Request):
+    """Simulates executing a transaction block (from a TransactionKind) on the chain."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.SimulateTransactionResponse
 
@@ -837,7 +838,21 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
         txn_expires_after: Optional[int] = None,
         field_mask: Optional[list[str]] = None,
     ):
-        """."""
+        """__init__ Initialize SimulateTransactionKind request.
+
+        :param transaction: The programmable TransactionKind BCS object
+        :type transaction: TransactionKind
+        :param sender: Sui address of the transaction sender
+        :type sender: str
+        :param checks_enabled: Whether to enable transaction checks, defaults to True
+        :type checks_enabled: Optional[bool]
+        :param gas_selection: Whether to perform gas selection, defaults to True
+        :type gas_selection: Optional[bool]
+        :param txn_expires_after: Epoch after which transaction expires, defaults to None
+        :type txn_expires_after: Optional[int]
+        :param field_mask: Field mask for response filtering, defaults to ["*"]
+        :type field_mask: Optional[list[str]]
+        """
         super().__init__(absreq.Service.TRANSACTION)
         prgrm_txn = transaction.value
         inputs: list[sui_prot.Input] = []
@@ -872,7 +887,6 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
             expiration=trx_exp,
             sender=sender,
         )
-        # tx = sui_prot.Transaction.from_dict(self.transaction.to_dict())
         self.checks_enables = (
             sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
             if checks_enabled
@@ -886,14 +900,19 @@ class SimulateTransactionLKind(absreq.PGRPC_Request):
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
+        """."""
         req = sui_prot.SimulateTransactionRequest(
             transaction=self.transaction,
             checks=self.checks_enables,
             do_gas_selection=self.gas_selection,
             read_mask=self.field_mask,
         )
-        # print(req.to_json(indent=2))
         return stub.simulate_transaction, req
+
+
+@deprecated(version="0.99.0", reason="Use SimulateTransactionKind instead.")
+class SimulateTransactionLKind(SimulateTransactionKind):
+    """Deprecated: use SimulateTransactionKind."""
 
 
 # TODO: Test with Devnet
@@ -951,13 +970,22 @@ class GetPackage(absreq.PGRPC_Request):
         return stub.get_package, sui_prot.GetPackageRequest(package_id=self.package_id)
 
 
-class GetDataType(absreq.PGRPC_Request):
-    """Query a Move module's DataType by it's name."""
+@versionadded(version="0.99.0", reason="Replaces deprecated GetDataType.")
+class GetMoveDataType(absreq.PGRPC_Request):
+    """Query a Move module's DataType by its name."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetDatatypeResponse
 
     def __init__(self, *, package: str, module_name: str, type_name: str) -> None:
-        """Initializer."""
+        """__init__ Initialize GetMoveDataType request.
+
+        :param package: The package ID containing the data type
+        :type package: str
+        :param module_name: The module name containing the data type
+        :type module_name: str
+        :param type_name: The data type name
+        :type type_name: str
+        """
         super().__init__(absreq.Service.MOVEPACKAGE)
         self.package = package
         self.module_name = module_name
@@ -976,8 +1004,13 @@ class GetDataType(absreq.PGRPC_Request):
         )
 
 
-class GetStructure(GetDataType):
-    """Alias for GetDataType."""
+@deprecated(version="0.99.0", reason="Use GetMoveDataType instead.")
+class GetDataType(GetMoveDataType):
+    """Deprecated: use GetMoveDataType."""
+
+
+class GetStructure(GetMoveDataType):
+    """Convenience subclass of GetMoveDataType using structure_name parameter."""
 
     def __init__(self, *, package: str, module_name: str, structure_name: str):
         super().__init__(
@@ -1162,15 +1195,16 @@ class VerifySignature(absreq.PGRPC_Request):
         )
 
 
-class NameLookup(absreq.PGRPC_Request):
-    """Do a name lookup."""
+@versionadded(version="0.99.0", reason="Replaces deprecated NameLookup.")
+class GetNameServiceAddress(absreq.PGRPC_Request):
+    """Resolve a Sui name-service name to an address."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.LookupNameResponse
 
     def __init__(self, *, name: str | None = None):
-        """Name lookup constructor.
+        """GetNameServiceAddress constructor.
 
-        :param name: Name to find address for. Accepts '@name' or 'name.sui' forms, defaults to None
+        :param name: Name to resolve to an address. Accepts '@name' or 'name.sui' forms, defaults to None
         :type name: str | None, optional
         """
         super().__init__(absreq.Service.NAMESERVICE)
@@ -1185,16 +1219,22 @@ class NameLookup(absreq.PGRPC_Request):
         return stub.lookup_name, sui_prot.LookupNameRequest(name=self.name)
 
 
-class ReverseNameLookup(absreq.PGRPC_Request):
-    """Do a name lookup from address."""
+@deprecated(version="0.99.0", reason="Use GetNameServiceAddress instead.")
+class NameLookup(GetNameServiceAddress):
+    """Deprecated: use GetNameServiceAddress."""
+
+
+@versionadded(version="0.99.0", reason="Replaces deprecated ReverseNameLookup.")
+class GetNameServiceNames(absreq.PGRPC_Request):
+    """Resolve a Sui address to its name-service name(s)."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ReverseLookupNameResponse
 
     def __init__(self, *, address: str | None = None):
-        """Reverse Name lookup constructor.
+        """GetNameServiceNames constructor.
 
-        :param name: Address to find name for, defaults to None
-        :type name: str | None, optional
+        :param address: Address to resolve to a name, defaults to None
+        :type address: str | None, optional
         """
         super().__init__(absreq.Service.NAMESERVICE)
         self.address = address
@@ -1206,5 +1246,10 @@ class ReverseNameLookup(absreq.PGRPC_Request):
     ]:
         """."""
         return stub.reverse_lookup_name, sui_prot.ReverseLookupNameRequest(
-            address=self.name
+            address=self.address
         )
+
+
+@deprecated(version="0.99.0", reason="Use GetNameServiceNames instead.")
+class ReverseNameLookup(GetNameServiceNames):
+    """Deprecated: use GetNameServiceNames."""

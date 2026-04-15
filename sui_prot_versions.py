@@ -21,13 +21,14 @@ async def _protocol_version_for(profile_name: str):
             )
         )
         prtcl_cfg = await client.protocol()
+        if client:
+            client.close()
         return f"{profile_name} protocol version = {prtcl_cfg.transaction_constraints.protocol_version}"
     except ValueError as ve:
         ve_s = ve.args
         return f"{profile_name} protocol version = {ve_s[0]}"
     finally:
-        if client:
-            client.close()
+        pass
 
 
 async def main():

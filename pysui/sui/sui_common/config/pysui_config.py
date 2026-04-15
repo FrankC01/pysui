@@ -24,10 +24,10 @@ import pysui.sui.sui_common.config.confgroup as cfg_group
 class PysuiConfiguration:
     """pysui configuration class."""
 
-    SUI_JSON_RPC_GROUP: str = "sui_json_config"
-    SUI_GQL_RPC_GROUP: str = "sui_gql_config"
-    SUI_GRPC_GROUP: str = "sui_grpc_config"
-    SUI_USER_GROUP: str = "user"
+    SUI_JSON_RPC_GROUP: str = cfg_group.SUI_JSON_RPC_GROUP
+    SUI_GQL_RPC_GROUP: str = cfg_group.SUI_GQL_RPC_GROUP
+    SUI_GRPC_GROUP: str = cfg_group.SUI_GRPC_GROUP
+    SUI_USER_GROUP: str = cfg_group.SUI_USER_GROUP
 
     @versionchanged(
         version="0.86.0",
@@ -71,7 +71,9 @@ class PysuiConfiguration:
         )
         # Migrate if versions outdated.
         if self._model.version != _CURRENT_CONFIG_VERSION:
-            self._model.update_model(self.SUI_GQL_RPC_GROUP, self.SUI_GRPC_GROUP)
+            self._model.update_model(
+                cfg_group.SUI_GQL_RPC_GROUP, cfg_group.SUI_GRPC_GROUP
+            )
             self._model.version = _CURRENT_CONFIG_VERSION
             self.save()
 
@@ -302,10 +304,9 @@ class PysuiConfiguration:
         """Return the profiles in a group. Default to active group."""
         # If group specified and it's not the active
         if in_group and self._model.group_active != in_group:
-            # If  it exists and is not already the active group then set it
+            # If it exists, _group is set by the walrus; no state mutation needed
             if _group := self._model.has_group(group_name=in_group):
-                self._model.active_group = in_group
-                _changes = True
+                pass
             else:
                 raise ValueError(f"{in_group} does not exist")
         else:

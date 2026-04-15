@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `pysui/sui/sui_pgql/pgql_query.py`: added `SimulateTransactionKind` and `SimulateTransaction` query nodes (replacements for the dry-run equivalents); `DryRunTransactionKind` and `DryRunTransaction` now emit `DeprecationWarning` on construction pointing to the new names
+- `pysui/sui/sui_pgql/pgql_types.py`: added `SimulateResultGQL` as an alias for `DryRunResultGQL` for use with the new Simulate query nodes
+- `pysui/sui/sui_grpc/pgrpc_requests.py`: renamed gRPC request classes to match GQL naming conventions; old names are deprecated subclasses pointing to new names:
+  - `NameLookup` → `GetNameServiceAddress` (also fixed `to_request` bug: was passing `self.name` instead of `self.address`)
+  - `ReverseNameLookup` → `GetNameServiceNames`
+  - `SimulateTransactionLKind` → `SimulateTransactionKind`
+  - `GetDataType` → `GetMoveDataType`; `GetStructure` updated to subclass `GetMoveDataType` directly
+
+- `pysui/sui/sui_common/config/confgroup.py`: added module-level group-name constants (`SUI_GQL_RPC_GROUP`, `SUI_GRPC_GROUP`, `SUI_JSON_RPC_GROUP`, `SUI_USER_GROUP`) as single source of truth; added `ProfileGroup.__post_init__` to enforce correct `GroupProtocol` for the two well-known group names on construction and JSON deserialization
+- `pysui/sui/sui_common/config/pysui_config.py`: `PysuiConfiguration` class constants now delegate to `confgroup` constants (no string duplication); `profile_names(in_group=...)` no longer mutates `active_group` as a side effect
+- `pysui/sui/sui_common/config/confmodel.py`: removed dead methods `initialize_gql_rpc` and `initialize_json_rpc` (never called); removed unused `Path` and `load_client_yaml` imports
+- Added `tests/test_pysui_config.py` with 78 offline unit tests covering `ProfileGroup` and `PysuiConfiguration`: protocol assignment, address/alias/profile/keypair operations, `initialize_config`, `make_active`, group/profile management, persistence round-trips, and version migration
+
 - Migrated sample apps from direct client instantiation to `client_factory`:
   - `samples/async_gasg.py`: `AsyncGqlClient(pysui_config=cfg)` → `client_factory(cfg)`; function signatures updated to `PysuiClient`
   - `samples/smash.py`: same factory swap; `main_run` signature updated to `PysuiClient`

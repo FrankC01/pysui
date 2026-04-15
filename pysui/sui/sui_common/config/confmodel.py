@@ -7,13 +7,11 @@
 
 import dataclasses
 from typing import Optional, Union
-from pathlib import Path
 from deprecated.sphinx import versionchanged
 import dataclasses_json
 
 
 import pysui.sui.sui_common.config.confgroup as prfgrp
-from pysui.sui.sui_common.config.conflegacy import load_client_yaml
 
 _GQL_DEFAULTS: dict = {
     "devnet": "https://sui-devnet.mystenlabs.com/graphql",
@@ -90,84 +88,6 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
     def active_address(self) -> str:
         """Returns the active address from the active group."""
         return self.active_group.using_address
-
-    def initialize_json_rpc(
-        self,
-        *,
-        sui_config: Path,
-        sui_binary: Path,
-        json_rpc_group_name: str,
-    ) -> bool:
-        """Initialize group from sui configuration client.yaml."""
-        _updated = False
-        if sui_binary.exists() and not self.sui_binary:
-            self.sui_binary = f"{sui_binary}"
-            _updated = True
-        if sui_config.exists():
-            # If group doesn't exist, create it
-            if not self._group_exists(group_name=json_rpc_group_name):
-                sui_group = load_client_yaml(sui_config, json_rpc_group_name)
-                self.groups.append(sui_group)
-                self.version = _CURRENT_CONFIG_VERSION
-                _updated = True
-        return _updated
-
-    def initialize_gql_rpc(
-        self,
-        *,
-        sui_binary: Path,
-        gql_rpc_group_name: str,
-        json_rpc_group_name: str,
-    ) -> bool:
-        """Initialize GraphQL with defaults if not found."""
-        _updated = False
-        if sui_binary.exists() and not self.sui_binary:
-            self.sui_binary = f"{sui_binary}"
-            _updated = True
-
-        # If group doesn't exist, create it
-        _res = self._group_exists(group_name=gql_rpc_group_name)
-        if not _res:
-            # Get keys, aliases and addresses from rpc
-            self.version = _CURRENT_CONFIG_VERSION
-            _suigrp = self._group_exists(group_name=json_rpc_group_name)
-            if _suigrp:
-                if _suigrp.using_profile in list(_GQL_DEFAULTS.keys()):
-                    _using_profile = _suigrp.using_profile
-                else:
-                    _using_profile = "testnet"
-                self.groups.append(
-                    prfgrp.ProfileGroup(
-                        gql_rpc_group_name,
-                        _using_profile,
-                        _suigrp.using_address,
-                        _suigrp.alias_list.copy(),
-                        _suigrp.key_list.copy(),
-                        _suigrp.address_list.copy(),
-                        [prfgrp.Profile(k, v) for k, v in _GQL_DEFAULTS.items()],
-                    )
-                )
-            else:
-                _mnem, new_addy, prf_key, prf_alias = (
-                    prfgrp.ProfileGroup.new_keypair_parts(
-                        alias="Primary",
-                        alias_list=[],
-                    )
-                )
-                self.groups.append(
-                    prfgrp.ProfileGroup(
-                        gql_rpc_group_name,
-                        "testnet",
-                        new_addy,
-                        [prf_alias],
-                        [prf_key],
-                        [new_addy],
-                        [prfgrp.Profile(k, v) for k, v in _GQL_DEFAULTS.items()],
-                    )
-                )
-
-            _updated = True
-        return _updated
 
     def gql_version_fixup(
         self,
