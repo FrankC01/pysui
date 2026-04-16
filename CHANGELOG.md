@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.99.0] - Unpublished
 
+**BREAKING CHANGES**
+
+- `profile_names(in_group=...)` no longer mutates the active group as a side effect — callers relying on this behavior must call `make_active()` explicitly
+
 ### Added
 
+- Added 366 offline unit tests (no network required) across 8 files in `tests/unit_tests/`
 - Added `tests/test_deprecations.py` with 8 offline unit tests (no network required):
   - `TransactionConstraints` backwards-compat re-export from `pgql_types.py` resolves to canonical `sui_common/sui_txn_types.py` location
   - `PysuiClient` ABC enforcement: missing abstract methods raise `TypeError`; fully-implemented subclass instantiates correctly
@@ -20,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `pysui/sui/sui_pgql/pgql_query.py`: added `SimulateTransactionKind` and `SimulateTransaction` query nodes (replacements for the dry-run equivalents); `DryRunTransactionKind` and `DryRunTransaction` now emit `DeprecationWarning` on construction pointing to the new names
 - `pysui/sui/sui_pgql/pgql_types.py`: added `SimulateResultGQL` as an alias for `DryRunResultGQL` for use with the new Simulate query nodes
+- `pysui/sui/sui_pgql/pgql_query.py`: added `GetGas`, `GetEpoch`, and `GetPackageVersions` query nodes with matching result types in `pgql_types.py`
+- `pgql_a_example.py`: updated to use `GetGas`, `SimulateTransaction`, `SimulateTransactionKind`; added `do_epoch` and `do_package_versions` examples
 - `pysui/sui/sui_grpc/pgrpc_requests.py`: renamed gRPC request classes to match GQL naming conventions; old names are deprecated subclasses pointing to new names:
   - `NameLookup` → `GetNameServiceAddress` (also fixed `to_request` bug: was passing `self.name` instead of `self.address`)
   - `ReverseNameLookup` → `GetNameServiceNames`

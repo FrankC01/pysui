@@ -1286,6 +1286,67 @@ class ReferenceGasPriceGQL(PGQL_Type):
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
+class EpochGQL(PGQL_Type):
+    """Epoch data representation class."""
+
+    epoch_id: int
+    start_timestamp: str
+    end_timestamp: Optional[str] = None
+    reference_gas_price: Optional[str] = None
+    total_checkpoints: Optional[int] = None
+    total_transactions: Optional[int] = None
+    total_gas_fees: Optional[str] = None
+    total_stake_rewards: Optional[str] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "EpochGQL":
+        """Serializes query result to EpochGQL."""
+        if in_data:
+            in_data = in_data.pop("epoch", in_data)
+            if in_data:
+                return EpochGQL.from_dict(in_data)
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class PackageVersionGQL:
+    """Single package version entry."""
+
+    package_id: str
+    version: int
+    digest: Optional[str] = None
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class PackageVersionsGQL(PGQL_Type):
+    """Collection of package versions."""
+
+    versions: list[PackageVersionGQL]
+    next_cursor: Optional[PagingCursor] = None
+
+    @classmethod
+    def from_query(clz, in_data: dict) -> "PackageVersionsGQL":
+        """Serializes query result to PackageVersionsGQL."""
+        if in_data:
+            in_data = in_data.pop("packageVersions", in_data)
+            if in_data:
+                ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
+                versions: list[PackageVersionGQL] = [
+                    PackageVersionGQL(
+                        package_id=v["address"],
+                        version=v["version"],
+                        digest=v.get("digest"),
+                    )
+                    for v in in_data["versions"]
+                ]
+                return PackageVersionsGQL(versions=versions, next_cursor=ncurs)
+        return NoopGQL.from_query()
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
 class SystemStateSummaryGQL(PGQL_Type):
     """SuiSystemStateSummary representation class."""
 

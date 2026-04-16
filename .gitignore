@@ -8,6 +8,7 @@ memory
 pysuienv
 env
 .env
+.claude
 .python-version
 
 # Compiled code

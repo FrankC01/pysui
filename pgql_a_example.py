@@ -74,7 +74,7 @@ async def do_gas(client: AsyncGqlClient):
     """Fetch 0x2::sui::SUI (default) for owner."""
     result = handle_result(
         await client.execute_query_node(
-            with_node=qn.GetCoins(owner=client.config.active_address)
+            with_node=qn.GetGas(owner=client.config.active_address)
         )
     )
     if result.is_ok():
@@ -551,8 +551,27 @@ async def do_package(client: AsyncGqlClient):
         print(result.result_data.to_json(indent=2))
 
 
+async def do_epoch(client: AsyncGqlClient):
+    """Fetch current epoch info (omit epoch_id for current, or pass an int for a specific epoch)."""
+    handle_result(
+        await client.execute_query_node(with_node=qn.GetEpoch())
+    )
+
+
+async def do_package_versions(client: AsyncGqlClient):
+    """Fetch all versions of a Move package.
+
+    Change package_address to the storage address of any version of the target package.
+    """
+    handle_result(
+        await client.execute_query_node(
+            with_node=qn.GetPackageVersions(package_address="0x2")
+        )
+    )
+
+
 async def do_dry_run(client: AsyncGqlClient):
-    """Execute a dry run."""
+    """Execute a simulate (dry run)."""
 
     txer: AsyncSuiTransaction = client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
@@ -561,20 +580,20 @@ async def do_dry_run(client: AsyncGqlClient):
 
     handle_result(
         await client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=tx_data.serialize())
+            with_node=qn.SimulateTransaction(tx_bytestr=tx_data.serialize())
         )
     )
 
 
 async def do_dry_run_txkind(txer: AsyncSuiTransaction):
-    """Execute a dry run with just the TransactionKind."""
+    """Execute a simulate (dry run) with just the TransactionKind."""
 
-    dry_run = qn.DryRunTransactionKind(
+    sim = qn.SimulateTransactionKind(
         tx_kind=txer.raw_kind(),
         tx_meta={"sender": txer.client.config.active_address},
     )
 
-    handle_result(await txer.client.execute_query_node(with_node=dry_run))
+    handle_result(await txer.client.execute_query_node(with_node=sim))
 
 
 async def inspect_example(client: AsyncGqlClient):
@@ -637,10 +656,10 @@ async def do_stake(client: AsyncGqlClient):
         coins=[stake_coin_split],
         validator_address=vaddress,
     )
-    # Uncomment to dry run
+    # Uncomment to simulate (dry run)
     handle_result(
         await client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
+            with_node=qn.SimulateTransaction(tx_bytestr=await txer.build())
         )
     )
     # Uncomment to execute the stake
@@ -665,10 +684,10 @@ async def do_unstake(client: AsyncGqlClient):
         await txer.unstake_coin(
             staked_coin=result.result_data.staked_coins[0].object_id
         )
-        # Uncomment to dry run
+        # Uncomment to simulate (dry run)
         handle_result(
             await client.execute_query_node(
-                with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
+                with_node=qn.SimulateTransaction(tx_bytestr=await txer.build())
             )
         )
 
@@ -696,10 +715,10 @@ async def do_sui_coin_to_account(client: AsyncGqlClient):
         type_arguments=["0x2::sui::SUI"],
         arguments=[scres, client.config.active_address],
     )
-    # Uncomment to dry run
+    # Uncomment to simulate (dry run)
     handle_result(
         await client.execute_query_node(
-            with_node=qn.DryRunTransaction(tx_bytestr=await txer.build())
+            with_node=qn.SimulateTransaction(tx_bytestr=await txer.build())
         )
     )
     # Uncomment to Execute
@@ -746,7 +765,7 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
 
         handle_result(
             await client.execute_query_node(
-                with_node=qn.DryRunTransactionKind(
+                with_node=qn.SimulateTransactionKind(
                     tx_kind=txer.raw_kind(),
                     tx_meta={"sender": client.config.active_address},
                     do_gas_selection=True,
@@ -808,6 +827,8 @@ async def main():
         # await do_sequence_cp(client_init)
 
         # await do_checkpoints(client_init)
+        # await do_epoch(client_init)
+        # await do_package_versions(client_init)
         # await do_owned_nameservice(client_init)
         # await do_all_validators(client_init)
         # await do_validators(client_init)

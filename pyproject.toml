@@ -1,7 +1,7 @@
 # pyproject.toml
 [tool.pytest.ini_options]
-testpaths = ["tests", "tests/sync_tests", "tests/integration_sync"]
-pythonpath = ["pysui", "abstracts", "sui", "sui/sui_types"]
+testpaths = ["tests/unit_tests", "tests/integration_tests"]
+pythonpath = ["pysui", "abstracts", "sui", "sui/sui_types", "tests/unit_tests"]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel","setuptools-scm>=8.0"]

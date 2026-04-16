@@ -322,6 +322,33 @@ class GetCoins(PGQL_QueryNode):
         return pgql_type.SuiCoinObjectsGQL.from_query
 
 
+@versionadded(version="0.99.0", reason="Convenience alias for GetCoins with SUI coin type.")
+class GetGas(GetCoins):
+    """GetGas Returns all SUI gas coin objects owned by an address.
+
+    Convenience subclass of GetCoins with coin_type fixed to ``0x2::coin::Coin<0x2::sui::SUI>``.
+    """
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ) -> None:
+        """__init__ Initialize GetGas object.
+
+        :param owner: Owner's Sui address
+        :type owner: str
+        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
+        :type next_page: pgql_type.PagingCursor
+        """
+        super().__init__(
+            owner=owner,
+            coin_type="0x2::coin::Coin<0x2::sui::SUI>",
+            next_page=next_page,
+        )
+
+
 class GetLatestSuiSystemState(PGQL_QueryNode):
     """GetLatestSuiSystemState return the latest known SUI system state."""
 
@@ -1190,6 +1217,41 @@ class GetBasicCurrentEpochInfo(PGQL_QueryNode):
         return pgql_type.BasicCurrentEpochInfoGQL.from_query
 
 
+@versionadded(version="0.99.0", reason="Full epoch query by ID or current epoch.")
+class GetEpoch(PGQL_QueryNode):
+    """GetEpoch Returns epoch information by epoch ID, or the current epoch if no ID is given."""
+
+    def __init__(self, *, epoch_id: Optional[int] = None) -> None:
+        """__init__ Initialize GetEpoch object.
+
+        :param epoch_id: The epoch sequence number to fetch; omit or pass None for the current epoch
+        :type epoch_id: Optional[int]
+        """
+        self.epoch_id = epoch_id
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        qres = schema.Query.epoch
+        if self.epoch_id is not None:
+            qres(epochId=self.epoch_id)
+        qres.select(
+            schema.Epoch.epochId,
+            schema.Epoch.startTimestamp,
+            schema.Epoch.endTimestamp,
+            schema.Epoch.referenceGasPrice,
+            schema.Epoch.totalCheckpoints,
+            schema.Epoch.totalTransactions,
+            schema.Epoch.totalGasFees,
+            schema.Epoch.totalStakeRewards,
+        )
+        return dsl_gql(DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.EpochGQL], None]:
+        """Return the serialization function for EpochGQL."""
+        return pgql_type.EpochGQL.from_query
+
+
 class GetLatestCheckpointSequence(PGQL_QueryNode):
     """GetLatestCheckpointSequence return the sequence number of the latest checkpoint that has been executed."""
 
@@ -1753,6 +1815,53 @@ class GetPackage(PGQL_QueryNode):
     def encode_fn() -> Union[Callable[[dict], pgql_type.MovePackageGQL], None]:
         """Return the serialization MovePackage."""
         return pgql_type.MovePackageGQL.from_query
+
+
+@versionadded(version="0.99.0", reason="List all versions of a Move package by address.")
+class GetPackageVersions(PGQL_QueryNode):
+    """GetPackageVersions Returns all versions of a Move package sharing the same original ID."""
+
+    def __init__(
+        self,
+        *,
+        package_address: str,
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ) -> None:
+        """__init__ Initialize GetPackageVersions object.
+
+        :param package_address: The storage address of any version of the package
+        :type package_address: str
+        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
+        :type next_page: pgql_type.PagingCursor
+        """
+        self.package_address = package_address
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
+        pg_cursor = frag.PageCursor()
+        qres = schema.Query.packageVersions(address=self.package_address)
+        if self.next_page:
+            qres(after=self.next_page.endCursor)
+        qres.select(
+            cursor=schema.MovePackageConnection.pageInfo.select(
+                pg_cursor.fragment(schema)
+            ),
+            versions=schema.MovePackageConnection.nodes.select(
+                schema.MovePackage.address,
+                schema.MovePackage.version,
+                schema.MovePackage.digest,
+            ),
+        )
+        return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Union[Callable[[dict], pgql_type.PackageVersionsGQL], None]:
+        """Return the serialization function for PackageVersionsGQL."""
+        return pgql_type.PackageVersionsGQL.from_query
 
 
 @versionchanged(
