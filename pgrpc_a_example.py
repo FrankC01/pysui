@@ -641,7 +641,7 @@ async def do_account_to_sui_coin(client: SuiGrpcClient):
                     f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.balance.address_balance}"
                 )
         # Enable the transaction to use account for gas payments.
-        txer: AsyncSuiTransaction = await client.transaction(use_account_for_gas=True)
+        txer: AsyncSuiTransaction = await client.transaction()
         coin = await txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
         await txer.transfer_objects(
             transfers=[coin], recipient=client.config.active_address
@@ -663,7 +663,7 @@ async def do_account_to_sui_coin(client: SuiGrpcClient):
 
         # Uncomment to Execute using the new build and signing method
 
-        # txdict = await txer.build_sign_with_account_gas()
+        # txdict = await txer.build_and_sign(use_account_for_gas=True)
         # handle_result(await client.execute(request=rn.ExecuteTransaction(**txdict)))
 
 

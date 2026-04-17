@@ -21,7 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `pysui/sui/sui_common/config/pysui_config.py`: corrected `faucet_url` property typo (`faucet_urls` → `faucet_url`)
+
 ### Changed
+
+- Gas selection re-architecture: shared `txb_gas.py` with `compute_gas_budget` (TS SDK formula, overhead + rebate) and `coins_for_budget` (merge support, 256-coin cap)
+- `DryRunTransactionKind` → `SimulateTransactionKind` in all async GQL and gRPC gas paths
+- `merge_gas_budget` now correctly wired through to coin selection (was silently ignored)
+- `use_account_for_gas` moved from transaction constructor to build-time parameter on `build()`, `build_and_sign()`, `transaction_data()`
+- PTB inspection (`_inspect_ptb_for_gas_coin`) routes UC7 (address balance) vs hybrid; tracks `gas_source_draw` for `SplitCoin(GasCoin)` commands
+- Added 28 offline unit tests for gas module; 6 live-network integration tests
 
 - `pysui/sui/sui_pgql/pgql_query.py`: added `SimulateTransactionKind` and `SimulateTransaction` query nodes (replacements for the dry-run equivalents); `DryRunTransactionKind` and `DryRunTransaction` now emit `DeprecationWarning` on construction pointing to the new names
 - `pysui/sui/sui_pgql/pgql_types.py`: added `SimulateResultGQL` as an alias for `DryRunResultGQL` for use with the new Simulate query nodes

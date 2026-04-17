@@ -165,7 +165,6 @@ class _TransactionBase:
         arg_parser: Optional[Any] = None,
         txn_constraints: Optional[TransactionConstraints] = None,
         gas_price: Optional[int] = None,
-        use_account_for_gas: Optional[bool] = False,
     ):
         """."""
         self.builder = builder or tx_builder.ProgrammableTransactionBuilder(
@@ -175,7 +174,6 @@ class _TransactionBase:
         self.client = client
         self.constraints = txn_constraints
         self._current_gas_price = gas_price
-        self.use_account_for_gas = use_account_for_gas
 
     @property
     def gas(self) -> bcs.Argument:
@@ -215,7 +213,6 @@ class _SuiTransactionBase(_TransactionBase):
         merge_gas_budget: Optional[bool] = False,
         txn_constraints: Optional[TransactionConstraints] = None,
         gas_price: Optional[int] = None,
-        use_account_for_gas: Optional[bool] = False,
     ) -> None:
         """__init__ Initialize transaction base.
 
@@ -237,8 +234,6 @@ class _SuiTransactionBase(_TransactionBase):
         :type txn_constraints: Optional[TransactionConstraints], optional
         :param gas_price: set gas price, defaults to None
         :type gas_price: Optional[int], optional
-        :param use_account_for_gas: Enable using address account balance for gas, defaults to False
-        :type use_account_for_gas: Optional[bool], optional
         """
         super().__init__(
             client=client,
@@ -248,7 +243,6 @@ class _SuiTransactionBase(_TransactionBase):
             txn_constraints=txn_constraints
             or client.protocol().transaction_constraints,
             gas_price=gas_price or client.current_gas_price,
-            use_account_for_gas=use_account_for_gas,
         )
         self._sig_block = SignerBlock(
             sender=initial_sender or client.config.active_address,
@@ -261,6 +255,71 @@ class _SuiTransactionBase(_TransactionBase):
     def signer_block(self) -> SignerBlock:
         """Returns the signers block."""
         return self._sig_block
+
+    def _inspect_ptb_for_gas_coin(self) -> tuple[bool, int]:
+        """Inspect builder commands for GasCoin usage and accumulate gas-source draw.
+
+        :return: (uses_gas_coin, gas_source_draw) where uses_gas_coin is True if any
+            argument in any command references Argument::GasCoin, and gas_source_draw
+            is the sum of pure-int amounts from SplitCoin(GasCoin, ...) commands.
+        :rtype: tuple[bool, int]
+        """
+        _log = logging.getLogger(__name__)
+        uses_gas_coin = False
+        gas_source_draw = 0
+        inputs_list = list(self.builder.inputs.values())
+
+        for cmd in self.builder.commands:
+            cmd_name = cmd.enum_name
+            cmd_val = cmd.value
+
+            if cmd_name == "SplitCoin":
+                if cmd_val.FromCoin.enum_name == "GasCoin":
+                    uses_gas_coin = True
+                    for amount_arg in cmd_val.Amount:
+                        if amount_arg.enum_name == "Input":
+                            idx = amount_arg.value
+                            if idx < len(inputs_list):
+                                call_arg = inputs_list[idx]
+                                if call_arg.enum_name == "Pure":
+                                    raw = bytes(call_arg.value)
+                                    gas_source_draw += int.from_bytes(raw, "little")
+                                else:
+                                    _log.warning(
+                                        "Non-pure input in SplitCoin(GasCoin): "
+                                        "gas-source draw not tracked for this amount"
+                                    )
+                        else:
+                            _log.warning(
+                                "Dynamic amount in SplitCoin(GasCoin): "
+                                "gas-source draw not tracked for this amount"
+                            )
+                else:
+                    for amount_arg in cmd_val.Amount:
+                        if amount_arg.enum_name == "GasCoin":
+                            uses_gas_coin = True
+            elif cmd_name == "MergeCoins":
+                if cmd_val.ToCoin.enum_name == "GasCoin":
+                    uses_gas_coin = True
+                for from_coin in cmd_val.FromCoins:
+                    if from_coin.enum_name == "GasCoin":
+                        uses_gas_coin = True
+            elif cmd_name == "TransferObjects":
+                for obj in cmd_val.Objects:
+                    if obj.enum_name == "GasCoin":
+                        uses_gas_coin = True
+                if cmd_val.Address.enum_name == "GasCoin":
+                    uses_gas_coin = True
+            elif cmd_name == "MoveCall":
+                for arg in cmd_val.Arguments:
+                    if arg.enum_name == "GasCoin":
+                        uses_gas_coin = True
+            elif cmd_name == "MakeMoveVec":
+                for item in cmd_val.Vector:
+                    if item.enum_name == "GasCoin":
+                        uses_gas_coin = True
+
+        return uses_gas_coin, gas_source_draw
 
     @classmethod
     def digest_from_bytes(cls, transaction_data_bytes: bytes) -> str:

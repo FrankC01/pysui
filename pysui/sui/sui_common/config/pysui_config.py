@@ -265,7 +265,7 @@ class PysuiConfiguration:
     @property
     def faucet_url(self) -> str:
         """Returns the active groups active profile faucet url."""
-        return self.active_group.active_profile.faucet_urls
+        return self.active_group.active_profile.faucet_url
 
     @property
     def faucet_status_url(self) -> str:

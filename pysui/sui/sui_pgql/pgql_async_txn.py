@@ -18,6 +18,7 @@ from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txb_pure import PureInput
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
+from pysui.sui.sui_common.txb_gas import compute_gas_budget
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
@@ -45,8 +46,6 @@ class AsyncSuiTransaction(txbase):
         :type compress_inputs: bool,optional
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
-        :param use_account_for_gas: Enable using address account balance for gas, defaults to False
-        :type use_account_for_gas: Optional[bool], optional
         """
         frame = inspect.currentframe()
         try:
@@ -104,69 +103,54 @@ class AsyncSuiTransaction(txbase):
         """Returns the argument summary of a target sui move function."""
         return await self._function_meta_args(target)
 
-    @versionadded(version="0.97.0", reason="Support Mysten gas from account balance.")
-    async def _build_txn_data_with_account_gas(
+    async def _build_txn_data_address_balance(
         self,
-        min_epoch_expiration: Optional[int] = None,
         gas_budget: Optional[int] = None,
-    ) -> Union[bcs.TransactionData, ValueError]:
-        """_build_txn_data_with_account_gas build the TransactionData with using account balance.
+        txn_expires_after: Optional[int] = None,
+    ) -> bcs.TransactionData:
+        """Build TransactionData using address account balance for gas (UC7 — pure address balance).
 
-        If `gas_budget` is not provided, a dry run with execute to determine budget.
-
-        :param min_epoch_expiration: Minimal epoch number to set expiration for transaction for transaction budget, defaults to current epoch
-        :type min_epoch_expiration: Optional[int], optional
-        :param gas_budget: The amount for transaction budget, defaults to None
+        :param gas_budget: Budget override; simulated if not provided, defaults to None
         :type gas_budget: Optional[int], optional
-        :return: _description_
-        :rtype: Union[bcs.TransactionData, ValueError]
+        :param txn_expires_after: Epoch ID for expiration start; defaults to current epoch
+        :type txn_expires_after: Optional[int], optional
+        :return: TransactionData with empty payment and ValidDuring expiration
+        :rtype: bcs.TransactionData
         """
-        _tcons = self.client.rpc_config().protocolConfigs.transaction_constraints
-        if not _tcons.enable_address_balance_gas_payments:
-            raise ValueError("Network does not yet support ")
-        if not self.use_account_for_gas:
-            raise ValueError("transaction not set to `use_account_for_gas")
-
         _res = await self.client.execute_query_node(
             with_node=qn.GetBasicCurrentEpochInfo()
         )
         if _res.is_ok():
             _cei: pgql_type.BasicCurrentEpochInfoGQL = _res.result_data
-            min_epoch_expiration = min_epoch_expiration or _cei.epoch_id
+            min_epoch = txn_expires_after or _cei.epoch_id
             tx_kind = self.builder.finish_for_inspect()
             chain_id = self.client.chain_id()
             pay_addy = self.signer_block.payer_address
-            # Check if empty, if it is we need to dry_run to get budget
-            if not gas_budget:
+            if gas_budget is None:
                 _res = await self.client.execute_query_node(
-                    with_node=qn.DryRunTransactionKind(
+                    with_node=qn.SimulateTransactionKind(
                         tx_kind=tx_kind,
                         tx_meta={"sender": pay_addy},
                         do_gas_selection=True,
                     )
                 )
                 if _res.is_ok():
-                    c_cost: int = int(
-                        _res.result_data.transaction_block.gas_effects["gasSummary"][
-                            "computationCost"
-                        ]
+                    summary = _res.result_data.transaction_block.gas_effects[
+                        "gasSummary"
+                    ]
+                    gas_budget = compute_gas_budget(
+                        int(summary["computationCost"]),
+                        int(summary["storageCost"]),
+                        int(summary.get("storageRebate", 0)),
+                        _cei.reference_gas_price,
                     )
-                    s_cost: int = int(
-                        _res.result_data.transaction_block.gas_effects["gasSummary"][
-                            "storageCost"
-                        ]
-                    )
-                    g_budget = c_cost + s_cost
                 else:
                     raise ValueError(_res.result_string)
-            else:
-                g_budget = gas_budget
-
             gas_data = bcs.GasData(
                 [],
                 bcs.Address.from_str(pay_addy),
                 _cei.reference_gas_price,
-                g_budget,
+                gas_budget,
             )
             return bcs.TransactionData(
                 "V1",
@@ -175,100 +159,54 @@ class AsyncSuiTransaction(txbase):
                     bcs.Address.from_str(self.signer_block.sender_str),
                     gas_data,
                     bcs.TransactionExpiration.gen_valid_during_expiration(
-                        min_epoch_expiration, min_epoch_expiration + 1, chain_id
+                        min_epoch, min_epoch + 1, chain_id
                     ),
                 ),
             )
         raise ValueError(_res.result_string)
 
-    async def transaction_data_with_account_gas(
-        self,
-        *,
-        min_epoch_expiration: Optional[int] = None,
-        gas_budget: Optional[int] = None,
-    ) -> bcs.TransactionData:
-        """transaction_data_with_account_gas Constructs a BCS TransactionData object.
-
-        If gas_budget not provided, pysui will call DryRunTransactionBlock to calculate.
-
-        :param min_epoch_expiration: Specify the transaction expiration epoch ID, defaults to None
-        :type min_epoch_expiration: Optional[int],optional
-        :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
-        :type gas_budget: Optional[str], optional
-        :return: The TransactionData BCS structure
-        :rtype: bcs.TransactionData
-        """
-        return await self._build_txn_data_with_account_gas(
-            min_epoch_expiration, gas_budget
-        )
-
-    async def build_with_account_gas(
-        self,
-        *,
-        min_epoch_expiration: Optional[int] = None,
-        gas_budget: Optional[int] = None,
-    ) -> str:
-        """build Creats the BCS TransactionData using account balance for gas, serialize to base64 string and return.
-
-        :param min_epoch_expiration: Minimal epoch number to set expiration for transaction for transaction budget, defaults to current epoch
-        :type min_epoch_expiration: Optional[int], optional
-        :param gas_budget: Sets the budget, defaults to None
-        :type gas_budget: Optional[int], optional
-        :return: Base64 encoded transaction bytes
-        :rtype: str
-        """
-        txn_data = await self.transaction_data_with_account_gas(
-            min_epoch_expiration=min_epoch_expiration, gas_budget=gas_budget
-        )
-        return base64.b64encode(txn_data.serialize()).decode()
-
-    async def build_sign_with_account_gas(
-        self,
-        *,
-        min_epoch_expiration: Optional[int] = None,
-        gas_budget: Optional[int] = None,
-    ) -> dict:
-        """build_sign_with_account_gas Leverages account balance, vs gas coins, to pay for transaction.
-
-        If `gas_budget` not set, a dry run with execute to determine budget
-
-        :param min_epoch_expiration: Minimal epoch number to set expiration for transaction for transaction budget, defaults to current epoch
-        :type min_epoch_expiration: Optional[int], optional
-        :param gas_budget: Sets the budget, defaults to None
-        :type gas_budget: Optional[int], optional
-        :return: Dict of
-            {
-                "tx_bytestr": base64 encoded transaction bytes,
-                "sig_array": array of base64 encoded signature bytes
-
-            }
-        :rtype: dict[str, str]
-        """
-        tx_bytes = await self.build_with_account_gas(
-            min_epoch_expiration=min_epoch_expiration, gas_budget=gas_budget
-        )
-        sigs = self.signer_block.get_signatures(
-            config=self.client.config, tx_bytes=tx_bytes
-        )
-        return {self._BUILD_BYTE_STR: tx_bytes, self._SIG_ARRAY: sigs}
-
     async def _build_txn_data(
         self,
-        gas_budget: str = "",
+        gas_budget: Optional[int] = None,
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
         txn_expires_after: Optional[int] = None,
-    ) -> Union[bcs.TransactionData, ValueError]:
-        """Generate the TransactionData structure."""
+        use_account_for_gas: bool = False,
+    ) -> bcs.TransactionData:
+        """Generate the TransactionData structure.
+
+        Routes to pure address balance (UC7) or standard coin selection based on
+        use_account_for_gas and PTB GasCoin inspection results.
+        """
+        # Backward compatibility: accept str gas_budget from callers not yet updated
+        if isinstance(gas_budget, str):
+            gas_budget = int(gas_budget) if gas_budget else None
+
+        # Inspect PTB for GasCoin usage (routing) and gas-source draw (budget inflation)
+        uses_gas_coin, gas_source_draw = self._inspect_ptb_for_gas_coin()
+
+        if use_account_for_gas:
+            if uses_gas_coin:
+                raise ValueError(
+                    "Hybrid gas payment (txer.gas + address balance) not yet "
+                    "implemented — use coin-only gas payment"
+                )
+            return await self._build_txn_data_address_balance(
+                gas_budget, txn_expires_after
+            )
+
+        # Standard coin path
         obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
         gas_data: bcs.GasData = await gd.async_get_gas_data(
             signing=self.signer_block,
             client=self.client,
-            budget=gas_budget if not gas_budget else int(gas_budget),
+            budget=gas_budget,
             use_coins=use_gas_objects,
             objects_in_use=obj_in_use,
             active_gas_price=self.gas_price,
             tx_kind=tx_kind,
+            merge_gas=self._merge_gas,
+            gas_source_draw=gas_source_draw,
         )
         return bcs.TransactionData(
             "V1",
@@ -287,45 +225,51 @@ class AsyncSuiTransaction(txbase):
     async def transaction_data(
         self,
         *,
-        gas_budget: Optional[str] = None,
+        gas_budget: Optional[int] = None,
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
         txn_expires_after: Optional[int] = None,
+        use_account_for_gas: bool = False,
     ) -> bcs.TransactionData:
         """transaction_data Construct a BCS TransactionData object.
 
-        If gas_budget not provided, pysui will call DryRunTransactionBlock to calculate.
+        If gas_budget not provided, pysui will simulate the transaction to calculate it.
 
         If use_gas_objects not used, pysui will determine which gas objects to use to
         pay for the transaction.
 
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
-        :type gas_budget: Optional[str], optional
+        :type gas_budget: Optional[int], optional
         :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
         :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
         :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
         :type txn_expires_after: Optional[int],optional
+        :param use_account_for_gas: Pay gas from address account balance, defaults to False
+        :type use_account_for_gas: bool, optional
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
         return await self._build_txn_data(
-            gas_budget, use_gas_objects, txn_expires_after
+            gas_budget, use_gas_objects, txn_expires_after, use_account_for_gas
         )
 
     async def build(
         self,
         *,
-        gas_budget: Optional[str] = None,
+        gas_budget: Optional[int] = None,
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
         txn_expires_after: Optional[int] = None,
+        use_account_for_gas: bool = False,
     ) -> str:
         """build After creating the BCS TransactionData, serialize to base64 string and return.
 
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
-        :type gas_budget: Optional[str], optional
+        :type gas_budget: Optional[int], optional
         :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
         :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
         :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
         :type txn_expires_after: Optional[int],optional
+        :param use_account_for_gas: Pay gas from address account balance, defaults to False
+        :type use_account_for_gas: bool, optional
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
@@ -333,6 +277,7 @@ class AsyncSuiTransaction(txbase):
             gas_budget=gas_budget,
             use_gas_objects=use_gas_objects,
             txn_expires_after=txn_expires_after,
+            use_account_for_gas=use_account_for_gas,
         )
         return base64.b64encode(txn_data.serialize()).decode()
 
@@ -340,18 +285,21 @@ class AsyncSuiTransaction(txbase):
     async def build_and_sign(
         self,
         *,
-        gas_budget: Optional[str] = None,
+        gas_budget: Optional[int] = None,
         use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]] = None,
         txn_expires_after: Optional[int] = None,
+        use_account_for_gas: bool = False,
     ) -> dict:
         """build After creating the BCS TransactionKind, serialize to base64 string, create signatures and return.
 
         :param gas_budget: Specify the amount of gas for the transaction budget, defaults to None
-        :type gas_budget: Optional[str], optional
+        :type gas_budget: Optional[int], optional
         :param use_gas_objects: Specify gas object(s) (by ID or SuiCoinObjectGQL), defaults to None
         :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
         :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
         :type txn_expires_after: Optional[int],optional
+        :param use_account_for_gas: Pay gas from address account balance, defaults to False
+        :type use_account_for_gas: bool, optional
         :return: Dict of
             {
                 "tx_bytestr": base64 encoded transaction bytes,
@@ -364,6 +312,7 @@ class AsyncSuiTransaction(txbase):
             gas_budget=gas_budget,
             use_gas_objects=use_gas_objects,
             txn_expires_after=txn_expires_after,
+            use_account_for_gas=use_account_for_gas,
         )
         tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
         sigs = self.signer_block.get_signatures(
