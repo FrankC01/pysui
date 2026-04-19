@@ -74,9 +74,10 @@ class ValidateAlias(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
+        option_string: str | None = None,
     ) -> None:
         """Validate."""
+        assert isinstance(values, str)
         vlen: int = len(values)
         if SUI_MIN_ALIAS_LEN <= vlen <= SUI_MAX_ALIAS_LEN:
             setattr(namespace, self.dest, values)
@@ -84,7 +85,6 @@ class ValidateAlias(argparse.Action):
             parser.error(
                 f"Invalid alias string length, must be betwee {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
             )
-            sys.exit(-1)
 
 
 class ValidateAddress(argparse.Action):
@@ -95,18 +95,17 @@ class ValidateAddress(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
+        option_string: str | None = None,
     ) -> None:
         """Validate."""
         if isinstance(values, list):
             for va in values:
                 if not valid_sui_address(va):
                     parser.error(f"'{values}' contains invlaid Sui address.")
-                    sys.exit(-1)
         else:
+            assert isinstance(values, str)
             if not valid_sui_address(values):
                 parser.error(f"'{values}' is not a valid Sui address.")
-                sys.exit(-1)
         setattr(namespace, self.dest, values)
 
 
@@ -118,18 +117,17 @@ class ValidateObjectID(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
+        option_string: str | None = None,
     ) -> None:
         """Validate."""
         if isinstance(values, list):
             for va in values:
                 if not valid_sui_address(va):
                     parser.error(f"'{values}' contains invlaid Sui object id format.")
-                    sys.exit(-1)
         else:
+            assert isinstance(values, str)
             if not valid_sui_address(values):
                 parser.error(f"'{values}' is not a valid Sui object id format.")
-                sys.exit(-1)
         setattr(namespace, self.dest, values)
 
 
@@ -141,9 +139,10 @@ class ValidatePackageDir(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
+        option_string: str | None = None,
     ) -> None:
         """Validate."""
+        assert isinstance(values, str)
         ppath = Path(values)
         if not ppath.exists():
             parser.error(f"{str(ppath)} does not exist.")
@@ -158,9 +157,10 @@ class ValidateFile(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
+        option_string: str | None = None,
     ) -> None:
         """Validate."""
+        assert isinstance(values, str)
         ppath = Path(values)
         if not ppath.exists():
             parser.error(f"{str(ppath)} does not exist.")
@@ -177,9 +177,10 @@ class ValidateScrOrDir(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
+        option_string: str | None = None,
     ) -> None:
         """Validate."""
+        assert isinstance(values, str)
         if values and values == "con":
             setattr(namespace, self.dest, values)
         else:
@@ -199,9 +200,10 @@ class ValidatePositive(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
+        option_string: str | None = None,
     ) -> None:
         """Validate."""
+        assert isinstance(values, str)
         try:
             ivalue = int(values)
             if ivalue >= 0:
@@ -220,13 +222,14 @@ class ValidateB64(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values: str | Sequence[Any] | None,
-        option_string: str | None = ...,
+        option_string: str | None = None,
     ) -> None:
         """Validate."""
         try:
             if isinstance(values, list):
-                res = [base64.b64decode(x, validate=True) for x in values]
+                res: list[bytes] | bytes = [base64.b64decode(x, validate=True) for x in values]
             else:
+                assert isinstance(values, str)
                 res = base64.b64decode(values, validate=True)
             setattr(namespace, self.dest, values)
         except binascii.Error as bae:

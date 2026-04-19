@@ -227,7 +227,7 @@ class CommandInputFactory:
     def inputs_from_list(cls, input_data: list) -> list[Any]:
         """Iterate through list and resolve inputs."""
         if input_data:
-            results = []
+            results: list[Any] = []
             for element in input_data:
                 key, value = element.popitem()
                 match key:
@@ -265,15 +265,15 @@ class CallArgFactory:
                     case "Object":
                         okey, ovalue = value.popitem()
                         ovalue["ref_type"] = okey
-                        results.append(SuiObjectCallArg.from_dict(ovalue))
+                        results.append(SuiObjectCallArg.from_dict(ovalue))  # type: ignore[attr-defined]
                     case "Pure":
                         faux_pure: dict = {}
                         faux_pure["pure_bytes"] = value["bytes"]
-                        results.append(SuiPureCallArg.from_dict(faux_pure))
+                        results.append(SuiPureCallArg.from_dict(faux_pure))  # type: ignore[attr-defined]
                     case "UnresolvedObject":
-                        results.append(SuiUnresolvedObjectCallArg.from_dict(value))
+                        results.append(SuiUnresolvedObjectCallArg.from_dict(value))  # type: ignore[attr-defined]
                     case "UnresolvedPure":
-                        results.append(SuiUnresolvedPureCallArg.from_dict(value))
+                        results.append(SuiUnresolvedPureCallArg.from_dict(value))  # type: ignore[attr-defined]
             return results
         return []
 
@@ -290,21 +290,21 @@ class CommandFactory:
                 key, value = arg.popitem()
                 match key:
                     case "MoveCall":
-                        results.append(SuiMoveCall.from_dict(value))
+                        results.append(SuiMoveCall.from_dict(value))  # type: ignore[attr-defined]
                     case "SplitCoins":
-                        results.append(SuiSplitCoins.from_dict(value))
+                        results.append(SuiSplitCoins.from_dict(value))  # type: ignore[attr-defined]
                     case "MergeCoins":
-                        results.append(SuiMergeCoins.from_dict(value))
+                        results.append(SuiMergeCoins.from_dict(value))  # type: ignore[attr-defined]
                     case "TransferObjects":
-                        results.append(SuiTransferObjects.from_dict(value))
+                        results.append(SuiTransferObjects.from_dict(value))  # type: ignore[attr-defined]
                     case "MakeMoveVec":
-                        results.append(SuiMakeMoveVec.from_dict(value))
+                        results.append(SuiMakeMoveVec.from_dict(value))  # type: ignore[attr-defined]
                     case "Publish":
-                        results.append(SuiPublish.from_dict(value))
+                        results.append(SuiPublish.from_dict(value))  # type: ignore[attr-defined]
                     case "Upgrade":
-                        results.append(SuiUpgrade.from_dict(value))
+                        results.append(SuiUpgrade.from_dict(value))  # type: ignore[attr-defined]
                     case "$Intent":
-                        results.append(SuiIntent.from_dict(value))
+                        results.append(SuiIntent.from_dict(value))  # type: ignore[attr-defined]
             return results
         return inputs
 
@@ -368,4 +368,4 @@ class SuiBuilder:
 
 def deserialize_from_wallet_standard(*, wallet_json: str) -> SuiBuilder:
     """Deserialize from the Sui Wallet Transaction Standard to dataclasses."""
-    return SuiBuilder.from_json(wallet_json)
+    return SuiBuilder.from_json(wallet_json)  # type: ignore[attr-defined]

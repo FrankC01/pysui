@@ -317,7 +317,7 @@ class GetMultipleObjectContent(GetMultipleObjects):
         super().__init__(object_ids=objects, field_mask=["object_id", "bcs"])
         self.as_bytes = as_bytes
 
-    def render(self, objs: sui_prot.BatchGetObjectsResponse) -> list[sui_prot.Bcs]:
+    def render(self, objs: sui_prot.BatchGetObjectsResponse) -> "ObjectsContentBCS":
         obj_content: list[ObjectContentBCS] = []
         for obj in objs.objects:
             bcs_res = (
@@ -1086,7 +1086,7 @@ class GetFunctions(GetPackage):
         super().__init__(package=package)
         self.module_name = module_name
 
-    def render(self, package: sui_prot.GetPackageResponse) -> MoveStructuresGRPC:
+    def render(self, package: sui_prot.GetPackageResponse) -> "MoveFunctionsGRPC":
         result = list(
             filter(lambda x: x.name == self.module_name, package.package.modules)
         )

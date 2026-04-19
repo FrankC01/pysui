@@ -72,7 +72,7 @@ def _bytes_converter(
     scalar_class: cint.IntType,
     in_optional: bool,
     bytes_arg: bytes,
-) -> list[bytes]:
+) -> list[int]:
     """Convert bytes to vector of type driven by scalar class."""
     bcount = scalar_class.byte_lens
     bitr = iter(bytes_arg)
@@ -182,7 +182,7 @@ class AsyncResolvingArgParser:
                         ),
                     )
                 if in_optional or expected_type.optional:
-                    return _OPTIONAL_SCALARS_BCS.get(expected_type.scalar_type)
+                    return _OPTIONAL_SCALARS_BCS.get(expected_type.scalar_type)  # type: ignore[return-value]
                 else:
                     return (
                         _SCALARS.get(expected_type.scalar_type),
@@ -286,7 +286,7 @@ class AsyncResolvingArgParser:
         return arg
 
     async def _list_arg_builder(
-        self, in_meta: any, convert_args: list, arg: list
+        self, in_meta: Any, convert_args: list, arg: list
     ) -> list:
         """."""
         res_list = []
@@ -390,7 +390,7 @@ class AsyncResolvingArgParser:
         arg: Any,
         in_optional: bool = False,
         in_vector: bool = False,
-    ) -> Union[None, tuple[Any, Any]]:
+    ) -> Union[None, tuple[Any, Any], list]:
         """Argument validation and process dispatching function."""
         if isinstance(arg, bcs.Argument):
             return None
@@ -399,7 +399,7 @@ class AsyncResolvingArgParser:
             return self._scalar_argument(expected_type, arg, in_optional, in_vector)
         if isinstance(expected_type, pgql_type.MoveWitnessArg):
             # print("WitnessArg")
-            return await self._object_argument(expected_type, arg, in_optional)
+            return await self._object_argument(expected_type, arg, in_optional)  # type: ignore[arg-type]
         elif isinstance(expected_type, pgql_type.MoveObjectRefArg):
             # print("ObjectRef")
             return await self._object_argument(expected_type, arg, in_optional)
@@ -447,10 +447,10 @@ class AsyncResolvingArgParser:
             in_args=in_args,
             out_args=[None] * arglen,
             func_args=meta_args.arg_list,
-            convert_args=[None] * arglen,
+            convert_args=[None] * arglen,  # type: ignore[list-item]
         )
         for aindex in range(arglen):
-            track.convert_args[aindex] = await self._argument_validate(
+            track.convert_args[aindex] = await self._argument_validate(  # type: ignore[assignment]
                 track.func_args[aindex], track.in_args[aindex]
             )
         return track

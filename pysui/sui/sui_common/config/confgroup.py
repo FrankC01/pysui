@@ -63,9 +63,9 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
     using_address: str
     alias_list: list[ProfileAlias]
     key_list: list[ProfileKey]
-    address_list: Optional[list[str]] = dataclasses.field(default_factory=list)
-    profiles: Optional[list[Profile]] = dataclasses.field(default_factory=list)
-    protocol: Optional[GroupProtocol] = GroupProtocol.OTHER
+    address_list: list[str] = dataclasses.field(default_factory=list)
+    profiles: list[Profile] = dataclasses.field(default_factory=list)
+    protocol: GroupProtocol = GroupProtocol.OTHER
 
     def __post_init__(self):
         if self.group_name == SUI_GQL_RPC_GROUP:
@@ -73,27 +73,31 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         elif self.group_name == SUI_GRPC_GROUP:
             self.protocol = GroupProtocol.GRPC
 
-    def _profile_exists(self, *, profile_name: str) -> Union[Profile, bool]:
+    def _profile_exists(self, *, profile_name: str) -> Optional[Profile]:
         """Check if a profile, by name, exists."""
         return next(
-            filter(lambda prf: prf.profile_name == profile_name, self.profiles), False
+            (prf for prf in self.profiles if prf.profile_name == profile_name), None
         )
 
-    def _alias_exists(self, *, alias_name: str) -> Union[ProfileAlias, bool]:
+    def _alias_exists(self, *, alias_name: str) -> Optional[ProfileAlias]:
         """Check if an alias, by name, exists."""
         return next(
-            filter(lambda ally: ally.alias == alias_name, self.alias_list), False
+            (ally for ally in self.alias_list if ally.alias == alias_name), None
         )
 
-    def _address_exists(self, *, address: str) -> Union[str, bool]:
+    def _address_exists(self, *, address: str) -> Optional[str]:
         """Check if address is valid."""
-        return next(filter(lambda addy: addy == address, self.address_list), False)
+        return next((addy for addy in self.address_list if addy == address), None)
 
-    def _key_exists(self, *, key_string: str) -> Union[ProfileKey, bool]:
+    def _key_exists(self, *, key_string: str) -> Optional[ProfileKey]:
         """Check if key string exists."""
         return next(
-            filter(lambda pkey: pkey.private_key_base64 == key_string, self.key_list),
-            False,
+            (
+                pkey
+                for pkey in self.key_list
+                if pkey.private_key_base64 == key_string
+            ),
+            None,
         )
 
     @property
@@ -102,11 +106,10 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         return self.using_address
 
     @active_address.setter
-    def active_address(self, change_to: str) -> str:
+    def active_address(self, change_to: str) -> None:
         """Set the using address to change_to."""
         _ = self.address_list.index(change_to)
         self.using_address = change_to
-        return change_to
 
     @property
     def active_alias(self) -> str:
@@ -115,14 +118,13 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         return self.alias_list[adex].alias
 
     @active_alias.setter
-    def active_alias(self, change_to: str) -> str:
+    def active_alias(self, change_to: str) -> None:
         """Change the alias that is active."""
-        # Find the index of the change_to alias
         _res = self._alias_exists(alias_name=change_to)
         if _res:
             aliindx = self.alias_list.index(_res)
             self.using_address = self.address_list[aliindx]
-            return _res.alias
+            return
         raise ValueError(f"Alias {change_to} not found in group")
 
     @property
@@ -131,11 +133,9 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         return self.protocol
 
     @group_protocol.setter
-    def group_protocol(self, new_protocol: GroupProtocol) -> GroupProtocol:
-        """Change the group protocol and return old."""
-        old_protocol = self.protocol
+    def group_protocol(self, new_protocol: GroupProtocol) -> None:
+        """Change the group protocol."""
         self.protocol = new_protocol
-        return old_protocol
 
     def address_for_alias(self, *, alias: str) -> str:
         """Get address associated with alias."""
@@ -182,13 +182,12 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         raise ValueError(f"Profile {self.using_profile} not found in group")
 
     @active_profile.setter
-    def active_profile(self, change_to: str) -> Profile:
+    def active_profile(self, change_to: str) -> None:
         """Set the using Profile to change_to."""
-        # Validate it exists
         _res = self._profile_exists(profile_name=change_to)
         if _res:
             self.using_profile = change_to
-            return _res
+            return
         raise ValueError(f"{change_to} profile does not exist")
 
     @property
@@ -216,9 +215,9 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
     def _alias_check_or_gen(
         *,
         aliases: Optional[list[str]] = None,
-        word_counts: Optional[int] = 12,
+        word_counts: int = 12,
         alias: Optional[str] = None,
-        current_iter: Optional[int] = 0,
+        current_iter: int = 0,
     ) -> str:
         """_alias_check_or_gen If alias is provided, checks if unique otherwise creates one or more.
 
@@ -263,7 +262,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
                         current_iter=current_iter + 1,
                     )
         else:
-            if alias in aliases:
+            if aliases and alias in aliases:
                 raise ValueError(f"Alias {alias} already exists.")
             if not (SUI_MIN_ALIAS_LEN <= len(alias) <= SUI_MAX_ALIAS_LEN):
                 raise ValueError(
@@ -308,7 +307,9 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         # ProfileAlias Entry
         if not alias:
             alias = ProfileGroup._alias_check_or_gen(
-                aliases=alias_list, alias=alias, word_counts=word_counts
+                aliases=alias_list,  # type: ignore[arg-type]
+                alias=alias,
+                word_counts=word_counts or 12,
             )
 
         _new_alias = ProfileAlias(

@@ -37,7 +37,7 @@ class PysuiConfiguration:
         self,
         *,
         group_name: Optional[str] = None,
-        from_cfg_path: str = None,
+        from_cfg_path: Optional[str] = None,
         profile_name: Optional[str] = None,
         address: Optional[str] = None,
         alias: Optional[str] = None,
@@ -263,17 +263,17 @@ class PysuiConfiguration:
         return self.active_group.active_profile.url
 
     @property
-    def faucet_url(self) -> str:
+    def faucet_url(self) -> Optional[str]:
         """Returns the active groups active profile faucet url."""
         return self.active_group.active_profile.faucet_url
 
     @property
-    def faucet_status_url(self) -> str:
+    def faucet_status_url(self) -> Optional[str]:
         """Returns the active groups active profile faucet status url."""
         return self.active_group.active_profile.faucet_status_url
 
-    @versionchanged(version="0.86.0", reason="Name change to be semantically correct")
     @property
+    @versionchanged(version="0.86.0", reason="Name change to be semantically correct")
     def config_actives(self) -> str:
         """Return configuration breadcrumb path."""
         _group = self.active_group
@@ -305,7 +305,7 @@ class PysuiConfiguration:
         # If group specified and it's not the active
         if in_group and self._model.group_active != in_group:
             # If it exists, _group is set by the walrus; no state mutation needed
-            if _group := self._model.has_group(group_name=in_group):
+            if _group := self._model._group_exists(group_name=in_group):
                 pass
             else:
                 raise ValueError(f"{in_group} does not exist")
@@ -330,7 +330,7 @@ class PysuiConfiguration:
         # If group specified and it's not the active
         if group_name and self._model.group_active != group_name:
             # If  it exists and is not already the active group then set it
-            if _group := self._model.has_group(group_name=group_name):
+            if _group := self._model._group_exists(group_name=group_name):
                 self._model.active_group = group_name
                 _changes = True
             else:
@@ -409,7 +409,7 @@ class PysuiConfiguration:
             group=cfg_group.ProfileGroup(
                 group_name, "", "", [], [], [], [], group_protocol
             ),
-            make_active=make_group_active,
+            make_active=bool(make_group_active),
         )
         if make_group_active and (self.active_group.group_name != group_name):
             self.model.remove_group(group_name=group_name)
@@ -431,7 +431,7 @@ class PysuiConfiguration:
         # Add profile block
         if profile_block:
             for pblock in profile_block:
-                self.new_profile(in_group=group_name, persist=False, **pblock)
+                self.new_profile(in_group=group_name, persist=False, **pblock)  # type: ignore[arg-type]
             if len(self.model.get_group(group_name=group_name).profiles) != len(
                 profile_block
             ):
@@ -580,7 +580,7 @@ class PysuiConfiguration:
         )
         _group.add_profile(
             new_prf=cfg_group.Profile(profile_name, url, faucet_url, faucet_status_url),
-            make_active=make_active,
+            make_active=bool(make_active),
         )
         if persist:
             self._write_model()

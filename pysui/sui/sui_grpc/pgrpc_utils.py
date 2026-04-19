@@ -53,7 +53,7 @@ async def async_cursored_collector(
     :return: A list of results
     :rtype: list
     """
-    collection = list = []
+    collection: list = []
     result = await client.execute(request=pfn())  # type: ignore
     while True:
         if result.is_ok():
@@ -207,6 +207,7 @@ def _normalize_object_type(
         arg.reference.name if arg.reference else pgql_types.RefType.NO_REF  # type: ignore
     )
 
+    result: pgql_types.MoveObjectRefArg | pgql_types.MoveScalarArg
     if package_module in ["object", "address", "string"] and package_struct in [
         "ID",
         "UID",

@@ -93,7 +93,7 @@ class GetAddressCoinBalance(PGQL_QueryNode):
             }           
         """
         _QUERY = _QUERY.replace("OWNER", self.owner).replace(
-            "COIN_TYPE", self.coin_type
+            "COIN_TYPE", self.coin_type or ""
         )
         return gql(_QUERY)
 
@@ -449,10 +449,10 @@ class GetObject(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Callable[[dict], pgql_type.ObjectReadGQL]:
         """Return the serializer to ObjectReadGQL function."""
-        return pgql_type.ObjectReadGQL.from_query
+        return pgql_type.ObjectReadGQL.from_query  # type: ignore[return-value]
 
 
-class GetObjectsForType(PGQL_QueryNode):
+class GetObjectsForType(PGQL_QueryNode):  # type: ignore[no-redef]  # duplicate name; stub at line 245 is dead code — see backlog
     """GetObjectsForType Returnns all objects of a specific type."""
 
     def __init__(
@@ -577,7 +577,7 @@ class GetMultipleObjectContent(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Callable[[dict], pgql_type.ObjectsContentBCS]:
         """Return the serializer to ObjectsContentBCS function."""
-        return pgql_type.ObjectsContentBCS.from_query
+        return pgql_type.ObjectsContentBCS.from_query  # type: ignore[return-value]
 
 
 class GetObjectsOwnedByAddress(PGQL_QueryNode):
@@ -666,7 +666,7 @@ class GetMultipleGasObjects(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Callable[[dict], pgql_type.SuiCoinFromObjectsGQL]:
         """Return the serializer to SuiCoinFromObjectsGQL function."""
-        return pgql_type.SuiCoinFromObjectsGQL.from_query
+        return pgql_type.SuiCoinFromObjectsGQL.from_query  # type: ignore[return-value]
 
 
 @versionchanged(version="0.91.0", reason="Paging no longer supported")
@@ -742,7 +742,7 @@ class GetPastObject(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Callable[[dict], pgql_type.ObjectReadGQL]:
         """Return the serializer to ObjectReadGQL function."""
-        return pgql_type.ObjectReadGQL.from_query
+        return pgql_type.ObjectReadGQL.from_query  # type: ignore[return-value]
 
 
 @versionadded(version="0.76.0", reason="Sui 1.40.0 introduced")
@@ -868,7 +868,7 @@ class GetDynamicFields(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Callable[[dict], pgql_type.DynamicFieldsGQL]:
         """Return the serializer to DynamicFieldsGQL function."""
-        return pgql_type.DynamicFieldsGQL.from_query
+        return pgql_type.DynamicFieldsGQL.from_query  # type: ignore[return-value]
 
 
 @versionchanged(version="0.91.0", reason="Event filter parms changed in GraphQL Beta")
@@ -979,7 +979,7 @@ class GetTx(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionResultGQL], None]:
         """Return the serializer to TransactionResultGQL function."""
-        return pgql_type.TransactionResultGQL.from_query
+        return pgql_type.TransactionResultGQL.from_query  # type: ignore[return-value]
 
 
 class GetMultipleTx(PGQL_QueryNode):
@@ -1145,7 +1145,7 @@ class GetTxKind(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionKindGQL], None]:
         """Return the serializer to TransactionKindGQL function."""
-        return pgql_type.TransactionKindGQL.from_query
+        return pgql_type.TransactionKindGQL.from_query  # type: ignore[return-value]
 
 
 class GetDelegatedStakes(PGQL_QueryNode):
@@ -1187,7 +1187,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.SuiStakedCoinsGQL], None]:
         """Return the serializer to SuiStakedCoinsGQL function."""
-        return pgql_type.SuiStakedCoinsGQL.from_query
+        return pgql_type.SuiStakedCoinsGQL.from_query  # type: ignore[return-value]
 
 
 class GetBasicCurrentEpochInfo(PGQL_QueryNode):
@@ -1214,7 +1214,7 @@ class GetBasicCurrentEpochInfo(PGQL_QueryNode):
         Union[Callable[[dict], pgql_type.BasicCurrentEpochInfoGQL], None]
     ):
         """Return the serializer to SuiStakedCoinsGQL function."""
-        return pgql_type.BasicCurrentEpochInfoGQL.from_query
+        return pgql_type.BasicCurrentEpochInfoGQL.from_query  # type: ignore[return-value]
 
 
 @versionadded(version="0.99.0", reason="Full epoch query by ID or current epoch.")
@@ -1249,7 +1249,7 @@ class GetEpoch(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.EpochGQL], None]:
         """Return the serialization function for EpochGQL."""
-        return pgql_type.EpochGQL.from_query
+        return pgql_type.EpochGQL.from_query  # type: ignore[return-value]
 
 
 class GetLatestCheckpointSequence(PGQL_QueryNode):
@@ -1535,7 +1535,7 @@ class GetStructure(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveDataTypeGQL], None]:
         """Return the serialization function for MoveDataType."""
-        return pgql_type.MoveDataTypeGQL.from_query
+        return pgql_type.MoveDataTypeGQL.from_query  # type: ignore[return-value]
 
 
 class GetMoveDataType(PGQL_QueryNode):
@@ -1581,7 +1581,7 @@ class GetMoveDataType(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveDataTypeGQL], None]:
         """Return the serialization function for MoveDataType."""
-        return pgql_type.MoveDataTypeGQL.from_query
+        return pgql_type.MoveDataTypeGQL.from_query  # type: ignore[return-value]
 
 
 class GetStructures(PGQL_QueryNode):
@@ -1634,7 +1634,7 @@ class GetStructures(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveStructuresGQL], None]:
         """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.MoveStructuresGQL.from_query
+        return pgql_type.MoveStructuresGQL.from_query  # type: ignore[return-value]
 
 
 class GetFunction(PGQL_QueryNode):
@@ -1670,7 +1670,7 @@ class GetFunction(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveFunctionGQL], None]:
         """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.MoveFunctionGQL.from_query
+        return pgql_type.MoveFunctionGQL.from_query  # type: ignore[return-value]
 
 
 class GetFunctions(PGQL_QueryNode):
@@ -1722,7 +1722,7 @@ class GetFunctions(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveFunctionsGQL], None]:
         """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.MoveFunctionsGQL.from_query
+        return pgql_type.MoveFunctionsGQL.from_query  # type: ignore[return-value]
 
 
 class GetModule(PGQL_QueryNode):
@@ -1765,7 +1765,7 @@ class GetModule(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MoveModuleGQL], None]:
         """Return the serialization MoveModule."""
-        return pgql_type.MoveModuleGQL.from_query
+        return pgql_type.MoveModuleGQL.from_query  # type: ignore[return-value]
 
 
 class GetPackage(PGQL_QueryNode):
@@ -1814,7 +1814,7 @@ class GetPackage(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.MovePackageGQL], None]:
         """Return the serialization MovePackage."""
-        return pgql_type.MovePackageGQL.from_query
+        return pgql_type.MovePackageGQL.from_query  # type: ignore[return-value]
 
 
 @versionadded(version="0.99.0", reason="List all versions of a Move package by address.")
@@ -1861,7 +1861,7 @@ class GetPackageVersions(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.PackageVersionsGQL], None]:
         """Return the serialization function for PackageVersionsGQL."""
-        return pgql_type.PackageVersionsGQL.from_query
+        return pgql_type.PackageVersionsGQL.from_query  # type: ignore[return-value]
 
 
 @versionchanged(
@@ -1990,7 +1990,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization MovePackage."""
-        return pgql_type.DryRunResultGQL.from_query
+        return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
 
 
 @versionchanged(version="0.95.0", reason="Enabled `skip_checks` and `do_gas_selection")
@@ -2064,7 +2064,7 @@ class DryRunTransaction(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization MovePackage."""
-        return pgql_type.DryRunResultGQL.from_query
+        return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
 
 
 @versionadded(version="0.99.0", reason="Replaces deprecated DryRunTransactionKind.")
@@ -2178,7 +2178,7 @@ class SimulateTransactionKind(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization function."""
-        return pgql_type.DryRunResultGQL.from_query
+        return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
 
 
 @versionadded(version="0.99.0", reason="Replaces deprecated DryRunTransaction.")
@@ -2254,7 +2254,7 @@ class SimulateTransaction(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization function."""
-        return pgql_type.DryRunResultGQL.from_query
+        return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
 
 
 class ExecuteTransaction(PGQL_QueryNode):
@@ -2295,4 +2295,4 @@ class ExecuteTransaction(PGQL_QueryNode):
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.ExecutionResultGQL], None]:
         """Return the serialization Execution result function."""
-        return pgql_type.ExecutionResultGQL.from_query
+        return pgql_type.ExecutionResultGQL.from_query  # type: ignore[return-value]

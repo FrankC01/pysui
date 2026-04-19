@@ -6,7 +6,7 @@
 """Sui Configuration Model."""
 
 import dataclasses
-from typing import Optional, Union
+from typing import Optional
 from deprecated.sphinx import versionchanged
 import dataclasses_json
 
@@ -27,22 +27,22 @@ _CURRENT_CONFIG_VERSION: str = "1.1.0"
 class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
     """pysui configuration in memory model."""
 
-    version: Optional[str] = dataclasses.field(default="")
-    sui_binary: Optional[str] = dataclasses.field(default="")
-    group_active: Optional[str] = dataclasses.field(default="")
-    groups: Optional[list[prfgrp.ProfileGroup]] = dataclasses.field(
-        default_factory=list
-    )
+    version: str = dataclasses.field(default="")
+    sui_binary: str = dataclasses.field(default="")
+    group_active: str = dataclasses.field(default="")
+    groups: list[prfgrp.ProfileGroup] = dataclasses.field(default_factory=list)
 
-    def _group_exists(self, *, group_name: str) -> Union[prfgrp.ProfileGroup, bool]:
+    def _group_exists(
+        self, *, group_name: str
+    ) -> Optional[prfgrp.ProfileGroup]:
         """Check if a group, by name, exists."""
         return next(
-            filter(lambda grp: grp.group_name == group_name, self.groups), False
+            (grp for grp in self.groups if grp.group_name == group_name), None
         )
 
     def has_group(self, *, group_name: str) -> bool:
         """Test for group existence."""
-        return self._group_exists(group_name=group_name)
+        return bool(self._group_exists(group_name=group_name))
 
     def get_group(self, *, group_name: str) -> prfgrp.ProfileGroup:
         """Get a group or throw exception if doesn't exist."""
@@ -76,12 +76,12 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         raise ValueError("No active group set")
 
     @active_group.setter
-    def active_group(self, group_str: str) -> prfgrp.ProfileGroup:
+    def active_group(self, group_str: str) -> None:
         """Sets the active group."""
         _res = self._group_exists(group_name=group_str)
         if _res:
             self.group_active = group_str
-            return _res
+            return
         raise ValueError(f"{group_str} does not exist")
 
     @property

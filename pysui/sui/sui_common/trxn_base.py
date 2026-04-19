@@ -11,7 +11,7 @@ import hashlib
 import os
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 import logging
 
 import base58
@@ -57,7 +57,7 @@ class _TransactionBase:
             pgql_type.MoveObjectRefArg(
                 pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
             ),
-            pgql_type.MoveListArg(
+            pgql_type.MoveListArg(  # type: ignore[list-item]
                 pgql_type.RefType.NO_REF,
                 pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
             ),
@@ -70,7 +70,7 @@ class _TransactionBase:
             pgql_type.MoveObjectRefArg(
                 pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
             ),
-            pgql_type.MoveListArg(
+            pgql_type.MoveListArg(  # type: ignore[list-item]
                 pgql_type.RefType.NO_REF,
                 pgql_type.MoveObjectRefArg(
                     pgql_type.RefType.MUT_REF,
@@ -90,7 +90,7 @@ class _TransactionBase:
         [],
         [
             pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
-            pgql_type.MoveListArg(
+            pgql_type.MoveListArg(  # type: ignore[list-item]
                 pgql_type.RefType.NO_REF,
                 pgql_type.MoveObjectRefArg(
                     pgql_type.RefType.MUT_REF,
@@ -168,7 +168,7 @@ class _TransactionBase:
     ):
         """."""
         self.builder = builder or tx_builder.ProgrammableTransactionBuilder(
-            compress_inputs=compress_inputs
+            compress_inputs=compress_inputs if compress_inputs is not None else True
         )
         self._argparse = arg_parser
         self.client = client
@@ -181,7 +181,7 @@ class _TransactionBase:
         return self._TRANSACTION_GAS_ARGUMENT
 
     @property
-    def gas_price(self) -> int:
+    def gas_price(self) -> Optional[int]:
         """Returns the current gas price for the chain."""
         return self._current_gas_price
 
@@ -206,8 +206,8 @@ class _SuiTransactionBase(_TransactionBase):
         *,
         client: PysuiClient,
         compress_inputs: Optional[bool] = True,
-        initial_sender: Union[str, SigningMultiSig] = None,
-        initial_sponsor: Union[str, SigningMultiSig] = None,
+        initial_sender: Optional[Union[str, SigningMultiSig]] = None,
+        initial_sponsor: Optional[Union[str, SigningMultiSig]] = None,
         builder: Optional[Any] = None,
         arg_parser: Optional[Any] = None,
         merge_gas_budget: Optional[bool] = False,
@@ -241,7 +241,7 @@ class _SuiTransactionBase(_TransactionBase):
             builder=builder,
             arg_parser=arg_parser,
             txn_constraints=txn_constraints
-            or client.protocol().transaction_constraints,
+            or client.protocol().transaction_constraints,  # type: ignore[attr-defined]
             gas_price=gas_price or client.current_gas_price,
         )
         self._sig_block = SignerBlock(
@@ -371,6 +371,7 @@ class _SuiTransactionBase(_TransactionBase):
         :return: Returns the current constraints thresholds and violation dictionary (if any)
         :rtype: tuple[TransactionConstraints, Union[dict, None]]
         """
+        assert self.constraints is not None
         # All set to 0
         result_err = TransactionConstraints()
 
@@ -385,12 +386,12 @@ class _SuiTransactionBase(_TransactionBase):
                 obj_inputs.append(i_key)
 
         # Validate max pure size
-        if max_pure_inputs >= self.constraints.max_pure_argument_size:
+        if max_pure_inputs >= self.constraints.max_pure_argument_size:  # type: ignore[operator]
             result_err.max_pure_argument_size = max_pure_inputs
 
         # Check input objects (objs + move calls)
         obj_count = len(obj_inputs) + self.builder.command_frequency["MoveCall"]
-        if obj_count > self.constraints.max_input_objects:
+        if obj_count > self.constraints.max_input_objects:  # type: ignore[operator]
             result_err.max_input_objects = obj_count
 
         # Check arguments
@@ -414,19 +415,19 @@ class _SuiTransactionBase(_TransactionBase):
                     args_one = len(prog_txn.value.Modules)
                 case _:
                     pass
-            if args_one > self.constraints.max_arguments:
+            if args_one > self.constraints.max_arguments:  # type: ignore[operator]
                 result_err.max_arguments = args_one
-            if type_args_one > self.constraints.max_type_arguments:
+            if type_args_one > self.constraints.max_type_arguments:  # type: ignore[operator]
                 result_err.max_type_arguments = type_args_one
             total_args += args_one
 
         # Check max_num_transferred_move_object_ids
-        if total_args > self.constraints.max_num_transferred_move_object_ids:
+        if total_args > self.constraints.max_num_transferred_move_object_ids:  # type: ignore[operator]
             result_err.max_num_transferred_move_object_ids = total_args
 
         # Check max_programmable_tx_commands
-        if len(self.builder.commands) > self.constraints.max_programmable_tx_commands:
-            result_err.max_programmable_tx_commands = len(self.commands)
+        if len(self.builder.commands) > self.constraints.max_programmable_tx_commands:  # type: ignore[operator]
+            result_err.max_programmable_tx_commands = len(self.builder.commands)
 
         # Check size of transaction bytes
         # Build faux gas as needed
@@ -448,7 +449,7 @@ class _SuiTransactionBase(_TransactionBase):
                             )
                         ],
                         reuse_addy,
-                        int(self._current_gas_price),
+                        int(self._current_gas_price or 0),
                         self._PAY_GAS,
                     ),
                     bcs.TransactionExpiration("None"),
@@ -456,7 +457,7 @@ class _SuiTransactionBase(_TransactionBase):
             )
             ser_kind = ser_txdata.serialize()
 
-        if len(ser_kind) > self.constraints.max_tx_size_bytes:
+        if len(ser_kind) > self.constraints.max_tx_size_bytes:  # type: ignore[operator]
             result_err.max_tx_size_bytes = len(ser_kind)
 
         var_map = vars(result_err)
@@ -480,18 +481,21 @@ class _SuiTransactionBase(_TransactionBase):
         """
         src_path = Path(os.path.expanduser(project_path))
         args_list = args_list if args_list else []
+        assert self.client.config.model.sui_binary is not None
         compiled_package = publish_buildg2(
             self.client.config.model.sui_binary,
             src_path,
             args_list,
             self.client.config.active_profile,
         )
+        if isinstance(compiled_package, Exception):
+            raise compiled_package
         dependencies = [
             bcs.Address.from_str(x if isinstance(x, str) else x.value)
             for x in compiled_package.dependencies
         ]
         digest = bcs.Digest.from_bytes(compiled_package.package_digest)
-        return compiled_package.compiled_modules, dependencies, digest
+        return compiled_package.compiled_modules, dependencies, digest  # type: ignore[return-value]
 
 
 if __name__ == "__main__":

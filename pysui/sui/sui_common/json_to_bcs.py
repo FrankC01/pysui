@@ -9,7 +9,7 @@ import ast
 import json
 import inspect
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Union, cast
 from jsonschema import validate
 
 from pysui.sui.sui_common.bcs_ast import BcsAst
@@ -32,7 +32,8 @@ class JsonToBcs:
 
     def __init__(self, module_name: str):
         """."""
-        resource_path = Path(inspect.getfile(inspect.currentframe())).parent
+        resource_path = Path(inspect.getfile(inspect.currentframe()))  # type: ignore[arg-type]
+        resource_path = resource_path.parent
         self.python_stub = resource_path / "jtobcs_pre.py"
         self.ast_module: ast.Module = ast.parse(
             self.python_stub.read_text(encoding="utf8"), module_name, "exec"
@@ -43,7 +44,7 @@ class JsonToBcs:
     ) -> ast.ClassDef:
         """Generate a BCS canoser Struct."""
 
-        field_targets: ast.List = ast.List([], ast.Load)
+        field_targets: ast.List = ast.List([], ast.Load())
         if fields := spec.get("fields"):
             for field in fields:
                 self._process_json(field_targets, field)
@@ -56,7 +57,7 @@ class JsonToBcs:
         self, *, name: str, ast_module: Union[ast.AST, ast.Module], spec: dict
     ) -> ast.ClassDef:
         """Generate a BCS canoser RustEnum."""
-        field_targets: ast.List = ast.List([], ast.Load)
+        field_targets: ast.List = ast.List([], ast.Load())
         if fields := spec.get("enums"):
             for field in fields:
                 self._process_json(field_targets, field)
@@ -83,69 +84,70 @@ class JsonToBcs:
         else:
             atype = None
 
-        expr: ast.Expr = ast.parse(f"_type={atype}").body[0]
+        expr: ast.Assign = cast(ast.Assign, ast.parse(f"_type={atype}").body[0])
         cdef = BcsAst.optional_base(name, expr.value)
         if isinstance(ast_module, ast.Module):
             ast_module.body.append(cdef)
 
         return cdef
 
-    def _gen_array_field(self, *, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
+    def _gen_array_field(self, *, name, ast_field: ast.List, spec: dict) -> None:
         """Generate an array of type."""
         adef = spec.get("array_definition")
+        assert adef is not None
         aelement = adef.get("element")
         if isinstance(aelement, str):
             atype = self._BCS_COMMON_TYPES.get(aelement, aelement)
         else:
             raise NotImplementedError("Non-string element for array")
         sstr = f"('{name}',canoser.ArrayT({atype},{adef.get('fixed_length', None)},{adef.get('encode_length', True)}))"
-        expr: ast.Expr = ast.parse(sstr).body[0]
+        expr: ast.Expr = cast(ast.Expr, ast.parse(sstr).body[0])
         ast_field.elts.append(expr.value)
 
-    def _gen_list_field(self, *, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
+    def _gen_list_field(self, *, name, ast_field: ast.List, spec: dict) -> None:
         """Generate an list of type."""
         atype = self._BCS_COMMON_TYPES.get(spec["element"], spec["element"])
         sstr = f"('{name}',[{atype}])" if name else f"[{atype}]"
-        expr: ast.Expr = ast.parse(sstr).body[0]
+        expr: ast.Expr = cast(ast.Expr, ast.parse(sstr).body[0])
         ast_field.elts.append(expr.value)
 
-    def _gen_map_field(self, *, name, ast_field: ast.List, spec: dict) -> ast.Dict:
+    def _gen_map_field(self, *, name, ast_field: ast.List, spec: dict) -> None:
         """Generate a dict type."""
         # To hold map and key
-        field_targets: ast.Tuple = ast.Tuple([], ast.Load)
+        field_targets: ast.Tuple = ast.Tuple([], ast.Load())
         self._process_json(field_targets, spec["map_definition"]["map_key"])
         self._process_json(field_targets, spec["map_definition"]["map_value"])
         mdict: ast.Dict = ast.Dict([], [])
         mdict.keys.append(field_targets.elts[0])
         mdict.values.append(field_targets.elts[1])
-        ast_field.elts.append(ast.Tuple([ast.Constant(name, str), mdict], ast.Load()))
+        ast_field.elts.append(ast.Tuple([ast.Constant(value=name), mdict], ast.Load()))
 
-    def _gen_tuple_field(self, *, name, ast_field: ast.List, spec: dict) -> ast.Tuple:
+    def _gen_tuple_field(self, *, name, ast_field: ast.List, spec: dict) -> None:
         """."""
-        field_targets: ast.Tuple = ast.Tuple([], ast.Load)
+        field_targets: ast.Tuple = ast.Tuple([], ast.Load())
         for field in spec["elements"]:
             self._process_json(field_targets, field)
-        cname = ast.Constant(name, str)
+        cname = ast.Constant(value=name)
         ast_field.elts.append(ast.Tuple([cname, field_targets], ast.Load()))
 
     def _gen_reference_field(
         self, *, name, ast_field: ast.List, spec: dict
-    ) -> ast.Tuple:
+    ) -> None:
         """."""
         atype = self._BCS_COMMON_TYPES.get(spec["element"], spec["element"])
         sstr = f"('{name}',{atype})" if name else atype
-        expr: ast.Expr = ast.parse(sstr).body[0]
+        expr: ast.Expr = cast(ast.Expr, ast.parse(sstr).body[0])
         ast_field.elts.append(expr.value)
 
     def _gen_constant_field(
         self, *, name, ast_field: ast.List, spec: dict
-    ) -> ast.Tuple:
+    ) -> ast.expr:
         """."""
         ispec = spec.get("element", None)
         if ispec and isinstance(ispec, dict):
             if atype := self._BCS_COMMON_TYPES.get(ispec["constant_type"]):
                 sstr = f"('{name}',{ispec['constant_value']})"
-                expr: ast.Expr = ast.parse(sstr).body[0]
+                expr: ast.Expr = cast(ast.Expr, ast.parse(sstr).body[0])
                 ast_field.elts.append(expr.value)
                 return expr.value
         raise ValueError(f"Constant {ispec} not recognized")
@@ -199,7 +201,8 @@ class JsonToBcs:
     @classmethod
     def validate_json(clz, *, json_file: str) -> dict:
         """Validate the JSON file with schema."""
-        resource_path = Path(inspect.getfile(inspect.currentframe())).parent
+        resource_path = Path(inspect.getfile(inspect.currentframe()))  # type: ignore[arg-type]
+        resource_path = resource_path.parent
         schema_json = resource_path / "jtobcs_spec.json"
         schema = json.loads(schema_json.read_text(encoding="utf8"))
         json_data = json.loads(Path(json_file).read_text(encoding="utf8"))

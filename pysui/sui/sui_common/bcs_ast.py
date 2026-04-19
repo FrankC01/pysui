@@ -8,7 +8,7 @@
 import ast
 import copy
 from collections import deque
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 
 class Node:
@@ -27,7 +27,7 @@ class NodeVisitor:
     def __init__(self, ast_module: ast.Module):
         self.optional_stub = ast_module.body.pop()
         self.ast_module = ast_module
-        self.stack = deque()
+        self.stack: deque[ast.AST] = deque()
 
     def get(self) -> ast.AST:
         """LIFO pop."""
@@ -45,10 +45,10 @@ class NodeVisitor:
         """LIFO peek last element."""
         return self.stack[-1]
 
-    def first_from_top(self, clz_type: ast.AST) -> Union[ast.AST, None]:
+    def first_from_top(self, clz_type: Any) -> Union[ast.AST, None]:
         """Finds first of matching type in stack."""
         for ast_type in reversed(self.stack):
-            if isinstance(ast_type, clz_type):
+            if isinstance(ast_type, clz_type):  # type: ignore[arg-type]
                 return ast_type
         return None
 
@@ -64,9 +64,9 @@ class NodeVisitor:
         for value in self._iter_fields(node):
             if isinstance(value, list):
                 for item in value:
-                    if isinstance(item, BcsAst.Node):
+                    if isinstance(item, Node):
                         self.visit(item)
-            elif isinstance(value, BcsAst.Node):
+            elif isinstance(value, Node):
                 self.visit(value)
 
     def _iter_fields(self, node: Node):
@@ -111,12 +111,12 @@ class BcsAst:
         """Return a canoser Struct class definition."""
         field_assign = ast.Assign(
             [ast.Name("_fields", ast.Store())],
-            field_expr,
+            field_expr,  # type: ignore[arg-type]
             type_comment=None,
             lineno=0,
         )
         if class_doc:
-            body = [ast.Expr(ast.Constant(class_doc, str)), field_assign]
+            body = [ast.Expr(ast.Constant(value=class_doc)), field_assign]
         else:
             body = [field_assign]
 
@@ -136,12 +136,12 @@ class BcsAst:
         """Return a canoser RustEnum class definition."""
         field_assign = ast.Assign(
             [ast.Name("_enums", ast.Store())],
-            field_expr,
+            field_expr,  # type: ignore[arg-type]
             type_comment=None,
             lineno=0,
         )
         if class_doc:
-            body = [ast.Expr(ast.Constant(class_doc, str)), field_assign]
+            body = [ast.Expr(ast.Constant(value=class_doc)), field_assign]
         else:
             body = [field_assign]
 
@@ -162,12 +162,12 @@ class BcsAst:
 
         field_assign = ast.Assign(
             [ast.Name("_type", ast.Store())],
-            field_expr,
+            field_expr,  # type: ignore[arg-type]
             type_comment=None,
             lineno=0,
         )
         if class_doc:
-            body = [ast.Expr(ast.Constant(class_doc, str)), field_assign]
+            body = [ast.Expr(ast.Constant(value=class_doc)), field_assign]
         else:
             body = [field_assign]
 
@@ -189,16 +189,16 @@ class BcsAst:
         class_doc: Optional[str] = None,
     ) -> ast.ClassDef:
         """."""
-        ocopy: ast.ClassDef = copy.deepcopy(walker.optional_stub)
-        tjfn: ast.FunctionDef = ocopy.body.pop()
+        ocopy: ast.ClassDef = cast(ast.ClassDef, copy.deepcopy(walker.optional_stub))
+        tjfn: ast.FunctionDef = cast(ast.FunctionDef, ocopy.body.pop())
         field_assign = ast.Assign(
             [ast.Name("_type", ast.Store())],
-            field_expr,
+            field_expr,  # type: ignore[arg-type]
             type_comment=None,
             lineno=0,
         )
         if class_doc:
-            body = [ast.Expr(ast.Constant(class_doc, str)), field_assign, tjfn]
+            body = [ast.Expr(ast.Constant(value=class_doc)), field_assign, tjfn]
         else:
             body = [field_assign, tjfn]
 
@@ -213,15 +213,15 @@ class BcsAst:
         """Create a BCS list or depth list of lists of data type in node."""
         assert depth > 0
         # Create the root most list and visit the type of list
-        walker.put(ast.List([], ast.Load))
+        walker.put(ast.List([], ast.Load()))
         walker.visit(node.data)
-        core_list = walker.get()
+        core_list = cast(ast.List, walker.get())
         core_list.elts.extend([clz.CONSTANT_NONE, clz.CONSTANT_TRUE])
         # If depth > 1 then wrap the root list
         depth -= 1
         while depth:
             core_list = ast.List(
-                [core_list, clz.CONSTANT_NONE, clz.CONSTANT_TRUE], ast.Load
+                [core_list, clz.CONSTANT_NONE, clz.CONSTANT_TRUE], ast.Load()  # type: ignore[list-item]
             )
             depth -= 1
         return core_list

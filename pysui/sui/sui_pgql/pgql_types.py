@@ -27,8 +27,9 @@ def _fast_flat(in_dict: dict, out_dict: dict):
 class PGQL_Type(ABC):
     """Base GraphQL to pysui data representation class."""
 
+    @classmethod
     @abstractmethod
-    def from_query(self) -> "PGQL_Type":
+    def from_query(cls, in_data: Any = None) -> "PGQL_Type":
         """Converts raw GraphQL result to dataclass type.
 
         :return: Object instance of implementing class
@@ -54,7 +55,7 @@ class NoopGQL(PGQL_Type):
     data: list
 
     @classmethod
-    def from_query(self) -> "NoopGQL":
+    def from_query(self) -> "NoopGQL":  # type: ignore[override]
         return NoopGQL(PagingCursor(), [])
 
 
@@ -68,7 +69,7 @@ class ErrorGQL(PGQL_Type):
     errors: Any
 
     @classmethod
-    def from_query(self, errors: Any) -> "ErrorGQL":
+    def from_query(self, errors: Any) -> "ErrorGQL":  # type: ignore[override]
         return ErrorGQL(PagingCursor(), [], errors)
 
 
@@ -142,9 +143,9 @@ class SuiCoinObjectGQL(PGQL_Type):
         return self.coin_object_id
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "SuiCoinObjectGQL":
+    def from_query(clz, in_data: dict) -> "SuiCoinObjectGQL":  # type: ignore[override]
         """From raw GraphQL result data."""
-        ser_dict: dict[str, Union[str, int]] = {}
+        ser_dict: dict[str, Any] = {}
         owner = in_data.pop("owner")
         owner_kind = owner["obj_owner_kind"]
         _fast_flat(in_data, ser_dict)
@@ -154,7 +155,7 @@ class SuiCoinObjectGQL(PGQL_Type):
                     owner_kind, owner["address_id"]["address"]
                 )
             case "Shared":
-                ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
+                ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)  # type: ignore[attr-defined]
             case "ObjectOwner":
                 ser_dict["object_owner"] = SuiObjectOwnedParent(
                     owner_kind, owner["parent_id"]["address"]
@@ -162,7 +163,7 @@ class SuiCoinObjectGQL(PGQL_Type):
             case "Immutable":
                 ser_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
         # ser_dict = ser_dict | res_dict
-        return clz.from_dict(ser_dict)
+        return clz.from_dict(ser_dict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -174,11 +175,11 @@ class SuiCoinFromObjectsGQL(PGQL_Type):
     next_cursor: Optional[PagingCursor] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "SuiCoinFromObjectsGQL":
+    def from_query(clz, in_data: dict) -> "Union[SuiCoinFromObjectsGQL, NoopGQL]":  # type: ignore[override]
         if in_data:
             ser_dict: dict = {}
             _fast_flat(in_data, ser_dict)
-            mid_list: list[dict] = []
+            mid_list: list[Any] = []
             for node in ser_dict["multiGetObjects"]:
                 ser_coin_dict: dict = node["asMoveObject"]
                 mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
@@ -191,8 +192,8 @@ class SuiCoinFromObjectsGQL(PGQL_Type):
                 #     mid_list.append(SuiCoinObjectGQL.from_query(ser_coin_dict))
                 # elif ser_coin_dict.get("status") == "WRAPPED_OR_DELETED":
                 #     # ser_coin_dict.pop("amo")
-                #     mid_list.append(ObjectReadDeletedGQL.from_dict(ser_coin_dict))
-            return clz.from_dict({"data": mid_list, "next_cursor": None})
+                #     mid_list.append(ObjectReadDeletedGQL.from_dict(ser_coin_dict))  # type: ignore[attr-defined]
+            return clz.from_dict({"data": mid_list, "next_cursor": None})  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -205,14 +206,14 @@ class SuiCoinObjectsGQL(PGQL_Type):
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "SuiCoinObjectsGQL":
+    def from_query(clz, in_data: dict) -> "SuiCoinObjectsGQL":  # type: ignore[override]
         """Serializes query result to list of Sui gas coin objects.
 
         The in_data is a dictionary with 2 keys: 'cursor' and 'coin_objects'
         """
         # Get cursor
         in_data = in_data.pop("qres").pop("coins")
-        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
+        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])  # type: ignore[attr-defined]
         dlist: list[SuiCoinObjectGQL] = []
         for i_coin in in_data["coin_objects"]:
             dlist.append(SuiCoinObjectGQL.from_query(i_coin))
@@ -235,12 +236,12 @@ class SuiCoinObjectSummaryGQL(PGQL_Type):
         return self.coin_object_id
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "SuiCoinObjectSummaryGQL":
+    def from_query(clz, in_data: dict) -> "SuiCoinObjectSummaryGQL":  # type: ignore[override]
         """Serializes query result to sui coin summary."""
         ser_dict: dict = {}
         _fast_flat(in_data, ser_dict)
         ser_dict.pop("id")
-        return clz.from_dict(ser_dict)
+        return clz.from_dict(ser_dict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -270,9 +271,9 @@ class SuiStakedCoinGQL:
         return self.coin_object_id
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "SuiStakedCoinGQL":
+    def from_query(clz, in_data: dict) -> "SuiStakedCoinGQL":  # type: ignore[override]
         """From raw GraphQL result data."""
-        ser_dict: dict[str, Union[str, int]] = {}
+        ser_dict: dict[str, Any] = {}
         owner = in_data.pop("owner")
         owner_kind = owner["obj_owner_kind"]
         _fast_flat(in_data, ser_dict)
@@ -282,7 +283,7 @@ class SuiStakedCoinGQL:
                     owner_kind, owner["address_id"]["address"]
                 )
             case "Shared":
-                ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
+                ser_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)  # type: ignore[attr-defined]
             case "ObjectOwner":
                 ser_dict["object_owner"] = SuiObjectOwnedParent(
                     owner_kind, owner["parent_id"]["address"]
@@ -290,7 +291,7 @@ class SuiStakedCoinGQL:
             case "Immutable":
                 ser_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
         # ser_dict = ser_dict | res_dict
-        return clz.from_dict(ser_dict)
+        return clz.from_dict(ser_dict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -304,11 +305,11 @@ class BasicCurrentEpochInfoGQL(PGQL_Type):
     end_timestampt: Optional[str] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "BasicCurrentEpochInfoGQL":
+    def from_query(clz, in_data: dict) -> "Union[BasicCurrentEpochInfoGQL, NoopGQL]":  # type: ignore[override]
         """."""
         if in_data:
             in_data = in_data.pop("epoch")
-            return BasicCurrentEpochInfoGQL.from_dict(in_data)
+            return BasicCurrentEpochInfoGQL.from_dict(in_data)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -321,7 +322,7 @@ class SuiStakedCoinsGQL(PGQL_Type):
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "SuiStakedCoinsGQL":
+    def from_query(clz, in_data: dict) -> "Union[SuiStakedCoinsGQL, NoopGQL]":  # type: ignore[override]
         """Serializes query result to list of Sui gas coin objects.
 
         The in_data is a dictionary with 2 keys: 'cursor' and 'coin_objects'
@@ -333,7 +334,7 @@ class SuiStakedCoinsGQL(PGQL_Type):
                 SuiStakedCoinGQL.from_query(x.get("asMoveObject"))
                 for x in in_data.pop("staked_coin")
             ]
-            return SuiStakedCoinsGQL.from_dict(
+            return SuiStakedCoinsGQL.from_dict(  # type: ignore[attr-defined]
                 {
                     # "owner": in_data["address"],
                     "stakedCoins": staked_coins,
@@ -357,11 +358,11 @@ class ObjectContentBCS(PGQL_Type):
         return base64.b64decode(self.bcs)
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectContentBCS":
+    def from_query(clz, in_data: dict) -> "ObjectContentBCS":  # type: ignore[override]
         """."""
         to_merge: dict = {}
         _fast_flat(in_data, to_merge)
-        return clz.from_dict(to_merge)
+        return clz.from_dict(to_merge)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -372,7 +373,7 @@ class ObjectsContentBCS(PGQL_Type):
     objects_data: list[ObjectContentBCS]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectsContentBCS":
+    def from_query(clz, in_data: dict) -> "Union[ObjectsContentBCS, NoopGQL]":  # type: ignore[override]
         """."""
         if len(in_data):
             objs = [ObjectContentBCS.from_query(x) for x in in_data["multiGetObjects"]]
@@ -406,7 +407,7 @@ class ObjectReadGQL(PGQL_Type):
     previous_transaction_digest: Optional[str] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectReadGQL":
+    def from_query(clz, in_data: dict) -> "Union[ObjectReadGQL, NoopGQL]":  # type: ignore[override]
         """Serializes query result to list of Sui objects.
 
         The in_data is a dictionary with nested dictionaries
@@ -435,7 +436,7 @@ class ObjectReadGQL(PGQL_Type):
                             owner_kind, owner["address_id"]["address"]
                         )
                     case "Shared":
-                        res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)
+                        res_dict["object_owner"] = SuiObjectOwnedShared.from_dict(owner)  # type: ignore[attr-defined]
                     case "ObjectOwner":
                         res_dict["object_owner"] = SuiObjectOwnedParent(
                             owner_kind, owner["parent_id"]["address"]
@@ -443,9 +444,9 @@ class ObjectReadGQL(PGQL_Type):
                     case "Immutable":
                         res_dict["object_owner"] = SuiObjectOwnedImmutable(owner_kind)
                 # Flatten dictionary
-                return ObjectReadGQL.from_dict(res_dict)
+                return ObjectReadGQL.from_dict(res_dict)  # type: ignore[attr-defined]
             else:
-                return ObjectReadDeletedGQL.from_dict(in_data)
+                return ObjectReadDeletedGQL.from_dict(in_data)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -458,21 +459,21 @@ class ObjectReadsGQL(PGQL_Type):
     next_cursor: Optional[PagingCursor] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectReadsGQL":
+    def from_query(clz, in_data: dict) -> "ObjectReadsGQL":  # type: ignore[override]
         """Serializes query result to list of Sui objects.
 
         The in_data is a dictionary with either 'multiGetObjects:list' and no cursor
         or 'objects:list' with cursor
         """
         if mgo := in_data.get("multiGetObjects"):
-            dlist: list[ObjectReadGQL] = [
+            dlist: list[Any] = [
                 ObjectReadGQL.from_query(i_obj) for i_obj in mgo
             ]
             return ObjectReadsGQL(dlist)
         else:
             obj_mbase = in_data.pop("objects")
-            ncurs: PagingCursor = PagingCursor.from_dict(obj_mbase["cursor"])
-            dlist: list[ObjectReadGQL] = [
+            ncurs: PagingCursor = PagingCursor.from_dict(obj_mbase["cursor"])  # type: ignore[attr-defined]
+            dlist = [
                 ObjectReadGQL.from_query(i_obj) for i_obj in obj_mbase["objects_data"]
             ]
             return ObjectReadsGQL(dlist, ncurs)
@@ -486,14 +487,14 @@ class ObjectVersionReadsGQL(PGQL_Type):
     data: list[ObjectReadGQL]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectReadsGQL":
+    def from_query(clz, in_data: dict) -> "ObjectVersionReadsGQL":  # type: ignore[override]
         """Serializes query result to list of Sui objects.
 
         The in_data is a dictionary with 2 keys: 'cursor' and 'objects_data'
         """
         in_data = in_data.pop("multiGetObjects")
         # Get cursor
-        dlist: list[ObjectReadGQL] = [
+        dlist: list[Any] = [
             ObjectReadGQL.from_query(i_obj) for i_obj in in_data
         ]
         return ObjectVersionReadsGQL(dlist)
@@ -511,14 +512,14 @@ class EventGQL(PGQL_Type):
     sender: Optional[dict]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "EventGQL":
+    def from_query(clz, in_data: dict) -> "EventGQL":  # type: ignore[override]
         """Serializes query result to list of Sui objects."""
         in_mod_id = in_data.pop("transactionModule")
         to_merge: dict = {}
         _fast_flat(in_mod_id, to_merge)
         in_data |= to_merge
         in_data["json"] = json.dumps(in_data["contents"]["json"])
-        return EventGQL.from_dict(in_data)
+        return EventGQL.from_dict(in_data)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -530,16 +531,16 @@ class EventsGQL(PGQL_Type):
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "EventsGQL":
+    def from_query(clz, in_data: dict) -> "EventsGQL":  # type: ignore[override]
         """Serializes query result to list of Sui objects.
         The in_data is a dictionary with 2 keys: 'cursor' and 'events'
         """
 
         in_data = in_data.pop("events")
         # Get cursor
-        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
-        dlist: list[ObjectReadGQL] = [
-            EventGQL.from_query(i_obj) for i_obj in in_data["events"]
+        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])  # type: ignore[attr-defined]
+        dlist: list[EventGQL] = [
+            EventGQL.from_query(i_obj) for i_obj in in_data["events"]  # type: ignore[misc]
         ]
         return EventsGQL(dlist, ncurs)
 
@@ -553,9 +554,9 @@ class TxBlockListGQL(PGQL_Type):
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "TxBlockListGQL":
+    def from_query(clz, in_data: dict) -> "TxBlockListGQL":  # type: ignore[override]
         """Serializes query result of tx blocks in checkpoint."""
-        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
+        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])  # type: ignore[attr-defined]
         dlist: list[str] = [t_digest["digest"] for t_digest in in_data["tx_digests"]]
         return TxBlockListGQL(dlist, ncurs)
 
@@ -573,13 +574,13 @@ class CheckpointGQL(PGQL_Type):
     previous_checkpoint_digest: Optional[str]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "CheckpointGQL":
+    def from_query(clz, in_data: dict) -> "CheckpointGQL":  # type: ignore[override]
         """Serializes query result of tx blocks in checkpoint."""
         in_data = in_data.pop("checkpoint", in_data)
         in_data["transaction_blocks"] = TxBlockListGQL.from_query(
             in_data["transaction_blocks"]
         )
-        return CheckpointGQL.from_dict(in_data)
+        return CheckpointGQL.from_dict(in_data)  # type: ignore[attr-defined]
 
     @classmethod
     def from_last_checkpoint(clz, in_data: dict) -> "CheckpointGQL":
@@ -589,7 +590,7 @@ class CheckpointGQL(PGQL_Type):
         in_data["transaction_blocks"] = TxBlockListGQL.from_query(
             in_data["transaction_blocks"]
         )
-        return CheckpointGQL.from_dict(in_data)
+        return CheckpointGQL.from_dict(in_data)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -601,10 +602,10 @@ class CheckpointsGQL(PGQL_Type):
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "CheckpointsGQL":
+    def from_query(clz, in_data: dict) -> "CheckpointsGQL":  # type: ignore[override]
         """."""
         in_data = in_data.pop("checkpoints")
-        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
+        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])  # type: ignore[attr-defined]
         ndata: list[CheckpointGQL] = [
             CheckpointGQL.from_query(i_cp) for i_cp in in_data["checkpoints"]
         ]
@@ -622,7 +623,7 @@ class BalanceGQL(PGQL_Type):
     total_balance: int
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "BalanceGQL":
+    def from_query(clz, in_data: dict) -> "BalanceGQL":  # type: ignore[override]
         """Serializes query result of balance.
 
         The in_data is a dictionary with nested dictionaries
@@ -633,7 +634,7 @@ class BalanceGQL(PGQL_Type):
         res_dict["addressBalance"] = int(res_dict["addressBalance"])
         res_dict["coinBalance"] = int(res_dict["coinBalance"])
         res_dict["totalBalance"] = int(res_dict["totalBalance"])
-        return BalanceGQL.from_dict(res_dict)
+        return BalanceGQL.from_dict(res_dict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -644,10 +645,10 @@ class AddressBalanceGQL(PGQL_Type):
     balance: BalanceGQL
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "AddressBalanceGQL":
+    def from_query(clz, in_data: dict) -> "AddressBalanceGQL":  # type: ignore[override]
         """."""
-        bal_ref: BalanceGQL = {"balance": BalanceGQL.from_query(in_data.pop("address"))}
-        return AddressBalanceGQL.from_dict(bal_ref)
+        bal_ref: dict = {"balance": BalanceGQL.from_query(in_data.pop("address"))}
+        return AddressBalanceGQL.from_dict(bal_ref)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -660,7 +661,7 @@ class BalancesGQL(PGQL_Type):
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "BalancesGQL":
+    def from_query(clz, in_data: dict) -> "BalancesGQL":  # type: ignore[override]
         """Serializes query result to list of Sui objects.
 
         The in_data is a dictionary with 2 keys: 'cursor' and 'objects_data'
@@ -670,7 +671,7 @@ class BalancesGQL(PGQL_Type):
         # Get cursor
         owner = in_data.pop("owner_address")
         balances = in_data.pop("balances")
-        ncurs: PagingCursor = PagingCursor.from_dict(balances["cursor"])
+        ncurs: PagingCursor = PagingCursor.from_dict(balances["cursor"])  # type: ignore[attr-defined]
         dlist: list[BalanceGQL] = [
             BalanceGQL.from_query(i_obj) for i_obj in balances["type_balances"]
         ]
@@ -691,12 +692,12 @@ class SuiCoinMetadataGQL(PGQL_Type):
     icon_url: Optional[str] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "SuiCoinMetadataGQL":
+    def from_query(clz, in_data: dict) -> "SuiCoinMetadataGQL":  # type: ignore[override]
         """Serializes query result to Sui coin metadata object."""
         res_dict: dict = {}
         # Flatten dictionary
         _fast_flat(in_data, res_dict)
-        return SuiCoinMetadataGQL.from_dict(res_dict)
+        return SuiCoinMetadataGQL.from_dict(res_dict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -715,17 +716,14 @@ class ObjectContent:
     #         "object_type": "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
     #     },
     # },
-    def object_type(self) -> str:
-        return self.object_type
-
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectContent":
+    def from_query(clz, in_data: dict) -> "ObjectContent":  # type: ignore[override]
         res_dict: dict = {}
-        content = in_data.get("as_object").pop("content")
+        content = in_data["as_object"].pop("content")
         # Flatten dictionary
         _fast_flat(in_data, res_dict)
         res_dict["content"] = content
-        return clz.from_dict(res_dict)
+        return clz.from_dict(res_dict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -743,16 +741,16 @@ class ObjectState:
     as_move_package: Optional[dict] = None
 
     def is_package(self) -> bool:
-        return self.as_move_package if self.as_move_package else False
+        return bool(self.as_move_package)
 
     def is_object(self) -> bool:
-        return self.as_move_content if self.as_move_content else False
+        return bool(self.as_move_content)
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectState":
+    def from_query(clz, in_data: dict) -> "ObjectState":  # type: ignore[override]
         if obj_cont := in_data.get("as_move_content"):
             in_data["as_move_content"] = ObjectContent.from_query(obj_cont)
-        return clz.from_dict(in_data)
+        return clz.from_dict(in_data)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -765,12 +763,12 @@ class ObjectChange:
     output_state: Optional[ObjectState]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectChange":
+    def from_query(clz, in_data: dict) -> "ObjectChange":  # type: ignore[override]
         if ist := in_data.get("input_state"):
             in_data["input_state"] = ObjectState.from_query(ist)
         if ost := in_data.get("output_state"):
             in_data["output_state"] = ObjectState.from_query(ost)
-        return clz.from_dict(in_data)
+        return clz.from_dict(in_data)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -779,10 +777,10 @@ class ObjectChanges:
     nodes: list[ObjectChange]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ObjectChanges":
+    def from_query(clz, in_data: dict) -> "ObjectChanges":  # type: ignore[override]
         """."""
         in_data["nodes"] = [ObjectChange.from_query(x) for x in in_data["nodes"]]
-        return clz.from_dict(in_data)
+        return clz.from_dict(in_data)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -799,12 +797,12 @@ class TransactionResultGQL(PGQL_Type):
     sender: Optional[dict] = dataclasses.field(default_factory=dict)
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "TransactionResultGQL":
+    def from_query(clz, in_data: dict) -> "Union[TransactionResultGQL, NoopGQL]":  # type: ignore[override]
         """."""
         if in_data.get("transaction"):
             txblock = in_data.pop("transaction")
             txblock["transaction_kind"] = txblock.pop("kind")["tx_kind"]
-            return TransactionResultGQL.from_dict(txblock)
+            return TransactionResultGQL.from_dict(txblock)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
     def object_changes(self) -> ObjectChanges:
@@ -827,14 +825,14 @@ class DryRunResultTransactionGQL(PGQL_Type):
     execution_error: Optional[dict] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "DryRunResultTransactionGQL":
+    def from_query(clz, in_data: dict) -> "Union[DryRunResultTransactionGQL, NoopGQL]":  # type: ignore[override]
         """."""
         if tx_data := in_data.get("transactionBlock"):
             # tx_data["transaction_kind"] = tx_data.pop("kind")["tx_kind"]
             tx_data["objectChanges"] = ObjectChanges.from_query(
                 tx_data["objectChanges"]
             )
-            return clz.from_dict(tx_data)
+            return clz.from_dict(tx_data)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -848,15 +846,15 @@ class DryRunResultGQL(PGQL_Type):
     # error: Optional[str] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "DryRunResultGQL":
+    def from_query(clz, in_data: dict) -> "Union[DryRunResultGQL, NoopGQL]":  # type: ignore[override]
         """."""
         if in_data:
-            in_data = in_data.get("dryRun")
+            in_data = in_data.get("dryRun")  # type: ignore[assignment]
             if in_data:
                 # dr_err = in_data.pop("error")
                 dr_res = in_data.pop("results")
                 tblock = DryRunResultTransactionGQL.from_query(in_data)
-                return DryRunResultGQL.from_dict(
+                return DryRunResultGQL.from_dict(  # type: ignore[attr-defined]
                     {"results": dr_res, "transaction_block": tblock}
                 )
         return NoopGQL.from_query()
@@ -881,16 +879,16 @@ class ExecutionResultGQL(PGQL_Type):
     errors: Optional[list[str]] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ExecutionResultGQL":
+    def from_query(clz, in_data: dict) -> "Union[ExecutionResultGQL, NoopGQL]":  # type: ignore[override]
         """."""
         if in_data:
-            in_data = in_data.get("executeTransaction")
+            in_data = in_data.get("executeTransaction")  # type: ignore[assignment]
             if in_data:
                 ex_err = in_data["effects"].pop("execution_errors")
                 fdict: dict = {}
                 _fast_flat(in_data, fdict)
                 fdict["execution_error"] = ex_err
-                return ExecutionResultGQL.from_dict(fdict)
+                return ExecutionResultGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -905,11 +903,11 @@ class TransactionSummaryGQL(PGQL_Type):
     errors: Optional[Any] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "TransactionSummaryGQL":
+    def from_query(clz, in_data: dict) -> "TransactionSummaryGQL":  # type: ignore[override]
         """."""
         fdict: dict = {}
         _fast_flat(in_data, fdict)
-        return TransactionSummaryGQL.from_dict(fdict)
+        return TransactionSummaryGQL.from_dict(fdict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -921,10 +919,10 @@ class TransactionSummariesGQL(PGQL_Type):
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "TransactionSummariesGQL":
+    def from_query(clz, in_data: dict) -> "TransactionSummariesGQL":  # type: ignore[override]
         """."""
         in_data = in_data.pop("transactions")
-        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
+        ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])  # type: ignore[attr-defined]
         tsummary = [
             TransactionSummaryGQL.from_query(x) for x in in_data.pop("tx_blocks")
         ]
@@ -1092,7 +1090,7 @@ class ProgrammableTransactionBlockGQL:
     ]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ProgrammableTransactionBlockGQL":
+    def from_query(clz, in_data: dict) -> "Union[ProgrammableTransactionBlockGQL, NoopGQL]":  # type: ignore[override]
         ins_list: list = []
         cmd_list: list = []
         router = {
@@ -1109,15 +1107,15 @@ class ProgrammableTransactionBlockGQL:
                     case "OwnedOrImmutable":
                         in_dict = ins["object"]
                         in_dict["input_typename"] = ins["input_typename"]
-                        ins_list.append(OwnedOrImmutableInputGQL.from_dict(in_dict))
+                        ins_list.append(OwnedOrImmutableInputGQL.from_dict(in_dict))  # type: ignore[attr-defined]
                     case "Receiving":
                         in_dict = ins["object"]
                         in_dict["input_typename"] = ins["input_typename"]
-                        ins_list.append(ReceivingInputGQL.from_dict(in_dict))
+                        ins_list.append(ReceivingInputGQL.from_dict(in_dict))  # type: ignore[attr-defined]
                     case "SharedInput":
-                        ins_list.append(SharedObjectInputGQL.from_dict(ins))
+                        ins_list.append(SharedObjectInputGQL.from_dict(ins))  # type: ignore[attr-defined]
                     case "Pure":
-                        ins_list.append(PureInputGQL.from_dict(ins))
+                        ins_list.append(PureInputGQL.from_dict(ins))  # type: ignore[attr-defined]
             for cmds in in_data["transactions"]:
                 cmd_name = cmds["tx_typename"]
                 match cmd_name:
@@ -1129,10 +1127,10 @@ class ProgrammableTransactionBlockGQL:
                             "arguments": cmds["arguments"],
                             "tx_typename": cmd_name,
                         }
-                        cmd_list.append(TransactionMoveCallGQL.from_dict(mvc_dict))
+                        cmd_list.append(TransactionMoveCallGQL.from_dict(mvc_dict))  # type: ignore[attr-defined]
                     case _:
                         if c_clz := router.get(cmds["tx_typename"]):
-                            cmd_list.append(c_clz.from_dict(cmds))
+                            cmd_list.append(c_clz.from_dict(cmds))  # type: ignore[attr-defined]
                         else:
                             raise ValueError(f"Not handling {cmd_name}")
 
@@ -1198,7 +1196,7 @@ class TransactionKindGQL(PGQL_Type):
     ]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "TransactionKindGQL":
+    def from_query(clz, in_data: dict) -> "Union[TransactionKindGQL, NoopGQL]":  # type: ignore[override]
         """."""
         tx_block = in_data.get("transaction") if in_data else None
         if tx_block:
@@ -1217,7 +1215,7 @@ class TransactionKindGQL(PGQL_Type):
                     pass
                 case _:
                     raise ValueError(f"{tx_type} not handled in data model.")
-            return TransactionKindGQL.from_dict(tx_block)
+            return TransactionKindGQL.from_dict(tx_block)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -1239,13 +1237,13 @@ class ValidatorGQL(PGQL_Type):
     next_epoch_stake: str
     gas_price: str
     next_epoch_gas_price: str
-    commission_rate: str
+    commission_rate: str  # type: ignore[no-redef]
     next_epoch_commission_rate: int
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorGQL":
+    def from_query(clz, in_data: dict) -> "ValidatorGQL":  # type: ignore[override]
         """."""
-        return ValidatorGQL.from_dict(in_data)
+        return ValidatorGQL.from_dict(in_data)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1261,13 +1259,13 @@ class ValidatorSetGQL(PGQL_Type):
     validator_candidates_size: Optional[int]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorSetGQL":
+    def from_query(clz, in_data: dict) -> "Union[ValidatorSetGQL, NoopGQL]":  # type: ignore[override]
         """."""
         if i_val := in_data.pop("activeValidators"):
             in_data["validators"] = [
                 ValidatorGQL.from_query(v_obj) for v_obj in i_val["validators"]
             ]
-            return ValidatorSetGQL.from_dict(in_data)
+            return ValidatorSetGQL.from_dict(in_data)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -1279,9 +1277,9 @@ class ReferenceGasPriceGQL(PGQL_Type):
     reference_gas_price: str
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ReferenceGasPriceGQL":
+    def from_query(clz, in_data: dict) -> "ReferenceGasPriceGQL":  # type: ignore[override]
         in_data = in_data.pop("epoch", in_data)
-        return ReferenceGasPriceGQL.from_dict(in_data)
+        return ReferenceGasPriceGQL.from_dict(in_data)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1299,12 +1297,12 @@ class EpochGQL(PGQL_Type):
     total_stake_rewards: Optional[str] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "EpochGQL":
+    def from_query(clz, in_data: dict) -> "Union[EpochGQL, NoopGQL]":  # type: ignore[override]
         """Serializes query result to EpochGQL."""
         if in_data:
             in_data = in_data.pop("epoch", in_data)
             if in_data:
-                return EpochGQL.from_dict(in_data)
+                return EpochGQL.from_dict(in_data)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -1327,12 +1325,12 @@ class PackageVersionsGQL(PGQL_Type):
     next_cursor: Optional[PagingCursor] = None
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "PackageVersionsGQL":
+    def from_query(clz, in_data: dict) -> "Union[PackageVersionsGQL, NoopGQL]":  # type: ignore[override]
         """Serializes query result to PackageVersionsGQL."""
         if in_data:
             in_data = in_data.pop("packageVersions", in_data)
             if in_data:
-                ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])
+                ncurs: PagingCursor = PagingCursor.from_dict(in_data["cursor"])  # type: ignore[attr-defined]
                 versions: list[PackageVersionGQL] = [
                     PackageVersionGQL(
                         package_id=v["address"],
@@ -1359,12 +1357,12 @@ class SystemStateSummaryGQL(PGQL_Type):
     safe_mode: dict
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "SystemStateSummaryGQL":
+    def from_query(clz, in_data: dict) -> "SystemStateSummaryGQL":  # type: ignore[override]
         in_data = in_data.pop("qres", in_data)
         rgp = {"referenceGasPrice": in_data.pop("referenceGasPrice")}
         in_data["referenceGasPrice"] = ReferenceGasPriceGQL.from_query(rgp)
         in_data["validatorSet"] = ValidatorSetGQL.from_query(in_data["validatorSet"])
-        return SystemStateSummaryGQL.from_dict(in_data)
+        return SystemStateSummaryGQL.from_dict(in_data)  # type: ignore[attr-defined]
 
 
 # Re-exported from sui_common for backwards compatibility.
@@ -1393,7 +1391,7 @@ class ProtocolConfigGQL:
         default_factory=TransactionConstraints
     )
 
-    def _value_to_type(self, v: Any) -> Union[int, bool]:
+    def _value_to_type(self, v: Any) -> Any:
         """."""
         if v:
             if isinstance(v, bool):
@@ -1419,7 +1417,7 @@ class ProtocolConfigGQL:
         for cnst_key in cnst_dict.keys():
             if cnst_key in cfg_dict:
                 cnst_dict[cnst_key] = cfg_dict[cnst_key]
-        self.transaction_constraints = TransactionConstraints.from_dict(cnst_dict)
+        self.transaction_constraints = TransactionConstraints.from_dict(cnst_dict)  # type: ignore[attr-defined]
         self.transaction_constraints.protocol_version = self.protocolVersion
 
         # Set appropriate features
@@ -1434,8 +1432,8 @@ class ProtocolConfigGQL:
         )
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":
-        return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfigs"))
+    def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":  # type: ignore[override]
+        return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfigs"))  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1457,12 +1455,12 @@ class MoveEnumGQL:
     variants: list[MoveEnumVariantGQL]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "MoveEnumGQL":
+    def from_query(clz, in_data: dict) -> "Union[MoveEnumGQL, NoopGQL]":  # type: ignore[override]
         if in_data:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
             _fast_flat(in_data, fdict)
-            return MoveEnumGQL.from_dict(fdict)
+            return MoveEnumGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -1476,18 +1474,18 @@ class MoveStructureGQL:
     fields: list[dict]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "MoveStructureGQL":
+    def from_query(clz, in_data: dict) -> "Union[MoveStructureGQL, NoopGQL]":  # type: ignore[override]
         if in_data:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
             _fast_flat(in_data, fdict)
-            return MoveStructureGQL.from_dict(fdict)
+            return MoveStructureGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
 class MoveDataTypeGQL:
     @classmethod
-    def from_query(clz, in_data: dict) -> Union[MoveStructureGQL, MoveEnumGQL]:
+    def from_query(clz, in_data: dict) -> Union[MoveStructureGQL, MoveEnumGQL, NoopGQL]:  # type: ignore[override]
         """."""
         if in_data:
             dtype = in_data["object"]["asMovePackage"]["module"]
@@ -1514,7 +1512,7 @@ class MoveStructuresGQL:
     next_cursor: Optional[PagingCursor]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "MoveStructuresGQL":
+    def from_query(clz, in_data: dict) -> "Union[MoveStructuresGQL, NoopGQL]":  # type: ignore[override]
         if in_data:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
@@ -1529,8 +1527,8 @@ class MoveStructuresGQL:
             fdict["structures"] = [
                 MoveStructureGQL.from_query(x) for x in fdict["nodes"]
             ]
-            return MoveStructuresGQL.from_dict(fdict)
-            # return MoveStructuresGQL.from_dict(
+            return MoveStructuresGQL.from_dict(fdict)  # type: ignore[attr-defined]
+            # return MoveStructuresGQL.from_dict(  # type: ignore[attr-defined]
             #     {"structures": [MoveStructureGQL.from_query(x) for x in fdict["nodes"]]}
             # )
         return NoopGQL.from_query()
@@ -1574,6 +1572,7 @@ class MoveTypeArg:
     @classmethod
     def from_str(cls, in_ref: str, in_type: str) -> "MoveTypeArg":
         """ "."""
+        return cls(RefType.from_ref(in_ref), in_type)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1614,23 +1613,20 @@ class MoveObjectRefArg:
     has_type: bool
 
     @classmethod
-    def from_body(cls, in_ref: str, in_type: dict) -> "MoveObjectRefArg":
+    def from_body(cls, in_ref: Union[str, "RefType", None], in_type: dict) -> "MoveObjectRefArg":
         """."""
         ref_type: RefType = (
-            in_ref if isinstance(in_ref, RefType) else RefType.from_ref(in_ref)
+            in_ref if isinstance(in_ref, RefType) else RefType.from_ref(in_ref)  # type: ignore[arg-type]
         )
         if in_type["type"] == "String" or in_type["type"] == "ID":
-            return MoveScalarArg.from_str(in_ref, in_type["type"])
-        ref_type: RefType = (
-            in_ref if isinstance(in_ref, RefType) else RefType.from_ref(in_ref)
-        )
+            return MoveScalarArg.from_str(in_ref, in_type["type"])  # type: ignore[return-value, arg-type]
         inner_type = in_type.get("typeParameters")
         has_type = bool(inner_type)
-        inner_list = []
+        inner_list: list[Any] = []
 
         if has_type:
             inner_list = []
-            for inner_t in inner_type:
+            for inner_t in inner_type:  # type: ignore[union-attr]
                 if isinstance(inner_t, dict):
                     if "typeParameter" in inner_t:
                         inner_list.append(inner_t["typeParameter"])
@@ -1669,14 +1665,14 @@ class MoveVectorArg:
     vec_arg: Union["MoveVectorArg", MoveScalarArg, MoveObjectRefArg, MoveAnyArg]
 
     @classmethod
-    def from_body(cls, in_ref: str, in_type: dict) -> "MoveVectorArg":
+    def from_body(cls, in_ref: Union[str, "RefType", None], in_type: dict) -> "MoveVectorArg":
         """ "."""
         from_vec: dict = in_type["vector"]
         if not isinstance(from_vec, str):
             if ivec := from_vec.get("vector"):
                 if isinstance(ivec, dict) and ivec.get("vector"):
                     return cls(
-                        RefType.from_ref(in_ref), cls.from_body(in_ref, from_vec)
+                        RefType.from_ref(in_ref), cls.from_body(in_ref, from_vec)  # type: ignore[arg-type]
                     )
                 else:
                     from_vec = ivec
@@ -1684,7 +1680,7 @@ class MoveVectorArg:
                 key, value = next(iter(from_vec.items()))
                 if key == "datatype":
                     return cls(
-                        RefType.from_ref(in_ref),
+                        RefType.from_ref(in_ref),  # type: ignore[arg-type]
                         MoveObjectRefArg.from_body(None, value),
                     )
                 elif (
@@ -1693,13 +1689,13 @@ class MoveVectorArg:
                     and isinstance(value, int)
                 ):
                     return cls(
-                        RefType.from_ref(in_ref),
+                        RefType.from_ref(in_ref),  # type: ignore[arg-type]
                         MoveAnyArg(RefType.from_ref("")),
                     )
                 else:
                     raise ValueError(f"Can't resolve {from_vec}")
         return cls(
-            RefType.from_ref(in_ref),
+            RefType.from_ref(in_ref),  # type: ignore[arg-type]
             (
                 MoveScalarArg.from_str("", from_vec)
                 if isinstance(from_vec, str)
@@ -1764,11 +1760,11 @@ class MoveFunctionGQL:
     returns: Optional[list] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "MoveFunctionGQL":
+    def from_query(clz, in_data: dict) -> "Union[MoveFunctionGQL, NoopGQL]":  # type: ignore[override]
         if in_data.get("object") or in_data.get("function_name"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
-            return MoveFunctionGQL.from_dict(fdict)
+            return MoveFunctionGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
     def arg_summary(self) -> MoveArgSummary:
@@ -1776,8 +1772,8 @@ class MoveFunctionGQL:
         a_list: list = []
         for parm in self.parameters:
             sig = parm.get("signature")
-            ref = sig.get("ref")
-            body = sig.get("body")
+            ref = sig.get("ref")  # type: ignore[union-attr]
+            body = sig.get("body")  # type: ignore[union-attr]
             if "datatype" in body:
                 if body.get("datatype")["type"] == "TxContext":
                     continue
@@ -1807,7 +1803,7 @@ class MoveFunctionsGQL:
     next_cursor: Optional[PagingCursor]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "MoveFunctionsGQL":
+    def from_query(clz, in_data: dict) -> "Union[MoveFunctionsGQL, NoopGQL]":  # type: ignore[override]
         """."""
         if in_data:
             in_data = in_data.get("object", in_data)
@@ -1823,7 +1819,7 @@ class MoveFunctionsGQL:
                 fdict["functions"] = [
                     MoveFunctionGQL.from_query(x) for x in fdict["nodes"]
                 ]
-                return MoveFunctionsGQL.from_dict(fdict)
+                return MoveFunctionsGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -1837,7 +1833,7 @@ class MoveModuleGQL:
     module_functions: Union[MoveFunctionsGQL, list]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "MoveModuleGQL":
+    def from_query(clz, in_data: dict) -> "Union[MoveModuleGQL, NoopGQL]":  # type: ignore[override]
         if in_data:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
@@ -1853,7 +1849,7 @@ class MoveModuleGQL:
                 {"nodes": fdict["module_functions"]}
             )
 
-            return MoveModuleGQL.from_dict(fdict)
+            return MoveModuleGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -1868,7 +1864,7 @@ class MovePackageGQL:
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "MovePackageGQL":
+    def from_query(clz, in_data: dict) -> "Union[MovePackageGQL, NoopGQL]":  # type: ignore[override]
         if in_data.get("object"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
@@ -1877,7 +1873,7 @@ class MovePackageGQL:
             )
             fdict["modules"] = [MoveModuleGQL.from_query(x) for x in fdict["nodes"]]
             fdict.pop("nodes")
-            return MovePackageGQL.from_dict(fdict)
+            return MovePackageGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
 
@@ -1889,11 +1885,11 @@ class ValidatorExchangeRateGQL:
     sui_amount: str | None = None
 
     @classmethod
-    def from_query(clz, name: str, in_data: dict) -> "ValidatorExchangeRateGQL":
+    def from_query(clz, name: str, in_data: dict) -> "ValidatorExchangeRateGQL":  # type: ignore[override]
         idict = {"identifier": name}
         if in_data:
             idict = idict | in_data["value"]["json"]
-        return clz.from_dict(idict)
+        return clz.from_dict(idict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1901,10 +1897,10 @@ class ValidatorExchangeRateGQL:
 class ValidatorExchangeRatesGQL:
     """Sui Validator Exchange Rates List"""
 
-    exchange_rates: list[ValidatorExchangeRateGQL | None]
+    exchange_rates: list[ValidatorExchangeRateGQL]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorExchangeRatesGQL":
+    def from_query(clz, in_data: dict) -> "ValidatorExchangeRatesGQL":  # type: ignore[override]
         in_data = in_data.pop("address")
         ex_list: list[ValidatorExchangeRateGQL] = []
         for key, value in in_data.items():
@@ -1936,14 +1932,14 @@ class ValidatorFullGQL:
     commissionRate: int
     nextEpochStake: str
     nextEpochGasPrice: str
-    nextEpochCommissionRate: 1200
+    nextEpochCommissionRate: int
     atRisk: int
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorFullGQL":
+    def from_query(clz, in_data: dict) -> "ValidatorFullGQL":  # type: ignore[override]
         fdict: dict = {}
         _fast_flat(in_data, fdict)
-        return ValidatorFullGQL.from_dict(fdict)
+        return ValidatorFullGQL.from_dict(fdict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1963,9 +1959,9 @@ class ValidatorSetsGQL:
     next_cursor: PagingCursor
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "ValidatorSetsGQL":
+    def from_query(clz, in_data: dict) -> "ValidatorSetsGQL":  # type: ignore[override]
         fdict: dict = {}
-        cursor: PagingCursor = PagingCursor.from_dict(
+        cursor: PagingCursor = PagingCursor.from_dict(  # type: ignore[attr-defined]
             in_data["epoch"]["validatorSet"]["activeValidators"].pop("cursor")
         )
         _fast_flat(in_data, fdict)
@@ -1974,7 +1970,7 @@ class ValidatorSetsGQL:
         ]
         fdict["next_cursor"] = cursor
 
-        return ValidatorSetsGQL.from_dict(fdict)
+        return ValidatorSetsGQL.from_dict(fdict)  # type: ignore[attr-defined]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1998,12 +1994,12 @@ class DynamicFieldsGQL:
     dynamic_fields: list[DynamicFieldGQL]
 
     @classmethod
-    def from_query(clz, in_data: dict) -> "DynamicFieldsGQL":
+    def from_query(clz, in_data: dict) -> "Union[DynamicFieldsGQL, NoopGQL]":  # type: ignore[override]
         if in_data.get("object"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
             fdict["next_cursor"] = PagingCursor(
                 fdict.pop("hasNextPage"), fdict.pop("endCursor")
             )
-            return DynamicFieldsGQL.from_dict(fdict)
+            return DynamicFieldsGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
