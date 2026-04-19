@@ -242,34 +242,6 @@ class GetCoinSummary(PGQL_QueryNode):
         return pgql_type.SuiCoinObjectSummaryGQL.from_query
 
 
-class GetObjectsForType(PGQL_QueryNode):
-    """GetObjectsForType Returnns all objects of a specific type."""
-
-    def __init__(
-        self,
-        *,
-        object_type: str,
-        next_page: Optional[pgql_type.PagingCursor] = None,
-    ):
-        """QueryNode initializer
-
-        :param object_type: The fully qualified type (i.e. `"0x2::coin::Coin<0x2::sui::SUI>"`)
-        :type object_type: str
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
-        """
-        self.object_type = object_type
-        self.next_page = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.SuiCoinObjectsGQL]:
-        """Return the serializer to SuiCoinObjectsGQL function."""
-        return pgql_type.SuiCoinObjectsGQL.from_query
-
-
 class GetCoins(PGQL_QueryNode):
     """GetCoins Returns all Coin objects of a specific type for owner."""
 
@@ -452,7 +424,7 @@ class GetObject(PGQL_QueryNode):
         return pgql_type.ObjectReadGQL.from_query  # type: ignore[return-value]
 
 
-class GetObjectsForType(PGQL_QueryNode):  # type: ignore[no-redef]  # duplicate name; stub at line 245 is dead code — see backlog
+class GetObjectsForType(PGQL_QueryNode):
     """GetObjectsForType Returnns all objects of a specific type."""
 
     def __init__(
