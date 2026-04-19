@@ -28,6 +28,14 @@ Python Client SDK for Sui blockchain
 
 **Release-0.99.0**
 
+**BREAKING CHANGES**
+
+- `profile_names(in_group=...)` no longer mutates the active group as a
+side effect — callers relying on this behavior must call `make_active()` explicitly
+
+- `use_account_for_gas` moved from the transaction constructor to build-time
+parameters on build(), build_and_sign(), and transaction_data()
+
 ## PyPi current
 
 **Release-0.98.0 - Released 2026-04-13**

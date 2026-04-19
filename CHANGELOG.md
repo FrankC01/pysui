@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `profile_names(in_group=...)` no longer mutates the active group as a side effect — callers relying on this behavior must call `make_active()` explicitly
 
+- `use_account_for_gas` moved from the transaction constructor to build-time
+parameters on build(), build_and_sign(), and transaction_data()
+
 ### Added
 
 - Added 366 offline unit tests (no network required) across 8 files in `tests/unit_tests/`
