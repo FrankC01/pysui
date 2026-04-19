@@ -24,6 +24,7 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 ### Fixed
 
+- `pysui/sui/sui_pgql/pgql_query.py`: removed dead-code stub `GetObjectsForType` class (lines 245–270) that was silently shadowed by the real implementation; stub had an empty `as_document_node` and wrong `encode_fn` returning `SuiCoinObjectsGQL`
 - `pysui/sui/sui_common/config/pysui_config.py`: corrected `faucet_url` property typo (`faucet_urls` → `faucet_url`)
 - `pysui/sui/sui_pgql/pgql_async_txn.py`: corrected `async_fetch_or_transpose_object` → `fetch_or_transpose_object` method name typo
 
