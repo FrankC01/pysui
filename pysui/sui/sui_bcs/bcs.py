@@ -385,7 +385,7 @@ U256 = Uint256
 
 
 @versionadded(version="0.19.0", reason="Added")
-@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
+# @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU8(canoser.RustOptional):
     """OptionalU8 Optional assignment of unsigned 8 bit int."""
 
@@ -393,7 +393,7 @@ class OptionalU8(canoser.RustOptional):
 
 
 @versionadded(version="0.19.0", reason="Added")
-@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
+# @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU16(canoser.RustOptional):
     """OptionalU16 Optional assignment of unsigned 16 bit int."""
 
@@ -401,14 +401,14 @@ class OptionalU16(canoser.RustOptional):
 
 
 @versionadded(version="0.19.0", reason="Added")
-@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
+# @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU32(canoser.RustOptional):
     """OptionalU32 Optional assignment of unsigned 32 bit int."""
 
     _type = U32
 
 
-@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
+# @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU64(canoser.RustOptional):
     """OptionalU64 Optional assignment of unsigned 64 bit int."""
 
@@ -416,7 +416,7 @@ class OptionalU64(canoser.RustOptional):
 
 
 @versionadded(version="0.19.0", reason="Added")
-@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
+# @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU128(canoser.RustOptional):
     """OptionalU128 Optional assignment of unsigned 128 bit int."""
 
@@ -424,7 +424,7 @@ class OptionalU128(canoser.RustOptional):
 
 
 @versionadded(version="0.19.0", reason="Added")
-@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
+# @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalU256(canoser.RustOptional):
     """OptionalU256 Optional assignment of unsigned 256 bit int."""
 

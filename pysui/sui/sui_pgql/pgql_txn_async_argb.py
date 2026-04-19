@@ -223,7 +223,7 @@ class AsyncResolvingArgParser:
         *,
         arg: Any,
         expected_type: pgql_type.MoveObjectRefArg,
-        _construct: Optional[tuple[Any, Any]] = None,
+        construct: Optional[tuple[Any, Any]] = None,
     ) -> bcs.ObjectArg:
         """Process an object reference."""
         if arg:
@@ -235,7 +235,6 @@ class AsyncResolvingArgParser:
             )
         raise ValueError("Missing argument")
 
-    # TODO: This needs work
     async def _optional_processor(
         self,
         *,
@@ -258,10 +257,10 @@ class AsyncResolvingArgParser:
                     arg=arg,
                     expected_type=expected_type.type_params[0],
                 )
+                etr = bcs.OptionalTypeFactory.as_unresolved_optional(inner_type)
             else:
                 inner_type = outer_fn(inner_fn(arg))
-            etr = bcs.OptionalTypeFactory.as_unresolved_optional(inner_type)
-            # etr = bcs.OptionalTypeFactory.as_optional(inner_type)
+                etr = bcs.OptionalTypeFactory.as_optional(inner_type)
         elif isinstance(construct, list):
             for index, vconstruct in enumerate(construct):
                 convert, encode = vconstruct
@@ -272,6 +271,8 @@ class AsyncResolvingArgParser:
             if construct in bcs.OPTIONAL_SCALARS:
                 return inner_type
             etr = bcs.OptionalTypeFactory.as_optional(inner_type)
+        else:
+            return arg
         etr.value = inner_type
         return etr
 
@@ -280,8 +281,7 @@ class AsyncResolvingArgParser:
     ) -> Any:
         """Convert user input argument to the BCS representation expected for transaction."""
         if inspect.iscoroutinefunction(processor_fn):
-            # if inspect.isawaitable(processor_fn):
-            return await processor_fn(arg=arg, expected_type=arg_meta)
+            return await processor_fn(arg=arg, expected_type=arg_meta, construct=constructor_fn)
         if constructor_fn:
             return constructor_fn(processor_fn(arg))
         return arg
@@ -348,7 +348,7 @@ class AsyncResolvingArgParser:
                             res_list.append(inner_list)
                         elif isinstance(in_arg, (str, bytes)):
                             res_list = await self._argument_builder(
-                                self._client, in_arg, in_meta, *inner_list
+                                in_arg, in_meta, *inner_list
                             )
                             break
                         else:

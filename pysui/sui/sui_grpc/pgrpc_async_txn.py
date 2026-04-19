@@ -131,12 +131,12 @@ class AsyncSuiTransaction(txbase):
         :return: TransactionData with empty payment and ValidDuring expiration
         :rtype: bcs.TransactionData
         """
-        _res = await self.client.execute(request=rn.GetEpoch())
+        _res = await self.client.execute(request=rn.GetEpoch(), timeout=30.0)
         if _res.is_ok():
             _cei: sui_prot.GetEpochResponse = _res.result_data
             min_epoch = txn_expires_after or _cei.epoch.epoch
             tx_kind = self.builder.finish_for_inspect()
-            result = await self.client.execute(request=rn.GetServiceInfo())
+            result = await self.client.execute(request=rn.GetServiceInfo(), timeout=30.0)
             if result.is_ok():
                 chain_id = result.result_data.chain_id
             else:
@@ -148,7 +148,8 @@ class AsyncSuiTransaction(txbase):
                         transaction=tx_kind,
                         sender=pay_addy,
                         gas_selection=True,
-                    )
+                    ),
+                    timeout=60.0,
                 )
                 if _res.is_ok():
                     gas_used = _res.result_data.transaction.effects.gas_used
@@ -202,11 +203,6 @@ class AsyncSuiTransaction(txbase):
         uses_gas_coin, gas_source_draw = self._inspect_ptb_for_gas_coin()
 
         if use_account_for_gas:
-            if uses_gas_coin:
-                raise ValueError(
-                    "Hybrid gas payment (txer.gas + address balance) not yet "
-                    "implemented — use coin-only gas payment"
-                )
             return await self._build_txn_data_address_balance(
                 gas_budget, txn_expires_after
             )
@@ -775,14 +771,14 @@ class AsyncSuiTransaction(txbase):
             upgrade_cap.object_type
         )
         # If all upgradecap items check out
-        jdict = upgrade_cap.json.to_dict()["structValue"]["fields"]
+        jdict = upgrade_cap.json.to_dict()
         if (
             jdict.keys() >= {"package", "version", "policy"}
             and package_struct == "UpgradeCap"
         ):
             # Prep args
             cap_obj_arg, policy_arg = await self._argparse.build_args(
-                [upgrade_cap, jdict["policy"]["numberValue"]],
+                [upgrade_cap, jdict["policy"]],
                 txbase._PUBLISH_UPGRADE,
             )
             # Capture input offsets to preserve location of upgrade_cap ObjectArg
@@ -796,7 +792,7 @@ class AsyncSuiTransaction(txbase):
                 self.builder.publish_upgrade(
                     modules,
                     dependencies,
-                    bcs.Address.from_str(jdict["package"]["stringValue"]),
+                    bcs.Address.from_str(jdict["package"]),
                     auth_cmd,
                 ),
             )
@@ -849,7 +845,7 @@ class AsyncSuiTransaction(txbase):
             upgrade_cap.object_type
         )
         # If all upgradecap items check out
-        jdict = upgrade_cap.json.to_dict()["structValue"]["fields"]
+        jdict = upgrade_cap.json.to_dict()
         if (
             jdict.keys() >= {"package", "version", "policy"}
             and package_struct == "UpgradeCap"
