@@ -19,6 +19,7 @@ import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
 from .caching_tx_builder import CachingTransactionBuilder, PureInput
+from pysui.sui.sui_types.scalars import SuiU64
 
 from pysui.sui.sui_common.async_funcs import AsyncLRU
 
@@ -66,13 +67,13 @@ class CachingTransaction(txbase):
     @AsyncLRU(maxsize=256)
     async def _function_meta_args(
         self, target: str
-    ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
-        """_function_meta_args Returns the argument summary of a target sui move function
+    ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
+        """_function_meta_args Returns the parameter list of a target sui move function
 
         :param target: The triplet target string
         :type target: str
         :return: The meta function argument summary
-        :rtype: pgql_type.MoveArgSummary
+        :rtype: list[pgql_type.OpenMoveTypeGQL]
         """
         package, package_module, package_function = (
             tv.TypeValidator.check_target_triplet(target)
@@ -92,7 +93,7 @@ class CachingTransaction(txbase):
                 package_module,
                 package_function,
                 len(mfunc.returns),
-                mfunc.arg_summary(),
+                mfunc.parameters,
             )
         raise ValueError(f"Unresolvable target {target}")
 
@@ -232,8 +233,13 @@ class CachingTransaction(txbase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
 
-        parms = await self._argparse.build_args([coin, amounts], txbase._SPLIT_COIN)
-        return self.builder.split_coin(parms[0], parms[1:][0])
+        parms = await self._argparse.build_args([coin], txbase._SPLIT_COIN[:1])
+        encoded_amounts = [
+            a if isinstance(a, bcs.Argument)
+            else PureInput.as_input(SuiU64(a))
+            for a in amounts
+        ]
+        return self.builder.split_coin(parms[0], encoded_amounts)
 
     async def merge_coins(
         self,
@@ -250,11 +256,13 @@ class CachingTransaction(txbase):
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.async_build_args(
-            [merge_to, merge_from], txbase._MERGE_COINS
-        )
-
-        return self.builder.merge_coins(parms[0], parms[1:][0])
+        parms = await self._argparse.build_args([merge_to], txbase._MERGE_COINS[:1])
+        resolved = [
+            c if isinstance(c, bcs.Argument)
+            else await self._argparse.fetch_or_transpose_object(c, False, False)
+            for c in merge_from
+        ]
+        return self.builder.merge_coins(parms[0], resolved)
 
     async def split_coin_equal(
         self,
@@ -307,10 +315,13 @@ class CachingTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.build_args(
-            [recipient, transfers], txbase._TRANSFER_OBJECTS
-        )
-        return self.builder.transfer_objects(parms[0], parms[1:][0])
+        parms = await self._argparse.build_args([recipient], txbase._TRANSFER_OBJECTS[:1])
+        resolved = [
+            t if isinstance(t, bcs.Argument)
+            else await self._argparse.fetch_or_transpose_object(t, False, False)
+            for t in transfers
+        ]
+        return self.builder.transfer_objects(parms[0], resolved)
 
     async def transfer_sui(
         self,
@@ -386,13 +397,16 @@ class CachingTransaction(txbase):
                 type_tag = bcs.OptionalTypeTag()
             return self.builder.make_move_vector(type_tag, items)
 
-        parms = await self._argparse.build_args([items], txbase._MAKE_MOVE_VEC)
+        resolved = [
+            item if isinstance(item, bcs.Argument)
+            else await self._argparse.fetch_or_transpose_object(item, False, False)
+            for item in items
+        ]
         if item_type:
             type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
         else:
             type_tag = bcs.OptionalTypeTag()
-
-        return self.builder.make_move_vector(type_tag, parms[0])
+        return self.builder.make_move_vector(type_tag, resolved)
 
     async def move_call(
         self,
@@ -535,7 +549,7 @@ class CachingTransaction(txbase):
             await self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
         )
         # Validate arguments
-        parms = await self._argparse.build_argsbuild_args(
+        parms = await self._argparse.build_args(
             [
                 self._SYSTEMSTATE_OBJECT.value,
                 staked_coin,
@@ -612,7 +626,7 @@ class CachingTransaction(txbase):
             and package_struct == "UpgradeCap"
         ):
             # Prep args
-            cap_obj_arg, policy_arg = await self._argparse.async_build_args(
+            cap_obj_arg, policy_arg = await self._argparse.build_args(
                 [upgrade_cap, upgrade_cap.content["policy"]],
                 txbase._PUBLISH_UPGRADE,
             )

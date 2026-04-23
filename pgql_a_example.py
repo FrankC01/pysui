@@ -617,7 +617,7 @@ async def do_split_any_half(client: AsyncGqlClient):
         txer: AsyncSuiTransaction = client.transaction()
         scres = await txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
         await txer.transfer_objects(
-            transfers=scres, recipient=client.config.active_address
+            transfers=[scres], recipient=client.config.active_address
         )
         handle_result(
             await client.execute_query_node(

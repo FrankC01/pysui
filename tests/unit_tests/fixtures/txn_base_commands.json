@@ -1,0 +1,155 @@
+{
+  "split_coin": [
+    {
+      "signature": {
+        "ref": "&mut",
+        "body": {
+          "datatype": {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "sui",
+            "type": "SUI",
+            "typeParameters": []
+          }
+        }
+      }
+    },
+    {
+      "signature": {
+        "body": {
+          "vector": "u64"
+        }
+      }
+    }
+  ],
+  "merge_coins": [
+    {
+      "signature": {
+        "ref": "&mut",
+        "body": {
+          "datatype": {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "sui",
+            "type": "SUI",
+            "typeParameters": []
+          }
+        }
+      }
+    },
+    {
+      "signature": {
+        "body": {
+          "vector": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "sui",
+              "type": "SUI",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    }
+  ],
+  "transfer_objects": [
+    {
+      "signature": {
+        "body": "address"
+      }
+    },
+    {
+      "signature": {
+        "body": {
+          "vector": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "sui",
+              "type": "SUI",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    }
+  ],
+  "transfer_sui": [
+    {
+      "signature": {
+        "body": "address"
+      }
+    },
+    {
+      "signature": {
+        "ref": "&mut",
+        "body": {
+          "datatype": {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "sui",
+            "type": "SUI",
+            "typeParameters": []
+          }
+        }
+      }
+    },
+    {
+      "signature": {
+        "body": "u64"
+      }
+    }
+  ],
+  "public_transfer_objects": [
+    {
+      "signature": {
+        "ref": "&mut",
+        "body": {
+          "datatype": {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "sui",
+            "type": "SUI",
+            "typeParameters": []
+          }
+        }
+      }
+    },
+    {
+      "signature": {
+        "body": "address"
+      }
+    }
+  ],
+  "make_move_vec": [
+    {
+      "signature": {
+        "body": {
+          "vector": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "sui",
+              "type": "SUI",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    }
+  ],
+  "publish_upgrade": [
+    {
+      "signature": {
+        "ref": "&mut",
+        "body": {
+          "datatype": {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "sui",
+            "type": "SUI",
+            "typeParameters": []
+          }
+        }
+      }
+    },
+    {
+      "signature": {
+        "body": "u8"
+      }
+    }
+  ]
+}

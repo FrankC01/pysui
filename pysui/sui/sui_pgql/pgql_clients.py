@@ -486,9 +486,11 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
     async def close(self) -> None:
         """Close the connection."""
-        await self._schema._async_client.close_async()
-        # aclient = self.async_client()
-        # await aclient.close_async()
+        if self._schema._async_client:
+            try:
+                await self._schema._async_client.close_async()
+            except AttributeError:
+                pass
 
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"

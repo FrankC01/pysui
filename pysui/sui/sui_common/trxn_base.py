@@ -51,110 +51,148 @@ class _TransactionBase:
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
 
-    _SPLIT_COIN = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-            ),
-            pgql_type.MoveListArg(  # type: ignore[list-item]
-                pgql_type.RefType.NO_REF,
-                pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
-            ),
-        ],
-    )
-
-    _MERGE_COINS = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-            ),
-            pgql_type.MoveListArg(  # type: ignore[list-item]
-                pgql_type.RefType.NO_REF,
-                pgql_type.MoveObjectRefArg(
-                    pgql_type.RefType.MUT_REF,
-                    "0x2",
-                    "sui",
-                    "SUI",
-                    [],
-                    False,
-                    False,
-                    False,
+    _SPLIT_COIN = [
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref="&mut",
+                body=pgql_type.OpenMoveDatatypeBodyGQL(
+                    package="0x2", module="sui", type_name="SUI", type_parameters=[]
                 ),
             ),
-        ],
-    )
-
-    _TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
-            pgql_type.MoveListArg(  # type: ignore[list-item]
-                pgql_type.RefType.NO_REF,
-                pgql_type.MoveObjectRefArg(
-                    pgql_type.RefType.MUT_REF,
-                    "0x2",
-                    "sui",
-                    "SUI",
-                    [],
-                    False,
-                    False,
-                    False,
+            repr="",
+        ),
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveVectorBodyGQL(
+                    inner=pgql_type.OpenMoveScalarBodyGQL(scalar_type="u64")
                 ),
             ),
-        ],
-    )
+            repr="",
+        ),
+    ]
 
-    _TRANSFER_SUI = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-            ),
-            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u64"),
-        ],
-    )
-
-    _PUBLIC_TRANSFER_OBJECTS = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
-            ),
-            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "address"),
-        ],
-    )
-
-    _MAKE_MOVE_VEC = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveVectorArg(
-                pgql_type.RefType.NO_REF,
-                pgql_type.MoveObjectRefArg(
-                    pgql_type.RefType.MUT_REF,
-                    "0x2",
-                    "sui",
-                    "SUI",
-                    [],
-                    False,
-                    False,
-                    False,
+    _MERGE_COINS = [
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref="&mut",
+                body=pgql_type.OpenMoveDatatypeBodyGQL(
+                    package="0x2", module="sui", type_name="SUI", type_parameters=[]
                 ),
-            )
-        ],
-    )
-
-    _PUBLISH_UPGRADE = pgql_type.MoveArgSummary(
-        [],
-        [
-            pgql_type.MoveObjectRefArg(
-                pgql_type.RefType.MUT_REF, "0x2", "sui", "SUI", [], False, False, False
             ),
-            pgql_type.MoveScalarArg(pgql_type.RefType.NO_REF, "u8"),
-        ],
-    )
+            repr="",
+        ),
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveVectorBodyGQL(
+                    inner=pgql_type.OpenMoveDatatypeBodyGQL(
+                        package="0x2", module="sui", type_name="SUI", type_parameters=[]
+                    )
+                ),
+            ),
+            repr="",
+        ),
+    ]
+
+    _TRANSFER_OBJECTS = [
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveScalarBodyGQL(scalar_type="address"),
+            ),
+            repr="",
+        ),
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveVectorBodyGQL(
+                    inner=pgql_type.OpenMoveDatatypeBodyGQL(
+                        package="0x2", module="sui", type_name="SUI", type_parameters=[]
+                    )
+                ),
+            ),
+            repr="",
+        ),
+    ]
+
+    _TRANSFER_SUI = [
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveScalarBodyGQL(scalar_type="address"),
+            ),
+            repr="",
+        ),
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref="&mut",
+                body=pgql_type.OpenMoveDatatypeBodyGQL(
+                    package="0x2", module="sui", type_name="SUI", type_parameters=[]
+                ),
+            ),
+            repr="",
+        ),
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveScalarBodyGQL(scalar_type="u64"),
+            ),
+            repr="",
+        ),
+    ]
+
+    _PUBLIC_TRANSFER_OBJECTS = [
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref="&mut",
+                body=pgql_type.OpenMoveDatatypeBodyGQL(
+                    package="0x2", module="sui", type_name="SUI", type_parameters=[]
+                ),
+            ),
+            repr="",
+        ),
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveScalarBodyGQL(scalar_type="address"),
+            ),
+            repr="",
+        ),
+    ]
+
+    _MAKE_MOVE_VEC = [
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveVectorBodyGQL(
+                    inner=pgql_type.OpenMoveDatatypeBodyGQL(
+                        package="0x2", module="sui", type_name="SUI", type_parameters=[]
+                    )
+                ),
+            ),
+            repr="",
+        ),
+    ]
+
+    _PUBLISH_UPGRADE = [
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref="&mut",
+                body=pgql_type.OpenMoveDatatypeBodyGQL(
+                    package="0x2", module="sui", type_name="SUI", type_parameters=[]
+                ),
+            ),
+            repr="",
+        ),
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveScalarBodyGQL(scalar_type="u8"),
+            ),
+            repr="",
+        ),
+    ]
 
     def __init__(
         self,

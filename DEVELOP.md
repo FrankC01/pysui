@@ -88,6 +88,33 @@ pytest tests/integration_tests/ -n4  # WRONG — will cause equivocation errors
 Tests that exercise `publish` and `publish_upgrade` compile Move source with the `sui` CLI.
 If the binary is not configured in your PysuiConfiguration, those tests are skipped automatically.
 
+### Skipping contract publishing with pre-published contracts
+
+Publishing contracts during test setup is expensive and time-consuming. If you have already published
+the test contract from a previous run and want to reuse it across multiple test runs, set these three environment variables
+to skip the publish step:
+
+- `PYSUI_TEST_PKG_ID`: The package ID of the published contract
+- `PYSUI_TEST_UPGRADE_CAP_ID`: The upgrade capability objecct ID  
+- `PYSUI_TEST_PARM_OBJECT_ID`: The parameter object ID
+
+When all three are set, the integration test fixtures will use the existing contract instead of
+publishing a new one, enabling much faster iteration during development:
+
+```bash
+export PYSUI_TEST_PKG_ID=0x...
+export PYSUI_TEST_UPGRADE_CAP_ID=0x...
+export PYSUI_TEST_PARM_OBJECT_ID=0x...
+pytest tests/integration_tests/ -v
+```
+
+Or inline:
+
+```bash
+PYSUI_TEST_PKG_ID=0x... PYSUI_TEST_UPGRADE_CAP_ID=0x... PYSUI_TEST_PARM_OBJECT_ID=0x... \
+  pytest tests/integration_tests/ -v
+```
+
 ### Running
 
 ```bash

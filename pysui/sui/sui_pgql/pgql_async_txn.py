@@ -16,6 +16,7 @@ from pysui.sui.sui_common.trxn_base import FundsSource
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txb_pure import PureInput
+from pysui.sui.sui_types.scalars import SuiU64
 import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
 from pysui.sui.sui_common.txb_gas import compute_gas_budget
@@ -67,13 +68,13 @@ class AsyncSuiTransaction(txbase):
     @AsyncLRU(maxsize=256)
     async def _function_meta_args(
         self, target: str
-    ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
+    ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
         """_function_meta_args Returns the argument summary of a target sui move function
 
         :param target: The triplet target string
         :type target: str
-        :return: The meta function argument summary
-        :rtype: pgql_type.MoveArgSummary
+        :return: The function parameters as OpenMoveTypeGQL list
+        :rtype: list[pgql_type.OpenMoveTypeGQL]
         """
         package, package_module, package_function = (
             tv.TypeValidator.check_target_triplet(target)
@@ -93,13 +94,13 @@ class AsyncSuiTransaction(txbase):
                 package_module,
                 package_function,
                 len(mfunc.returns),
-                mfunc.arg_summary(),
+                mfunc.parameters,
             )
         raise ValueError(f"Unresolvable target {target}")
 
     async def target_function_summary(
         self, target: str
-    ) -> tuple[bcs.Address, str, str, int, pgql_type.MoveArgSummary]:
+    ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
         """Returns the argument summary of a target sui move function."""
         return await self._function_meta_args(target)
 
@@ -351,8 +352,13 @@ class AsyncSuiTransaction(txbase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
 
-        parms = await self._argparse.build_args([coin, amounts], txbase._SPLIT_COIN)
-        return self.builder.split_coin(parms[0], parms[1:][0])
+        parms = await self._argparse.build_args([coin], txbase._SPLIT_COIN[:1])
+        encoded_amounts = [
+            a if isinstance(a, bcs.Argument)
+            else PureInput.as_input(SuiU64(a))
+            for a in amounts
+        ]
+        return self.builder.split_coin(parms[0], encoded_amounts)
 
     async def merge_coins(
         self,
@@ -369,11 +375,13 @@ class AsyncSuiTransaction(txbase):
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.build_args(
-            [merge_to, merge_from], txbase._MERGE_COINS
-        )
-
-        return self.builder.merge_coins(parms[0], parms[1:][0])
+        parms = await self._argparse.build_args([merge_to], txbase._MERGE_COINS[:1])
+        resolved = [
+            c if isinstance(c, bcs.Argument)
+            else await self._argparse.fetch_or_transpose_object(c, False, False)
+            for c in merge_from
+        ]
+        return self.builder.merge_coins(parms[0], resolved)
 
     async def split_coin_equal(
         self,
@@ -426,10 +434,13 @@ class AsyncSuiTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.build_args(
-            [recipient, transfers], txbase._TRANSFER_OBJECTS
-        )
-        return self.builder.transfer_objects(parms[0], parms[1:][0])
+        parms = await self._argparse.build_args([recipient], txbase._TRANSFER_OBJECTS[:1])
+        resolved = [
+            t if isinstance(t, bcs.Argument)
+            else await self._argparse.fetch_or_transpose_object(t, False, False)
+            for t in transfers
+        ]
+        return self.builder.transfer_objects(parms[0], resolved)
 
     async def transfer_sui(
         self,
@@ -505,13 +516,16 @@ class AsyncSuiTransaction(txbase):
                 type_tag = bcs.OptionalTypeTag()
             return self.builder.make_move_vector(type_tag, items)
 
-        parms = await self._argparse.build_args([items], txbase._MAKE_MOVE_VEC)
+        resolved = [
+            item if isinstance(item, bcs.Argument)
+            else await self._argparse.fetch_or_transpose_object(item, False, False)
+            for item in items
+        ]
         if item_type:
             type_tag = bcs.OptionalTypeTag(bcs.TypeTag.type_tag_from(item_type))
         else:
             type_tag = bcs.OptionalTypeTag()
-
-        return self.builder.make_move_vector(type_tag, parms[0])
+        return self.builder.make_move_vector(type_tag, resolved)
 
     async def move_call(
         self,

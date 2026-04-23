@@ -352,7 +352,7 @@ async def ensure_session_gas(
             request=rn.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
         )
         assert result.is_ok(), f"GetAddressCoinBalance failed for {address}: {result.result_string}"
-        await _faucet_to_target(faucet_url, address, result.result_data.balance.coin_balance)
+        await _faucet_to_target(faucet_url, address, result.result_data.balance.coin_balance or 0)
 
     # Pass 2 — top up address accumulator for all sender addresses.
     #           GQL client's coin objects pay for each send_funds transaction.
@@ -361,7 +361,7 @@ async def ensure_session_gas(
             request=rn.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
         )
         assert result.is_ok(), f"GetAddressCoinBalance failed for {address}: {result.result_string}"
-        shortfall = _TARGET_ACCUM_MIST - result.result_data.balance.address_balance
+        shortfall = _TARGET_ACCUM_MIST - (result.result_data.balance.address_balance or 0)
         if shortfall > 0:
             await fund_accumulator_gql(gql_session_client, amount=shortfall, recipient=address)
 
@@ -444,7 +444,20 @@ async def published_gql(
     sui_test_project_path: str,
     ensure_session_gas: None,
 ) -> PublishedPackage:
-    """Publish the sui-test contract once per session (GQL). Yields PublishedPackage."""
+    """Publish the sui-test contract once per session (GQL). Yields PublishedPackage.
+
+    To skip publishing and use pre-published contract, set environment variables:
+    - PYSUI_TEST_PKG_ID: package address
+    - PYSUI_TEST_UPGRADE_CAP_ID: upgrade cap object ID
+    - PYSUI_TEST_PARM_OBJECT_ID: parm object ID
+    """
+    pkg_id = os.getenv("PYSUI_TEST_PKG_ID")
+    cap_id = os.getenv("PYSUI_TEST_UPGRADE_CAP_ID")
+    parm_obj_id = os.getenv("PYSUI_TEST_PARM_OBJECT_ID")
+
+    if pkg_id and cap_id and parm_obj_id:
+        return PublishedPackage(pkg_addr=pkg_id, cap_id=cap_id, parm_obj_id=parm_obj_id)
+
     if not _sui_binary_available(gql_cfg):
         pytest.skip("sui CLI binary not configured — publish tests skipped")
     await asyncio.sleep(SETTLE_SECS)
@@ -472,7 +485,20 @@ async def published_grpc(
     sui_test_project_path: str,
     ensure_session_gas: None,
 ) -> PublishedPackage:
-    """Publish the sui-test contract once per session (gRPC). Yields PublishedPackage."""
+    """Publish the sui-test contract once per session (gRPC). Yields PublishedPackage.
+
+    To skip publishing and use pre-published contract, set environment variables:
+    - PYSUI_TEST_PKG_ID: package address
+    - PYSUI_TEST_UPGRADE_CAP_ID: upgrade cap object ID
+    - PYSUI_TEST_PARM_OBJECT_ID: parm object ID
+    """
+    pkg_id = os.getenv("PYSUI_TEST_PKG_ID")
+    cap_id = os.getenv("PYSUI_TEST_UPGRADE_CAP_ID")
+    parm_obj_id = os.getenv("PYSUI_TEST_PARM_OBJECT_ID")
+
+    if pkg_id and cap_id and parm_obj_id:
+        return PublishedPackage(pkg_addr=pkg_id, cap_id=cap_id, parm_obj_id=parm_obj_id)
+
     if not _sui_binary_available(grpc_cfg):
         pytest.skip("sui CLI binary not configured — publish tests skipped")
     txer = await grpc_session_client.transaction()

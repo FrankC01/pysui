@@ -14,7 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `use_account_for_gas` moved from the transaction constructor to build-time
 parameters on build(), build_and_sign(), and transaction_data()
 
+- `MoveFunctionGQL.parameters` changed from `list[dict]` to `list[OpenMoveTypeGQL]` — any code iterating raw dicts from function metadata must migrate to the new dataclass accessors
+- `MoveFunctionGQL.returns` changed from `Optional[list]` to `list[OpenMoveTypeGQL]` — same migration required
+
 ### Added
+
+- `pysui/sui/sui_pgql/pgql_types.py`: new `OpenMove*GQL` dataclass hierarchy mirroring the GQL schema — `OpenMoveTypeGQL`, `OpenMoveTypeSignatureGQL`, `OpenMoveScalarBodyGQL`, `OpenMoveVectorBodyGQL`, `OpenMoveDatatypeBodyGQL`, `OpenMoveTypeParamBodyGQL` — replaces fragile dict-based Move type representation
+- `pysui/sui/sui_common/txn_arg_encoder.py`: new metadata-driven argument encoder using `@singledispatch` over `OpenMoveBodyGQL` variants; `_BaseArgParser` ABC with abstract `fetch_or_transpose_object` for protocol-specific object resolution; shared by both GQL and gRPC transaction builders
+- 33 integration tests in `tests/integration_tests/test_move_call_encoding.py` covering scalar, vector (including `vector<vector<vector<u8>>>`), Option, object reference, and generic type parameter encoding across GQL async, GQL sync, gRPC, and caching transaction builders
 
 - Added 366 offline unit tests (no network required) across 8 files in `tests/unit_tests/`
 - Added `tests/test_deprecations.py` with 8 offline unit tests (no network required):
@@ -23,6 +30,12 @@ parameters on build(), build_and_sign(), and transaction_data()
   - `DeprecationWarning` verified on `SuiConfig`, `SuiClient` sync/async (JSON-RPC), `SuiGQLClient` (sync GraphQL), and `SuiTransaction` (sync GraphQL)
 
 ### Fixed
+
+- `pysui/sui/sui_common/txn_arg_encoder.py`: fixed double-encoding bug in `_encode_vector`, `_encode_datatype`, and `_encode_option` — raw BCS bytes from `_raw_value()` were incorrectly re-encoded through `PureInput.as_input()`; now wrapped directly as `bcs.BuilderArg("Pure", raw_bytes)`
+- `pysui/sui/sui_common/txn_arg_encoder.py`: fixed gRPC protobuf field name `type_parameter_index` → `type_parameter` in `_grpc_body_to_variant` TYPE_PARAMETER case
+- `pysui/sui/sui_pgql/pgql_txn_argb.py`: applied same double-encoding fix to the independent sync GQL encoder
+- `pysui/sui/sui_pgql/pgql_clients.py`: fixed `AttributeError` in async client teardown — `close_async()` on a gql.Client that was never connected no longer raises
+- `tests/integration_tests/conftest.py`: fixed `None` guard in `ensure_session_gas` — address/coin balance returns `None` on devnet reset; added `or 0` fallback to prevent fixture crash
 
 - `pysui/sui/sui_pgql/pgql_query.py`: removed dead-code stub `GetObjectsForType` class (lines 245–270) that was silently shadowed by the real implementation; stub had an empty `as_document_node` and wrong `encode_fn` returning `SuiCoinObjectsGQL`
 - `pysui/sui/sui_common/config/pysui_config.py`: corrected `faucet_url` property typo (`faucet_urls` → `faucet_url`)
@@ -46,6 +59,11 @@ parameters on build(), build_and_sign(), and transaction_data()
   - `ReverseNameLookup` → `GetNameServiceNames`
   - `SimulateTransactionLKind` → `SimulateTransactionKind`
   - `GetDataType` → `GetMoveDataType`; `GetStructure` updated to subclass `GetMoveDataType` directly
+
+- `pysui/sui/sui_pgql/pgql_async_txn.py`, `pgql_sync_txn.py`, `pgrpc_async_txn.py`, `execute/caching_txn.py`: `_function_meta_args` now returns `list[OpenMoveTypeGQL]` instead of `MoveArgSummary`; arg encoding dispatches through new `txn_arg_encoder.py`
+- `pysui/sui/sui_pgql/pgql_txn_async_argb.py`, `pgql_txn_argb.py`, `pysui/sui/sui_grpc/pgrpc_txn_async_argb.py`: rewritten as concrete `_BaseArgParser` subclasses; all old `isinstance`-chain dispatch code replaced with singledispatch-driven encoding; each file now implements only `fetch_or_transpose_object`
+- `pysui/sui/sui_common/trxn_base.py`: converted 7 built-in PTB command signature class attributes (`_SPLIT_COIN`, `_MERGE_COINS`, etc.) from `MoveArgSummary` to `list[OpenMoveTypeGQL]`
+- `pysui/sui/sui_pgql/pgql_types.py`: `MoveFunctionGQL.from_dict` renamed to `from_query`; `arg_summary()` simplified — now emits `DeprecationWarning` and returns `self.parameters` directly; `MoveFieldGQL` updated with `from_query` classmethod using schema-aligned `name`/`type` keys
 
 - `pysui/sui/sui_common/config/confgroup.py`: added module-level group-name constants (`SUI_GQL_RPC_GROUP`, `SUI_GRPC_GROUP`, `SUI_JSON_RPC_GROUP`, `SUI_USER_GROUP`) as single source of truth; added `ProfileGroup.__post_init__` to enforce correct `GroupProtocol` for the two well-known group names on construction and JSON deserialization
 - `pysui/sui/sui_common/config/pysui_config.py`: `PysuiConfiguration` class constants now delegate to `confgroup` constants (no string duplication); `profile_names(in_group=...)` no longer mutates `active_group` as a side effect

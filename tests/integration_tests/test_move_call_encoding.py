@@ -406,7 +406,7 @@ async def test_check_vec_deep_u8_gql(
     txer = gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_deep_u8",
-        arguments=[[_SAMP_BYTES]],
+        arguments=[[[_SAMP_BYTES]]],
     )
     result = await gql_client.execute_query_node(
         with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
@@ -424,7 +424,7 @@ async def test_check_vec_deep_u8_grpc(
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_vec_deep_u8",
-        arguments=[[_SAMP_BYTES]],
+        arguments=[[[_SAMP_BYTES]]],
     )
     result = await grpc_client.execute(
         request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
@@ -745,56 +745,11 @@ async def test_get_sender_grpc(
         target=f"{published_grpc.pkg_addr}::parms::get_sender",
         arguments=[],
     )
-    await txer.transfer_objects(transfers=split_res, recipient=addr_result)
+    await txer.transfer_objects(transfers=[split_res], recipient=addr_result)
     result = await grpc_client.execute(
         request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC get_sender")
-
-
-# ---------------------------------------------------------------------------
-# 16. create_parm_object → transfer_objects
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.order(130)
-async def test_create_parm_object_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
-) -> None:
-    """create_parm_object (GQL): returns ParmObject transferred to self via transfer_objects."""
-    await asyncio.sleep(SETTLE_SECS)
-    pkg_addr = published_gql.pkg_addr
-    addr = str(gql_client.config.active_address)
-    txer = gql_client.transaction()
-    parm_obj = await txer.move_call(
-        target=f"{pkg_addr}::parms::create_parm_object",
-        arguments=[],
-    )
-    await txer.transfer_objects(transfers=[parm_obj], recipient=addr)
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
-    _assert_gql_success(result, "GQL create_parm_object")
-
-
-@pytest.mark.order(131)
-async def test_create_parm_object_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
-) -> None:
-    """create_parm_object (gRPC): returns ParmObject transferred to self via transfer_objects."""
-    await asyncio.sleep(SETTLE_SECS)
-    pkg_addr = published_grpc.pkg_addr
-    addr = str(grpc_client.config.active_address)
-    txer = await grpc_client.transaction()
-    parm_obj = await txer.move_call(
-        target=f"{pkg_addr}::parms::create_parm_object",
-        arguments=[],
-    )
-    await txer.transfer_objects(transfers=[parm_obj], recipient=addr)
-    result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
-    )
-    _assert_grpc_success(result, "gRPC create_parm_object")
 
 
 # ---------------------------------------------------------------------------

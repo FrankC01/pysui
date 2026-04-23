@@ -1,0 +1,949 @@
+[
+  {
+    "functionName": "burn_phoney",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x974fd114d07900dd5a2a184ec7dff28deeeb6c32d1c12d731e8b5e3e905e4e1e",
+              "module": "parms",
+              "type": "Phoney",
+              "typeParameters": []
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_address_vec",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "vector": "address"
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_all",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [
+      {
+        "constraints": [
+          "COPY",
+          "DROP"
+        ]
+      }
+    ],
+    "parameters": [
+      {
+        "signature": {
+          "body": "bool"
+        }
+      },
+      {
+        "signature": {
+          "body": "u8"
+        }
+      },
+      {
+        "signature": {
+          "body": "u256"
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "string",
+              "type": "String",
+              "typeParameters": []
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "datatype": {
+                    "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                    "module": "string",
+                    "type": "String",
+                    "typeParameters": []
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "vector": "u8"
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "vector": {
+              "datatype": {
+                "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                "module": "string",
+                "type": "String",
+                "typeParameters": []
+              }
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&",
+          "body": {
+            "datatype": {
+              "package": "0x974fd114d07900dd5a2a184ec7dff28deeeb6c32d1c12d731e8b5e3e905e4e1e",
+              "module": "parms",
+              "type": "ParmScalars",
+              "typeParameters": []
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "vector": {
+              "datatype": {
+                "package": "0x974fd114d07900dd5a2a184ec7dff28deeeb6c32d1c12d731e8b5e3e905e4e1e",
+                "module": "parms",
+                "type": "MayType",
+                "typeParameters": [
+                  {
+                    "typeParameter": 0
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_bool",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": "bool"
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_id_vec",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "vector": {
+              "datatype": {
+                "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+                "module": "object",
+                "type": "ID",
+                "typeParameters": []
+              }
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_optional_uint_vectors",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "vector": "u16"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "vector": "u32"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "vector": "u64"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "vector": "u128"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "vector": "u256"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_optional_uints",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                "u16"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                "u32"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                "u64"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                "u128"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                "u256"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_phoney",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "datatype": {
+                    "package": "0x974fd114d07900dd5a2a184ec7dff28deeeb6c32d1c12d731e8b5e3e905e4e1e",
+                    "module": "parms",
+                    "type": "Phoney",
+                    "typeParameters": []
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": [
+      {
+        "signature": {
+          "body": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "functionName": "check_string",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "ref": "&",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "string",
+              "type": "String",
+              "typeParameters": []
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_string_option",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "datatype": {
+                    "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                    "module": "string",
+                    "type": "String",
+                    "typeParameters": []
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_string_vec",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "vector": {
+              "datatype": {
+                "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                "module": "string",
+                "type": "String",
+                "typeParameters": []
+              }
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_uints",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": "u16"
+        }
+      },
+      {
+        "signature": {
+          "body": "u32"
+        }
+      },
+      {
+        "signature": {
+          "body": "u64"
+        }
+      },
+      {
+        "signature": {
+          "body": "u128"
+        }
+      },
+      {
+        "signature": {
+          "body": "u256"
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_uints_vectors",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "vector": "u16"
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "vector": "u32"
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "vector": "u64"
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "vector": "u128"
+          }
+        }
+      },
+      {
+        "signature": {
+          "body": {
+            "vector": "u256"
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_vec_deep_u8",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "vector": {
+              "vector": {
+                "vector": "u8"
+              }
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_vec_option_string",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "vector": {
+              "datatype": {
+                "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                "module": "option",
+                "type": "Option",
+                "typeParameters": [
+                  {
+                    "datatype": {
+                      "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                      "module": "string",
+                      "type": "String",
+                      "typeParameters": []
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_vec_optional_u8",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "module": "option",
+              "type": "Option",
+              "typeParameters": [
+                {
+                  "vector": "u8"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "check_vec_u8",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "body": {
+            "vector": "u8"
+          }
+        }
+      },
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "create_parm_object",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": [
+      {
+        "signature": {
+          "body": {
+            "datatype": {
+              "package": "0x974fd114d07900dd5a2a184ec7dff28deeeb6c32d1c12d731e8b5e3e905e4e1e",
+              "module": "parms",
+              "type": "ParmObject",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "functionName": "create_phoney",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": []
+  },
+  {
+    "functionName": "get_sender",
+    "isEntry": false,
+    "visibility": "PUBLIC",
+    "typeParameters": [],
+    "parameters": [
+      {
+        "signature": {
+          "ref": "&mut",
+          "body": {
+            "datatype": {
+              "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+              "module": "tx_context",
+              "type": "TxContext",
+              "typeParameters": []
+            }
+          }
+        }
+      }
+    ],
+    "returns": [
+      {
+        "signature": {
+          "body": "address"
+        }
+      }
+    ]
+  }
+]

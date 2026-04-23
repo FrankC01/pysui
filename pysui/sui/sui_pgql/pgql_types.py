@@ -1436,13 +1436,144 @@ class ProtocolConfigGQL:
         return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfigs"))  # type: ignore[attr-defined]
 
 
+# ── OpenMoveType dataclasses — schema-faithful representation ─────────────────
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class OpenMoveScalarBodyGQL:
+    """A primitive scalar type body: 'u8', 'bool', 'address', etc."""
+
+    scalar_type: str
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class OpenMoveVectorBodyGQL:
+    """A vector type body: { vector: body }."""
+
+    inner: Union[OpenMoveScalarBodyGQL, "OpenMoveVectorBodyGQL", "OpenMoveDatatypeBodyGQL", "OpenMoveTypeParamBodyGQL"]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class OpenMoveDatatypeBodyGQL:
+    """A named datatype body: { datatype: { package, module, type, typeParameters } }."""
+
+    package: str
+    module: str
+    type_name: str
+    type_parameters: list[Union[OpenMoveScalarBodyGQL, OpenMoveVectorBodyGQL, "OpenMoveDatatypeBodyGQL", "OpenMoveTypeParamBodyGQL"]]
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class OpenMoveTypeParamBodyGQL:
+    """A generic type parameter reference: { typeParameter: N }."""
+
+    index: int
+
+
+def _body_from_dict(raw: Any) -> Union[OpenMoveScalarBodyGQL, OpenMoveVectorBodyGQL, OpenMoveDatatypeBodyGQL, OpenMoveTypeParamBodyGQL]:
+    """Recursively deserialize an OpenMoveTypeSignatureBody from raw JSON."""
+    if isinstance(raw, str):
+        return OpenMoveScalarBodyGQL(scalar_type=raw)
+    if "vector" in raw:
+        return OpenMoveVectorBodyGQL(inner=_body_from_dict(raw["vector"]))
+    if "datatype" in raw:
+        dt = raw["datatype"]
+        return OpenMoveDatatypeBodyGQL(
+            package=dt["package"],
+            module=dt["module"],
+            type_name=dt["type"],
+            type_parameters=[_body_from_dict(p) for p in dt.get("typeParameters", [])],
+        )
+    if "typeParameter" in raw:
+        return OpenMoveTypeParamBodyGQL(index=raw["typeParameter"])
+    raise ValueError(f"Unrecognised OpenMoveTypeSignatureBody: {raw}")
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class OpenMoveTypeSignatureGQL:
+    """Decoded OpenMoveTypeSignature scalar: { ref, body }."""
+
+    ref: Optional[str]
+    body: Union[OpenMoveScalarBodyGQL, OpenMoveVectorBodyGQL, OpenMoveDatatypeBodyGQL, OpenMoveTypeParamBodyGQL]
+
+    @classmethod
+    def from_query(cls, raw: dict) -> "OpenMoveTypeSignatureGQL":
+        """Deserialize an OpenMoveTypeSignature scalar dict.
+
+        :param raw: dict with optional ``ref`` ("&" or "&mut") and required ``body``
+            (an OpenMoveTypeSignatureBody — scalar string, vector dict, datatype dict,
+            or typeParameter dict).
+        :returns: Fully constructed ``OpenMoveTypeSignatureGQL`` with decoded body variant.
+        :raises KeyError: if ``body`` is absent.
+        :raises ValueError: if ``body`` shape is not recognised.
+        """
+        return cls(ref=raw.get("ref"), body=_body_from_dict(raw["body"]))
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class OpenMoveTypeGQL:
+    """OpenMoveType: a type with its recursive signature and display repr."""
+
+    signature: OpenMoveTypeSignatureGQL
+    repr: str
+
+    @classmethod
+    def from_query(cls, raw: dict) -> "OpenMoveTypeGQL":
+        """Deserialize an OpenMoveType wire dict.
+
+        :param raw: dict with keys ``signature`` (OpenMoveTypeSignature scalar dict)
+            and ``repr`` (human-readable type string).
+        :returns: Fully constructed ``OpenMoveTypeGQL`` with decoded signature and body.
+        :raises KeyError: if ``signature`` is absent.
+        :raises ValueError: if the signature body shape is not recognised.
+        """
+        return cls(
+            signature=OpenMoveTypeSignatureGQL.from_query(raw["signature"]),
+            repr=raw.get("repr", ""),
+        )
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class MoveFieldGQL:
+    """A named field in a Move struct or enum variant."""
+
+    name: Optional[str]
+    type_: Optional[OpenMoveTypeGQL]
+
+    @classmethod
+    def from_query(cls, raw: dict) -> "MoveFieldGQL":
+        """Deserialize a MoveField wire dict.
+
+        :param raw: dict with optional ``name`` (field name string) and optional
+            ``type`` (OpenMoveType wire dict).
+        :returns: ``MoveFieldGQL`` with name and decoded type signature, or ``None``
+            for type if absent.
+        :raises ValueError: if the type body shape is not recognised.
+        """
+        type_raw = raw.get("type")
+        return cls(
+            name=raw.get("name"),
+            type_=OpenMoveTypeGQL.from_query(type_raw) if type_raw else None,
+        )
+
+
+# ── Move metadata dataclasses ─────────────────────────────────────────────────
+
+
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class MoveEnumVariantGQL:
-    """Sui MoveEnum representation."""
+    """Sui MoveEnum variant representation."""
 
     variant_name: str
-    fields: list[dict]
+    fields: list[MoveFieldGQL]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1460,6 +1591,13 @@ class MoveEnumGQL:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
             _fast_flat(in_data, fdict)
+            fdict["variants"] = [
+                MoveEnumVariantGQL(
+                    variant_name=v["variant_name"],
+                    fields=[MoveFieldGQL.from_query(f) for f in v.get("fields", [])],
+                )
+                for v in fdict.get("variants", [])
+            ]
             return MoveEnumGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
@@ -1471,7 +1609,7 @@ class MoveStructureGQL:
 
     struct_name: str
     abilities: list[str]
-    fields: list[dict]
+    fields: list[MoveFieldGQL]
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[MoveStructureGQL, NoopGQL]":  # type: ignore[override]
@@ -1479,6 +1617,7 @@ class MoveStructureGQL:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
             _fast_flat(in_data, fdict)
+            fdict["fields"] = [MoveFieldGQL.from_query(f) for f in fdict.get("fields", [])]
             return MoveStructureGQL.from_dict(fdict)  # type: ignore[attr-defined]
         return NoopGQL.from_query()
 
@@ -1756,42 +1895,43 @@ class MoveFunctionGQL:
     is_entry: bool
     visibility: str
     type_parameters: list
-    parameters: list[dict]
-    returns: Optional[list] = dataclasses.field(default_factory=list)
+    parameters: list[OpenMoveTypeGQL]
+    returns: list[OpenMoveTypeGQL] = dataclasses.field(default_factory=list)
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[MoveFunctionGQL, NoopGQL]":  # type: ignore[override]
-        if in_data.get("object") or in_data.get("function_name"):
+        if in_data.get("object") or in_data.get("function_name") or in_data.get("functionName"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
-            return MoveFunctionGQL.from_dict(fdict)  # type: ignore[attr-defined]
+            params = [OpenMoveTypeGQL.from_query(p) for p in fdict.get("parameters", [])]
+            # Skip TxContext parameters at any position
+            filtered_params = [
+                p for p in params
+                if not (
+                    isinstance(p.signature.body, OpenMoveDatatypeBodyGQL)
+                    and p.signature.body.type_name == "TxContext"
+                )
+            ]
+            returns = [OpenMoveTypeGQL.from_query(r) for r in fdict.get("returns", [])]
+            return MoveFunctionGQL(
+                function_name=fdict.get("functionName", ""),
+                is_entry=fdict.get("isEntry", False),
+                visibility=fdict.get("visibility", ""),
+                type_parameters=fdict.get("typeParameters", []),
+                parameters=filtered_params,
+                returns=returns,
+            )
         return NoopGQL.from_query()
 
-    def arg_summary(self) -> MoveArgSummary:
-        """Summarize the function's arguments."""
-        a_list: list = []
-        for parm in self.parameters:
-            sig = parm.get("signature")
-            ref = sig.get("ref")  # type: ignore[union-attr]
-            body = sig.get("body")  # type: ignore[union-attr]
-            if "datatype" in body:
-                if body.get("datatype")["type"] == "TxContext":
-                    continue
-                a_list.append(MoveObjectRefArg.from_body(ref, body.get("datatype")))
-            elif "vector" in body:
-                a_list.append(MoveVectorArg.from_body(ref, body))
-            else:
-                if (
-                    isinstance(body, dict)
-                    and len(body) == 1
-                    and "typeParameter" in body
-                ):
-                    a_list.append(MoveWitnessArg.from_body(ref))
-                else:
-                    a_list.append(MoveScalarArg.from_str(ref, body))
-        return MoveArgSummary(
-            self.type_parameters, a_list, len(self.returns) if self.returns else None
+    def arg_summary(self) -> list["OpenMoveTypeGQL"]:
+        """Deprecated — use parameters directly."""
+        import warnings
+        warnings.warn(
+            "arg_summary() is deprecated; use parameters (list[OpenMoveTypeGQL]) directly.",
+            DeprecationWarning,
+            stacklevel=2,
         )
+        return self.parameters
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
