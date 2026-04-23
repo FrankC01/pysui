@@ -17,6 +17,8 @@ parameters on build(), build_and_sign(), and transaction_data()
 - `MoveFunctionGQL.parameters` changed from `list[dict]` to `list[OpenMoveTypeGQL]` — any code iterating raw dicts from function metadata must migrate to the new dataclass accessors
 - `MoveFunctionGQL.returns` changed from `Optional[list]` to `list[OpenMoveTypeGQL]` — same migration required
 
+- `AsyncSuiGQLClient.transaction()` is now `async def` — all call sites must add `await` (aligns with `SuiGrpcClient.transaction()` for protocol-agnostic code via `client_factory`)
+
 ### Added
 
 - `pysui/sui/sui_pgql/pgql_types.py`: new `OpenMove*GQL` dataclass hierarchy mirroring the GQL schema — `OpenMoveTypeGQL`, `OpenMoveTypeSignatureGQL`, `OpenMoveScalarBodyGQL`, `OpenMoveVectorBodyGQL`, `OpenMoveDatatypeBodyGQL`, `OpenMoveTypeParamBodyGQL` — replaces fragile dict-based Move type representation
