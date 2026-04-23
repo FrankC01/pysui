@@ -293,7 +293,7 @@ async def transfer_object(client: PysuiClient, args: argparse.Namespace) -> None
     else:
         for_owner = client.config.active_address
 
-    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = await client.transaction(initial_sender=for_owner)
     await txn.transfer_objects(transfers=[args.transfer], recipient=args.recipient)
     await transaction_execute(
         txb=txn,
@@ -312,7 +312,7 @@ async def transfer_sui(client: PysuiClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = await client.transaction(initial_sender=for_owner)
     await txn.transfer_sui(
         recipient=args.recipient,
         from_coin=args.takes,
@@ -335,7 +335,7 @@ async def merge_coin(client: PysuiClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = await client.transaction(initial_sender=for_owner)
     await txn.merge_coins(merge_to=args.primary_coin, merge_from=[args.coin_to_merge])
     await transaction_execute(
         txb=txn,
@@ -355,7 +355,7 @@ async def split_coin(client: PysuiClient, args: argparse.Namespace) -> None:
         for_owner = client.config.active_address
 
     use_gas_coin = None
-    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = await client.transaction(initial_sender=for_owner)
     if args.coin_object_id:
         target_coin = args.coin_object_id
         use_gas_coin = [args.gas]
@@ -406,7 +406,7 @@ async def split_coin_equally(client: PysuiClient, args: argparse.Namespace) -> N
     else:
         for_owner = client.config.active_address
 
-    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = await client.transaction(initial_sender=for_owner)
     await txn.split_coin_equal(coin=args.coin_object_id, split_count=int(args.split_count))
     await transaction_execute(
         txb=txn,
@@ -425,7 +425,7 @@ async def publish(client: PysuiClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
     try:
-        txn = client.transaction(initial_sender=for_owner)
+        txn = await client.transaction(initial_sender=for_owner)
         upc = await txn.publish(project_path=args.package)
         await txn.transfer_objects(transfers=[upc], recipient=for_owner)
         await transaction_execute(
@@ -455,7 +455,7 @@ async def move_call(client: PysuiClient, args: argparse.Namespace) -> None:
     arguments = [arg for arg in args.args] if args.args else []
     type_arguments = [x for x in args.type_arguments if x] if args.type_arguments else []
 
-    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = await client.transaction(initial_sender=for_owner)
     await txn.move_call(target=target, arguments=arguments, type_arguments=type_arguments)
     await transaction_execute(
         txb=txn,
@@ -474,7 +474,7 @@ async def sui_pay(client: PysuiClient, args: argparse.Namespace) -> None:
     else:
         for_owner = client.config.active_address
 
-    txn: AsyncSuiTransaction = client.transaction(initial_sender=for_owner)
+    txn: AsyncSuiTransaction = await client.transaction(initial_sender=for_owner)
     if len(args.input_coins) == len(args.mists) == len(args.recipients):
         for x in range(len(args.input_coins)):
             i_coin = await txn.split_coin(

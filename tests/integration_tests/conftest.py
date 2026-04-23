@@ -122,7 +122,7 @@ async def fund_accumulator_gql(
     The client's coin objects pay for the transaction gas AND supply the deposited amount.
     """
     target = recipient or client.config.active_address
-    txer = client.transaction(merge_gas_budget=True)
+    txer = await client.transaction(merge_gas_budget=True)
     scres = await txer.split_coin(coin=txer.gas, amounts=[amount])
     await txer.move_call(
         target="0x2::coin::send_funds",
@@ -461,7 +461,7 @@ async def published_gql(
     if not _sui_binary_available(gql_cfg):
         pytest.skip("sui CLI binary not configured — publish tests skipped")
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_session_client.transaction()
+    txer = await gql_session_client.transaction()
     cap_result = await txer.publish(project_path=sui_test_project_path)
     await txer.transfer_objects(
         transfers=[cap_result],

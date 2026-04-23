@@ -77,7 +77,7 @@ def _assert_grpc_success(result, label: str) -> None:
 async def test_move_call_gql_send_funds_executes(gql_client: AsyncGqlClient) -> None:
     """move_call (GQL): 0x2::coin::send_funds deposits to address accumulator."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     split_res = await txer.split_coin(coin=txer.gas, amounts=[500_000])
     await txer.move_call(
         target="0x2::coin::send_funds",
@@ -125,7 +125,7 @@ async def test_transfer_objects_gql_self_transfer_executes(
     coins = await gql_get_coins(owner=addr, client=gql_client)
     assert len(coins) >= 2, "Need at least 2 coins"
 
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.transfer_objects(transfers=[coins[0].coin_object_id], recipient=addr)
     result = await gql_client.execute_query_node(
         with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
@@ -162,7 +162,7 @@ async def test_transfer_objects_gql_to_other_address_executes(
     coins = await gql_get_coins(owner=addr, client=gql_client)
     assert len(coins) >= 2, "Need at least 2 coins"
 
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.transfer_objects(
         transfers=[coins[0].coin_object_id], recipient=recipient_address
     )
@@ -208,7 +208,7 @@ async def test_split_coin_gql_from_non_gas_executes(
     coins = await gql_get_coins(owner=addr, client=gql_client)
     assert len(coins) >= 2, "Need at least 2 coins"
 
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     split_res = await txer.split_coin(coin=coins[0].coin_object_id, amounts=[1_000])
     await txer.transfer_objects(transfers=split_res, recipient=addr)
     result = await gql_client.execute_query_node(
@@ -251,7 +251,7 @@ async def test_merge_coins_gql_into_gas_executes(
     coins = await gql_get_coins(owner=addr, client=gql_client)
     assert len(coins) >= 2, "Need at least 2 coins to merge"
 
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.merge_coins(merge_to=txer.gas, merge_from=[coins[0].coin_object_id])
     result = await gql_client.execute_query_node(
         with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
@@ -320,7 +320,7 @@ async def test_make_move_vector_gql_swap_ab_executes(
     coins = await gql_get_coins(owner=addr, client=gql_client)
     assert len(coins) >= 3, "Need at least 3 coins for make_move_vector test"
 
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     vec_arg = await txer.make_move_vector(
         items=[coins[0].coin_object_id, coins[1].coin_object_id],
         item_type="0x2::coin::Coin<0x2::sui::SUI>",
@@ -388,7 +388,7 @@ async def test_publish_upgrade_gql_version_increments(
     await asyncio.sleep(SETTLE_SECS)
     cap_id = published_gql.cap_id
 
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.publish_upgrade(
         project_path=sui_test_project_path, upgrade_cap=cap_id
     )
@@ -454,7 +454,7 @@ async def test_pay_service_gql_executes(
     pkg_addr = published_gql.pkg_addr
     parm_obj_id = published_gql.parm_obj_id
     addr = str(gql_session_client.config.active_address)
-    txer = gql_session_client.transaction()
+    txer = await gql_session_client.transaction()
     pay_coin = await txer.split_coin(coin=txer.gas, amounts=[1_000_100])
     await txer.move_call(
         target=f"{pkg_addr}::parms::pay_service",
@@ -478,7 +478,7 @@ async def test_get_service_gql_executes(
     parm_obj_id = published_gql.parm_obj_id
     addr = str(gql_session_client.config.active_address)
 
-    txer = gql_session_client.transaction()
+    txer = await gql_session_client.transaction()
     coin_result = await txer.move_call(
         target=f"{pkg_addr}::parms::get_service",
         arguments=[parm_obj_id, None],
@@ -555,7 +555,7 @@ async def test_merge_coins_gql_same_object_rejected(
     assert len(coins) >= 1, "Need at least 1 coin"
 
     coin_id = coins[0].coin_object_id
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.merge_coins(merge_to=coin_id, merge_from=[coin_id])
     result = await gql_client.execute_query_node(
         with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
@@ -601,7 +601,7 @@ async def test_move_call_gql_insufficient_gas_fails(
 ) -> None:
     """move_call (GQL): gas_budget=1 causes on-chain InsufficientGas execution failure."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     split_res = await txer.split_coin(coin=txer.gas, amounts=[500_000])
     await txer.move_call(
         target="0x2::coin::send_funds",

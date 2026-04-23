@@ -64,7 +64,7 @@ async def test_uc1_gql_auto_gas_transfer_executes(
     coins = await gql_get_coins(owner=addr, client=gql_client)
     assert len(coins) >= 2, "Need at least 2 coins: one to transfer, one for gas"
 
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     # Transfer first coin to self; gas auto-selected from remaining coins.
     await txer.transfer_objects(
         transfers=[coins[0].coin_object_id],
@@ -113,7 +113,7 @@ async def test_uc7_gql_address_balance_gas_executes(
     coins = await gql_get_coins(owner=addr, client=gql_client)
     assert coins, "Need at least 1 coin to transfer"
 
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     # Transfer a coin to self — no txer.gas reference, so UC7 path applies.
     await txer.transfer_objects(
         transfers=[coins[0].coin_object_id],
@@ -139,7 +139,7 @@ async def test_uc12_gql_split_gas_coin_executes(
     """UC12 (GQL): split_coin(txer.gas) — gas_source_draw inflation allows execution."""
     await asyncio.sleep(SETTLE_SECS)
     addr = str(gql_client.config.active_address)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     # Split 0.001 SUI from gas coin; budget must cover fee + split amount.
     split_res = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
     await txer.transfer_objects(transfers=split_res, recipient=addr)

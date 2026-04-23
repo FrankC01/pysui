@@ -571,7 +571,7 @@ async def do_package_versions(client: AsyncGqlClient):
 async def do_dry_run(client: AsyncGqlClient):
     """Execute a simulate (dry run)."""
 
-    txer: AsyncSuiTransaction = client.transaction()
+    txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     tx_data = await txer.transaction_data()
@@ -597,7 +597,7 @@ async def do_dry_run_txkind(txer: AsyncSuiTransaction):
 async def inspect_example(client: AsyncGqlClient):
     """Execute a dryrun just on the TransactionKind of a transaction."""
 
-    txer: AsyncSuiTransaction = client.transaction()
+    txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     await do_dry_run_txkind(txer)
@@ -614,7 +614,7 @@ async def do_split_any_half(client: AsyncGqlClient):
     )
     if result.is_ok() and len(result.result_data.data) > 1:
         amount = int(int(result.result_data.data[0].balance) / 2)
-        txer: AsyncSuiTransaction = client.transaction()
+        txer: AsyncSuiTransaction = await client.transaction()
         scres = await txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
         await txer.transfer_objects(
             transfers=[scres], recipient=client.config.active_address
@@ -628,7 +628,7 @@ async def do_split_any_half(client: AsyncGqlClient):
 
 async def do_execute(client: AsyncGqlClient):
     """Execute a transaction."""
-    txer: AsyncSuiTransaction = client.transaction()
+    txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     handle_result(
@@ -645,7 +645,7 @@ async def do_stake(client: AsyncGqlClient):
     or different validator change the vaddress
     """
     vaddress = "0x44b1b319e23495995fc837dafd28fc6af8b645edddff0fc1467f1ad631362c23"
-    txer: AsyncSuiTransaction = client.transaction()
+    txer: AsyncSuiTransaction = await client.transaction()
 
     # Take 1 Sui from gas
     stake_coin_split = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
@@ -676,7 +676,7 @@ async def do_unstake(client: AsyncGqlClient):
         with_node=qn.GetDelegatedStakes(owner=owner)
     )
     if result.is_ok() and result.result_data.staked_coins:
-        txer: AsyncSuiTransaction = client.transaction()
+        txer: AsyncSuiTransaction = await client.transaction()
 
         # Unstake the first staked coin
         await txer.unstake_coin(
@@ -705,7 +705,7 @@ async def do_sui_coin_to_account(client: AsyncGqlClient):
     # Print before
     print("Before Sui coin balances")
     await do_address_balance(client)
-    txer: AsyncSuiTransaction = client.transaction()
+    txer: AsyncSuiTransaction = await client.transaction()
     # Pull amount from transaction Gas
     scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
     await txer.move_call(
@@ -750,7 +750,7 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
                     f"{set_balance} exceeds existing address balance of {curr_balance_res.result_data.balance.address_balance}"
                 )
         # Enable the transaction to use account for gas payments.
-        txer: AsyncSuiTransaction = client.transaction()
+        txer: AsyncSuiTransaction = await client.transaction()
         coin = await txer.balance_from(source=FundsSource.SENDER, amount=set_balance)
         await txer.transfer_objects(
             transfers=[coin], recipient=client.config.active_address

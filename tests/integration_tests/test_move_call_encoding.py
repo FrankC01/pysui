@@ -87,7 +87,7 @@ async def phoney_gql_id(
     pkg_addr = published_gql.pkg_addr
     addr = str(gql_session_client.config.active_address)
 
-    txer = gql_session_client.transaction()
+    txer = await gql_session_client.transaction()
     await txer.move_call(
         target=f"{pkg_addr}::parms::create_phoney",
         arguments=[],
@@ -165,7 +165,7 @@ async def test_check_uints_gql(
 ) -> None:
     """check_uints (GQL): u16, u32, u64, u128, u256 as Python ints."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_uints",
         arguments=[1, 2, 3, 4, 5],
@@ -204,7 +204,7 @@ async def test_check_optional_uints_gql(
 ) -> None:
     """check_optional_uints (GQL): mix of ints and None for Option<uN>."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_optional_uints",
         arguments=[1, 2, 3, None, 5],
@@ -245,7 +245,7 @@ async def test_check_uints_vectors_gql(
     await asyncio.sleep(SETTLE_SECS)
     alen = len(_SAMP_HEX)
     args = [_SAMP_BYTES[: int(alen / r)] for r in range(1, 6)]
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_uints_vectors",
         arguments=args,
@@ -286,7 +286,7 @@ async def test_check_optional_uint_vectors_gql(
 ) -> None:
     """check_optional_uint_vectors (GQL): Option<vector<uN>> with mix of None/bytes."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_optional_uint_vectors",
         arguments=[None, _SAMP_BYTES, None, None, None],
@@ -325,7 +325,7 @@ async def test_check_vec_u8_gql(
 ) -> None:
     """check_vec_u8 (GQL): vector<u8> passed as a Python string."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_u8",
         arguments=["Foo"],
@@ -364,7 +364,7 @@ async def test_check_vec_optional_u8_gql(
 ) -> None:
     """check_vec_optional_u8 (GQL): Option<vector<u8>> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_optional_u8",
         arguments=[None],
@@ -403,7 +403,7 @@ async def test_check_vec_deep_u8_gql(
 ) -> None:
     """check_vec_deep_u8 (GQL): vector<vector<vector<u8>>> via nested list of bytes."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_deep_u8",
         arguments=[[[_SAMP_BYTES]]],
@@ -443,7 +443,7 @@ async def test_check_address_vec_gql(
 ) -> None:
     """check_address_vec (GQL): vector<address> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_address_vec",
         arguments=[[_ADDR_A, _ADDR_B]],
@@ -482,7 +482,7 @@ async def test_check_id_vec_gql(
 ) -> None:
     """check_id_vec (GQL): vector<ID> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_id_vec",
         arguments=[[_ADDR_A, _ADDR_B]],
@@ -521,7 +521,7 @@ async def test_check_string_gql(
 ) -> None:
     """check_string (GQL): &String passed as Python str."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_string",
         arguments=["foo"],
@@ -560,7 +560,7 @@ async def test_check_string_option_gql(
 ) -> None:
     """check_string_option (GQL): Option<String> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_string_option",
         arguments=[None],
@@ -599,7 +599,7 @@ async def test_check_string_vec_gql(
 ) -> None:
     """check_string_vec (GQL): vector<String> passed as list of Python strs."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_string_vec",
         arguments=[["foo", "bar"]],
@@ -638,7 +638,7 @@ async def test_check_vec_option_string_gql(
 ) -> None:
     """check_vec_option_string (GQL): vector<Option<String>> with mixed str/None."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_option_string",
         arguments=[["foo", None, "Bar"]],
@@ -677,7 +677,7 @@ async def test_check_bool_gql(
 ) -> None:
     """check_bool (GQL): bool passed as Python True."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_bool",
         arguments=[True],
@@ -716,7 +716,7 @@ async def test_get_sender_gql(
 ) -> None:
     """get_sender (GQL): address return value used as recipient in transfer_objects."""
     await asyncio.sleep(SETTLE_SECS)
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     split_res = await txer.split_coin(coin=txer.gas, amounts=[1_000_000, 1_000_000])
     addr_result = await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::get_sender",
@@ -768,7 +768,7 @@ async def test_check_phoney_gql(
     pkg_addr = published_gql.pkg_addr
     addr = str(gql_session_client.config.active_address)
 
-    txer = gql_session_client.transaction()
+    txer = await gql_session_client.transaction()
     opt_result = await txer.optional_object(
         optional_object=phoney_gql_id,
         type_arguments=[f"{pkg_addr}::parms::Phoney"],
@@ -836,7 +836,7 @@ async def test_burn_phoney_gql(
     await asyncio.sleep(SETTLE_SECS)
     pkg_addr = published_gql.pkg_addr
 
-    txer = gql_session_client.transaction()
+    txer = await gql_session_client.transaction()
     await txer.move_call(
         target=f"{pkg_addr}::parms::burn_phoney",
         arguments=[phoney_gql_id],
@@ -886,7 +886,7 @@ async def test_check_all_gql(
     gql_client: AsyncGqlClient, published_gql: PublishedPackage
 ) -> None:
     """check_all (GQL): expected to fail — ParmScalars is not callable directly."""
-    txer = gql_client.transaction()
+    txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_all",
         type_arguments=["u8"],

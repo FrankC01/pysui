@@ -173,7 +173,7 @@ async def merge_sui(
     # Otherwise smash lowest to highesst and return it
     coin_list.sort(key=lambda x: int(x.balance), reverse=True)
 
-    tx: AsyncSuiTransaction = client.transaction()
+    tx: AsyncSuiTransaction = await client.transaction()
 
     use_as_gas = coin_list.pop(0)
     logger.debug(f"{len(coin_list)} coins merging to {use_as_gas.coin_object_id}")
