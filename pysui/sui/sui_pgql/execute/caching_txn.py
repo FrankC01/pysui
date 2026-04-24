@@ -7,7 +7,7 @@
 
 import base64
 import logging
-from typing import Any, Coroutine, Optional, Union
+from typing import Any, Optional, Union
 from deprecated.sphinx import versionchanged
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 from pysui.sui.sui_common.txb_signing import SignerBlock
@@ -23,7 +23,7 @@ from pysui.sui.sui_types.scalars import SuiU64
 
 from pysui.sui.sui_common.async_funcs import AsyncLRU
 
-logger = logging.getLogger("serial_exec")
+logger = logging.getLogger(__name__)
 
 
 class CachingTransaction(txbase):
@@ -49,15 +49,26 @@ class CachingTransaction(txbase):
             builder=CachingTransactionBuilder(compress_inputs=True),
             arg_parser=argbase.UnResolvingArgParser(client),
         )
-        self._gas_payment: bcs.ObjectReference = None
+        self._gas_payment: list[bcs.ObjectReference] | None = None
         self._gas_budget: int = 0
 
-    def set_gas_payment(self, payment: bcs.ObjectReference) -> None:
-        """Set the gas payment object."""
-        self._gas_payment = payment
+    def set_gas_payment(self, payment: Union[bcs.ObjectReference, list[bcs.ObjectReference]]) -> None:
+        """Set the gas payment object(s).
 
-    def get_gas_payment(self) -> Union[bcs.ObjectReference, None]:
-        """Fetch the gas payment object."""
+        :param payment: A single ObjectReference or list of ObjectReferences
+        :type payment: Union[bcs.ObjectReference, list[bcs.ObjectReference]]
+        """
+        if isinstance(payment, list):
+            self._gas_payment = payment
+        else:
+            self._gas_payment = [payment]
+
+    def get_gas_payment(self) -> Union[list[bcs.ObjectReference], None]:
+        """Fetch the gas payment object(s).
+
+        :return: List of ObjectReferences or None
+        :rtype: Union[list[bcs.ObjectReference], None]
+        """
         return self._gas_payment
 
     def set_gas_budget_if_notset(self, budget: int) -> None:
@@ -100,18 +111,33 @@ class CachingTransaction(txbase):
     def _build_txn_data(
         self,
         gas_budget: int,
-        use_gas_object: bcs.ObjectReference,
+        use_gas_objects: Union[bcs.ObjectReference, list[bcs.ObjectReference]],
         signer_block: SignerBlock,
         txn_expires_after: Optional[int] = None,
     ) -> Union[bcs.TransactionData, ValueError]:
-        """Generate the TransactionData structure."""
+        """Generate the TransactionData structure.
 
+        :param gas_budget: Gas budget for the transaction
+        :type gas_budget: int
+        :param use_gas_objects: Single ObjectReference or list of ObjectReferences for gas payment
+        :type use_gas_objects: Union[bcs.ObjectReference, list[bcs.ObjectReference]]
+        :param signer_block: Signing context
+        :type signer_block: SignerBlock
+        :param txn_expires_after: Transaction expiration epoch, defaults to None
+        :type txn_expires_after: Optional[int], optional
+        :return: The TransactionData structure
+        :rtype: Union[bcs.TransactionData, ValueError]
+        """
+
+        _, gas_source_draw = self._inspect_ptb_for_gas_coin()
         tx_kind = self.builder.finish_for_inspect()
+        # Convert single ObjectReference to list if needed
+        gas_objects = use_gas_objects if isinstance(use_gas_objects, list) else [use_gas_objects]
         gas_data: bcs.GasData = bcs.GasData(
-            [use_gas_object],
+            gas_objects,
             bcs.Address.from_str(signer_block.payer_address),
             self.client.current_gas_price,
-            gas_budget,
+            gas_budget + gas_source_draw,
         )
         return bcs.TransactionData(
             "V1",
@@ -131,39 +157,43 @@ class CachingTransaction(txbase):
         self,
         *,
         gas_budget: int,
-        use_gas_object: bcs.ObjectReference,
+        use_gas_objects: Union[bcs.ObjectReference, list[bcs.ObjectReference]],
         signer_block: SignerBlock,
-    ) -> Coroutine[Any, Any, bcs.TransactionData]:
+    ) -> bcs.TransactionData:
         """transaction_data Construct a BCS TransactionData object.
 
         :param gas_budget: Specify the amount of gas for the transaction budget
         :type gas_budget: int
-        :param use_gas_object: Specify gas ObjectReference
-        :type use_gas_object: bcs.ObjectReference
+        :param use_gas_objects: Specify gas ObjectReference(s) - single or list
+        :type use_gas_objects: Union[bcs.ObjectReference, list[bcs.ObjectReference]]
+        :param signer_block: Signing context
+        :type signer_block: SignerBlock
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
-        return self._build_txn_data(gas_budget, use_gas_object, signer_block)
+        return self._build_txn_data(gas_budget, use_gas_objects, signer_block)
 
     async def build(
         self,
         *,
         gas_budget: int,
-        use_gas_object: bcs.ObjectReference,
+        use_gas_objects: Union[bcs.ObjectReference, list[bcs.ObjectReference]],
         signer_block: SignerBlock,
-    ) -> Coroutine[Any, Any, str]:
+    ) -> str:
         """build After creating the BCS TransactionData, serialize to base64 string and return.
 
         :param gas_budget: Specify the amount of gas for the transaction budget
         :type gas_budget: int
-        :param use_gas_object: Specify gas ObjectReference
-        :type use_gas_object: bcs.ObjectReference
+        :param use_gas_objects: Specify gas ObjectReference(s) - single or list
+        :type use_gas_objects: Union[bcs.ObjectReference, list[bcs.ObjectReference]]
+        :param signer_block: Signing context
+        :type signer_block: SignerBlock
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
         txn_data = await self.transaction_data(
             gas_budget=gas_budget,
-            use_gas_object=use_gas_object,
+            use_gas_objects=use_gas_objects,
             signer_block=signer_block,
         )
         return base64.b64encode(txn_data.serialize()).decode()
@@ -386,7 +416,7 @@ class CachingTransaction(txbase):
     async def make_move_vector(
         self,
         *,
-        items: list[str, pgql_type.ObjectReadGQL, bcs.ObjectArg],
+        items: list[str | pgql_type.ObjectReadGQL | bcs.ObjectArg],
         item_type: Optional[str] = None,
     ) -> bcs.Argument:
         """Create a call to convert a list of objects to a Sui 'vector' of item_type."""
