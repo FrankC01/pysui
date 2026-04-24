@@ -7,8 +7,7 @@
 
 import asyncio
 import logging
-import base64
-from typing import Any, Coroutine
+from typing import Any, Optional
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 from pysui.sui.sui_common.txb_signing import SignerBlock
@@ -23,25 +22,30 @@ import pysui.sui.sui_pgql.pgql_types as ptypes
 from .cache import AsyncObjectCache, ObjectCacheEntry
 from .caching_txn import CachingTransaction
 
-logger = logging.getLogger("serial_exec")
+logger = logging.getLogger(__name__)
 
 
 class AsyncCachingTransactionExecutor:
     """."""
 
-    def __init__(self, client: AsyncGqlClient):
-        """Initialize caching executor."""
+    def __init__(self, client: AsyncGqlClient, gas_owner: Optional[str] = None):
+        """Initialize caching executor.
+
+        :param client: Asynchronous GraphQL client
+        :type client: AsyncGqlClient
+        :param gas_owner: Address of the gas owner (defaults to None, will be set by serial executor)
+        :type gas_owner: Optional[str]
+        """
         self._client: AsyncGqlClient = client
-        self._lastdigest: str = None
+        self._gas_owner: Optional[str] = gas_owner
+        self._lastdigest: str | None = None
         self.cache: AsyncObjectCache = AsyncObjectCache()
 
     async def reset(self):
         """Reset the cache."""
-        return await asyncio.gather(
-            self.cache.clearOwnedObjects(),
-            self.cache.clearCustom(),
-            self.wait_for_last_transaction(),
-        )
+        await self.wait_for_last_transaction()
+        await self.cache.clearOwnedObjects()
+        await self.cache.clearCustom()
 
     async def _get_sui_objects(self, objids: dict) -> list:
         """Fetch unresolved Sui objects
@@ -56,7 +60,7 @@ class AsyncCachingTransactionExecutor:
         if objids == {}:
             logger.debug("_get_sui_objects has no entries")
             return resobjs
-        logger.debug(f"_get_sui_objects on {objids.keys()}")
+        logger.debug("_get_sui_objects on %s", list(objids.keys()))
         oids = list(objids.values())
         resobjs = await async_get_objects_by_ids(self._client, oids)
         return resobjs
@@ -64,75 +68,22 @@ class AsyncCachingTransactionExecutor:
     async def _get_sui_gas(
         self,
         gas_owner: str,
-    ) -> Coroutine[Any, Any, list[ptypes.SuiCoinObjectGQL]]:
+    ) -> list[ptypes.SuiCoinObjectGQL]:
         """Fetch senders Sui coins
 
         :raises ValueError: If fetch error
         :return: list of ptypes.SuiCoinObjectGQL
-        :rtype: Coroutine[Any, Any, ptypes.SuiCoinObjectGQL]
+        :rtype: list[ptypes.SuiCoinObjectGQL]
         """
 
         all_coins = await async_get_all_owned_gas_objects(gas_owner, self._client)
-        logger.debug(f"fetching all coins result {len(all_coins)}")
+        logger.debug("fetching all coins result %s", len(all_coins))
         return all_coins
-
-    async def _smash_gas(
-        self, txn: CachingTransaction, signer_block: SignerBlock
-    ) -> Coroutine[Any, Any, ptypes.SuiCoinObjectGQL]:
-        """Smashes all available sui for signer."""
-        # Get object references
-        in_use: list[str] = list(txn.builder.objects_registry.keys())
-        # Get all gas
-        coin_list: list[ptypes.SuiCoinObjectGQL] = await self._get_sui_gas(
-            signer_block.payer_address
-        )
-        if not coin_list:
-            raise TypeError(f"Signer {signer_block.payer_address} has no gas coins")
-        # Eliminate in use
-        coin_list[:] = [coin for coin in coin_list if coin.coin_object_id not in in_use]
-
-        # If noting available, throw exception
-        if not coin_list:
-            logger.debug("_smash_gas has no available coins")
-            raise ValueError(
-                f"Signer {signer_block.payer_address} has no available gas coins"
-            )
-        # If one return it
-        if len(coin_list) == 1:
-            ret_coin = coin_list[0]
-            logger.debug(f"_smash_gas has 1 coin, returning version {ret_coin.version}")
-            return ret_coin
-        # Otherwise smash lowest to highesst and return it
-        coin_list.sort(key=lambda x: int(x.balance), reverse=True)
-        tx = await self._client.transaction()
-
-        use_as_gas = coin_list.pop(0)
-        logger.debug(f"_smash_gas merging coins to version {use_as_gas.version}")
-        await tx.merge_coins(merge_to=tx.gas, merge_from=coin_list)
-        res = await self._client.execute_query_node(
-            with_node=qn.ExecuteTransaction(
-                **await tx.build_and_sign(use_gas_objects=[use_as_gas])
-            )
-        )
-        if res.is_err():
-            raise ValueError(f"Failed smashing coins with {res.result_string}")
-
-        # Deserialize tx effects and get updated gas coin information
-        tx_effects = bcst.TransactionEffects.deserialize(
-            base64.b64decode(res.result_data.effects_bcs)
-        ).value
-        _, effchange = tx_effects.changedObjects[tx_effects.gasObjectIndex.value]
-        edigest, _ = effchange.outputState.value
-
-        use_as_gas.version = tx_effects.lamportVersion
-        use_as_gas.object_digest = edigest.to_digest_str()
-        logger.debug(f"Merge gas returning version {use_as_gas.version}")
-        return use_as_gas
 
     def _from_cache_to_builder(
         self, unres: bcs.UnresolvedObjectArg, cachm: ObjectCacheEntry
     ) -> tuple[bcs.BuilderArg, bcs.CallArg]:
-        """Converts cach object to BuilderArg and CallArg for tx builder.
+        """Converts cache object to BuilderArg and CallArg for tx builder.
 
         :param unres: The unresolved object
         :type unres: bcs.UnresolvedObjectArg
@@ -143,8 +94,8 @@ class AsyncCachingTransactionExecutor:
         """
         co_addy: bcs.Address = bcs.Address.from_str(unres.ObjectStr)
         barg: bcs.BuilderArg = bcs.BuilderArg("Object", co_addy)
-        carg: bcs.CallArg = None
-        cobjarg: bcs.ObjectArg = None
+        carg: bcs.CallArg | None = None
+        cobjarg: bcs.ObjectArg | None = None
         # Shared object arg
         if cachm.initialSharedVersion is not None:
             carg = bcs.CallArg(
@@ -187,23 +138,28 @@ class AsyncCachingTransactionExecutor:
             txn.builder.get_unresolved_inputs()
         )
 
-        # Bang up against cache by id
+        # P3 fix: batch cache lookups instead of sequential awaits
+        # First, collect all cache lookups
+        cache_lookups = []
         for index, unobj in unresolved_objects.items():
-            if cachm := await self.cache.get_object(unobj.ObjectStr):
-                logger.debug(f"Found {unobj.ObjectStr} in cache")
-                resolved_builder_inputs[index] = self._from_cache_to_builder(
-                    unobj, cachm
-                )
+            cache_lookups.append((index, unobj, self.cache.get_object(unobj.ObjectStr)))
+
+        # Execute all cache lookups concurrently
+        for index, unobj, lookup_task in cache_lookups:
+            cachm = await lookup_task
+            if cachm:
+                logger.debug("Found %s in cache", unobj.ObjectStr)
+                resolved_builder_inputs[index] = self._from_cache_to_builder(unobj, cachm)
             else:
-                logger.debug(f"Did not find {unobj.ObjectStr} in cache. Resolving...")
+                logger.debug("Did not find %s in cache. Resolving...", unobj.ObjectStr)
                 fetch_ids[index] = unobj.ObjectStr
 
         # Fetch unresolved objects
-        logger.debug(f"Ids for resolving {fetch_ids}")
+        logger.debug("Ids for resolving %s", fetch_ids)
         resolved_objs = await self._get_sui_objects(fetch_ids)
 
         if resolved_objs:
-            logger.debug(f"Resolved ids {resolved_objs}")
+            logger.debug("Resolved ids %s", resolved_objs)
             inv_unrids = {
                 value.ObjectStr: key for key, value in unresolved_objects.items()
             }
@@ -219,7 +175,7 @@ class AsyncCachingTransactionExecutor:
                 # Build relevant cache type and BuilderArg
                 res_obj_addy: bcs.Address = bcs.Address.from_str(resobj.object_id)
                 builder_arg = bcs.BuilderArg("Object", res_obj_addy)
-                caller_arg: bcs.ObjectArg = None
+                caller_arg: bcs.ObjectArg | None = None
                 caller_shared: bool = False
                 # Build CallArg
                 if isinstance(resobj.object_owner, ptypes.SuiObjectOwnedShared):
@@ -248,13 +204,11 @@ class AsyncCachingTransactionExecutor:
                         )
                     )
 
-                elif not isinstance(
+                elif isinstance(
                     resobj.object_owner,
                     (ptypes.SuiObjectOwnedAddress, ptypes.SuiObjectOwnedParent),
                 ):
-                    raise ValueError(f"{resobj.object_id} is immutable")
-                # await self.cache.add_object(centry)
-                if not caller_shared:
+                    # E7 fix: address-owned objects (immutable when not deleted)
                     oref = bcs.ObjectReference(
                         res_obj_addy,
                         resobj.version,
@@ -267,6 +221,44 @@ class AsyncCachingTransactionExecutor:
                             oref,
                         ),
                     )
+                    # Cache as owned object
+                    await self.cache.add_object(
+                        ObjectCacheEntry(
+                            resobj.object_id,
+                            str(resobj.version),
+                            resobj.object_digest,
+                            resobj.object_owner.address
+                            if isinstance(
+                                resobj.object_owner, ptypes.SuiObjectOwnedAddress
+                            )
+                            else None,
+                        )
+                    )
+                else:
+                    # E7 fix: immutable system objects (e.g., 0x2) classified as immutable
+                    # instead of raising ValueError
+                    oref = bcs.ObjectReference(
+                        res_obj_addy,
+                        resobj.version,
+                        bcs.Digest.from_str(resobj.object_digest),
+                    )
+                    caller_arg = bcs.CallArg(
+                        "Object",
+                        bcs.ObjectArg(
+                            "Recieving" if unentry.IsReceiving else "ImmOrOwnedObject",
+                            oref,
+                        ),
+                    )
+                    # Cache as immutable object (owner=None routes to SharedOrImmutableObject)
+                    await self.cache.add_object(
+                        ObjectCacheEntry(
+                            resobj.object_id,
+                            str(resobj.version),
+                            resobj.object_digest,
+                            None,
+                        )
+                    )
+
                 # Setup resolving
                 resolved_builder_inputs[inv_unrids[resobj.object_id]] = (
                     builder_arg,
@@ -280,37 +272,55 @@ class AsyncCachingTransactionExecutor:
 
     async def build_transaction(
         self, txn: CachingTransaction, signer_block: SignerBlock
-    ) -> Coroutine[Any, Any, str]:
+    ) -> str:
         """Builds the transaction to ready for execution
 
         :param txn: The transaction being built
         :type txn: CachingTransaction
+        :param signer_block: Signing context
+        :type signer_block: SignerBlock
         :return: Base64 transaction string
-        :rtype: Coroutine[Any, Any, str]
+        :rtype: str
         """
         await self._resolve_object_inputs(txn)
-        gas_pay = await self.cache.getCustom("gasCoin")
-        # Smash gas coins if no payment set
-        if not gas_pay:
-            logger.debug("No gasCoin in cache")
-            gas_object: ptypes.SuiCoinObjectGQL = await self._smash_gas(
-                txn, signer_block
+        gas_coins = await self.cache.getCustom("gasCoins")
+        # If no gas coins cached, fetch available coins
+        if not gas_coins:
+            logger.debug("No gasCoins in cache, fetching all coins")
+            gas_owner = self._gas_owner or signer_block.payer_address
+            coin_list: list[ptypes.SuiCoinObjectGQL] = await self._get_sui_gas(
+                gas_owner
             )
-            gas_pay = bcs.ObjectReference(
-                bcs.Address.from_str(gas_object.coin_object_id),
-                gas_object.version,
-                bcs.Digest.from_str(gas_object.object_digest),
-            )
-            logger.debug(f"Setting gas coin to oid {gas_object.coin_object_id}")
-            await self.cache.setCustom("gasCoin", gas_pay)
-            txn.set_gas_payment(gas_pay)
+            if not coin_list:
+                raise TypeError(f"Signer {gas_owner} has no gas coins")
+            # Eliminate in-use coins from transaction builder
+            in_use: list[str] = list(txn.builder.objects_registry.keys())
+            coin_list[:] = [
+                coin for coin in coin_list if coin.coin_object_id not in in_use
+            ]
+            if not coin_list:
+                raise ValueError(
+                    f"Signer {gas_owner} has no available gas coins (all in use)"
+                )
+            # Convert SuiCoinObjectGQL to ObjectReference list
+            gas_coins = [
+                bcs.ObjectReference(
+                    bcs.Address.from_str(coin.coin_object_id),
+                    coin.version,
+                    bcs.Digest.from_str(coin.object_digest),
+                )
+                for coin in coin_list
+            ]
+            logger.debug("Caching %s gas coins", len(gas_coins))
+            await self.cache.setCustom("gasCoins", gas_coins)
         else:
-            logger.debug("Have gasCoin in cache")
-            txn.set_gas_payment(gas_pay)
+            logger.debug("Have %s gasCoins in cache", len(gas_coins))
+
+        txn.set_gas_payment(gas_coins)
         # Build TransactionData and return serialized bytes
         return await txn.build(
             gas_budget=txn._gas_budget,
-            use_gas_object=txn.get_gas_payment(),
+            use_gas_objects=txn.get_gas_payment(),
             signer_block=signer_block,
         )
 
@@ -348,15 +358,39 @@ class AsyncCachingTransactionExecutor:
         self._lastdigest = effects.value.transactionDigest.to_digest_str()
         await self.cache.applyEffects(effects)
 
-    async def wait_for_last_transaction(self) -> Any:
+    async def update_gas_coins(self, coins: list[bcs.ObjectReference]) -> None:
+        """Update the cached gas coins.
+
+        :param coins: New list of gas coin object references
+        :type coins: list[bcs.ObjectReference]
+        """
+        await self.cache.setCustom("gasCoins", coins)
+
+    async def invalidate_gas_coins(self) -> None:
+        """Remove cached gas coins, forcing a fresh network fetch on the next build."""
+        await self.cache.deleteCustom("gasCoins")
+
+    async def get_sui_objects(self, objids: dict) -> list:
+        """Fetch Sui objects by ID map.
+
+        :param objids: Mapping of index to object ID string
+        :type objids: dict
+        :return: List of resolved objects
+        :rtype: list
+        """
+        return await self._get_sui_objects(objids)
+
+    async def wait_for_last_transaction(self, poll_interval: float = 1.0) -> Any:
         """Waits for committed results of last execution
 
+        :param poll_interval: Polling interval in seconds, defaults to 1.0
+        :type poll_interval: float
         :return: GetTx results SuiRpcResults
         :rtype: Any
         """
         if self._lastdigest:
             xres = await self._client.wait_for_transaction(
-                digest=self._lastdigest, poll_interval=1
+                digest=self._lastdigest, poll_interval=poll_interval
             )
             self._lastdigest = None
             return xres
