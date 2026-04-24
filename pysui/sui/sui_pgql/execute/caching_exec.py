@@ -7,16 +7,17 @@
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Optional
 from pysui import AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 from pysui.sui.sui_common.txb_signing import SignerBlock
+from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor
+from pysui.sui.sui_common.types import TransactionEffects
 from pysui.sui.sui_pgql.pgql_utils import (
     async_get_all_owned_gas_objects,
     async_get_objects_by_ids,
 )
 import pysui.sui.sui_bcs.bcs as bcs
-import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 from .cache import AsyncObjectCache, ObjectCacheEntry
@@ -25,7 +26,7 @@ from .caching_txn import CachingTransaction
 logger = logging.getLogger(__name__)
 
 
-class AsyncCachingTransactionExecutor:
+class AsyncCachingTransactionExecutor(_BaseCachingExecutor):
     """."""
 
     def __init__(self, client: AsyncGqlClient, gas_owner: Optional[str] = None):
@@ -36,14 +37,11 @@ class AsyncCachingTransactionExecutor:
         :param gas_owner: Address of the gas owner (defaults to None, will be set by serial executor)
         :type gas_owner: Optional[str]
         """
+        super().__init__(gas_owner=gas_owner)
         self._client: AsyncGqlClient = client
-        self._gas_owner: Optional[str] = gas_owner
-        self._lastdigest: str | None = None
-        self.cache: AsyncObjectCache = AsyncObjectCache()
 
     async def reset(self):
         """Reset the cache."""
-        await self.wait_for_last_transaction()
         await self.cache.clearOwnedObjects()
         await self.cache.clearCustom()
 
@@ -271,7 +269,7 @@ class AsyncCachingTransactionExecutor:
         txn.builder.resolved_object_inputs(resolved_builder_inputs)
 
     async def build_transaction(
-        self, txn: CachingTransaction, signer_block: SignerBlock
+        self, txn: CachingTransaction, signer_block: SignerBlock, default_gas_budget: int = 50_000_000
     ) -> str:
         """Builds the transaction to ready for execution
 
@@ -279,9 +277,12 @@ class AsyncCachingTransactionExecutor:
         :type txn: CachingTransaction
         :param signer_block: Signing context
         :type signer_block: SignerBlock
+        :param default_gas_budget: Default gas budget if not set
+        :type default_gas_budget: int
         :return: Base64 transaction string
         :rtype: str
         """
+        txn.set_gas_budget_if_notset(default_gas_budget)
         await self._resolve_object_inputs(txn)
         gas_coins = await self.cache.getCustom("gasCoins")
         # If no gas coins cached, fetch available coins
@@ -349,13 +350,12 @@ class AsyncCachingTransactionExecutor:
         else:
             raise ValueError(f"{result.result_string}")
 
-    async def apply_effects(self, effects: bcst.TransactionEffects):
+    async def apply_effects(self, effects: TransactionEffects):
         """Apply the transaction execution effects to cache.
 
         :param effects: The execution transaction effects
-        :type effects: bcst.TransactionEffects
+        :type effects: TransactionEffects
         """
-        self._lastdigest = effects.value.transactionDigest.to_digest_str()
         await self.cache.applyEffects(effects)
 
     async def update_gas_coins(self, coins: list[bcs.ObjectReference]) -> None:
@@ -368,7 +368,7 @@ class AsyncCachingTransactionExecutor:
 
     async def invalidate_gas_coins(self) -> None:
         """Remove cached gas coins, forcing a fresh network fetch on the next build."""
-        await self.cache.deleteCustom("gasCoins")
+        await self.cache.setCustom("gasCoins", None)
 
     async def get_sui_objects(self, objids: dict) -> list:
         """Fetch Sui objects by ID map.
@@ -380,17 +380,3 @@ class AsyncCachingTransactionExecutor:
         """
         return await self._get_sui_objects(objids)
 
-    async def wait_for_last_transaction(self, poll_interval: float = 1.0) -> Any:
-        """Waits for committed results of last execution
-
-        :param poll_interval: Polling interval in seconds, defaults to 1.0
-        :type poll_interval: float
-        :return: GetTx results SuiRpcResults
-        :rtype: Any
-        """
-        if self._lastdigest:
-            xres = await self._client.wait_for_transaction(
-                digest=self._lastdigest, poll_interval=poll_interval
-            )
-            self._lastdigest = None
-            return xres

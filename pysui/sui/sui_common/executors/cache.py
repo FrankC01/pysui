@@ -11,7 +11,6 @@ import logging
 from typing import TYPE_CHECKING, Any, Union
 from dataclasses import dataclass
 
-import pysui.sui.sui_bcs.bcs_txne as bcs
 # ptypes is imported only for type-checker visibility (TYPE_CHECKING guard) to avoid
 # a circular import: sui_common (lower layer) must not import sui_pgql (upper layer)
 # at runtime. The quoted annotation on MoveFunctionCacheEntry.parameters is required
@@ -235,44 +234,28 @@ class AsyncObjectCache(AsyncInMemoryCache):
     async def deleteCustom(self, key: str):
         return await self.delete_custom(key)
 
-    async def applyEffects(self, effects: bcs.TransactionEffects):
-        if effects.enum_name != "V2":
-            raise ValueError(
-                f"Unsupported transaction effects version {effects.enum_name}"
-            )
-        ev2: bcs.TransactionEffectsV2 = effects.value
-        lamport_version = ev2.lamportVersion
-        changed_objects: list = ev2.changedObjects
+    async def applyEffects(self, effects) -> None:
+        """Apply execution effects to the cache using the protocol-agnostic common type."""
+        from pysui.sui.sui_common.types import TransactionEffects as TxEffects
+
+        lamport_version = str(effects.lamport_version)
         deleted: list[str] = []
         added: list[ObjectCacheEntry] = []
-        for address, change in changed_objects:
-            addy = address.to_address_str()
-            out_state = change.outputState
-            if out_state.enum_name == "NotExist":
-                deleted.append(addy)
-            elif out_state.enum_name == "ObjectWrite":
-                digest, owner = out_state.value
-                # C3 fix: when owner.enum_name == "SharedInitialVersion", set owner=None
-                # so add_object routes it to SharedOrImmutableObject bucket (not OwnedObject)
+        for changed in effects.changed_objects:
+            if changed.output_state == "DoesNotExist":
+                deleted.append(changed.object_id)
+            elif changed.output_state in ("ObjectWrite", "PackageWrite"):
+                owner = changed.output_owner
                 added.append(
                     ObjectCacheEntry(
-                        address.to_address_str(),
-                        lamport_version,
-                        digest.to_digest_str(),
-                        None
-                        if owner.enum_name == "SharedInitialVersion"
-                        else owner.value.to_address_str(),
-                        (
-                            str(owner.value)
-                            if owner.enum_name == "SharedInitialVersion"
-                            else None
-                        ),
+                        objectId=changed.object_id,
+                        version=lamport_version,
+                        digest=changed.output_digest or "",
+                        owner=None if (owner is None or owner.kind == "SharedInitialVersion") else owner.address,
+                        initialSharedVersion=str(owner.initial_shared_version) if owner and owner.kind == "SharedInitialVersion" else None,
                     )
                 )
-            else:
-                pass
         if added or deleted:
             logger.debug("Effects results: Deleted %s Added %s", deleted, added)
-            # P2 fix: avoid asyncio.gather on synchronous in-memory ops
             await self.delete_objects(deleted)
             await self.add_objects(added)

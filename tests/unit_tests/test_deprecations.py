@@ -19,9 +19,9 @@ from unittest.mock import MagicMock, patch
 
 def test_transaction_constraints_reexport():
     """TransactionConstraints imported from pgql_types resolves to the same class
-    as the canonical location in sui_common.sui_txn_types."""
+    as the canonical location in sui_common.types."""
     from pysui.sui.sui_pgql.pgql_types import TransactionConstraints as FromPgql
-    from pysui.sui.sui_common.sui_txn_types import TransactionConstraints as Canonical
+    from pysui.sui.sui_common.types import TransactionConstraints as Canonical
 
     assert FromPgql is Canonical
 

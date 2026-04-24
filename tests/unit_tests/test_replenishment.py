@@ -50,7 +50,8 @@ class TestCoinReplenishment:
         )
 
         # Create mock context and call the callback
-        ctx = executor._build_executor_context([], 500)
+        executor._tracked_balance = 500
+        ctx = executor._build_executor_context()
         result = await on_coins_low(ctx)
         assert result == returned_coins
 
@@ -70,7 +71,8 @@ class TestCoinReplenishment:
             min_balance_threshold=1000,
         )
 
-        ctx = executor._build_executor_context([], 500)
+        executor._tracked_balance = 500
+        ctx = executor._build_executor_context()
         result = await on_coins_low(ctx)
         assert result is None
 
@@ -93,12 +95,12 @@ class TestCoinReplenishment:
             on_coins_low=on_coins_low,
         )
 
-        mock_coins = ["mock_coin"]
-        ctx = executor._build_executor_context(mock_coins, 5000000)
+        executor._tracked_balance = 5000000
+        ctx = executor._build_executor_context()
         await on_coins_low(ctx)
 
         assert captured_context.sender == "0xsender"
-        assert captured_context.gas_coins == mock_coins
+        assert captured_context.gas_coins == []
         assert captured_context.tracked_balance == 5000000
 
 
@@ -139,7 +141,8 @@ class TestBalanceReplenishment:
             min_balance_threshold=1000,
         )
 
-        ctx = executor._build_executor_context([], 500)
+        executor._tracked_balance = 500
+        ctx = executor._build_executor_context()
         result = await on_balance_low(ctx)
         assert result == funding_wallet
 
@@ -159,7 +162,8 @@ class TestBalanceReplenishment:
             min_balance_threshold=1000,
         )
 
-        ctx = executor._build_executor_context([], 500)
+        executor._tracked_balance = 500
+        ctx = executor._build_executor_context()
         result = await on_balance_low(ctx)
         assert result is None
 
@@ -182,7 +186,8 @@ class TestBalanceReplenishment:
             on_balance_low=on_balance_low,
         )
 
-        ctx = executor._build_executor_context([], 5000000)
+        executor._tracked_balance = 5000000
+        ctx = executor._build_executor_context()
         await on_balance_low(ctx)
 
         assert captured_context.sender == "0xsender"
@@ -212,7 +217,8 @@ class TestFundingWalletSeparation:
             on_balance_low=on_balance_low,
         )
 
-        ctx = executor._build_executor_context([], 1000)
+        executor._tracked_balance = 1000
+        ctx = executor._build_executor_context()
         balance_addr = await on_balance_low(ctx)
 
         assert balance_addr != ctx.gas_owner
@@ -224,43 +230,31 @@ class TestReplenishmentViaExecuteTransactions:
 
     def _make_executor_with_mocked_execution(self, executor):
         """Return context-manager patches that make execute_transactions run one tx successfully."""
-        import base64
+        from pysui.sui.sui_common.types import TransactionEffects, ExecutionStatus, GasCostSummary
 
-        mock_result = MagicMock()
-        from pysui.sui.sui_pgql.pgql_types import ExecutionResultGQL
-        mock_result.__class__ = ExecutionResultGQL
-        mock_result.effects_bcs = base64.b64encode(b"fake").decode()
-
-        gas_used = MagicMock()
-        gas_used.computationCost = 200
-        gas_used.storageCost = 0
-        gas_used.storageRebate = 0
-
-        v2 = MagicMock()
-        v2.gasUsed = gas_used
-        v2.transactionDigest.to_digest_str.return_value = "d"
-        v2.changedObjects = []
-        v2.lamportVersion = 1
-        v2.gasObjectIndex.value = 0
-        mock_effects = MagicMock()
-        mock_effects.enum_name = "V2"
-        mock_effects.value = v2
+        mock_effects = TransactionEffects(
+            transaction_digest="d",
+            status=ExecutionStatus(success=True),
+            gas_used=GasCostSummary(
+                computation_cost=200,
+                storage_cost=0,
+                storage_rebate=0,
+            ),
+            lamport_version=1,
+            changed_objects=[],
+        )
 
         from unittest.mock import patch
         patches = [
-            patch.object(executor, "_build_transaction", new=AsyncMock(return_value="tx")),
-            patch.object(executor, "_sign_transaction", return_value=["sig"]),
-            patch.object(executor._cache, "execute_transaction", new=AsyncMock(return_value=mock_result)),
+            patch.object(executor._cache, "build_transaction", new=AsyncMock(return_value="tx")),
+            patch.object(executor._signing_block, "get_signatures", return_value=["sig"]),
+            patch.object(executor, "_execute_raw", new=AsyncMock(return_value=mock_effects)),
             patch.object(executor._cache, "apply_effects", new=AsyncMock()),
             patch.object(executor._cache, "update_gas_coins", new=AsyncMock()),
             patch.object(executor._cache, "invalidate_gas_coins", new=AsyncMock()),
             patch.object(executor._cache.cache, "getCustom", new=AsyncMock(return_value=[])),
-            patch("pysui.sui.sui_pgql.execute.serial_exec.bcst.TransactionEffects.deserialize",
-                  return_value=mock_effects),
-            patch("pysui.sui.sui_pgql.execute.serial_exec._get_gascoin_from_effects",
-                  return_value=MagicMock()),
         ]
-        return patches, mock_result
+        return patches, mock_effects
 
     @pytest.mark.asyncio
     async def test_on_coins_low_returning_none_halts_via_execute(self):
@@ -353,8 +347,8 @@ class TestReplenishmentThreshold:
     @pytest.mark.asyncio
     async def test_threshold_determines_callback_trigger(self):
         """on_coins_low is triggered when tracked_balance < threshold, not when >=."""
-        import base64
         from unittest.mock import patch, AsyncMock, MagicMock
+        from pysui.sui.sui_common.types import TransactionEffects, ExecutionStatus, GasCostSummary
 
         triggered_at_balances = []
 
@@ -374,34 +368,26 @@ class TestReplenishmentThreshold:
         # Pre-seed so lazy init is skipped; balance starts just above threshold
         executor._tracked_balance = 1100
 
-        from pysui.sui.sui_pgql.pgql_types import ExecutionResultGQL
-        mock_result = MagicMock(spec=ExecutionResultGQL)
-        mock_result.effects_bcs = base64.b64encode(b"fake").decode()
+        # net cost = 200; 1100 - 200 = 900 < 1000 → triggers
+        mock_effects = TransactionEffects(
+            transaction_digest="d",
+            status=ExecutionStatus(success=True),
+            gas_used=GasCostSummary(
+                computation_cost=200,
+                storage_cost=0,
+                storage_rebate=0,
+            ),
+            lamport_version=1,
+            changed_objects=[],
+        )
 
-        gas_used = MagicMock()
-        gas_used.computationCost = 200
-        gas_used.storageCost = 0
-        gas_used.storageRebate = 0  # net cost = 200; 1100 - 200 = 900 < 1000 → triggers
-
-        v2 = MagicMock()
-        v2.gasUsed = gas_used
-        v2.transactionDigest.to_digest_str.return_value = "d"
-        v2.changedObjects = []
-        v2.lamportVersion = 1
-        v2.gasObjectIndex.value = 0
-        mock_effects = MagicMock()
-        mock_effects.enum_name = "V2"
-        mock_effects.value = v2
-
-        with patch.object(executor, "_build_transaction", new=AsyncMock(return_value="tx")), \
-             patch.object(executor, "_sign_transaction", return_value=["sig"]), \
-             patch.object(executor._cache, "execute_transaction", new=AsyncMock(return_value=mock_result)), \
+        with patch.object(executor._cache, "build_transaction", new=AsyncMock(return_value="tx")), \
+             patch.object(executor._signing_block, "get_signatures", return_value=["sig"]), \
+             patch.object(executor, "_execute_raw", new=AsyncMock(return_value=mock_effects)), \
              patch.object(executor._cache, "apply_effects", new=AsyncMock()), \
              patch.object(executor._cache, "update_gas_coins", new=AsyncMock()), \
              patch.object(executor._cache, "invalidate_gas_coins", new=AsyncMock()), \
-             patch.object(executor._cache.cache, "getCustom", new=AsyncMock(return_value=[])), \
-             patch("pysui.sui.sui_pgql.execute.serial_exec.bcst.TransactionEffects.deserialize", return_value=mock_effects), \
-             patch("pysui.sui.sui_pgql.execute.serial_exec._get_gascoin_from_effects", return_value=MagicMock()):
+             patch.object(executor._cache.cache, "getCustom", new=AsyncMock(return_value=[])):
             # Two transactions: tx[0] spends 200, dropping balance to 900 < 1000
             results = await executor.execute_transactions([MagicMock(), MagicMock()])
 

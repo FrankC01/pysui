@@ -16,6 +16,11 @@ from pysui.sui.sui_common.executors.cache import (
     ObjectCacheEntry,
     MoveFunctionCacheEntry,
 )
+from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor
+from pysui.sui.sui_common.executors.base_executor import (
+    _BaseExecutor,
+    _BaseSerialExecutor,
+)
 
 __all__ = [
     "ExecutorContext",
@@ -26,4 +31,7 @@ __all__ = [
     "AsyncObjectCache",
     "ObjectCacheEntry",
     "MoveFunctionCacheEntry",
+    "_BaseCachingExecutor",
+    "_BaseExecutor",
+    "_BaseSerialExecutor",
 ]

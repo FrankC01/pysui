@@ -7,7 +7,6 @@
 
 import pytest
 import asyncio
-from unittest.mock import MagicMock
 from pysui.sui.sui_common.executors import AsyncObjectCache, ObjectCacheEntry
 
 
@@ -201,46 +200,42 @@ class TestDeleteObject:
 
 
 class TestApplyEffects:
-    """Test AsyncObjectCache.applyEffects — owned/shared/deleted routing including C3 fix."""
+    """Test AsyncObjectCache.applyEffects — owned/shared/deleted routing."""
 
     def _make_effects(self, changed_objects):
-        effects = MagicMock()
-        effects.enum_name = "V2"
-        effects.value = MagicMock()
-        effects.value.lamportVersion = 5
-        effects.value.changedObjects = changed_objects
-        return effects
+        from pysui.sui.sui_common.types import TransactionEffects, ExecutionStatus, GasCostSummary
+        return TransactionEffects(
+            transaction_digest="fakedigest",
+            status=ExecutionStatus(success=True),
+            gas_used=GasCostSummary(computation_cost=0, storage_cost=0, storage_rebate=0),
+            lamport_version=5,
+            changed_objects=changed_objects,
+        )
 
     def _owned_change(self, obj_id, owner_addr):
-        addr = MagicMock(); addr.to_address_str.return_value = obj_id
-        digest = MagicMock(); digest.to_digest_str.return_value = "digest"
-        owner = MagicMock(); owner.enum_name = "AddressOwner"
-        owner.value.to_address_str.return_value = owner_addr
-        out = MagicMock(); out.enum_name = "ObjectWrite"; out.value = (digest, owner)
-        change = MagicMock(); change.outputState = out
-        return (addr, change)
+        from pysui.sui.sui_common.types import ChangedObject, Owner
+        return ChangedObject(
+            object_id=obj_id,
+            output_state="ObjectWrite",
+            output_digest="digest",
+            output_owner=Owner(kind="AddressOwner", address=owner_addr),
+        )
 
     def _shared_change(self, obj_id, initial_version="1"):
-        addr = MagicMock(); addr.to_address_str.return_value = obj_id
-        digest = MagicMock(); digest.to_digest_str.return_value = "shareddigest"
-        owner = MagicMock(); owner.enum_name = "SharedInitialVersion"; owner.value = initial_version
-        out = MagicMock(); out.enum_name = "ObjectWrite"; out.value = (digest, owner)
-        change = MagicMock(); change.outputState = out
-        return (addr, change)
+        from pysui.sui.sui_common.types import ChangedObject, Owner
+        return ChangedObject(
+            object_id=obj_id,
+            output_state="ObjectWrite",
+            output_digest="shareddigest",
+            output_owner=Owner(kind="SharedInitialVersion", initial_shared_version=int(initial_version)),
+        )
 
     def _deleted_change(self, obj_id):
-        addr = MagicMock(); addr.to_address_str.return_value = obj_id
-        out = MagicMock(); out.enum_name = "NotExist"
-        change = MagicMock(); change.outputState = out
-        return (addr, change)
-
-    @pytest.mark.asyncio
-    async def test_non_v2_effects_raises(self):
-        cache = AsyncObjectCache()
-        effects = MagicMock()
-        effects.enum_name = "V1"
-        with pytest.raises(ValueError, match="Unsupported"):
-            await cache.applyEffects(effects)
+        from pysui.sui.sui_common.types import ChangedObject
+        return ChangedObject(
+            object_id=obj_id,
+            output_state="DoesNotExist",
+        )
 
     @pytest.mark.asyncio
     async def test_owned_object_write_routes_to_owned_bucket(self):
@@ -254,7 +249,7 @@ class TestApplyEffects:
 
     @pytest.mark.asyncio
     async def test_shared_object_write_routes_to_shared_bucket_with_no_owner(self):
-        """C3 fix: SharedInitialVersion → SharedOrImmutableObject bucket, owner=None."""
+        """SharedInitialVersion → SharedOrImmutableObject bucket, owner=None."""
         cache = AsyncObjectCache()
         effects = self._make_effects([self._shared_change("0xshared", initial_version="42")])
         await cache.applyEffects(effects)

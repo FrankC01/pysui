@@ -1366,8 +1366,8 @@ class SystemStateSummaryGQL(PGQL_Type):
 
 
 # Re-exported from sui_common for backwards compatibility.
-# New code should import from pysui.sui.sui_common.sui_txn_types directly.
-from pysui.sui.sui_common.sui_txn_types import TransactionConstraints
+# New code should import from pysui.sui.sui_common.types directly.
+from pysui.sui.sui_common.types import TransactionConstraints
 
 
 @dataclasses_json.dataclass_json

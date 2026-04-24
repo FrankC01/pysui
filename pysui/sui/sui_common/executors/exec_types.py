@@ -7,10 +7,6 @@
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import pysui.sui.sui_bcs.bcs as bcs
 
 
 @dataclass
@@ -19,7 +15,7 @@ class ExecutorContext:
 
     sender: str
     gas_owner: str
-    gas_coins: "list[bcs.ObjectReference]"
+    gas_coins: list[str]
     tracked_balance: int
 
 

@@ -8,7 +8,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 from pysui import PysuiConfiguration
-from pysui.sui.sui_common.sui_txn_types import TransactionConstraints
+from pysui.sui.sui_common.types import TransactionConstraints
 
 
 class PysuiClient(ABC):

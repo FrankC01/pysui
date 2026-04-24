@@ -31,7 +31,7 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from grpclib.client import Channel
 
 from pysui import SuiRpcResult, PysuiConfiguration
-from pysui.sui.sui_common.sui_txn_types import TransactionConstraints
+from pysui.sui.sui_common.types import TransactionConstraints
 
 logger = logging.getLogger("pgrpc_client")
 
