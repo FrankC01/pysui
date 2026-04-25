@@ -5,11 +5,16 @@
 
 """Base caching executor ABC for protocol-agnostic transaction caching."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache
 from pysui.sui.sui_common.types import TransactionEffects
+
+if TYPE_CHECKING:
+    from pysui.sui.sui_common.executors.object_registry import AbstractObjectRegistry
 
 
 class _BaseCachingExecutor(ABC):
@@ -34,3 +39,21 @@ class _BaseCachingExecutor(ABC):
 
     async def invalidate_gas_coins(self) -> None:
         await self.cache.setCustom("gasCoins", None)
+
+    async def sync_to_registry(self, registry: "AbstractObjectRegistry") -> None:
+        """Push known object versions from the per-executor cache into the shared registry.
+
+        Higher version always wins — stale writes are silently dropped by the registry.
+        Called by the parallel executor after each transaction's effects are applied.
+        """
+        from pysui.sui.sui_common.executors.object_registry import ObjectVersionEntry
+
+        # Only owned objects change version after execution; shared objects use
+        # initialSharedVersion which is stable and doesn't need registry tracking.
+        owned = self.cache._cache.get("OwnedObject", {})
+        entries: list[ObjectVersionEntry] = [
+            ObjectVersionEntry(object_id=oid, version=cached.version, digest=cached.digest)
+            for oid, cached in owned.items()
+        ]
+        if entries:
+            await registry.upsert_many(entries)

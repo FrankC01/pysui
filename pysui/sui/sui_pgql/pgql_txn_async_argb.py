@@ -10,6 +10,7 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txn_arg_encoder import _BaseArgParser, OpenMoveDatatypeBodyGQL
+from pysui.sui.sui_common.executors.object_id_extract import extract_object_id
 
 
 class AsyncResolvingArgParser(_BaseArgParser):
@@ -98,4 +99,19 @@ class UnResolvingArgParser(AsyncResolvingArgParser):
         expected_type: Optional[OpenMoveDatatypeBodyGQL] = None,
     ) -> bcs.ObjectArg:
         """Generate unresolved object references for deferred resolution."""
-        return bcs.UnresolvedObjectArg.from_object_ref_type(arg, expected_type)
+        if isinstance(arg, bcs.ObjectArg):
+            return arg
+        oid = extract_object_id(arg)
+        ref_type = pgql_type.RefType.MUT_REF if is_mutable else pgql_type.RefType.NO_REF
+        type_str = (
+            f"{expected_type.package}::{expected_type.module}::{expected_type.type_name}"
+            if expected_type is not None
+            else ""
+        )
+        return bcs.UnresolvedObjectArg.from_flags(
+            oid,
+            is_optional=False,
+            is_receiving=is_receiving,
+            ref_type=ref_type,
+            type_str=type_str,
+        )

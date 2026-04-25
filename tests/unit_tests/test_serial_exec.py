@@ -3,24 +3,24 @@
 
 # -*- coding: utf-8 -*-
 
-"""Tests for SerialTransactionExecutor."""
+"""Tests for GqlSerialTransactionExecutor."""
 
 import base64
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pysui.sui.sui_common.executors import ExecutionSkipped, ExecutorError
-from pysui.sui.sui_pgql.execute.serial_exec import SerialTransactionExecutor
+from pysui.sui.sui_pgql.execute.serial_exec import GqlSerialTransactionExecutor
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_executor(**kwargs) -> SerialTransactionExecutor:
+def _make_executor(**kwargs) -> GqlSerialTransactionExecutor:
     """Build an executor backed by a plain MagicMock client."""
     mock_client = MagicMock()
     mock_client.config = MagicMock()
-    executor = SerialTransactionExecutor(client=mock_client, sender="0xsender", **kwargs)
+    executor = GqlSerialTransactionExecutor(client=mock_client, sender="0xsender", **kwargs)
     # Pre-seed tracked_balance to avoid fetching during tests (unless explicitly testing that path)
     executor._tracked_balance = 1_000_000
     return executor
@@ -46,27 +46,27 @@ def _mock_effects(computation_cost=1000, storage_cost=500, storage_rebate=200):
 # Construction tests
 # ---------------------------------------------------------------------------
 
-class TestSerialTransactionExecutor:
-    """Test SerialTransactionExecutor initialization and structure."""
+class TestGqlSerialTransactionExecutor:
+    """Test GqlSerialTransactionExecutor initialization and structure."""
 
     def test_serial_executor_creation(self):
-        """SerialTransactionExecutor can be instantiated with required parameters."""
+        """GqlSerialTransactionExecutor can be instantiated with required parameters."""
         executor = _make_executor()
         assert executor is not None
         assert executor._default_gas_budget == 50_000_000
 
     def test_serial_executor_with_sponsor(self):
-        """SerialTransactionExecutor accepts optional sponsor."""
+        """GqlSerialTransactionExecutor accepts optional sponsor."""
         executor = _make_executor(sponsor="0xsponsor")
         assert executor is not None
 
     def test_serial_executor_custom_gas_budget(self):
-        """SerialTransactionExecutor accepts custom gas budget."""
+        """GqlSerialTransactionExecutor accepts custom gas budget."""
         executor = _make_executor(default_gas_budget=100_000_000)
         assert executor._default_gas_budget == 100_000_000
 
     def test_serial_executor_with_balance_threshold(self):
-        """SerialTransactionExecutor accepts min_balance_threshold with a callback."""
+        """GqlSerialTransactionExecutor accepts min_balance_threshold with a callback."""
         async def on_coins_low(ctx):
             return None
 
@@ -89,7 +89,7 @@ class TestSerialTransactionExecutor:
         assert executor._on_coins_low is None
 
     def test_serial_executor_with_callbacks(self):
-        """SerialTransactionExecutor accepts callback functions."""
+        """GqlSerialTransactionExecutor accepts callback functions."""
         async def on_coins_low(ctx):
             return None
 
@@ -101,20 +101,20 @@ class TestSerialTransactionExecutor:
         assert executor._on_balance_low is not None
 
     def test_serial_executor_has_new_transaction_method(self):
-        assert hasattr(SerialTransactionExecutor, "new_transaction")
+        assert hasattr(GqlSerialTransactionExecutor, "new_transaction")
 
     def test_serial_executor_has_reset_cache_method(self):
-        assert hasattr(SerialTransactionExecutor, "reset_cache")
+        assert hasattr(GqlSerialTransactionExecutor, "reset_cache")
 
     def test_serial_executor_has_execute_transactions_method(self):
-        assert hasattr(SerialTransactionExecutor, "execute_transactions")
+        assert hasattr(GqlSerialTransactionExecutor, "execute_transactions")
 
     @pytest.mark.asyncio
     async def test_serial_executor_new_transaction(self):
         """new_transaction returns a CachingTransaction."""
         mock_client = AsyncMock()
         mock_client.config = MagicMock()
-        executor = SerialTransactionExecutor(client=mock_client, sender="0xsender")
+        executor = GqlSerialTransactionExecutor(client=mock_client, sender="0xsender")
 
         with patch("pysui.sui.sui_pgql.execute.serial_exec.CachingTransaction") as mock_txn:
             mock_txn.return_value = MagicMock()

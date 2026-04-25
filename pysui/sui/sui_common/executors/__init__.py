@@ -21,6 +21,20 @@ from pysui.sui.sui_common.executors.base_executor import (
     _BaseExecutor,
     _BaseSerialExecutor,
 )
+from pysui.sui.sui_common.executors.object_registry import (
+    ObjectVersionEntry,
+    AbstractObjectRegistry,
+    InMemoryObjectRegistry,
+    get_object_registry,
+    _set_object_registry_for_tests,
+)
+from pysui.sui.sui_common.executors.conflict_tracker import (
+    ConflictTracker,
+    ConflictReservation,
+)
+from pysui.sui.sui_common.executors.gas_pool import GasCoin, GasCoinPool
+from pysui.sui.sui_common.executors.object_id_extract import extract_object_id
+from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
 
 __all__ = [
     "ExecutorContext",
@@ -34,4 +48,15 @@ __all__ = [
     "_BaseCachingExecutor",
     "_BaseExecutor",
     "_BaseSerialExecutor",
+    "ObjectVersionEntry",
+    "AbstractObjectRegistry",
+    "InMemoryObjectRegistry",
+    "get_object_registry",
+    "_set_object_registry_for_tests",
+    "ConflictTracker",
+    "ConflictReservation",
+    "GasCoin",
+    "GasCoinPool",
+    "extract_object_id",
+    "_BaseParallelExecutor",
 ]

@@ -23,7 +23,7 @@ from pysui.sui.sui_common.types import (
 )
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_grpc.grpc_caching_exec import AsyncGrpcCachingTransactionExecutor
+from pysui.sui.sui_grpc.grpc_caching_exec import GrpcCachingTransactionExecutor
 from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 
 grpc_ser_txn_exc_logger = logging.getLogger(__name__)
@@ -193,15 +193,15 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
         self._execution_lock = asyncio.Lock()
         self._queue = SerialQueue()
 
-    def _create_caching_executor(self, client, gas_owner: str) -> AsyncGrpcCachingTransactionExecutor:
+    def _create_caching_executor(self, client, gas_owner: str) -> GrpcCachingTransactionExecutor:
         """Create a gRPC-specific caching executor.
 
         :param client: The gRPC client
         :param gas_owner: Address of the gas owner
         :return: The caching executor
-        :rtype: AsyncGrpcCachingTransactionExecutor
+        :rtype: GrpcCachingTransactionExecutor
         """
-        return AsyncGrpcCachingTransactionExecutor(client, gas_owner=gas_owner)
+        return GrpcCachingTransactionExecutor(client, gas_owner=gas_owner)
 
     async def _execute_raw(self, tx_str: str, sigs: list[str]) -> TransactionEffects:
         """Execute a signed transaction via gRPC and return common TransactionEffects.

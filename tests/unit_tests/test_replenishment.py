@@ -8,7 +8,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pysui.sui.sui_common.executors import ExecutorContext, ExecutionSkipped
-from pysui.sui.sui_pgql.execute.serial_exec import SerialTransactionExecutor
+from pysui.sui.sui_pgql.execute.serial_exec import GqlSerialTransactionExecutor
 
 
 class TestCoinReplenishment:
@@ -23,7 +23,7 @@ class TestCoinReplenishment:
         mock_client = MagicMock()
         mock_client.config = MagicMock()
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             on_coins_low=on_coins_low,
@@ -42,7 +42,7 @@ class TestCoinReplenishment:
             assert isinstance(ctx, ExecutorContext)
             return returned_coins
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             on_coins_low=on_coins_low,
@@ -64,7 +64,7 @@ class TestCoinReplenishment:
         async def on_coins_low(ctx: ExecutorContext) -> list[str] | None:
             return None  # Signal no coins available
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             on_coins_low=on_coins_low,
@@ -89,7 +89,7 @@ class TestCoinReplenishment:
         mock_client = MagicMock()
         mock_client.config = MagicMock()
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             on_coins_low=on_coins_low,
@@ -115,7 +115,7 @@ class TestBalanceReplenishment:
         mock_client = MagicMock()
         mock_client.config = MagicMock()
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             on_balance_low=on_balance_low,
@@ -134,7 +134,7 @@ class TestBalanceReplenishment:
             # Can differ from gas_owner
             return funding_wallet
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             on_balance_low=on_balance_low,
@@ -155,7 +155,7 @@ class TestBalanceReplenishment:
         async def on_balance_low(ctx: ExecutorContext) -> str | None:
             return None  # Signal balance unavailable
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             on_balance_low=on_balance_low,
@@ -180,7 +180,7 @@ class TestBalanceReplenishment:
         mock_client = MagicMock()
         mock_client.config = MagicMock()
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             on_balance_low=on_balance_low,
@@ -211,7 +211,7 @@ class TestFundingWalletSeparation:
             # Can return different address for balance check
             return funding_wallet
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender=gas_owner,
             on_balance_low=on_balance_low,
@@ -266,7 +266,7 @@ class TestReplenishmentViaExecuteTransactions:
             triggered.append(ctx.tracked_balance)
             return None
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=MagicMock(),
             sender="0xsender",
             min_balance_threshold=1000,
@@ -295,7 +295,7 @@ class TestReplenishmentViaExecuteTransactions:
             triggered.append(ctx.tracked_balance)
             return None
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=MagicMock(),
             sender="0xsender",
             min_balance_threshold=1000,
@@ -325,7 +325,7 @@ class TestReplenishmentThreshold:
         async def on_coins_low(ctx):
             return None
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             min_balance_threshold=5_000_000,
@@ -338,7 +338,7 @@ class TestReplenishmentThreshold:
         mock_client = MagicMock()
         mock_client.config = MagicMock()
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
         )
@@ -359,7 +359,7 @@ class TestReplenishmentThreshold:
         mock_client = MagicMock()
         mock_client.config = MagicMock()
 
-        executor = SerialTransactionExecutor(
+        executor = GqlSerialTransactionExecutor(
             client=mock_client,
             sender="0xsender",
             min_balance_threshold=1000,

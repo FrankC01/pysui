@@ -14,7 +14,7 @@ from pysui.sui.sui_common.txb_signing import SignerBlock
 logger = logging.getLogger(__name__)
 
 
-class AsyncGrpcCachingTransactionExecutor(_BaseCachingExecutor):
+class GrpcCachingTransactionExecutor(_BaseCachingExecutor):
     """Caching executor for gRPC transactions.
 
     Unlike the GraphQL caching executor, this implementation does not

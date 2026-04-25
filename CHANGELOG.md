@@ -19,6 +19,9 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 - `AsyncSuiGQLClient.transaction()` is now `async def` — all call sites must add `await` (aligns with `SuiGrpcClient.transaction()` for protocol-agnostic code via `client_factory`)
 
+- `SerialTransactionExecutor` renamed to `GqlSerialTransactionExecutor` — protocol prefix added
+  to all executor class names for consistency; update imports accordingly
+
 ### Added
 
 - `pysui/sui/sui_pgql/pgql_types.py`: new `OpenMove*GQL` dataclass hierarchy mirroring the GQL schema — `OpenMoveTypeGQL`, `OpenMoveTypeSignatureGQL`, `OpenMoveScalarBodyGQL`, `OpenMoveVectorBodyGQL`, `OpenMoveDatatypeBodyGQL`, `OpenMoveTypeParamBodyGQL` — replaces fragile dict-based Move type representation
@@ -26,10 +29,21 @@ parameters on build(), build_and_sign(), and transaction_data()
 - 33 integration tests in `tests/integration_tests/test_move_call_encoding.py` covering scalar, vector (including `vector<vector<vector<u8>>>`), Option, object reference, and generic type parameter encoding across GQL async, GQL sync, gRPC, and caching transaction builders
 
 - Added 366 offline unit tests (no network required) across 8 files in `tests/unit_tests/`
+- `GqlParallelTransactionExecutor`: GraphQL parallel transaction executor with conflict tracking,
+  gas coin pool management (coins mode), and address-balance mode
+- `GrpcSerialTransactionExecutor`: gRPC serial transaction executor with the same interface as
+  `GqlSerialTransactionExecutor`; coins and address-balance gas modes with optional replenishment callbacks
+- `GrpcParallelTransactionExecutor`: gRPC parallel transaction executor with the same interface as
+  `GqlParallelTransactionExecutor`
+
 - Added `tests/test_deprecations.py` with 8 offline unit tests (no network required):
   - `TransactionConstraints` backwards-compat re-export from `pgql_types.py` resolves to canonical `sui_common/sui_txn_types.py` location
   - `PysuiClient` ABC enforcement: missing abstract methods raise `TypeError`; fully-implemented subclass instantiates correctly
   - `DeprecationWarning` verified on `SuiConfig`, `SuiClient` sync/async (JSON-RPC), `SuiGQLClient` (sync GraphQL), and `SuiTransaction` (sync GraphQL)
+
+### Changed
+
+- Documentation updated
 
 ### Fixed
 

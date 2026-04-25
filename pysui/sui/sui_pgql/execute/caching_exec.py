@@ -26,7 +26,7 @@ from .caching_txn import CachingTransaction
 logger = logging.getLogger(__name__)
 
 
-class AsyncCachingTransactionExecutor(_BaseCachingExecutor):
+class GqlCachingTransactionExecutor(_BaseCachingExecutor):
     """."""
 
     def __init__(self, client: AsyncGqlClient, gas_owner: Optional[str] = None):

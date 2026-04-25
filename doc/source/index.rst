@@ -28,11 +28,11 @@ Welcome to pysui's documentation!
    utilities
    graphql
    graphql_qnodes
-   graphql_serial_exc
    grpc
    grpc_requests_list
    aliases
    multi_sig
+   executors
    subscriptions
    modules
 

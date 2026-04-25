@@ -27,7 +27,7 @@ import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_bcs.bcs as bcs
 import pysui.sui.sui_bcs.bcs_txne as bcst
-from .caching_exec import AsyncCachingTransactionExecutor
+from .caching_exec import GqlCachingTransactionExecutor
 from .caching_txn import CachingTransaction
 
 ser_txn_exc_logger = logging.getLogger(__name__)
@@ -104,7 +104,7 @@ def _gql_effects_to_common(effects: bcst.TransactionEffects) -> TransactionEffec
     )
 
 
-class SerialTransactionExecutor(_BaseSerialExecutor):
+class GqlSerialTransactionExecutor(_BaseSerialExecutor):
     """Executes transactions serially with caching and optional gas replenishment.
 
     Gas replenishment callbacks (on_coins_low / on_balance_low) are mutually exclusive:
@@ -138,7 +138,7 @@ class SerialTransactionExecutor(_BaseSerialExecutor):
             Callable[[ExecutorContext], Awaitable[str | None]]
         ] = None,
     ):
-        """Initialize SerialTransactionExecutor.
+        """Initialize GqlSerialTransactionExecutor.
 
         :param client: Asynchronous GraphQL client
         :type client: AsyncGqlClient
@@ -178,15 +178,15 @@ class SerialTransactionExecutor(_BaseSerialExecutor):
         self._execution_lock = asyncio.Lock()
         self._queue = SerialQueue()
 
-    def _create_caching_executor(self, client, gas_owner: str) -> "AsyncCachingTransactionExecutor":
+    def _create_caching_executor(self, client, gas_owner: str) -> "GqlCachingTransactionExecutor":
         """Create a protocol-specific caching executor.
 
         :param client: The GraphQL client
         :param gas_owner: Address of the gas owner
         :return: The caching executor
-        :rtype: AsyncCachingTransactionExecutor
+        :rtype: GqlCachingTransactionExecutor
         """
-        return AsyncCachingTransactionExecutor(client, gas_owner=gas_owner)
+        return GqlCachingTransactionExecutor(client, gas_owner=gas_owner)
 
     async def _execute_raw(self, tx_str: str, sigs: list[str]) -> TransactionEffects:
         """Execute a signed transaction and return common TransactionEffects.

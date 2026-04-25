@@ -737,6 +737,19 @@ class UnresolvedObjectArg(canoser.Struct):
             type_str,
         )
 
+    @classmethod
+    def from_flags(
+        cls,
+        arg: str,
+        *,
+        is_optional: bool,
+        is_receiving: bool,
+        ref_type: int,
+        type_str: str = "",
+    ) -> "UnresolvedObjectArg":
+        """Construct from explicit flag values — used when no MoveObjectRefArg is available."""
+        return cls(arg, is_optional, is_receiving, ref_type, type_str)
+
 
 class BuilderArg(canoser.RustEnum):
     """BuilderArg objects are generated in the TransactionBuilder."""
