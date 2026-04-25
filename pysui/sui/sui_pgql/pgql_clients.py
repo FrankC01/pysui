@@ -482,6 +482,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
 
     @property
     def session(self) -> Any:
+        """Return the underlying GraphQL transport session."""
         return self._session
 
     async def close(self) -> None:

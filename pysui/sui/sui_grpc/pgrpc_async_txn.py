@@ -315,12 +315,7 @@ class AsyncSuiTransaction(txbase):
         :type txn_expires_after: Optional[int],optional
         :param use_account_for_gas: Pay gas from address account balance, defaults to False
         :type use_account_for_gas: bool, optional
-        :return: Dict of
-            {
-                "tx_bytestr": base64 encoded transaction bytes,
-                "sig_array": array of base64 encoded signature bytes
-
-            }
+        :return: Dict with ``tx_bytestr`` (base64 transaction bytes) and ``sig_array`` (list of base64 signature bytes)
         :rtype: dict[str, str]
         """
         txn_kind = await self.transaction_data(

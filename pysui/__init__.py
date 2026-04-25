@@ -28,7 +28,6 @@ if sys.version_info < (3, 10):
 
 from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.scalars import ObjectID
-from pysui.sui.sui_config import SuiConfig
 from pysui.sui.sui_clients.common import (
     PreExecutionResult,
     SuiRpcResult,
@@ -39,15 +38,11 @@ from .version import __version__
 
 SDK_CURRENT_VERSION: list[str] = [int(x) for x in __version__.split(".")]
 
-from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient
-from pysui.sui.sui_clients.async_client import SuiClient as AsyncClient
-
 from pysui.sui.sui_common.config import PysuiConfiguration
 from pysui.sui.sui_common.config.confgroup import GroupProtocol
 from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_common.factory import client_factory
-from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient as SyncGqlClient
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
 
 from pysui.sui.sui_pgql.execute.serial_exec import GqlSerialTransactionExecutor

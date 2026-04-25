@@ -34,28 +34,44 @@ class AbstractObjectRegistry(ABC):
     """Interface for a process-wide object version cache."""
 
     @abstractmethod
-    async def get(self, object_id: str) -> Optional[ObjectVersionEntry]: ...
+    async def get(self, object_id: str) -> Optional[ObjectVersionEntry]:
+        """Return the cached entry for an object id or None if missing."""
+        ...
 
     @abstractmethod
-    async def get_many(self, object_ids: list[str]) -> dict[str, ObjectVersionEntry]: ...
+    async def get_many(self, object_ids: list[str]) -> dict[str, ObjectVersionEntry]:
+        """Return cached entries for the given object ids keyed by id."""
+        ...
 
     @abstractmethod
-    async def upsert(self, entry: ObjectVersionEntry) -> None: ...
+    async def upsert(self, entry: ObjectVersionEntry) -> None:
+        """Insert or update a single object version entry."""
+        ...
 
     @abstractmethod
-    async def upsert_many(self, entries: list[ObjectVersionEntry]) -> None: ...
+    async def upsert_many(self, entries: list[ObjectVersionEntry]) -> None:
+        """Insert or update multiple object version entries."""
+        ...
 
     @abstractmethod
-    async def tombstone(self, object_id: str, ttl_seconds: float = 30.0) -> None: ...
+    async def tombstone(self, object_id: str, ttl_seconds: float = 30.0) -> None:
+        """Mark an object id as deleted for the given TTL window."""
+        ...
 
     @abstractmethod
-    async def evict(self, object_id: str) -> None: ...
+    async def evict(self, object_id: str) -> None:
+        """Remove an object id from the registry without tombstoning."""
+        ...
 
     @abstractmethod
-    async def reset(self) -> None: ...
+    async def reset(self) -> None:
+        """Clear all entries from the registry."""
+        ...
 
     @abstractmethod
-    def size(self) -> int: ...
+    def size(self) -> int:
+        """Return the current number of cached entries."""
+        ...
 
 
 class InMemoryObjectRegistry(AbstractObjectRegistry):
@@ -70,15 +86,18 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
     DEFAULT_TOMBSTONE_TTL_SECONDS: float = 30.0
 
     def __init__(self, *, max_entries: int = DEFAULT_MAX_ENTRIES) -> None:
+        """Initialize the in-memory registry with an LRU bound."""
         self._entries: OrderedDict[str, ObjectVersionEntry] = OrderedDict()
         self._max = max_entries
         self._lock = asyncio.Lock()
 
     async def get(self, object_id: str) -> Optional[ObjectVersionEntry]:
+        """Return the cached entry for an object id or None if missing."""
         async with self._lock:
             return self._get_unlocked(object_id)
 
     async def get_many(self, object_ids: list[str]) -> dict[str, ObjectVersionEntry]:
+        """Return cached entries for the given object ids keyed by id."""
         async with self._lock:
             result: dict[str, ObjectVersionEntry] = {}
             for oid in object_ids:
@@ -88,15 +107,18 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
             return result
 
     async def upsert(self, entry: ObjectVersionEntry) -> None:
+        """Insert or update a single object version entry."""
         async with self._lock:
             self._upsert_unlocked(entry)
 
     async def upsert_many(self, entries: list[ObjectVersionEntry]) -> None:
+        """Insert or update multiple object version entries."""
         async with self._lock:
             for entry in entries:
                 self._upsert_unlocked(entry)
 
     async def tombstone(self, object_id: str, ttl_seconds: float = DEFAULT_TOMBSTONE_TTL_SECONDS) -> None:
+        """Mark an object id as deleted for the given TTL window."""
         async with self._lock:
             expires_ns = time.monotonic_ns() + int(ttl_seconds * 1_000_000_000)
             entry = ObjectVersionEntry(
@@ -109,17 +131,21 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
             self._upsert_unlocked(entry)
 
     async def evict(self, object_id: str) -> None:
+        """Remove an object id from the registry without tombstoning."""
         async with self._lock:
             self._entries.pop(object_id, None)
 
     async def reset(self) -> None:
+        """Clear all entries from the registry."""
         async with self._lock:
             self._entries.clear()
 
     def size(self) -> int:
+        """Return the current number of cached entries."""
         return len(self._entries)
 
     def _get_unlocked(self, object_id: str) -> Optional[ObjectVersionEntry]:
+        """Return entry without locking; expires tombstones and updates LRU order."""
         entry = self._entries.get(object_id)
         if entry is None:
             return None
@@ -131,6 +157,7 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
         return entry
 
     def _upsert_unlocked(self, entry: ObjectVersionEntry) -> None:
+        """Insert or update entry without locking; enforces version monotonicity and LRU bound."""
         existing = self._entries.get(entry.object_id)
         if existing and not entry.is_tombstone and not existing.is_tombstone:
             # Higher version wins — skip stale writes

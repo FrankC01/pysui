@@ -29,15 +29,19 @@ class _BaseCachingExecutor(ABC):
         """Build a transaction and return it as a base64 string."""
 
     async def apply_effects(self, effects: TransactionEffects) -> None:
+        """Apply transaction effects to the cache."""
         await self.cache.applyEffects(effects)
 
     async def reset(self) -> None:
+        """Reset the cache state."""
         await self.cache.reset()
 
     async def update_gas_coins(self, coins: list[str]) -> None:
+        """Update the cached gas coins list."""
         await self.cache.setCustom("gasCoins", coins)
 
     async def invalidate_gas_coins(self) -> None:
+        """Invalidate cached gas coin entries."""
         await self.cache.setCustom("gasCoins", None)
 
     async def sync_to_registry(self, registry: "AbstractObjectRegistry") -> None:

@@ -8,7 +8,6 @@
 
 import os
 import sys
-import unittest.mock as mock
 
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, os.path.abspath("../../pysui"))
@@ -39,9 +38,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "temp"]
 html_theme = "sphinx_rtd_theme"
 
 html_theme_options = {
-    "display_version": True,
     "sticky_navigation": False,
-    "navigation_depth": 9,
+    "navigation_depth": 4,
     # "includehidden": False,
     # "titles_only": False,
 }

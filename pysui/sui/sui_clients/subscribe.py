@@ -25,7 +25,8 @@ from websockets.client import connect as ws_connect
 from websockets.exceptions import ConnectionClosed, ConnectionClosedError
 from websockets.client import WebSocketClientProtocol
 
-from pysui import SuiRpcResult, SuiConfig
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_clients.common import SuiRpcResult
 
 from pysui.abstracts import Provider
 from pysui.sui.sui_types.scalars import SuiString

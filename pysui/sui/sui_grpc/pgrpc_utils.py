@@ -334,6 +334,7 @@ def normalize_move_func(
 def normalize_funcs_from_module(
     module: sui_prot.Module,
 ) -> list[pgql_types.MoveArgSummary]:
+    """Normalize all functions in a Move module to MoveArgSummary entries."""
     results: list[pgql_types.MoveArgSummary] = []
     for func in module.functions:
         results.append(_normalize_func(func))

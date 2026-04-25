@@ -38,13 +38,14 @@ prior to the inclusion of ``pysui`` modules. For example:
         level=logging.DEBUG,
     )
 
-    from pysui import SuiConfig, SyncClient
+    import asyncio
+    from pysui import PysuiConfiguration, client_factory
 
-    def main():
+    async def main():
         """Main entry point for application."""
-        client = SyncClient(SuiConfig.default_config())
-
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        client = client_factory(cfg)
         # etc.
 
     if __name__ == "__main__":
-        main()
+        asyncio.run(main())

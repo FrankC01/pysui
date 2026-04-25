@@ -126,6 +126,7 @@ class Variable(canoser.Struct):
 
     @classmethod
     def decode(cls, cursor):
+        """Decode the variable-length BCS value from the cursor."""
         return super().decode(cursor)
 
 
@@ -527,6 +528,7 @@ class TypeTag(canoser.RustEnum):
         cls._enums[index] = (cls._enums[index][0], value)
 
     def type_tag_to_str(self) -> str:
+        """Render this TypeTag as its canonical Move type string."""
         if self.enum_name == "Struct":
             return self.value.to_type_str()
         elif self.enum_name == "Vector":
@@ -1066,6 +1068,8 @@ class TransactionKind(canoser.RustEnum):
 
 
 class O64(canoser.RustOptional):
+    """Optional unsigned 64-bit integer."""
+
     _type = canoser.Uint64
 
 

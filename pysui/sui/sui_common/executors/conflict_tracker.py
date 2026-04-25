@@ -20,6 +20,7 @@ class ConflictReservation:
         self._claimed = claimed
 
     async def release(self) -> None:
+        """Release the claimed conflict reservations."""
         await self._tracker._release(self._claimed)
 
     async def __aenter__(self) -> "ConflictReservation":

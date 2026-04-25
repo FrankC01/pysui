@@ -14,7 +14,7 @@ from typing import Any, Coroutine, Optional, cast
 
 
 logger = logging.getLogger("async_funcs")
-from pysui import AsyncGqlClient
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_bcs.bcs_txne as bcst
@@ -88,6 +88,7 @@ class AsyncLRU:
 
     def __call__(self, func):
         async def wrapper(*args, use_cache=True, **kwargs):
+            """Async wrapper that returns cached results when available."""
             key = KEY(args, kwargs)
             if key in self.lru and use_cache:
                 return self.lru[key]
@@ -102,6 +103,8 @@ class AsyncLRU:
 
 
 class OperationStatus(IntEnum):
+    """Result status for coin merge/splay operations."""
+
     OPS_FAIL = 0
     ONE_COIN_NO_MERGE = 1
     MERGE = 2

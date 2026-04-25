@@ -19,7 +19,10 @@ import logging
 import base64
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 
-from pysui import SyncClient, SuiAddress, SuiRpcResult, ObjectID
+from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_types.scalars import ObjectID
+from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_builders.base_builder import (
     SuiRequestType,
 )

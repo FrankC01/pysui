@@ -37,6 +37,7 @@ class _BaseExecutor(ABC):
         self._min_balance_threshold = min_balance_threshold
 
     async def reset_cache(self) -> None:
+        """Reset the underlying executor cache."""
         await self._cache.reset()
 
     async def _apply_effects(self, effects: TransactionEffects) -> None:

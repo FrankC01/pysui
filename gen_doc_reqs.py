@@ -112,6 +112,6 @@ if __name__ == "__main__":
         print(table)
         generate_qnode_doc(
             Path("./doc/source/_request_base.rst"),
-            Path("./doc/source/grpc_requests_list.rst"),
+            Path("./doc/source/grpc_requests.rst"),
             table,
         )

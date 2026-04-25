@@ -18,6 +18,8 @@ from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
 
 
 class GroupProtocol(IntEnum):
+    """Transport protocol identifier for a configuration group."""
+
     GRAPHQL = 1
     GRPC = 2
     OTHER = 3

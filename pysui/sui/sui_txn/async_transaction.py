@@ -19,12 +19,10 @@ import base64
 from typing import Optional, Union, Any, Callable, Awaitable
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 
-from pysui import (
-    AsyncClient,
-    ObjectID,
-    SuiAddress,
-    SuiRpcResult,
-)
+from pysui.sui.sui_clients.async_client import SuiClient as AsyncClient
+from pysui.sui.sui_types.scalars import ObjectID
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_clients.common import SuiRpcResult
 from pysui.sui.sui_builders.base_builder import SuiRequestType
 from pysui.sui.sui_builders.get_builders import GetFunction
 from pysui.sui.sui_txresults.common import GenericRef

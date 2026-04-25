@@ -1,16 +1,19 @@
 
-GraphQL QueryNodes
-==================
+:orphan:
+
+====================
+GraphQL Query Nodes
+====================
 
 General
 -------
 
-With ``pysui GraphQL`` implementation of a number of pre-built and ready to use
-QueryNodes were delivered as part of the pysui package.
+With ``pysui's GraphQL`` implementation a number of pre-built and ready to use
+ QueryNodes were delivered as part of the pysui package.
 
-The pre-built QueryNode module :py:mod:`pysui.sui.sui_pgql.pgql_query` contains
+The pre-built module :py:mod:`pysui.sui.sui_pgql.pgql_query` contains
 QueryNodes for a number of query and execution classes requiring only simple
-parameters. Many of the QueryNodes include pagination options.
+parameters.
 
 
 QueryNode Classes
@@ -21,15 +24,27 @@ QueryNode Classes
 +=========================================================================+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetCoinMetaData`               |
 +-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetAddressCoinBalance`         |
++-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetAllCoinBalances`            |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetAddressCoinBalances`        |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetCoinSummary`                |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetCoins`                      |
 +-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetGas`                        |
++-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetLatestSuiSystemState`       |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetObject`                     |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetObjectsForType`             |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetObjectContent`              |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetMultipleObjectContent`      |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetObjectsOwnedByAddress`      |
 +-------------------------------------------------------------------------+
@@ -55,9 +70,11 @@ QueryNode Classes
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetDelegatedStakes`            |
 +-------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_pgql.pgql_query.GetLatestCheckpointSequence`   |
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetBasicCurrentEpochInfo`      |
 +-------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_pgql.pgql_query.GetCheckpointByDigest`         |
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetEpoch`                      |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetLatestCheckpointSequence`   |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetCheckpointBySequence`       |
 +-------------------------------------------------------------------------+
@@ -71,11 +88,13 @@ QueryNode Classes
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetNameServiceNames`           |
 +-------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_pgql.pgql_query.GetValidatorsApy`              |
-+-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetCurrentValidators`          |
 +-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetValidatorExchangeRates`     |
++-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetStructure`                  |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetMoveDataType`               |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetStructures`                 |
 +-------------------------------------------------------------------------+
@@ -87,9 +106,15 @@ QueryNode Classes
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetPackage`                    |
 +-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetPackageVersions`            |
++-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.DryRunTransactionKind`         |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.DryRunTransaction`             |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.SimulateTransactionKind`       |
++-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.SimulateTransaction`           |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.ExecuteTransaction`            |
 +-------------------------------------------------------------------------+

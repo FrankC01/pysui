@@ -53,6 +53,8 @@ from pysui.sui.sui_types.scalars import SuiTxBytes
 
 
 class IntentScope(IntEnum):
+    """Sui signing intent scope identifiers."""
+
     TransactionData = 0  # Used for a user signature on a transaction data.
     TransactionEffects = 1  # Used for an authority signature on transaction effects.
     CheckpointSummary = 2  # Used for an authority signature on a checkpoint summary.

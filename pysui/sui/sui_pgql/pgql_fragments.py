@@ -17,6 +17,7 @@ class GasCost(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("GasSummary")
             .on(schema.GasCostSummary)
@@ -34,6 +35,7 @@ class PageCursor(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("PageCursor")
             .on(schema.PageInfo)
@@ -49,6 +51,7 @@ class BaseSuiObjectForCoin(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("BaseSuiObjectForCoin")
             .on(schema.Object)
@@ -105,6 +108,7 @@ class StandardCoin(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
         pg_cursor = PageCursor()
         return (
             DSLFragment("StandardCoin")
@@ -164,6 +168,7 @@ class BaseObject(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("BaseObject")
             .on(schema.Object)
@@ -180,6 +185,7 @@ class StandardObject(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
         base_object = BaseObject()
         return (
             DSLFragment("ObjectStandard")
@@ -242,6 +248,7 @@ class StandardEvent(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("EventStandard")
             .on(schema.Event)
@@ -345,6 +352,7 @@ class StandardTransaction(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
         base_obj = BaseObject().fragment(schema)
         tx_effects = StandardTxEffects().fragment(schema)
         return (

@@ -1,3 +1,5 @@
+:orphan:
+
 =============
 gRPC Requests
 =============
@@ -33,8 +35,6 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetLatestSuiSystemState`    |
 +--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetValidatorsApy`           |
-+--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetCurrentValidators`       |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetObject`                  |
@@ -67,7 +67,11 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetCoinMetaData`            |
 +--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalance`      |
++--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetBalance`                 |
++--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalances`     |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetAllCoinBalances`         |
 +--------------------------------------------------------------------------+
@@ -85,11 +89,15 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.SimulateTransaction`        |
 +--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.SimulateTransactionKind`    |
++--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.SimulateTransactionLKind`   |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetPackageVersions`         |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetPackage`                 |
++--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetMoveDataType`            |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetDataType`                |
 +--------------------------------------------------------------------------+
@@ -110,4 +118,12 @@ Request Classes
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint`        |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.VerifySignature`            |
++--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceAddress`      |
++--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.NameLookup`                 |
++--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceNames`        |
++--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.ReverseNameLookup`          |
 +--------------------------------------------------------------------------+

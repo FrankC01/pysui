@@ -16,6 +16,7 @@ import dataclasses_json
 )
 @dataclasses.dataclass
 class GenericStructure:
+    """mtobcs directive declaring a dynamic generic structure to generate."""
 
     dynamic_type: str = dataclasses.field(
         metadata=dataclasses_json.config(field_name="type")
@@ -27,6 +28,7 @@ class GenericStructure:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class Structure:
+    """mtobcs directive declaring a Move structure to generate."""
 
     struct_type: str = dataclasses.field(
         metadata=dataclasses_json.config(field_name="type")
@@ -40,6 +42,7 @@ class Structure:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class Targets:
+    """mtobcs directive container holding the list of generation targets."""
 
     targets: list[Structure | GenericStructure]
 

@@ -1,4 +1,4 @@
-MutliSig
+MultiSig
 ========
 
 General
@@ -72,38 +72,81 @@ Signing Transactions using a MultiSig
 You need to sign transactions that change any object owned by the MultiSig address. This is where the
 heightened security and governance aspect come into play.
 
-With version '0.21.1' of ``pysui`` signing with MultiSig no longer relies on Sui binaries keytool
+A ``MultiSig`` is passed to transactions by first wrapping it in a
+:py:class:`pysui.sui.sui_common.txb_signing.SigningMultiSig`, which pairs the
+``MultiSig`` object with the specific public keys that will sign. That
+``SigningMultiSig`` is then passed as the ``initial_sender`` to
+``client.transaction()`` for standalone transactions, or as the ``sender``
+argument when constructing an executor.
 
-In the following scenarios it is assumed that the admin does not participate in the signing. This example uses
-the first two keys that are in the MultiSig but in a real world scenario it is likely the
-public keys to sign with are provided through some other mechanism.
+In the examples below the admin key (index 2, weight 3) does not participate —
+the first two keys together reach the threshold.
 
-.. code-block:: Python
+Standalone Transaction
+~~~~~~~~~~~~~~~~~~~~~~
 
-    from pysui import SyncClient, SuiAddress, ObjectID, handle_result
-    from pysui.sui.sui_txn import SyncTransaction, SigningMultiSig
-    from pysui.sui.sui_crypto import MultiSig, SuiPublicKey
+.. code-block:: python
 
-    def transfer_with_ms(
-        client: SyncClient,
-        to_addy: SuiAddress,
+    import asyncio
+    from pysui import PysuiConfiguration, SuiRpcResult, client_factory
+    from pysui.sui.sui_common.txb_signing import SigningMultiSig
+    from pysui.sui.sui_crypto import MultiSig
+    import pysui.sui.sui_pgql.pgql_query as qn
+
+    async def transfer_with_ms(
         msig: MultiSig,
-        from_coin:ObjectID,
-        amount: int
-        ) -> SuiRpcResult:
-        """Transfer some balance from MultiSig address to some other address."""
+        to_address: str,
+        amount: int,
+    ) -> SuiRpcResult:
+        """Transfer some balance from a MultiSig address."""
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        client = client_factory(cfg)
 
-        # Initialize a transaction build
-        txer = SyncTransaction(
-             client, initial_sender=SigningMultiSig(msig, msig.public_keys[0:2])
+        # Wrap the MultiSig with the signing keys (first two keys, indices 0 and 1)
+        signing_ms = SigningMultiSig(msig, msig.public_keys[0:2])
+
+        # Build the transaction with the MultiSig as sender
+        txer = await client.transaction(initial_sender=signing_ms)
+        coin = await txer.split_coin(coin=txer.gas, amounts=[amount])
+        await txer.transfer_objects(transfers=[coin], recipient=to_address)
+
+        txdict = await txer.build_and_sign()
+        result: SuiRpcResult = await client.execute_query_node(
+            with_node=qn.ExecuteTransaction(**txdict)
         )
+        if result.is_ok():
+            print(result.result_data.to_json(indent=2))
+        return result
 
-        # Split some coinage and transfer
-        coin = txer.split_coin(coin=from_coin, amounts=[amount])
-        txer.transfer_objects(transfers=[coin], recipient=to_addy)
+    if __name__ == "__main__":
+        # msig constructed earlier — see Constructing a MultiSig above
+        asyncio.run(transfer_with_ms(msig, "0xrecipient...", 1_000_000))
 
-        result = handle_result(txer.execute())
-        print(result.to_json(indent=2))
+With an Executor
+~~~~~~~~~~~~~~~~
+
+When using a serial or parallel executor, pass the ``SigningMultiSig`` directly
+as the ``sender`` when constructing the executor — it accepts either an address
+string or a ``SigningMultiSig``:
+
+.. code-block:: python
+
+    import asyncio
+    from pysui import PysuiConfiguration, client_factory, GqlSerialTransactionExecutor
+    from pysui.sui.sui_common.txb_signing import SigningMultiSig
+    from pysui.sui.sui_crypto import MultiSig
+
+    async def executor_with_ms(msig: MultiSig) -> None:
+        """Run a serial executor with MultiSig signing."""
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        client = client_factory(cfg)
+
+        signing_ms = SigningMultiSig(msig, msig.public_keys[0:2])
+        executor = GqlSerialTransactionExecutor(client=client, sender=signing_ms)
+        # Add transactions to the executor as normal ...
+
+    if __name__ == "__main__":
+        asyncio.run(executor_with_ms(msig))
 
 Final Note: MultiSig and MultiSig Address Persistence
 #####################################################

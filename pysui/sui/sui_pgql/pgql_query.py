@@ -733,11 +733,12 @@ class GetMultipleVersionedObjects(PGQL_QueryNode):
     def __init__(self, *, for_versions: list[dict[str, int]]):
         """QueryNode initializer to fetch past object information for a list of object keys.
 
-        Where each `dict` (key) is of construct:
-        {
-            address:str, # Object id
-            version:int   # Version to fetch
-        }
+        Where each ``dict`` entry must have the following keys::
+
+            {
+                "address": str,  # Object id
+                "version": int   # Version to fetch
+            }
 
         :param for_versions: The list of object and version dictionaries
         :type for_versions: list[dict]
@@ -855,30 +856,18 @@ class GetEvents(PGQL_QueryNode):
     ) -> None:
         """QueryNode initializer to query chain events of type defined by event_filter.
 
-        Choice is one key/value pair of:
-            {
-                'afterCheckpoint': 'CHECKPOINT (int)'
-            },
-            {
-                'atCheckpoint': 'CHECKPOINT (int)'
-            },
-            {
-                'beforeCheckpoint': 'CHECKPOINT (int)'
-            },
-            {
-                'sender': 'SOME_SUI_ACCOUNT (str)'
-            },
-            {
-                'module': 'FULLY QUALIFIED MODULE (str)'
-            },
-            {
-                'type': 'FULLY QUALIFED EVENT TYPE (str)'
-            }
+        Choose one key/value pair from the following options::
 
-        Example filter:
-          {
-              "type": "0x3::validator::StakingRequestEvent"
-          }
+            {"afterCheckpoint": int}
+            {"atCheckpoint": int}
+            {"beforeCheckpoint": int}
+            {"sender": "SOME_SUI_ACCOUNT"}
+            {"module": "FULLY_QUALIFIED_MODULE"}
+            {"type": "FULLY_QUALIFIED_EVENT_TYPE"}
+
+        Example::
+
+            {"type": "0x3::validator::StakingRequestEvent"}
 
         :param event_filter: Filter key/values aligned to Sui GraphQL schema's EventFilter
         :type event_filter: dict
@@ -1135,6 +1124,7 @@ class GetDelegatedStakes(PGQL_QueryNode):
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -1169,6 +1159,7 @@ class GetBasicCurrentEpochInfo(PGQL_QueryNode):
         """."""
 
     def as_document_node(self, schema):
+        """Build GraphQL DSL request."""
         _QUERY = """
             {  
             epoch {
@@ -1231,6 +1222,7 @@ class GetLatestCheckpointSequence(PGQL_QueryNode):
         """__init__ QueryNode initializer."""
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
         std_checkpoint = frag.StandardCheckpoint().fragment(schema)
         pg_cursor = frag.PageCursor().fragment(schema)
         qres = schema.Query.checkpoints(last=1).select(
@@ -1256,6 +1248,7 @@ class GetCheckpointBySequence(PGQL_QueryNode):
         self.sequence_number = sequence_number
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
         std_checkpoint = frag.StandardCheckpoint()
         pg_cursor = frag.PageCursor()
         qres = schema.Query.checkpoint(sequenceNumber=self.sequence_number).select(
@@ -1279,6 +1272,7 @@ class GetCheckpoints(PGQL_QueryNode):
         self.next_page = next_page
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
         if self.next_page and not self.next_page.hasNextPage:
             return PGQL_NoOp
 
@@ -1318,6 +1312,7 @@ class GetProtocolConfig(PGQL_QueryNode):
         self.version = version
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
         std_prot_cfg = frag.StandardProtocolConfig().fragment(schema)
         qres = schema.Query.protocolConfigs(version=self.version).select(std_prot_cfg)
         return dsl_gql(std_prot_cfg, DSLQuery(qres))
@@ -1335,6 +1330,7 @@ class GetReferenceGasPrice(PGQL_QueryNode):
         """QueryNode initializer."""
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
         return dsl_gql(
             DSLQuery(schema.Query.epoch.select(schema.Epoch.referenceGasPrice))
         )
@@ -1355,6 +1351,7 @@ class GetNameServiceAddress(PGQL_QueryNode):
         self.name = name
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
         return dsl_gql(
             DSLQuery(
                 schema.Query.suinsName(address=self.name).select(
@@ -1841,7 +1838,7 @@ class GetPackageVersions(PGQL_QueryNode):
 )
 @versionchanged(version="0.92.0", reason="Sui GraphQL requires sender set in tx_meta.")
 @versionchanged(version="0.93.0", reason="tx_bytestr arg changed to tx_kind.")
-@versionchanged(version="0.95.0", reason="Enabled `skip_checks` and `do_gas_selection")
+@versionchanged(version="0.95.0", reason="Enabled ``skip_checks`` and ``do_gas_selection``")
 class DryRunTransactionKind(PGQL_QueryNode):
     """DryRunTransactionKind query node."""
 
@@ -1855,23 +1852,18 @@ class DryRunTransactionKind(PGQL_QueryNode):
     ) -> None:
         """__init__ Initialize DryRunTransactionKind object.
 
-        BREAKING CHANGE
-        for the `tx_meta` argument, it expects a dictionary with one or more keys set.
-        {
-            sender: The Sui address (str) for the sender. THIS IS CURRENTLY REQUIRED,
-            epoch_expiration: The epoch (int) after which this transaction won't be signed
+        BREAKING CHANGE: ``tx_meta`` expects a dictionary with one or more of the following keys::
 
-            NOT IMPLEMENTED YET (ignored). MAY OBSOLETE SOME... TBD
-            gasPrice: The gas price integer (defaults to reference gas price)
-            gasObjects: list[dict] A list of gas object references, defaults to mock Coin object. Reference dict:
-                {
-                    address: The object id string of the gas object
-                    version: The version integer of the gas object
-                    digest: The digest of the gas object
-                }
-            gasBudget: The budget to use. Defaults to max gas budget
-            gasSponsor: The Sui address string of the sponsor, defaults to the sender
-        }
+            {
+                "sender": str,            # Sui address of the sender (REQUIRED)
+                "epoch_expiration": int,  # Epoch after which the tx won't be signed
+                # NOT IMPLEMENTED YET (ignored):
+                "gasPrice": int,          # Gas price (defaults to reference gas price)
+                "gasObjects": [{"address": str, "version": int, "digest": str}],
+                "gasBudget": int,         # Defaults to max gas budget
+                "gasSponsor": str,        # Sponsor address, defaults to sender
+            }
+
         """
         warnings.warn(
             "DryRunTransactionKind is deprecated; use SimulateTransactionKind instead.",
@@ -1965,7 +1957,7 @@ class DryRunTransactionKind(PGQL_QueryNode):
         return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
 
 
-@versionchanged(version="0.95.0", reason="Enabled `skip_checks` and `do_gas_selection")
+@versionchanged(version="0.95.0", reason="Enabled ``skip_checks`` and ``do_gas_selection``")
 class DryRunTransaction(PGQL_QueryNode):
     """DryRunTransaction query node."""
 

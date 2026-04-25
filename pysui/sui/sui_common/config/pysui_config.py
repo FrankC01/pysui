@@ -369,20 +369,22 @@ class PysuiConfiguration:
     ) -> list[str]:
         """Create a unique new group.
 
-        A profile is defined by a dict with the following k/v pairs
-        {
-            "profile_name": str,
-            "url": str,
-            "faucet_url": str | None,
-            "faucet_status_url": str | None,
-            "make_active": bool
-        }
+        A profile block entry must have the following keys::
 
-        A key is defined by a dict with following k/v pairs
-        {
-            "key_string": str # Either a base64 or bech32 private key
-            "alias": str     # Optional alias, one will be generated otherwise
-        }
+            {
+                "profile_name": str,
+                "url": str,
+                "faucet_url": str | None,
+                "faucet_status_url": str | None,
+                "make_active": bool
+            }
+
+        A key block entry must have the following keys::
+
+            {
+                "key_string": str,  # Either a base64 or bech32 private key
+                "alias": str        # Optional alias, generated if omitted
+            }
 
         :param group_name: The name of the new group, fails if already exists
         :type group_name: str
@@ -392,8 +394,8 @@ class PysuiConfiguration:
         :type key_block: list[dict[str, str]]
         :param active_address_index: The index of the address to make as active_address for group
         :type active_address_index: int
-        :parm group_protocol: THe protocol hint from conf_group.py
-        :type GroupProtocol
+        :param group_protocol: The protocol hint from conf_group.py
+        :type group_protocol: GroupProtocol
         :param make_group_active: Sets the group to the configurations active_group, defaults to False
         :type make_group_active: Optional[bool], optional
         :param persist: Persist updates to PysuiConfig.json, defaults to True
@@ -516,12 +518,14 @@ class PysuiConfiguration:
         in_group: Optional[str] = None,
         persist: Optional[bool] = True,
     ) -> list[str]:
-        """Add one or more keys to a group. Each dict has k/v:
+        """Add one or more keys to a group.
 
-        {
-            "key_string": str # Either a base64 or bech32 private key
-            "alias": str     # Optional alias, one will be generated otherwise
-        }
+        Each key entry dict must have the following keys::
+
+            {
+                "key_string": str,  # Either a base64 or bech32 private key
+                "alias": str        # Optional alias, generated if omitted
+            }
 
         :param key_block: List of key construct dictionaries
         :type key_block: list[dict]

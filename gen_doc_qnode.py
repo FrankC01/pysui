@@ -112,6 +112,6 @@ if __name__ == "__main__":
         print(table)
         generate_qnode_doc(
             Path("./doc/source/_qnode_base.rst"),
-            Path("./doc/source/graphql_qnodes.rst"),
+            Path("./doc/source/graphql_queries.rst"),
             table,
         )

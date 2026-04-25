@@ -86,11 +86,13 @@ def _scalar_raw(value: Any, type_name: str) -> list[int]:
 
 @singledispatch
 def _raw_value(body: Any, value: Any) -> list[int]:
+    """Encode a Move value to raw bytes by dispatching on body type."""
     raise TypeError(f"Unhandled body type for raw encoding: {type(body)}")
 
 
 @_raw_value.register(OpenMoveScalarBodyGQL)
 def _raw_scalar(body: OpenMoveScalarBodyGQL, value: Any) -> list[int]:
+    """Encode a scalar Move value to raw bytes."""
     return _scalar_raw(value, body.scalar_type)
 
 
@@ -101,6 +103,7 @@ _SCALAR_CHUNK_BYTES: dict[str, int] = {
 
 @_raw_value.register(OpenMoveVectorBodyGQL)
 def _raw_vector(body: OpenMoveVectorBodyGQL, value: Any) -> list[int]:
+    """Encode a vector Move value to raw bytes with ULEB128 length prefix."""
     if isinstance(value, str):
         value = value.encode("utf-8")
     if isinstance(value, (bytes, bytearray)):
@@ -125,6 +128,7 @@ def _raw_vector(body: OpenMoveVectorBodyGQL, value: Any) -> list[int]:
 
 @_raw_value.register(OpenMoveDatatypeBodyGQL)
 def _raw_datatype(body: OpenMoveDatatypeBodyGQL, value: Any) -> list[int]:
+    """Encode a datatype Move value (Option, String, VecMap, etc.) to raw bytes."""
     type_name = body.type_name
     if type_name == "Option":
         return _option_raw(body.type_parameters, value)
@@ -192,6 +196,7 @@ async def encode_arg(
     ref: Optional[str],
     parser: "_BaseArgParser",
 ) -> Any:
+    """Encode a Move argument to a BCS-compatible form by dispatching on body type."""
     raise TypeError(f"Unhandled body type for encode_arg: {type(body)}")
 
 
@@ -202,6 +207,7 @@ async def _encode_scalar(
     ref: Optional[str],
     parser: "_BaseArgParser",
 ) -> Any:
+    """Encode a scalar Move argument to a PureInput."""
     type_name = body.scalar_type
     if type_name in _UINT_SUI:
         return PureInput.as_input(_UINT_SUI[type_name](value))
@@ -221,6 +227,7 @@ async def _encode_vector(
     ref: Optional[str],
     parser: "_BaseArgParser",
 ) -> Any:
+    """Encode a vector Move argument to a raw BuilderArg."""
     raw_bytes = _raw_value(body, value)
     return bcs.BuilderArg("Pure", raw_bytes)
 
@@ -232,6 +239,7 @@ async def _encode_datatype(
     ref: Optional[str],
     parser: "_BaseArgParser",
 ) -> Any:
+    """Encode a datatype Move argument, routing pure types to raw bytes and objects to ObjectArg."""
     type_name = body.type_name
 
     if type_name == "Option":
@@ -254,6 +262,7 @@ async def _encode_type_param(
     ref: Optional[str],
     parser: "_BaseArgParser",
 ) -> Any:
+    """Encode a generic type parameter argument as an object reference."""
     return await parser.fetch_or_transpose_object(value, False, ref == "&mut", None)
 
 
@@ -382,6 +391,7 @@ class _BaseArgParser(ABC):
     """
 
     def __init__(self, client: Any) -> None:
+        """Initialize with a protocol client."""
         self._client = client
 
     @abstractmethod

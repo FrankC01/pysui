@@ -71,6 +71,7 @@ class GetLatestCheckpoint(GetCheckpoint):
     """Alias for GetCheckpoint."""
 
     def __init__(self, *, field_mask=None):
+        """Initializer."""
         super().__init__(sequence=None, digest=None, field_mask=field_mask)
 
 
@@ -78,6 +79,7 @@ class GetCheckpointBySequence(GetCheckpoint):
     """Alias for GetCheckpoint"""
 
     def __init__(self, *, sequence_number: int, field_mask=None):
+        """Initializer."""
         super().__init__(sequence=sequence_number, digest=None, field_mask=field_mask)
 
 
@@ -85,6 +87,7 @@ class GetCheckpointByDigest(GetCheckpoint):
     """Alias for GetCheckpoint"""
 
     def __init__(self, *, digest: str, field_mask=None):
+        """Initializer."""
         super().__init__(sequence=None, digest=digest, field_mask=field_mask)
 
 
@@ -119,9 +122,11 @@ class GetLatestSuiSystemState(GetEpoch):
     """GetLatestSuiSystemState return the current Sui system state."""
 
     def __init__(self):
+        """Initializer."""
         super().__init__(field_mask=["system_state"])
 
     def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.SystemState:
+        """Render the response payload into a SystemState message."""
         return gepoch.epoch.system_state
 
 
@@ -129,6 +134,7 @@ class GetCurrentValidators(GetEpoch):
     """Return all the currently active validators"""
 
     def __init__(self):
+        """Initializer."""
         super().__init__(field_mask=["system_state.validators.active_validators"])
 
 
@@ -193,12 +199,14 @@ class GetObjectContent(GetObject):
     """Returns a specific object's content BCS string."""
 
     def __init__(self, *, object_id, as_bytes: Optional[bool] = True):
+        """Initializer."""
         super().__init__(
             object_id=object_id, field_mask=["object_id", "bcs", "version"]
         )
         self.as_bytes = as_bytes
 
     def render(self, obj: sui_prot.GetObjectResponse) -> ObjectContentBCS:
+        """Render the response payload into ObjectContentBCS."""
         bcs_res = (
             obj.object.bcs.value
             if self.as_bytes
@@ -281,6 +289,7 @@ class GetDynamicFields(absreq.PGRPC_Request):
         page_token: Optional[bytes] = None,
         field_mask: Optional[list[str]] = None,
     ):
+        """Initializer."""
         super().__init__(absreq.Service.STATE)
         self.parent = object_id
         self.page_size = page_size
@@ -314,10 +323,12 @@ class GetMultipleObjectContent(GetMultipleObjects):
     """Returns multiple object's content BCS string."""
 
     def __init__(self, *, objects: list[str], as_bytes: Optional[bool] = True):
+        """Initializer."""
         super().__init__(object_ids=objects, field_mask=["object_id", "bcs"])
         self.as_bytes = as_bytes
 
     def render(self, objs: sui_prot.BatchGetObjectsResponse) -> "ObjectsContentBCS":
+        """Render the response payload into ObjectsContentBCS."""
         obj_content: list[ObjectContentBCS] = []
         for obj in objs.objects:
             bcs_res = (
@@ -345,11 +356,12 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
     ) -> None:
         """QueryNode initializer to fetch past object information for a list of object keys.
 
-        Where each `dict` (key) is of construct:
-        {
-            objectId:str, # Object id
-            version:int   # Version to fetch
-        }
+        Where each ``dict`` entry must have the following keys::
+
+            {
+                "objectId": str,  # Object id
+                "version": int    # Version to fetch
+            }
 
         :param for_versions: The list of object and version dictionaries
         :type for_versions: list[dict]
@@ -681,6 +693,7 @@ class GetTx(GetTransaction):
     """Alias for GetTransaction."""
 
     def __init__(self, *, digest, field_mask=None):
+        """Initializer."""
         super().__init__(digest=digest, field_mask=field_mask)
 
 
@@ -715,12 +728,15 @@ class GetMultipleTx(GetTransactions):
     """Alias for GetTransactions."""
 
     def __init__(self, *, transactions, field_mask=None):
+        """Initializer."""
         super().__init__(transactions=transactions, field_mask=field_mask)
 
 
 class GetTxKind(GetTransaction):
+    """Convenience subclass of GetTransaction that fetches only transaction kind."""
 
     def __init__(self, *, digest):
+        """Initializer."""
         super().__init__(digest=digest, field_mask=["transaction.kind"])
 
 
@@ -813,6 +829,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
     ) -> tuple[
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
+        """Build the gRPC request tuple (stub_method, request_message)."""
         simtdata = sui_prot.SimulateTransactionRequest(
             transaction=self.transaction,
             checks=self.checks_enables,
@@ -1013,6 +1030,7 @@ class GetStructure(GetMoveDataType):
     """Convenience subclass of GetMoveDataType using structure_name parameter."""
 
     def __init__(self, *, package: str, module_name: str, structure_name: str):
+        """Initializer."""
         super().__init__(
             package=package, module_name=module_name, type_name=structure_name
         )
@@ -1039,10 +1057,12 @@ class GetStructures(GetPackage):
     """Alias for GetDataType."""
 
     def __init__(self, *, package, module_name: str):
+        """Initializer."""
         super().__init__(package=package)
         self.module_name = module_name
 
     def render(self, package: sui_prot.GetPackageResponse) -> MoveStructuresGRPC:
+        """Render the response payload into MoveStructuresGRPC."""
         result = list(
             filter(lambda x: x.name == self.module_name, package.package.modules)
         )
@@ -1083,10 +1103,12 @@ class GetFunctions(GetPackage):
     """Alias for GetDataType."""
 
     def __init__(self, *, package, module_name: str):
+        """Initializer."""
         super().__init__(package=package)
         self.module_name = module_name
 
     def render(self, package: sui_prot.GetPackageResponse) -> "MoveFunctionsGRPC":
+        """Render the response payload into MoveFunctionsGRPC."""
         result = list(
             filter(lambda x: x.name == self.module_name, package.package.modules)
         )
@@ -1102,10 +1124,12 @@ class GetModule(GetPackage):
     """Alias for GetDataType."""
 
     def __init__(self, *, package, module_name: str):
+        """Initializer."""
         super().__init__(package=package)
         self.module_name = module_name
 
     def render(self, package: sui_prot.GetPackageResponse) -> sui_prot.Module:
+        """Render the response payload to the matching Module entry."""
         result = list(
             filter(lambda x: x.name == self.module_name, package.package.modules)
         )

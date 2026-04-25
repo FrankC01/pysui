@@ -23,7 +23,7 @@ and then install packages into it.
 
 #. Install Sui Binaries
     For certain capabilities, ``pysui`` requires the Sui binaries are installed
-    on the same machine: `Install Sui Readme <https://docs.sui.io/build/install#install-sui-binaries>`_.
+    on the same machine: `Install Sui <https://docs.sui.io/guides/developer/getting-started/sui-install>`_.
 
     Specifically, the binaries are required if...
 

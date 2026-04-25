@@ -16,6 +16,8 @@ import dataclasses_json
 
 
 class BCS_Struct(canoser.Struct):
+    """BCS Structure base supporting dataclass_json conversion."""
+
     pass
 
     @staticmethod
@@ -76,6 +78,8 @@ class BCS_Struct(canoser.Struct):
 
 
 class BCS_Enum(canoser.RustEnum):
+    """BCS Enum base supporting dataclass_json conversion."""
+
     pass
 
     @staticmethod
@@ -153,6 +157,7 @@ class BCS_Enum(canoser.RustEnum):
 
 
 class BCS_Optional(canoser.RustOptional):
+    """BCS Optional base supporting dataclass_json conversion."""
 
     pass
 
@@ -213,6 +218,7 @@ class BCS_Optional(canoser.RustOptional):
         return dc
 
     def to_json(self, sort_keys=False, indent=4):
+        """Serialize the optional value to a JSON string."""
         amap = self.to_json_serializable()
         return json.dumps(amap, sort_keys=sort_keys, indent=indent)
 

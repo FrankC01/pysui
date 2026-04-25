@@ -8,7 +8,7 @@
 import asyncio
 import logging
 from typing import Optional
-from pysui import AsyncGqlClient
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 from pysui.sui.sui_common.txb_signing import SignerBlock
 from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor

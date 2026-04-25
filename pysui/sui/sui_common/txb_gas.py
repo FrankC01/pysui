@@ -26,11 +26,8 @@ def compute_gas_budget(
 ) -> int:
     """Compute the transaction gas budget using the TS SDK formula.
 
-    budget = max(
-        computationCost + overhead,
-        computationCost + overhead + storageCost - storageRebate,
-    )
-    where overhead = GAS_SAFE_OVERHEAD * gasPrice.
+    Computes ``max(computationCost + overhead, computationCost + overhead + storageCost - storageRebate)``
+    where ``overhead = GAS_SAFE_OVERHEAD * gasPrice``.
 
     :param computation_cost: Computation cost from simulation, in MIST
     :type computation_cost: int

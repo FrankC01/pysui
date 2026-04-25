@@ -20,14 +20,10 @@ from json import JSONDecodeError
 import logging
 import httpx
 from deprecated.sphinx import versionchanged, versionadded, deprecated
-from pysui import (
-    PreExecutionResult,
-    SuiRpcResult,
-    handle_result,
-    ObjectID,
-    SuiAddress,
-    SuiConfig,
-)
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_types.scalars import ObjectID
+from pysui.sui.sui_clients.common import PreExecutionResult, SuiRpcResult, handle_result
 
 from pysui.sui.sui_clients.common import ClientMixin
 from pysui.sui.sui_constants import (

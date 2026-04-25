@@ -21,6 +21,8 @@ import pysui.sui.sui_grpc.suimsgs.google.protobuf as goog_prot
 
 
 class Service(enum.IntEnum):
+    """gRPC service identifier enumeration."""
+
     STATE = 0
     LEDGER = 1
     TRANSACTION = 2
@@ -75,6 +77,8 @@ class PGRPC_Request(abc.ABC):
 
 
 class Visited:
+    """Registry of already-evaluated proto types to avoid re-traversal."""
+
     _VISITED: dict[str, dict] = {}
 
     def __init__(self):
@@ -104,14 +108,17 @@ class Visited:
 
     @classmethod
     def get(cls, type_name: str):
+        """Return the cached definition for a visited type, if any."""
         return cls._VISITED.get(type_name)
 
     @classmethod
     def put(cls, type_name: str, defn: dict):
+        """Cache a type definition under the given type name."""
         cls._VISITED[type_name] = defn
 
 
 class FieldFetch:
+    """Descriptor for a single proto field to be resolved."""
 
     def __init__(
         self,

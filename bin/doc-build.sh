@@ -8,22 +8,18 @@ base_dir=${PWD##*/}
 if test "$base_dir" = "pysui";
 then
     echo "Removing previous documentation artifacts... if any!"
-    # Delete old (if any) rst files
-    rm -f -- doc/source/modules.rst
-    rm -f -- doc/source/pysui.rst
-    rm -f -- doc/source/pysui.abstracts.rst
-    rm -f -- doc/source/pysui.sui.rst
-    rm -f -- doc/source/pysui.sui.sui_txresults.rst
-    rm -f -- doc/source/pysui.sui.sui_builders.rst
-    rm -f -- doc/source/pysui.sui.sui_clients.rst
-    rm -f -- doc/source/pysui.sui.sui_types.rst
-    # Generate rst files
-    echo "Generating rst files"
-    sphinx-apidoc -o doc/source pysui/
-    # Generate html docs
+    rm -f doc/source/pysui*.rst doc/source/modules.rst
+
+    echo "Generating QueryNode and Request table RSTs"
+    python3 gen_doc_qnode.py
+    python3 gen_doc_reqs.py
+
+    echo "Generating module RSTs"
+    sphinx-apidoc -o doc/source pysui/ pysui/sui/sui_grpc/suimsgs
+
     cd doc
     echo "Building HTML"
-    if make html >/dev/null 2>&1; then
+    if make html; then
         echo "Docs build success"
         cd ..
         exit 0

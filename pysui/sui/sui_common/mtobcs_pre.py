@@ -15,5 +15,6 @@ class _OptionalStub(pbcsbase.BCS_Optional):
     """This is removed during generation."""
 
     def to_json(self, sort_keys=False, indent=4):
+        """Serialize the optional value to a JSON string."""
         amap = self.to_json_serializable()
         return json.dumps(amap, sort_keys=sort_keys, indent=indent)

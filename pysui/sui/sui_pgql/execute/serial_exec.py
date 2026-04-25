@@ -11,7 +11,7 @@ import logging
 import time
 from typing import Awaitable, Callable, Optional, Union
 
-from pysui import AsyncGqlClient
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
 from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 from pysui.sui.sui_common.executors import (
     ExecutorContext,
@@ -108,6 +108,7 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
     """Executes transactions serially with caching and optional gas replenishment.
 
     Gas replenishment callbacks (on_coins_low / on_balance_low) are mutually exclusive:
+
     - on_coins_low: used when gas is paid via Coin<SUI> objects. The callback should
       return a list of new coin IDs to inject. After a successful callback, the executor
       re-fetches the gas owner's coin_balance to re-arm threshold tracking.

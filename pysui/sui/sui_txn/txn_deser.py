@@ -14,7 +14,10 @@
 """SuiTransaction Serialize/Deserialize model."""
 
 from functools import partial, reduce
-from pysui import SuiConfig, SuiAddress, SyncClient, handle_result
+from pysui.sui.sui_config import SuiConfig
+from pysui.sui.sui_types.address import SuiAddress
+from pysui.sui.sui_clients.sync_client import SuiClient as SyncClient
+from pysui.sui.sui_clients.common import handle_result
 from pysui.sui.sui_crypto import MultiSig
 from pysui.sui.sui_txn.signing_ms import SignerBlock, SigningMultiSig
 from pysui.sui.sui_txn.transaction_builder import (

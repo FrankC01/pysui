@@ -77,6 +77,8 @@ class ServiceConfigGQL:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class CheckpointNodeGQL:
+    """GraphQL result for a single checkpoint node."""
+
     sequenceNumber: int
     timestamp: str
     epoch: Any
@@ -91,12 +93,16 @@ class CheckpointNodeGQL:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class CheckpointConnectionGQL:
+    """GraphQL result for a checkpoint connection (list of nodes)."""
+
     nodes: list[CheckpointNodeGQL]
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class SuiConfigGQL:
+    """GraphQL result for Sui chain and service configuration."""
+
     chainIdentifier: str
     serviceConfig: ServiceConfigGQL
     protocolConfigs: pgql_type.ProtocolConfigGQL

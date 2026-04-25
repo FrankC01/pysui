@@ -333,6 +333,7 @@ class ListFields(ast.NodeVisitor):
         self.current_node = self.current_node.parent_node
 
     def visit_Dict(self, ast_node: ast.Dict):
+        """Dict (map) AST node handler."""
         self.current_node = MapType(
             data={"class_type": "Map"}, to_parent=self.current_node
         )

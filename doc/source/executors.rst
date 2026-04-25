@@ -52,7 +52,7 @@ Note: ``execute_transactions`` is not re-entrant. Concurrent calls on the same i
 serialized by an internal lock.
 
 GraphQL — ``GqlSerialTransactionExecutor``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Coins gas mode** (``on_coins_low``):
 
@@ -213,7 +213,7 @@ Parallel executors run transactions concurrently using ``asyncio.gather``. They 
 - **Address balance mode** — no coin pool; the node selects gas from the sender's balance; concurrency bounded by ``max_tasks``
 
 GraphQL — ``GqlParallelTransactionExecutor``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Coins mode** — requires seeding the pool before the first call.
 ``seed_coin_pool`` is mandatory: ``checkout()`` blocks until a coin is available, so an empty
@@ -422,7 +422,7 @@ Serial executors (``GqlSerialTransactionExecutor``, ``GrpcSerialTransactionExecu
    * - Parameter
      - Description
    * - ``client``
-     - Async protocol client (``AsyncGqlClient`` or ``SuiGrpcClient``)
+     - Async protocol client (``AsyncSuiGQLClient`` or ``SuiGrpcClient``)
    * - ``sender``
      - Sender address string or ``SigningMultiSig``
    * - ``sponsor``

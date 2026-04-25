@@ -10,14 +10,20 @@ import pysui.sui.sui_bcs.bcs as bcs
 
 
 class OptionalString(can.RustOptional):
+    """BCS-encoded optional string."""
+
     _type = can.StrT
 
 
 class OptionalDigest(can.RustOptional):
+    """BCS-encoded optional digest."""
+
     _type = bcs.Digest
 
 
 class ModuleId(can.Struct):
+    """Move module identifier (address and name)."""
+
     _fields = [
         ("address", bcs.Address),
         ("name", can.StrT),
@@ -25,6 +31,8 @@ class ModuleId(can.Struct):
 
 
 class MoveLocation(can.Struct):
+    """Location of a Move instruction error."""
+
     _fields = [
         ("module", ModuleId),
         ("function", bcs.U16),
@@ -34,6 +42,8 @@ class MoveLocation(can.Struct):
 
 
 class CommandArgumentError(can.RustEnum):
+    """BCS command argument error type."""
+
     _enums = [
         ("TypeMismatch", None),
         ("InvalidBCSBytes", None),
@@ -51,6 +61,8 @@ class CommandArgumentError(can.RustEnum):
 
 
 class TypeArgumentError(can.RustEnum):
+    """BCS type argument error type."""
+
     _enums = [
         ("TypeNotFound", None),
         ("ConstraintNotSatisfied", None),
@@ -58,6 +70,8 @@ class TypeArgumentError(can.RustEnum):
 
 
 class PackageUpgradeError(can.RustEnum):
+    """BCS package upgrade error type."""
+
     _enums = [
         ("UnableToFetchPackage", bcs.Address),
         ("NotAPackage", bcs.Address),
@@ -69,6 +83,8 @@ class PackageUpgradeError(can.RustEnum):
 
 
 class ExecutionFailureStatus(can.RustEnum):
+    """BCS-encoded transaction execution failure status."""
+
     _enums = [
         ("InsufficientGas", None),
         ("InvalidGasObject", None),
@@ -111,6 +127,8 @@ class ExecutionFailureStatus(can.RustEnum):
 
 
 class ExecutionStatus(can.RustEnum):
+    """BCS-encoded transaction execution status (Success or Failed)."""
+
     _enums = [
         ("Success", None),
         ("Failed", (ExecutionFailureStatus, bcs.OptionalU64)),
@@ -118,6 +136,8 @@ class ExecutionStatus(can.RustEnum):
 
 
 class GasCostSummary(can.Struct):
+    """BCS-encoded summary of gas costs for a transaction."""
+
     _fields = [
         ("computationCost", bcs.U64),
         ("storageCost", bcs.U64),
@@ -127,6 +147,8 @@ class GasCostSummary(can.Struct):
 
 
 class Owner(can.RustEnum):
+    """BCS-encoded ownership classification of a Sui object."""
+
     _enums = [
         ("AddressOwner", bcs.Address),
         ("ObjectOwner", bcs.Address),
@@ -136,6 +158,8 @@ class Owner(can.RustEnum):
 
 
 class TransactionEffectsV1(can.Struct):
+    """BCS-encoded version 1 transaction effects."""
+
     _fields = [
         ("status", ExecutionStatus),
         ("executedEpoch", bcs.U64),
@@ -163,6 +187,8 @@ class TransactionEffectsV1(can.Struct):
 
 
 class VersionDigest(can.Struct):
+    """BCS-encoded object version and digest pair."""
+
     _fields = [
         ("version", bcs.U64),
         ("object", bcs.Digest),
@@ -170,6 +196,8 @@ class VersionDigest(can.Struct):
 
 
 class ObjectIn(can.RustEnum):
+    """BCS-encoded input object state for an effects change."""
+
     _enums = [
         ("NotExist", None),
         ("Exists", (VersionDigest, Owner)),
@@ -177,6 +205,8 @@ class ObjectIn(can.RustEnum):
 
 
 class ObjectOut(can.RustEnum):
+    """BCS-encoded output object state for an effects change."""
+
     _enums = [
         ("NotExist", None),
         ("ObjectWrite", (bcs.Digest, Owner)),
@@ -185,6 +215,8 @@ class ObjectOut(can.RustEnum):
 
 
 class IDOperation(can.RustEnum):
+    """BCS-encoded object ID operation (None/Created/Deleted)."""
+
     _enums = [
         ("None", None),
         ("Created", None),
@@ -193,6 +225,8 @@ class IDOperation(can.RustEnum):
 
 
 class EffectsObjectChange(can.Struct):
+    """BCS-encoded per-object change record in transaction effects."""
+
     _fields = [
         ("inputState", ObjectIn),
         ("outputState", ObjectOut),
@@ -201,6 +235,8 @@ class EffectsObjectChange(can.Struct):
 
 
 class UnchangedShareKind(can.RustEnum):
+    """BCS-encoded classification for shared objects unchanged by a transaction."""
+
     _enums = [
         ("ReadOnlyRoot", VersionDigest),
         ("MutableDeleted", bcs.U64),
@@ -211,6 +247,8 @@ class UnchangedShareKind(can.RustEnum):
 
 
 class TransactionEffectsV2(can.Struct):
+    """BCS-encoded version 2 transaction effects."""
+
     _fields = [
         ("status", ExecutionStatus),
         ("executedEpoch", bcs.U64),
@@ -227,6 +265,8 @@ class TransactionEffectsV2(can.Struct):
 
 
 class TransactionEffects(can.RustEnum):
+    """BCS-encoded versioned transaction effects envelope."""
+
     _enums = [
         ("V1", TransactionEffectsV1),
         ("V2", TransactionEffectsV2),

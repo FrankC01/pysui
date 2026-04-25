@@ -236,12 +236,7 @@ class SuiTransaction(txbase):
         :type min_epoch_expiration: Optional[int], optional
         :param gas_budget: Sets the budget, defaults to None
         :type gas_budget: Optional[int], optional
-        :return: Dict of
-            {
-                "tx_bytestr": base64 encoded transaction bytes,
-                "sig_array": array of base64 encoded signature bytes
-
-            }
+        :return: Dict with ``tx_bytestr`` (base64 transaction bytes) and ``sig_array`` (list of base64 signature bytes)
         :rtype: dict[str, str]
         """
         txn_bytes = self.build_with_account_gas(
@@ -351,12 +346,7 @@ class SuiTransaction(txbase):
         :type use_gas_objects: Optional[list[Union[str, pgql_type.SuiCoinObjectGQL]]], optional
         :param txn_expires_after: Specify the transaction expiration epoch ID, defaults to None
         :type txn_expires_after: Optional[int],optional
-        :return: Dict of
-            {
-                "tx_bytestr": base64 encoded transaction bytes,
-                "sig_array": array of base64 encoded signature bytes
-
-            }
+        :return: Dict with ``tx_bytestr`` (base64 transaction bytes) and ``sig_array`` (list of base64 signature bytes)
         :rtype: dict[str, str]
         """
         txn_kind = self.transaction_data(

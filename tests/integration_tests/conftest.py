@@ -31,7 +31,7 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from pysui import AsyncGqlClient, PysuiConfiguration, SuiGrpcClient
+from pysui import AsyncSuiGQLClient as AsyncGqlClient, PysuiConfiguration, SuiGrpcClient
 from pysui.sui.sui_common.config.confgroup import SUI_GQL_RPC_GROUP, SUI_GRPC_GROUP
 from pysui.sui.sui_constants import DEVNET_FAUCET_URLV1, TESTNET_FAUCET_URLV1
 import pysui.sui.sui_pgql.pgql_query as qn

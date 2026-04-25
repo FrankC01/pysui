@@ -11,7 +11,7 @@ import base64
 import logging
 from typing import Awaitable, Callable, Optional, Union
 
-from pysui import AsyncGqlClient
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
 from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor
 from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
 from pysui.sui.sui_common.executors.exec_types import ExecutorContext

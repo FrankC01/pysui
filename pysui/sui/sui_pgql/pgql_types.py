@@ -56,6 +56,7 @@ class NoopGQL(PGQL_Type):
 
     @classmethod
     def from_query(self) -> "NoopGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         return NoopGQL(PagingCursor(), [])
 
 
@@ -70,6 +71,7 @@ class ErrorGQL(PGQL_Type):
 
     @classmethod
     def from_query(self, errors: Any) -> "ErrorGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         return ErrorGQL(PagingCursor(), [], errors)
 
 
@@ -176,6 +178,7 @@ class SuiCoinFromObjectsGQL(PGQL_Type):
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[SuiCoinFromObjectsGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if in_data:
             ser_dict: dict = {}
             _fast_flat(in_data, ser_dict)
@@ -703,6 +706,8 @@ class SuiCoinMetadataGQL(PGQL_Type):
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ObjectContent:
+    """Move object content with has_public_transfer flag and raw content dict."""
+
     has_public_transfer: bool
     content: dict
     object_type: str
@@ -718,6 +723,7 @@ class ObjectContent:
     # },
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectContent":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         res_dict: dict = {}
         content = in_data["as_object"].pop("content")
         # Flatten dictionary
@@ -729,6 +735,8 @@ class ObjectContent:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ObjectState:
+    """Full object state including BCS encoding, owner, version, and optional move content."""
+
     bcs: str
     version: int
     object_digest: str
@@ -741,13 +749,16 @@ class ObjectState:
     as_move_package: Optional[dict] = None
 
     def is_package(self) -> bool:
+        """Return True if this object is a Move package."""
         return bool(self.as_move_package)
 
     def is_object(self) -> bool:
+        """Return True if this object is a Move object."""
         return bool(self.as_move_content)
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectState":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if obj_cont := in_data.get("as_move_content"):
             in_data["as_move_content"] = ObjectContent.from_query(obj_cont)
         return clz.from_dict(in_data)  # type: ignore[attr-defined]
@@ -756,6 +767,8 @@ class ObjectState:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ObjectChange:
+    """Single object state change entry with before/after state."""
+
     address: str
     deleted: bool
     created: bool
@@ -764,6 +777,7 @@ class ObjectChange:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ObjectChange":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if ist := in_data.get("input_state"):
             in_data["input_state"] = ObjectState.from_query(ist)
         if ost := in_data.get("output_state"):
@@ -774,6 +788,8 @@ class ObjectChange:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ObjectChanges:
+    """Collection of object state changes from a transaction."""
+
     nodes: list[ObjectChange]
 
     @classmethod
@@ -895,6 +911,8 @@ class ExecutionResultGQL(PGQL_Type):
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class TransactionSummaryGQL(PGQL_Type):
+    """Transaction summary with digest, status, timestamp, and signatures."""
+
     digest: str
     signatures: list[str]
     status: str
@@ -1091,6 +1109,7 @@ class ProgrammableTransactionBlockGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[ProgrammableTransactionBlockGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         ins_list: list = []
         cmd_list: list = []
         router = {
@@ -1278,6 +1297,7 @@ class ReferenceGasPriceGQL(PGQL_Type):
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ReferenceGasPriceGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         in_data = in_data.pop("epoch", in_data)
         return ReferenceGasPriceGQL.from_dict(in_data)  # type: ignore[attr-defined]
 
@@ -1358,6 +1378,7 @@ class SystemStateSummaryGQL(PGQL_Type):
 
     @classmethod
     def from_query(clz, in_data: dict) -> "SystemStateSummaryGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         in_data = in_data.pop("qres", in_data)
         rgp = {"referenceGasPrice": in_data.pop("referenceGasPrice")}
         in_data["referenceGasPrice"] = ReferenceGasPriceGQL.from_query(rgp)
@@ -1433,6 +1454,7 @@ class ProtocolConfigGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfigs"))  # type: ignore[attr-defined]
 
 
@@ -1587,6 +1609,7 @@ class MoveEnumGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[MoveEnumGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if in_data:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
@@ -1613,6 +1636,7 @@ class MoveStructureGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[MoveStructureGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if in_data:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
@@ -1623,6 +1647,8 @@ class MoveStructureGQL:
 
 
 class MoveDataTypeGQL:
+    """Dispatcher that returns a MoveStructureGQL or MoveEnumGQL from query data."""
+
     @classmethod
     def from_query(clz, in_data: dict) -> Union[MoveStructureGQL, MoveEnumGQL, NoopGQL]:  # type: ignore[override]
         """."""
@@ -1652,6 +1678,7 @@ class MoveStructuresGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[MoveStructuresGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if in_data:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
@@ -1900,6 +1927,7 @@ class MoveFunctionGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[MoveFunctionGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if in_data.get("object") or in_data.get("function_name") or in_data.get("functionName"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
@@ -1974,6 +2002,7 @@ class MoveModuleGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[MoveModuleGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if in_data:
             in_data = in_data.get("object", in_data)
             fdict: dict = {}
@@ -2005,6 +2034,7 @@ class MovePackageGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[MovePackageGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if in_data.get("object"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)
@@ -2020,12 +2050,15 @@ class MovePackageGQL:
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ValidatorExchangeRateGQL:
+    """Validator pool exchange rate for a single epoch."""
+
     identifier: str
     pool_token_amount: str | None = None
     sui_amount: str | None = None
 
     @classmethod
     def from_query(clz, name: str, in_data: dict) -> "ValidatorExchangeRateGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result."""
         idict = {"identifier": name}
         if in_data:
             idict = idict | in_data["value"]["json"]
@@ -2041,6 +2074,7 @@ class ValidatorExchangeRatesGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorExchangeRatesGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         in_data = in_data.pop("address")
         ex_list: list[ValidatorExchangeRateGQL] = []
         for key, value in in_data.items():
@@ -2077,6 +2111,7 @@ class ValidatorFullGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorFullGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         fdict: dict = {}
         _fast_flat(in_data, fdict)
         return ValidatorFullGQL.from_dict(fdict)  # type: ignore[attr-defined]
@@ -2100,6 +2135,7 @@ class ValidatorSetsGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "ValidatorSetsGQL":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         fdict: dict = {}
         cursor: PagingCursor = PagingCursor.from_dict(  # type: ignore[attr-defined]
             in_data["epoch"]["validatorSet"]["activeValidators"].pop("cursor")
@@ -2135,6 +2171,7 @@ class DynamicFieldsGQL:
 
     @classmethod
     def from_query(clz, in_data: dict) -> "Union[DynamicFieldsGQL, NoopGQL]":  # type: ignore[override]
+        """Deserialize from GraphQL query result dict."""
         if in_data.get("object"):
             fdict: dict = {}
             _fast_flat(in_data, fdict)

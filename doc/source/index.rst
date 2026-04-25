@@ -1,7 +1,4 @@
-.. pysui documentation master file, created by
-   sphinx-quickstart on Wed Nov 30 04:30:45 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. pysui documentation master file
 
 .. image:: pysui_logo_color.png
    :height: 200px
@@ -10,30 +7,64 @@
 
 
 Welcome to pysui's documentation!
-=================================
+==================================
 
-`pysui` is the first unofficial SUI Pyton Client SDK!
+``pysui`` is a Python client SDK for the Sui blockchain.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
+   :caption: Getting Started
 
    getting_started
    intro
-   bc_queries
-   bc_txns
-   logging
    pyconfig
-   builders
-   utilities
+
+.. toctree::
+   :maxdepth: 1
+   :caption: GraphQL
+
    graphql
-   graphql_qnodes
+   graphql_queries
+
+.. toctree::
+   :maxdepth: 1
+   :caption: gRPC
+
    grpc
-   grpc_requests_list
-   aliases
-   multi_sig
+   grpc_requests
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Transactions & Executors
+
+   transactions
    executors
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Features
+
+   multi_sig
+   logging
+   utilities
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Events & Streaming
+
    subscriptions
+
+.. toctree::
+   :maxdepth: 1
+   :caption: JSON-RPC (Legacy)
+
+   jsonrpc_builders
+   jsonrpc_transactions
+
+.. toctree::
+   :maxdepth: 1
+   :caption: API Reference
+
    modules
 
 

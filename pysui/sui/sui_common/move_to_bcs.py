@@ -12,7 +12,8 @@ from pathlib import Path
 import uuid
 import logging
 
-from pysui import PysuiConfiguration, AsyncGqlClient
+from pysui.sui.sui_common.config import PysuiConfiguration
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
 import pysui.sui.sui_common.bcs_ast as bcs_ast
 from pysui.sui.sui_common.bcs_ast import BcsAst
 import pysui.sui.sui_common.mtobcs_types as mtypes
@@ -31,12 +32,14 @@ class MoveFieldNode(bcs_ast.Node):
 
 
 class MoveScalarField(MoveFieldNode):
+    """Move scalar type field descriptor."""
 
     def __init__(self, ident: str, data: Any, children: Optional[list] = None):
         super().__init__(ident, data, children)
 
 
 class MoveVectorField(MoveFieldNode):
+    """Move vector type field descriptor."""
 
     def __init__(
         self,
@@ -53,18 +56,21 @@ class MoveVectorField(MoveFieldNode):
 
 
 class MoveStandardField(MoveFieldNode):
+    """Move standard library type field descriptor."""
 
     def __init__(self, ident: str, data: Any, children: Optional[list] = None):
         super().__init__(ident, data, children)
 
 
 class MoveStructureField(MoveFieldNode):
+    """Move structure type field descriptor."""
 
     def __init__(self, ident: str, data: Any, children: Optional[list] = None):
         super().__init__(ident, data, children)
 
 
 class MoveOptionalField(MoveFieldNode):
+    """Move optional type field descriptor."""
 
     def __init__(
         self,
@@ -77,6 +83,7 @@ class MoveOptionalField(MoveFieldNode):
 
 
 class MoveVariantField(MoveFieldNode):
+    """Move enum variant field descriptor."""
 
     def __init__(
         self,

@@ -1,7 +1,9 @@
 
-==========
-QueryNodes
-==========
+:orphan:
+
+====================
+GraphQL Query Nodes
+====================
 
 General
 -------

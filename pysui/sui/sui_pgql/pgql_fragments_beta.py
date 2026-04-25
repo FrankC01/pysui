@@ -16,6 +16,7 @@ class GasCost(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Build and return the GasSummary DSL fragment."""
         return (
             DSLFragment("GasSummary")
             .on(schema.GasCostSummary)
@@ -33,6 +34,7 @@ class PageCursor(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Build and return the PageCursor DSL fragment."""
         return (
             DSLFragment("PageCursor")
             .on(schema.PageInfo)
@@ -48,6 +50,7 @@ class StandardCoin(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Build and return the StandardCoin DSL fragment."""
         pg_cursor = PageCursor()
         return (
             DSLFragment("CoinStandard")
@@ -105,6 +108,7 @@ class StandardCoinObject(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Build and return the StandardCoinObject DSL fragment."""
         pg_cursor = PageCursor()
         return (
             DSLFragment("CoinStandard")
@@ -171,6 +175,7 @@ class BaseObject(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Build and return the BaseObject DSL fragment."""
         return (
             DSLFragment("ObjectBase")
             .on(schema.Object)
@@ -188,6 +193,7 @@ class StandardObject(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Build and return the StandardObject DSL fragment."""
         base_object = BaseObject()
         return (
             DSLFragment("ObjectStandard")
@@ -247,6 +253,7 @@ class StandardEvent(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Build and return the StandardEvent DSL fragment."""
         return (
             DSLFragment("EventStandard")
             .on(schema.Event)
@@ -326,6 +333,7 @@ class StandardTransaction(PGQL_Fragment):
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Build and return the StandardTransaction DSL fragment."""
         base_obj = BaseObject().fragment(schema)
         tx_effects = StandardTxEffects().fragment(schema)
         return (

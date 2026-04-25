@@ -19,7 +19,7 @@ that may be useful in managing configurations outside of your code.
 
 General
 =======
-For JSON RPDC pysui relied on the presence of ``~/.sui`` and it's constituent
+For JSON RPC pysui relied on the presence of ``~/.sui`` and it's constituent
 configuration elements including ``client.yaml``, ``sui.keystore``,
 and ``sui.aliases`` which were all encapsulated by SuiConfig. While SuiConfig
 supported some maniplations (i.e. adding new keys, alias management, etc.) it
@@ -33,11 +33,11 @@ PysuiConfiguration persists to it's own configuration location
 to configuration management. Amongst other things:
 
 #. It does not presume it's configuration is persisted to a fixed
-location (configurable)
+   location (configurable)
 #. It supports programmatic switching between it's primary components
-(see Anatomy below)
+   (see Anatomy below)
 #. It has a smaller code base that, when legacy JSON RPC support is removed,
-has a smaller memory footprint
+   has a smaller memory footprint
 #. And more...
 
 Anatomy of PysuiConfiguration
@@ -179,12 +179,12 @@ not require recreating a client.
     :linenos:
 
     # Set group to builtin Sui's GraphQL RPC group
-    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP, profile_name="mainnet" )
-    client = SyncGqlClient(pysui_config=cfg)
+    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP, profile_name="mainnet")
+    client = client_factory(cfg)
 
-    # Changing active profile
+    # Changing active profile requires a new client
     client.config.make_active(profile_name="testnet")
-    client = SyncGqlClient(pysui_config=cfg)
+    client = client_factory(cfg)
 
 
 Bottom Up Changes
@@ -237,7 +237,7 @@ Will raise an exception if the explicit group or the profile
         self,
         *,
         profile_name: str,
-        url: str,
+        url: Optional[str] = None,
         faucet_url: Optional[str] = None,
         faucet_status_url: Optional[str] = None,
         in_group: Optional[str] = None,
@@ -398,8 +398,8 @@ PysuiConfiguration. For example:
 
     # First client points to devnet
     devnet_cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,profile_name="devnet")
-    devnet_client = SyncGqlClient(pysui_config=cfg,write_schema=False)
+    devnet_client = SuiGQLClient(pysui_config=devnet_cfg,write_schema=False)
 
     # Next client points to testnet
     testnet_cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,profile_name="testnet")
-    testnet_client = SyncGqlClient(pysui_config=cfg,write_schema=False)
+    testnet_client = SuiGQLClient(pysui_config=testnet_cfg,write_schema=False)

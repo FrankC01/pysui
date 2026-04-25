@@ -129,6 +129,7 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
     """Executes transactions serially with optional gas replenishment for gRPC.
 
     Gas replenishment callbacks (on_coins_low / on_balance_low) are mutually exclusive:
+
     - on_coins_low: used when gas is paid via Coin<SUI> objects. Return new coin IDs
       to signal replenishment, or None/[] to halt execution.
     - on_balance_low: used when gas is paid via address accumulator. Must complete a

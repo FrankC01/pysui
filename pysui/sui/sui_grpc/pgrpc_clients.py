@@ -42,6 +42,8 @@ _TXCONSTRAINTS = list(TransactionConstraints.__dataclass_fields__.keys())
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class ProtocolConfig:
+    """gRPC protocol configuration container holding transaction constraints."""
+
     transaction_constraints: TransactionConstraints
 
 

@@ -14,9 +14,11 @@ build:
     rust: "1.86"
   jobs:
     post_create_environment:
-      - pip install sphinx-rtd-theme
+      - pip install sphinx==8.1.3 sphinx-rtd-theme==3.0.2
     pre_build:
-      - sphinx-apidoc -o doc/source pysui/
+      - python gen_doc_qnode.py
+      - python gen_doc_reqs.py
+      - sphinx-apidoc -o doc/source pysui/ pysui/sui/sui_grpc/suimsgs
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

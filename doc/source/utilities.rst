@@ -103,18 +103,16 @@ The corresponding target from ``mainnet`` looks like this:
 Example 1: Command Line usage (GraphQL)
 ***************************************
 
-Assumes you have ``pysui 0.82.0`` (or above) installed in a virtual environment
+This example, from ``mainnet``, uses the GenericStructure target above assuming it sits in a json file called ``mainnet_test.json``.
 
-This example, from ``mainnet`` uses the GenericStructure target above assuming it sits in a json file called ``mainnet_test.json``. 
-
-From the command line
+From the command line:
 
 .. code-block:: console
 
     mtobcs --profile mainnet -m mainnet_test.json
 
-This will produce ``system_state_internal.py`` in the current directory. The following script will fetch the object, deserialize it 
-using the python BCS file created and print out json formatted data. Save it to a file called ``demo_bcs.py``
+This will produce ``system_state_internal.py`` in the current directory. The following script will fetch the object, deserialize it
+using the generated Python BCS file and print out JSON formatted data. Save it to a file called ``demo_bcs.py``:
 
 .. code-block:: python
 
@@ -125,30 +123,26 @@ using the python BCS file created and print out json formatted data. Save it to 
 
     """Sample deserialization of Sui object to json output."""
 
-    from pysui import SyncGqlClient, PysuiConfiguration
+    import asyncio
+    from pysui import AsyncSuiGQLClient, PysuiConfiguration, client_factory
     from pysui.sui.sui_pgql.pgql_query import GetObjectContent
 
     import system_state_internal as sys1
 
 
-    def main():
+    async def main():
         """Demo."""
-        # Set mainnet url
         cfg = PysuiConfiguration(
             group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
             profile_name="mainnet",
         )
+        client: AsyncSuiGQLClient = client_factory(cfg)
 
-        # Get the GraphQL client
-        client_init = SyncGqlClient(write_schema=False, pysui_config=cfg)
-
-        # Fetch the BCS string for the object
-        qn = GetObjectContent(
-            object_id="0xc5e430c7c517e99da14e67928b360f3260de47cb61f55338cdd9119f519c282c"
+        result = await client.execute_query_node(
+            with_node=GetObjectContent(
+                object_id="0xc5e430c7c517e99da14e67928b360f3260de47cb61f55338cdd9119f519c282c"
+            )
         )
-        result = client_init.execute_query_node(with_node=qn)
-
-        # Deserialize
         if result.is_ok():
             ser_po = result.result_data.as_bytes()
             pool_obj = sys1.GenericStructure_address_u64_SystemStateInnerV1.deserialize(
@@ -158,14 +152,7 @@ using the python BCS file created and print out json formatted data. Save it to 
 
 
     if __name__ == "__main__":
-        main()
-
-
-This script can be run from command line with 
-
-.. code-block:: console
-
-    python -m demo_bcs
+        asyncio.run(main())
 
 Example 2: Programmatically (GraphQL)
 *************************************
@@ -187,19 +174,19 @@ an async loop for execution. This is one contrived example
     from pathlib import Path
     from typing import Any
 
-    from pysui import PysuiConfiguration, AsyncGqlClient
+    from pysui import PysuiConfiguration, AsyncSuiGQLClient, client_factory
     from pysui.sui.sui_pgql.pgql_query import GetObjectContent
     from pysui.sui.sui_common.move_to_bcs import MoveDataType
     import pysui.sui.sui_common.mtobcs_types as mtypes
 
 
     async def resolve_bcs_class(
-        client: AsyncGqlClient, target: mtypes.GenericStructure
+        client: AsyncSuiGQLClient, target: mtypes.GenericStructure
     ) -> Any:
         """Resolve Move target and return base python BCS class.
 
         Args:
-            client (AsyncGqlClient): Active async client
+            client (AsyncSuiGQLClient): Active async client
             targets (mtypes.Targets): the target move information
 
         Returns:
@@ -212,11 +199,11 @@ an async loop for execution. This is one contrived example
         return namespace[root_class_name]
 
 
-    async def get_object_content(client: AsyncGqlClient, object_id: str) -> bytes:
+    async def get_object_content(client: AsyncSuiGQLClient, object_id: str) -> bytes:
         """Fetch and objects content BCS.
 
         Args:
-            client (AsyncGqlClient): Active async client
+            client (AsyncSuiGQLClient): Active async client
             object_id (str): ID of object to fetch data (base64 str)
 
         Raises:
@@ -240,8 +227,8 @@ an async loop for execution. This is one contrived example
 
         # Setup network configuration, profile_name should be where the move struct
         # and content object exist
-        client = AsyncGqlClient(
-            pysui_config=PysuiConfiguration(
+        client: AsyncSuiGQLClient = client_factory(
+            PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
                 profile_name="mainnet",
             )
@@ -264,7 +251,3 @@ an async loop for execution. This is one contrived example
     if __name__ == "__main__":
         asyncio.run(_execute())
 
-Example 3: Programmatically (gRPC)
-**********************************
-
-Under construction
