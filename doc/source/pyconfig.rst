@@ -396,10 +396,12 @@ PysuiConfiguration. For example:
 
 .. code-block:: python
 
+    from pysui import PysuiConfiguration, client_factory
+
     # First client points to devnet
-    devnet_cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,profile_name="devnet")
-    devnet_client = SuiGQLClient(pysui_config=devnet_cfg,write_schema=False)
+    devnet_cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP, profile_name="devnet")
+    devnet_client = client_factory(devnet_cfg)
 
     # Next client points to testnet
-    testnet_cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,profile_name="testnet")
-    testnet_client = SuiGQLClient(pysui_config=testnet_cfg,write_schema=False)
+    testnet_cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP, profile_name="testnet")
+    testnet_client = client_factory(testnet_cfg)

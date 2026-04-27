@@ -4,8 +4,7 @@ GraphQL
 
 ``pysui`` supports the Sui GraphQL RPC as a transport protocol available on
 devnet, testnet, and mainnet. New code should use the async client obtained via
-:py:func:`pysui.sui.sui_common.factory.client_factory`; a synchronous client
-is also available for scripts that cannot use ``asyncio``.
+:py:func:`pysui.sui.sui_common.factory.client_factory`.
 
 Running the Sample
 ------------------
@@ -30,12 +29,17 @@ async GraphQL client bound to the active configuration group. See
    :linenos:
 
     import asyncio
-    from pysui import PysuiConfiguration, client_factory
+    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import PysuiConfiguration, client_factory, handle_result
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = client_factory(cfg)  # returns AsyncSuiGQLClient
-        # client.config.active_address, client.execute_query_node(...), etc.
+        async with client_factory(cfg) as client:
+            # Protocol-agnostic dispatch via SuiCommand
+            result = await client.execute(
+                command=cmd.GetCoins(owner=client.config.active_address)
+            )
+            handle_result(result)
 
     if __name__ == "__main__":
         asyncio.run(main())
@@ -74,14 +78,14 @@ HTTP Client Headers
 -------------------
 
 Global HTTP headers can be set at client construction and overridden
-per-query. If not provided, headers default to ``None``.
+per-call. If not provided, headers default to ``None``.
 
 .. code-block:: python
    :emphasize-lines: 5,13
 
     import asyncio
+    import pysui.sui.sui_common.sui_commands as cmd
     from pysui import PysuiConfiguration, AsyncSuiGQLClient
-    import pysui.sui.sui_pgql.pgql_query as qn
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
@@ -90,11 +94,11 @@ per-query. If not provided, headers default to ``None``.
             default_header={"headers": {"from": "youremail@acme.org"}},
         )
         # Per-call override — merged with the global header
-        result = await client.execute_query_node(
-            with_node=qn.GetCoins(
+        result = await client.execute(
+            command=cmd.GetCoins(
                 owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
             ),
-            with_headers={"headers": {"from": "otheremail@coyote.org"}},
+            headers={"headers": {"from": "otheremail@coyote.org"}},
         )
 
     if __name__ == "__main__":
@@ -103,20 +107,28 @@ per-query. If not provided, headers default to ``None``.
 Query Methods
 -------------
 
-The GraphQL client exposes three execution paths:
+The GraphQL client exposes four execution paths:
+
+``execute(command=...)``
+    **Primary path.** Accepts a :py:class:`~pysui.sui.sui_common.sui_command.SuiCommand`
+    instance and dispatches to the appropriate GQL query internally.  Works identically
+    on both ``AsyncSuiGQLClient`` and ``SuiGrpcClient`` — see :doc:`sui_commands` for
+    the full command list.
 
 ``execute_query_string``
-    Accepts a raw GraphQL query string, converts it to a ``GraphQLRequest``,
-    and executes it. Returns a ``SuiRpcResult`` containing a dict by default.
+    **EC-5 escape hatch.** Accepts a raw GraphQL query string, converts it to a
+    ``GraphQLRequest``, and executes it. Returns a ``SuiRpcResult`` containing a dict
+    by default.  Use when no ``SuiCommand`` equivalent exists.
 
 ``execute_document_node``
-    Accepts a ``gql`` ``GraphQLRequest`` (e.g. the output of ``gql(string)``).
-    Returns a ``SuiRpcResult`` containing a dict by default.
+    **EC-5 escape hatch.** Accepts a ``gql`` ``GraphQLRequest`` (e.g. the output of
+    ``gql(string)``). Returns a ``SuiRpcResult`` containing a dict by default.
 
-``execute_query_node``
+``execute_query_node`` *(deprecated)*
     Accepts a pysui ``PGQL_QueryNode``. The node's ``as_document_node``
     method is called to build the ``GraphQLRequest``, then the result is
     encoded via the node's ``encode_fn`` if one is provided.
+    Prefer ``execute(command=...)`` for standard queries.
 
 String Queries
 ++++++++++++++
@@ -169,16 +181,13 @@ GraphQL Request Queries
     if __name__ == "__main__":
         asyncio.run(main())
 
-pysui QueryNode Queries
-++++++++++++++++++++++++
+pysui QueryNode Queries *(deprecated path)*
+++++++++++++++++++++++++++++++++++++++++++++
 
-pysui ships a library of pre-built :doc:`QueryNodes <graphql_queries>` that
-map to common Sui queries. Each QueryNode:
-
-- Takes typed constructor parameters
-- Provides an ``encode_fn`` static method that converts the raw dict result
-  into a typed dataclass
-- Supports paging where the underlying query returns paginated data
+``execute_query_node`` is deprecated. For standard queries use
+``execute(command=...)`` with a :doc:`SuiCommand <sui_commands>` subclass instead.
+``execute_query_node`` remains available as an EC-5 escape hatch for custom
+``PGQL_QueryNode`` subclasses with no ``SuiCommand`` equivalent.
 
 .. code-block:: python
    :linenos:
@@ -190,9 +199,10 @@ map to common Sui queries. Each QueryNode:
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = AsyncSuiGQLClient(pysui_config=cfg)
+        # EC-5: custom QueryNode with no SuiCommand equivalent
         result = await client.execute_query_node(
-            with_node=qn.GetCoins(
-                owner="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
+            with_node=qn.GetObjectContent(
+                object_id="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
             )
         )
         if result.is_ok():

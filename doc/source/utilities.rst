@@ -112,7 +112,12 @@ From the command line:
     mtobcs --profile mainnet -m mainnet_test.json
 
 This will produce ``system_state_internal.py`` in the current directory. The following script will fetch the object, deserialize it
-using the generated Python BCS file and print out JSON formatted data. Save it to a file called ``demo_bcs.py``:
+using the generated Python BCS file and print out JSON formatted data. Save it to a file called ``demo_bcs.py``.
+
+.. note::
+
+    ``GetObjectContent`` has no ``SuiCommand`` equivalent —
+    ``execute_query_node`` is the correct **EC-5 escape hatch** here.
 
 .. code-block:: python
 

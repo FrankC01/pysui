@@ -18,15 +18,14 @@ client receives checkpoint events as an async iterator.
 
     import asyncio
     from pysui import PysuiConfiguration, SuiGrpcClient, client_factory
-    import pysui.sui.sui_grpc.pgrpc_requests as rn
+    import pysui.sui.sui_common.sui_commands as cmd
 
     async def stream_checkpoints():
         """Stream checkpoint events via gRPC subscription."""
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
         client = client_factory(cfg)  # returns SuiGrpcClient
 
-        fields = ["sequenceNumber", "digest", "summary.timestamp"]
-        result = await client.execute(request=rn.SubscribeCheckpoint(field_mask=fields))
+        result = await client.execute(command=cmd.SubscribeCheckpoint())
 
         count = 0
         async for checkpoint in result.result_data:
@@ -47,6 +46,11 @@ The GraphQL transport does not support native subscriptions. Use
 :py:class:`pysui.sui.sui_pgql.pgql_query.GetCheckpoints` to poll for the
 latest checkpoint batch.
 
+.. note::
+
+    ``GetCheckpoints`` (paginated batch) has no ``SuiCommand`` equivalent —
+    this is an **EC-5 escape hatch**.  Use ``execute_query_node`` directly.
+
 .. code-block:: python
    :linenos:
 
@@ -55,7 +59,7 @@ latest checkpoint batch.
     import pysui.sui.sui_pgql.pgql_query as qn
 
     async def poll_checkpoints():
-        """Fetch the current checkpoint batch via GraphQL."""
+        """Fetch the current checkpoint batch via GraphQL (EC-5)."""
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)  # returns AsyncSuiGQLClient
 

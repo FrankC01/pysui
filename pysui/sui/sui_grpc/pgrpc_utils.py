@@ -54,7 +54,7 @@ async def async_cursored_collector(
     :rtype: list
     """
     collection: list = []
-    result = await client.execute(request=pfn())  # type: ignore
+    result = await client.execute_grpc_request(request=pfn())  # type: ignore
     while True:
         if result.is_ok():
             collection.extend(
@@ -66,7 +66,7 @@ async def async_cursored_collector(
                 hasattr(result.result_data, "next_page_token")
                 and result.result_data.next_page_token
             ):
-                result = await client.execute(  # type: ignore
+                result = await client.execute_grpc_request(  # type: ignore
                     request=pfn(page_token=result.result_data.next_page_token)  # type: ignore
                 )
             else:

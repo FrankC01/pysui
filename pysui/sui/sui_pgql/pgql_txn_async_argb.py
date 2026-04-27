@@ -8,6 +8,7 @@ from typing import Any, Optional, Union
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txn_arg_encoder import _BaseArgParser, OpenMoveDatatypeBodyGQL
 from pysui.sui.sui_common.executors.object_id_extract import extract_object_id
@@ -54,8 +55,8 @@ class AsyncResolvingArgParser(_BaseArgParser):
         )):
             object_def = arg
         elif isinstance(arg, str):
-            result = await self._client.execute_query_node(
-                with_node=qn.GetObject(object_id=arg)
+            result = await self._client.execute(
+                command=cmd.GetObject(object_id=arg)
             )
             if result.is_ok():
                 object_def = result.result_data

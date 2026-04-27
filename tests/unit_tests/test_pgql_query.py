@@ -291,3 +291,241 @@ class TestNoopShortCircuit:
         # We cannot call as_document_node without a schema when cursor is live,
         # but we can assert the guard condition is false.
         assert obj.next_page.hasNextPage is True
+
+
+# ---------------------------------------------------------------------------
+# TestSCSiblings — encode_fn() output shapes for SC sibling classes
+# ---------------------------------------------------------------------------
+
+import datetime
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+
+
+class TestSCSiblings:
+    """Verify each SC sibling's encode_fn produces the correct proto shape."""
+
+    def test_get_coin_metadata_sc_inherits_parent_coin_type(self):
+        obj = qn.GetCoinMetaDataSC(coin_type="0x2::sui::SUI")
+        assert obj.coin_type == "0x2::sui::SUI"
+
+    def test_get_coin_metadata_sc_encode_fn_returns_callable(self):
+        fn = qn.GetCoinMetaDataSC.encode_fn()
+        assert callable(fn)
+
+    def test_get_coin_metadata_sc_encode_maps_fields(self):
+        raw = {
+            "coinMetadata": {
+                "decimals": 9,
+                "name": "Sui",
+                "symbol": "SUI",
+                "description": "The Sui token",
+                "iconUrl": "https://sui.io/icon.png",
+                "supply": "10000000000",
+                "address": _ADDR,
+            }
+        }
+        result = qn.GetCoinMetaDataSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.GetCoinInfoResponse)
+        meta = result.metadata
+        assert isinstance(meta, sui_prot.CoinMetadata)
+        assert meta.id == _ADDR
+        assert meta.decimals == 9
+        assert meta.name == "Sui"
+        assert meta.symbol == "SUI"
+        assert meta.description == "The Sui token"
+        assert meta.icon_url == "https://sui.io/icon.png"
+
+    def test_get_address_coin_balance_sc_encode_maps_fields(self):
+        raw = {
+            "address": {
+                "balance": {
+                    "coinType": {"coinType": "0x2::sui::SUI"},
+                    "addressBalance": "1000",
+                    "coinBalance": "2000",
+                    "totalBalance": "3000",
+                }
+            }
+        }
+        result = qn.GetAddressCoinBalanceSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.GetBalanceResponse)
+        bal = result.balance
+        assert isinstance(bal, sui_prot.Balance)
+        assert bal.coin_type == "0x2::sui::SUI"
+        assert bal.balance == 3000
+        assert bal.address_balance == 1000
+        assert bal.coin_balance == 2000
+
+    def test_get_address_coin_balances_sc_encode_maps_fields(self):
+        raw = {
+            "qres": {
+                "owner_address": _ADDR,
+                "balances": {
+                    "cursor": {"hasNextPage": True, "endCursor": "tok42"},
+                    "type_balances": [
+                        {
+                            "addressBalance": "500",
+                            "coinBalance": "1500",
+                            "totalBalance": "2000",
+                            "coinType": {"coin_type": "0x2::sui::SUI"},
+                        }
+                    ],
+                },
+            }
+        }
+        result = qn.GetAddressCoinBalancesSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.ListBalancesResponse)
+        assert len(result.balances) == 1
+        bal = result.balances[0]
+        assert bal.coin_type == "0x2::sui::SUI"
+        assert bal.balance == 2000
+        assert bal.address_balance == 500
+        assert bal.coin_balance == 1500
+        assert result.next_page_token == b"tok42"
+
+    def test_get_address_coin_balances_sc_no_next_page(self):
+        raw = {
+            "qres": {
+                "owner_address": _ADDR,
+                "balances": {
+                    "cursor": {"hasNextPage": False, "endCursor": None},
+                    "type_balances": [],
+                },
+            }
+        }
+        result = qn.GetAddressCoinBalancesSC.encode_fn()(raw)
+        assert result.next_page_token is None
+        assert result.balances == []
+
+    def test_get_epoch_sc_encode_maps_fields(self):
+        raw = {
+            "epoch": {
+                "epochId": 42,
+                "startTimestamp": "2024-01-15T00:00:00+00:00",
+                "endTimestamp": "2024-01-16T00:00:00+00:00",
+                "referenceGasPrice": "750",
+                "totalCheckpoints": "1000",
+                "totalTransactions": "5000",
+            }
+        }
+        result = qn.GetEpochSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.GetEpochResponse)
+        ep = result.epoch
+        assert isinstance(ep, sui_prot.Epoch)
+        assert ep.epoch == 42
+        assert ep.reference_gas_price == 750
+        assert ep.start == datetime.datetime.fromisoformat("2024-01-15T00:00:00+00:00")
+        assert ep.end == datetime.datetime.fromisoformat("2024-01-16T00:00:00+00:00")
+
+    def test_get_epoch_sc_no_end_timestamp(self):
+        raw = {
+            "epoch": {
+                "epochId": 5,
+                "startTimestamp": "2024-03-01T00:00:00+00:00",
+                "endTimestamp": None,
+                "referenceGasPrice": "1000",
+            }
+        }
+        result = qn.GetEpochSC.encode_fn()(raw)
+        assert result.epoch.end is None
+
+    def test_get_package_versions_sc_encode_maps_fields(self):
+        raw = {
+            "packageVersions": {
+                "cursor": {"hasNextPage": False, "endCursor": None},
+                "versions": [
+                    {"address": _ADDR, "version": 1, "digest": "aaa"},
+                    {"address": _ADDR2, "version": 2, "digest": "bbb"},
+                ],
+            }
+        }
+        result = qn.GetPackageVersionsSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.ListPackageVersionsResponse)
+        assert len(result.versions) == 2
+        assert result.versions[0].package_id == _ADDR
+        assert result.versions[0].version == 1
+        assert result.versions[1].package_id == _ADDR2
+        assert result.versions[1].version == 2
+        assert result.next_page_token is None
+
+    def test_get_package_versions_sc_with_next_page(self):
+        raw = {
+            "packageVersions": {
+                "cursor": {"hasNextPage": True, "endCursor": "pageX"},
+                "versions": [{"address": _ADDR, "version": 3, "digest": "ccc"}],
+            }
+        }
+        result = qn.GetPackageVersionsSC.encode_fn()(raw)
+        assert result.next_page_token == b"pageX"
+
+    def test_get_name_service_address_sc_encode_maps_fields(self):
+        raw = {
+            "suinsName": {
+                "address": _ADDR,
+                "defaultSuinsName": "example.sui",
+            }
+        }
+        result = qn.GetNameServiceAddressSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.LookupNameResponse)
+        rec = result.record
+        assert isinstance(rec, sui_prot.NameRecord)
+        assert rec.name == "example.sui"
+        assert rec.target_address == _ADDR
+
+    def test_get_name_service_address_sc_encode_returns_empty_on_no_match(self):
+        result = qn.GetNameServiceAddressSC.encode_fn()({"suinsName": None})
+        assert isinstance(result, sui_prot.LookupNameResponse)
+        assert result.record is None
+
+    def test_get_name_service_names_sc_encode_maps_fields(self):
+        raw = {
+            "address": {
+                "address": _ADDR,
+                "defaultSuinsName": "example.sui",
+            }
+        }
+        result = qn.GetNameServiceNamesSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.ReverseLookupNameResponse)
+        rec = result.record
+        assert isinstance(rec, sui_prot.NameRecord)
+        assert rec.name == "example.sui"
+        assert rec.target_address == _ADDR
+
+    def test_get_name_service_names_sc_encode_returns_empty_on_no_name(self):
+        raw = {"address": {"address": _ADDR, "defaultSuinsName": None}}
+        result = qn.GetNameServiceNamesSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.ReverseLookupNameResponse)
+        assert result.record is None
+
+    def test_get_name_service_names_sc_encode_returns_empty_on_null_address(self):
+        result = qn.GetNameServiceNamesSC.encode_fn()({"address": None})
+        assert isinstance(result, sui_prot.ReverseLookupNameResponse)
+        assert result.record is None
+
+    def test_get_basic_current_epoch_info_sc_encode_maps_fields(self):
+        raw = {
+            "epoch": {
+                "epochId": 42,
+                "referenceGasPrice": "1000",
+                "startTimestamp": "2024-01-01T00:00:00+00:00",
+                "endTimestamp": "2024-01-02T00:00:00+00:00",
+            }
+        }
+        result = qn.GetBasicCurrentEpochInfoSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.Epoch)
+        assert result.epoch == 42
+        assert result.reference_gas_price == 1000
+
+    def test_get_basic_current_epoch_info_sc_encode_handles_missing_end(self):
+        raw = {
+            "epoch": {
+                "epochId": 7,
+                "referenceGasPrice": "750",
+                "startTimestamp": "2024-06-01T00:00:00+00:00",
+                "endTimestamp": None,
+            }
+        }
+        result = qn.GetBasicCurrentEpochInfoSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.Epoch)
+        assert result.epoch == 7
+        assert result.reference_gas_price == 750
+        assert result.end is None

@@ -27,7 +27,7 @@ class PrintNodeVisitor(ast.NodeVisitor):
         self.double_bar: str = ""
 
     def visit(self, node: ast.AST) -> ast.AST:
-        if isinstance(node, ast.ClassDef):
+        if isinstance(node, ast.ClassDef) and not node.name.endswith("SC"):
             self.qnodes.append(self.qpath + "." + node.name)
         return super().visit(node)
 

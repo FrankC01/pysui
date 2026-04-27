@@ -29,6 +29,8 @@ import httpx
 
 from pysui import SuiRpcResult, PysuiConfiguration
 from pysui.sui.sui_common.client import PysuiClient
+from pysui.abstracts.async_client import AsyncClientBase
+from pysui.sui.sui_common.sui_command import SuiCommand
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
@@ -427,7 +429,7 @@ class SuiGQLClient(BaseSuiGQLClient):
                 raise ValueError("Timeout error while waiting for transaction block.")
 
 
-class AsyncSuiGQLClient(BaseSuiGQLClient):
+class AsyncSuiGQLClient(AsyncClientBase, BaseSuiGQLClient):
     """Asynchronous pysui GraphQL client."""
 
     @versionchanged(
@@ -492,6 +494,14 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
                 await self._schema._async_client.close_async()
             except AttributeError:
                 pass
+
+    async def __aenter__(self) -> "AsyncSuiGQLClient":
+        """Enter async context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit async context manager and close connection."""
+        await self.close()
 
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
@@ -615,6 +625,13 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         version="0.56.0", reason="Unique function for PGQL_QueryNode processing"
     )
     @versionchanged(version="0.89.0", reason="Added timeout argument")
+    @deprecated(
+        version="0.99.0",
+        reason=(
+            "Use AsyncClientBase.execute(command=...) with a SuiCommand instance instead. "
+            "No removal timeline set."
+        ),
+    )
     async def execute_query_node(
         self,
         *,
@@ -623,7 +640,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         encode_fn: Optional[Callable[[dict], Any]] = None,
         timeout: float | None = None,
     ) -> SuiRpcResult:
-        """execute_query_node Execute a pysui GraphQL QueryNode.
+        """Execute a pysui GraphQL QueryNode.
 
         :param with_node: The QueryNode for execution
         :type with_node: PGQL_QueryNode
@@ -633,7 +650,7 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
         :type encode_fn: Optional[Callable[[dict], Any]], optional
         :param timeout: Timeout for execution overriding default set for client, defaults to None
         :type timeout: Optional[float], optional
-        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
+        :return: SuiRpcResult containing status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
         try:
@@ -643,6 +660,73 @@ class AsyncSuiGQLClient(BaseSuiGQLClient):
             encode_fn = encode_fn or with_node.encode_fn()
             return await self._execute(qdoc_node, with_headers, encode_fn, timeout)
 
+        except ValueError as ve:
+            return SuiRpcResult(
+                False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
+            )
+
+    async def execute(
+        self,
+        *,
+        command: SuiCommand,
+        timeout: float | None = None,
+        headers: dict | None = None,
+    ) -> SuiRpcResult:
+        """Execute a SuiCommand against the GraphQL protocol.
+
+        :param command: A SuiCommand instance describing the operation
+        :param timeout: Optional timeout in seconds
+        :param headers: Optional HTTP headers passed to the transport
+        :return: SuiRpcResult wrapping the response or error
+        :rtype: SuiRpcResult
+        """
+        if not isinstance(command, SuiCommand):
+            return SuiRpcResult(
+                False, f"Expected SuiCommand, got {type(command).__name__}", None
+            )
+        try:
+            node = command.gql_node()
+        except NotImplementedError:
+            return SuiRpcResult(False, "Command not supported by GraphQL", None)
+
+        if not command.gql_requires_paging:
+            return await self._execute_gql_node(
+                node, with_headers=headers, timeout=timeout
+            )
+
+        # Auto-paginate: gRPC returns flat but GQL requires paging for this command.
+        # Accumulates all pages into a single flat list returned in result_data.
+        collection: list = []
+        result = await self._execute_gql_node(node, with_headers=headers, timeout=timeout)
+        while True:
+            if not result.is_ok():
+                return result
+            data = result.result_data
+            collection.extend(getattr(data, "data", [data]))
+            cursor = getattr(data, "next_cursor", None)
+            if cursor and getattr(cursor, "hasNextPage", False):
+                command.next_page = cursor
+                node = command.gql_node()
+                result = await self._execute_gql_node(
+                    node, with_headers=headers, timeout=timeout
+                )
+            else:
+                break
+        return SuiRpcResult(True, None, collection)
+
+    async def _execute_gql_node(
+        self,
+        node: PGQL_QueryNode,
+        with_headers: Optional[dict] = None,
+        timeout: float | None = None,
+    ) -> SuiRpcResult:
+        """Internal: run a PGQL_QueryNode through _qnode_pre_run and _execute."""
+        try:
+            qdoc_node = self._qnode_pre_run(node)
+            if isinstance(qdoc_node, PGQL_NoOp):
+                return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
+            encode_fn = node.encode_fn()
+            return await self._execute(qdoc_node, with_headers, encode_fn, timeout)
         except ValueError as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)

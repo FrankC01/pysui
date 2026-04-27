@@ -11,8 +11,8 @@ then
     rm -f doc/source/pysui*.rst doc/source/modules.rst
 
     echo "Generating QueryNode and Request table RSTs"
-    python3 gen_doc_qnode.py
-    python3 gen_doc_reqs.py
+    python3 bin/gen_doc_qnode.py
+    python3 bin/gen_doc_reqs.py
 
     echo "Generating module RSTs"
     sphinx-apidoc -o doc/source pysui/ pysui/sui/sui_grpc/suimsgs

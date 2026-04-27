@@ -7,6 +7,7 @@
 
 from typing import Optional, Callable, Union
 import base64
+import datetime
 import warnings
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 from gql import gql, GraphQLRequest
@@ -2260,3 +2261,242 @@ class ExecuteTransaction(PGQL_QueryNode):
     def encode_fn() -> Union[Callable[[dict], pgql_type.ExecutionResultGQL], None]:
         """Return the serialization Execution result function."""
         return pgql_type.ExecutionResultGQL.from_query  # type: ignore[return-value]
+
+
+# ---------------------------------------------------------------------------
+# SC siblings — these subclasses inherit as_document_node() unchanged and
+# override encode_fn() to return gRPC proto instances instead of GQL types.
+# Used by SuiCommand subclasses that dispatch over both GQL and gRPC.
+# ---------------------------------------------------------------------------
+
+
+class GetCoinMetaDataSC(GetCoinMetaData):
+    """SC variant: encode_fn maps GQL coinMetadata response to GetCoinInfoResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetCoinInfoResponse]:
+        """Return deserializer producing GetCoinInfoResponse from GQL coinMetadata dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetCoinInfoResponse:
+            flat: dict = {}
+            pgql_type._fast_flat(in_data, flat)
+            return sui_prot.GetCoinInfoResponse(
+                metadata=sui_prot.CoinMetadata(
+                    id=flat.get("address"),
+                    decimals=flat.get("decimals"),
+                    name=flat.get("name"),
+                    symbol=flat.get("symbol"),
+                    description=flat.get("description"),
+                    icon_url=flat.get("iconUrl"),
+                )
+            )
+
+        return _encode
+
+
+class GetAddressCoinBalanceSC(GetAddressCoinBalance):
+    """SC variant: encode_fn maps GQL address.balance response to GetBalanceResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetBalanceResponse]:
+        """Return deserializer producing GetBalanceResponse from GQL address balance dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetBalanceResponse:
+            flat: dict = {}
+            pgql_type._fast_flat(in_data["address"]["balance"], flat)
+            return sui_prot.GetBalanceResponse(
+                balance=sui_prot.Balance(
+                    coin_type=flat.get("coinType"),
+                    balance=int(flat["totalBalance"]),
+                    address_balance=int(flat["addressBalance"]),
+                    coin_balance=int(flat["coinBalance"]),
+                )
+            )
+
+        return _encode
+
+
+class GetAddressCoinBalancesSC(GetAddressCoinBalances):
+    """SC variant: encode_fn maps GQL address.balances response to ListBalancesResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ListBalancesResponse]:
+        """Return deserializer producing ListBalancesResponse from GQL balances dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ListBalancesResponse:
+            qres = in_data.get("qres", in_data)
+            balances_raw = qres["balances"]
+            cursor = balances_raw["cursor"]
+            balances: list[sui_prot.Balance] = []
+            for item in balances_raw["type_balances"]:
+                flat: dict = {}
+                pgql_type._fast_flat(item, flat)
+                balances.append(
+                    sui_prot.Balance(
+                        coin_type=flat.get("coin_type"),
+                        balance=int(flat["totalBalance"]),
+                        address_balance=int(flat["addressBalance"]),
+                        coin_balance=int(flat["coinBalance"]),
+                    )
+                )
+            end_cursor: str | None = cursor.get("endCursor")
+            next_page_token: bytes | None = (
+                end_cursor.encode()
+                if cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListBalancesResponse(
+                balances=balances, next_page_token=next_page_token
+            )
+
+        return _encode
+
+
+class GetEpochSC(GetEpoch):
+    """SC variant: encode_fn maps GQL epoch response to GetEpochResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetEpochResponse]:
+        """Return deserializer producing GetEpochResponse from GQL epoch dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetEpochResponse:
+            epoch_data = in_data.pop("epoch", in_data) if in_data else {}
+            start_ts: str | None = epoch_data.get("startTimestamp")
+            end_ts: str | None = epoch_data.get("endTimestamp")
+            rgp: str | None = epoch_data.get("referenceGasPrice")
+            return sui_prot.GetEpochResponse(
+                epoch=sui_prot.Epoch(
+                    epoch=epoch_data.get("epochId"),
+                    reference_gas_price=int(rgp) if rgp else None,
+                    start=datetime.datetime.fromisoformat(start_ts) if start_ts else None,
+                    end=datetime.datetime.fromisoformat(end_ts) if end_ts else None,
+                )
+            )
+
+        return _encode
+
+
+class GetBasicCurrentEpochInfoSC(GetBasicCurrentEpochInfo):
+    """SC variant: encode_fn maps GQL basic epoch response to Epoch proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.Epoch]:
+        """Return deserializer producing Epoch proto from GQL basic epoch dict."""
+
+        def _encode(in_data: dict) -> sui_prot.Epoch:
+            epoch_data = in_data.pop("epoch", in_data) if in_data else {}
+            start_ts: str | None = epoch_data.get("startTimestamp")
+            end_ts: str | None = epoch_data.get("endTimestamp")
+            rgp: str | None = epoch_data.get("referenceGasPrice")
+            return sui_prot.Epoch(
+                epoch=epoch_data.get("epochId"),
+                reference_gas_price=int(rgp) if rgp else None,
+                start=datetime.datetime.fromisoformat(start_ts) if start_ts else None,
+                end=datetime.datetime.fromisoformat(end_ts) if end_ts else None,
+            )
+
+        return _encode
+
+
+class GetPackageVersionsSC(GetPackageVersions):
+    """SC variant: encode_fn maps GQL packageVersions response to ListPackageVersionsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ListPackageVersionsResponse]:
+        """Return deserializer producing ListPackageVersionsResponse from GQL package versions dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ListPackageVersionsResponse:
+            pkg_data = in_data.pop("packageVersions", in_data) if in_data else {}
+            cursor = pkg_data.get("cursor", {})
+            end_cursor: str | None = cursor.get("endCursor")
+            versions = [
+                sui_prot.PackageVersion(package_id=v["address"], version=v["version"])
+                for v in pkg_data.get("versions", [])
+            ]
+            next_page_token: bytes | None = (
+                end_cursor.encode()
+                if cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListPackageVersionsResponse(
+                versions=versions, next_page_token=next_page_token
+            )
+
+        return _encode
+
+
+class GetNameServiceAddressSC(GetNameServiceAddress):
+    """SC variant: encode_fn maps GQL suinsName response to LookupNameResponse proto.
+
+    Overrides as_document_node to also select Address.address (parent only selects
+    defaultSuinsName, which is insufficient to populate NameRecord.target_address).
+    """
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request selecting both address and name fields."""
+        return dsl_gql(
+            DSLQuery(
+                schema.Query.suinsName(address=self.name).select(
+                    schema.Address.address,
+                    schema.Address.defaultSuinsName,
+                )
+            )
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.LookupNameResponse]:
+        """Return deserializer producing LookupNameResponse from GQL suinsName dict."""
+
+        def _encode(in_data: dict) -> sui_prot.LookupNameResponse:
+            ns_data = in_data.get("suinsName", in_data)
+            if not ns_data:
+                return sui_prot.LookupNameResponse()
+            return sui_prot.LookupNameResponse(
+                record=sui_prot.NameRecord(
+                    name=ns_data.get("defaultSuinsName"),
+                    target_address=ns_data.get("address"),
+                )
+            )
+
+        return _encode
+
+
+class GetNameServiceNamesSC(GetNameServiceNames):
+    """SC variant: encode_fn maps GQL address response to ReverseLookupNameResponse proto.
+
+    Overrides as_document_node to use clean field selection without aliases and
+    to also select Address.address for populating NameRecord.target_address.
+    Returns empty response when the address has no SuiNS name registered.
+    """
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request selecting address and default SuiNS name."""
+        return dsl_gql(
+            DSLQuery(
+                schema.Query.address(address=self.owner).select(
+                    schema.Address.address,
+                    schema.Address.defaultSuinsName,
+                )
+            )
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ReverseLookupNameResponse]:
+        """Return deserializer producing ReverseLookupNameResponse from GQL address dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ReverseLookupNameResponse:
+            addr_data = in_data.get("address", in_data)
+            if not addr_data:
+                return sui_prot.ReverseLookupNameResponse()
+            name: str | None = addr_data.get("defaultSuinsName")
+            if name is None:
+                return sui_prot.ReverseLookupNameResponse()
+            return sui_prot.ReverseLookupNameResponse(
+                record=sui_prot.NameRecord(
+                    name=name,
+                    target_address=addr_data.get("address"),
+                )
+            )
+
+        return _encode
+        return _encode

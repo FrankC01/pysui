@@ -25,6 +25,7 @@ from pysui.sui.sui_common.types import (
 )
 import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_bcs.bcs as bcs
 import pysui.sui.sui_bcs.bcs_txne as bcst
 from .caching_exec import GqlCachingTransactionExecutor
@@ -232,8 +233,8 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
         :rtype: int
         :raises ValueError: If balance fetch fails
         """
-        balance_result = await self._client.execute_query_node(
-            with_node=qn.GetAddressCoinBalance(owner=self._signing_block.payer_address)
+        balance_result = await self._client.execute(
+            command=cmd.GetAddressCoinBalance(owner=self._signing_block.payer_address)
         )
         if not balance_result.is_ok():
             raise ValueError("Failed to fetch initial balance")
@@ -280,8 +281,8 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
         :return: Refreshed balance, or None if the fetch fails
         :rtype: Optional[int]
         """
-        balance_result = await self._client.execute_query_node(
-            with_node=qn.GetAddressCoinBalance(owner=self._signing_block.payer_address)
+        balance_result = await self._client.execute(
+            command=cmd.GetAddressCoinBalance(owner=self._signing_block.payer_address)
         )
         if not balance_result.is_ok():
             return None

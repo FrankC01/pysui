@@ -39,14 +39,20 @@ Client Design
 
 pysui clients are intentionally thin. There are no fat ``get_coins``,
 ``get_object``, or similar convenience methods on the client itself.
-All data access is through typed request objects:
+All data access goes through typed request objects dispatched via a
+single unified call:
 
-- **GraphQL**: :doc:`QueryNodes <graphql_queries>` — see :doc:`graphql`
-- **gRPC**: :doc:`Requests <grpc_requests>` — see :doc:`grpc`
+- **Unified Client Interface (UCI)**: ``await client.execute(command=...)``
+  — works identically on both GraphQL and gRPC transports.
+  See :doc:`sui_commands` for the full command list.
+- **GraphQL EC-5 escape hatch**: :doc:`QueryNodes <graphql_queries>` via
+  ``execute_query_node`` — for custom queries with no ``SuiCommand`` equivalent.
+- **gRPC EC-5 escape hatch**: :doc:`Requests <grpc_requests>` via
+  ``execute_grpc_request`` — for direct gRPC request objects.
 - **Transactions (PTBs)**: :doc:`transactions`
 
 This keeps the client stable as the Sui protocol evolves: new query
-capabilities are added as new QueryNode or Request classes without
+capabilities are added as new ``SuiCommand`` subclasses without
 changing the client API.
 
 Next Steps

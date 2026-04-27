@@ -43,15 +43,23 @@ class TestCachingTransaction:
 
         assert hasattr(CachingTransaction, "set_gas_budget_if_notset")
 
-    def test_build_txn_data_inflates_budget_for_gas_coin_draw(self):
+    @pytest.mark.asyncio
+    async def test_build_txn_data_inflates_budget_for_gas_coin_draw(self):
         """_build_txn_data inflates gas_budget by gas_source_draw from _inspect_ptb_for_gas_coin."""
         from pysui.sui.sui_pgql.execute.caching_txn import CachingTransaction
-        from unittest.mock import MagicMock, patch, call
+        from unittest.mock import MagicMock, patch, call, AsyncMock
         import pysui.sui.sui_bcs.bcs as bcs
         from pysui.sui.sui_common.trxn_base import _TransactionBase
 
         mock_client = MagicMock()
         mock_client.current_gas_price = 1000
+        mock_client.execute = AsyncMock()
+        mock_epoch_info = MagicMock()
+        mock_epoch_info.reference_gas_price = 1000
+        mock_result = MagicMock()
+        mock_result.is_ok.return_value = True
+        mock_result.result_data = mock_epoch_info
+        mock_client.execute.return_value = mock_result
 
         txn = CachingTransaction(client=mock_client)
 
@@ -77,7 +85,7 @@ class TestCachingTransaction:
 
         with patch.object(_TransactionBase, "_inspect_ptb_for_gas_coin", return_value=(True, draw_amount)), \
              patch("pysui.sui.sui_pgql.execute.caching_txn.bcs.GasData", side_effect=capturing_GasData):
-            txn._build_txn_data(
+            await txn._build_txn_data(
                 gas_budget=base_budget,
                 use_gas_objects=[gas_ref],
                 signer_block=mock_signer,
@@ -87,15 +95,23 @@ class TestCachingTransaction:
             f"Expected budget {base_budget + draw_amount}, got {captured['budget']}"
         )
 
-    def test_build_txn_data_no_inflation_when_no_gas_coin_draw(self):
+    @pytest.mark.asyncio
+    async def test_build_txn_data_no_inflation_when_no_gas_coin_draw(self):
         """_build_txn_data leaves budget unchanged when gas coin is not used."""
         from pysui.sui.sui_pgql.execute.caching_txn import CachingTransaction
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import MagicMock, patch, AsyncMock
         import pysui.sui.sui_bcs.bcs as bcs
         from pysui.sui.sui_common.trxn_base import _TransactionBase
 
         mock_client = MagicMock()
         mock_client.current_gas_price = 1000
+        mock_client.execute = AsyncMock()
+        mock_epoch_info = MagicMock()
+        mock_epoch_info.reference_gas_price = 1000
+        mock_result = MagicMock()
+        mock_result.is_ok.return_value = True
+        mock_result.result_data = mock_epoch_info
+        mock_client.execute.return_value = mock_result
 
         txn = CachingTransaction(client=mock_client)
 
@@ -120,7 +136,7 @@ class TestCachingTransaction:
 
         with patch.object(_TransactionBase, "_inspect_ptb_for_gas_coin", return_value=(False, 0)), \
              patch("pysui.sui.sui_pgql.execute.caching_txn.bcs.GasData", side_effect=capturing_GasData):
-            txn._build_txn_data(
+            await txn._build_txn_data(
                 gas_budget=base_budget,
                 use_gas_objects=[gas_ref],
                 signer_block=mock_signer,

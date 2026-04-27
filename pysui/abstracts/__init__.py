@@ -22,3 +22,4 @@ from pysui.abstracts.client_keypair import (
 )
 from pysui.abstracts.client_rpc import RpcResult, Provider
 from pysui.abstracts.client_rpc import Builder
+from pysui.abstracts.async_client import AsyncClientBase
