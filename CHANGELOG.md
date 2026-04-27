@@ -28,7 +28,7 @@ parameters on build(), build_and_sign(), and transaction_data()
 - `pysui/sui/sui_common/txn_arg_encoder.py`: new metadata-driven argument encoder using `@singledispatch` over `OpenMoveBodyGQL` variants; `_BaseArgParser` ABC with abstract `fetch_or_transpose_object` for protocol-specific object resolution; shared by both GQL and gRPC transaction builders
 - 33 integration tests in `tests/integration_tests/test_move_call_encoding.py` covering scalar, vector (including `vector<vector<vector<u8>>>`), Option, object reference, and generic type parameter encoding across GQL async, GQL sync, gRPC, and caching transaction builders
 
-- Added 366 offline unit tests (no network required) across 8 files in `tests/unit_tests/`
+- Added 856 offline unit tests (no network required) across 25 files in `tests/unit_tests/`
 - `GqlParallelTransactionExecutor`: GraphQL parallel transaction executor with conflict tracking,
   gas coin pool management (coins mode), and address-balance mode
 - `GrpcSerialTransactionExecutor`: gRPC serial transaction executor with the same interface as
@@ -43,7 +43,7 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 - `AsyncClientBase` abstract base class (`pysui/abstracts/async_client.py`): replaces `PysuiClient` as the shared async interface; declares `execute(command, *, timeout=None, headers=None) -> SuiRpcResult` as a fourth abstract method alongside `transaction()`, `__aenter__()`, and `__aexit__()`; `client_factory()` return annotation updated from `PysuiClient` to `AsyncClientBase`
 
-- `SuiCommand` ABC (`pysui/sui/sui_common/sui_command.py`) and 41 built-in subclasses (`pysui/sui/sui_common/sui_commands.py`): protocol-neutral request objects forming the **Unified Client Interface (UCI)**; `await client.execute(command=...)` dispatches identically on both `AsyncSuiGQLClient` and `SuiGrpcClient`; three asymmetric commands (`GetCurrentValidators`, `GetStructures`, `GetFunctions`) auto-paginate transparently on GraphQL; five commands are gRPC-only (`GetCheckpointByDigest`, `GetMultipleTx`, `GetServiceInfo`, `SubscribeCheckpoint`, `VerifySignature`); two are GQL-only (`GetFilteredTx`, `GetEvents`); all 41 subclasses exported from `pysui`
+- `SuiCommand` ABC (`pysui/sui/sui_common/sui_command.py`) and 46 built-in subclasses (`pysui/sui/sui_common/sui_commands.py`): protocol-neutral request objects forming the **Unified Client Interface (UCI)**; `await client.execute(command=...)` dispatches identically on both `AsyncSuiGQLClient` and `SuiGrpcClient`; three asymmetric commands (`GetCurrentValidators`, `GetStructures`, `GetFunctions`) auto-paginate transparently on GraphQL; five commands are gRPC-only (`GetCheckpointByDigest`, `GetServiceInfo`, `SubscribeCheckpoint`, `VerifySignature`); two are GQL-only (`GetFilteredTx`, `GetEvents`); all 46 subclasses exported from `pysui`
 
 - SC sibling query nodes in `pysui/sui/sui_pgql/pgql_query.py`: eight GQL-side protocol bridges whose `encode_fn()` produces gRPC proto dataclasses directly — `GetCoinMetaDataSC`, `GetAddressCoinBalanceSC`, `GetAddressCoinBalancesSC`, `GetEpochSC`, `GetBasicCurrentEpochInfoSC`, `GetPackageVersionsSC`, `GetNameServiceAddressSC`, `GetNameServiceNamesSC`
 

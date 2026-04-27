@@ -560,23 +560,113 @@ class GetTxKind(SuiCommand):
 
 
 @dataclass(kw_only=True)
-class GetMultipleTx(SuiCommand):
-    """Fetch multiple transactions by digest list (gRPC); GQL multi-digest not yet available."""
+class GetMultipleTransactions(SuiCommand):
+    """Fetch multiple transactions by digest list."""
 
-    gql_class: ClassVar[type] = None
-    grpc_class: ClassVar[type] = rn.GetMultipleTx
+    gql_class: ClassVar[type] = pgql_query.GetMultipleTransactionsSC
+    grpc_class: ClassVar[type] = rn.GetTransactions
 
-    transactions: list[str]
+    digests: list[str]
 
-    def gql_node(self):
-        """Not yet supported by GraphQL — use GetFilteredTx for filtered queries."""
-        raise NotImplementedError(
-            "GetMultipleTx (batch by digest) is not yet supported by GraphQL"
-        )
+    def gql_node(self) -> pgql_query.GetMultipleTransactionsSC:
+        """Return GraphQL query node."""
+        return self.gql_class(digests=self.digests)
 
-    def grpc_request(self) -> rn.GetMultipleTx:
+    def grpc_request(self) -> rn.GetTransactions:
         """Return gRPC batch-get-transactions request."""
-        return rn.GetMultipleTx(transactions=self.transactions)
+        return rn.GetTransactions(transactions=self.digests)
+
+
+@dataclass(kw_only=True)
+class GetMultipleObjectContent(SuiCommand):
+    """Fetch BCS content for multiple objects."""
+
+    gql_class: ClassVar[type] = pgql_query.GetMultipleObjectContentSC
+    grpc_class: ClassVar[type] = rn.GetMultipleObjects
+
+    object_ids: list[str]
+
+    def gql_node(self) -> pgql_query.GetMultipleObjectContentSC:
+        """Return GraphQL query node."""
+        return self.gql_class(object_ids=self.object_ids)
+
+    def grpc_request(self) -> rn.GetMultipleObjects:
+        """Return gRPC batch-get-objects request with contents field mask."""
+        return rn.GetMultipleObjects(object_ids=self.object_ids, field_mask=["contents"])
+
+
+@dataclass(kw_only=True)
+class GetProtocolConfig(SuiCommand):
+    """Fetch protocol configuration for a specific version or current."""
+
+    gql_class: ClassVar[type] = pgql_query.GetProtocolConfigSC
+    grpc_class: ClassVar[type] = rn.GetProtocolConfig
+
+    version: Optional[int] = None
+
+    def gql_node(self) -> pgql_query.GetProtocolConfigSC:
+        """Return GraphQL query node."""
+        return self.gql_class(version=self.version)
+
+    def grpc_request(self) -> rn.GetProtocolConfig:
+        """Return gRPC get-protocol-config request."""
+        return rn.GetProtocolConfig(version=self.version)
+
+
+@dataclass(kw_only=True)
+class GetObjectContent(SuiCommand):
+    """Fetch BCS content for a single object."""
+
+    gql_class: ClassVar[type] = pgql_query.GetObjectContentSC
+    grpc_class: ClassVar[type] = rn.GetObject
+
+    object_id: str
+
+    def gql_node(self) -> pgql_query.GetObjectContentSC:
+        """Return GraphQL query node."""
+        return self.gql_class(object_id=self.object_id)
+
+    def grpc_request(self) -> rn.GetObject:
+        """Return gRPC get-object request with contents field mask."""
+        return rn.GetObject(object_id=self.object_id, field_mask=["contents"])
+
+
+@dataclass(kw_only=True)
+class GetObjectsForType(SuiCommand):
+    """Fetch all objects of a specific type owned by an address."""
+
+    gql_class: ClassVar[type] = pgql_query.GetObjectsForTypeSC
+    grpc_class: ClassVar[type] = rn.GetObjectsOwnedByAddress
+
+    owner: str
+    object_type: str
+    next_page: Optional[PagingCursor] = None
+
+    def gql_node(self) -> pgql_query.GetObjectsForTypeSC:
+        """Return GraphQL query node."""
+        return self.gql_class(owner=self.owner, object_type=self.object_type, next_page=self.next_page)
+
+    def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
+        """Return gRPC list-owned-objects request with type filter."""
+        return rn.GetObjectsOwnedByAddress(owner=self.owner, object_type=self.object_type)
+
+
+@dataclass(kw_only=True)
+class GetCoinSummary(SuiCommand):
+    """Fetch coin object summary (balance and metadata without content)."""
+
+    gql_class: ClassVar[type] = pgql_query.GetCoinSummarySC
+    grpc_class: ClassVar[type] = rn.GetObject
+
+    coin_id: str
+
+    def gql_node(self) -> pgql_query.GetCoinSummarySC:
+        """Return GraphQL query node."""
+        return self.gql_class(coin_id=self.coin_id)
+
+    def grpc_request(self) -> rn.GetObject:
+        """Return gRPC get-object request with balance and metadata field masks."""
+        return rn.GetObject(object_id=self.coin_id, field_mask=["object_id", "version", "digest", "balance"])
 
 
 @dataclass(kw_only=True)

@@ -60,13 +60,12 @@ async def do_coins_for_type(client: AsyncClientBase):
     )
 
 
-async def do_objects_for_type(client: AsyncSuiGQLClient):
-    """Fetch objects of specific type.
-    EC-5: GetObjectsForType has no SuiCommand equivalent.
-    """
+async def do_objects_for_type(client: AsyncClientBase):
+    """Fetch objects of specific type owned by an address."""
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetObjectsForType(
+        await client.execute(
+            command=cmd.GetObjectsForType(
+                owner=client.config.active_address,
                 object_type="0x2::coin::Coin<0x2::sui::SUI>",
             )
         )
@@ -165,17 +164,18 @@ async def do_object(client: AsyncClientBase):
     handle_result(await client.execute(command=cmd.GetObject(object_id="0x6")))
 
 
-async def do_object_content(client: AsyncSuiGQLClient):
-    """Fetch minimal object content, basically just reference information.
-    EC-5: GetObjectContent has no SuiCommand equivalent.
+async def do_object_content(client: AsyncClientBase):
+    """Fetch BCS content for a single object.
 
     Set 'object_id' to object address of choice.
     """
-    gobj = qn.GetObjectContent(
-        object_id="0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+    handle_result(
+        await client.execute(
+            command=cmd.GetObjectContent(
+                object_id="0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+            )
+        )
     )
-    # print(client.query_node_to_string(query_node=gobj))
-    handle_result(await client.execute_query_node(with_node=gobj))
 
 
 async def do_objects(client: AsyncSuiGQLClient):
@@ -224,17 +224,17 @@ async def do_multiple_object_versions(client: AsyncSuiGQLClient):
     )
 
 
-async def do_multiple_object_content(client: AsyncSuiGQLClient):
-    """Fetch minimal object content, basically just reference information.
-    EC-5: GetMultipleObjectContent has no SuiCommand equivalent.
-    """
-    gobj = qn.GetMultipleObjectContent(
-        object_ids=[
-            "0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
-        ]
+async def do_multiple_object_content(client: AsyncClientBase):
+    """Fetch BCS content for multiple objects."""
+    handle_result(
+        await client.execute(
+            command=cmd.GetMultipleObjectContent(
+                object_ids=[
+                    "0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+                ]
+            )
+        )
     )
-    # print(client.query_node_to_string(query_node=gobj))
-    handle_result(await client.execute_query_node(with_node=gobj))
 
 
 async def do_objects_for(client: AsyncClientBase):
@@ -462,16 +462,16 @@ async def do_validator_xchange_rates(client: AsyncSuiGQLClient):
                 print(er_results.result_data.to_json(indent=2))
 
 
-async def do_protcfg(client: AsyncSuiGQLClient):
-    """Fetch the most current system state summary.
-    EC-5: protocol() and GetProtocolConfig are GraphQL-specific.
+async def do_protcfg(client: AsyncClientBase):
+    """Fetch the most current protocol configuration.
 
     By default, the current protocol version is used. You
     can set an `int` value otherwise to get past protocol states.
     """
-    pcfg = client.protocol().protocolVersion
     handle_result(
-        await client.execute_query_node(with_node=qn.GetProtocolConfig(version=pcfg))
+        await client.execute(
+            command=cmd.GetProtocolConfig()
+        )
     )
 
 

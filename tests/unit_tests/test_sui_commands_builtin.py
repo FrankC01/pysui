@@ -29,6 +29,7 @@ from pysui.sui.sui_common.sui_commands import (
     GetCheckpointByDigest,
     GetCheckpointBySequence,
     GetCoinMetaData,
+    GetCoinSummary,
     GetCoins,
     GetCurrentValidators,
     GetDelegatedStakes,
@@ -44,15 +45,19 @@ from pysui.sui.sui_common.sui_commands import (
     GetModule,
     GetMoveDataType,
     GetMultipleObjects,
+    GetMultipleObjectContent,
     GetMultiplePastObjects,
-    GetMultipleTx,
+    GetMultipleTransactions,
     GetNameServiceAddress,
     GetNameServiceNames,
     GetObject,
+    GetObjectContent,
+    GetObjectsForType,
     GetObjectsOwnedByAddress,
     GetPackage,
     GetPackageVersions,
     GetPastObject,
+    GetProtocolConfig,
     GetServiceInfo,
     GetStaked,
     GetStructure,
@@ -167,8 +172,24 @@ class TestAllAreSubcommands:
     def test_get_tx_kind(self):
         assert isinstance(GetTxKind(digest=DIGEST), SuiCommand)
 
-    def test_get_multiple_tx(self):
-        assert isinstance(GetMultipleTx(transactions=[DIGEST]), SuiCommand)
+    def test_get_multiple_transactions(self):
+        assert isinstance(GetMultipleTransactions(digests=[DIGEST]), SuiCommand)
+
+    def test_get_multiple_object_content(self):
+        assert isinstance(GetMultipleObjectContent(object_ids=[OBJ_ID]), SuiCommand)
+
+    def test_get_protocol_config(self):
+        assert isinstance(GetProtocolConfig(), SuiCommand)
+        assert isinstance(GetProtocolConfig(version=1), SuiCommand)
+
+    def test_get_object_content(self):
+        assert isinstance(GetObjectContent(object_id=OBJ_ID), SuiCommand)
+
+    def test_get_objects_for_type(self):
+        assert isinstance(GetObjectsForType(owner=ADDR, object_type="0x2::coin::Coin<0x2::sui::SUI>"), SuiCommand)
+
+    def test_get_coin_summary(self):
+        assert isinstance(GetCoinSummary(coin_id=OBJ_ID), SuiCommand)
 
     def test_get_filtered_tx(self):
         assert isinstance(GetFilteredTx(tx_filter={"sender": ADDR}), SuiCommand)
@@ -338,8 +359,24 @@ class TestGrpcRequests:
     def test_get_tx_kind(self):
         assert _is_grpc(GetTxKind(digest=DIGEST).grpc_request())
 
-    def test_get_multiple_tx(self):
-        assert _is_grpc(GetMultipleTx(transactions=[DIGEST]).grpc_request())
+    def test_get_multiple_transactions(self):
+        assert _is_grpc(GetMultipleTransactions(digests=[DIGEST]).grpc_request())
+
+    def test_get_multiple_object_content(self):
+        assert _is_grpc(GetMultipleObjectContent(object_ids=[OBJ_ID]).grpc_request())
+
+    def test_get_protocol_config(self):
+        assert _is_grpc(GetProtocolConfig().grpc_request())
+        assert _is_grpc(GetProtocolConfig(version=1).grpc_request())
+
+    def test_get_object_content(self):
+        assert _is_grpc(GetObjectContent(object_id=OBJ_ID).grpc_request())
+
+    def test_get_objects_for_type(self):
+        assert _is_grpc(GetObjectsForType(owner=ADDR, object_type="0x2::coin::Coin<0x2::sui::SUI>").grpc_request())
+
+    def test_get_coin_summary(self):
+        assert _is_grpc(GetCoinSummary(coin_id=OBJ_ID).grpc_request())
 
     def test_get_package(self):
         assert _is_grpc(GetPackage(package=PKG).grpc_request())
@@ -492,6 +529,40 @@ class TestGqlNodes:
         assert _is_gql(node)
         assert node.digest == DIGEST
 
+    def test_get_multiple_transactions(self):
+        node = GetMultipleTransactions(digests=[DIGEST]).gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetMultipleTransactionsSC)
+
+    def test_get_multiple_object_content(self):
+        node = GetMultipleObjectContent(object_ids=[OBJ_ID]).gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetMultipleObjectContentSC)
+
+    def test_get_protocol_config(self):
+        node = GetProtocolConfig().gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetProtocolConfigSC)
+        node_with_version = GetProtocolConfig(version=1).gql_node()
+        assert _is_gql(node_with_version)
+
+    def test_get_object_content(self):
+        node = GetObjectContent(object_id=OBJ_ID).gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetObjectContentSC)
+
+    def test_get_objects_for_type(self):
+        node = GetObjectsForType(owner=ADDR, object_type="0x2::coin::Coin<0x2::sui::SUI>").gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetObjectsForTypeSC)
+        assert node.owner == ADDR
+        assert node.object_type == "0x2::coin::Coin<0x2::sui::SUI>"
+
+    def test_get_coin_summary(self):
+        node = GetCoinSummary(coin_id=OBJ_ID).gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetCoinSummarySC)
+
     def test_get_filtered_tx(self):
         node = GetFilteredTx(tx_filter={"sender": ADDR}).gql_node()
         assert _is_gql(node)
@@ -580,13 +651,12 @@ class TestEC3Commands:
     def test_get_checkpoint_by_digest_grpc_ok(self):
         assert _is_grpc(GetCheckpointByDigest(digest=DIGEST).grpc_request())
 
-    def test_get_multiple_tx_gql_raises(self):
-        cmd = GetMultipleTx(transactions=[DIGEST])
-        with pytest.raises(NotImplementedError):
-            cmd.gql_node()
+    def test_get_multiple_transactions_gql_ok(self):
+        cmd = GetMultipleTransactions(digests=[DIGEST])
+        assert _is_gql(cmd.gql_node())
 
-    def test_get_multiple_tx_grpc_ok(self):
-        assert _is_grpc(GetMultipleTx(transactions=[DIGEST]).grpc_request())
+    def test_get_multiple_transactions_grpc_ok(self):
+        assert _is_grpc(GetMultipleTransactions(digests=[DIGEST]).grpc_request())
 
     def test_get_service_info_gql_raises(self):
         cmd = GetServiceInfo()

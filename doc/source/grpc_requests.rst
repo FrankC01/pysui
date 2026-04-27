@@ -47,6 +47,8 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetBasicCurrentEpochInfo`   |
 +--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetProtocolConfig`          |
++--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetObject`                  |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.ObjectContentBCS`           |

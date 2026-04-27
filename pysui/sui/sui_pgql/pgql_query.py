@@ -243,6 +243,34 @@ class GetCoinSummary(PGQL_QueryNode):
         return pgql_type.SuiCoinObjectSummaryGQL.from_query
 
 
+class GetCoinSummarySC(GetCoinSummary):
+    """SC variant: encode_fn maps GQL object response to GetObjectResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetObjectResponse]:
+        """Return deserializer producing GetObjectResponse from GQL object dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetObjectResponse:
+            obj = in_data.get("object", {})
+            flat: dict = {}
+            pgql_type._fast_flat(obj, flat)
+            balance = None
+            if "asMoveObject" in obj and "contents" in obj["asMoveObject"]:
+                contents = obj["asMoveObject"]["contents"].get("json")
+                if contents and isinstance(contents, dict) and "fields" in contents:
+                    balance = contents["fields"].get("balance")
+            return sui_prot.GetObjectResponse(
+                object=sui_prot.Object(
+                    object_id=flat.get("address"),
+                    version=int(flat.get("version", 0)),
+                    digest=flat.get("digest"),
+                    balance=int(balance) if balance else None,
+                )
+            )
+
+        return _encode
+
+
 class GetCoins(PGQL_QueryNode):
     """GetCoins Returns all Coin objects of a specific type for owner."""
 
@@ -473,6 +501,86 @@ class GetObjectsForType(PGQL_QueryNode):
         return pgql_type.ObjectReadsGQL.from_query
 
 
+class GetObjectsForTypeSC(GetObjectsForType):
+    """SC variant: encode_fn maps GQL objects response to ListOwnedObjectsResponse proto."""
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        object_type: str,
+        next_page: Optional[pgql_type.PagingCursor] = None,
+    ):
+        """QueryNode initializer with owner filter.
+
+        :param owner: Owner's Sui address
+        :type owner: str
+        :param object_type: The fully qualified type (i.e. `"0x2::coin::Coin<0x2::sui::SUI>"`)
+        :type object_type: str
+        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
+        :type next_page: pgql_type.PagingCursor
+        """
+        self.owner = owner
+        self.object_type = object_type
+        self.next_page = next_page
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest with owner and type filters."""
+        if self.next_page and not self.next_page.hasNextPage:
+            return PGQL_NoOp
+
+        std_object = frag.StandardObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+
+        if self.next_page:
+            obj_connection = schema.Query.objects(
+                filter={"owner": self.owner, "type": self.object_type},
+                after=self.next_page.endCursor,
+            )
+        else:
+            obj_connection = schema.Query.objects(
+                filter={"owner": self.owner, "type": self.object_type}
+            ).select(
+                cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+                objects_data=schema.ObjectConnection.nodes.select(std_object),
+            )
+
+        return dsl_gql(pg_cursor, std_object, base_object, DSLQuery(obj_connection))
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
+        """Return deserializer producing ListOwnedObjectsResponse from GQL objects dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
+            qres = in_data.get("qres", in_data)
+            cursor = qres.get("pageInfo", {})
+            objects_data = qres.get("objects_data", [])
+            objects: list[sui_prot.Object] = []
+            for obj in objects_data:
+                flat: dict = {}
+                pgql_type._fast_flat(obj, flat)
+                objects.append(
+                    sui_prot.Object(
+                        object_id=flat.get("address"),
+                        version=int(flat.get("version", 0)),
+                        digest=flat.get("digest"),
+                        object_type=flat.get("objectType"),
+                    )
+                )
+            end_cursor: str | None = cursor.get("endCursor")
+            next_page_token: bytes | None = (
+                end_cursor.encode()
+                if cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListOwnedObjectsResponse(
+                objects=objects, next_page_token=next_page_token
+            )
+
+        return _encode
+
+
 @versionchanged(
     version="0.85.0", reason="Added status and previous transaction digest."
 )
@@ -509,6 +617,35 @@ class GetObjectContent(PGQL_QueryNode):
     def encode_fn() -> Callable[[dict], pgql_type.ObjectContentBCS]:
         """Return the serializer to ObjectReadGQL function."""
         return pgql_type.ObjectContentBCS.from_query
+
+
+class GetObjectContentSC(GetObjectContent):
+    """SC variant: encode_fn maps GQL object content response to GetObjectResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetObjectResponse]:
+        """Return deserializer producing GetObjectResponse from GQL object dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetObjectResponse:
+            obj = in_data.get("object", {})
+            flat: dict = {}
+            pgql_type._fast_flat(obj, flat)
+            bcs_content = None
+            if "asMoveObject" in obj and "contents" in obj["asMoveObject"]:
+                bcs_bytes = obj["asMoveObject"]["contents"].get("bcs")
+                if bcs_bytes:
+                    bcs_content = sui_prot.Bcs(value=bytes.fromhex(bcs_bytes[2:]))
+            return sui_prot.GetObjectResponse(
+                object=sui_prot.Object(
+                    object_id=flat.get("address"),
+                    version=int(flat.get("version", 0)),
+                    digest=flat.get("digest"),
+                    previous_transaction=flat.get("previousTransaction"),
+                    contents=bcs_content,
+                )
+            )
+
+        return _encode
 
 
 @versionchanged(
@@ -551,6 +688,38 @@ class GetMultipleObjectContent(PGQL_QueryNode):
     def encode_fn() -> Callable[[dict], pgql_type.ObjectsContentBCS]:
         """Return the serializer to ObjectsContentBCS function."""
         return pgql_type.ObjectsContentBCS.from_query  # type: ignore[return-value]
+
+
+class GetMultipleObjectContentSC(GetMultipleObjectContent):
+    """SC variant: encode_fn maps GQL objects content response to BatchGetObjectsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.BatchGetObjectsResponse]:
+        """Return deserializer producing BatchGetObjectsResponse from GQL objects dict."""
+
+        def _encode(in_data: dict) -> sui_prot.BatchGetObjectsResponse:
+            objects_data = in_data if isinstance(in_data, list) else [in_data]
+            objects: list[sui_prot.Object] = []
+            for obj in objects_data:
+                flat: dict = {}
+                pgql_type._fast_flat(obj, flat)
+                bcs_content = None
+                if "asMoveObject" in obj and "contents" in obj["asMoveObject"]:
+                    bcs_bytes = obj["asMoveObject"]["contents"].get("bcs")
+                    if bcs_bytes:
+                        bcs_content = sui_prot.Bcs(value=bytes.fromhex(bcs_bytes[2:]))
+                objects.append(
+                    sui_prot.Object(
+                        object_id=flat.get("address"),
+                        version=int(flat.get("version", 0)),
+                        digest=flat.get("digest"),
+                        previous_transaction=flat.get("previousTransaction"),
+                        contents=bcs_content,
+                    )
+                )
+            return sui_prot.BatchGetObjectsResponse(objects=objects)
+
+        return _encode
 
 
 class GetObjectsOwnedByAddress(PGQL_QueryNode):
@@ -1073,6 +1242,71 @@ class GetFilteredTx(PGQL_QueryNode):
         return pgql_type.TransactionSummariesGQL.from_query
 
 
+class GetMultipleTransactions(PGQL_QueryNode):
+    """GetMultipleTransactions returns multiple transactions by digest list."""
+
+    def __init__(self, *, digests: list[str]) -> None:
+        """QueryNode initializer to fetch multiple transactions by digests.
+
+        :param digests: List of transaction digests to fetch
+        :type digests: list[str]
+        """
+        self.digests = digests
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Builds the GQL GraphQLRequest
+
+        :return: The transactions query GraphQLRequest for specific digests
+        :rtype: GraphQLRequest
+        """
+        std_txn = frag.StandardTransaction().fragment(schema)
+        tx_effects = frag.StandardTxEffects().fragment(schema)
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
+        qres = schema.Query.multiGetTransactions(keys=self.digests)
+        qres.select(std_txn)
+        return dsl_gql(
+            std_txn,
+            tx_effects,
+            base_object,
+            std_object,
+            gas_cost,
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], pgql_type.TransactionSummariesGQL]:
+        """Return the serializer to TransactionSummariesGQL function."""
+        return pgql_type.TransactionSummariesGQL.from_query
+
+
+class GetMultipleTransactionsSC(GetMultipleTransactions):
+    """SC variant: encode_fn maps GQL transactions response to BatchGetTransactionsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.BatchGetTransactionsResponse]:
+        """Return deserializer producing BatchGetTransactionsResponse from GQL transactions dict."""
+
+        def _encode(in_data: dict) -> sui_prot.BatchGetTransactionsResponse:
+            transactions_data = in_data if isinstance(in_data, list) else [in_data]
+            results: list[sui_prot.GetTransactionResult] = []
+            for tx_data in transactions_data:
+                flat: dict = {}
+                pgql_type._fast_flat(tx_data, flat)
+                executed_tx = sui_prot.ExecutedTransaction(
+                    digest=flat.get("digest"),
+                    transaction=None,
+                    effects=None,
+                )
+                results.append(
+                    sui_prot.GetTransactionResult(transaction=executed_tx)
+                )
+            return sui_prot.BatchGetTransactionsResponse(transactions=results)
+
+        return _encode
+
+
 class GetTxKind(PGQL_QueryNode):
     """Gets details of Transaction kind."""
 
@@ -1302,26 +1536,60 @@ class GetCheckpoints(PGQL_QueryNode):
 
 
 class GetProtocolConfig(PGQL_QueryNode):
-    """Return the protocol config table for the given version number."""
+    """Return the protocol config table for the given version number or current."""
 
-    def __init__(self, *, version: int):
+    def __init__(self, *, version: Optional[int] = None):
         """QueryNode initializer
 
-        :param version: The protocol version to retreive
-        :type version: int
+        :param version: The protocol version to retreive, defaults to None (current)
+        :type version: Optional[int]
         """
         self.version = version
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQL DSL request."""
         std_prot_cfg = frag.StandardProtocolConfig().fragment(schema)
-        qres = schema.Query.protocolConfigs(version=self.version).select(std_prot_cfg)
+        if self.version is not None:
+            qres = schema.Query.protocolConfigs(version=self.version).select(std_prot_cfg)
+        else:
+            qres = schema.Query.protocolConfigs().select(std_prot_cfg)
         return dsl_gql(std_prot_cfg, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.ProtocolConfigGQL], None]:
         """Return the serialization function for ProtocolConfig."""
         return pgql_type.ProtocolConfigGQL.from_query
+
+
+class GetProtocolConfigSC(GetProtocolConfig):
+    """SC variant: encode_fn maps GQL protocol config response to ProtocolConfig proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ProtocolConfig]:
+        """Return deserializer producing ProtocolConfig from GQL protocolConfigs dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ProtocolConfig:
+            prot_cfg = in_data.get("protocolConfigs", {})
+            feature_flags: dict[str, bool] = {}
+            attributes: dict[str, str] = {}
+
+            if "featureFlags" in prot_cfg:
+                for flag in prot_cfg["featureFlags"]:
+                    if isinstance(flag, dict) and "key" in flag and "value" in flag:
+                        feature_flags[flag["key"]] = flag["value"]
+
+            if "configs" in prot_cfg:
+                for cfg in prot_cfg["configs"]:
+                    if isinstance(cfg, dict) and "key" in cfg and "value" in cfg:
+                        attributes[cfg["key"]] = str(cfg["value"])
+
+            return sui_prot.ProtocolConfig(
+                protocol_version=int(prot_cfg.get("protocolVersion", 0)),
+                feature_flags=feature_flags,
+                attributes=attributes,
+            )
+
+        return _encode
 
 
 class GetReferenceGasPrice(PGQL_QueryNode):
