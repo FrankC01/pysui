@@ -23,6 +23,7 @@ from pysui.sui.sui_common.types import TransactionEffects
 import pysui.sui.sui_bcs.bcs as bcs
 import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_pgql.pgql_types as ptypes
 from .caching_exec import GqlCachingTransactionExecutor
 from .caching_txn import CachingTransaction
@@ -209,8 +210,8 @@ class GqlParallelTransactionExecutor(_BaseParallelExecutor):
         return new_coins
 
     async def _fetch_balance(self) -> int:
-        result = await self._client.execute_query_node(
-            with_node=qn.GetAddressCoinBalance(owner=self._gas_owner)
+        result = await self._client.execute(
+            command=cmd.GetAddressCoinBalance(owner=self._gas_owner)
         )
         if not result.is_ok():
             raise ValueError(f"Failed to fetch balance for {self._gas_owner}")

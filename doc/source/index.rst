@@ -21,6 +21,13 @@ Welcome to pysui's documentation!
 
 .. toctree::
    :maxdepth: 1
+   :caption: Unified Client Interface
+
+   sui_commands
+   migration_sui_command
+
+.. toctree::
+   :maxdepth: 1
    :caption: GraphQL
 
    graphql

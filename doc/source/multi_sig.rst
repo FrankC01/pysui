@@ -91,7 +91,7 @@ Standalone Transaction
     from pysui import PysuiConfiguration, SuiRpcResult, client_factory
     from pysui.sui.sui_common.txb_signing import SigningMultiSig
     from pysui.sui.sui_crypto import MultiSig
-    import pysui.sui.sui_pgql.pgql_query as qn
+    import pysui.sui.sui_common.sui_commands as cmd
 
     async def transfer_with_ms(
         msig: MultiSig,
@@ -111,8 +111,8 @@ Standalone Transaction
         await txer.transfer_objects(transfers=[coin], recipient=to_address)
 
         txdict = await txer.build_and_sign()
-        result: SuiRpcResult = await client.execute_query_node(
-            with_node=qn.ExecuteTransaction(**txdict)
+        result: SuiRpcResult = await client.execute(
+            command=cmd.ExecuteTransaction(**txdict)
         )
         if result.is_ok():
             print(result.result_data.to_json(indent=2))

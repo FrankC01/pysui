@@ -16,6 +16,7 @@ from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_types.scalars import SuiU64
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_grpc.pgrpc_requests as rn
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_common.async_funcs import AsyncLRU
 
 # TODO: gRPC argbase implementation
@@ -95,7 +96,7 @@ class AsyncSuiTransaction(txbase):
 
         try:
             result = await self.client.execute(
-                request=rn.GetFunction(
+                command=cmd.GetFunction(
                     package=package,
                     module_name=package_module,
                     function_name=package_function,
@@ -134,12 +135,12 @@ class AsyncSuiTransaction(txbase):
         :return: TransactionData with empty payment and ValidDuring expiration
         :rtype: bcs.TransactionData
         """
-        _res = await self.client.execute(request=rn.GetEpoch(), timeout=30.0)
+        _res = await self.client.execute(command=cmd.GetBasicCurrentEpochInfo(), timeout=30.0)
         if _res.is_ok():
-            _cei: sui_prot.GetEpochResponse = _res.result_data
-            min_epoch = txn_expires_after or _cei.epoch.epoch
+            _cei: sui_prot.Epoch = _res.result_data
+            min_epoch = txn_expires_after or _cei.epoch
             tx_kind = self.builder.finish_for_inspect()
-            result = await self.client.execute(request=rn.GetServiceInfo(), timeout=30.0)
+            result = await self.client.execute(command=cmd.GetServiceInfo(), timeout=30.0)
             if result.is_ok():
                 chain_id = result.result_data.chain_id
             else:
@@ -147,9 +148,9 @@ class AsyncSuiTransaction(txbase):
             pay_addy = self.signer_block.payer_address
             if gas_budget is None:
                 _res = await self.client.execute(
-                    request=rn.SimulateTransactionKind(
-                        transaction=tx_kind,
-                        sender=pay_addy,
+                    command=cmd.SimulateTransactionKind(
+                        tx_kind=tx_kind,
+                        tx_meta={"sender": pay_addy},
                         gas_selection=True,
                     ),
                     timeout=60.0,
@@ -160,7 +161,7 @@ class AsyncSuiTransaction(txbase):
                         gas_used.computation_cost or 0,
                         gas_used.storage_cost or 0,
                         gas_used.storage_rebate or 0,
-                        _cei.epoch.reference_gas_price,
+                        _cei.reference_gas_price,
                     )
                 else:
                     raise ValueError(_res.result_string)
@@ -767,7 +768,7 @@ class AsyncSuiTransaction(txbase):
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
             result = await self.client.execute(
-                request=rn.GetObject(object_id=upgrade_cap)
+                command=cmd.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")
@@ -845,7 +846,7 @@ class AsyncSuiTransaction(txbase):
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
             result = await self.client.execute(
-                request=rn.GetObject(object_id=upgrade_cap)
+                command=cmd.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")

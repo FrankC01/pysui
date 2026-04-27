@@ -7,7 +7,7 @@
 
 from typing import Optional
 
-from pysui.sui.sui_common.client import PysuiClient
+from pysui.abstracts.async_client import AsyncClientBase
 from pysui.sui.sui_common.config import PysuiConfiguration
 from pysui.sui.sui_common.config.confgroup import GroupProtocol
 
@@ -17,7 +17,7 @@ def client_factory(
     *,
     group_name: Optional[str] = None,
     protocol: Optional[GroupProtocol] = None,
-) -> PysuiClient:
+) -> AsyncClientBase:
     """Construct the appropriate async client for the active or specified group.
 
     When called with only ``pysui_config``, the factory inspects the
@@ -40,7 +40,7 @@ def client_factory(
     :raises ValueError: If ``group_name`` is provided without ``protocol``.
     :raises NotImplementedError: If the resolved protocol is not GRAPHQL or GRPC.
     :return: An async client bound to the resolved group and protocol.
-    :rtype: PysuiClient
+    :rtype: AsyncClientBase
     """
     if group_name is not None:
         if protocol is None:

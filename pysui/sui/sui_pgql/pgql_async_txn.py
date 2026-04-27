@@ -22,6 +22,8 @@ import pysui.sui.sui_pgql.pgql_validators as tv
 from pysui.sui.sui_common.txb_gas import compute_gas_budget
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
+import pysui.sui.sui_common.sui_commands as cmd
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
 
 from pysui.sui.sui_common.async_funcs import AsyncLRU
@@ -80,8 +82,8 @@ class AsyncSuiTransaction(txbase):
             tv.TypeValidator.check_target_triplet(target)
         )
 
-        result = await self.client.execute_query_node(
-            with_node=qn.GetFunction(
+        result = await self.client.execute(
+            command=cmd.GetFunction(
                 package=package,
                 module_name=package_module,
                 function_name=package_function,
@@ -118,21 +120,21 @@ class AsyncSuiTransaction(txbase):
         :return: TransactionData with empty payment and ValidDuring expiration
         :rtype: bcs.TransactionData
         """
-        _res = await self.client.execute_query_node(
-            with_node=qn.GetBasicCurrentEpochInfo()
+        _res = await self.client.execute(
+            command=cmd.GetBasicCurrentEpochInfo()
         )
         if _res.is_ok():
-            _cei: pgql_type.BasicCurrentEpochInfoGQL = _res.result_data
-            min_epoch = txn_expires_after or _cei.epoch_id
+            _cei: sui_prot.Epoch = _res.result_data
+            min_epoch = txn_expires_after or _cei.epoch
             tx_kind = self.builder.finish_for_inspect()
             chain_id = self.client.chain_id()
             pay_addy = self.signer_block.payer_address
             if gas_budget is None:
-                _res = await self.client.execute_query_node(
-                    with_node=qn.SimulateTransactionKind(
+                _res = await self.client.execute(
+                    command=cmd.SimulateTransactionKind(
                         tx_kind=tx_kind,
                         tx_meta={"sender": pay_addy},
-                        do_gas_selection=True,
+                        gas_selection=True,
                     )
                 )
                 if _res.is_ok():
@@ -739,8 +741,8 @@ class AsyncSuiTransaction(txbase):
         modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
-            result = await self.client.execute_query_node(
-                with_node=qn.GetObject(object_id=upgrade_cap)
+            result = await self.client.execute(
+                command=cmd.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")
@@ -816,8 +818,8 @@ class AsyncSuiTransaction(txbase):
         modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
-            result = await self.client.execute_query_node(
-                with_node=qn.GetObject(object_id=upgrade_cap)
+            result = await self.client.execute(
+                command=cmd.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")

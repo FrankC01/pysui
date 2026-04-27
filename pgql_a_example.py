@@ -6,19 +6,20 @@
 """Sample module for incremental buildout of Async Sui GraphQL RPC for Pysui 1.0.0."""
 
 import asyncio
-import base64
 
 # import logging
 
 # logging.basicConfig(level=logging.DEBUG)
 
-from pysui import PysuiConfiguration, SuiRpcResult, AsyncGqlClient, client_factory
+from pysui import PysuiConfiguration, SuiRpcResult, client_factory, AsyncClientBase
 from pysui.sui.sui_common.client import PysuiClient
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 from pysui.sui.sui_common.trxn_base import FundsSource
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
-import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_pgql.pgql_query as qn  # EC-5 fallback: queries without a SuiCommand
 import pysui.sui.sui_pgql.pgql_types as ptypes
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_pgql.pgql_utils import (
     async_get_all_owned_gas_objects,
     async_get_all_owned_objects,
@@ -41,17 +42,17 @@ def handle_result(result: SuiRpcResult) -> SuiRpcResult:
     return result
 
 
-async def do_coin_meta(client: AsyncGqlClient):
+async def do_coin_meta(client: AsyncClientBase):
     """Fetch meta data about coins, includes supply."""
     # Defaults to 0x2::sui::SUI
-    handle_result(await client.execute_query_node(with_node=qn.GetCoinMetaData()))
+    handle_result(await client.execute(command=cmd.GetCoinMetaData()))
 
 
-async def do_coins_for_type(client: AsyncGqlClient):
+async def do_coins_for_type(client: AsyncClientBase):
     """Fetch coins of specific type for owner."""
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetCoins(
+        await client.execute(
+            command=cmd.GetCoins(
                 owner=client.config.active_address,
                 coin_type="0x2::coin::Coin<0x2::sui::SUI>",
             )
@@ -59,8 +60,10 @@ async def do_coins_for_type(client: AsyncGqlClient):
     )
 
 
-async def do_objects_for_type(client: AsyncGqlClient):
-    """Fetch objects of specific type."""
+async def do_objects_for_type(client: AsyncSuiGQLClient):
+    """Fetch objects of specific type.
+    EC-5: GetObjectsForType has no SuiCommand equivalent.
+    """
     handle_result(
         await client.execute_query_node(
             with_node=qn.GetObjectsForType(
@@ -70,12 +73,10 @@ async def do_objects_for_type(client: AsyncGqlClient):
     )
 
 
-async def do_gas(client: AsyncGqlClient):
+async def do_gas(client: AsyncClientBase):
     """Fetch 0x2::sui::SUI (default) for owner."""
     result = handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetGas(owner=client.config.active_address)
-        )
+        await client.execute(command=cmd.GetGas(owner=client.config.active_address))
     )
     if result.is_ok():
         print(
@@ -83,8 +84,10 @@ async def do_gas(client: AsyncGqlClient):
         )
 
 
-async def do_all_gas(client: AsyncGqlClient):
-    """Fetch all coins for owner."""
+async def do_all_gas(client: AsyncSuiGQLClient):
+    """Fetch all coins for owner.
+    EC-5: async_get_all_owned_gas_objects is GraphQL-specific.
+    """
     try:
         # This will include all coins whether active, pruned or deleted.
         # Change only_active to True for only active coins
@@ -100,18 +103,19 @@ async def do_all_gas(client: AsyncGqlClient):
         raise ve
 
 
-async def do_gas_ids(client: AsyncGqlClient):
-    """Fetch coins by the ids."""
+async def do_gas_ids(client: AsyncSuiGQLClient):
+    """Fetch coins by the ids.
+    EC-5: GetMultipleGasObjects has no SuiCommand equivalent.
+    """
 
-    # Use coins found for active address to use to validate
-    # fetching by coin ids
-    result = await client.execute_query_node(
-        with_node=qn.GetCoins(owner=client.config.active_address)
+    # Use coins found for active address to validate fetching by coin ids
+    result = await client.execute(
+        command=cmd.GetCoins(owner=client.config.active_address)
     )
     if result.is_ok() and result.result_data.data:
         cids = [x.coin_object_id for x in result.result_data.data]
         result = handle_result(
-            await client.execute_query_node(
+            await client.execute_query_node(  # EC-5: GetMultipleGasObjects
                 with_node=qn.GetMultipleGasObjects(coin_object_ids=cids)
             )
         )
@@ -121,35 +125,33 @@ async def do_gas_ids(client: AsyncGqlClient):
         print(f"Data return from call is empty {result.result_data.data}")
 
 
-async def do_sysstate(client: AsyncGqlClient):
+async def do_sysstate(client: AsyncClientBase):
     """Fetch the most current system state summary."""
-    handle_result(
-        await client.execute_query_node(with_node=qn.GetLatestSuiSystemState())
-    )
+    handle_result(await client.execute(command=cmd.GetLatestSuiSystemState()))
 
 
-async def do_address_balance(client: AsyncGqlClient):
+async def do_address_balance(client: AsyncClientBase):
     """."""
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
+        await client.execute(
+            command=cmd.GetAddressCoinBalance(owner=client.config.active_address)
         )
     )
 
 
-async def do_address_balances(client: AsyncGqlClient):
+async def do_address_balances(client: AsyncClientBase):
     """Fetch all coin types and there total balances for owner.
 
     Demonstrates paging as well
     """
-    result = await client.execute_query_node(
-        with_node=qn.GetAddressCoinBalances(owner=client.config.active_address)
+    result = await client.execute(
+        command=cmd.GetAddressCoinBalances(owner=client.config.active_address)
     )
     handle_result(result)
     if result.is_ok():
         while result.result_data.next_cursor.hasNextPage:
-            result = await client.execute_query_node(
-                with_node=qn.GetAddressCoinBalances(
+            result = await client.execute(
+                command=cmd.GetAddressCoinBalances(
                     owner=client.config.active_address,
                     next_page=result.result_data.next_cursor,
                 )
@@ -158,17 +160,16 @@ async def do_address_balances(client: AsyncGqlClient):
         print("DONE")
 
 
-async def do_object(client: AsyncGqlClient):
+async def do_object(client: AsyncClientBase):
     """Fetch specific object data."""
-    handle_result(
-        await client.execute_query_node(with_node=qn.GetObject(object_id="0x6"))
-    )
+    handle_result(await client.execute(command=cmd.GetObject(object_id="0x6")))
 
 
-async def do_object_content(client: AsyncGqlClient):
+async def do_object_content(client: AsyncSuiGQLClient):
     """Fetch minimal object content, basically just reference information.
+    EC-5: GetObjectContent has no SuiCommand equivalent.
 
-    Set 'obect_id' to object address of choice.
+    Set 'object_id' to object address of choice.
     """
     gobj = qn.GetObjectContent(
         object_id="0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
@@ -177,8 +178,10 @@ async def do_object_content(client: AsyncGqlClient):
     handle_result(await client.execute_query_node(with_node=gobj))
 
 
-async def do_objects(client: AsyncGqlClient):
-    """Fetch all objects held by owner."""
+async def do_objects(client: AsyncSuiGQLClient):
+    """Fetch all objects held by owner.
+    EC-5: async_get_all_owned_objects is GraphQL-specific.
+    """
     try:
         objects: list = await async_get_all_owned_objects(
             client.config.active_address, client
@@ -189,13 +192,13 @@ async def do_objects(client: AsyncGqlClient):
         raise ve
 
 
-async def do_past_object(client: AsyncGqlClient):
+async def do_past_object(client: AsyncClientBase):
     """Fetch a past object.
     To run, change the objectID str and version int.
     """
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetPastObject(
+        await client.execute(
+            command=cmd.GetPastObject(
                 object_id="0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
                 version=3,
             )
@@ -203,8 +206,9 @@ async def do_past_object(client: AsyncGqlClient):
     )
 
 
-async def do_multiple_object_versions(client: AsyncGqlClient):
+async def do_multiple_object_versions(client: AsyncSuiGQLClient):
     """Fetchs object details by version.
+    EC-5: GetMultipleVersionedObjects has no SuiCommand equivalent.
     To run, change the objectID str and version int.
     """
     object_versions = [
@@ -220,8 +224,10 @@ async def do_multiple_object_versions(client: AsyncGqlClient):
     )
 
 
-async def do_multiple_object_content(client: AsyncGqlClient):
-    """Fetch minimal object content, basically just reference information."""
+async def do_multiple_object_content(client: AsyncSuiGQLClient):
+    """Fetch minimal object content, basically just reference information.
+    EC-5: GetMultipleObjectContent has no SuiCommand equivalent.
+    """
     gobj = qn.GetMultipleObjectContent(
         object_ids=[
             "0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
@@ -231,14 +237,14 @@ async def do_multiple_object_content(client: AsyncGqlClient):
     handle_result(await client.execute_query_node(with_node=gobj))
 
 
-async def do_objects_for(client: AsyncGqlClient):
+async def do_objects_for(client: AsyncClientBase):
     """Fetch specific objects by their ids.
 
     These are test IDs, replace to run.
     """
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetMultipleObjects(
+        await client.execute(
+            command=cmd.GetMultipleObjects(
                 object_ids=[
                     "0x2803dd7600c24b4e26e9478e8f32424985c57a7e3fcdd3db7fa063cdf5d4c396",
                     "0x285c48a3bc7440f08ad91caf6955f8b9b8c2db69e4b4c5071aa94c2468689d93",
@@ -248,62 +254,69 @@ async def do_objects_for(client: AsyncGqlClient):
     )
 
 
-async def do_dynamics(client: AsyncGqlClient):
+async def do_dynamics(client: AsyncClientBase):
     """Get objects dynamic field and dynamic object fields.
 
     This is test ID, replace to run.
     """
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetDynamicFields(
+        await client.execute(
+            command=cmd.GetDynamicFields(
                 object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed"
             )
         )
     )
 
 
-async def do_event(client: AsyncGqlClient):
-    """."""
+async def do_event(client: AsyncClientBase):
+    """Fetch events matching a filter.
+    EC-3: GetEvents raises NotImplementedError on gRPC — returns SuiRpcResult with error.
+    """
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetEvents(event_filter={"sender": "0x0"})
-        )
+        await client.execute(command=cmd.GetEvents(event_filter={"sender": "0x0"}))
     )
 
 
-async def do_configs(client: AsyncGqlClient):
-    """Fetch the GraphQL, Protocol and System configurations."""
+async def do_configs(client: AsyncSuiGQLClient):
+    """Fetch the GraphQL, Protocol and System configurations.
+    EC-5: rpc_config is a GraphQL-specific property.
+    """
     print(client.rpc_config.to_json(indent=2))
 
 
-async def do_service_config(client: AsyncGqlClient):
-    """Fetch the GraphQL, Protocol and System configurations."""
-    print(client.rpc_config.serviceConfig.to_json(indent=2))
-
-
-async def do_chain_id(client: AsyncGqlClient):
-    """Fetch the current environment chain_id.
-
-    Demonstrates overriding serialization
+async def do_service_config(client: AsyncSuiGQLClient):
+    """Fetch the GraphQL service configuration.
+    EC-5: rpc_config is a GraphQL-specific property.
     """
-    print(client.chain_id)
+    print(client.rpc_config().serviceConfig.to_json(indent=2))
 
 
-async def do_tx(client: AsyncGqlClient):
+async def do_chain_id(client: AsyncSuiGQLClient):
+    """Fetch the current environment chain_id.
+    EC-5: chain_id is a GraphQL-specific property.
+    """
+    print(client.chain_id())
+
+
+async def do_tx(client: AsyncClientBase):
     """Fetch specific transaction by it's digest."""
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetTx(digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz")
+        await client.execute(
+            command=cmd.GetTx(digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz")
         )
     )
 
 
-async def do_txs(client: AsyncGqlClient):
+async def do_txs(client: AsyncSuiGQLClient):
     """Fetch transactions.
+    EC-5: GetMultipleTx (batch by digest) is not supported by GraphQL via SuiCommand.
+    Use GetFilteredTx for filtered queries over GraphQL.
 
     We loop through 3 pages.
     """
-    result = await client.execute_query_node(with_node=qn.GetMultipleTx())
+    result = await client.execute_query_node(  # EC-5: gql_class=None for GetMultipleTx
+        with_node=qn.GetMultipleTx()
+    )
     handle_result(result)
     if result.is_ok():
         max_page = 3
@@ -320,22 +333,21 @@ async def do_txs(client: AsyncGqlClient):
         print("DONE")
 
 
-async def do_filter_txs(client: AsyncGqlClient):
+async def do_filter_txs(client: AsyncClientBase):
     """Fetch all transactions matching filter.
+    EC-3: GetFilteredTx raises NotImplementedError on gRPC — returns SuiRpcResult with error.
 
     See Sui GraphQL schema for TransactionFilter options.
     """
     obj_filter = {"affectedObject": "ENTER OBJECT_ID HERE"}
-    result = await client.execute_query_node(
-        with_node=qn.GetFilteredTx(tx_filter=obj_filter)
-    )
+    result = await client.execute(command=cmd.GetFilteredTx(tx_filter=obj_filter))
     while result.is_ok():
         txs: ptypes.TransactionSummariesGQL = result.result_data
         for tx in txs.data:
             print(f"Digest: {tx.digest} timestamp: {tx.timestamp}")
         if txs.next_cursor.hasNextPage:
-            result = await client.execute_query_node(
-                with_node=qn.GetFilteredTx(
+            result = await client.execute(
+                command=cmd.GetFilteredTx(
                     tx_filter=obj_filter,
                     next_page=txs.next_cursor,
                 )
@@ -344,112 +356,115 @@ async def do_filter_txs(client: AsyncGqlClient):
             break
 
 
-async def do_tx_kind(client: AsyncGqlClient):
+async def do_tx_kind(client: AsyncClientBase):
     """Fetch the PTB details from transaction."""
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetTxKind(digest="ENTER TRANSACTION DIGESST HERE")
+        await client.execute(
+            command=cmd.GetTxKind(digest="ENTER TRANSACTION DIGEST HERE")
         )
     )
 
 
-async def do_staked_sui(client: AsyncGqlClient):
+async def do_staked_sui(client: AsyncClientBase):
     """."""
     owner = client.config.active_address
-    handle_result(
-        await client.execute_query_node(with_node=qn.GetDelegatedStakes(owner=owner))
-    )
+    handle_result(await client.execute(command=cmd.GetDelegatedStakes(owner=owner)))
 
 
-async def do_latest_cp(client: AsyncGqlClient):
+async def do_latest_cp(client: AsyncClientBase):
     """."""
-    qnode = qn.GetLatestCheckpointSequence()
-    # print(qnode.query_as_string())
-    handle_result(await client.execute_query_node(with_node=qnode))
+    handle_result(await client.execute(command=cmd.GetLatestCheckpoint()))
 
 
-async def do_sequence_cp(client: AsyncGqlClient):
+async def do_sequence_cp(client: AsyncClientBase):
     """."""
-    result = await client.execute_query_node(with_node=qn.GetLatestCheckpointSequence())
+    result = await client.execute(command=cmd.GetLatestCheckpoint())
     if result.is_ok():
         cp: ptypes.CheckpointGQL = result.result_data
         handle_result(
-            await client.execute_query_node(
-                with_node=qn.GetCheckpointBySequence(sequence_number=cp.sequence_number)
+            await client.execute(
+                command=cmd.GetCheckpointBySequence(sequence_number=cp.sequence_number)
             )
         )
     else:
         print(result.result_string)
 
 
-async def do_checkpoints(client: AsyncGqlClient):
-    """."""
+async def do_checkpoints(client: AsyncSuiGQLClient):
+    """Fetch checkpoint list.
+    EC-5: GetCheckpoints has no SuiCommand equivalent.
+    """
     handle_result(await client.execute_query_node(with_node=qn.GetCheckpoints()))
 
 
-async def do_refgas(client: AsyncGqlClient):
-    """Fetch the most current system state summary."""
+async def do_refgas(client: AsyncSuiGQLClient):
+    """Fetch the current reference gas price.
+    EC-5: GetReferenceGasPrice has no SuiCommand equivalent.
+    """
     handle_result(await client.execute_query_node(with_node=qn.GetReferenceGasPrice()))
 
 
-async def do_nameservice(client: AsyncGqlClient):
+async def do_nameservice(client: AsyncClientBase):
     """Fetch the most current system state summary."""
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetNameServiceAddress(name="gql-frank")
+        await client.execute(command=cmd.GetNameServiceAddress(name="gql-frank"))
+    )
+
+
+async def do_owned_nameservice(client: AsyncClientBase):
+    """Fetch the most current system state summary."""
+    handle_result(
+        await client.execute(
+            command=cmd.GetNameServiceNames(owner=client.config.active_address)
         )
     )
 
 
-async def do_owned_nameservice(client: AsyncGqlClient):
-    """Fetch the most current system state summary."""
-    handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetNameServiceNames(owner=client.config.active_address)
-        )
-    )
-
-
-async def do_all_validators(client: AsyncGqlClient):
+async def do_all_validators(client: AsyncClientBase):
     """Fetch all validators from current Epoch."""
-    result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
+    result = await client.execute(command=cmd.GetCurrentValidators())
     while result.is_ok():
         v_set: ptypes.ValidatorSetsGQL = result.result_data
         print(v_set.to_json(indent=2))
         if v_set.next_cursor.hasNextPage:
-            result = await client.execute_query_node(
-                with_node=qn.GetCurrentValidators(next_page=v_set.next_cursor)
+            result = await client.execute(
+                command=cmd.GetCurrentValidators(next_page=v_set.next_cursor)
             )
         else:
             break
 
 
-async def do_validators(client: AsyncGqlClient):
+async def do_validators(client: AsyncClientBase):
     """Fetch the most current validator detail."""
-    handle_result(await client.execute_query_node(with_node=qn.GetCurrentValidators()))
+    handle_result(await client.execute(command=cmd.GetCurrentValidators()))
 
 
-async def do_validator_xchange_rates(client: AsyncGqlClient):
-    """Get exchange rate table entries."""
+async def do_validator_xchange_rates(client: AsyncSuiGQLClient):
+    """Get exchange rate table entries.
+    EC-5: GetValidatorExchangeRates has no SuiCommand equivalent.
+    """
 
     # Get list of validators
-    result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
+    result = await client.execute(command=cmd.GetCurrentValidators())
     if result.is_ok():
         # Extract the first validator's exchange rate object
         v_set: ptypes.ValidatorSetsGQL = result.result_data
         if v_set.validators:
             vexr_addy = v_set.validators[0].exchangeRateTableAddress
-            er_results = await client.execute_query_node(
-                with_node=qn.GetValidatorExchangeRates(
-                    validator_exchange_address=vexr_addy, epoch_ids=[0, 1, 2]
+            er_results = (
+                await client.execute_query_node(  # EC-5: GetValidatorExchangeRates
+                    with_node=qn.GetValidatorExchangeRates(
+                        validator_exchange_address=vexr_addy, epoch_ids=[0, 1, 2]
+                    )
                 )
             )
             if er_results.is_ok():
                 print(er_results.result_data.to_json(indent=2))
 
 
-async def do_protcfg(client: AsyncGqlClient):
+async def do_protcfg(client: AsyncSuiGQLClient):
     """Fetch the most current system state summary.
+    EC-5: protocol() and GetProtocolConfig are GraphQL-specific.
 
     By default, the current protocol version is used. You
     can set an `int` value otherwise to get past protocol states.
@@ -460,13 +475,13 @@ async def do_protcfg(client: AsyncGqlClient):
     )
 
 
-async def do_struct(client: AsyncGqlClient):
+async def do_struct(client: AsyncClientBase):
     """Fetch structure by package::module::struct_name.
 
     This is a testnet object!!!
     """
-    result = await client.execute_query_node(
-        with_node=qn.GetStructure(
+    result = await client.execute(
+        command=cmd.GetStructure(
             package="0x2",
             module_name="coin",
             structure_name="CoinMetadata",
@@ -476,13 +491,13 @@ async def do_struct(client: AsyncGqlClient):
         print(result.result_data.to_json(indent=2))
 
 
-async def do_structs(client: AsyncGqlClient):
+async def do_structs(client: AsyncClientBase):
     """Fetch structures by package::module.
 
     This is a testnet object!!!
     """
-    result = await client.execute_query_node(
-        with_node=qn.GetStructures(
+    result = await client.execute(
+        command=cmd.GetStructures(
             package="0x2",
             module_name="coin",
         )
@@ -491,13 +506,13 @@ async def do_structs(client: AsyncGqlClient):
         print(result.result_data.to_json(indent=2))
 
 
-async def do_func(client: AsyncGqlClient):
+async def do_func(client: AsyncClientBase):
     """Fetch structures by package::module.
 
     This is a testnet object!!!
     """
-    result = await client.execute_query_node(
-        with_node=qn.GetFunction(
+    result = await client.execute(
+        command=cmd.GetFunction(
             package="0x2",
             module_name="coin",
             function_name="join",
@@ -507,13 +522,13 @@ async def do_func(client: AsyncGqlClient):
         print(result.result_data.to_json(indent=2))
 
 
-async def do_funcs(client: AsyncGqlClient):
+async def do_funcs(client: AsyncClientBase):
     """Fetch structures by package::module.
 
     This is a testnet object!!!
     """
-    result = await client.execute_query_node(
-        with_node=qn.GetFunctions(
+    result = await client.execute(
+        command=cmd.GetFunctions(
             package="0x2",
             module_name="coin",
         )
@@ -522,13 +537,13 @@ async def do_funcs(client: AsyncGqlClient):
         print(result.result_data.to_json(indent=2))
 
 
-async def do_module(client: AsyncGqlClient):
+async def do_module(client: AsyncClientBase):
     """Fetch a module from package.
 
     This is a testnet object!!!
     """
-    result = await client.execute_query_node(
-        with_node=qn.GetModule(
+    result = await client.execute(
+        command=cmd.GetModule(
             package="0x2",
             module_name="coin",
         )
@@ -537,13 +552,13 @@ async def do_module(client: AsyncGqlClient):
         print(result.result_data.to_json(indent=2))
 
 
-async def do_package(client: AsyncGqlClient):
+async def do_package(client: AsyncClientBase):
     """Fetch a module from package.
 
     This is a testnet object!!!
     """
-    result = await client.execute_query_node(
-        with_node=qn.GetPackage(
+    result = await client.execute(
+        command=cmd.GetPackage(
             package="0x2",
         )
     )
@@ -551,24 +566,22 @@ async def do_package(client: AsyncGqlClient):
         print(result.result_data.to_json(indent=2))
 
 
-async def do_epoch(client: AsyncGqlClient):
+async def do_epoch(client: AsyncClientBase):
     """Fetch current epoch info (omit epoch_id for current, or pass an int for a specific epoch)."""
-    handle_result(await client.execute_query_node(with_node=qn.GetEpoch()))
+    handle_result(await client.execute(command=cmd.GetEpoch()))
 
 
-async def do_package_versions(client: AsyncGqlClient):
+async def do_package_versions(client: AsyncClientBase):
     """Fetch all versions of a Move package.
 
     Change package_address to the storage address of any version of the target package.
     """
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetPackageVersions(package_address="0x2")
-        )
+        await client.execute(command=cmd.GetPackageVersions(package_address="0x2"))
     )
 
 
-async def do_dry_run(client: AsyncGqlClient):
+async def do_dry_run(client: AsyncClientBase):
     """Execute a simulate (dry run)."""
 
     txer: AsyncSuiTransaction = await client.transaction()
@@ -577,24 +590,25 @@ async def do_dry_run(client: AsyncGqlClient):
     tx_data = await txer.transaction_data()
 
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.SimulateTransaction(tx_bytestr=tx_data.serialize())
+        await client.execute(
+            command=cmd.SimulateTransaction(tx_bytestr=tx_data.serialize())
         )
     )
 
 
 async def do_dry_run_txkind(txer: AsyncSuiTransaction):
     """Execute a simulate (dry run) with just the TransactionKind."""
-
-    sim = qn.SimulateTransactionKind(
-        tx_kind=txer.raw_kind(),
-        tx_meta={"sender": txer.client.config.active_address},
+    handle_result(
+        await txer.client.execute(
+            command=cmd.SimulateTransactionKind(
+                tx_kind=txer.raw_kind(),
+                tx_meta={"sender": txer.client.config.active_address},
+            )
+        )
     )
 
-    handle_result(await txer.client.execute_query_node(with_node=sim))
 
-
-async def inspect_example(client: AsyncGqlClient):
+async def inspect_example(client: AsyncClientBase):
     """Execute a dryrun just on the TransactionKind of a transaction."""
 
     txer: AsyncSuiTransaction = await client.transaction()
@@ -603,14 +617,14 @@ async def inspect_example(client: AsyncGqlClient):
     await do_dry_run_txkind(txer)
 
 
-async def do_split_any_half(client: AsyncGqlClient):
+async def do_split_any_half(client: AsyncClientBase):
     """Split the 1st coin in wallet to another another equal to 1/2 in wallet.
 
     This will only run if there is more than 1 coin in wallet.
     """
 
-    result = await client.execute_query_node(
-        with_node=qn.GetCoins(owner=client.config.active_address)
+    result = await client.execute(
+        command=cmd.GetCoins(owner=client.config.active_address)
     )
     if result.is_ok() and len(result.result_data.data) > 1:
         amount = int(int(result.result_data.data[0].balance) / 2)
@@ -620,25 +634,25 @@ async def do_split_any_half(client: AsyncGqlClient):
             transfers=[scres], recipient=client.config.active_address
         )
         handle_result(
-            await client.execute_query_node(
-                with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+            await client.execute(
+                command=cmd.ExecuteTransaction(**await txer.build_and_sign())
             )
         )
 
 
-async def do_execute(client: AsyncGqlClient):
+async def do_execute(client: AsyncClientBase):
     """Execute a transaction."""
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+        await client.execute(
+            command=cmd.ExecuteTransaction(**await txer.build_and_sign())
         )
     )
 
 
-async def do_stake(client: AsyncGqlClient):
+async def do_stake(client: AsyncClientBase):
     """Stake some coinage.
 
     This uses a testnet validator (Blockscope.net). For different environment
@@ -656,25 +670,23 @@ async def do_stake(client: AsyncGqlClient):
     )
     # Uncomment to simulate (dry run)
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.SimulateTransaction(tx_bytestr=await txer.build())
+        await client.execute(
+            command=cmd.SimulateTransaction(tx_bytestr=await txer.build())
         )
     )
     # Uncomment to execute the stake
     # handle_result(
-    #     await client.execute_query_node(
-    #         with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    #     await client.execute(
+    #         command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     #     )
     # )
 
 
-async def do_unstake(client: AsyncGqlClient):
+async def do_unstake(client: AsyncClientBase):
     """Unstake first Staked Sui if address has any."""
 
     owner = client.config.active_address
-    result = await client.execute_query_node(
-        with_node=qn.GetDelegatedStakes(owner=owner)
-    )
+    result = await client.execute(command=cmd.GetDelegatedStakes(owner=owner))
     if result.is_ok() and result.result_data.staked_coins:
         txer: AsyncSuiTransaction = await client.transaction()
 
@@ -684,15 +696,15 @@ async def do_unstake(client: AsyncGqlClient):
         )
         # Uncomment to simulate (dry run)
         handle_result(
-            await client.execute_query_node(
-                with_node=qn.SimulateTransaction(tx_bytestr=await txer.build())
+            await client.execute(
+                command=cmd.SimulateTransaction(tx_bytestr=await txer.build())
             )
         )
 
         # Uncomment to execute the stake
         # handle_result(
-        #     await client.execute_query_node(
-        #         with_node=qn.ExecuteTransaction(**txer.build_and_sign())
+        #     await client.execute(
+        #         command=cmd.ExecuteTransaction(**await txer.build_and_sign())
         #     )
         # )
 
@@ -700,7 +712,7 @@ async def do_unstake(client: AsyncGqlClient):
         print(f"No staked Sui for {owner}")
 
 
-async def do_sui_coin_to_account(client: AsyncGqlClient):
+async def do_sui_coin_to_account(client: AsyncClientBase):
     """Moves Sui mists to an account."""
     # Print before
     print("Before Sui coin balances")
@@ -715,19 +727,19 @@ async def do_sui_coin_to_account(client: AsyncGqlClient):
     )
     # Uncomment to simulate (dry run)
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.SimulateTransaction(tx_bytestr=await txer.build())
+        await client.execute(
+            command=cmd.SimulateTransactionKind(
+                tx_kind=txer.raw_kind(),
+                tx_meta={"sender": client.config.active_address},
+            )
         )
     )
     # Uncomment to Execute
     # txdict = await txer.build_and_sign()
-    # result = await client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
-    # if result.is_ok():
-    #     print("After transfer to address Sui coin balances")
-    #     await do_address_balance(client)
+    # handle_result(await client.execute(command=cmd.ExecuteTransaction(**txdict)))
 
 
-async def do_account_to_sui_coin(client: AsyncGqlClient):
+async def do_account_to_sui_coin(client: AsyncClientBase):
     """Moves account balance to Sui coin and transfer to current address.
 
     Execution, vs. DryRun, also demonstrates funding the transaction with sender account balance vs. gas coins.
@@ -735,8 +747,8 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
     # If set_balance is None, will use the total account balance
     set_balance: int = 1000000
     # Get the current balance
-    curr_balance_res = await client.execute_query_node(
-        with_node=qn.GetAddressCoinBalance(owner=client.config.active_address)
+    curr_balance_res = await client.execute(
+        command=cmd.GetAddressCoinBalance(owner=client.config.active_address)
     )
     # Validate existing funds exist.
     if curr_balance_res.is_ok():
@@ -758,15 +770,15 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
 
         # Uncomment to dry run
         # As we are using the address balance to pay for transaction
-        # we want to get an estimate that reflects that, so setting `do_gas_selection=True` does
+        # we want to get an estimate that reflects that, so setting `gas_selection=True` does
         # that.
 
         handle_result(
-            await client.execute_query_node(
-                with_node=qn.SimulateTransactionKind(
+            await client.execute(
+                command=cmd.SimulateTransactionKind(
                     tx_kind=txer.raw_kind(),
                     tx_meta={"sender": client.config.active_address},
-                    do_gas_selection=True,
+                    gas_selection=True,
                 )
             )
         )
@@ -776,7 +788,7 @@ async def do_account_to_sui_coin(client: AsyncGqlClient):
 
         # txdict = await txer.build_and_sign(use_account_for_gas=True)
         # handle_result(
-        #     await client.execute_query_node(with_node=qn.ExecuteTransaction(**txdict))
+        #     await client.execute(command=cmd.ExecuteTransaction(**txdict))
         # )
 
 

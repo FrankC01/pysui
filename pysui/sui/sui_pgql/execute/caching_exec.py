@@ -19,6 +19,7 @@ from pysui.sui.sui_pgql.pgql_utils import (
 )
 import pysui.sui.sui_bcs.bcs as bcs
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_pgql.pgql_types as ptypes
 from .cache import AsyncObjectCache, ObjectCacheEntry
 from .caching_txn import CachingTransaction
@@ -338,8 +339,8 @@ class GqlCachingTransactionExecutor(_BaseCachingExecutor):
         :return: The results of the execution
         :rtype: ptypes.ExecutionResultGQL
         """
-        result = await self._client.execute_query_node(
-            with_node=qn.ExecuteTransaction(
+        result = await self._client.execute(
+            command=cmd.ExecuteTransaction(
                 tx_bytestr=txn_str,
                 sig_array=txn_sigs,
             )

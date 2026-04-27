@@ -53,3 +53,32 @@ and then install packages into it.
     * ``async-gas`` This will display Sui gas for each address found in the
       SUI configuration
     * ``wallet`` This emulates a number of the ``sui client ...`` operations
+
+Quick Start — Unified Client Interface
+--------------------------------------
+
+The recommended way to interact with Sui is through the **Unified Client Interface
+(UCI)**: a single ``await client.execute(command=...)`` call that works
+transparently with any configured transport (GraphQL or gRPC).  Switching
+transports requires only a configuration change — no application code changes.
+
+.. code-block:: python
+   :linenos:
+
+    import asyncio
+    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import PysuiConfiguration, client_factory, handle_result
+
+    async def main():
+        # Use SUI_GRPC_GROUP to target gRPC instead
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        async with client_factory(cfg) as client:
+            result = await client.execute(
+                command=cmd.GetGas(owner=client.config.active_address)
+            )
+            handle_result(result)
+
+    if __name__ == "__main__":
+        asyncio.run(main())
+
+See :doc:`sui_commands` for the full list of available commands.

@@ -93,10 +93,8 @@ Copy it to a local script and run with:
 
     from pysui import PysuiConfiguration, SuiRpcResult, client_factory
 
-    import pysui.sui.sui_pgql.pgql_query as qn
+    import pysui.sui.sui_common.sui_commands as cmd
     import pysui.sui.sui_pgql.pgql_async_txn as gql_async
-
-    import pysui.sui.sui_grpc.pgrpc_requests as rn
     import pysui.sui.sui_grpc.pgrpc_async_txn as grpc_async
 
 
@@ -111,8 +109,8 @@ Copy it to a local script and run with:
             transfers=scres, recipient=client.config.active_address
         )
         txdict = await txer.build_and_sign()
-        result: SuiRpcResult = await client.execute_query_node(
-            with_node=qn.ExecuteTransaction(**txdict)
+        result: SuiRpcResult = await client.execute(
+            command=cmd.ExecuteTransaction(**txdict)
         )
         if result.is_ok():
             print(result.result_data.to_json(indent=2))
@@ -132,7 +130,7 @@ Copy it to a local script and run with:
         )
         txdict = await txer.build_and_sign()
         result: SuiRpcResult = await client.execute(
-            request=rn.ExecuteTransaction(**txdict)
+            command=cmd.ExecuteTransaction(**txdict)
         )
         if result.is_ok():
             print(result.result_data.to_json(indent=2))

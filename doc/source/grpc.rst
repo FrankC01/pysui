@@ -47,8 +47,8 @@ Fetch Example
    :linenos:
 
     import asyncio
+    import pysui.sui.sui_common.sui_commands as cmd
     from pysui import PysuiConfiguration, SuiRpcResult, client_factory
-    import pysui.sui.sui_grpc.pgrpc_requests as rn
 
     async def get_object_example():
         """Fetch an object by ID."""
@@ -56,7 +56,7 @@ Fetch Example
         client = client_factory(cfg)
 
         result: SuiRpcResult = await client.execute(
-            request=rn.GetObject(
+            command=cmd.GetObject(
                 object_id="0x09f29cd8795c171136f0da589516bfdf4ca0f77084550830fe20611e06018dc7"
             )
         )

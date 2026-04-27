@@ -16,6 +16,7 @@ from pysui.sui.sui_common.trxn_base import _TransactionBase as txbase
 from pysui.sui.sui_bcs import bcs
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
 from .caching_tx_builder import CachingTransactionBuilder, PureInput
@@ -90,8 +91,8 @@ class CachingTransaction(txbase):
             tv.TypeValidator.check_target_triplet(target)
         )
 
-        result = await self.client.execute_query_node(
-            with_node=qn.GetFunction(
+        result = await self.client.execute(
+            command=cmd.GetFunction(
                 package=package,
                 module_name=package_module,
                 function_name=package_function,
@@ -108,7 +109,7 @@ class CachingTransaction(txbase):
             )
         raise ValueError(f"Unresolvable target {target}")
 
-    def _build_txn_data(
+    async def _build_txn_data(
         self,
         gas_budget: int,
         use_gas_objects: Union[bcs.ObjectReference, list[bcs.ObjectReference]],
@@ -133,10 +134,16 @@ class CachingTransaction(txbase):
         tx_kind = self.builder.finish_for_inspect()
         # Convert single ObjectReference to list if needed
         gas_objects = use_gas_objects if isinstance(use_gas_objects, list) else [use_gas_objects]
+        _res = await self.client.execute(
+            command=cmd.GetBasicCurrentEpochInfo()
+        )
+        if not _res.is_ok():
+            raise ValueError(f"Error accessing gas price: {_res.result_string}")
+        _cei = _res.result_data
         gas_data: bcs.GasData = bcs.GasData(
             gas_objects,
             bcs.Address.from_str(signer_block.payer_address),
-            self.client.current_gas_price,
+            _cei.reference_gas_price,
             gas_budget + gas_source_draw,
         )
         return bcs.TransactionData(
@@ -171,7 +178,7 @@ class CachingTransaction(txbase):
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
-        return self._build_txn_data(gas_budget, use_gas_objects, signer_block)
+        return await self._build_txn_data(gas_budget, use_gas_objects, signer_block)
 
     async def build(
         self,
@@ -635,8 +642,8 @@ class CachingTransaction(txbase):
         modules, dependencies, digest = self._compile_source(project_path, args_list)
         # Resolve upgrade cap to ObjectRead if needed
         if isinstance(upgrade_cap, str):
-            result = await self.client.execute_query_node(
-                with_node=qn.GetObject(object_id=upgrade_cap)
+            result = await self.client.execute(
+                command=cmd.GetObject(object_id=upgrade_cap)
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")

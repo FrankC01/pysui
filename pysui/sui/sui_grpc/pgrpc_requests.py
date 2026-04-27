@@ -138,6 +138,18 @@ class GetCurrentValidators(GetEpoch):
         super().__init__(field_mask=["system_state.validators.active_validators"])
 
 
+class GetBasicCurrentEpochInfo(GetEpoch):
+    """GetEpoch narrowed to the four fields needed for gas and expiry building."""
+
+    def __init__(self):
+        """Initializer."""
+        super().__init__(field_mask=["epoch", "reference_gas_price", "start", "end"])
+
+    def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.Epoch:
+        """Return the Epoch message directly."""
+        return gepoch.epoch
+
+
 OBJECT_DEFAULT_FIELDS: list[str] = [
     "owner",
     "version",

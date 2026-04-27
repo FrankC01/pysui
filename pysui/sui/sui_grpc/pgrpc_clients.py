@@ -15,10 +15,13 @@ import urllib.parse as urlparse
 
 import betterproto2
 import dataclasses_json
+from deprecated.sphinx import deprecated
 from grpclib.exceptions import GRPCError
 
 from pysui import SDK_CURRENT_VERSION
 from pysui.sui.sui_common.client import PysuiClient
+from pysui.abstracts.async_client import AsyncClientBase
+from pysui.sui.sui_common.sui_command import SuiCommand
 
 from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
@@ -62,7 +65,7 @@ def _map_pconstraints(in_bound: sui_prot.ProtocolConfig):
     return ProtocolConfig(TransactionConstraints(*ordered_list))
 
 
-class SuiGrpcClient(PysuiClient):
+class SuiGrpcClient(AsyncClientBase, PysuiClient):
     """Asynchronous gRPC client."""
 
     def __init__(
@@ -88,14 +91,14 @@ class SuiGrpcClient(PysuiClient):
     @property
     async def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
-        result = await self.execute(request=GetEpoch())
+        result = await self.execute_grpc_request(request=GetEpoch())
         if result.is_ok():
             return result.result_data.epoch.reference_gas_price
         raise ValueError(f"Error accessing gRPC {result.result_string}")
 
     async def protocol(self, epoch_number: Optional[int] = None) -> ProtocolConfig:
         """Fetch the protocol constraints."""
-        result = await self.execute(
+        result = await self.execute_grpc_request(
             request=GetEpoch(
                 epoch_number=epoch_number,
                 field_mask=["protocol_config"],
@@ -113,6 +116,14 @@ class SuiGrpcClient(PysuiClient):
         for channel in self._channels:
             channel.close()
         self._channel.close()
+
+    async def __aenter__(self) -> "SuiGrpcClient":
+        """Enter async context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit async context manager and close channel."""
+        self.close()
 
     async def transaction(
         self,
@@ -140,13 +151,10 @@ class SuiGrpcClient(PysuiClient):
         kwargs["gas_price"] = await self.current_gas_price
         return AsyncSuiTransaction(**kwargs)
 
-    async def execute(self, *, request: absreq.PGRPC_Request, **kwargs) -> SuiRpcResult:
-        """execute calls the request's service
-
-        kwargs can include:
-            timeout: "float | None" = None,
-            deadline: "grpclib.metadata.Deadline | None" = None,
-            metadata: "dict | None" = None, # Sets additional headers
+    async def _dispatch_grpc_request(
+        self, request: absreq.PGRPC_Request, **kwargs
+    ) -> SuiRpcResult:
+        """Resolve gRPC service from request and execute it.
 
         :param request: Pysui gRPC request
         :type request: PGRPC_Request
@@ -210,6 +218,60 @@ class SuiGrpcClient(PysuiClient):
             traceback_str = traceback.format_exc()
             logger.error(traceback_str)
             return SuiRpcResult(False, e.args)
+
+    @deprecated(
+        version="0.99.0",
+        reason=(
+            "Use AsyncClientBase.execute(command=...) with a SuiCommand instance instead. "
+            "No removal timeline set."
+        ),
+    )
+    async def execute_grpc_request(
+        self, *, request: absreq.PGRPC_Request, **kwargs
+    ) -> SuiRpcResult:
+        """Execute a raw gRPC request directly.
+
+        kwargs can include:
+            timeout: "float | None" = None,
+            deadline: "grpclib.metadata.Deadline | None" = None,
+            metadata: "dict | None" = None, # Sets additional headers
+
+        :param request: Pysui gRPC request
+        :type request: PGRPC_Request
+        :return: Results of execution
+        :rtype: SuiRpcResult
+        """
+        return await self._dispatch_grpc_request(request, **kwargs)
+
+    async def execute(
+        self,
+        *,
+        command: SuiCommand,
+        timeout: float | None = None,
+        headers: dict | None = None,
+    ) -> SuiRpcResult:
+        """Execute a SuiCommand against the gRPC protocol.
+
+        :param command: A SuiCommand instance describing the operation
+        :param timeout: Optional timeout in seconds
+        :param headers: Optional headers/metadata passed to the transport
+        :return: SuiRpcResult wrapping the response or error
+        :rtype: SuiRpcResult
+        """
+        if not isinstance(command, SuiCommand):
+            return SuiRpcResult(
+                False, f"Expected SuiCommand, got {type(command).__name__}", None
+            )
+        try:
+            request = command.grpc_request()
+        except NotImplementedError:
+            return SuiRpcResult(False, "Command not supported by gRPC", None)
+        kwargs: dict = {}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        if headers is not None:
+            kwargs["metadata"] = headers
+        return await self._dispatch_grpc_request(request, **kwargs)
 
 
 def _clean_url(url: str) -> tuple[str | None, int | None] | None:

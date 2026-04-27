@@ -41,6 +41,22 @@ parameters on build(), build_and_sign(), and transaction_data()
   - `PysuiClient` ABC enforcement: missing abstract methods raise `TypeError`; fully-implemented subclass instantiates correctly
   - `DeprecationWarning` verified on `SuiConfig`, `SuiClient` sync/async (JSON-RPC), `SuiGQLClient` (sync GraphQL), and `SuiTransaction` (sync GraphQL)
 
+- `AsyncClientBase` abstract base class (`pysui/abstracts/async_client.py`): replaces `PysuiClient` as the shared async interface; declares `execute(command, *, timeout=None, headers=None) -> SuiRpcResult` as a fourth abstract method alongside `transaction()`, `__aenter__()`, and `__aexit__()`; `client_factory()` return annotation updated from `PysuiClient` to `AsyncClientBase`
+
+- `SuiCommand` ABC (`pysui/sui/sui_common/sui_command.py`) and 41 built-in subclasses (`pysui/sui/sui_common/sui_commands.py`): protocol-neutral request objects forming the **Unified Client Interface (UCI)**; `await client.execute(command=...)` dispatches identically on both `AsyncSuiGQLClient` and `SuiGrpcClient`; three asymmetric commands (`GetCurrentValidators`, `GetStructures`, `GetFunctions`) auto-paginate transparently on GraphQL; five commands are gRPC-only (`GetCheckpointByDigest`, `GetMultipleTx`, `GetServiceInfo`, `SubscribeCheckpoint`, `VerifySignature`); two are GQL-only (`GetFilteredTx`, `GetEvents`); all 41 subclasses exported from `pysui`
+
+- SC sibling query nodes in `pysui/sui/sui_pgql/pgql_query.py`: eight GQL-side protocol bridges whose `encode_fn()` produces gRPC proto dataclasses directly — `GetCoinMetaDataSC`, `GetAddressCoinBalanceSC`, `GetAddressCoinBalancesSC`, `GetEpochSC`, `GetBasicCurrentEpochInfoSC`, `GetPackageVersionsSC`, `GetNameServiceAddressSC`, `GetNameServiceNamesSC`
+
+### Deprecated
+
+- `SuiGrpcClient.execute(request=...)` renamed to `execute_grpc_request(request=...)`; the old
+  name now dispatches via `execute(command: SuiCommand)` — existing callers must migrate to
+  `execute_grpc_request(request=...)` or switch to `execute(command=...)`; targeted for removal
+  at v1.0.0
+- `AsyncSuiGQLClient.execute_query_node(with_node=...)`: use `execute(command=...)` for standard
+  queries; `execute_document_node()` and `execute_query_string()` remain as EC-5 escape hatches
+  for custom GQL queries with no `SuiCommand` equivalent; targeted for removal at v1.0.0
+
 ### Changed
 
 - Documentation updated

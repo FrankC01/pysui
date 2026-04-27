@@ -12,6 +12,7 @@ from pysui.sui.sui_common.txb_gas import coins_for_budget, compute_gas_budget
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_pgql.pgql_utils import (
     async_get_all_owned_gas_objects,
     async_get_gas_objects_by_ids,
@@ -131,8 +132,8 @@ async def _async_dry_run_for_budget(
     active_gas_price: int,
 ) -> int:
     """Simulate the transaction to determine the gas budget."""
-    result = await client.execute_query_node(
-        with_node=qn.SimulateTransactionKind(
+    result = await client.execute(
+        command=cmd.SimulateTransactionKind(
             tx_kind=tx_bytes,
             tx_meta={
                 "sender": signing.sender_str,
