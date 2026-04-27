@@ -318,6 +318,7 @@ The following SuiCommand subclasses are built-in and re-exported from the top-le
   - :class:`GetGas`
   - :class:`GetStaked`
   - :class:`GetDelegatedStakes`
+  - :class:`GetCoinSummary`
 
 **Object Queries:**
   - :class:`GetObject`
@@ -326,6 +327,9 @@ The following SuiCommand subclasses are built-in and re-exported from the top-le
   - :class:`GetMultiplePastObjects`
   - :class:`GetObjectsOwnedByAddress`
   - :class:`GetDynamicFields`
+  - :class:`GetObjectContent`
+  - :class:`GetMultipleObjectContent`
+  - :class:`GetObjectsForType`
 
 **Epoch & Validator Queries:**
   - :class:`GetEpoch`
@@ -341,7 +345,7 @@ The following SuiCommand subclasses are built-in and re-exported from the top-le
 **Transaction Queries:**
   - :class:`GetTx`
   - :class:`GetTxKind`
-  - :class:`GetMultipleTx`
+  - :class:`GetMultipleTransactions`
   - :class:`GetFilteredTx`
   - :class:`GetEvents`
 
@@ -359,6 +363,7 @@ The following SuiCommand subclasses are built-in and re-exported from the top-le
   - :class:`GetNameServiceAddress`
   - :class:`GetNameServiceNames`
   - :class:`GetServiceInfo`
+  - :class:`GetProtocolConfig`
 
 **Subscriptions & Verification:**
   - :class:`SubscribeCheckpoint`

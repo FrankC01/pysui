@@ -150,6 +150,24 @@ class GetBasicCurrentEpochInfo(GetEpoch):
         return gepoch.epoch
 
 
+class GetProtocolConfig(GetEpoch):
+    """GetProtocolConfig returns the protocol configuration for a specific version or current."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.ProtocolConfig
+
+    def __init__(self, *, version: Optional[int] = None):
+        """Initializer.
+
+        :param version: Protocol version to retrieve, defaults to None (current)
+        :type version: Optional[int]
+        """
+        super().__init__(epoch_number=version, field_mask=["protocol_config"])
+
+    def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.ProtocolConfig:
+        """Return the ProtocolConfig message from the response."""
+        return gepoch.protocol_config
+
+
 OBJECT_DEFAULT_FIELDS: list[str] = [
     "owner",
     "version",

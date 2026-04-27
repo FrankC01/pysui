@@ -74,6 +74,8 @@ QueryNode Classes
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetFilteredTx`                 |
 +-------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_pgql.pgql_query.GetMultipleTransactions`       |
++-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetTxKind`                     |
 +-------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_pgql.pgql_query.GetDelegatedStakes`            |
