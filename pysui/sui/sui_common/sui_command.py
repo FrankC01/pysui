@@ -27,6 +27,7 @@ class SuiCommand(ABC):
     gql_class: ClassVar[type] = None
     grpc_class: ClassVar[type] = None
     gql_requires_paging: ClassVar[bool] = False
+    gql_page_list_path: ClassVar[tuple[str, ...]] = ()
 
     @abstractmethod
     def gql_node(self) -> "PGQL_QueryNode":

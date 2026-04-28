@@ -57,6 +57,10 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetPastObject`              |
 +--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetObjectSC`                |
++--------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetPastObjectSC`            |
++--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjects`         |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetDynamicFields`           |

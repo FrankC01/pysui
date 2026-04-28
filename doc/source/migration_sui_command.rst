@@ -214,103 +214,19 @@ ExecuteTransaction
     result = await client.execute(command=cmd.ExecuteTransaction(**bdict))
 
 
-Graceful Unsupported Commands (Error Class 3)
-----------------------------------------------
-
-Some commands are not supported by one or both protocols. Rather than raising an exception, the client returns a :class:`SuiRpcResult` with success flag ``False`` and a descriptive message.
-
-Example: GetEvents
-~~~~~~~~~~~~~~~~~~~
-
-GetEvents is supported by GraphQL but not by gRPC:
-
-.. code-block:: python
-
-    import pysui.sui.sui_common.sui_commands as cmd
-
-    # On a gRPC client
-    result = await grpc_client.execute(command=cmd.GetEvents(event_filter={}))
-
-    if not result.is_ok():
-        print(result.result_string)
-        # Output: "Command not supported by gRPC"
-
-Example: GetServiceInfo
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-GetServiceInfo is supported by gRPC but not by GraphQL:
-
-.. code-block:: python
-
-    import pysui.sui.sui_common.sui_commands as cmd
-
-    # On a GraphQL client
-    result = await gql_client.execute(command=cmd.GetServiceInfo())
-
-    if not result.is_ok():
-        print(result.result_string)
-        # Output: "Command not supported by GraphQL"
-
-.. tip::
-    Always check :meth:`SuiRpcResult.is_ok()` when using protocol-agnostic code. If you need to support only one protocol for a given feature, document it and consider dropping down to the concrete client (see :ref:`escape-hatch`).
-
-
-.. _escape-hatch:
-
-Escape Hatch: Protocol-Specific APIs (Error Class 5)
------------------------------------------------------
-
-When a :class:`SuiCommand` does not exist for your use case or you need protocol-specific features, drop down to the concrete client's protocol-specific methods. These are not deprecated.
-
-GraphQL Escape Hatch
-~~~~~~~~~~~~~~~~~~~~
-
-Use :meth:`AsyncSuiGQLClient.execute_query_node()` with :mod:`pysui.sui.sui_pgql.pgql_query` objects:
-
-.. code-block:: python
-
-    from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
-    import pysui.sui.sui_pgql.pgql_query as qn
-
-    async def gql_only(client: AsyncSuiGQLClient):
-        """Use GraphQL-only query features."""
-        result = await client.execute_query_node(
-            with_node=qn.GetMultipleTx(digests=tx_digests)
-        )
-        return result.result_data
-
-gRPC Escape Hatch
-~~~~~~~~~~~~~~~~~
-
-Use :meth:`SuiGrpcClient.execute_grpc_request()` with :mod:`pysui.sui.sui_grpc.pgrpc_requests` objects:
-
-.. code-block:: python
-
-    from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
-    import pysui.sui.sui_grpc.pgrpc_requests as rn
-
-    async def grpc_only(client: SuiGrpcClient):
-        """Use gRPC-specific features."""
-        result = await client.execute_grpc_request(
-            request=rn.SubscribeCheckpoint(field_mask=["sequenceNumber", "digest"])
-        )
-        return result.result_data
-
-.. note::
-    Escape hatch methods are not deprecated and are the proper way to access protocol-specific advanced features. If you find yourself in the escape hatch frequently, consider whether your use case truly requires one protocol or whether a SuiCommand should be added to pysui.
-
-
 Available SuiCommand Subclasses
 -------------------------------
 
-The following SuiCommand subclasses are built-in and re-exported from the top-level :mod:`pysui` module:
+The following 35 SuiCommand subclasses are built-in and re-exported from the top-level
+:mod:`pysui` module.  Every command listed here works on **both** GraphQL and gRPC
+transports and returns the same canonical output type from either protocol.
 
-**Transaction Execution:**
+**Transaction Execution (3):**
   - :class:`ExecuteTransaction`
   - :class:`SimulateTransaction`
   - :class:`SimulateTransactionKind`
 
-**Coin Queries:**
+**Coin Queries (8):**
   - :class:`GetCoinMetaData`
   - :class:`GetAddressCoinBalance`
   - :class:`GetAddressCoinBalances`
@@ -320,7 +236,7 @@ The following SuiCommand subclasses are built-in and re-exported from the top-le
   - :class:`GetDelegatedStakes`
   - :class:`GetCoinSummary`
 
-**Object Queries:**
+**Object Queries (9):**
   - :class:`GetObject`
   - :class:`GetPastObject`
   - :class:`GetMultipleObjects`
@@ -331,25 +247,15 @@ The following SuiCommand subclasses are built-in and re-exported from the top-le
   - :class:`GetMultipleObjectContent`
   - :class:`GetObjectsForType`
 
-**Epoch & Validator Queries:**
+**Epoch Queries (2):**
   - :class:`GetEpoch`
-  - :class:`GetLatestSuiSystemState`
   - :class:`GetBasicCurrentEpochInfo`
-  - :class:`GetCurrentValidators`
 
-**Checkpoint Queries:**
+**Checkpoint Queries (2):**
   - :class:`GetLatestCheckpoint`
   - :class:`GetCheckpointBySequence`
-  - :class:`GetCheckpointByDigest`
 
-**Transaction Queries:**
-  - :class:`GetTx`
-  - :class:`GetTxKind`
-  - :class:`GetMultipleTransactions`
-  - :class:`GetFilteredTx`
-  - :class:`GetEvents`
-
-**Move Package & Type Queries:**
+**Move Package & Type Queries (8):**
   - :class:`GetPackage`
   - :class:`GetPackageVersions`
   - :class:`GetModule`
@@ -359,15 +265,10 @@ The following SuiCommand subclasses are built-in and re-exported from the top-le
   - :class:`GetFunction`
   - :class:`GetFunctions`
 
-**Name Service & System Queries:**
+**Name Service & Protocol (3):**
   - :class:`GetNameServiceAddress`
   - :class:`GetNameServiceNames`
-  - :class:`GetServiceInfo`
   - :class:`GetProtocolConfig`
-
-**Subscriptions & Verification:**
-  - :class:`SubscribeCheckpoint`
-  - :class:`VerifySignature`
 
 All are importable as:
 
@@ -423,33 +324,40 @@ Once defined, use it exactly like built-in commands:
         if result.is_ok():
             return result.result_data
 
-Single-Protocol Custom Commands
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Dual-Protocol Consistency Requirement
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If a command is only supported by one protocol, raise :exc:`NotImplementedError` on the unsupported side:
+Custom commands should support both transports and return equivalent output from each.
+Built-in commands that could not satisfy this requirement have been removed from the
+SuiCommand layer; use the legacy :py:mod:`pysui.sui.sui_pgql.pgql_query` or
+:py:mod:`pysui.sui.sui_grpc.pgrpc_requests` classes directly for those operations.
+
+If you implement a custom command that is genuinely single-protocol, raise
+:exc:`NotImplementedError` on the unsupported side — the client will catch it and return a
+graceful ``SuiRpcResult(is_ok=False)`` rather than propagating an exception.  However,
+prefer the escape hatch over a single-protocol SuiCommand when the operation is inherently
+transport-specific and will never have a cross-protocol equivalent:
 
 .. code-block:: python
 
     @dataclass
-    class GqlOnlyCommand(SuiCommand):
-        """Only supported by GraphQL."""
+    class MyGqlOnlyCommand(SuiCommand):
+        """Example: a hypothetical GQL-only custom command."""
 
-        event_filter: dict
+        some_filter: dict
 
         def gql_node(self):
-            return qn.GetEvents(event_filter=self.event_filter)
+            return qn.SomeGqlQueryNode(filter=self.some_filter)
 
         def grpc_request(self):
             raise NotImplementedError("Not supported by gRPC")
-
-The client will catch this and return a graceful error (Error Class 3) rather than raising an exception to the caller.
 
 
 Summary
 -------
 
 - **Prefer** :class:`SuiCommand` + :meth:`AsyncClientBase.execute(command=...)` for protocol-agnostic code.
-- **Type annotations** as :class:`AsyncClientBase` to signal that your function works with any protocol.
-- **Check results** with :meth:`SuiRpcResult.is_ok()` — unsupported commands return gracefully.
-- **Drop to escape hatch** when you need protocol-specific features — use :meth:`execute_query_node()` for GraphQL or gRPC-specific APIs directly.
-- **Custom commands** are supported by subclassing :class:`SuiCommand` and implementing :meth:`gql_node()` and :meth:`grpc_request()`.
+- **Type annotations** as :class:`AsyncClientBase` to signal that your function works with any transport.
+- **Check results** with :meth:`SuiRpcResult.is_ok()` before accessing ``result_data``.
+- **Protocol-specific access** — :py:mod:`pysui.sui.sui_pgql.pgql_query` and :py:mod:`pysui.sui.sui_grpc.pgrpc_requests` are not deprecated; use them directly when a SuiCommand does not exist for your use case.
+- **Custom commands** are supported by subclassing :class:`SuiCommand` and implementing :meth:`gql_node()` and :meth:`grpc_request()` — both protocols should return equivalent output.

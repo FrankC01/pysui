@@ -26,28 +26,22 @@ from pysui.sui.sui_common.sui_commands import (
     ExecuteTransaction,
     GetAddressCoinBalance,
     GetAddressCoinBalances,
-    GetCheckpointByDigest,
     GetCheckpointBySequence,
     GetCoinMetaData,
     GetCoinSummary,
     GetCoins,
-    GetCurrentValidators,
     GetDelegatedStakes,
     GetDynamicFields,
     GetEpoch,
-    GetEvents,
-    GetFilteredTx,
     GetFunction,
     GetFunctions,
     GetGas,
     GetLatestCheckpoint,
-    GetLatestSuiSystemState,
     GetModule,
     GetMoveDataType,
     GetMultipleObjects,
     GetMultipleObjectContent,
     GetMultiplePastObjects,
-    GetMultipleTransactions,
     GetNameServiceAddress,
     GetNameServiceNames,
     GetObject,
@@ -58,16 +52,11 @@ from pysui.sui.sui_common.sui_commands import (
     GetPackageVersions,
     GetPastObject,
     GetProtocolConfig,
-    GetServiceInfo,
     GetStaked,
     GetStructure,
     GetStructures,
-    GetTx,
-    GetTxKind,
     SimulateTransaction,
     SimulateTransactionKind,
-    SubscribeCheckpoint,
-    VerifySignature,
 )
 
 
@@ -151,29 +140,11 @@ class TestAllAreSubcommands:
     def test_get_epoch(self):
         assert isinstance(GetEpoch(), SuiCommand)
 
-    def test_get_latest_sui_system_state(self):
-        assert isinstance(GetLatestSuiSystemState(), SuiCommand)
-
-    def test_get_current_validators(self):
-        assert isinstance(GetCurrentValidators(), SuiCommand)
-
     def test_get_latest_checkpoint(self):
         assert isinstance(GetLatestCheckpoint(), SuiCommand)
 
     def test_get_checkpoint_by_sequence(self):
         assert isinstance(GetCheckpointBySequence(sequence_number=42), SuiCommand)
-
-    def test_get_checkpoint_by_digest(self):
-        assert isinstance(GetCheckpointByDigest(digest=DIGEST), SuiCommand)
-
-    def test_get_tx(self):
-        assert isinstance(GetTx(digest=DIGEST), SuiCommand)
-
-    def test_get_tx_kind(self):
-        assert isinstance(GetTxKind(digest=DIGEST), SuiCommand)
-
-    def test_get_multiple_transactions(self):
-        assert isinstance(GetMultipleTransactions(digests=[DIGEST]), SuiCommand)
 
     def test_get_multiple_object_content(self):
         assert isinstance(GetMultipleObjectContent(object_ids=[OBJ_ID]), SuiCommand)
@@ -190,12 +161,6 @@ class TestAllAreSubcommands:
 
     def test_get_coin_summary(self):
         assert isinstance(GetCoinSummary(coin_id=OBJ_ID), SuiCommand)
-
-    def test_get_filtered_tx(self):
-        assert isinstance(GetFilteredTx(tx_filter={"sender": ADDR}), SuiCommand)
-
-    def test_get_events(self):
-        assert isinstance(GetEvents(event_filter={"sender": ADDR}), SuiCommand)
 
     def test_get_package(self):
         assert isinstance(GetPackage(package=PKG), SuiCommand)
@@ -236,22 +201,6 @@ class TestAllAreSubcommands:
     def test_get_name_service_names(self):
         assert isinstance(GetNameServiceNames(owner=ADDR), SuiCommand)
 
-    def test_get_service_info(self):
-        assert isinstance(GetServiceInfo(), SuiCommand)
-
-    def test_subscribe_checkpoint(self):
-        assert isinstance(SubscribeCheckpoint(), SuiCommand)
-
-    def test_verify_signature(self):
-        assert isinstance(
-            VerifySignature(
-                message_type="Transaction",
-                message=b"msg",
-                signature=b"sig",
-            ),
-            SuiCommand,
-        )
-
     def test_simulate_transaction(self):
         assert isinstance(SimulateTransaction(tx_bytestr=b"txdata"), SuiCommand)
 
@@ -262,9 +211,6 @@ class TestAllAreSubcommands:
 
 
 class TestPagingFlags:
-    def test_get_current_validators_paging_true(self):
-        assert GetCurrentValidators.gql_requires_paging is True
-
     def test_get_structures_paging_true(self):
         assert GetStructures.gql_requires_paging is True
 
@@ -338,29 +284,11 @@ class TestGrpcRequests:
         assert _is_grpc(req)
         assert req.epoch_number == 42
 
-    def test_get_latest_sui_system_state(self):
-        assert _is_grpc(GetLatestSuiSystemState().grpc_request())
-
-    def test_get_current_validators(self):
-        assert _is_grpc(GetCurrentValidators().grpc_request())
-
     def test_get_latest_checkpoint(self):
         assert _is_grpc(GetLatestCheckpoint().grpc_request())
 
     def test_get_checkpoint_by_sequence(self):
         assert _is_grpc(GetCheckpointBySequence(sequence_number=100).grpc_request())
-
-    def test_get_checkpoint_by_digest(self):
-        assert _is_grpc(GetCheckpointByDigest(digest=DIGEST).grpc_request())
-
-    def test_get_tx(self):
-        assert _is_grpc(GetTx(digest=DIGEST).grpc_request())
-
-    def test_get_tx_kind(self):
-        assert _is_grpc(GetTxKind(digest=DIGEST).grpc_request())
-
-    def test_get_multiple_transactions(self):
-        assert _is_grpc(GetMultipleTransactions(digests=[DIGEST]).grpc_request())
 
     def test_get_multiple_object_content(self):
         assert _is_grpc(GetMultipleObjectContent(object_ids=[OBJ_ID]).grpc_request())
@@ -423,21 +351,6 @@ class TestGrpcRequests:
         req = GetNameServiceNames(owner=ADDR).grpc_request()
         assert _is_grpc(req)
         assert isinstance(req, rn.GetNameServiceNames)
-
-    def test_get_service_info(self):
-        assert _is_grpc(GetServiceInfo().grpc_request())
-
-    def test_subscribe_checkpoint(self):
-        assert _is_grpc(SubscribeCheckpoint().grpc_request())
-
-    def test_verify_signature(self):
-        assert _is_grpc(
-            VerifySignature(
-                message_type="Transaction",
-                message=b"msg",
-                signature=b"sig",
-            ).grpc_request()
-        )
 
     def test_simulate_transaction(self):
         assert _is_grpc(SimulateTransaction(tx_bytestr=b"txdata").grpc_request())
@@ -503,12 +416,6 @@ class TestGqlNodes:
         assert _is_gql(node)
         assert node.epoch_id == 5
 
-    def test_get_latest_sui_system_state(self):
-        assert _is_gql(GetLatestSuiSystemState().gql_node())
-
-    def test_get_current_validators(self):
-        assert _is_gql(GetCurrentValidators().gql_node())
-
     def test_get_latest_checkpoint(self):
         node = GetLatestCheckpoint().gql_node()
         assert _is_gql(node)
@@ -518,21 +425,6 @@ class TestGqlNodes:
         node = GetCheckpointBySequence(sequence_number=99).gql_node()
         assert _is_gql(node)
         assert node.sequence_number == 99
-
-    def test_get_tx(self):
-        node = GetTx(digest=DIGEST).gql_node()
-        assert _is_gql(node)
-        assert node.digest == DIGEST
-
-    def test_get_tx_kind(self):
-        node = GetTxKind(digest=DIGEST).gql_node()
-        assert _is_gql(node)
-        assert node.digest == DIGEST
-
-    def test_get_multiple_transactions(self):
-        node = GetMultipleTransactions(digests=[DIGEST]).gql_node()
-        assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetMultipleTransactionsSC)
 
     def test_get_multiple_object_content(self):
         node = GetMultipleObjectContent(object_ids=[OBJ_ID]).gql_node()
@@ -562,16 +454,6 @@ class TestGqlNodes:
         node = GetCoinSummary(coin_id=OBJ_ID).gql_node()
         assert _is_gql(node)
         assert isinstance(node, pgql_query.GetCoinSummarySC)
-
-    def test_get_filtered_tx(self):
-        node = GetFilteredTx(tx_filter={"sender": ADDR}).gql_node()
-        assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetFilteredTx)
-
-    def test_get_events(self):
-        node = GetEvents(event_filter={"sender": ADDR}).gql_node()
-        assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetEvents)
 
     def test_get_package(self):
         node = GetPackage(package=PKG).gql_node()
@@ -634,76 +516,6 @@ class TestGqlNodes:
         node = SimulateTransaction(tx_bytestr=b"txdata").gql_node()
         assert _is_gql(node)
         assert isinstance(node, pgql_query.SimulateTransaction)
-
-
-# ---------------------------------------------------------------------------
-# EC-3: correct side raises NotImplementedError
-# ---------------------------------------------------------------------------
-
-
-class TestEC3Commands:
-    # gRPC-only: gql_node raises
-    def test_get_checkpoint_by_digest_gql_raises(self):
-        cmd = GetCheckpointByDigest(digest=DIGEST)
-        with pytest.raises(NotImplementedError):
-            cmd.gql_node()
-
-    def test_get_checkpoint_by_digest_grpc_ok(self):
-        assert _is_grpc(GetCheckpointByDigest(digest=DIGEST).grpc_request())
-
-    def test_get_multiple_transactions_gql_ok(self):
-        cmd = GetMultipleTransactions(digests=[DIGEST])
-        assert _is_gql(cmd.gql_node())
-
-    def test_get_multiple_transactions_grpc_ok(self):
-        assert _is_grpc(GetMultipleTransactions(digests=[DIGEST]).grpc_request())
-
-    def test_get_service_info_gql_raises(self):
-        cmd = GetServiceInfo()
-        with pytest.raises(NotImplementedError):
-            cmd.gql_node()
-
-    def test_get_service_info_grpc_ok(self):
-        assert _is_grpc(GetServiceInfo().grpc_request())
-
-    def test_subscribe_checkpoint_gql_raises(self):
-        cmd = SubscribeCheckpoint()
-        with pytest.raises(NotImplementedError):
-            cmd.gql_node()
-
-    def test_subscribe_checkpoint_grpc_ok(self):
-        assert _is_grpc(SubscribeCheckpoint().grpc_request())
-
-    def test_verify_signature_gql_raises(self):
-        cmd = VerifySignature(
-            message_type="Transaction", message=b"msg", signature=b"sig"
-        )
-        with pytest.raises(NotImplementedError):
-            cmd.gql_node()
-
-    def test_verify_signature_grpc_ok(self):
-        assert _is_grpc(
-            VerifySignature(
-                message_type="Transaction", message=b"msg", signature=b"sig"
-            ).grpc_request()
-        )
-
-    # GQL-only: grpc_request raises
-    def test_get_filtered_tx_grpc_raises(self):
-        cmd = GetFilteredTx(tx_filter={"sender": ADDR})
-        with pytest.raises(NotImplementedError):
-            cmd.grpc_request()
-
-    def test_get_filtered_tx_gql_ok(self):
-        assert _is_gql(GetFilteredTx(tx_filter={"sender": ADDR}).gql_node())
-
-    def test_get_events_grpc_raises(self):
-        cmd = GetEvents(event_filter={"sender": ADDR})
-        with pytest.raises(NotImplementedError):
-            cmd.grpc_request()
-
-    def test_get_events_gql_ok(self):
-        assert _is_gql(GetEvents(event_filter={"sender": ADDR}).gql_node())
 
 
 # ---------------------------------------------------------------------------

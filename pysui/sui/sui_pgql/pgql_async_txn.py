@@ -82,6 +82,8 @@ class AsyncSuiTransaction(txbase):
             tv.TypeValidator.check_target_triplet(target)
         )
 
+        from pysui.sui.sui_common.txn_arg_encoder import grpc_to_raw_parameters
+
         result = await self.client.execute(
             command=cmd.GetFunction(
                 package=package,
@@ -89,14 +91,14 @@ class AsyncSuiTransaction(txbase):
                 function_name=package_function,
             )
         )
-        if result.is_ok() and not isinstance(result.result_data, pgql_type.NoopGQL):
-            mfunc: pgql_type.MoveFunctionGQL = result.result_data
+        if result.is_ok():
+            mfunc: sui_prot.GetFunctionResponse = result.result_data
             return (
                 bcs.Address.from_str(package),
                 package_module,
                 package_function,
-                len(mfunc.returns),
-                mfunc.parameters,
+                len(mfunc.function.returns),
+                grpc_to_raw_parameters(mfunc),
             )
         raise ValueError(f"Unresolvable target {target}")
 

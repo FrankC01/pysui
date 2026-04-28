@@ -276,6 +276,22 @@ class GetPastObject(absreq.PGRPC_Request):
         )
 
 
+class GetObjectSC(GetObject):
+    """SC variant: unwraps GetObjectResponse → Object (canonical shape)."""
+
+    def render(self, obj: sui_prot.GetObjectResponse) -> sui_prot.Object:
+        """Extract the inner Object from the gRPC wrapper."""
+        return obj.object
+
+
+class GetPastObjectSC(GetPastObject):
+    """SC variant: unwraps GetObjectResponse → Object (canonical shape)."""
+
+    def render(self, obj: sui_prot.GetObjectResponse) -> sui_prot.Object:
+        """Extract the inner Object from the gRPC wrapper."""
+        return obj.object
+
+
 class GetMultipleObjects(absreq.PGRPC_Request):
     """Query to retrieve multiple objects current state."""
 
