@@ -19,6 +19,7 @@ import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from .caching_tx_builder import CachingTransactionBuilder, PureInput
 from pysui.sui.sui_types.scalars import SuiU64
 
@@ -91,6 +92,8 @@ class CachingTransaction(txbase):
             tv.TypeValidator.check_target_triplet(target)
         )
 
+        from pysui.sui.sui_common.txn_arg_encoder import grpc_to_raw_parameters
+
         result = await self.client.execute(
             command=cmd.GetFunction(
                 package=package,
@@ -98,14 +101,14 @@ class CachingTransaction(txbase):
                 function_name=package_function,
             )
         )
-        if result.is_ok() and not isinstance(result.result_data, pgql_type.NoopGQL):
-            mfunc: pgql_type.MoveFunctionGQL = result.result_data
+        if result.is_ok():
+            mfunc: sui_prot.GetFunctionResponse = result.result_data
             return (
                 bcs.Address.from_str(package),
                 package_module,
                 package_function,
-                len(mfunc.returns),
-                mfunc.parameters,
+                len(mfunc.function.returns),
+                grpc_to_raw_parameters(mfunc),
             )
         raise ValueError(f"Unresolvable target {target}")
 

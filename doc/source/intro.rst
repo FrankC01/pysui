@@ -45,9 +45,9 @@ single unified call:
 - **Unified Client Interface (UCI)**: ``await client.execute(command=...)``
   — works identically on both GraphQL and gRPC transports.
   See :doc:`sui_commands` for the full command list.
-- **GraphQL EC-5 escape hatch**: :doc:`QueryNodes <graphql_queries>` via
+- **GraphQL**: :doc:`QueryNodes <graphql_queries>` via
   ``execute_query_node`` — for custom queries with no ``SuiCommand`` equivalent.
-- **gRPC EC-5 escape hatch**: :doc:`Requests <grpc_requests>` via
+- **gRPC**: :doc:`Requests <grpc_requests>` via
   ``execute_grpc_request`` — for direct gRPC request objects.
 - **Transactions (PTBs)**: :doc:`transactions`
 

@@ -124,9 +124,11 @@ async def do_gas_ids(client: AsyncSuiGQLClient):
         print(f"Data return from call is empty {result.result_data.data}")
 
 
-async def do_sysstate(client: AsyncClientBase):
-    """Fetch the most current system state summary."""
-    handle_result(await client.execute(command=cmd.GetLatestSuiSystemState()))
+async def do_sysstate(client: AsyncSuiGQLClient):
+    """Fetch the most current system state summary.
+    EC-5: GetLatestSuiSystemState SuiCommand removed; use legacy GQL query directly.
+    """
+    handle_result(await client.execute_query_node(with_node=qn.GetLatestSuiSystemState()))
 
 
 async def do_address_balance(client: AsyncClientBase):
@@ -268,12 +270,14 @@ async def do_dynamics(client: AsyncClientBase):
     )
 
 
-async def do_event(client: AsyncClientBase):
+async def do_event(client: AsyncSuiGQLClient):
     """Fetch events matching a filter.
-    EC-3: GetEvents raises NotImplementedError on gRPC — returns SuiRpcResult with error.
+    EC-5: GetEvents SuiCommand removed; use legacy GQL query directly.
     """
     handle_result(
-        await client.execute(command=cmd.GetEvents(event_filter={"sender": "0x0"}))
+        await client.execute_query_node(
+            with_node=qn.GetEvents(event_filter={"sender": "0x0"})
+        )
     )
 
 
@@ -298,11 +302,13 @@ async def do_chain_id(client: AsyncSuiGQLClient):
     print(client.chain_id())
 
 
-async def do_tx(client: AsyncClientBase):
-    """Fetch specific transaction by it's digest."""
+async def do_tx(client: AsyncSuiGQLClient):
+    """Fetch specific transaction by it's digest.
+    EC-5: GetTx SuiCommand removed; use legacy GQL query directly.
+    """
     handle_result(
-        await client.execute(
-            command=cmd.GetTx(digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz")
+        await client.execute_query_node(
+            with_node=qn.GetTx(digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz")
         )
     )
 
@@ -333,21 +339,23 @@ async def do_txs(client: AsyncSuiGQLClient):
         print("DONE")
 
 
-async def do_filter_txs(client: AsyncClientBase):
+async def do_filter_txs(client: AsyncSuiGQLClient):
     """Fetch all transactions matching filter.
-    EC-3: GetFilteredTx raises NotImplementedError on gRPC — returns SuiRpcResult with error.
+    EC-5: GetFilteredTx SuiCommand removed; use legacy GQL query directly.
 
     See Sui GraphQL schema for TransactionFilter options.
     """
     obj_filter = {"affectedObject": "ENTER OBJECT_ID HERE"}
-    result = await client.execute(command=cmd.GetFilteredTx(tx_filter=obj_filter))
+    result = await client.execute_query_node(
+        with_node=qn.GetFilteredTx(tx_filter=obj_filter)
+    )
     while result.is_ok():
         txs: ptypes.TransactionSummariesGQL = result.result_data
         for tx in txs.data:
             print(f"Digest: {tx.digest} timestamp: {tx.timestamp}")
         if txs.next_cursor.hasNextPage:
-            result = await client.execute(
-                command=cmd.GetFilteredTx(
+            result = await client.execute_query_node(
+                with_node=qn.GetFilteredTx(
                     tx_filter=obj_filter,
                     next_page=txs.next_cursor,
                 )
@@ -356,11 +364,13 @@ async def do_filter_txs(client: AsyncClientBase):
             break
 
 
-async def do_tx_kind(client: AsyncClientBase):
-    """Fetch the PTB details from transaction."""
+async def do_tx_kind(client: AsyncSuiGQLClient):
+    """Fetch the PTB details from transaction.
+    EC-5: GetTxKind SuiCommand removed; use legacy GQL query directly.
+    """
     handle_result(
-        await client.execute(
-            command=cmd.GetTxKind(digest="ENTER TRANSACTION DIGEST HERE")
+        await client.execute_query_node(
+            with_node=qn.GetTxKind(digest="ENTER TRANSACTION DIGEST HERE")
         )
     )
 
@@ -420,32 +430,36 @@ async def do_owned_nameservice(client: AsyncClientBase):
     )
 
 
-async def do_all_validators(client: AsyncClientBase):
-    """Fetch all validators from current Epoch."""
-    result = await client.execute(command=cmd.GetCurrentValidators())
+async def do_all_validators(client: AsyncSuiGQLClient):
+    """Fetch all validators from current Epoch.
+    EC-5: GetCurrentValidators SuiCommand removed; use legacy GQL query directly.
+    """
+    result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
     while result.is_ok():
         v_set: ptypes.ValidatorSetsGQL = result.result_data
         print(v_set.to_json(indent=2))
         if v_set.next_cursor.hasNextPage:
-            result = await client.execute(
-                command=cmd.GetCurrentValidators(next_page=v_set.next_cursor)
+            result = await client.execute_query_node(
+                with_node=qn.GetCurrentValidators(next_page=v_set.next_cursor)
             )
         else:
             break
 
 
-async def do_validators(client: AsyncClientBase):
-    """Fetch the most current validator detail."""
-    handle_result(await client.execute(command=cmd.GetCurrentValidators()))
+async def do_validators(client: AsyncSuiGQLClient):
+    """Fetch the most current validator detail.
+    EC-5: GetCurrentValidators SuiCommand removed; use legacy GQL query directly.
+    """
+    handle_result(await client.execute_query_node(with_node=qn.GetCurrentValidators()))
 
 
 async def do_validator_xchange_rates(client: AsyncSuiGQLClient):
     """Get exchange rate table entries.
-    EC-5: GetValidatorExchangeRates has no SuiCommand equivalent.
+    EC-5: GetValidatorExchangeRates and GetCurrentValidators have no SuiCommand equivalent.
     """
 
     # Get list of validators
-    result = await client.execute(command=cmd.GetCurrentValidators())
+    result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
     if result.is_ok():
         # Extract the first validator's exchange rate object
         v_set: ptypes.ValidatorSetsGQL = result.result_data
@@ -468,11 +482,7 @@ async def do_protcfg(client: AsyncClientBase):
     By default, the current protocol version is used. You
     can set an `int` value otherwise to get past protocol states.
     """
-    handle_result(
-        await client.execute(
-            command=cmd.GetProtocolConfig()
-        )
-    )
+    handle_result(await client.execute(command=cmd.GetProtocolConfig()))
 
 
 async def do_struct(client: AsyncClientBase):

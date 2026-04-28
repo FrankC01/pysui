@@ -1,0 +1,418 @@
+#    Copyright Frank V. Castellucci
+#    SPDX-License-Identifier: Apache-2.0
+
+# -*- coding: utf-8 -*-
+
+"""Integration tests: SC getter commands (Steps 1-9, no gas required).
+
+These tests exercise the GQL SC-sibling encode_fn path for all read-only
+SuiCommand subclasses implemented through Phase 5 Step 9.  They query
+only stable framework objects (0x2 package, 0x5 system state, 0x6 clock)
+and the active address's owned objects.  No faucet, no coin operations,
+and no transactions are needed.
+
+Run in isolation (no publish/faucet side effects):
+    pytest tests/integration_tests/test_sc_getters.py
+
+Commands covered:
+  Checkpoints : GetLatestCheckpoint, GetCheckpointBySequence
+  Package/mod : GetPackage, GetModule, GetMoveDataType, GetStructure, GetFunction
+  Paged       : GetStructures (SC paging branch), GetFunctions (SC paging branch)
+  Objects     : GetObject, GetMultipleObjects
+  Owned       : GetCoins, GetGas, GetObjectsOwnedByAddress
+  High-complex: GetDynamicFields
+"""
+
+import pytest
+
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+from pysui import AsyncSuiGQLClient as AsyncGqlClient, SuiGrpcClient
+from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC
+from pysui.sui.sui_common.sui_commands import (
+    GetCheckpointBySequence,
+    GetCoins,
+    GetDynamicFields,
+    GetFunction,
+    GetFunctions,
+    GetGas,
+    GetLatestCheckpoint,
+    GetModule,
+    GetMoveDataType,
+    GetMultipleObjects,
+    GetObject,
+    GetObjectsOwnedByAddress,
+    GetPackage,
+    GetStructure,
+    GetStructures,
+)
+
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.xdist_group(name="sui_integration"),
+]
+
+# Stable framework objects available on all Sui networks.
+_FRAMEWORK = "0x2"
+_FRAMEWORK_MODULE = "coin"
+_FRAMEWORK_STRUCT = "Coin"
+_FRAMEWORK_FN = "split"
+_SYSTEM_STATE_OBJ = (
+    "0x0000000000000000000000000000000000000000000000000000000000000005"
+)
+_CLOCK_OBJ = (
+    "0x0000000000000000000000000000000000000000000000000000000000000006"
+)
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint queries
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(1)
+async def test_get_latest_checkpoint_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetLatestCheckpoint via GQL SC sibling returns GetCheckpointResponse."""
+    result = await gql_session_client.execute(command=GetLatestCheckpoint())
+    assert result.is_ok(), f"GetLatestCheckpoint GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetCheckpointResponse)
+    assert result.result_data.checkpoint is not None
+    assert result.result_data.checkpoint.sequence_number is not None
+
+
+@pytest.mark.order(2)
+async def test_get_latest_checkpoint_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetLatestCheckpoint via gRPC returns GetCheckpointResponse."""
+    result = await grpc_session_client.execute(command=GetLatestCheckpoint())
+    assert result.is_ok(), f"GetLatestCheckpoint gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetCheckpointResponse)
+    assert result.result_data.checkpoint is not None
+
+
+@pytest.mark.order(3)
+async def test_get_checkpoint_by_sequence_gql(
+    gql_session_client: AsyncGqlClient,
+) -> None:
+    """GetCheckpointBySequence(1) via GQL SC sibling returns GetCheckpointResponse."""
+    result = await gql_session_client.execute(
+        command=GetCheckpointBySequence(sequence_number=1)
+    )
+    assert result.is_ok(), f"GetCheckpointBySequence GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetCheckpointResponse)
+    assert result.result_data.checkpoint is not None
+
+
+@pytest.mark.order(4)
+async def test_get_checkpoint_by_sequence_grpc(
+    grpc_session_client: SuiGrpcClient,
+) -> None:
+    """GetCheckpointBySequence(1) via gRPC returns GetCheckpointResponse."""
+    result = await grpc_session_client.execute(
+        command=GetCheckpointBySequence(sequence_number=1)
+    )
+    assert result.is_ok(), f"GetCheckpointBySequence gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetCheckpointResponse)
+
+
+# ---------------------------------------------------------------------------
+# Package / module / datatype / function queries
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(5)
+async def test_get_package_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetPackage(0x2) via GQL SC sibling returns GetPackageResponse."""
+    result = await gql_session_client.execute(command=GetPackage(package=_FRAMEWORK))
+    assert result.is_ok(), f"GetPackage GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetPackageResponse)
+    assert result.result_data.package is not None
+
+
+@pytest.mark.order(6)
+async def test_get_package_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetPackage(0x2) via gRPC returns GetPackageResponse."""
+    result = await grpc_session_client.execute(command=GetPackage(package=_FRAMEWORK))
+    assert result.is_ok(), f"GetPackage gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetPackageResponse)
+
+
+@pytest.mark.order(7)
+async def test_get_module_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetModule(0x2, coin) via GQL SC sibling returns Module."""
+    result = await gql_session_client.execute(
+        command=GetModule(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
+    )
+    assert result.is_ok(), f"GetModule GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.Module)
+
+
+@pytest.mark.order(8)
+async def test_get_module_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetModule(0x2, coin) via gRPC returns Module."""
+    result = await grpc_session_client.execute(
+        command=GetModule(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
+    )
+    assert result.is_ok(), f"GetModule gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.Module)
+
+
+@pytest.mark.order(9)
+async def test_get_move_datatype_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetMoveDataType(0x2::coin::Coin) via GQL SC sibling returns GetDatatypeResponse."""
+    result = await gql_session_client.execute(
+        command=GetMoveDataType(
+            package=_FRAMEWORK,
+            module_name=_FRAMEWORK_MODULE,
+            type_name=_FRAMEWORK_STRUCT,
+        )
+    )
+    assert result.is_ok(), f"GetMoveDataType GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetDatatypeResponse)
+    assert result.result_data.datatype is not None
+
+
+@pytest.mark.order(10)
+async def test_get_move_datatype_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetMoveDataType(0x2::coin::Coin) via gRPC returns GetDatatypeResponse."""
+    result = await grpc_session_client.execute(
+        command=GetMoveDataType(
+            package=_FRAMEWORK,
+            module_name=_FRAMEWORK_MODULE,
+            type_name=_FRAMEWORK_STRUCT,
+        )
+    )
+    assert result.is_ok(), f"GetMoveDataType gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetDatatypeResponse)
+
+
+@pytest.mark.order(11)
+async def test_get_structure_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetStructure(0x2::coin::Coin) via GQL SC sibling returns GetDatatypeResponse."""
+    result = await gql_session_client.execute(
+        command=GetStructure(
+            package=_FRAMEWORK,
+            module_name=_FRAMEWORK_MODULE,
+            structure_name=_FRAMEWORK_STRUCT,
+        )
+    )
+    assert result.is_ok(), f"GetStructure GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetDatatypeResponse)
+    assert result.result_data.datatype is not None
+
+
+@pytest.mark.order(12)
+async def test_get_structure_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetStructure(0x2::coin::Coin) via gRPC returns GetDatatypeResponse."""
+    result = await grpc_session_client.execute(
+        command=GetStructure(
+            package=_FRAMEWORK,
+            module_name=_FRAMEWORK_MODULE,
+            structure_name=_FRAMEWORK_STRUCT,
+        )
+    )
+    assert result.is_ok(), f"GetStructure gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetDatatypeResponse)
+
+
+@pytest.mark.order(13)
+async def test_get_function_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetFunction(0x2::coin::split) via GQL SC sibling returns GetFunctionResponse."""
+    result = await gql_session_client.execute(
+        command=GetFunction(
+            package=_FRAMEWORK,
+            module_name=_FRAMEWORK_MODULE,
+            function_name=_FRAMEWORK_FN,
+        )
+    )
+    assert result.is_ok(), f"GetFunction GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetFunctionResponse)
+    assert result.result_data.function is not None
+
+
+@pytest.mark.order(14)
+async def test_get_function_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetFunction(0x2::coin::split) via gRPC returns GetFunctionResponse."""
+    result = await grpc_session_client.execute(
+        command=GetFunction(
+            package=_FRAMEWORK,
+            module_name=_FRAMEWORK_MODULE,
+            function_name=_FRAMEWORK_FN,
+        )
+    )
+    assert result.is_ok(), f"GetFunction gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetFunctionResponse)
+
+
+# ---------------------------------------------------------------------------
+# Paged queries — SC paging branch (gql_page_list_path non-empty)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(15)
+async def test_get_structures_gql_paged(gql_session_client: AsyncGqlClient) -> None:
+    """GetStructures(0x2::coin) via GQL SC paging branch returns MoveStructuresGRPC."""
+    result = await gql_session_client.execute(
+        command=GetStructures(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
+    )
+    assert result.is_ok(), f"GetStructures GQL paged: {result.result_string}"
+    assert isinstance(result.result_data, MoveStructuresGRPC)
+    assert len(result.result_data.structures) > 0
+
+
+@pytest.mark.order(16)
+async def test_get_structures_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetStructures(0x2::coin) via gRPC returns MoveStructuresGRPC."""
+    result = await grpc_session_client.execute(
+        command=GetStructures(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
+    )
+    assert result.is_ok(), f"GetStructures gRPC: {result.result_string}"
+    assert isinstance(result.result_data, MoveStructuresGRPC)
+    assert len(result.result_data.structures) > 0
+
+
+@pytest.mark.order(17)
+async def test_get_functions_gql_paged(gql_session_client: AsyncGqlClient) -> None:
+    """GetFunctions(0x2::coin) via GQL SC paging branch returns MoveFunctionsGRPC."""
+    result = await gql_session_client.execute(
+        command=GetFunctions(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
+    )
+    assert result.is_ok(), f"GetFunctions GQL paged: {result.result_string}"
+    assert isinstance(result.result_data, MoveFunctionsGRPC)
+    assert len(result.result_data.functions) > 0
+
+
+@pytest.mark.order(18)
+async def test_get_functions_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetFunctions(0x2::coin) via gRPC returns MoveFunctionsGRPC."""
+    result = await grpc_session_client.execute(
+        command=GetFunctions(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
+    )
+    assert result.is_ok(), f"GetFunctions gRPC: {result.result_string}"
+    assert isinstance(result.result_data, MoveFunctionsGRPC)
+    assert len(result.result_data.functions) > 0
+
+
+# ---------------------------------------------------------------------------
+# Object queries — stable shared objects (Clock, SuiSystemState)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(19)
+async def test_get_object_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetObject(0x6 Clock) via GQL SC sibling returns Object."""
+    result = await gql_session_client.execute(command=GetObject(object_id=_CLOCK_OBJ))
+    assert result.is_ok(), f"GetObject GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.Object)
+
+
+@pytest.mark.order(20)
+async def test_get_object_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetObject(0x6 Clock) via gRPC SC sibling returns Object (same as GQL path)."""
+    result = await grpc_session_client.execute(command=GetObject(object_id=_CLOCK_OBJ))
+    assert result.is_ok(), f"GetObject gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.Object)
+
+
+@pytest.mark.order(21)
+async def test_get_multiple_objects_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetMultipleObjects([0x5, 0x6]) via GQL SC sibling returns BatchGetObjectsResponse."""
+    result = await gql_session_client.execute(
+        command=GetMultipleObjects(object_ids=[_SYSTEM_STATE_OBJ, _CLOCK_OBJ])
+    )
+    assert result.is_ok(), f"GetMultipleObjects GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.BatchGetObjectsResponse)
+    assert len(result.result_data.objects) == 2
+
+
+@pytest.mark.order(22)
+async def test_get_multiple_objects_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetMultipleObjects([0x5, 0x6]) via gRPC returns BatchGetObjectsResponse."""
+    result = await grpc_session_client.execute(
+        command=GetMultipleObjects(object_ids=[_SYSTEM_STATE_OBJ, _CLOCK_OBJ])
+    )
+    assert result.is_ok(), f"GetMultipleObjects gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.BatchGetObjectsResponse)
+    assert len(result.result_data.objects) == 2
+
+
+# ---------------------------------------------------------------------------
+# Owned-object queries — active address (empty list is a valid success)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(23)
+async def test_get_coins_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetCoins for active address via GQL SC sibling returns ListOwnedObjectsResponse."""
+    owner = gql_session_client.config.active_address
+    result = await gql_session_client.execute(command=GetCoins(owner=owner))
+    assert result.is_ok(), f"GetCoins GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ListOwnedObjectsResponse)
+
+
+@pytest.mark.order(24)
+async def test_get_coins_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetCoins for active address via gRPC returns ListOwnedObjectsResponse."""
+    owner = grpc_session_client.config.active_address
+    result = await grpc_session_client.execute(command=GetCoins(owner=owner))
+    assert result.is_ok(), f"GetCoins gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ListOwnedObjectsResponse)
+
+
+@pytest.mark.order(25)
+async def test_get_gas_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetGas for active address via GQL SC sibling returns ListOwnedObjectsResponse."""
+    owner = gql_session_client.config.active_address
+    result = await gql_session_client.execute(command=GetGas(owner=owner))
+    assert result.is_ok(), f"GetGas GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ListOwnedObjectsResponse)
+
+
+@pytest.mark.order(26)
+async def test_get_gas_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetGas for active address via gRPC returns ListOwnedObjectsResponse."""
+    owner = grpc_session_client.config.active_address
+    result = await grpc_session_client.execute(command=GetGas(owner=owner))
+    assert result.is_ok(), f"GetGas gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ListOwnedObjectsResponse)
+
+
+@pytest.mark.order(27)
+async def test_get_objects_owned_by_address_gql(
+    gql_session_client: AsyncGqlClient,
+) -> None:
+    """GetObjectsOwnedByAddress for active address via GQL SC sibling returns ListOwnedObjectsResponse."""
+    owner = gql_session_client.config.active_address
+    result = await gql_session_client.execute(
+        command=GetObjectsOwnedByAddress(owner=owner)
+    )
+    assert result.is_ok(), f"GetObjectsOwnedByAddress GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ListOwnedObjectsResponse)
+
+
+@pytest.mark.order(28)
+async def test_get_objects_owned_by_address_grpc(
+    grpc_session_client: SuiGrpcClient,
+) -> None:
+    """GetObjectsOwnedByAddress for active address via gRPC returns ListOwnedObjectsResponse."""
+    owner = grpc_session_client.config.active_address
+    result = await grpc_session_client.execute(
+        command=GetObjectsOwnedByAddress(owner=owner)
+    )
+    assert result.is_ok(), f"GetObjectsOwnedByAddress gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ListOwnedObjectsResponse)
+
+
+# ---------------------------------------------------------------------------
+# Step 9 — High complexity SC siblings
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(29)
+async def test_get_dynamic_fields_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetDynamicFields(0x5 SuiSystemState) via GQL SC sibling returns ListDynamicFieldsResponse."""
+    result = await gql_session_client.execute(
+        command=GetDynamicFields(object_id=_SYSTEM_STATE_OBJ)
+    )
+    assert result.is_ok(), f"GetDynamicFields GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ListDynamicFieldsResponse)
+
+

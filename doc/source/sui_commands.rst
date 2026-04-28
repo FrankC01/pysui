@@ -28,13 +28,18 @@ the client resolves to the appropriate underlying query or request.
 All commands are exported from ``pysui`` directly and also from
 :py:mod:`pysui.sui.sui_common.sui_commands`.
 
-Protocol support is noted per command.  Commands marked **gRPC only** or
-**GQL only** return a ``SuiRpcResult(is_ok=False)`` when called against the
-unsupported transport — they never raise an exception.
-
 Commands that paginate on GraphQL but return a flat result on gRPC
-(``GetCurrentValidators``, ``GetStructures``, ``GetFunctions``) auto-paginate
+(``GetStructures``, ``GetFunctions``) auto-paginate
 internally on the GQL transport — the caller always receives the full result.
+
+.. note::
+
+   **Protocol consistency contract.** A SuiCommand is only valid if both protocol
+   paths work *and* return equivalent output.  Commands that are single-protocol
+   only, or whose two protocol outputs diverged significantly, have been removed from
+   the SuiCommand layer.  Use the legacy
+   :py:mod:`pysui.sui.sui_pgql.pgql_query` or
+   :py:mod:`pysui.sui.sui_grpc.pgrpc_requests` classes directly to access those features.
 
 .. seealso::
 
@@ -46,223 +51,176 @@ Transaction Execution
 ---------------------
 
 .. list-table::
-   :widths: 35 50 15
+   :widths: 35 65
    :header-rows: 1
 
    * - Command
      - Description
-     - Protocols
    * - :py:class:`~pysui.sui.sui_common.sui_commands.ExecuteTransaction`
      - Execute a signed transaction on-chain
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.SimulateTransaction`
      - Simulate a serialized transaction (BCS bytes or base64)
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.SimulateTransactionKind`
      - Simulate a ``TransactionKind`` without committing
-     - Both
+
 
 Coin / Balance
 --------------
 
 .. list-table::
-   :widths: 35 50 15
+   :widths: 35 65
    :header-rows: 1
 
    * - Command
      - Description
-     - Protocols
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCoinMetaData`
      - Fetch metadata for a specific coin type
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetAddressCoinBalance`
      - Fetch the total balance of a coin type owned by an address
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetAddressCoinBalances`
      - Fetch all coin-type balances for an address (paginated)
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCoins`
      - Fetch all coin objects of a specific type owned by an address
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetGas`
      - Fetch all SUI gas coin objects owned by an address
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetStaked`
      - Fetch all staked SUI coin objects owned by an address
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetDelegatedStakes`
      - Fetch all delegated-stake (``StakedSui``) objects owned by an address
-     - Both
+
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCoinSummary`
+     - Fetch an aggregated coin-type summary (count, total balance) for an address
+
 
 Objects
 -------
 
 .. list-table::
-   :widths: 35 50 15
+   :widths: 35 65
    :header-rows: 1
 
    * - Command
      - Description
-     - Protocols
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObject`
      - Fetch the current state of a single object
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPastObject`
      - Fetch a specific version of an object
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetMultipleObjects`
      - Fetch the current state of multiple objects by ID list
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetMultiplePastObjects`
      - Fetch specific versions of multiple objects
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectsOwnedByAddress`
      - Fetch all objects owned by an address (paginated)
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetDynamicFields`
      - Fetch dynamic fields of an object (paginated)
-     - Both
+
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectContent`
+     - Fetch BCS-encoded object content by ID
+
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetMultipleObjectContent`
+     - Fetch BCS-encoded content for multiple objects by ID list
+
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectsForType`
+     - Fetch all objects of a specific Move type owned by an address
+
 
 Epoch / System State
 --------------------
 
 .. list-table::
-   :widths: 35 50 15
+   :widths: 35 65
    :header-rows: 1
 
    * - Command
      - Description
-     - Protocols
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetEpoch`
      - Fetch epoch information by ID, or the current epoch
-     - Both
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetLatestSuiSystemState`
-     - Fetch the latest Sui system state
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetBasicCurrentEpochInfo`
      - Fetch minimal epoch fields needed for gas and expiry building
-     - Both
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCurrentValidators`
-     - Fetch the active validator set (auto-paginated on GQL)
-     - Both
+
 
 Checkpoints
 -----------
 
 .. list-table::
-   :widths: 35 50 15
+   :widths: 35 65
    :header-rows: 1
 
    * - Command
      - Description
-     - Protocols
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetLatestCheckpoint`
      - Fetch the latest checkpoint
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCheckpointBySequence`
      - Fetch a checkpoint by sequence number
-     - Both
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCheckpointByDigest`
-     - Fetch a checkpoint by digest
-     - gRPC only
 
-Transactions
-------------
-
-.. list-table::
-   :widths: 35 50 15
-   :header-rows: 1
-
-   * - Command
-     - Description
-     - Protocols
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTx`
-     - Fetch a single transaction by digest
-     - Both
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTxKind`
-     - Fetch the transaction kind for a given digest
-     - Both
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetMultipleTx`
-     - Fetch multiple transactions by digest list
-     - gRPC only
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetFilteredTx`
-     - Fetch transactions matching a ``TransactionBlockFilter`` (paginated)
-     - GQL only
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetEvents`
-     - Fetch events matching a filter (paginated)
-     - GQL only
 
 Move / Packages
 ---------------
 
 .. list-table::
-   :widths: 35 50 15
+   :widths: 35 65
    :header-rows: 1
 
    * - Command
      - Description
-     - Protocols
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPackage`
      - Fetch a Move package by ID
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPackageVersions`
      - Fetch all versions of a Move package sharing the same original ID
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetModule`
      - Fetch a Move module's structure and function definitions
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetMoveDataType`
      - Fetch a Move struct or enum by name
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetStructure`
      - Fetch a specific Move struct by name
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetStructures`
      - Fetch all structs in a Move module (auto-paginated on GQL)
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetFunction`
      - Fetch a specific Move function by name
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetFunctions`
      - Fetch all functions in a Move module (auto-paginated on GQL)
-     - Both
 
-Name Service
-------------
+
+Name Service & Protocol
+-----------------------
 
 .. list-table::
-   :widths: 35 50 15
+   :widths: 35 65
    :header-rows: 1
 
    * - Command
      - Description
-     - Protocols
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetNameServiceAddress`
      - Resolve a SuiNS name to an address
-     - Both
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetNameServiceNames`
      - Resolve an address to its SuiNS name(s)
-     - Both
 
-gRPC-only
----------
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetProtocolConfig`
+     - Fetch the current node's protocol configuration and feature flags
 
-.. list-table::
-   :widths: 35 50 15
-   :header-rows: 1
-
-   * - Command
-     - Description
-     - Protocols
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetServiceInfo`
-     - Query general gRPC service information
-     - gRPC only
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.SubscribeCheckpoint`
-     - Subscribe to a live checkpoint feed (streaming)
-     - gRPC only
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.VerifySignature`
-     - Verify a cryptographic signature against a message
-     - gRPC only
 
 ----
 

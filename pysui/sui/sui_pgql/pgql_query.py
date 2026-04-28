@@ -5,7 +5,7 @@
 
 """QueryNode generators."""
 
-from typing import Optional, Callable, Union
+from typing import Any, Optional, Callable, Union
 import base64
 import datetime
 import warnings
@@ -27,6 +27,7 @@ import pysui.sui.sui_pgql.pgql_fragments as frag
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 from pysui.sui.sui_bcs.bcs import TransactionKind
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+import pysui.sui.sui_grpc.pgrpc_requests as _rn
 from pysui.sui.sui_types.scalars import SuiU64
 
 
@@ -1279,32 +1280,6 @@ class GetMultipleTransactions(PGQL_QueryNode):
     def encode_fn() -> Callable[[dict], pgql_type.TransactionSummariesGQL]:
         """Return the serializer to TransactionSummariesGQL function."""
         return pgql_type.TransactionSummariesGQL.from_query
-
-
-class GetMultipleTransactionsSC(GetMultipleTransactions):
-    """SC variant: encode_fn maps GQL transactions response to BatchGetTransactionsResponse proto."""
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], sui_prot.BatchGetTransactionsResponse]:
-        """Return deserializer producing BatchGetTransactionsResponse from GQL transactions dict."""
-
-        def _encode(in_data: dict) -> sui_prot.BatchGetTransactionsResponse:
-            transactions_data = in_data if isinstance(in_data, list) else [in_data]
-            results: list[sui_prot.GetTransactionResult] = []
-            for tx_data in transactions_data:
-                flat: dict = {}
-                pgql_type._fast_flat(tx_data, flat)
-                executed_tx = sui_prot.ExecutedTransaction(
-                    digest=flat.get("digest"),
-                    transaction=None,
-                    effects=None,
-                )
-                results.append(
-                    sui_prot.GetTransactionResult(transaction=executed_tx)
-                )
-            return sui_prot.BatchGetTransactionsResponse(transactions=results)
-
-        return _encode
 
 
 class GetTxKind(PGQL_QueryNode):
@@ -2767,4 +2742,743 @@ class GetNameServiceNamesSC(GetNameServiceNames):
             )
 
         return _encode
+
+
+# ---------------------------------------------------------------------------
+# SC sibling helpers — Steps 1-6
+# ---------------------------------------------------------------------------
+
+_GQL_ABILITY_MAP: dict[str, "sui_prot.Ability"] = {
+    "COPY": sui_prot.Ability.COPY,
+    "DROP": sui_prot.Ability.DROP,
+    "STORE": sui_prot.Ability.STORE,
+    "KEY": sui_prot.Ability.KEY,
+}
+
+_GQL_VIS_MAP: dict[str, "sui_prot.FunctionDescriptorVisibility"] = {
+    "Private": sui_prot.FunctionDescriptorVisibility.PRIVATE,
+    "Public": sui_prot.FunctionDescriptorVisibility.PUBLIC,
+    "Friend": sui_prot.FunctionDescriptorVisibility.FRIEND,
+}
+
+_GQL_SCALAR_MAP: dict[str, "sui_prot.OpenSignatureBodyType"] = {
+    "address": sui_prot.OpenSignatureBodyType.ADDRESS,
+    "bool": sui_prot.OpenSignatureBodyType.BOOL,
+    "u8": sui_prot.OpenSignatureBodyType.U8,
+    "u16": sui_prot.OpenSignatureBodyType.U16,
+    "u32": sui_prot.OpenSignatureBodyType.U32,
+    "u64": sui_prot.OpenSignatureBodyType.U64,
+    "u128": sui_prot.OpenSignatureBodyType.U128,
+    "u256": sui_prot.OpenSignatureBodyType.U256,
+}
+
+
+def _is_tx_context_sig(sig_dict: dict) -> bool:
+    """Return True if sig_dict represents a TxContext parameter."""
+    body = sig_dict.get("body", {})
+    if isinstance(body, dict) and "datatype" in body:
+        return body["datatype"].get("type") == "TxContext"
+    return False
+
+
+def _owner_from_inline_frag(owner_dict: Optional[dict]) -> Optional[sui_prot.Owner]:
+    """Map a StandardObject owner inline-fragment dict to an Owner proto."""
+    if not owner_dict:
+        return None
+    kind_str = owner_dict.get("obj_owner_kind")
+    if kind_str == "AddressOwner":
+        addr_id = owner_dict.get("address_id", {})
+        return sui_prot.Owner(
+            kind=sui_prot.OwnerOwnerKind.ADDRESS,
+            address=addr_id.get("address") if isinstance(addr_id, dict) else None,
+        )
+    if kind_str == "ObjectOwner":
+        parent_id = owner_dict.get("parent_id", {})
+        return sui_prot.Owner(
+            kind=sui_prot.OwnerOwnerKind.OBJECT,
+            address=parent_id.get("address") if isinstance(parent_id, dict) else None,
+        )
+    if kind_str == "Shared":
+        return sui_prot.Owner(
+            kind=sui_prot.OwnerOwnerKind.SHARED,
+            version=owner_dict.get("initial_version"),
+        )
+    if kind_str == "Immutable":
+        return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.IMMUTABLE)
+    return None
+
+
+def _gql_sig_body_to_proto(body: Any) -> sui_prot.OpenSignatureBody:
+    """Recursively map a GQL signature body to OpenSignatureBody proto."""
+    if isinstance(body, str):
+        body_type = _GQL_SCALAR_MAP.get(body, sui_prot.OpenSignatureBodyType.U8)
+        return sui_prot.OpenSignatureBody(type=body_type)
+    if isinstance(body, dict):
+        if "vector" in body:
+            return sui_prot.OpenSignatureBody(
+                type=sui_prot.OpenSignatureBodyType.VECTOR,
+                type_parameter_instantiation=[_gql_sig_body_to_proto(body["vector"])],
+            )
+        if "datatype" in body:
+            dt = body["datatype"]
+            type_name = f"{dt['package']}::{dt['module']}::{dt['type']}"
+            type_params = [_gql_sig_body_to_proto(p) for p in dt.get("typeParameters", [])]
+            return sui_prot.OpenSignatureBody(
+                type=sui_prot.OpenSignatureBodyType.DATATYPE,
+                type_name=type_name,
+                type_parameter_instantiation=type_params,
+            )
+        if "typeParameter" in body:
+            return sui_prot.OpenSignatureBody(
+                type=sui_prot.OpenSignatureBodyType.TYPE_PARAMETER,
+                type_parameter=int(body["typeParameter"]),
+            )
+    return sui_prot.OpenSignatureBody()
+
+
+def _gql_sig_to_proto_open_sig(sig_dict: dict) -> sui_prot.OpenSignature:
+    """Map a GQL OpenMoveType.signature dict to an OpenSignature proto."""
+    ref = sig_dict.get("ref")
+    if ref == "&":
+        reference: Optional[sui_prot.OpenSignatureReference] = sui_prot.OpenSignatureReference.IMMUTABLE
+    elif ref == "&mut":
+        reference = sui_prot.OpenSignatureReference.MUTABLE
+    else:
+        reference = None
+    return sui_prot.OpenSignature(
+        reference=reference,
+        body=_gql_sig_body_to_proto(sig_dict.get("body", {})),
+    )
+
+
+def _encode_object_from_raw(obj_dict: dict) -> sui_prot.Object:
+    """Map a StandardObject raw GQL dict to an Object proto."""
+    if not obj_dict:
+        return sui_prot.Object()
+    bcs_str: Optional[str] = obj_dict.get("bcs")
+    object_bcs = sui_prot.Bcs(value=base64.b64decode(bcs_str)) if bcs_str else None
+    owner = _owner_from_inline_frag(obj_dict.get("owner"))
+    prior_tx = obj_dict.get("prior_transaction") or {}
+    prev_tx: Optional[str] = prior_tx.get("previous_transaction_digest") if isinstance(prior_tx, dict) else None
+    object_type: Optional[str] = None
+    has_public_transfer: Optional[bool] = None
+    as_move_content = obj_dict.get("as_move_content")
+    if isinstance(as_move_content, dict):
+        has_public_transfer = as_move_content.get("has_public_transfer")
+        as_object = as_move_content.get("as_object") or {}
+        if isinstance(as_object, dict):
+            obj_type_repr = as_object.get("object_type_repr") or {}
+            if isinstance(obj_type_repr, dict):
+                object_type = obj_type_repr.get("object_type")
+    sr = obj_dict.get("storage_rebate")
+    return sui_prot.Object(
+        object_id=obj_dict.get("object_id"),
+        version=int(obj_dict.get("version") or 0),
+        digest=obj_dict.get("object_digest"),
+        owner=owner,
+        object_type=object_type,
+        has_public_transfer=has_public_transfer,
+        bcs=object_bcs,
+        previous_transaction=prev_tx,
+        storage_rebate=int(sr) if sr is not None else None,
+    )
+
+
+def _encode_coin_from_move_obj(mo_dict: dict) -> sui_prot.Object:
+    """Map a MoveObject-level GQL dict (coin or staked coin node) to an Object proto."""
+    if not mo_dict:
+        return sui_prot.Object()
+    owner = _owner_from_inline_frag(mo_dict.get("owner"))
+    prev_tx_info = mo_dict.get("previousTransaction") or {}
+    prev_tx: Optional[str] = prev_tx_info.get("previous_transaction") if isinstance(prev_tx_info, dict) else None
+    contents = mo_dict.get("contents") or {}
+    coin_type: Optional[str] = contents.get("coin_type") if isinstance(contents, dict) else None
+    return sui_prot.Object(
+        object_id=mo_dict.get("coin_object_id"),
+        version=int(mo_dict.get("version") or 0),
+        digest=mo_dict.get("object_digest"),
+        owner=owner,
+        object_type=coin_type,
+        has_public_transfer=mo_dict.get("hasPublicTransfer"),
+        previous_transaction=prev_tx,
+    )
+
+
+def _encode_coins_list(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
+    """Shared encoder for GetCoinsSC and GetGasSC."""
+    qres = in_data.get("qres", in_data)
+    coins = qres.get("coins", {}) if isinstance(qres, dict) else {}
+    cursor = coins.get("cursor", {}) if isinstance(coins, dict) else {}
+    coin_objects = coins.get("coin_objects", []) if isinstance(coins, dict) else []
+    objects: list[sui_prot.Object] = [_encode_coin_from_move_obj(c) for c in coin_objects]
+    end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
+    next_page_token: Optional[bytes] = (
+        end_cursor.encode()
+        if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
+        else None
+    )
+    return sui_prot.ListOwnedObjectsResponse(objects=objects, next_page_token=next_page_token)
+
+
+def _encode_checkpoint_from_raw(cp_dict: dict) -> sui_prot.GetCheckpointResponse:
+    """Map a StandardCheckpoint raw GQL dict to GetCheckpointResponse proto."""
+    if not cp_dict:
+        return sui_prot.GetCheckpointResponse()
+    ts_str: Optional[str] = cp_dict.get("timestamp")
+    ts: Optional[datetime.datetime] = None
+    if ts_str:
+        try:
+            ts = datetime.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    seq = cp_dict.get("sequenceNumber")
+    net_txns = cp_dict.get("networkTotalTransactions")
+    return sui_prot.GetCheckpointResponse(
+        checkpoint=sui_prot.Checkpoint(
+            sequence_number=int(seq) if seq is not None else None,
+            digest=cp_dict.get("digest"),
+            summary=sui_prot.CheckpointSummary(
+                sequence_number=int(seq) if seq is not None else None,
+                digest=cp_dict.get("digest"),
+                total_network_transactions=int(net_txns) if net_txns is not None else None,
+                previous_digest=cp_dict.get("previousCheckpointDigest"),
+                timestamp=ts,
+            ),
+        )
+    )
+
+
+def _fields_to_descriptors(fields_list: list) -> list:
+    """Map GQL field dicts to FieldDescriptor protos."""
+    result = []
+    for i, f in enumerate(fields_list):
+        sig_container = f.get("field_type") or {}
+        sig_dict = sig_container.get("signature") or {} if isinstance(sig_container, dict) else {}
+        body = sig_dict.get("body") if isinstance(sig_dict, dict) else None
+        field_type = _gql_sig_body_to_proto(body) if body is not None else None
+        result.append(sui_prot.FieldDescriptor(
+            name=f.get("field_name"),
+            position=i,
+            type=field_type,
+        ))
+    return result
+
+
+def _struct_to_datatype(
+    struct_dict: dict,
+    defining_id: str,
+    module_name: str,
+) -> sui_prot.DatatypeDescriptor:
+    """Map a MoveStruct raw dict to a DatatypeDescriptor proto."""
+    name = struct_dict.get("struct_name", "")
+    abilities = [_GQL_ABILITY_MAP[a] for a in struct_dict.get("abilities", []) if a in _GQL_ABILITY_MAP]
+    type_params = [
+        sui_prot.TypeParameter(
+            constraints=[_GQL_ABILITY_MAP[c] for c in tp.get("constraints", []) if c in _GQL_ABILITY_MAP],
+            is_phantom=False,
+        )
+        for tp in struct_dict.get("typeParameters", [])
+        if isinstance(tp, dict)
+    ]
+    fields = _fields_to_descriptors(struct_dict.get("fields", []))
+    return sui_prot.DatatypeDescriptor(
+        type_name=f"{defining_id}::{module_name}::{name}",
+        defining_id=defining_id,
+        module=module_name,
+        name=name,
+        abilities=abilities,
+        type_parameters=type_params,
+        kind=sui_prot.DatatypeDescriptorDatatypeKind.STRUCT,
+        fields=fields,
+    )
+
+
+def _enum_to_datatype(
+    enum_dict: dict,
+    defining_id: str,
+    module_name: str,
+) -> sui_prot.DatatypeDescriptor:
+    """Map a MoveEnum raw dict to a DatatypeDescriptor proto."""
+    name = enum_dict.get("enum_name", "")
+    abilities = [_GQL_ABILITY_MAP[a] for a in enum_dict.get("abilities", []) if a in _GQL_ABILITY_MAP]
+    variants = [
+        sui_prot.VariantDescriptor(
+            name=v.get("variant_name"),
+            position=i,
+            fields=_fields_to_descriptors(v.get("fields", [])),
+        )
+        for i, v in enumerate(enum_dict.get("variants", []))
+        if isinstance(v, dict)
+    ]
+    return sui_prot.DatatypeDescriptor(
+        type_name=f"{defining_id}::{module_name}::{name}",
+        defining_id=defining_id,
+        module=module_name,
+        name=name,
+        abilities=abilities,
+        kind=sui_prot.DatatypeDescriptorDatatypeKind.ENUM,
+        variants=variants,
+    )
+
+
+def _func_to_descriptor(func_dict: dict) -> sui_prot.FunctionDescriptor:
+    """Map a MoveFunction raw dict to a FunctionDescriptor proto."""
+    name = func_dict.get("function_name", "")
+    vis_str = func_dict.get("visibility", "Private")
+    visibility = _GQL_VIS_MAP.get(vis_str, sui_prot.FunctionDescriptorVisibility.PRIVATE)
+    is_entry = bool(func_dict.get("isEntry", False))
+    type_params = [
+        sui_prot.TypeParameter(
+            constraints=[_GQL_ABILITY_MAP[c] for c in tp.get("constraints", []) if c in _GQL_ABILITY_MAP],
+            is_phantom=False,
+        )
+        for tp in func_dict.get("typeParameters", [])
+        if isinstance(tp, dict)
+    ]
+    raw_params = func_dict.get("parameters", [])
+    parameters = [
+        _gql_sig_to_proto_open_sig(p["signature"])
+        for p in raw_params
+        if isinstance(p, dict) and "signature" in p and not _is_tx_context_sig(p["signature"])
+    ]
+    returns = [
+        _gql_sig_to_proto_open_sig(r["signature"])
+        for r in func_dict.get("returns", [])
+        if isinstance(r, dict) and "signature" in r
+    ]
+    return sui_prot.FunctionDescriptor(
+        name=name,
+        visibility=visibility,
+        is_entry=is_entry,
+        type_parameters=type_params,
+        parameters=parameters,
+        returns=returns,
+    )
+
+
+def _module_raw_to_proto(mod_dict: dict, package_id: str) -> sui_prot.Module:
+    """Map a MoveModule raw GQL dict to a Module proto."""
+    module_name = mod_dict.get("module_name", "")
+    struct_list_data = mod_dict.get("structure_list") or {}
+    func_list_data = mod_dict.get("function_list") or {}
+    module_structures = struct_list_data.get("module_structures", []) if isinstance(struct_list_data, dict) else []
+    module_functions = func_list_data.get("module_functions", []) if isinstance(func_list_data, dict) else []
+    datatypes = [_struct_to_datatype(s, package_id, module_name) for s in module_structures if isinstance(s, dict)]
+    functions = [_func_to_descriptor(f) for f in module_functions if isinstance(f, dict)]
+    return sui_prot.Module(
+        name=module_name,
+        datatypes=datatypes,
+        functions=functions,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Step 1 — Simple GQL SC siblings
+# ---------------------------------------------------------------------------
+
+
+class GetObjectSC(GetObject):
+    """SC variant: encode_fn maps GQL object response to Object proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.Object]:
+        """Return deserializer producing Object from GQL object dict."""
+
+        def _encode(in_data: dict) -> sui_prot.Object:
+            obj_dict = in_data.get("object") or {}
+            return _encode_object_from_raw(obj_dict)
+
         return _encode
+
+
+class GetPastObjectSC(GetPastObject):
+    """SC variant: encode_fn maps GQL past object response to Object proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.Object]:
+        """Return deserializer producing Object from GQL object dict."""
+
+        def _encode(in_data: dict) -> sui_prot.Object:
+            obj_dict = in_data.get("object") or {}
+            return _encode_object_from_raw(obj_dict)
+
+        return _encode
+
+
+class GetMoveDataTypeSC(GetMoveDataType):
+    """SC variant: encode_fn maps GQL datatype response to GetDatatypeResponse proto."""
+
+    def encode_fn(self) -> Callable[[dict], sui_prot.GetDatatypeResponse]:
+        """Return deserializer producing GetDatatypeResponse from GQL datatype dict."""
+        defining_id = self.package
+        module_name = self.module
+
+        def _encode(in_data: dict) -> sui_prot.GetDatatypeResponse:
+            mod = (in_data.get("object") or {}).get("asMovePackage") or {}
+            datatype = (mod.get("module") or {}).get("datatype") or {}
+            struct_raw = datatype.get("asMoveStruct")
+            enum_raw = datatype.get("asMoveEnum")
+            if struct_raw:
+                descriptor = _struct_to_datatype(struct_raw, defining_id, module_name)
+            elif enum_raw:
+                descriptor = _enum_to_datatype(enum_raw, defining_id, module_name)
+            else:
+                return sui_prot.GetDatatypeResponse()
+            return sui_prot.GetDatatypeResponse(datatype=descriptor)
+
+        return _encode
+
+
+class GetStructureSC(GetStructure):
+    """SC variant: encode_fn maps GQL struct response to GetDatatypeResponse proto."""
+
+    def encode_fn(self) -> Callable[[dict], sui_prot.GetDatatypeResponse]:
+        """Return deserializer producing GetDatatypeResponse from GQL struct dict."""
+        defining_id = self.package
+        module_name = self.module
+
+        def _encode(in_data: dict) -> sui_prot.GetDatatypeResponse:
+            mod = (in_data.get("object") or {}).get("asMovePackage") or {}
+            struct_raw = (mod.get("module") or {}).get("struct") or {}
+            if not struct_raw:
+                return sui_prot.GetDatatypeResponse()
+            return sui_prot.GetDatatypeResponse(
+                datatype=_struct_to_datatype(struct_raw, defining_id, module_name)
+            )
+
+        return _encode
+
+
+# ---------------------------------------------------------------------------
+# Step 2 — GetFunctionSC
+# ---------------------------------------------------------------------------
+
+
+class GetFunctionSC(GetFunction):
+    """SC variant: encode_fn maps GQL function response to GetFunctionResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetFunctionResponse]:
+        """Return deserializer producing GetFunctionResponse from GQL function dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetFunctionResponse:
+            mod = (in_data.get("object") or {}).get("asMovePackage") or {}
+            func_raw = (mod.get("module") or {}).get("function") or {}
+            if not func_raw:
+                return sui_prot.GetFunctionResponse()
+            return sui_prot.GetFunctionResponse(function=_func_to_descriptor(func_raw))
+
+        return _encode
+
+
+# ---------------------------------------------------------------------------
+# Step 3 — Owned/paginated list SC siblings
+# ---------------------------------------------------------------------------
+
+
+class GetCoinsSC(GetCoins):
+    """SC variant: encode_fn maps GQL coins response to ListOwnedObjectsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
+        """Return deserializer producing ListOwnedObjectsResponse from GQL coins dict."""
+        return _encode_coins_list
+
+
+class GetGasSC(GetGas):
+    """SC variant: encode_fn maps GQL SUI gas coins response to ListOwnedObjectsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
+        """Return deserializer producing ListOwnedObjectsResponse from GQL gas dict."""
+        return _encode_coins_list
+
+
+class GetDelegatedStakesSC(GetDelegatedStakes):
+    """SC variant: encode_fn maps GQL staked coins response to ListOwnedObjectsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
+        """Return deserializer producing ListOwnedObjectsResponse from GQL staked coins dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
+            objects_data = in_data.get("objects") or {}
+            cursor = objects_data.get("cursor") or {}
+            staked_coins = objects_data.get("staked_coin", [])
+            objects: list[sui_prot.Object] = [
+                _encode_coin_from_move_obj(sc.get("asMoveObject") or {})
+                for sc in staked_coins
+                if isinstance(sc, dict)
+            ]
+            end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
+            next_page_token: Optional[bytes] = (
+                end_cursor.encode()
+                if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListOwnedObjectsResponse(
+                objects=objects,
+                next_page_token=next_page_token,
+            )
+
+        return _encode
+
+
+class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
+    """SC variant: encode_fn maps GQL owned objects response to ListOwnedObjectsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
+        """Return deserializer producing ListOwnedObjectsResponse from GQL objects dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
+            objects_data = in_data.get("objects") or {}
+            cursor = objects_data.get("cursor") or {}
+            obj_list = objects_data.get("objects_data", [])
+            objects: list[sui_prot.Object] = [
+                _encode_object_from_raw(o)
+                for o in obj_list
+                if isinstance(o, dict)
+            ]
+            end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
+            next_page_token: Optional[bytes] = (
+                end_cursor.encode()
+                if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListOwnedObjectsResponse(
+                objects=objects,
+                next_page_token=next_page_token,
+            )
+
+        return _encode
+
+
+# ---------------------------------------------------------------------------
+# Step 4 — Batch object SC siblings
+# ---------------------------------------------------------------------------
+
+
+class GetMultipleObjectsSC(GetMultipleObjects):
+    """SC variant: encode_fn maps GQL multi-object response to BatchGetObjectsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.BatchGetObjectsResponse]:
+        """Return deserializer producing BatchGetObjectsResponse from GQL multi-get dict."""
+
+        def _encode(in_data: dict) -> sui_prot.BatchGetObjectsResponse:
+            obj_list = in_data.get("multiGetObjects", [])
+            return sui_prot.BatchGetObjectsResponse(objects=[
+                sui_prot.GetObjectResult(object=_encode_object_from_raw(o))
+                for o in obj_list
+                if isinstance(o, dict)
+            ])
+
+        return _encode
+
+
+class GetMultipleVersionedObjectsSC(GetMultipleVersionedObjects):
+    """SC variant: encode_fn maps GQL multi-versioned response to BatchGetObjectsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.BatchGetObjectsResponse]:
+        """Return deserializer producing BatchGetObjectsResponse from GQL multi-get dict."""
+
+        def _encode(in_data: dict) -> sui_prot.BatchGetObjectsResponse:
+            obj_list = in_data.get("multiGetObjects", [])
+            return sui_prot.BatchGetObjectsResponse(objects=[
+                sui_prot.GetObjectResult(object=_encode_object_from_raw(o))
+                for o in obj_list
+                if isinstance(o, dict)
+            ])
+
+        return _encode
+
+
+# ---------------------------------------------------------------------------
+# Step 5 — Checkpoint SC siblings
+# ---------------------------------------------------------------------------
+
+
+class GetLatestCheckpointSequenceSC(GetLatestCheckpointSequence):
+    """SC variant: encode_fn maps GQL checkpoints response to GetCheckpointResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetCheckpointResponse]:
+        """Return deserializer producing GetCheckpointResponse from GQL checkpoints dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetCheckpointResponse:
+            checkpoints = in_data.get("checkpoints") or {}
+            nodes = checkpoints.get("nodes", [])
+            if not nodes:
+                return sui_prot.GetCheckpointResponse()
+            return _encode_checkpoint_from_raw(nodes[0])
+
+        return _encode
+
+
+class GetCheckpointBySequenceSC(GetCheckpointBySequence):
+    """SC variant: encode_fn maps GQL checkpoint response to GetCheckpointResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetCheckpointResponse]:
+        """Return deserializer producing GetCheckpointResponse from GQL checkpoint dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetCheckpointResponse:
+            cp_dict = in_data.get("checkpoint") or {}
+            return _encode_checkpoint_from_raw(cp_dict)
+
+        return _encode
+
+
+# ---------------------------------------------------------------------------
+# Step 6 — Package/module/TX SC siblings
+# ---------------------------------------------------------------------------
+
+
+class GetModuleSC(GetModule):
+    """SC variant: encode_fn maps GQL module response to Module proto."""
+
+    def encode_fn(self) -> Callable[[dict], sui_prot.Module]:
+        """Return deserializer producing Module from GQL module dict."""
+        package_id = self.package
+
+        def _encode(in_data: dict) -> sui_prot.Module:
+            mod_raw = (in_data.get("object") or {}).get("asMovePackage") or {}
+            module_raw = mod_raw.get("module") or {}
+            if not module_raw:
+                return sui_prot.Module()
+            return _module_raw_to_proto(module_raw, package_id)
+
+        return _encode
+
+
+class GetPackageSC(GetPackage):
+    """SC variant: encode_fn maps GQL package response to GetPackageResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.GetPackageResponse]:
+        """Return deserializer producing GetPackageResponse from GQL package dict."""
+
+        def _encode(in_data: dict) -> sui_prot.GetPackageResponse:
+            pkg_raw = (in_data.get("object") or {}).get("asMovePackage") or {}
+            if not pkg_raw:
+                return sui_prot.GetPackageResponse()
+            package_id: str = pkg_raw.get("package_id") or ""
+            package_version = pkg_raw.get("package_version")
+            nodes = pkg_raw.get("nodes") or []
+            modules = [_module_raw_to_proto(m, package_id) for m in nodes if isinstance(m, dict)]
+            return sui_prot.GetPackageResponse(
+                package=sui_prot.Package(
+                    storage_id=package_id,
+                    version=int(package_version) if package_version is not None else None,
+                    modules=modules,
+                )
+            )
+
+        return _encode
+
+
+# ---------------------------------------------------------------------------
+# Step 7b — Paged High-complexity SC siblings
+# ---------------------------------------------------------------------------
+
+
+class GetStructuresSC(GetStructures):
+    """SC variant: accumulates raw MoveStruct nodes across pages → MoveStructuresGRPC."""
+
+    def encode_fn(self) -> Callable[[list], "_rn.MoveStructuresGRPC"]:
+        """Return deserializer producing MoveStructuresGRPC from accumulated struct nodes."""
+        defining_id = self.package
+        module_name = self.module
+
+        def _encode(nodes: list) -> "_rn.MoveStructuresGRPC":
+            return _rn.MoveStructuresGRPC(
+                structures=[
+                    _struct_to_datatype(n, defining_id, module_name)
+                    for n in nodes
+                    if isinstance(n, dict)
+                ]
+            )
+
+        return _encode
+
+
+class GetFunctionsSC(GetFunctions):
+    """SC variant: accumulates raw MoveFunction nodes across pages → MoveFunctionsGRPC."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[list], "_rn.MoveFunctionsGRPC"]:
+        """Return deserializer producing MoveFunctionsGRPC from accumulated function nodes."""
+
+        def _encode(nodes: list) -> "_rn.MoveFunctionsGRPC":
+            return _rn.MoveFunctionsGRPC(
+                functions=[
+                    _func_to_descriptor(n)
+                    for n in nodes
+                    if isinstance(n, dict)
+                ]
+            )
+
+        return _encode
+
+
+# ---------------------------------------------------------------------------
+# Step 9 — High complexity SC siblings
+# ---------------------------------------------------------------------------
+
+
+class GetDynamicFieldsSC(GetDynamicFields):
+    """SC variant: encode_fn maps GQL dynamic fields response to ListDynamicFieldsResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.ListDynamicFieldsResponse]:
+        """Return deserializer producing ListDynamicFieldsResponse from GQL dynamic fields dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ListDynamicFieldsResponse:
+            obj = in_data.get("object") or {}
+            parent_id: str = obj.get("parent_object_id", "")
+            dyn_conn = obj.get("dynamicFields") or {}
+            cursor = dyn_conn.get("cursor") or {}
+            nodes = dyn_conn.get("dynamic_fields") or []
+
+            fields: list[sui_prot.DynamicField] = []
+            for node in nodes:
+                if not isinstance(node, dict):
+                    continue
+                field_kind_str = node.get("field_kind", "")
+                kind = (
+                    sui_prot.DynamicFieldDynamicFieldKind.FIELD
+                    if field_kind_str == "DynamicField"
+                    else sui_prot.DynamicFieldDynamicFieldKind.OBJECT
+                )
+                field_data = node.get("field_data") or {}
+                data_kind = field_data.get("data_kind", "")
+                if data_kind == "MoveObject":
+                    fields.append(sui_prot.DynamicField(
+                        kind=kind,
+                        parent=parent_id,
+                        child_id=field_data.get("address"),
+                    ))
+                else:
+                    obj_type = field_data.get("object_type") or {}
+                    fields.append(sui_prot.DynamicField(
+                        kind=kind,
+                        parent=parent_id,
+                        value_type=(obj_type.get("layout")),
+                    ))
+
+            end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
+            next_page_token: Optional[bytes] = (
+                end_cursor.encode()
+                if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListDynamicFieldsResponse(
+                dynamic_fields=fields,
+                next_page_token=next_page_token,
+            )
+
+        return _encode
+
+

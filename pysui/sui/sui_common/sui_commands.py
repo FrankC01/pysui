@@ -183,16 +183,16 @@ class GetAddressCoinBalances(SuiCommand):
 class GetCoins(SuiCommand):
     """Fetch all coin objects of a specific type owned by an address."""
 
-    gql_class: ClassVar[type] = pgql_query.GetCoins
+    gql_class: ClassVar[type] = pgql_query.GetCoinsSC
     grpc_class: ClassVar[type] = rn.GetCoins
 
     owner: str
     coin_type: Optional[str] = "0x2::coin::Coin<0x2::sui::SUI>"
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetCoins:
+    def gql_node(self) -> pgql_query.GetCoinsSC:
         """Return GQL coins query node."""
-        return pgql_query.GetCoins(
+        return self.gql_class(
             owner=self.owner,
             coin_type=self.coin_type,
             next_page=self.next_page,
@@ -207,15 +207,15 @@ class GetCoins(SuiCommand):
 class GetGas(SuiCommand):
     """Fetch all SUI gas coin objects owned by an address."""
 
-    gql_class: ClassVar[type] = pgql_query.GetGas
+    gql_class: ClassVar[type] = pgql_query.GetGasSC
     grpc_class: ClassVar[type] = rn.GetGas
 
     owner: str
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetGas:
+    def gql_node(self) -> pgql_query.GetGasSC:
         """Return GQL gas-coins query node."""
-        return pgql_query.GetGas(owner=self.owner, next_page=self.next_page)
+        return self.gql_class(owner=self.owner, next_page=self.next_page)
 
     def grpc_request(self) -> rn.GetGas:
         """Return gRPC get-gas request."""
@@ -226,15 +226,15 @@ class GetGas(SuiCommand):
 class GetStaked(SuiCommand):
     """Fetch all staked SUI coin objects owned by an address."""
 
-    gql_class: ClassVar[type] = pgql_query.GetDelegatedStakes
+    gql_class: ClassVar[type] = pgql_query.GetDelegatedStakesSC
     grpc_class: ClassVar[type] = rn.GetStaked
 
     owner: str
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetDelegatedStakes:
+    def gql_node(self) -> pgql_query.GetDelegatedStakesSC:
         """Return GQL staked-coins query node."""
-        return pgql_query.GetDelegatedStakes(self.owner, next_page=self.next_page)
+        return self.gql_class(self.owner, next_page=self.next_page)
 
     def grpc_request(self) -> rn.GetStaked:
         """Return gRPC get-staked request."""
@@ -245,15 +245,15 @@ class GetStaked(SuiCommand):
 class GetDelegatedStakes(SuiCommand):
     """Fetch all delegated-stake (StakedSui) objects owned by an address."""
 
-    gql_class: ClassVar[type] = pgql_query.GetDelegatedStakes
+    gql_class: ClassVar[type] = pgql_query.GetDelegatedStakesSC
     grpc_class: ClassVar[type] = rn.GetDelegatedStakes
 
     owner: str
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetDelegatedStakes:
+    def gql_node(self) -> pgql_query.GetDelegatedStakesSC:
         """Return GQL delegated-stakes query node."""
-        return pgql_query.GetDelegatedStakes(self.owner, next_page=self.next_page)
+        return self.gql_class(self.owner, next_page=self.next_page)
 
     def grpc_request(self) -> rn.GetDelegatedStakes:
         """Return gRPC get-delegated-stakes request."""
@@ -269,51 +269,51 @@ class GetDelegatedStakes(SuiCommand):
 class GetObject(SuiCommand):
     """Fetch the current state of a single object."""
 
-    gql_class: ClassVar[type] = pgql_query.GetObject
-    grpc_class: ClassVar[type] = rn.GetObject
+    gql_class: ClassVar[type] = pgql_query.GetObjectSC
+    grpc_class: ClassVar[type] = rn.GetObjectSC
 
     object_id: str
 
-    def gql_node(self) -> pgql_query.GetObject:
+    def gql_node(self) -> pgql_query.GetObjectSC:
         """Return GQL object query node."""
-        return pgql_query.GetObject(object_id=self.object_id)
+        return self.gql_class(object_id=self.object_id)
 
-    def grpc_request(self) -> rn.GetObject:
+    def grpc_request(self) -> rn.GetObjectSC:
         """Return gRPC get-object request."""
-        return rn.GetObject(object_id=self.object_id)
+        return self.grpc_class(object_id=self.object_id)
 
 
 @dataclass(kw_only=True)
 class GetPastObject(SuiCommand):
     """Fetch a specific version of an object."""
 
-    gql_class: ClassVar[type] = pgql_query.GetPastObject
-    grpc_class: ClassVar[type] = rn.GetPastObject
+    gql_class: ClassVar[type] = pgql_query.GetPastObjectSC
+    grpc_class: ClassVar[type] = rn.GetPastObjectSC
 
     object_id: str
     version: int
 
-    def gql_node(self) -> pgql_query.GetPastObject:
+    def gql_node(self) -> pgql_query.GetPastObjectSC:
         """Return GQL past-object query node."""
-        return pgql_query.GetPastObject(object_id=self.object_id, version=self.version)
+        return self.gql_class(object_id=self.object_id, version=self.version)
 
-    def grpc_request(self) -> rn.GetPastObject:
+    def grpc_request(self) -> rn.GetPastObjectSC:
         """Return gRPC get-past-object request."""
-        return rn.GetPastObject(object_id=self.object_id, version=self.version)
+        return self.grpc_class(object_id=self.object_id, version=self.version)
 
 
 @dataclass(kw_only=True)
 class GetMultipleObjects(SuiCommand):
     """Fetch the current state of multiple objects by ID list."""
 
-    gql_class: ClassVar[type] = pgql_query.GetMultipleObjects
+    gql_class: ClassVar[type] = pgql_query.GetMultipleObjectsSC
     grpc_class: ClassVar[type] = rn.GetMultipleObjects
 
     object_ids: list[str]
 
-    def gql_node(self) -> pgql_query.GetMultipleObjects:
+    def gql_node(self) -> pgql_query.GetMultipleObjectsSC:
         """Return GQL multi-object query node."""
-        return pgql_query.GetMultipleObjects(object_ids=self.object_ids)
+        return self.gql_class(object_ids=self.object_ids)
 
     def grpc_request(self) -> rn.GetMultipleObjects:
         """Return gRPC batch-get-objects request."""
@@ -328,18 +328,18 @@ class GetMultiplePastObjects(SuiCommand):
     and ``"version"`` (int).
     """
 
-    gql_class: ClassVar[type] = pgql_query.GetMultipleVersionedObjects
+    gql_class: ClassVar[type] = pgql_query.GetMultipleVersionedObjectsSC
     grpc_class: ClassVar[type] = rn.GetMultiplePastObjects
 
     for_versions: list[dict]
 
-    def gql_node(self) -> pgql_query.GetMultipleVersionedObjects:
+    def gql_node(self) -> pgql_query.GetMultipleVersionedObjectsSC:
         """Return GQL multi-versioned-objects query node."""
         gql_versions = [
             {"address": d["objectId"], "version": d["version"]}
             for d in self.for_versions
         ]
-        return pgql_query.GetMultipleVersionedObjects(for_versions=gql_versions)
+        return self.gql_class(for_versions=gql_versions)
 
     def grpc_request(self) -> rn.GetMultiplePastObjects:
         """Return gRPC batch-get-past-objects request."""
@@ -350,17 +350,15 @@ class GetMultiplePastObjects(SuiCommand):
 class GetObjectsOwnedByAddress(SuiCommand):
     """Fetch all objects owned by an address."""
 
-    gql_class: ClassVar[type] = pgql_query.GetObjectsOwnedByAddress
+    gql_class: ClassVar[type] = pgql_query.GetObjectsOwnedByAddressSC
     grpc_class: ClassVar[type] = rn.GetObjectsOwnedByAddress
 
     owner: str
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetObjectsOwnedByAddress:
+    def gql_node(self) -> pgql_query.GetObjectsOwnedByAddressSC:
         """Return GQL owned-objects query node."""
-        return pgql_query.GetObjectsOwnedByAddress(
-            owner=self.owner, next_page=self.next_page
-        )
+        return self.gql_class(owner=self.owner, next_page=self.next_page)
 
     def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
         """Return gRPC list-owned-objects request."""
@@ -371,15 +369,15 @@ class GetObjectsOwnedByAddress(SuiCommand):
 class GetDynamicFields(SuiCommand):
     """Fetch dynamic fields of an object."""
 
-    gql_class: ClassVar[type] = pgql_query.GetDynamicFields
+    gql_class: ClassVar[type] = pgql_query.GetDynamicFieldsSC
     grpc_class: ClassVar[type] = rn.GetDynamicFields
 
     object_id: str
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetDynamicFields:
+    def gql_node(self) -> pgql_query.GetDynamicFieldsSC:
         """Return GQL dynamic-fields query node."""
-        return pgql_query.GetDynamicFields(
+        return self.gql_class(
             object_id=self.object_id, next_page=self.next_page
         )
 
@@ -411,22 +409,6 @@ class GetEpoch(SuiCommand):
         return rn.GetEpoch(epoch_number=self.epoch_id)
 
 
-@dataclass(kw_only=True)
-class GetLatestSuiSystemState(SuiCommand):
-    """Fetch the latest Sui system state."""
-
-    gql_class: ClassVar[type] = pgql_query.GetLatestSuiSystemState
-    grpc_class: ClassVar[type] = rn.GetLatestSuiSystemState
-
-    def gql_node(self) -> pgql_query.GetLatestSuiSystemState:
-        """Return GQL latest-system-state query node."""
-        return pgql_query.GetLatestSuiSystemState()
-
-    def grpc_request(self) -> rn.GetLatestSuiSystemState:
-        """Return gRPC get-system-state request."""
-        return rn.GetLatestSuiSystemState()
-
-
 class GetBasicCurrentEpochInfo(SuiCommand):
     """Fetch the minimal current epoch fields needed for gas and expiry building."""
 
@@ -442,25 +424,6 @@ class GetBasicCurrentEpochInfo(SuiCommand):
         return rn.GetBasicCurrentEpochInfo()
 
 
-@dataclass(kw_only=True)
-class GetCurrentValidators(SuiCommand):
-    """Fetch the active validator set from the current epoch."""
-
-    gql_class: ClassVar[type] = pgql_query.GetCurrentValidators
-    grpc_class: ClassVar[type] = rn.GetCurrentValidators
-    gql_requires_paging: ClassVar[bool] = True
-
-    next_page: Optional[PagingCursor] = None
-
-    def gql_node(self) -> pgql_query.GetCurrentValidators:
-        """Return GQL current-validators query node."""
-        return pgql_query.GetCurrentValidators(next_page=self.next_page)
-
-    def grpc_request(self) -> rn.GetCurrentValidators:
-        """Return gRPC get-current-validators request (flat, no paging)."""
-        return rn.GetCurrentValidators()
-
-
 # ---------------------------------------------------------------------------
 # Checkpoint queries
 # ---------------------------------------------------------------------------
@@ -470,12 +433,12 @@ class GetCurrentValidators(SuiCommand):
 class GetLatestCheckpoint(SuiCommand):
     """Fetch the latest checkpoint."""
 
-    gql_class: ClassVar[type] = pgql_query.GetLatestCheckpointSequence
+    gql_class: ClassVar[type] = pgql_query.GetLatestCheckpointSequenceSC
     grpc_class: ClassVar[type] = rn.GetLatestCheckpoint
 
-    def gql_node(self) -> pgql_query.GetLatestCheckpointSequence:
+    def gql_node(self) -> pgql_query.GetLatestCheckpointSequenceSC:
         """Return GQL latest-checkpoint-sequence query node."""
-        return pgql_query.GetLatestCheckpointSequence()
+        return self.gql_class()
 
     def grpc_request(self) -> rn.GetLatestCheckpoint:
         """Return gRPC get-latest-checkpoint request."""
@@ -486,95 +449,18 @@ class GetLatestCheckpoint(SuiCommand):
 class GetCheckpointBySequence(SuiCommand):
     """Fetch a checkpoint by sequence number."""
 
-    gql_class: ClassVar[type] = pgql_query.GetCheckpointBySequence
+    gql_class: ClassVar[type] = pgql_query.GetCheckpointBySequenceSC
     grpc_class: ClassVar[type] = rn.GetCheckpointBySequence
 
     sequence_number: int
 
-    def gql_node(self) -> pgql_query.GetCheckpointBySequence:
+    def gql_node(self) -> pgql_query.GetCheckpointBySequenceSC:
         """Return GQL checkpoint-by-sequence query node."""
-        return pgql_query.GetCheckpointBySequence(sequence_number=self.sequence_number)
+        return self.gql_class(sequence_number=self.sequence_number)
 
     def grpc_request(self) -> rn.GetCheckpointBySequence:
         """Return gRPC get-checkpoint-by-sequence request."""
         return rn.GetCheckpointBySequence(sequence_number=self.sequence_number)
-
-
-@dataclass(kw_only=True)
-class GetCheckpointByDigest(SuiCommand):
-    """Fetch a checkpoint by digest (gRPC only)."""
-
-    gql_class: ClassVar[type] = None
-    grpc_class: ClassVar[type] = rn.GetCheckpointByDigest
-
-    digest: str
-
-    def gql_node(self):
-        """Not supported by GraphQL."""
-        raise NotImplementedError("GetCheckpointByDigest is not supported by GraphQL")
-
-    def grpc_request(self) -> rn.GetCheckpointByDigest:
-        """Return gRPC get-checkpoint-by-digest request."""
-        return rn.GetCheckpointByDigest(digest=self.digest)
-
-
-# ---------------------------------------------------------------------------
-# Transaction queries
-# ---------------------------------------------------------------------------
-
-
-@dataclass(kw_only=True)
-class GetTx(SuiCommand):
-    """Fetch a single transaction by digest."""
-
-    gql_class: ClassVar[type] = pgql_query.GetTx
-    grpc_class: ClassVar[type] = rn.GetTx
-
-    digest: str
-
-    def gql_node(self) -> pgql_query.GetTx:
-        """Return GQL transaction query node."""
-        return pgql_query.GetTx(digest=self.digest)
-
-    def grpc_request(self) -> rn.GetTx:
-        """Return gRPC get-transaction request."""
-        return rn.GetTx(digest=self.digest)
-
-
-@dataclass(kw_only=True)
-class GetTxKind(SuiCommand):
-    """Fetch the transaction kind for a given digest."""
-
-    gql_class: ClassVar[type] = pgql_query.GetTxKind
-    grpc_class: ClassVar[type] = rn.GetTxKind
-
-    digest: str
-
-    def gql_node(self) -> pgql_query.GetTxKind:
-        """Return GQL transaction-kind query node."""
-        return pgql_query.GetTxKind(self.digest)
-
-    def grpc_request(self) -> rn.GetTxKind:
-        """Return gRPC get-tx-kind request."""
-        return rn.GetTxKind(digest=self.digest)
-
-
-@dataclass(kw_only=True)
-class GetMultipleTransactions(SuiCommand):
-    """Fetch multiple transactions by digest list."""
-
-    gql_class: ClassVar[type] = pgql_query.GetMultipleTransactionsSC
-    grpc_class: ClassVar[type] = rn.GetTransactions
-
-    digests: list[str]
-
-    def gql_node(self) -> pgql_query.GetMultipleTransactionsSC:
-        """Return GraphQL query node."""
-        return self.gql_class(digests=self.digests)
-
-    def grpc_request(self) -> rn.GetTransactions:
-        """Return gRPC batch-get-transactions request."""
-        return rn.GetTransactions(transactions=self.digests)
 
 
 @dataclass(kw_only=True)
@@ -669,53 +555,6 @@ class GetCoinSummary(SuiCommand):
         return rn.GetObject(object_id=self.coin_id, field_mask=["object_id", "version", "digest", "balance"])
 
 
-@dataclass(kw_only=True)
-class GetFilteredTx(SuiCommand):
-    """Fetch transactions matching a TransactionBlockFilter (GraphQL only)."""
-
-    gql_class: ClassVar[type] = pgql_query.GetFilteredTx
-    grpc_class: ClassVar[type] = None
-
-    tx_filter: dict
-    next_page: Optional[PagingCursor] = None
-
-    def gql_node(self) -> pgql_query.GetFilteredTx:
-        """Return GQL filtered-transactions query node."""
-        return pgql_query.GetFilteredTx(
-            tx_filter=self.tx_filter, next_page=self.next_page
-        )
-
-    def grpc_request(self):
-        """Not supported by gRPC."""
-        raise NotImplementedError("GetFilteredTx is not supported by gRPC")
-
-
-# ---------------------------------------------------------------------------
-# Event queries
-# ---------------------------------------------------------------------------
-
-
-@dataclass(kw_only=True)
-class GetEvents(SuiCommand):
-    """Fetch events matching a filter (GraphQL only)."""
-
-    gql_class: ClassVar[type] = pgql_query.GetEvents
-    grpc_class: ClassVar[type] = None
-
-    event_filter: dict
-    next_page: Optional[PagingCursor] = None
-
-    def gql_node(self) -> pgql_query.GetEvents:
-        """Return GQL events query node."""
-        return pgql_query.GetEvents(
-            event_filter=self.event_filter, next_page=self.next_page
-        )
-
-    def grpc_request(self):
-        """Not supported by gRPC."""
-        raise NotImplementedError("GetEvents is not supported by gRPC")
-
-
 # ---------------------------------------------------------------------------
 # Move package / module queries
 # ---------------------------------------------------------------------------
@@ -725,15 +564,15 @@ class GetEvents(SuiCommand):
 class GetPackage(SuiCommand):
     """Fetch a Move package by ID."""
 
-    gql_class: ClassVar[type] = pgql_query.GetPackage
+    gql_class: ClassVar[type] = pgql_query.GetPackageSC
     grpc_class: ClassVar[type] = rn.GetPackage
 
     package: str
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetPackage:
+    def gql_node(self) -> pgql_query.GetPackageSC:
         """Return GQL package query node."""
-        return pgql_query.GetPackage(package=self.package, next_page=self.next_page)
+        return self.gql_class(package=self.package, next_page=self.next_page)
 
     def grpc_request(self) -> rn.GetPackage:
         """Return gRPC get-package request."""
@@ -765,15 +604,15 @@ class GetPackageVersions(SuiCommand):
 class GetModule(SuiCommand):
     """Fetch a Move module's structure and function definitions."""
 
-    gql_class: ClassVar[type] = pgql_query.GetModule
+    gql_class: ClassVar[type] = pgql_query.GetModuleSC
     grpc_class: ClassVar[type] = rn.GetModule
 
     package: str
     module_name: str
 
-    def gql_node(self) -> pgql_query.GetModule:
+    def gql_node(self) -> pgql_query.GetModuleSC:
         """Return GQL module query node."""
-        return pgql_query.GetModule(package=self.package, module_name=self.module_name)
+        return self.gql_class(package=self.package, module_name=self.module_name)
 
     def grpc_request(self) -> rn.GetModule:
         """Return gRPC get-module request."""
@@ -784,16 +623,16 @@ class GetModule(SuiCommand):
 class GetMoveDataType(SuiCommand):
     """Fetch a Move struct or enum by name."""
 
-    gql_class: ClassVar[type] = pgql_query.GetMoveDataType
+    gql_class: ClassVar[type] = pgql_query.GetMoveDataTypeSC
     grpc_class: ClassVar[type] = rn.GetMoveDataType
 
     package: str
     module_name: str
     type_name: str
 
-    def gql_node(self) -> pgql_query.GetMoveDataType:
+    def gql_node(self) -> pgql_query.GetMoveDataTypeSC:
         """Return GQL move-datatype query node."""
-        return pgql_query.GetMoveDataType(
+        return self.gql_class(
             package=self.package,
             module_name=self.module_name,
             data_type_name=self.type_name,
@@ -812,16 +651,16 @@ class GetMoveDataType(SuiCommand):
 class GetStructure(SuiCommand):
     """Fetch a specific Move struct by name."""
 
-    gql_class: ClassVar[type] = pgql_query.GetStructure
+    gql_class: ClassVar[type] = pgql_query.GetStructureSC
     grpc_class: ClassVar[type] = rn.GetStructure
 
     package: str
     module_name: str
     structure_name: str
 
-    def gql_node(self) -> pgql_query.GetStructure:
+    def gql_node(self) -> pgql_query.GetStructureSC:
         """Return GQL structure query node."""
-        return pgql_query.GetStructure(
+        return self.gql_class(
             package=self.package,
             module_name=self.module_name,
             structure_name=self.structure_name,
@@ -840,17 +679,18 @@ class GetStructure(SuiCommand):
 class GetStructures(SuiCommand):
     """Fetch all structs in a Move module (auto-paginated on GraphQL)."""
 
-    gql_class: ClassVar[type] = pgql_query.GetStructures
+    gql_class: ClassVar[type] = pgql_query.GetStructuresSC
     grpc_class: ClassVar[type] = rn.GetStructures
     gql_requires_paging: ClassVar[bool] = True
+    gql_page_list_path: ClassVar[tuple[str, ...]] = ("object", "asMovePackage", "module", "structs", "nodes")
 
     package: str
     module_name: str
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetStructures:
+    def gql_node(self) -> pgql_query.GetStructuresSC:
         """Return GQL structures query node."""
-        return pgql_query.GetStructures(
+        return self.gql_class(
             package=self.package,
             module_name=self.module_name,
             next_page=self.next_page,
@@ -865,16 +705,16 @@ class GetStructures(SuiCommand):
 class GetFunction(SuiCommand):
     """Fetch a specific Move function by name."""
 
-    gql_class: ClassVar[type] = pgql_query.GetFunction
+    gql_class: ClassVar[type] = pgql_query.GetFunctionSC
     grpc_class: ClassVar[type] = rn.GetFunction
 
     package: str
     module_name: str
     function_name: str
 
-    def gql_node(self) -> pgql_query.GetFunction:
+    def gql_node(self) -> pgql_query.GetFunctionSC:
         """Return GQL function query node."""
-        return pgql_query.GetFunction(
+        return self.gql_class(
             package=self.package,
             module_name=self.module_name,
             function_name=self.function_name,
@@ -893,17 +733,18 @@ class GetFunction(SuiCommand):
 class GetFunctions(SuiCommand):
     """Fetch all functions in a Move module (auto-paginated on GraphQL)."""
 
-    gql_class: ClassVar[type] = pgql_query.GetFunctions
+    gql_class: ClassVar[type] = pgql_query.GetFunctionsSC
     grpc_class: ClassVar[type] = rn.GetFunctions
     gql_requires_paging: ClassVar[bool] = True
+    gql_page_list_path: ClassVar[tuple[str, ...]] = ("object", "asMovePackage", "module", "functions", "nodes")
 
     package: str
     module_name: str
     next_page: Optional[PagingCursor] = None
 
-    def gql_node(self) -> pgql_query.GetFunctions:
+    def gql_node(self) -> pgql_query.GetFunctionsSC:
         """Return GQL functions query node."""
-        return pgql_query.GetFunctions(
+        return self.gql_class(
             package=self.package,
             module_name=self.module_name,
             next_page=self.next_page,
@@ -955,70 +796,3 @@ class GetNameServiceNames(SuiCommand):
         return rn.GetNameServiceNames(address=self.owner)
 
 
-# ---------------------------------------------------------------------------
-# gRPC-only commands (EC-3)
-# ---------------------------------------------------------------------------
-
-
-@dataclass(kw_only=True)
-class GetServiceInfo(SuiCommand):
-    """Query general service information (gRPC only)."""
-
-    gql_class: ClassVar[type] = None
-    grpc_class: ClassVar[type] = rn.GetServiceInfo
-
-    def gql_node(self):
-        """Not supported by GraphQL."""
-        raise NotImplementedError("GetServiceInfo is not supported by GraphQL")
-
-    def grpc_request(self) -> rn.GetServiceInfo:
-        """Return gRPC get-service-info request."""
-        return rn.GetServiceInfo()
-
-
-@dataclass(kw_only=True)
-class SubscribeCheckpoint(SuiCommand):
-    """Subscribe to a live checkpoint feed (gRPC streaming only)."""
-
-    gql_class: ClassVar[type] = None
-    grpc_class: ClassVar[type] = rn.SubscribeCheckpoint
-
-    def gql_node(self):
-        """Not supported by GraphQL."""
-        raise NotImplementedError("SubscribeCheckpoint is not supported by GraphQL")
-
-    def grpc_request(self) -> rn.SubscribeCheckpoint:
-        """Return gRPC subscribe-checkpoints request."""
-        return rn.SubscribeCheckpoint()
-
-
-@dataclass(kw_only=True)
-class VerifySignature(SuiCommand):
-    """Verify a signature against a message.
-
-    gRPC supports all signature types (Ed25519, Secp256k1, Secp256r1, MultiSig, Passkey, zkLogin).
-    GraphQL support is pending mainnet availability of the verifySignature field.
-    """
-
-    gql_class: ClassVar[type] = None
-    grpc_class: ClassVar[type] = rn.VerifySignature
-
-    message_type: str
-    message: str | bytes
-    signature: str | bytes
-    address: Optional[str] = None
-
-    def gql_node(self):
-        """Not supported by GraphQL — verifySignature is not yet available on mainnet."""
-        raise NotImplementedError(
-            "Command not supported by GraphQL"
-        )
-
-    def grpc_request(self) -> rn.VerifySignature:
-        """Return gRPC verify-signature request."""
-        return rn.VerifySignature(
-            address=self.address,
-            message_type=self.message_type,
-            message=self.message,
-            signature=self.signature,
-        )
