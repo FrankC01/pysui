@@ -174,7 +174,7 @@ class GetProtocolConfig(GetEpoch):
 
     def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.ProtocolConfig:
         """Return the ProtocolConfig message from the response."""
-        return gepoch.protocol_config
+        return gepoch.epoch.protocol_config
 
 
 OBJECT_DEFAULT_FIELDS: list[str] = [

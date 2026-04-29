@@ -78,9 +78,7 @@ async def do_gas(client: AsyncClientBase):
         await client.execute(command=cmd.GetGas(owner=client.config.active_address))
     )
     if result.is_ok():
-        print(
-            f"Total coins in page: {len(result.result_data.data)} has more: {result.result_data.next_cursor.hasNextPage}"
-        )
+        print(f"Total coins in page: {len(result.result_data.objects)}")
 
 
 async def do_all_gas(client: AsyncSuiGQLClient):
@@ -820,7 +818,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -868,7 +866,7 @@ async def main():
         # await do_sui_coin_to_account(client_init)
         # await do_account_to_sui_coin(client_init)
         ## Config
-        await do_chain_id(client_init)
+        # await do_chain_id(client_init)
         # await do_configs(client_init)
         # await do_service_config(client_init)
         # await do_protcfg(client_init)

@@ -66,9 +66,7 @@ async def do_gas(client: AsyncClientBase):
         await client.execute(command=cmd.GetGas(owner=client.config.active_address))
     )
     if result.is_ok():
-        print(
-            f"Total coins in page: {len(result.result_data.objects)} has more: {result.result_data.next_page_token}"
-        )
+        print(f"Total coins in page: {len(result.result_data.objects)}")
 
 
 async def do_all_gas(client: SuiGrpcClient):
@@ -687,7 +685,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -730,7 +728,7 @@ async def main():
         ## Config
         # await do_chain_id(client_init)
         # await do_service_config(client_init)
-        await do_protcfg(client_init)
+        # await do_protcfg(client_init)
     except (ValueError, NotImplementedError) as ve:
         print(ve)
     finally:
