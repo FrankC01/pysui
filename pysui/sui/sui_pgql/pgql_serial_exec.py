@@ -3,15 +3,17 @@
 
 # -*- coding: utf-8 -*-
 
-"""Serial transaction execution."""
+"""Serial transaction execution for GQL."""
 
 import asyncio
 import base64
 import logging
-import time
-from typing import Awaitable, Callable, Optional, Union
+from typing import TYPE_CHECKING, Awaitable, Callable, Optional, Union
 
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
+if TYPE_CHECKING:
+    from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
+
+from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 from pysui.sui.sui_common.executors import (
     ExecutorContext,
@@ -20,18 +22,15 @@ from pysui.sui.sui_common.executors import (
     SerialQueue,
 )
 from pysui.sui.sui_common.executors.base_executor import _BaseSerialExecutor
+from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor
 from pysui.sui.sui_common.types import (
     TransactionEffects, ExecutionStatus, GasCostSummary, Owner, ChangedObject
 )
 import pysui.sui.sui_pgql.pgql_types as ptypes
-import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_common.sui_commands as cmd
-import pysui.sui.sui_bcs.bcs as bcs
 import pysui.sui.sui_bcs.bcs_txne as bcst
-from .caching_exec import GqlCachingTransactionExecutor
-from .caching_txn import CachingTransaction
 
-ser_txn_exc_logger = logging.getLogger(__name__)
+gql_ser_txn_exc_logger = logging.getLogger(__name__)
 
 
 def _gql_effects_to_common(effects: bcst.TransactionEffects) -> TransactionEffects:
@@ -75,7 +74,6 @@ def _gql_effects_to_common(effects: bcst.TransactionEffects) -> TransactionEffec
         non_refundable_storage_fee=getattr(v2.gasUsed, 'nonRefundableStorageFee', 0),
     )
 
-    # Gas object
     gas_object = None
     try:
         gas_idx = v2.gasObjectIndex.value
@@ -106,20 +104,17 @@ def _gql_effects_to_common(effects: bcst.TransactionEffects) -> TransactionEffec
 
 
 class GqlSerialTransactionExecutor(_BaseSerialExecutor):
-    """Executes transactions serially with caching and optional gas replenishment.
+    """Executes transactions serially with optional gas replenishment for GQL.
 
     Gas replenishment callbacks (on_coins_low / on_balance_low) are mutually exclusive:
 
-    - on_coins_low: used when gas is paid via Coin<SUI> objects. The callback should
-      return a list of new coin IDs to inject. After a successful callback, the executor
-      re-fetches the gas owner's coin_balance to re-arm threshold tracking.
-    - on_balance_low: used when gas is paid via address accumulator. The callback MUST
-      complete a funding transaction before returning — the returned address is the funding
-      source and is used only for logging. After a successful callback, the executor
-      re-fetches the gas owner's address_balance to verify funds arrived and re-arm tracking.
+    - on_coins_low: used when gas is paid via Coin<SUI> objects. Return new coin IDs
+      to signal replenishment, or None/[] to halt execution.
+    - on_balance_low: used when gas is paid via address accumulator. Must complete a
+      funding transaction before returning. Return the funding source address for
+      logging, or None to halt execution.
 
-    Both callbacks receive an ExecutorContext. The gas_coins field of that context is a
-    read-only snapshot — mutating it has no effect on the executor's internal state.
+    Both callbacks receive an ExecutorContext.
 
     Note: execute_transactions is not re-entrant. Concurrent calls on the same instance
     are serialized by an internal asyncio.Lock.
@@ -128,7 +123,7 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
     def __init__(
         self,
         *,
-        client: AsyncGqlClient,
+        client: AsyncSuiGQLClient,
         sender: Union[str, SigningMultiSig],
         sponsor: Optional[Union[str, SigningMultiSig]] = None,
         default_gas_budget: int = 50_000_000,
@@ -143,16 +138,15 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
         """Initialize GqlSerialTransactionExecutor.
 
         :param client: Asynchronous GraphQL client
-        :type client: AsyncGqlClient
+        :type client: AsyncSuiGQLClient
         :param sender: Sender address or SigningMultiSig
         :type sender: Union[str, SigningMultiSig]
         :param sponsor: Optional sponsor address or SigningMultiSig, defaults to None
         :type sponsor: Optional[Union[str, SigningMultiSig]], optional
         :param default_gas_budget: Default gas budget, defaults to 50_000_000
         :type default_gas_budget: int
-        :param min_balance_threshold: Minimum balance threshold that triggers a replenishment
-            callback. A tracked_balance strictly less than this value triggers the callback.
-            Requires either on_coins_low or on_balance_low to be provided.
+        :param min_balance_threshold: Minimum balance threshold that triggers replenishment
+            callback. Requires either on_coins_low or on_balance_low.
         :type min_balance_threshold: Optional[int], optional
         :param on_coins_low: Async callback when coin balance drops below threshold.
             Return new coin IDs to inject, or None/[] to halt execution.
@@ -167,6 +161,7 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
             raise ValueError(
                 "min_balance_threshold requires either on_coins_low or on_balance_low callback"
             )
+        self._use_account_gas = on_balance_low is not None and on_coins_low is None
         super().__init__(
             client=client,
             sender=sender,
@@ -176,22 +171,14 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
             on_coins_low=on_coins_low,
             on_balance_low=on_balance_low,
         )
-        # Prevent re-entrant execute_transactions calls on the same instance
         self._execution_lock = asyncio.Lock()
         self._queue = SerialQueue()
 
-    def _create_caching_executor(self, client, gas_owner: str) -> "GqlCachingTransactionExecutor":
-        """Create a protocol-specific caching executor.
-
-        :param client: The GraphQL client
-        :param gas_owner: Address of the gas owner
-        :return: The caching executor
-        :rtype: GqlCachingTransactionExecutor
-        """
-        return GqlCachingTransactionExecutor(client, gas_owner=gas_owner)
+    def _create_caching_executor(self, client, gas_owner: str) -> _BaseCachingExecutor:
+        return _BaseCachingExecutor(client=client, gas_owner=gas_owner, use_account_gas=self._use_account_gas)
 
     async def _execute_raw(self, tx_str: str, sigs: list[str]) -> TransactionEffects:
-        """Execute a signed transaction and return common TransactionEffects.
+        """Execute a signed transaction via GQL and return common TransactionEffects.
 
         :param tx_str: Base64-encoded transaction bytes
         :type tx_str: str
@@ -202,24 +189,23 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
         :raises ValueError: If transaction execution fails or result is invalid
         :raises TypeError: If result type is unexpected
         """
-        results = await self._cache.execute_transaction(tx_str, sigs)
-        if not isinstance(results, ptypes.ExecutionResultGQL):
-            raise TypeError(f"unexpected result type {type(results).__name__}")
-        effects_bcs = bcst.TransactionEffects.deserialize(base64.b64decode(results.effects_bcs))
+        result = await self._client.execute(
+            command=cmd.ExecuteTransaction(tx_bytestr=tx_str, sig_array=sigs)
+        )
+        if not result.is_ok():
+            raise ValueError(f"GQL execute_transaction failed: {result.result_string}")
+        if not isinstance(result.result_data, ptypes.ExecutionResultGQL):
+            raise TypeError(f"unexpected result type {type(result.result_data).__name__}")
+
+        effects_bcs = bcst.TransactionEffects.deserialize(base64.b64decode(result.result_data.effects_bcs))
         common_effects = _gql_effects_to_common(effects_bcs)
 
-        # Update gas coin cache from effects
         if common_effects.gas_object is not None:
             go = common_effects.gas_object
             try:
-                new_gas_coin = bcs.ObjectReference(
-                    bcs.Address.from_str(go.object_id),
-                    common_effects.lamport_version,
-                    bcs.Digest.from_str(go.output_digest),
-                )
-                await self._cache.update_gas_coins([new_gas_coin])
-            except Exception as e:
-                ser_txn_exc_logger.warning("Failed to update gas coin from effects: %s", e)
+                await self._cache.update_gas_coins([go.object_id])
+            except Exception as exc:
+                gql_ser_txn_exc_logger.warning("Failed to update gas coin from effects: %s", exc)
                 await self._cache.invalidate_gas_coins()
         else:
             await self._cache.invalidate_gas_coins()
@@ -227,71 +213,23 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
         return common_effects
 
     async def _fetch_initial_balance(self) -> int:
-        """Fetch the current gas balance for the sender.
+        """Fetch the current gas balance for the sender via GQL.
 
         :return: The gas balance
         :rtype: int
         :raises ValueError: If balance fetch fails
         """
-        balance_result = await self._client.execute(
+        result = await self._client.execute(
             command=cmd.GetAddressCoinBalance(owner=self._signing_block.payer_address)
         )
-        if not balance_result.is_ok():
+        if not result.is_ok():
             raise ValueError("Failed to fetch initial balance")
-        bal = balance_result.result_data.balance
-        return bal.coin_balance if self._on_coins_low else bal.address_balance
-
-    async def new_transaction(self) -> CachingTransaction:
-        """Create a new caching transaction for transaction block building.
-
-        :return: A new CachingTransaction
-        :rtype: CachingTransaction
-        """
-        ser_txn_exc_logger.debug("Generate new transaction")
-        return CachingTransaction(client=self._client)
-
-    async def reset_cache(self) -> None:
-        """Reset the internal cache.
-
-        Note: this awaits the last committed transaction before clearing, which may
-        involve a network poll. Do not call while holding a SerialQueue lock.
-        """
-        return await self._cache.reset()
-
-    def _sign_transaction(self, tx_str: str) -> list[str]:
-        """Sign the transaction.
-
-        :param tx_str: Base64 encoded TransactionData
-        :type tx_str: str
-        :return: List of base64 encoded signatures
-        :rtype: list[str]
-
-        Note: signing is synchronous CPU work. For HSM-backed or multi-sig keys with
-        significant latency, consider wrapping in asyncio.to_thread.
-        """
-        return self._signing_block.get_signatures(
-            config=self._client.config, tx_bytes=tx_str
-        )
-
-    async def _refresh_tracked_balance(self) -> Optional[int]:
-        """Re-fetch and return the current tracked balance for the gas owner.
-
-        Uses coin_balance if on_coins_low is set, address_balance otherwise.
-
-        :return: Refreshed balance, or None if the fetch fails
-        :rtype: Optional[int]
-        """
-        balance_result = await self._client.execute(
-            command=cmd.GetAddressCoinBalance(owner=self._signing_block.payer_address)
-        )
-        if not balance_result.is_ok():
-            return None
-        bal = balance_result.result_data.balance
+        bal = result.result_data.balance
         return bal.coin_balance if self._on_coins_low else bal.address_balance
 
     async def execute_transactions(
         self,
-        transactions: list[CachingTransaction],
+        transactions: "list[AsyncSuiTransaction]",
     ) -> list[Union[TransactionEffects, tuple[ExecutorError, Exception], ExecutionSkipped]]:
         """Serially execute one or more transactions using the base class state machine.
 
@@ -300,11 +238,8 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
         - ``(ExecutorError, Exception)``: transaction failed
         - ``ExecutionSkipped``: transaction was not attempted due to a prior failure
 
-        This method may raise ValueError only on pre-flight failures (initial balance fetch)
-        when replenishment is configured. All per-transaction errors are returned as tuples.
-
         :param transactions: The transactions to execute
-        :type transactions: list[CachingTransaction]
+        :type transactions: list[AsyncSuiTransaction]
         :return: The transaction execution results
         :rtype: list[Union[TransactionEffects, tuple[ExecutorError, Exception], ExecutionSkipped]]
         """

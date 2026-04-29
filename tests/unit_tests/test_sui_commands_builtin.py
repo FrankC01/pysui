@@ -220,8 +220,8 @@ class TestPagingFlags:
     def test_get_coins_paging_false(self):
         assert GetCoins.gql_requires_paging is False
 
-    def test_get_gas_paging_false(self):
-        assert GetGas.gql_requires_paging is False
+    def test_get_gas_paging_true(self):
+        assert GetGas.gql_requires_paging is True
 
     def test_get_object_paging_false(self):
         assert GetObject.gql_requires_paging is False

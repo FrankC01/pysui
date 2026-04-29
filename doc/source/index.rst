@@ -15,7 +15,7 @@ Welcome to pysui's documentation!
    :maxdepth: 1
    :caption: Getting Started
 
-   getting_started
+   installation
    intro
    pyconfig
 

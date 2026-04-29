@@ -3,17 +3,16 @@
 SuiCommand Reference
 ======================
 
-The **Unified Client Interface (UCI)** is a single ``await client.execute(command=...)``
-dispatch that works identically across GraphQL and gRPC transports.
-:py:class:`SuiCommand <pysui.sui.sui_common.sui_command.SuiCommand>` is the
-protocol-neutral command object passed to that call — a typed data carrier that
-the client resolves to the appropriate underlying query or request.
+:py:class:`SuiCommand <pysui.sui.sui_common.sui_command.SuiCommand>` provides
+protocol-neutral command objects for the most common blockchain operations. Write
+code once and run it transparently on GraphQL or gRPC — switching transports requires
+only a configuration change.
 
 .. code-block:: python
 
    import asyncio
    import pysui.sui.sui_common.sui_commands as cmd
-   from pysui import PysuiConfiguration, client_factory, handle_result
+   from pysui import PysuiConfiguration, client_factory
 
    async def main():
        cfg = PysuiConfiguration()
@@ -21,7 +20,10 @@ the client resolves to the appropriate underlying query or request.
            result = await client.execute(
                command=cmd.GetGas(owner=client.config.active_address)
            )
-           handle_result(result)
+           if result.is_ok():
+               print(result.result_data)
+           else:
+               print(result.result_string)
 
    asyncio.run(main())
 
@@ -203,8 +205,8 @@ Move / Packages
      - Fetch all functions in a Move module (auto-paginated on GQL)
 
 
-Name Service & Protocol
------------------------
+Name Service
+-------------
 
 .. list-table::
    :widths: 35 65
@@ -217,6 +219,19 @@ Name Service & Protocol
 
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetNameServiceNames`
      - Resolve an address to its SuiNS name(s)
+
+
+Network / Chain Info
+--------------------
+
+.. list-table::
+   :widths: 35 65
+   :header-rows: 1
+
+   * - Command
+     - Description
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetChainIdentifier`
+     - Fetch the chain identifier for the current network
 
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetProtocolConfig`
      - Fetch the current node's protocol configuration and feature flags

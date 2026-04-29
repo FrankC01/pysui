@@ -851,6 +851,42 @@ class GetMultipleObjects(PGQL_QueryNode):
         return pgql_type.ObjectReadsGQL.from_query
 
 
+class _GetMultipleObjectsResolvedSC(GetMultipleObjects):
+    """Internal GQL variant: encode_fn normalizes multiGetObjects → list[ObjectCacheEntry].
+
+    Used by _FetchObjectsForResolution. Not for external use.
+    """
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], list]:
+        """Return deserializer producing list[ObjectCacheEntry] from multiGetObjects response."""
+        from pysui.sui.sui_common.executors.cache import ObjectCacheEntry as _OCE
+
+        def _encode(in_data: dict) -> list:
+            reads = pgql_type.ObjectReadsGQL.from_query(in_data)
+            entries: list[_OCE] = []
+            for obj in reads.data:
+                if not isinstance(obj, pgql_type.ObjectReadGQL):
+                    continue
+                ow = obj.object_owner
+                owner_str = None
+                shared_v = None
+                if isinstance(ow, pgql_type.SuiObjectOwnedAddress):
+                    owner_str = ow.address_id
+                elif isinstance(ow, pgql_type.SuiObjectOwnedShared):
+                    shared_v = str(ow.initial_version)
+                entries.append(_OCE(
+                    objectId=obj.object_id,
+                    version=str(obj.version),
+                    digest=obj.object_digest,
+                    owner=owner_str,
+                    initialSharedVersion=shared_v,
+                ))
+            return entries
+
+        return _encode
+
+
 class GetPastObject(PGQL_QueryNode):
     """Returns a specific objects version data."""
 
@@ -2389,6 +2425,33 @@ class SimulateTransactionKind(PGQL_QueryNode):
         return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
 
 
+class SimulateTransactionKindSC(SimulateTransactionKind):
+    """SC variant: encode_fn normalizes GQL simulate response to canonical SimulateTransactionResponse proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.SimulateTransactionResponse]:
+        """Return encoder that maps GQL dryRun result to SimulateTransactionResponse."""
+
+        def _encode(in_data: dict) -> sui_prot.SimulateTransactionResponse:
+            dry_run = in_data.get("dryRun") or {}
+            tx_block = dry_run.get("transactionBlock") or {}
+            gas_effects = tx_block.get("gasEffects") or {}
+            summary = gas_effects.get("gasSummary") or {}
+            return sui_prot.SimulateTransactionResponse(
+                transaction=sui_prot.ExecutedTransaction(
+                    effects=sui_prot.TransactionEffects(
+                        gas_used=sui_prot.GasCostSummary(
+                            computation_cost=int(summary.get("computationCost") or 0),
+                            storage_cost=int(summary.get("storageCost") or 0),
+                            storage_rebate=int(summary.get("storageRebate") or 0),
+                        )
+                    )
+                )
+            )
+
+        return _encode
+
+
 @versionadded(version="0.99.0", reason="Replaces deprecated DryRunTransaction.")
 class SimulateTransaction(PGQL_QueryNode):
     """SimulateTransaction query node.
@@ -2893,6 +2956,13 @@ def _encode_coin_from_move_obj(mo_dict: dict) -> sui_prot.Object:
     prev_tx: Optional[str] = prev_tx_info.get("previous_transaction") if isinstance(prev_tx_info, dict) else None
     contents = mo_dict.get("contents") or {}
     coin_type: Optional[str] = contents.get("coin_type") if isinstance(contents, dict) else None
+    balance_raw = None
+    if isinstance(contents, dict):
+        coin_json = contents.get("json") or {}
+        if isinstance(coin_json, dict):
+            fields = coin_json.get("fields") or {}
+            if isinstance(fields, dict):
+                balance_raw = fields.get("balance")
     return sui_prot.Object(
         object_id=mo_dict.get("coin_object_id"),
         version=int(mo_dict.get("version") or 0),
@@ -2901,16 +2971,24 @@ def _encode_coin_from_move_obj(mo_dict: dict) -> sui_prot.Object:
         object_type=coin_type,
         has_public_transfer=mo_dict.get("hasPublicTransfer"),
         previous_transaction=prev_tx,
+        balance=int(balance_raw) if balance_raw is not None else None,
     )
 
 
-def _encode_coins_list(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
-    """Shared encoder for GetCoinsSC and GetGasSC."""
+def _encode_coins_list(in_data) -> sui_prot.ListOwnedObjectsResponse:
+    """Shared encoder for GetCoinsSC and GetGasSC.
+
+    Accepts either a raw GQL response dict (single-page path) or a list of coin
+    dicts (SC auto-paging path where all pages are pre-accumulated by the client).
+    """
+    if isinstance(in_data, list):
+        objects: list[sui_prot.Object] = [_encode_coin_from_move_obj(c) for c in in_data]
+        return sui_prot.ListOwnedObjectsResponse(objects=objects, next_page_token=None)
     qres = in_data.get("qres", in_data)
     coins = qres.get("coins", {}) if isinstance(qres, dict) else {}
     cursor = coins.get("cursor", {}) if isinstance(coins, dict) else {}
     coin_objects = coins.get("coin_objects", []) if isinstance(coins, dict) else []
-    objects: list[sui_prot.Object] = [_encode_coin_from_move_obj(c) for c in coin_objects]
+    objects = [_encode_coin_from_move_obj(c) for c in coin_objects]
     end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
     next_page_token: Optional[bytes] = (
         end_cursor.encode()
@@ -3478,6 +3556,39 @@ class GetDynamicFieldsSC(GetDynamicFields):
                 dynamic_fields=fields,
                 next_page_token=next_page_token,
             )
+
+        return _encode
+
+
+class GetChainIdentifier(PGQL_QueryNode):
+    """Query the chain identifier (network genesis checkpoint digest)."""
+
+    def __init__(self) -> None:
+        """."""
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
+        return gql("{ chainIdentifier }")
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], str]:
+        """Return deserializer extracting chain identifier string."""
+
+        def _encode(in_data: dict) -> str:
+            return in_data.get("chainIdentifier", "")
+
+        return _encode
+
+
+class GetChainIdentifierSC(GetChainIdentifier):
+    """SC variant: encode_fn returns chain identifier as plain str."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], str]:
+        """Return deserializer producing chain identifier string."""
+
+        def _encode(in_data: dict) -> str:
+            return in_data.get("chainIdentifier", "")
 
         return _encode
 

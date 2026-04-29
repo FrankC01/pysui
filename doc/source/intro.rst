@@ -40,22 +40,58 @@ Client Design
 pysui clients are intentionally thin. There are no fat ``get_coins``,
 ``get_object``, or similar convenience methods on the client itself.
 All data access goes through typed request objects dispatched via a
-single unified call:
+single unified call.
 
-- **Unified Client Interface (UCI)**: ``await client.execute(command=...)``
-  — works identically on both GraphQL and gRPC transports.
-  See :doc:`sui_commands` for the full command list.
-- **GraphQL**: :doc:`QueryNodes <graphql_queries>` via
-  ``execute_query_node`` — for custom queries with no ``SuiCommand`` equivalent.
-- **gRPC**: :doc:`Requests <grpc_requests>` via
-  ``execute_grpc_request`` — for direct gRPC request objects.
-- **Transactions (PTBs)**: :doc:`transactions`
+The **Unified Client Interface (UCI)** builds on three pillars:
 
-This keeps the client stable as the Sui protocol evolves: new query
-capabilities are added as new ``SuiCommand`` subclasses without
-changing the client API.
+1. **Protocol-Agnostic Command Execution**: Use ``await client.execute(command=...)``
+   with any ``SuiCommand`` subclass. The same code runs identically on both
+   GraphQL and gRPC transports. Switching protocols requires only a
+   configuration change — no application code changes.
+   See :doc:`sui_commands` for the full list of 36 available commands.
+
+2. **Shared Transaction Infrastructure**: :doc:`Programmable Transaction Blocks (PTBs) <transactions>`
+   with unified transaction builders and executor abstractions work across
+   all protocols, providing consistent semantics for building, signing,
+   and executing transactions.
+
+3. **Protocol-Level Access**: When you need capabilities beyond ``SuiCommand``:
+   Use :doc:`GraphQL QueryNodes <graphql_queries>` via ``execute_query_node``
+   for custom queries, or :doc:`gRPC Requests <grpc_requests>` via
+   ``execute_grpc_request`` for direct gRPC interactions.
+
+This design keeps the client stable as the Sui protocol evolves: new
+capabilities are added as new ``SuiCommand`` subclasses or transaction
+abstractions without changing the core client API.
+
+Quick Start — Unified Client Interface
+---------------------------------------
+
+The simplest way to start is with a ``SuiCommand``:
+
+.. code-block:: python
+   :linenos:
+
+    import asyncio
+    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import PysuiConfiguration, client_factory, SuiRpcResult
+
+    async def main():
+        # Use SUI_GRPC_GROUP to target gRPC instead
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        async with client_factory(cfg) as client:
+            result = await client.execute(
+                command=cmd.GetGas(owner=client.config.active_address)
+            )
+            if result.is_ok():
+                print(result.result_data)
+            else:
+                print(result.result_string)
+
+    if __name__ == "__main__":
+        asyncio.run(main())
 
 Next Steps
 ----------
 
-See :doc:`getting_started` to install pysui and configure your environment.
+See :doc:`installation` to install pysui and configure your environment.

@@ -4,25 +4,10 @@ Migrating to the Unified Client Interface
 Introduction
 ------------
 
-Prior to pysui 0.99.0, writing code against the SDK required importing and using protocol-specific
-client classes and query or request classes — :class:`AsyncSuiGQLClient` together with
-:mod:`pysui.sui.sui_pgql.pgql_query` for GraphQL, or :class:`SuiGrpcClient` together with
-:mod:`pysui.sui.sui_grpc.pgrpc_requests` for gRPC. The same blockchain operation required two
-different APIs depending on which transport was active.
-
-pysui 0.99.0 introduces the **Unified Client Interface (UCI)** — a protocol-agnostic programming
-model built on two abstractions:
-
-- :class:`AsyncClientBase` — the unified client type; use it instead of a protocol-specific client class
-- :class:`SuiCommand` — protocol-agnostic command objects covering the core blockchain interaction
-  patterns: querying data, building transactions, and executing them
-
-The UCI reduces the number of protocol-specific classes you need to understand. More importantly,
-new capabilities in querying, transaction building, and execution will be introduced at the UCI
-level — making them available across all transports automatically, without requiring separate
-protocol-specific implementations.
-
-This guide covers the UCI changes and helps you migrate from the legacy protocol-specific APIs.
+The **Unified Client Interface (UCI)** provides a protocol-agnostic programming model:
+write once, run transparently on GraphQL or gRPC. This guide covers how to migrate
+from the legacy protocol-specific APIs to the UCI and explains the key abstractions
+that power transport-agnostic code.
 
 AsyncClientBase
 ---------------
@@ -217,7 +202,7 @@ ExecuteTransaction
 Available SuiCommand Subclasses
 -------------------------------
 
-The following 35 SuiCommand subclasses are built-in and re-exported from the top-level
+The following 36 SuiCommand subclasses are built-in and re-exported from the top-level
 :mod:`pysui` module.  Every command listed here works on **both** GraphQL and gRPC
 transports and returns the same canonical output type from either protocol.
 
@@ -265,9 +250,12 @@ transports and returns the same canonical output type from either protocol.
   - :class:`GetFunction`
   - :class:`GetFunctions`
 
-**Name Service & Protocol (3):**
+**Name Service (2):**
   - :class:`GetNameServiceAddress`
   - :class:`GetNameServiceNames`
+
+**Network / Chain Info (2):**
+  - :class:`GetChainIdentifier`
   - :class:`GetProtocolConfig`
 
 All are importable as:
@@ -335,7 +323,7 @@ SuiCommand layer; use the legacy :py:mod:`pysui.sui.sui_pgql.pgql_query` or
 If you implement a custom command that is genuinely single-protocol, raise
 :exc:`NotImplementedError` on the unsupported side — the client will catch it and return a
 graceful ``SuiRpcResult(is_ok=False)`` rather than propagating an exception.  However,
-prefer the escape hatch over a single-protocol SuiCommand when the operation is inherently
+prefer protocol-level access over a single-protocol SuiCommand when the operation is inherently
 transport-specific and will never have a cross-protocol equivalent:
 
 .. code-block:: python

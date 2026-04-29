@@ -6,8 +6,6 @@
 """Pysui Transaction builder that leverages Sui GraphQL."""
 
 import base64
-import asyncio
-import inspect
 from typing import Any, Callable, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
@@ -17,14 +15,14 @@ from pysui.sui.sui_common.trxn_base import FundsSource
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txb_pure import PureInput
 from pysui.sui.sui_types.scalars import SuiU64
-import pysui.sui.sui_pgql.pgql_txb_gas as gd
 import pysui.sui.sui_pgql.pgql_validators as tv
-from pysui.sui.sui_common.txb_gas import compute_gas_budget
+from pysui.sui.sui_common.txb_gas import compute_gas_budget, async_get_gas_data as _async_get_gas_data
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-import pysui.sui.sui_pgql.pgql_txn_async_argb as argbase
+from pysui.sui.sui_common.txb_tx_argparse import TxnArgParse, TxnArgMode
+from pysui.sui.sui_common.executors.cache import AsyncObjectCache
 
 from pysui.sui.sui_common.async_funcs import AsyncLRU
 
@@ -50,22 +48,12 @@ class AsyncSuiTransaction(txbase):
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
         """
-        frame = inspect.currentframe()
-        try:
-            caller = frame.f_back
-            if (
-                caller.f_code.co_filename.endswith("pgql_clients.py")
-                and caller.f_code.co_name == "transaction"
-            ):
-                super().__init__(**kwargs)
-                self._argparse = argbase.AsyncResolvingArgParser(self.client)
-            else:
-                raise ValueError(
-                    "AsyncSuiTransaction must be created from AsyncGqlClient.transaction(). "
-                    + f"Correct code in {caller.f_code.co_filename} around {caller.f_code.co_firstlineno}"
-                )
-        finally:
-            del frame
+        mode: TxnArgMode = kwargs.pop("mode", TxnArgMode.EAGER)
+        object_cache: Optional[AsyncObjectCache] = kwargs.pop("object_cache", None)
+        super().__init__(**kwargs)
+        self._mode = mode
+        self._object_cache = object_cache
+        self._argparse = TxnArgParse(self.client)
 
     @AsyncLRU(maxsize=256)
     async def _function_meta_args(
@@ -202,7 +190,7 @@ class AsyncSuiTransaction(txbase):
         # Standard coin path
         obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
-        gas_data: bcs.GasData = await gd.async_get_gas_data(
+        gas_data: bcs.GasData = await _async_get_gas_data(
             signing=self.signer_block,
             client=self.client,
             budget=gas_budget,
@@ -351,7 +339,9 @@ class AsyncSuiTransaction(txbase):
         :rtype: Union[list[bcs.Argument],bcs.Argument]
         """
 
-        parms = await self._argparse.build_args([coin], txbase._SPLIT_COIN[:1])
+        parms = await self._argparse.build_args(
+            [coin], txbase._SPLIT_COIN[:1], mode=self._mode, object_cache=self._object_cache,
+        )
         encoded_amounts = [
             a if isinstance(a, bcs.Argument)
             else PureInput.as_input(SuiU64(a))
@@ -374,10 +364,15 @@ class AsyncSuiTransaction(txbase):
         :return: The command result. Can not be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.build_args([merge_to], txbase._MERGE_COINS[:1])
+        parms = await self._argparse.build_args(
+            [merge_to], txbase._MERGE_COINS[:1], mode=self._mode, object_cache=self._object_cache,
+        )
         resolved = [
             c if isinstance(c, bcs.Argument)
-            else await self._argparse.fetch_or_transpose_object(c, False, False)
+            else await self._argparse.parse(
+                c, mode=self._mode, object_cache=self._object_cache,
+                is_receiving=False, is_mutable=False,
+            )
             for c in merge_from
         ]
         return self.builder.merge_coins(parms[0], resolved)
@@ -405,7 +400,9 @@ class AsyncSuiTransaction(txbase):
             await self._function_meta_args(self._SPLIT_AND_KEEP)
         )
 
-        parms = await self._argparse.build_args([coin, split_count], ars)
+        parms = await self._argparse.build_args(
+            [coin, split_count], ars, mode=self._mode, object_cache=self._object_cache,
+        )
 
         type_arguments = [bcs.TypeTag.type_tag_from(coin_type)]
         return self.builder.move_call(
@@ -433,10 +430,16 @@ class AsyncSuiTransaction(txbase):
         :return: The command result. Can NOT be used as input in subsequent commands.
         :rtype: bcs.Argument
         """
-        parms = await self._argparse.build_args([recipient], txbase._TRANSFER_OBJECTS[:1])
+        parms = await self._argparse.build_args(
+            [recipient], txbase._TRANSFER_OBJECTS[:1],
+            mode=self._mode, object_cache=self._object_cache,
+        )
         resolved = [
             t if isinstance(t, bcs.Argument)
-            else await self._argparse.fetch_or_transpose_object(t, False, False)
+            else await self._argparse.parse(
+                t, mode=self._mode, object_cache=self._object_cache,
+                is_receiving=False, is_mutable=False,
+            )
             for t in transfers
         ]
         return self.builder.transfer_objects(parms[0], resolved)
@@ -462,7 +465,8 @@ class AsyncSuiTransaction(txbase):
         :rtype: bcs.Argument
         """
         parms = await self._argparse.build_args(
-            [recipient, from_coin, amount], txbase._TRANSFER_SUI
+            [recipient, from_coin, amount], txbase._TRANSFER_SUI,
+            mode=self._mode, object_cache=self._object_cache,
         )
         return self.builder.transfer_sui(*parms)
 
@@ -494,6 +498,8 @@ class AsyncSuiTransaction(txbase):
             arguments=await self._argparse.build_args(
                 [object_to_send, recipient],
                 txbase._PUBLIC_TRANSFER_OBJECTS,
+                mode=self._mode,
+                object_cache=self._object_cache,
             ),
             type_arguments=[bcs.TypeTag.type_tag_from(object_type)],
             module=package_module,
@@ -517,7 +523,10 @@ class AsyncSuiTransaction(txbase):
 
         resolved = [
             item if isinstance(item, bcs.Argument)
-            else await self._argparse.fetch_or_transpose_object(item, False, False)
+            else await self._argparse.parse(
+                item, mode=self._mode, object_cache=self._object_cache,
+                is_receiving=False, is_mutable=False,
+            )
             for item in items
         ]
         if item_type:
@@ -551,7 +560,9 @@ class AsyncSuiTransaction(txbase):
             await self._function_meta_args(target)
         )
         type_arguments = [bcs.TypeTag.type_tag_from(x) for x in type_arguments]
-        parms = await self._argparse.build_args(arguments, ars)
+        parms = await self._argparse.build_args(
+            arguments, ars, mode=self._mode, object_cache=self._object_cache,
+        )
         return self.builder.move_call(
             target=package,
             arguments=parms,
@@ -613,8 +624,9 @@ class AsyncSuiTransaction(txbase):
             parms = [optional_object]
         elif isinstance(optional_object, (str, pgql_type.ObjectReadGQL)):
             parms = [
-                await self._argparse.fetch_or_transpose_object(
-                    optional_object, is_receiving, is_shared_mutable
+                await self._argparse.parse(
+                    optional_object, mode=self._mode, object_cache=self._object_cache,
+                    is_receiving=is_receiving, is_mutable=is_shared_mutable,
                 )
             ]
         elif not optional_object:
@@ -657,6 +669,8 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
             ars,
+            mode=self._mode,
+            object_cache=self._object_cache,
         )
         # Create a move vector of coins
         parms[1] = await self.make_move_vector(
@@ -693,6 +707,8 @@ class AsyncSuiTransaction(txbase):
                 staked_coin,
             ],
             ars,
+            mode=self._mode,
+            object_cache=self._object_cache,
         )
         return self.builder.move_call(
             target=package,
@@ -767,6 +783,8 @@ class AsyncSuiTransaction(txbase):
             cap_obj_arg, policy_arg = await self._argparse.build_args(
                 [upgrade_cap, upgrade_cap.content["policy"]],
                 txbase._PUBLISH_UPGRADE,
+                mode=self._mode,
+                object_cache=self._object_cache,
             )
             # Capture input offsets to preserve location of upgrade_cap ObjectArg
             cap_arg = len(self.builder.inputs)

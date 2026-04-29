@@ -4,19 +4,32 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-many-instance-attributes
 
-"""Sui low level caching Transaction Builder supports generation of TransactionKind."""
+"""Async Transaction Builder — protocol-agnostic PTB for gRPC and async GQL paths."""
 
 import logging
-from typing import Optional, Set, Union
+import binascii
+from math import ceil
+from typing import Optional, Union
+from functools import singledispatchmethod
+
 from deprecated.sphinx import versionchanged, versionadded
+from pysui.sui.sui_txresults.single_tx import TransactionConstraints
 
-from pysui.sui.sui_common.txb_pure import PureInput
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_utils import hexstring_to_sui_id
+from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_types.scalars import (
+    ObjectID,
+    SuiBoolean,
+    SuiInteger,
+    SuiString,
+    SuiU128,
+    SuiU16,
+    SuiU256,
+    SuiU32,
     SuiU64,
+    SuiU8,
 )
-
+from pysui.sui.sui_utils import serialize_uint32_as_uleb128, hexstring_to_sui_id
 
 # Well known aliases
 _SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
@@ -25,12 +38,222 @@ _SUI_PACAKGE_AUTHORIZE_UPGRADE: str = "authorize_upgrade"
 _SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
 
 # Standard library logging setup
-logger = logging.getLogger("serial_exec")
+logger = logging.getLogger(__name__)
 
 
-@versionadded(version="0.73.0", reason="Support serialzed and parallel executions")
-class CachingTransactionBuilder:
-    """CachingTransactionBuilder supports defered objectref resolutions."""
+@versionchanged(version="0.17.0", reason="Support bool arguments")
+@versionchanged(version="0.18.0", reason="Support for lists and unsigned ints")
+class PureInput:
+    """Pure inputs processing."""
+
+    @singledispatchmethod
+    @classmethod
+    def pure(cls, arg):
+        """Template dispatch method."""
+        return f"I'm converting {arg} pure."
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bool) -> list:
+        """."""
+        logger.debug(f"bool->pure {arg}")
+        return list(int(arg is True).to_bytes(1, "little"))
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiBoolean) -> list:
+        """."""
+        return cls.pure(arg.value)
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: int) -> list:
+        """Convert int to minimal list of bytes."""
+        logger.debug(f"int->pure {arg}")
+        ccount = ceil(arg.bit_length() / 8.0)
+        return list(int.to_bytes(arg, ccount, "little"))
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.Optional) -> list:
+        """Convert OptionalU8 to list of bytes."""
+        logger.debug(f"Optional {arg}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiInteger) -> list:
+        """Convert int to minimal list of bytes."""
+        return cls.pure(arg.value)
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU8) -> list:
+        """Convert unsigned int to bytes."""
+        logger.debug(f"u8->pure {arg.value}")
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.OptionalU8) -> list:
+        """Convert OptionalU8 to list of bytes."""
+        logger.debug(f"Optional<u8> {arg}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU16) -> list:
+        """Convert unsigned int to bytes."""
+        logger.debug(f"u16->pure {arg.value}")
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.OptionalU16) -> list:
+        """Convert OptionalU16 to list of bytes."""
+        logger.debug(f"Optional<u16> {arg}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU32) -> list:
+        """Convert unsigned int to bytes."""
+        logger.debug(f"u32->pure {arg.value}")
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.OptionalU32) -> list:
+        """Convert OptionalU32 to list of bytes."""
+        logger.debug(f"Optional<u32> {arg}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU64) -> list:
+        """Convert unsigned int to bytes."""
+        logger.debug(f"u64->pure {arg.value}")
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.OptionalU64) -> list:
+        """Convert OptionalU64 to list of bytes."""
+        logger.debug(f"Optional<u64> {arg}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU128) -> list:
+        """Convert unsigned int to bytes."""
+        logger.debug(f"u128->pure {arg.value}")
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.OptionalU128) -> list:
+        """Convert OptionalU128 to list of bytes."""
+        logger.debug(f"Optional<u128> {arg}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiU256) -> list:
+        """Convert unsigned int to bytes."""
+        logger.debug(f"u256->pure {arg.value}")
+        return list(arg.to_bytes())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.OptionalU256) -> list:
+        """Convert OptionalU256 to list of bytes."""
+        logger.debug(f"Optional<u256> {arg}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: str) -> list:
+        """Convert str to list of bytes."""
+        logger.debug(f"str->pure {arg}")
+        byte_list = list(bytearray(arg, encoding="utf-8"))
+        length_prefix = list(bytearray(serialize_uint32_as_uleb128(len(byte_list))))
+        return length_prefix + byte_list
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiString) -> list:
+        """Convert int to minimal list of bytes."""
+        return cls.pure(arg.value)
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bytes) -> list:
+        """Bytes to list."""
+        logger.debug(f"bytes->pure {arg}")
+        base_list = list(arg)
+        return base_list
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: ObjectID) -> list:
+        """Convert ObjectID to list of bytes."""
+        logger.debug(f"ObjectID->pure {arg.value}")
+        return cls.pure(binascii.unhexlify(arg.value[2:]))
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: SuiAddress) -> list:
+        """Convert SuiAddress to list of bytes."""
+        logger.debug(f"SuiAddress->pure {arg.address}")
+        addy = bcs.Address.from_sui_address(arg)
+        return list(addy.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.Address) -> list:
+        """Convert bcs.Address to list of bytes."""
+        logger.debug(f"bcs.Address->pure {arg.to_json()}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.Digest) -> list:
+        """Convert bcs,Digest to list of bytes."""
+        logger.debug(f"bcs.Digest->pure {arg.to_json()}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: bcs.Variable) -> list:
+        """Convert bcs,Variable to list of bytes."""
+        logger.debug(f"bcs.Variable->pure {arg.to_json()}")
+        return list(arg.serialize())
+
+    @pure.register
+    @classmethod
+    def _(cls, arg: list) -> list:
+        """."""
+        logger.debug(f"list->pure {arg}")
+        stage_list = [PureInput.pure(x) for x in arg]
+        res_list = list(serialize_uint32_as_uleb128(len(stage_list)))
+        for stage_pure in stage_list:
+            res_list.extend(stage_pure)
+        return res_list
+
+    @classmethod
+    def as_input(cls, args) -> bcs.BuilderArg:
+        """Convert scalars and ObjectIDs to a Pure BuilderArg."""
+        return bcs.BuilderArg("Pure", cls.pure(args))
+
+
+@versionchanged(version="0.31.0", reason="Added command type frequency")
+class ProgrammableTransactionBuilder:
+    """ProgrammableTransactionBuilder core transaction construction.
+
+    Supports both resolved (ObjectArg) and deferred (UnresolvedObjectArg) object inputs.
+    Deferred inputs are registered via ``input_obj_from_unresolved_object`` and resolved
+    in batch by the executor before calling ``build``.
+    """
 
     def __init__(self, *, compress_inputs: bool = False) -> None:
         """Builder initializer."""
@@ -38,7 +261,6 @@ class CachingTransactionBuilder:
         self.commands: list[bcs.Command] = []
         self.objects_registry: dict[str, str] = {}
         self.compress_inputs: bool = compress_inputs
-        self.compress_pure_inputs = True
 
         self.command_frequency = {
             "MoveCall": 0,
@@ -50,35 +272,6 @@ class CachingTransactionBuilder:
             "Upgrade": 0,
         }
         logger.debug("TransactionBuilder initialized")
-
-    def get_unresolved_inputs(
-        self,
-    ) -> dict[str, bcs.UnresolvedObjectArg]:
-        """Retrieve unresolved objects in input list.
-
-        :return: A dict of input index (key) and UnresolveObjectArg spec
-        :rtype: dict[int, bcs.UnresolvedObjectArg]
-        """
-        # Use for loop as faster for small dictionaries
-        res: dict[str, bcs.UnresolvedObjectArg] = {}
-        for idx, (barg, carg) in enumerate(self.inputs.items()):
-            if barg.enum_name == "Unresolved":
-                res[idx] = carg.value
-        # Return unresolved
-        return res
-
-    def resolved_object_inputs(
-        self, entries: dict[int, tuple[bcs.BuilderArg, bcs.CallArg]]
-    ):
-        """."""
-        new_inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
-        for idx, (barg, carg) in enumerate(self.inputs.items()):
-            if barg.enum_name == "Unresolved":
-                rbarg, rcarg = entries[idx]
-                new_inputs[rbarg] = rcarg
-            else:
-                new_inputs[barg] = carg
-        self.inputs = new_inputs
 
     def _finish(self) -> bcs.ProgrammableTransaction:
         """finish returns ProgrammableTransaction structure.
@@ -101,6 +294,8 @@ class CachingTransactionBuilder:
         """
         return bcs.TransactionKind("ProgrammableTransaction", self._finish())
 
+    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
+    @versionchanged(version="0.30.2", reason="Remove reuse of identical pure inputs")
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
         """input_pure registers a pure input argument in the inputs collection.
 
@@ -113,7 +308,7 @@ class CachingTransactionBuilder:
         logger.debug("Adding pure input")
         out_index = len(self.inputs)
         if key.enum_name == "Pure":
-            if self.compress_pure_inputs:
+            if self.compress_inputs:
                 e_index = 0
                 for _ekey, evalue in self.inputs.items():
                     if key.value == evalue.value:
@@ -124,10 +319,11 @@ class CachingTransactionBuilder:
                     e_index += 1
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
         else:
-            raise ValueError(f"Expected Pure builder argument, found {key.enum_name}")
+            raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
         logger.debug(f"New pure input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
+    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
     def input_obj(
         self,
         key: bcs.BuilderArg,
@@ -136,9 +332,7 @@ class CachingTransactionBuilder:
         """."""
         logger.debug("Adding object input")
         out_index = len(self.inputs)
-        if key.enum_name == "Object" and isinstance(
-            object_arg, bcs.ObjectArg
-        ):  # _key = hash(input)
+        if key.enum_name == "Object" and isinstance(object_arg, bcs.ObjectArg):
             if self.compress_inputs:
                 e_index = 0
                 for _ekey, evalue in self.inputs.items():
@@ -153,27 +347,62 @@ class CachingTransactionBuilder:
         elif key.enum_name == "Unresolved" and isinstance(
             object_arg, bcs.UnresolvedObjectArg
         ):
-            carg = bcs.CallArg("UnresolvedObject", object_arg)
-            # self.inputs.update({key: object_arg})
-            self.inputs[key] = carg
+            self.inputs[key] = bcs.CallArg("UnresolvedObject", object_arg)
             self.objects_registry[key.value] = object_arg
         else:
             raise ValueError(
                 f"Expected Object builder arg and ObjectArg, found {key.enum_name} and {type(object_arg)}"
             )
-        # self.objects_registry[key.value.to_address_str()] = object_arg.enum_name
-        # self.objects_registry.add(key.value.to_address_str())
         logger.debug(f"New object input created at index {out_index}")
         return bcs.Argument("Input", out_index)
 
-    @versionadded(version="0.73.0", reason="Support stand-alone Unresolved objects")
+    @versionadded(version="0.54.0", reason="Support stand-alone ObjectArg")
+    def input_obj_from_objarg(
+        self, object_arg: Union[bcs.ObjectArg, bcs.Optional]
+    ) -> bcs.Argument:
+        """."""
+        if isinstance(object_arg, bcs.Optional):
+            object_arg = object_arg.value
+        oval: bcs.Address = object_arg.value.ObjectID
+        barg = bcs.BuilderArg("Object", oval)
+        return self.input_obj(barg, object_arg)
+
     def input_obj_from_unresolved_object(
         self, object_arg: bcs.UnresolvedObjectArg
     ) -> bcs.Argument:
-        """."""
+        """Register a deferred (unresolved) object arg — resolved before build."""
         object_arg.ObjectStr = hexstring_to_sui_id(object_arg.ObjectStr)
         barg = bcs.BuilderArg("Unresolved", object_arg.ObjectStr)
         return self.input_obj(barg, object_arg)
+
+    def get_unresolved_inputs(self) -> dict[int, bcs.UnresolvedObjectArg]:
+        """Return a mapping of input index → UnresolvedObjectArg for all deferred inputs."""
+        res: dict[int, bcs.UnresolvedObjectArg] = {}
+        for idx, (barg, carg) in enumerate(self.inputs.items()):
+            if barg.enum_name == "Unresolved":
+                res[idx] = carg.value
+        return res
+
+    def resolved_object_inputs(
+        self, entries: dict[int, tuple[bcs.BuilderArg, bcs.CallArg]]
+    ) -> None:
+        """Replace unresolved inputs with their resolved BuilderArg/CallArg pairs."""
+        new_inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
+        for idx, (barg, carg) in enumerate(self.inputs.items()):
+            if barg.enum_name == "Unresolved":
+                rbarg, rcarg = entries[idx]
+                new_inputs[rbarg] = rcarg
+            else:
+                new_inputs[barg] = carg
+        self.inputs = new_inputs
+
+    def input_obj_from_withdrawal(
+        self, with_drawal: bcs.FundsWithdrawal
+    ) -> bcs.Argument:
+        """."""
+        out_index = len(self.inputs)
+        self.inputs[f"Poof_{out_index}"] = bcs.CallArg("FundsWithdrawal", with_drawal)
+        return bcs.Argument("Input", out_index)
 
     def command(
         self, command_obj: bcs.Command, nresults: int = 1
@@ -198,32 +427,34 @@ class CachingTransactionBuilder:
         logger.debug("Creating single result return")
         return bcs.Argument("Result", out_index)
 
+    @versionchanged(
+        version="0.54.0",
+        reason="Accept bcs.ObjectArg(s) support GraphQL implementation.",
+    )
     def make_move_vector(
         self,
         vtype: bcs.OptionalTypeTag,
         items: list[
             Union[
                 bcs.Argument,
-                bcs.UnresolvedObjectArg,
-                tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
+                bcs.BuilderArg,
+                bcs.ObjectArg,
+                tuple[bcs.BuilderArg, bcs.ObjectArg],
             ]
         ],
     ) -> bcs.Argument:
         """Create a call to convert a list of items to a Sui 'vector' type."""
-        # Sample first for type
-        logger.debug("MakeMoveVec transaction")
+        logger.debug("Creating MakeMoveVec transaction")
         argrefs: list[bcs.Argument] = []
         for arg in items:
             if isinstance(arg, bcs.BuilderArg):
                 argrefs.append(self.input_pure(arg))
             elif isinstance(arg, bcs.UnresolvedObjectArg):
                 argrefs.append(self.input_obj_from_unresolved_object(arg))
+            elif isinstance(arg, bcs.ObjectArg):
+                argrefs.append(self.input_obj_from_objarg(arg))
             elif isinstance(arg, tuple):
-                barg, oarg = arg
-                if isinstance(oarg, bcs.UnresolvedObjectArg):
-                    argrefs.append(self.input_obj(barg, oarg))
-                else:
-                    raise NotImplementedError("Found ObjectArg in make_move_vector")
+                argrefs.append(self.input_obj(*arg))
             elif isinstance(arg, bcs.Argument):
                 argrefs.append(arg)
             else:
@@ -231,17 +462,17 @@ class CachingTransactionBuilder:
 
         return self.command(bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs)))
 
-    def move_call(
+    @versionchanged(version="0.17.0", reason="Add result count for correct arg return.")
+    def move_call(  # pylint: disable=too-many-branches
         self,
         *,
         target: bcs.Address,
         arguments: list[
             Union[
                 bcs.Argument,
-                bcs.UnresolvedObjectArg,
+                bcs.ObjectArg,
                 bcs.Optional,
-                bcs.UnresolvedOptional,
-                tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
+                tuple[bcs.BuilderArg, bcs.ObjectArg],
             ]
         ],
         type_arguments: list[bcs.TypeTag],
@@ -250,7 +481,7 @@ class CachingTransactionBuilder:
         res_count: int = 1,
     ) -> Union[bcs.Argument, list[bcs.Argument]]:
         """Setup a MoveCall command and return it's result Argument."""
-        logger.debug("MoveCall transaction")
+        logger.debug("Creating MakeCall transaction")
         argrefs: list[bcs.Argument] = []
         for arg in arguments:
             if isinstance(arg, bcs.BuilderArg):
@@ -259,14 +490,18 @@ class CachingTransactionBuilder:
                 argrefs.append(self.input_obj_from_unresolved_object(arg))
             elif isinstance(arg, bcs.UnresolvedOptional):
                 pass
-            elif isinstance(arg, bcs.Optional):
+            elif isinstance(arg, bcs.ObjectArg):
+                argrefs.append(self.input_obj_from_objarg(arg))
+            elif isinstance(arg, bcs.Optional) and isinstance(arg.value, bcs.ObjectArg):
+                argrefs.append(self.input_obj_from_objarg(arg))
+            elif isinstance(arg, bcs.Optional) and not isinstance(
+                arg.value, bcs.ObjectArg
+            ):
                 argrefs.append(self.input_pure(PureInput.as_input(arg)))
+            elif isinstance(arg, bcs.FundsWithdrawal):
+                argrefs.append(self.input_obj_from_withdrawal(arg))
             elif isinstance(arg, tuple):
-                barg, oarg = arg
-                if isinstance(oarg, bcs.UnresolvedObjectArg):
-                    argrefs.append(self.input_obj(barg, oarg))
-                else:
-                    raise NotImplementedError("Found ObjectArg in make_move_vector")
+                argrefs.append(self.input_obj(*arg))
             elif isinstance(arg, bcs.Argument):
                 argrefs.append(arg)
             elif isinstance(arg, tuple(bcs.OPTIONAL_SCALARS)):
@@ -288,17 +523,22 @@ class CachingTransactionBuilder:
             res_count,
         )
 
+    @versionchanged(version="0.17.0", reason="Extend to take list of amounts")
+    @versionchanged(
+        version="0.33.0", reason="Accept bcs.Argument (i.e. Result) as amount"
+    )
+    @versionchanged(
+        version="0.54.0", reason="Accept bcs.ObjectArg support GraphQL implementation."
+    )
     def split_coin(
         self,
         from_coin: Union[
-            bcs.Argument,
-            bcs.UnresolvedObjectArg,
-            tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
+            bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]
         ],
         amounts: list[bcs.BuilderArg],
     ) -> bcs.Argument:
         """Setup a SplitCoin command and return it's result Argument."""
-        logger.debug("SplitCoin transaction")
+        logger.debug("Creating SplitCoin transaction")
         amounts_arg = []
         for amount in amounts:
             if isinstance(amount, bcs.Argument):
@@ -307,61 +547,45 @@ class CachingTransactionBuilder:
                 amounts_arg.append(self.input_pure(amount))
         if isinstance(from_coin, bcs.UnresolvedObjectArg):
             from_coin = self.input_obj_from_unresolved_object(from_coin)
-        elif isinstance(from_coin, bcs.Argument):
-            pass
+        elif isinstance(from_coin, bcs.ObjectArg):
+            from_coin = self.input_obj_from_objarg(from_coin)
         elif isinstance(from_coin, tuple):
-            barg, oarg = from_coin
-            if isinstance(oarg, bcs.UnresolvedObjectArg):
-                from_coin = self.input_obj(*from_coin)
-            else:
-                raise NotImplementedError("Found ObjectArg in make_move_vector")
-        else:
-            raise ValueError(f"Unknown arg in movecall {from_coin.__class__.__name__}")
+            from_coin = self.input_obj(*from_coin)
         return self.command(
             bcs.Command("SplitCoin", bcs.SplitCoin(from_coin, amounts_arg)),
             len(amounts_arg),
         )
 
+    @versionchanged(
+        version="0.54.0",
+        reason="Accept bcs.ObjectArg(s) support GraphQL implementation.",
+    )
     def merge_coins(
         self,
         to_coin: Union[
-            bcs.Argument,
-            bcs.UnresolvedObjectArg,
-            tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
+            bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]
         ],
         from_coins: list[
-            Union[
-                bcs.Argument,
-                bcs.UnresolvedObjectArg,
-                tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg],
-            ]
+            Union[bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]
         ],
     ) -> bcs.Argument:
         """Setup a MergeCoins command and return it's result Argument."""
-        logger.debug("MergeCoins transaction")
+        logger.debug("Creating MergeCoins transaction")
 
         if isinstance(to_coin, bcs.UnresolvedObjectArg):
             to_coin = self.input_obj_from_unresolved_object(to_coin)
+        elif isinstance(to_coin, bcs.ObjectArg):
+            to_coin = self.input_obj_from_objarg(to_coin)
         elif isinstance(to_coin, tuple):
-            barg, oarg = to_coin
-            if isinstance(oarg, bcs.UnresolvedObjectArg):
-                to_coin = self.input_obj(barg, oarg)
-            else:
-                raise NotImplementedError("Found ObjectArg in merge_coins to_coin")
+            to_coin = self.input_obj(*to_coin)
         from_args: list[bcs.Argument] = []
         for fcoin in from_coins:
-            if isinstance(fcoin, bcs.ObjectArg):
-                raise NotImplementedError("Found ObjectArg in merge_coins from list")
-            elif isinstance(fcoin, bcs.UnresolvedObjectArg):
+            if isinstance(fcoin, bcs.UnresolvedObjectArg):
                 fcoin = self.input_obj_from_unresolved_object(fcoin)
+            elif isinstance(fcoin, bcs.ObjectArg):
+                fcoin = self.input_obj_from_objarg(fcoin)
             elif isinstance(fcoin, tuple):
-                barg, oarg = fcoin
-                if isinstance(oarg, bcs.UnresolvedObjectArg):
-                    fcoin = self.input_obj(barg, oarg)
-                else:
-                    raise NotImplementedError(
-                        "Found ObjectArg in merge_coins from_coin"
-                    )
+                fcoin = self.input_obj(*fcoin)
             from_args.append(fcoin)
         return self.command(
             bcs.Command("MergeCoins", bcs.MergeCoins(to_coin, from_args))
@@ -375,35 +599,28 @@ class CachingTransactionBuilder:
             list[
                 Union[
                     bcs.Argument,
-                    bcs.UnresolvedObjectArg,
+                    bcs.ObjectArg,
                     tuple[bcs.BuilderArg, bcs.ObjectArg],
                 ]
             ],
         ],
     ) -> bcs.Argument:
         """Setup a TransferObjects command and return it's result Argument."""
-        logger.debug("TransferObjects transaction")
+        logger.debug("Creating TransferObjects transaction")
         receiver_arg = (
             recipient
             if isinstance(recipient, bcs.Argument)
             else self.input_pure(recipient)
         )
-        # receiver_arg = self.input_pure(recipient)
         from_args: list[bcs.Argument] = []
         if isinstance(object_ref, list):
             for fcoin in object_ref:
-                if isinstance(fcoin, bcs.ObjectArg):
-                    raise NotImplementedError("Found ObjectArg in transfer_objects")
-                elif isinstance(fcoin, bcs.UnresolvedObjectArg):
+                if isinstance(fcoin, bcs.UnresolvedObjectArg):
                     fcoin = self.input_obj_from_unresolved_object(fcoin)
+                elif isinstance(fcoin, bcs.ObjectArg):
+                    fcoin = self.input_obj_from_objarg(fcoin)
                 elif isinstance(fcoin, tuple):
-                    barg, oarg = fcoin
-                    if isinstance(oarg, bcs.UnresolvedObjectArg):
-                        fcoin = self.input_obj(barg, oarg)
-                    else:
-                        raise NotImplementedError(
-                            "Found ObjectArg in merge_coins from_coin"
-                        )
+                    fcoin = self.input_obj(*fcoin)
                 from_args.append(fcoin)
         else:
             from_args.append(object_ref)
@@ -417,14 +634,14 @@ class CachingTransactionBuilder:
     def transfer_sui(
         self,
         recipient: bcs.BuilderArg,
-        from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.UnresolvedObjectArg]],
+        from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
         amount: Optional[Union[bcs.BuilderArg, bcs.OptionalU64]] = None,
     ) -> bcs.Argument:
         """Setup a TransferObjects for Sui Coins.
 
         First uses the SplitCoins result, then returns the TransferObjects result Argument.
         """
-        logger.debug("TransferSui transaction")
+        logger.debug("Creating TransferSui transaction")
         reciever_arg = self.input_pure(recipient)
         if amount and isinstance(amount, bcs.BuilderArg):
             coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
@@ -438,15 +655,16 @@ class CachingTransactionBuilder:
                 )
             else:
                 coin_arg = from_coin
-        elif isinstance(from_coin, bcs.Argument):
-            coin_arg = from_coin
         else:
-            # TODO: Validate unresolved type
-            barg, oarg = from_coin
-            if isinstance(oarg, bcs.UnresolvedObjectArg):
-                coin_arg = self.input_obj(barg, oarg)
-            else:
-                raise NotImplementedError("Found ObjectArg in merge_coins from_coin")
+            coin_arg = from_coin
+        if isinstance(coin_arg, bcs.Argument):
+            pass
+        elif isinstance(coin_arg, bcs.UnresolvedObjectArg):
+            coin_arg = self.input_obj_from_unresolved_object(coin_arg)
+        elif isinstance(coin_arg, bcs.ObjectArg):
+            coin_arg = self.input_obj_from_objarg(coin_arg)
+        else:
+            coin_arg = self.input_obj(*from_coin)
         return self.command(
             bcs.Command(
                 "TransferObjects",
@@ -454,12 +672,15 @@ class CachingTransactionBuilder:
             )
         )
 
+    @versionchanged(
+        version="0.20.0",
+        reason="Removed UpgradeCap auto transfer as per Sui best practices.",
+    )
     def publish(
         self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address]
     ) -> bcs.Argument:
         """Setup a Publish command and return it's result Argument."""
-        logger.debug("Publish transaction")
-        # result = self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
+        logger.debug("Creating Publish transaction")
         return self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
 
     def authorize_upgrade(
@@ -469,7 +690,7 @@ class CachingTransactionBuilder:
         digest: bcs.BuilderArg,
     ) -> bcs.Argument:
         """Setup a Authorize Upgrade MoveCall and return it's result Argument."""
-        logger.debug("UpgradeAuthorization transaction")
+        logger.debug("Creating UpgradeAuthorization transaction")
         if isinstance(upgrade_cap, bcs.ObjectArg):
             ucap = self.input_obj_from_objarg(upgrade_cap)
         else:
@@ -499,7 +720,7 @@ class CachingTransactionBuilder:
         upgrade_ticket: bcs.Argument,
     ) -> bcs.Argument:
         """Setup a Upgrade Command and return it's result Argument."""
-        logger.debug("PublishUpgrade transaction")
+        logger.debug("Creating PublishUpgrade transaction")
         return self.command(
             bcs.Command(
                 "Upgrade",
@@ -511,7 +732,7 @@ class CachingTransactionBuilder:
         self, upgrade_cap: bcs.Argument, receipt: bcs.Argument
     ) -> bcs.Argument:
         """Setup a Commit Upgrade MoveCall and return it's result Argument."""
-        logger.debug("UpgradeCommit transaction")
+        logger.debug("Creating UpgradeCommit transaction")
         return self.command(
             bcs.Command(
                 "MoveCall",

@@ -83,7 +83,7 @@ class SimulateTransaction(SuiCommand):
 class SimulateTransactionKind(SuiCommand):
     """Simulate a TransactionKind (programmable transaction) without committing."""
 
-    gql_class: ClassVar[type] = pgql_query.SimulateTransactionKind
+    gql_class: ClassVar[type] = pgql_query.SimulateTransactionKindSC
     grpc_class: ClassVar[type] = rn.SimulateTransactionKind
 
     tx_kind: TransactionKind
@@ -91,9 +91,9 @@ class SimulateTransactionKind(SuiCommand):
     checks_enabled: Optional[bool] = True
     gas_selection: Optional[bool] = True
 
-    def gql_node(self) -> pgql_query.SimulateTransactionKind:
+    def gql_node(self) -> pgql_query.SimulateTransactionKindSC:
         """Return GQL simulate-transaction-kind query node."""
-        return pgql_query.SimulateTransactionKind(
+        return pgql_query.SimulateTransactionKindSC(
             tx_kind=self.tx_kind,
             tx_meta=self.tx_meta,
             skip_checks=self.checks_enabled,
@@ -209,9 +209,12 @@ class GetGas(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetGasSC
     grpc_class: ClassVar[type] = rn.GetGas
+    gql_requires_paging: ClassVar[bool] = True
+    gql_page_list_path: ClassVar[tuple] = ("qres", "coins", "coin_objects")
 
     owner: str
     next_page: Optional[PagingCursor] = None
+    grpc_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetGasSC:
         """Return GQL gas-coins query node."""
@@ -219,7 +222,7 @@ class GetGas(SuiCommand):
 
     def grpc_request(self) -> rn.GetGas:
         """Return gRPC get-gas request."""
-        return rn.GetGas(owner=self.owner)
+        return rn.GetGas(owner=self.owner, page_token=self.grpc_page_token)
 
 
 @dataclass(kw_only=True)
@@ -795,4 +798,24 @@ class GetNameServiceNames(SuiCommand):
         """Return gRPC reverse-lookup-name request."""
         return rn.GetNameServiceNames(address=self.owner)
 
+
+# ---------------------------------------------------------------------------
+# Chain / network info
+# ---------------------------------------------------------------------------
+
+
+@dataclass(kw_only=True)
+class GetChainIdentifier(SuiCommand):
+    """Return the chain identifier (network genesis checkpoint digest) as a string."""
+
+    gql_class: ClassVar[type] = pgql_query.GetChainIdentifierSC
+    grpc_class: ClassVar[type] = rn.GetChainIdentifierSC
+
+    def gql_node(self) -> pgql_query.GetChainIdentifierSC:
+        """Return GQL chain identifier query node."""
+        return pgql_query.GetChainIdentifierSC()
+
+    def grpc_request(self) -> rn.GetChainIdentifierSC:
+        """Return gRPC chain identifier request."""
+        return rn.GetChainIdentifierSC()
 

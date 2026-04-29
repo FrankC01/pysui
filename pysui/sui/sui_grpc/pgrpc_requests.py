@@ -16,6 +16,7 @@ from pysui.sui.sui_bcs.bcs import TransactionKind
 from pysui.sui.sui_bcs import bcs
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+from pysui.sui.sui_common.executors.cache import ObjectCacheEntry
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
@@ -36,6 +37,14 @@ class GetServiceInfo(absreq.PGRPC_Request):
     ]:
         """Prepare the request for submission."""
         return stub.get_service_info, sui_prot.GetServiceInfoRequest()
+
+
+class GetChainIdentifierSC(GetServiceInfo):
+    """SC variant: extract chain_id from GetServiceInfoResponse."""
+
+    def render(self, obj: sui_prot.GetServiceInfoResponse) -> str:
+        """Extract chain identifier from service info response."""
+        return obj.chain_id or ""
 
 
 class GetCheckpoint(absreq.PGRPC_Request):
@@ -321,6 +330,48 @@ class GetMultipleObjects(absreq.PGRPC_Request):
         return stub.batch_get_objects, sui_prot.BatchGetObjectsRequest(
             requests=self.objects, read_mask=self.field_mask
         )
+
+
+class _GetMultipleObjectsResolvedSC(GetMultipleObjects):
+    """Internal SC variant: normalizes BatchGetObjectsResponse → list[ObjectCacheEntry]."""
+
+    def render(self, resp: sui_prot.BatchGetObjectsResponse) -> list[ObjectCacheEntry]:
+        """Convert gRPC batch response to protocol-agnostic ObjectCacheEntry list."""
+        entries: list[ObjectCacheEntry] = []
+        for obj_result in resp.objects:
+            obj = obj_result.object
+            if obj is None:
+                continue
+            oid_str: str = obj.object_id or ""
+            version: int = obj.version or 0
+            digest_str: str = obj.digest or ""
+            owner_kind: str = (
+                obj.owner.kind.name if obj.owner and obj.owner.kind is not None
+                else "OWNER_KIND_UNKNOWN"
+            )
+            if owner_kind == "SHARED":
+                entries.append(ObjectCacheEntry(
+                    objectId=oid_str,
+                    version=str(version),
+                    digest=digest_str,
+                    owner=None,
+                    initialSharedVersion=str(obj.owner.version or 0),
+                ))
+            elif owner_kind in ("ADDRESS", "OBJECT"):
+                entries.append(ObjectCacheEntry(
+                    objectId=oid_str,
+                    version=str(version),
+                    digest=digest_str,
+                    owner=obj.owner.address if owner_kind == "ADDRESS" else None,
+                ))
+            else:
+                entries.append(ObjectCacheEntry(
+                    objectId=oid_str,
+                    version=str(version),
+                    digest=digest_str,
+                    owner=None,
+                ))
+        return entries
 
 
 class GetDynamicFields(absreq.PGRPC_Request):

@@ -17,7 +17,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-from pysui import PysuiConfiguration, AsyncGqlClient
+from pysui import PysuiConfiguration, AsyncSuiGQLClient as AsyncGqlClient
 
 
 def build_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespace:

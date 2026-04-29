@@ -16,42 +16,14 @@ from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelE
 from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 from pysui.sui.sui_common.executors.gas_pool import GasCoin
 from pysui.sui.sui_common.executors.object_registry import AbstractObjectRegistry
-from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
+from pysui.sui.sui_common.txb_signing import SigningMultiSig
 from pysui.sui.sui_common.types import TransactionEffects
 
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_grpc.grpc_caching_exec import GrpcCachingTransactionExecutor
 from pysui.sui.sui_grpc.grpc_serial_exec import _grpc_effects_to_common
 
 grpc_par_txn_exc_logger = logging.getLogger(__name__)
-
-
-class _GrpcParallelCachingExecutor(GrpcCachingTransactionExecutor):
-    """gRPC caching executor extended for parallel use with optional coins mode.
-
-    In addressBalance mode, ``build_transaction`` passes ``use_account_for_gas=True``
-    to ``txn.build()``. In coins mode, the gas coin ID stored via
-    ``update_gas_coins`` is passed as ``use_gas_objects``.
-    """
-
-    def __init__(self, client, gas_owner: Optional[str] = None, *, use_account: bool = False) -> None:
-        super().__init__(client, gas_owner=gas_owner)
-        self._use_account = use_account
-
-    async def build_transaction(
-        self,
-        txn,
-        signer_block: SignerBlock,
-        default_gas_budget: int = 50_000_000,
-    ) -> str:
-        """Build gRPC transaction, injecting gas coin or account flag as appropriate."""
-        gas_objects = await self.cache.getCustom("gasCoins")
-        return await txn.build(
-            gas_budget=default_gas_budget,
-            use_gas_objects=gas_objects or None,
-            use_account_for_gas=self._use_account and not gas_objects,
-        )
 
 
 class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
@@ -128,21 +100,20 @@ class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
     # _BaseParallelExecutor implementation
     # ------------------------------------------------------------------
 
-    def _create_caching_executor(self) -> _GrpcParallelCachingExecutor:
-        use_account = self._gas_mode == "addressBalance"
-        return _GrpcParallelCachingExecutor(
-            self._client,
+    def _create_caching_executor(self) -> _BaseCachingExecutor:
+        return _BaseCachingExecutor(
+            client=self._client,
             gas_owner=self._gas_owner,
-            use_account=use_account,
+            use_account_gas=self._gas_mode == "addressBalance",
         )
 
     async def _execute_single(
         self,
         tx_str: str,
         sigs: list[str],
-        caching_exec: "_BaseCachingExecutor",
+        caching_exec: _BaseCachingExecutor,
     ) -> TransactionEffects:
-        grpc_exec: _GrpcParallelCachingExecutor = caching_exec  # type: ignore[assignment]
+        grpc_exec: _BaseCachingExecutor = caching_exec
         result = await self._client.execute(
             request=rn.ExecuteTransaction(tx_bytestr=tx_str, sig_array=sigs)
         )
@@ -238,14 +209,3 @@ class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
         bal = result.result_data.balance
         return bal.coin_balance if self._gas_mode == "coins" else bal.address_balance
 
-    # ------------------------------------------------------------------
-    # Public helpers
-    # ------------------------------------------------------------------
-
-    async def new_transaction(self, **kwargs):
-        """Create a new gRPC AsyncSuiTransaction for building transaction blocks.
-
-        :return: A new gRPC AsyncSuiTransaction
-        """
-        kwargs["client"] = self._client
-        return await self._client.transaction(**kwargs)

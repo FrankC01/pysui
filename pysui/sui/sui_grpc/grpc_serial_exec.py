@@ -7,7 +7,10 @@
 
 import asyncio
 import logging
-from typing import Any, Awaitable, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Optional, Union
+
+if TYPE_CHECKING:
+    from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 
 from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
 from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
@@ -18,13 +21,12 @@ from pysui.sui.sui_common.executors import (
     SerialQueue,
 )
 from pysui.sui.sui_common.executors.base_executor import _BaseSerialExecutor
+from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor
 from pysui.sui.sui_common.types import (
     TransactionEffects, ExecutionStatus, GasCostSummary, Owner, ChangedObject
 )
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_grpc.grpc_caching_exec import GrpcCachingTransactionExecutor
-from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 
 grpc_ser_txn_exc_logger = logging.getLogger(__name__)
 
@@ -182,6 +184,7 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
             raise ValueError(
                 "min_balance_threshold requires either on_coins_low or on_balance_low callback"
             )
+        self._use_account_gas = on_balance_low is not None and on_coins_low is None
         super().__init__(
             client=client,
             sender=sender,
@@ -194,15 +197,8 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
         self._execution_lock = asyncio.Lock()
         self._queue = SerialQueue()
 
-    def _create_caching_executor(self, client, gas_owner: str) -> GrpcCachingTransactionExecutor:
-        """Create a gRPC-specific caching executor.
-
-        :param client: The gRPC client
-        :param gas_owner: Address of the gas owner
-        :return: The caching executor
-        :rtype: GrpcCachingTransactionExecutor
-        """
-        return GrpcCachingTransactionExecutor(client, gas_owner=gas_owner)
+    def _create_caching_executor(self, client, gas_owner: str) -> _BaseCachingExecutor:
+        return _BaseCachingExecutor(client=client, gas_owner=gas_owner, use_account_gas=self._use_account_gas)
 
     async def _execute_raw(self, tx_str: str, sigs: list[str]) -> TransactionEffects:
         """Execute a signed transaction via gRPC and return common TransactionEffects.
@@ -247,23 +243,13 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
         bal = result.result_data.balance
         return bal.coin_balance if self._on_coins_low else bal.address_balance
 
-    async def new_transaction(self, **kwargs) -> AsyncSuiTransaction:
-        """Create a new transaction for transaction block building.
-
-        :return: A new AsyncSuiTransaction
-        :rtype: AsyncSuiTransaction
-        """
-        grpc_ser_txn_exc_logger.debug("Generate new transaction")
-        kwargs["client"] = self._client
-        return await self._client.transaction(**kwargs)
-
     async def reset_cache(self) -> None:
         """Reset the internal cache."""
         return await self._cache.reset()
 
     async def execute_transactions(
         self,
-        transactions: list[AsyncSuiTransaction],
+        transactions: "list[AsyncSuiTransaction]",
     ) -> list[Union[TransactionEffects, tuple[ExecutorError, Exception], ExecutionSkipped]]:
         """Serially execute one or more transactions using the base class state machine.
 

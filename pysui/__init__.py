@@ -46,8 +46,8 @@ from pysui.sui.sui_common.factory import client_factory
 from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
 
-from pysui.sui.sui_pgql.execute.serial_exec import GqlSerialTransactionExecutor
-from pysui.sui.sui_pgql.execute.parallel_exec import GqlParallelTransactionExecutor
+from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
+from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
 from pysui.sui.sui_grpc.grpc_serial_exec import GrpcSerialTransactionExecutor
 from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
 

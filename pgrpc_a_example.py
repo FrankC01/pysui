@@ -7,7 +7,13 @@
 
 import asyncio
 
-from pysui import PysuiConfiguration, SuiRpcResult, SuiGrpcClient, client_factory, AsyncClientBase
+from pysui import (
+    PysuiConfiguration,
+    SuiRpcResult,
+    SuiGrpcClient,
+    client_factory,
+    AsyncClientBase,
+)
 from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 from pysui.sui.sui_common.trxn_base import FundsSource
@@ -87,7 +93,9 @@ async def do_gas_ids(client: AsyncClientBase):
 
     # Use gas found for active address to use to validate
     # fetching by coin ids
-    result = await client.execute(command=cmd.GetGas(owner=client.config.active_address))
+    result = await client.execute(
+        command=cmd.GetGas(owner=client.config.active_address)
+    )
     if result.is_ok() and result.result_data.objects:
         cids = [x.object_id for x in result.result_data.objects]
         result = handle_result(
@@ -206,27 +214,21 @@ async def do_dynamics(client: AsyncClientBase):
 
 async def do_event(client: AsyncClientBase):
     """Fetch events.
-    EC-3: GetEvents is not supported by gRPC — returns SuiRpcResult(False, ...) gracefully.
+    protocol-level access: GetEvents is not supported by gRPC — returns SuiRpcResult(False, ...) gracefully.
     """
     handle_result(await client.execute(command=cmd.GetEvents()))
 
 
 async def do_service_config(client: AsyncClientBase):
     """Fetch the gRPC, Protocol and System configurations.
-    EC-3: GetServiceInfo is not supported by GQL — returns SuiRpcResult(False, ...) gracefully.
+    protocol-level access: GetServiceInfo is not supported by GQL — returns SuiRpcResult(False, ...) gracefully.
     """
     handle_result(await client.execute(command=cmd.GetServiceInfo()))
 
 
 async def do_chain_id(client: AsyncClientBase):
-    """Fetch the current environment chain_id.
-
-    Demonstrates overriding serialization.
-    EC-3: GetServiceInfo is not supported by GQL — returns SuiRpcResult(False, ...) gracefully.
-    """
-    result = await client.execute(command=cmd.GetServiceInfo())
-    if result.is_ok():
-        print(f"Chain ID: {result.result_data.chain_id}")
+    """Fetch the current environment chain_id."""
+    handle_result(await client.execute(command=cmd.GetChainIdentifier()))
 
 
 async def do_tx(client: AsyncClientBase):
@@ -251,7 +253,7 @@ async def do_txs(client: AsyncClientBase):
 
 async def do_filter_txs(client: AsyncClientBase):
     """Fetch all transactions matching filter.
-    EC-3: GetFilteredTx is not supported by gRPC — returns SuiRpcResult(False, ...) gracefully.
+    protocol-level access: GetFilteredTx is not supported by gRPC — returns SuiRpcResult(False, ...) gracefully.
     """
     handle_result(await client.execute(command=cmd.GetFilteredTx()))
 
@@ -360,10 +362,9 @@ async def do_all_validators(client: AsyncClientBase):
     await do_validators(client)
 
 
-async def do_protcfg(client: SuiGrpcClient):
-    """Fetch the most current system state summary."""
-    prtcl_cfg = await client.protocol()
-    print(prtcl_cfg.to_json(indent=2))
+async def do_protcfg(client: AsyncClientBase):
+    """Fetch the protocol configuration."""
+    handle_result(await client.execute(command=cmd.GetProtocolConfig()))
 
 
 async def do_struct(client: AsyncClientBase):
@@ -482,7 +483,9 @@ async def do_split_any_half(client: AsyncClientBase):
     This will only run if there is more than 1 coin in wallet.
     """
 
-    result = await client.execute(command=cmd.GetGas(owner=client.config.active_address))
+    result = await client.execute(
+        command=cmd.GetGas(owner=client.config.active_address)
+    )
     if result.is_ok() and len(result.result_data.objects) > 1:
         amount = int(int(result.result_data.objects[0].balance) / 2)
         txer: AsyncSuiTransaction = await client.transaction()
@@ -726,8 +729,8 @@ async def main():
         # await do_account_to_sui_coin(client_init)
         ## Config
         # await do_chain_id(client_init)
-        await do_service_config(client_init)
-        # await do_protcfg(client_init)
+        # await do_service_config(client_init)
+        await do_protcfg(client_init)
     except (ValueError, NotImplementedError) as ve:
         print(ve)
     finally:

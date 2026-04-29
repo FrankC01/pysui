@@ -9,7 +9,7 @@ import base64
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pysui.sui.sui_common.executors import ExecutionSkipped, ExecutorError
-from pysui.sui.sui_pgql.execute.serial_exec import GqlSerialTransactionExecutor
+from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
 
 
 # ---------------------------------------------------------------------------
@@ -116,10 +116,9 @@ class TestGqlSerialTransactionExecutor:
         mock_client.config = MagicMock()
         executor = GqlSerialTransactionExecutor(client=mock_client, sender="0xsender")
 
-        with patch("pysui.sui.sui_pgql.execute.serial_exec.CachingTransaction") as mock_txn:
-            mock_txn.return_value = MagicMock()
-            txn = await executor.new_transaction()
-            assert txn is not None
+        mock_client.transaction = AsyncMock(return_value=MagicMock())
+        txn = await executor.new_transaction()
+        assert txn is not None
 
     def test_serial_executor_build_context(self):
         """_build_executor_context creates ExecutorContext."""

@@ -192,3 +192,17 @@ class _BaseSerialExecutor(_BaseExecutor, ABC):
                 halt = True
 
         return results
+
+    async def new_transaction(self, **kwargs):
+        """Create a new transaction pre-wired for this executor's deferred-mode cache.
+
+        The transaction is constructed with ``mode=DEFERRED`` and
+        ``object_cache`` pointed at this executor's persistent object cache, so
+        object references that hit the cache are resolved without an on-chain
+        fetch, and cache misses produce ``UnresolvedObjectArg`` placeholders
+        that the caching executor resolves at build time.
+        """
+        from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode  # local: breaks circular import
+        kwargs["mode"] = TxnArgMode.DEFERRED
+        kwargs["object_cache"] = self._cache.cache
+        return await self._client.transaction(**kwargs)

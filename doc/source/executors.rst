@@ -60,7 +60,7 @@ GraphQL — ``GqlSerialTransactionExecutor``
 
     from pysui import PysuiConfiguration
     from pysui.sui.sui_common.factory import client_factory
-    from pysui.sui.sui_pgql.execute import GqlSerialTransactionExecutor, CachingTransaction
+    from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
     from pysui.sui.sui_common.executors import ExecutorContext
 
     async def on_coins_low(ctx: ExecutorContext) -> list[str] | None:
@@ -96,7 +96,7 @@ GraphQL — ``GqlSerialTransactionExecutor``
 
     from pysui import PysuiConfiguration
     from pysui.sui.sui_common.factory import client_factory
-    from pysui.sui.sui_pgql.execute import GqlSerialTransactionExecutor, CachingTransaction
+    from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
     from pysui.sui.sui_common.executors import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
@@ -224,7 +224,7 @@ during execution but cannot start it from zero.
 
     from pysui import PysuiConfiguration
     from pysui.sui.sui_common.factory import client_factory
-    from pysui.sui.sui_pgql.execute import GqlParallelTransactionExecutor
+    from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
     from pysui.sui.sui_common.executors import GasCoin
 
     async def run():
@@ -265,7 +265,7 @@ during execution but cannot start it from zero.
 
     from pysui import PysuiConfiguration
     from pysui.sui.sui_common.factory import client_factory
-    from pysui.sui.sui_pgql.execute import GqlParallelTransactionExecutor
+    from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
     from pysui.sui.sui_common.executors import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:

@@ -324,3 +324,16 @@ class _BaseParallelExecutor(ABC):
         if self._gas_pool is None:
             raise RuntimeError("seed_coin_pool is only valid in coins gas mode")
         await self._gas_pool.replenish(coins)
+
+    async def new_transaction(self, **kwargs):
+        """Create a new transaction pre-wired for deferred object resolution.
+
+        The transaction is constructed with ``mode=DEFERRED`` so that object
+        references produce ``UnresolvedObjectArg`` placeholders rather than
+        triggering an eager on-chain fetch.  The per-transaction object cache is
+        managed internally by the executor and wired at execution time, so no
+        shared ``object_cache`` is injected here.
+        """
+        from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode  # local: breaks circular import
+        kwargs["mode"] = TxnArgMode.DEFERRED
+        return await self._client.transaction(**kwargs)

@@ -17,7 +17,7 @@ from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
 from pysui.sui.sui_common.trxn_base import FundsSource
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
-import pysui.sui.sui_pgql.pgql_query as qn  # EC-5 fallback: queries without a SuiCommand
+import pysui.sui.sui_pgql.pgql_query as qn  # protocol-level access: queries without a SuiCommand
 import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_pgql.pgql_utils import (
@@ -85,7 +85,7 @@ async def do_gas(client: AsyncClientBase):
 
 async def do_all_gas(client: AsyncSuiGQLClient):
     """Fetch all coins for owner.
-    EC-5: async_get_all_owned_gas_objects is GraphQL-specific.
+    protocol-level access: async_get_all_owned_gas_objects is GraphQL-specific.
     """
     try:
         # This will include all coins whether active, pruned or deleted.
@@ -104,7 +104,7 @@ async def do_all_gas(client: AsyncSuiGQLClient):
 
 async def do_gas_ids(client: AsyncSuiGQLClient):
     """Fetch coins by the ids.
-    EC-5: GetMultipleGasObjects has no SuiCommand equivalent.
+    protocol-level access: GetMultipleGasObjects has no SuiCommand equivalent.
     """
 
     # Use coins found for active address to validate fetching by coin ids
@@ -114,7 +114,7 @@ async def do_gas_ids(client: AsyncSuiGQLClient):
     if result.is_ok() and result.result_data.data:
         cids = [x.coin_object_id for x in result.result_data.data]
         result = handle_result(
-            await client.execute_query_node(  # EC-5: GetMultipleGasObjects
+            await client.execute_query_node(  # protocol-level access: GetMultipleGasObjects
                 with_node=qn.GetMultipleGasObjects(coin_object_ids=cids)
             )
         )
@@ -126,9 +126,11 @@ async def do_gas_ids(client: AsyncSuiGQLClient):
 
 async def do_sysstate(client: AsyncSuiGQLClient):
     """Fetch the most current system state summary.
-    EC-5: GetLatestSuiSystemState SuiCommand removed; use legacy GQL query directly.
+    protocol-level access: GetLatestSuiSystemState SuiCommand removed; use legacy GQL query directly.
     """
-    handle_result(await client.execute_query_node(with_node=qn.GetLatestSuiSystemState()))
+    handle_result(
+        await client.execute_query_node(with_node=qn.GetLatestSuiSystemState())
+    )
 
 
 async def do_address_balance(client: AsyncClientBase):
@@ -182,7 +184,7 @@ async def do_object_content(client: AsyncClientBase):
 
 async def do_objects(client: AsyncSuiGQLClient):
     """Fetch all objects held by owner.
-    EC-5: async_get_all_owned_objects is GraphQL-specific.
+    protocol-level access: async_get_all_owned_objects is GraphQL-specific.
     """
     try:
         objects: list = await async_get_all_owned_objects(
@@ -210,7 +212,7 @@ async def do_past_object(client: AsyncClientBase):
 
 async def do_multiple_object_versions(client: AsyncSuiGQLClient):
     """Fetchs object details by version.
-    EC-5: GetMultipleVersionedObjects has no SuiCommand equivalent.
+    protocol-level access: GetMultipleVersionedObjects has no SuiCommand equivalent.
     To run, change the objectID str and version int.
     """
     object_versions = [
@@ -272,7 +274,7 @@ async def do_dynamics(client: AsyncClientBase):
 
 async def do_event(client: AsyncSuiGQLClient):
     """Fetch events matching a filter.
-    EC-5: GetEvents SuiCommand removed; use legacy GQL query directly.
+    protocol-level access: GetEvents SuiCommand removed; use legacy GQL query directly.
     """
     handle_result(
         await client.execute_query_node(
@@ -283,28 +285,26 @@ async def do_event(client: AsyncSuiGQLClient):
 
 async def do_configs(client: AsyncSuiGQLClient):
     """Fetch the GraphQL, Protocol and System configurations.
-    EC-5: rpc_config is a GraphQL-specific property.
+    protocol-level access: rpc_config is a GraphQL-specific property.
     """
     print(client.rpc_config.to_json(indent=2))
 
 
 async def do_service_config(client: AsyncSuiGQLClient):
     """Fetch the GraphQL service configuration.
-    EC-5: rpc_config is a GraphQL-specific property.
+    protocol-level access: rpc_config is a GraphQL-specific property.
     """
     print(client.rpc_config().serviceConfig.to_json(indent=2))
 
 
-async def do_chain_id(client: AsyncSuiGQLClient):
-    """Fetch the current environment chain_id.
-    EC-5: chain_id is a GraphQL-specific property.
-    """
-    print(client.chain_id())
+async def do_chain_id(client: AsyncClientBase):
+    """Fetch the current environment chain_id."""
+    handle_result(await client.execute(command=cmd.GetChainIdentifier()))
 
 
 async def do_tx(client: AsyncSuiGQLClient):
     """Fetch specific transaction by it's digest.
-    EC-5: GetTx SuiCommand removed; use legacy GQL query directly.
+    protocol-level access: GetTx SuiCommand removed; use legacy GQL query directly.
     """
     handle_result(
         await client.execute_query_node(
@@ -315,12 +315,12 @@ async def do_tx(client: AsyncSuiGQLClient):
 
 async def do_txs(client: AsyncSuiGQLClient):
     """Fetch transactions.
-    EC-5: GetMultipleTx (batch by digest) is not supported by GraphQL via SuiCommand.
+    protocol-level access: GetMultipleTx (batch by digest) is not supported by GraphQL via SuiCommand.
     Use GetFilteredTx for filtered queries over GraphQL.
 
     We loop through 3 pages.
     """
-    result = await client.execute_query_node(  # EC-5: gql_class=None for GetMultipleTx
+    result = await client.execute_query_node(  # protocol-level access: gql_class=None for GetMultipleTx
         with_node=qn.GetMultipleTx()
     )
     handle_result(result)
@@ -341,7 +341,7 @@ async def do_txs(client: AsyncSuiGQLClient):
 
 async def do_filter_txs(client: AsyncSuiGQLClient):
     """Fetch all transactions matching filter.
-    EC-5: GetFilteredTx SuiCommand removed; use legacy GQL query directly.
+    protocol-level access: GetFilteredTx SuiCommand removed; use legacy GQL query directly.
 
     See Sui GraphQL schema for TransactionFilter options.
     """
@@ -366,7 +366,7 @@ async def do_filter_txs(client: AsyncSuiGQLClient):
 
 async def do_tx_kind(client: AsyncSuiGQLClient):
     """Fetch the PTB details from transaction.
-    EC-5: GetTxKind SuiCommand removed; use legacy GQL query directly.
+    protocol-level access: GetTxKind SuiCommand removed; use legacy GQL query directly.
     """
     handle_result(
         await client.execute_query_node(
@@ -402,14 +402,14 @@ async def do_sequence_cp(client: AsyncClientBase):
 
 async def do_checkpoints(client: AsyncSuiGQLClient):
     """Fetch checkpoint list.
-    EC-5: GetCheckpoints has no SuiCommand equivalent.
+    protocol-level access: GetCheckpoints has no SuiCommand equivalent.
     """
     handle_result(await client.execute_query_node(with_node=qn.GetCheckpoints()))
 
 
 async def do_refgas(client: AsyncSuiGQLClient):
     """Fetch the current reference gas price.
-    EC-5: GetReferenceGasPrice has no SuiCommand equivalent.
+    protocol-level access: GetReferenceGasPrice has no SuiCommand equivalent.
     """
     handle_result(await client.execute_query_node(with_node=qn.GetReferenceGasPrice()))
 
@@ -432,7 +432,7 @@ async def do_owned_nameservice(client: AsyncClientBase):
 
 async def do_all_validators(client: AsyncSuiGQLClient):
     """Fetch all validators from current Epoch.
-    EC-5: GetCurrentValidators SuiCommand removed; use legacy GQL query directly.
+    protocol-level access: GetCurrentValidators SuiCommand removed; use legacy GQL query directly.
     """
     result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
     while result.is_ok():
@@ -448,14 +448,14 @@ async def do_all_validators(client: AsyncSuiGQLClient):
 
 async def do_validators(client: AsyncSuiGQLClient):
     """Fetch the most current validator detail.
-    EC-5: GetCurrentValidators SuiCommand removed; use legacy GQL query directly.
+    protocol-level access: GetCurrentValidators SuiCommand removed; use legacy GQL query directly.
     """
     handle_result(await client.execute_query_node(with_node=qn.GetCurrentValidators()))
 
 
 async def do_validator_xchange_rates(client: AsyncSuiGQLClient):
     """Get exchange rate table entries.
-    EC-5: GetValidatorExchangeRates and GetCurrentValidators have no SuiCommand equivalent.
+    protocol-level access: GetValidatorExchangeRates and GetCurrentValidators have no SuiCommand equivalent.
     """
 
     # Get list of validators
@@ -465,11 +465,9 @@ async def do_validator_xchange_rates(client: AsyncSuiGQLClient):
         v_set: ptypes.ValidatorSetsGQL = result.result_data
         if v_set.validators:
             vexr_addy = v_set.validators[0].exchangeRateTableAddress
-            er_results = (
-                await client.execute_query_node(  # EC-5: GetValidatorExchangeRates
-                    with_node=qn.GetValidatorExchangeRates(
-                        validator_exchange_address=vexr_addy, epoch_ids=[0, 1, 2]
-                    )
+            er_results = await client.execute_query_node(  # protocol-level access: GetValidatorExchangeRates
+                with_node=qn.GetValidatorExchangeRates(
+                    validator_exchange_address=vexr_addy, epoch_ids=[0, 1, 2]
                 )
             )
             if er_results.is_ok():
@@ -822,7 +820,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -870,7 +868,7 @@ async def main():
         # await do_sui_coin_to_account(client_init)
         # await do_account_to_sui_coin(client_init)
         ## Config
-        # await do_chain_id(client_init)
+        await do_chain_id(client_init)
         # await do_configs(client_init)
         # await do_service_config(client_init)
         # await do_protcfg(client_init)

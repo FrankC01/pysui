@@ -30,7 +30,7 @@ async GraphQL client bound to the active configuration group. See
 
     import asyncio
     import pysui.sui.sui_common.sui_commands as cmd
-    from pysui import PysuiConfiguration, client_factory, handle_result
+    from pysui import PysuiConfiguration, client_factory
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
@@ -39,7 +39,10 @@ async GraphQL client bound to the active configuration group. See
             result = await client.execute(
                 command=cmd.GetCoins(owner=client.config.active_address)
             )
-            handle_result(result)
+            if result.is_ok():
+                print(result.result_data)
+            else:
+                print(result.result_string)
 
     if __name__ == "__main__":
         asyncio.run(main())
@@ -100,6 +103,10 @@ per-call. If not provided, headers default to ``None``.
             ),
             headers={"headers": {"from": "otheremail@coyote.org"}},
         )
+        if result.is_ok():
+            print(result.result_data)
+        else:
+            print(result.result_string)
 
     if __name__ == "__main__":
         asyncio.run(main())
@@ -116,12 +123,12 @@ The GraphQL client exposes four execution paths:
     the full command list.
 
 ``execute_query_string``
-    **EC-5 escape hatch.** Accepts a raw GraphQL query string, converts it to a
+    **protocol-level access.** Accepts a raw GraphQL query string, converts it to a
     ``GraphQLRequest``, and executes it. Returns a ``SuiRpcResult`` containing a dict
     by default.  Use when no ``SuiCommand`` equivalent exists.
 
 ``execute_document_node``
-    **EC-5 escape hatch.** Accepts a ``gql`` ``GraphQLRequest`` (e.g. the output of
+    **protocol-level access.** Accepts a ``gql`` ``GraphQLRequest`` (e.g. the output of
     ``gql(string)``). Returns a ``SuiRpcResult`` containing a dict by default.
 
 ``execute_query_node`` *(deprecated)*
@@ -176,7 +183,10 @@ GraphQL Request Queries
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = AsyncSuiGQLClient(pysui_config=cfg)
         result = await client.execute_document_node(with_node=gql(_QUERY))
-        print(result)
+        if result.is_ok():
+            print(result.result_data)
+        else:
+            print(result.result_string)
 
     if __name__ == "__main__":
         asyncio.run(main())
@@ -186,7 +196,7 @@ pysui QueryNode Queries *(deprecated path)*
 
 ``execute_query_node`` is deprecated. For standard queries use
 ``execute(command=...)`` with a :doc:`SuiCommand <sui_commands>` subclass instead.
-``execute_query_node`` remains available as an EC-5 escape hatch for custom
+``execute_query_node`` remains available as an protocol-level access for custom
 ``PGQL_QueryNode`` subclasses with no ``SuiCommand`` equivalent.
 
 .. code-block:: python
@@ -199,7 +209,7 @@ pysui QueryNode Queries *(deprecated path)*
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = AsyncSuiGQLClient(pysui_config=cfg)
-        # EC-5: custom QueryNode with no SuiCommand equivalent
+        # Protocol-level access: custom QueryNode with no SuiCommand equivalent
         result = await client.execute_query_node(
             with_node=qn.GetObjectContent(
                 object_id="0x00878369f475a454939af7b84cdd981515b1329f159a1aeb9bf0f8899e00083a"
@@ -223,6 +233,45 @@ During ``execute_query_node`` pysui:
 
 An ``owner`` property on a QueryNode is resolved against the active
 address alias table before submission.
+
+Transaction Building
++++++++++++++++++++++
+
+Build and execute transactions using the unified transaction infrastructure:
+
+.. code-block:: python
+   :linenos:
+
+    import asyncio
+    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import PysuiConfiguration, client_factory
+
+    async def transaction_example():
+        """Build and execute a simple transaction."""
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        async with client_factory(cfg) as client:
+            # Create transaction via client
+            txn = await client.transaction()
+
+            # Add transaction commands
+            coin = await txn.split_coin(coin=txn.gas, amounts=[1_000_000_000])
+            await txn.transfer_objects(
+                transfers=[coin],
+                recipient=cfg.active_address
+            )
+
+            # Build and sign
+            build_result = await txn.build_and_sign()
+            result = await client.execute(
+                command=cmd.ExecuteTransaction(**build_result)
+            )
+            if result.is_ok():
+                print(result.result_data)
+            else:
+                print(result.result_string)
+
+    if __name__ == "__main__":
+        asyncio.run(transaction_example())
 
 Creating a Custom QueryNode
 ++++++++++++++++++++++++++++

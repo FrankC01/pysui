@@ -8,7 +8,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pysui.sui.sui_common.executors import ExecutorContext, ExecutionSkipped
-from pysui.sui.sui_pgql.execute.serial_exec import GqlSerialTransactionExecutor
+from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
 
 
 class TestCoinReplenishment:
