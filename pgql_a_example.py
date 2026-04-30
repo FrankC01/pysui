@@ -123,12 +123,8 @@ async def do_gas_ids(client: AsyncSuiGQLClient):
 
 
 async def do_sysstate(client: AsyncSuiGQLClient):
-    """Fetch the most current system state summary.
-    protocol-level access: GetLatestSuiSystemState SuiCommand removed; use legacy GQL query directly.
-    """
-    handle_result(
-        await client.execute_query_node(with_node=qn.GetLatestSuiSystemState())
-    )
+    """Fetch the most current system state summary."""
+    handle_result(await client.execute(command=cmd.GetLatestSuiSystemState()))
 
 
 async def do_address_balance(client: AsyncClientBase):
@@ -429,41 +425,30 @@ async def do_owned_nameservice(client: AsyncClientBase):
 
 
 async def do_all_validators(client: AsyncSuiGQLClient):
-    """Fetch all validators from current Epoch.
-    protocol-level access: GetCurrentValidators SuiCommand removed; use legacy GQL query directly.
-    """
-    result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
-    while result.is_ok():
-        v_set: ptypes.ValidatorSetsGQL = result.result_data
-        print(v_set.to_json(indent=2))
-        if v_set.next_cursor.hasNextPage:
-            result = await client.execute_query_node(
-                with_node=qn.GetCurrentValidators(next_page=v_set.next_cursor)
-            )
-        else:
-            break
+    """Fetch all validators from current Epoch (GQL paging handled internally)."""
+    handle_result(await client.execute(command=cmd.GetCurrentValidators()))
 
 
 async def do_validators(client: AsyncSuiGQLClient):
-    """Fetch the most current validator detail.
-    protocol-level access: GetCurrentValidators SuiCommand removed; use legacy GQL query directly.
-    """
-    handle_result(await client.execute_query_node(with_node=qn.GetCurrentValidators()))
+    """Fetch the most current validator detail."""
+    handle_result(await client.execute(command=cmd.GetCurrentValidators()))
 
 
 async def do_validator_xchange_rates(client: AsyncSuiGQLClient):
     """Get exchange rate table entries.
-    protocol-level access: GetValidatorExchangeRates and GetCurrentValidators have no SuiCommand equivalent.
+
+    Uses the protocol-level GQL query to retrieve the exchange rate address
+    from ValidatorSetsGQL (GetValidatorExchangeRates has no SuiCommand equivalent).
     """
 
-    # Get list of validators
+    # Get list of validators via legacy protocol-level query to access exchangeRateTableAddress
     result = await client.execute_query_node(with_node=qn.GetCurrentValidators())
     if result.is_ok():
         # Extract the first validator's exchange rate object
         v_set: ptypes.ValidatorSetsGQL = result.result_data
         if v_set.validators:
             vexr_addy = v_set.validators[0].exchangeRateTableAddress
-            er_results = await client.execute_query_node(  # protocol-level access: GetValidatorExchangeRates
+            er_results = await client.execute_query_node(
                 with_node=qn.GetValidatorExchangeRates(
                     validator_exchange_address=vexr_addy, epoch_ids=[0, 1, 2]
                 )

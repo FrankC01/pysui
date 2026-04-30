@@ -202,7 +202,7 @@ ExecuteTransaction
 Available SuiCommand Subclasses
 -------------------------------
 
-The following 36 SuiCommand subclasses are built-in and re-exported from the top-level
+The following 38 SuiCommand subclasses are built-in and re-exported from the top-level
 :mod:`pysui` module.  Every command listed here works on **both** GraphQL and gRPC
 transports and returns the same canonical output type from either protocol.
 
@@ -232,9 +232,11 @@ transports and returns the same canonical output type from either protocol.
   - :class:`GetMultipleObjectContent`
   - :class:`GetObjectsForType`
 
-**Epoch Queries (2):**
+**Epoch / System State Queries (4):**
   - :class:`GetEpoch`
   - :class:`GetBasicCurrentEpochInfo`
+  - :class:`GetLatestSuiSystemState`
+  - :class:`GetCurrentValidators`
 
 **Checkpoint Queries (2):**
   - :class:`GetLatestCheckpoint`

@@ -21,21 +21,24 @@ Commands covered:
   Objects     : GetObject, GetMultipleObjects
   Owned       : GetCoins, GetGas, GetObjectsOwnedByAddress
   High-complex: GetDynamicFields
+  System state: GetLatestSuiSystemState, GetCurrentValidators (devnet + testnet paging)
 """
 
 import pytest
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui import AsyncSuiGQLClient as AsyncGqlClient, SuiGrpcClient
+from pysui import AsyncSuiGQLClient as AsyncGqlClient, PysuiConfiguration, SuiGrpcClient
 from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC
 from pysui.sui.sui_common.sui_commands import (
     GetCheckpointBySequence,
     GetCoins,
+    GetCurrentValidators,
     GetDynamicFields,
     GetFunction,
     GetFunctions,
     GetGas,
     GetLatestCheckpoint,
+    GetLatestSuiSystemState,
     GetModule,
     GetMoveDataType,
     GetMultipleObjects,
@@ -416,3 +419,95 @@ async def test_get_dynamic_fields_gql(gql_session_client: AsyncGqlClient) -> Non
     assert isinstance(result.result_data, sui_prot.ListDynamicFieldsResponse)
 
 
+# ---------------------------------------------------------------------------
+# System state / validator queries — devnet baseline
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(30)
+async def test_get_latest_sui_system_state_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetLatestSuiSystemState via GQL SC sibling returns SystemState."""
+    result = await gql_session_client.execute(command=GetLatestSuiSystemState())
+    assert result.is_ok(), f"GetLatestSuiSystemState GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.SystemState)
+    assert result.result_data.epoch is not None
+
+
+@pytest.mark.order(31)
+async def test_get_latest_sui_system_state_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetLatestSuiSystemState via gRPC SC sibling returns SystemState."""
+    result = await grpc_session_client.execute(command=GetLatestSuiSystemState())
+    assert result.is_ok(), f"GetLatestSuiSystemState gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.SystemState)
+    assert result.result_data.epoch is not None
+
+
+@pytest.mark.order(32)
+async def test_get_current_validators_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetCurrentValidators via GQL SC paging branch returns list[Validator] (devnet)."""
+    result = await gql_session_client.execute(command=GetCurrentValidators())
+    assert result.is_ok(), f"GetCurrentValidators GQL: {result.result_string}"
+    assert isinstance(result.result_data, list)
+    assert len(result.result_data) > 0
+    assert isinstance(result.result_data[0], sui_prot.Validator)
+
+
+@pytest.mark.order(33)
+async def test_get_current_validators_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetCurrentValidators via gRPC SC sibling returns list[Validator] (devnet)."""
+    result = await grpc_session_client.execute(command=GetCurrentValidators())
+    assert result.is_ok(), f"GetCurrentValidators gRPC: {result.result_string}"
+    assert isinstance(result.result_data, list)
+    assert len(result.result_data) > 0
+    assert isinstance(result.result_data[0], sui_prot.Validator)
+
+
+# ---------------------------------------------------------------------------
+# Validator paging — testnet (fresh isolated config; page size = 20)
+# A broken paging loop returns exactly 20 validators (one page).
+# A working loop returns > 20 (multiple pages accumulated).
+# ---------------------------------------------------------------------------
+
+_TESTNET_PAGE_SIZE = 20
+
+
+@pytest.mark.order(34)
+async def test_get_current_validators_gql_testnet() -> None:
+    """GetCurrentValidators via GQL on testnet accumulates multiple pages (> 20 validators)."""
+    cfg = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+        profile_name="testnet",
+    )
+    client = AsyncGqlClient(pysui_config=cfg)
+    try:
+        result = await client.execute(command=GetCurrentValidators())
+        assert result.is_ok(), f"GetCurrentValidators GQL testnet: {result.result_string}"
+        assert isinstance(result.result_data, list)
+        assert isinstance(result.result_data[0], sui_prot.Validator)
+        assert len(result.result_data) > _TESTNET_PAGE_SIZE, (
+            f"Paging did not fire: expected > {_TESTNET_PAGE_SIZE} validators, "
+            f"got {len(result.result_data)}"
+        )
+    finally:
+        await client.close()
+
+
+@pytest.mark.order(35)
+async def test_get_current_validators_grpc_testnet() -> None:
+    """GetCurrentValidators via gRPC on testnet returns > 20 validators."""
+    cfg = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GRPC_GROUP,
+        profile_name="testnet",
+    )
+    client = SuiGrpcClient(pysui_config=cfg)
+    try:
+        result = await client.execute(command=GetCurrentValidators())
+        assert result.is_ok(), f"GetCurrentValidators gRPC testnet: {result.result_string}"
+        assert isinstance(result.result_data, list)
+        assert isinstance(result.result_data[0], sui_prot.Validator)
+        assert len(result.result_data) > _TESTNET_PAGE_SIZE, (
+            f"Expected > {_TESTNET_PAGE_SIZE} validators on testnet, "
+            f"got {len(result.result_data)}"
+        )
+    finally:
+        client.close()

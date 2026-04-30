@@ -819,3 +819,49 @@ class GetChainIdentifier(SuiCommand):
         """Return gRPC chain identifier request."""
         return rn.GetChainIdentifierSC()
 
+
+# ---------------------------------------------------------------------------
+# System state / validator queries
+# ---------------------------------------------------------------------------
+
+
+@dataclass(kw_only=True)
+class GetLatestSuiSystemState(SuiCommand):
+    """Fetch the current Sui system state summary."""
+
+    gql_class: ClassVar[type] = pgql_query.GetLatestSuiSystemStateSC
+    grpc_class: ClassVar[type] = rn.GetLatestSuiSystemStateSC
+
+    def gql_node(self) -> pgql_query.GetLatestSuiSystemStateSC:
+        """Return GQL system-state query node."""
+        return pgql_query.GetLatestSuiSystemStateSC()
+
+    def grpc_request(self) -> rn.GetLatestSuiSystemStateSC:
+        """Return gRPC system-state request."""
+        return rn.GetLatestSuiSystemStateSC()
+
+
+@dataclass(kw_only=True)
+class GetCurrentValidators(SuiCommand):
+    """Fetch all currently active validators (GQL paging handled internally)."""
+
+    gql_class: ClassVar[type] = pgql_query.GetCurrentValidatorsSC
+    grpc_class: ClassVar[type] = rn.GetCurrentValidatorsSC
+    gql_requires_paging: ClassVar[bool] = True
+    gql_page_list_path: ClassVar[tuple[str, ...]] = (
+        "epoch",
+        "validatorSet",
+        "activeValidators",
+        "nodes",
+    )
+
+    next_page: Optional[PagingCursor] = None
+
+    def gql_node(self) -> pgql_query.GetCurrentValidatorsSC:
+        """Return GQL current-validators query node."""
+        return pgql_query.GetCurrentValidatorsSC(next_page=self.next_page)
+
+    def grpc_request(self) -> rn.GetCurrentValidatorsSC:
+        """Return gRPC current-validators request."""
+        return rn.GetCurrentValidatorsSC()
+

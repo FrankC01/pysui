@@ -154,6 +154,12 @@ Epoch / System State
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetBasicCurrentEpochInfo`
      - Fetch minimal epoch fields needed for gas and expiry building
 
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetLatestSuiSystemState`
+     - Fetch the full ``SuiSystemStateInnerV2`` BCS object — epoch, protocol version, validator set, storage fund, stake subsidy, and system parameters
+
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCurrentValidators`
+     - Fetch the list of active validators from the current system state (returns ``list[Validator]``)
+
 
 Checkpoints
 -----------

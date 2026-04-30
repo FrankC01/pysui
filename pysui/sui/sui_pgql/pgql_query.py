@@ -28,6 +28,7 @@ from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 from pysui.sui.sui_bcs.bcs import TransactionKind
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_grpc.pgrpc_requests as _rn
+import pysui.sui.sui_bcs.sui_system_bcs as sui_system_bcs
 from pysui.sui.sui_types.scalars import SuiU64
 
 
@@ -358,62 +359,11 @@ class GetLatestSuiSystemState(PGQL_QueryNode):
         """QueryNode initializer."""
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        qres = schema.Query.epoch.alias("qres").select(
-            schema.Epoch.totalTransactions,
-            schema.Epoch.systemStateVersion,
-            schema.Epoch.referenceGasPrice,
-            schema.Epoch.systemParameters.select(
-                schema.SystemParameters.durationMs,
-                schema.SystemParameters.stakeSubsidyStartEpoch,
-                schema.SystemParameters.minValidatorCount,
-                schema.SystemParameters.maxValidatorCount,
-                schema.SystemParameters.minValidatorJoiningStake,
-                schema.SystemParameters.validatorLowStakeThreshold,
-                schema.SystemParameters.validatorVeryLowStakeThreshold,
-                schema.SystemParameters.validatorLowStakeThreshold,
-            ),
-            schema.Epoch.systemStakeSubsidy.select(
-                schema.StakeSubsidy.balance,
-                schema.StakeSubsidy.distributionCounter,
-                schema.StakeSubsidy.currentDistributionAmount,
-                schema.StakeSubsidy.periodLength,
-                schema.StakeSubsidy.decreaseRate,
-            ),
-            schema.Epoch.validatorSet.select(
-                schema.ValidatorSet.totalStake,
-                schema.ValidatorSet.pendingRemovals,
-                schema.ValidatorSet.pendingActiveValidatorsSize,
-                schema.ValidatorSet.inactivePoolsSize,
-                schema.ValidatorSet.validatorCandidatesSize,
-                schema.ValidatorSet.activeValidators.select(
-                    validators=schema.ValidatorConnection.nodes.select(
-                        schema.Validator.description,
-                        schema.Validator.projectUrl,
-                        schema.Validator.commissionRate,
-                        schema.Validator.stakingPoolSuiBalance,
-                        schema.Validator.pendingStake,
-                        schema.Validator.pendingPoolTokenWithdraw,
-                        schema.Validator.pendingTotalSuiWithdraw,
-                        schema.Validator.votingPower,
-                        schema.Validator.gasPrice,
-                        schema.Validator.nextEpochStake,
-                        schema.Validator.nextEpochCommissionRate,
-                        schema.Validator.nextEpochGasPrice,
-                        validatorAddress=schema.Validator.address,
-                        validatorName=schema.Validator.name,
-                    ),
-                ),
-            ),
-            schema.Epoch.storageFund.select(
-                schema.StorageFund.totalObjectStorageRebates,
-                schema.StorageFund.nonRefundableBalance,
-            ),
-            schema.Epoch.safeMode.select(schema.SafeMode.enabled),
-            # schema.SuiSystemStateSummary.startTimestamp,
-            schema.Epoch.epochId,
-            schema.Epoch.startTimestamp,
-            schema.Epoch.endTimestamp,
+        """Build GraphQLRequest using BCS system-state path."""
+        qres = schema.Query.epoch.select(
+            schema.Epoch.systemState.select(
+                schema.MoveValue.bcs
+            )
         )
         return dsl_gql(DSLQuery(qres))
 
@@ -1678,25 +1628,27 @@ class GetCurrentValidators(PGQL_QueryNode):
         self.pager = next_page
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
+        """Build GraphQLRequest using BCS validator content path with paging."""
         if self.pager and not self.pager.hasNextPage:
             return PGQL_NoOp
-        val = frag.Validator().fragment(schema)
-        pageinfo = frag.PageCursor().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
         if self.pager:
-            valset = frag.ValidatorSet().fragment(
-                schema=schema, after=self.pager.endCursor
-            )
+            active_vals = schema.ValidatorSet.activeValidators(after=self.pager.endCursor)
         else:
-            valset = frag.ValidatorSet().fragment(schema=schema)
-        return dsl_gql(
-            valset,
-            val,
-            pageinfo,
-            DSLQuery(
-                schema.Query.epoch.select(schema.Epoch.validatorSet.select(valset))
-            ),
+            active_vals = schema.ValidatorSet.activeValidators
+        qres = schema.Query.epoch.select(
+            schema.Epoch.validatorSet.select(
+                active_vals.select(
+                    schema.ValidatorConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                    schema.ValidatorConnection.nodes.select(
+                        schema.Validator.contents.select(
+                            schema.MoveValue.bcs
+                        )
+                    ),
+                )
+            )
         )
+        return dsl_gql(pg_cursor, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Union[Callable[[dict], pgql_type.ValidatorSetsGQL], None]:
@@ -2874,7 +2826,9 @@ def _owner_from_inline_frag(owner_dict: Optional[dict]) -> Optional[sui_prot.Own
 def _gql_sig_body_to_proto(body: Any) -> sui_prot.OpenSignatureBody:
     """Recursively map a GQL signature body to OpenSignatureBody proto."""
     if isinstance(body, str):
-        body_type = _GQL_SCALAR_MAP.get(body, sui_prot.OpenSignatureBodyType.U8)
+        body_type = _GQL_SCALAR_MAP.get(body)
+        if body_type is None:
+            raise ValueError(f"_gql_sig_body_to_proto: unrecognized scalar type '{body}'")
         return sui_prot.OpenSignatureBody(type=body_type)
     if isinstance(body, dict):
         if "vector" in body:
@@ -2896,7 +2850,7 @@ def _gql_sig_body_to_proto(body: Any) -> sui_prot.OpenSignatureBody:
                 type=sui_prot.OpenSignatureBodyType.TYPE_PARAMETER,
                 type_parameter=int(body["typeParameter"]),
             )
-    return sui_prot.OpenSignatureBody()
+    raise ValueError(f"_gql_sig_body_to_proto: unrecognized body shape {body!r}")
 
 
 def _gql_sig_to_proto_open_sig(sig_dict: dict) -> sui_prot.OpenSignature:
@@ -3053,7 +3007,7 @@ def _struct_to_datatype(
     type_params = [
         sui_prot.TypeParameter(
             constraints=[_GQL_ABILITY_MAP[c] for c in tp.get("constraints", []) if c in _GQL_ABILITY_MAP],
-            is_phantom=False,
+            is_phantom=bool(tp.get("isPhantom", False)),
         )
         for tp in struct_dict.get("typeParameters", [])
         if isinstance(tp, dict)
@@ -3079,6 +3033,14 @@ def _enum_to_datatype(
     """Map a MoveEnum raw dict to a DatatypeDescriptor proto."""
     name = enum_dict.get("enum_name", "")
     abilities = [_GQL_ABILITY_MAP[a] for a in enum_dict.get("abilities", []) if a in _GQL_ABILITY_MAP]
+    type_params = [
+        sui_prot.TypeParameter(
+            constraints=[_GQL_ABILITY_MAP[c] for c in tp.get("constraints", []) if c in _GQL_ABILITY_MAP],
+            is_phantom=bool(tp.get("isPhantom", False)),
+        )
+        for tp in enum_dict.get("typeParameters", [])
+        if isinstance(tp, dict)
+    ]
     variants = [
         sui_prot.VariantDescriptor(
             name=v.get("variant_name"),
@@ -3094,6 +3056,7 @@ def _enum_to_datatype(
         module=module_name,
         name=name,
         abilities=abilities,
+        type_parameters=type_params,
         kind=sui_prot.DatatypeDescriptorDatatypeKind.ENUM,
         variants=variants,
     )
@@ -3185,6 +3148,23 @@ class GetPastObjectSC(GetPastObject):
 
 class GetMoveDataTypeSC(GetMoveDataType):
     """SC variant: encode_fn maps GQL datatype response to GetDatatypeResponse proto."""
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Use MoveStructureSC/MoveEnumSC fragments to include typeParameters and isPhantom."""
+        struc = frag.MoveStructureSC().fragment(schema)
+        enum = frag.MoveEnumSC().fragment(schema)
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.datatype(name=self.data_type_name).select(
+                        schema.MoveDatatype.asMoveStruct.select(struc),
+                        schema.MoveDatatype.asMoveEnum.select(enum),
+                    )
+                )
+            )
+        )
+        return dsl_gql(struc, enum, DSLQuery(qres))
 
     def encode_fn(self) -> Callable[[dict], sui_prot.GetDatatypeResponse]:
         """Return deserializer producing GetDatatypeResponse from GQL datatype dict."""
@@ -3589,6 +3569,156 @@ class GetChainIdentifierSC(GetChainIdentifier):
 
         def _encode(in_data: dict) -> str:
             return in_data.get("chainIdentifier", "")
+
+        return _encode
+
+
+def _bcs_validator_to_proto(bcs_v: "sui_system_bcs.Validator") -> sui_prot.Validator:
+    """Build sui_prot.Validator from a deserialized sui_system_bcs.Validator."""
+    md = bcs_v.metadata
+    sp = bcs_v.staking_pool
+    staking_pool = sui_prot.StakingPool(
+        id=sp.id.to_address_str() if sp.id else None,
+        activation_epoch=sp.activation_epoch,
+        sui_balance=sp.sui_balance,
+        rewards_pool=sp.rewards_pool,
+        pool_token_balance=sp.pool_token_balance,
+        pending_stake=sp.pending_stake,
+        pending_total_sui_withdraw=sp.pending_total_sui_withdraw,
+        pending_pool_token_withdraw=sp.pending_pool_token_withdraw,
+    )
+    return sui_prot.Validator(
+        name=md.name,
+        address=md.sui_address.to_address_str(),
+        description=md.description,
+        image_url=md.image_url.url if md.image_url else None,
+        project_url=md.project_url.url if md.project_url else None,
+        voting_power=bcs_v.voting_power,
+        gas_price=bcs_v.gas_price,
+        commission_rate=bcs_v.commission_rate,
+        next_epoch_stake=bcs_v.next_epoch_stake,
+        next_epoch_gas_price=bcs_v.next_epoch_gas_price,
+        next_epoch_commission_rate=bcs_v.next_epoch_commission_rate,
+        staking_pool=staking_pool,
+    )
+
+
+def _bcs_system_state_to_proto(bcs_ss: "sui_system_bcs.SuiSystemStateInnerV2") -> sui_prot.SystemState:
+    """Build sui_prot.SystemState from a deserialized sui_system_bcs.SuiSystemStateInnerV2."""
+    params = bcs_ss.parameters
+    system_parameters = sui_prot.SystemParameters(
+        epoch_duration_ms=params.epoch_duration_ms,
+        stake_subsidy_start_epoch=params.stake_subsidy_start_epoch,
+        min_validator_count=params.min_validator_count,
+        max_validator_count=params.max_validator_count,
+        min_validator_joining_stake=params.min_validator_joining_stake,
+        validator_low_stake_threshold=params.validator_low_stake_threshold,
+        validator_very_low_stake_threshold=params.validator_very_low_stake_threshold,
+    )
+    subsidy = bcs_ss.stake_subsidy
+    stake_subsidy = sui_prot.StakeSubsidy(
+        balance=subsidy.balance,
+        distribution_counter=subsidy.distribution_counter,
+        current_distribution_amount=subsidy.current_distribution_amount,
+        stake_subsidy_period_length=subsidy.stake_subsidy_period_length,
+        stake_subsidy_decrease_rate=subsidy.stake_subsidy_decrease_rate,
+    )
+    sf = bcs_ss.storage_fund
+    storage_fund = sui_prot.StorageFund(
+        total_object_storage_rebates=sf.total_object_storage_rebates,
+        non_refundable_balance=sf.non_refundable_balance,
+    )
+    vs = bcs_ss.validators
+    validator_set = sui_prot.ValidatorSet(
+        total_stake=vs.total_stake,
+        active_validators=[_bcs_validator_to_proto(v) for v in vs.active_validators],
+        pending_removals=list(vs.pending_removals),
+    )
+    return sui_prot.SystemState(
+        version=bcs_ss.system_state_version,
+        epoch=bcs_ss.epoch,
+        reference_gas_price=bcs_ss.reference_gas_price,
+        parameters=system_parameters,
+        stake_subsidy=stake_subsidy,
+        storage_fund=storage_fund,
+        validators=validator_set,
+        safe_mode=bcs_ss.safe_mode,
+        epoch_start_timestamp_ms=bcs_ss.epoch_start_timestamp_ms,
+    )
+
+
+def _encode_validator_from_gql(v: dict, *, name_key: str = "validator_name", address_key: str = "validator_address") -> sui_prot.Validator:
+    """Build a sui_prot.Validator from a GQL validator dict."""
+    def _int(val):
+        return int(val) if val is not None else None
+
+    sp = sui_prot.StakingPool(
+        id=v.get("staking_pool_address"),
+        activation_epoch=v.get("stakingPoolActivationEpoch"),
+        sui_balance=_int(v.get("stakingPoolSuiBalance")),
+        rewards_pool=_int(v.get("rewardsPool")),
+        pool_token_balance=_int(v.get("poolTokenBalance")),
+        pending_stake=_int(v.get("pendingStake")),
+        pending_total_sui_withdraw=_int(v.get("pendingTotalSuiWithdraw")),
+        pending_pool_token_withdraw=_int(v.get("pendingPoolTokenWithdraw")),
+    )
+    return sui_prot.Validator(
+        name=v.get(name_key),
+        address=v.get(address_key),
+        description=v.get("description"),
+        image_url=v.get("imageUrl"),
+        project_url=v.get("projectUrl"),
+        voting_power=_int(v.get("votingPower")),
+        gas_price=_int(v.get("gasPrice")),
+        commission_rate=_int(v.get("commissionRate")),
+        next_epoch_stake=_int(v.get("nextEpochStake")),
+        next_epoch_gas_price=_int(v.get("nextEpochGasPrice")),
+        next_epoch_commission_rate=_int(v.get("nextEpochCommissionRate")),
+        staking_pool=sp,
+    )
+
+
+class GetLatestSuiSystemStateSC(GetLatestSuiSystemState):
+    """SC variant: inherits BCS query from base; decodes systemState.bcs to SystemState proto."""
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.SystemState]:
+        """Decode BCS system-state blob to SystemState proto."""
+
+        def _encode(in_data: dict) -> sui_prot.SystemState:
+            bcs_b64 = (in_data.get("epoch") or {}).get("systemState", {}).get("bcs")
+            if not bcs_b64:
+                return sui_prot.SystemState()
+            bcs_bytes = base64.b64decode(bcs_b64)
+            bcs_ss = sui_system_bcs.SuiSystemStateInnerV2.deserialize(bcs_bytes)
+            return _bcs_system_state_to_proto(bcs_ss)
+
+        return _encode
+
+
+class GetCurrentValidatorsSC(GetCurrentValidators):
+    """SC variant: inherits BCS query from base; decodes contents.bcs to list[Validator] proto."""
+
+    def __init__(self, next_page: pgql_type.PagingCursor | None = None):
+        """QueryNode initializer."""
+        super().__init__(next_page=next_page)
+
+    @staticmethod
+    def encode_fn() -> Callable[[list], list[sui_prot.Validator]]:
+        """Decode BCS validator blobs to list[Validator] proto."""
+
+        def _encode(validators_data: list) -> list[sui_prot.Validator]:
+            result = []
+            for node in validators_data:
+                if not isinstance(node, dict):
+                    continue
+                bcs_b64 = (node.get("contents") or {}).get("bcs")
+                if not bcs_b64:
+                    continue
+                bcs_bytes = base64.b64decode(bcs_b64)
+                bcs_v = sui_system_bcs.Validator.deserialize(bcs_bytes)
+                result.append(_bcs_validator_to_proto(bcs_v))
+            return result
 
         return _encode
 

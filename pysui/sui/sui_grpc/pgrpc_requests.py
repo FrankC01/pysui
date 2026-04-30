@@ -139,12 +139,24 @@ class GetLatestSuiSystemState(GetEpoch):
         return gepoch.epoch.system_state
 
 
+class GetLatestSuiSystemStateSC(GetLatestSuiSystemState):
+    """SC variant of GetLatestSuiSystemState — satisfies SuiCommand sibling contract."""
+
+
 class GetCurrentValidators(GetEpoch):
     """Return all the currently active validators"""
 
     def __init__(self):
         """Initializer."""
         super().__init__(field_mask=["system_state.validators.active_validators"])
+
+
+class GetCurrentValidatorsSC(GetCurrentValidators):
+    """SC variant: render extracts active_validators list from Epoch response."""
+
+    def render(self, gepoch: sui_prot.GetEpochResponse) -> list[sui_prot.Validator]:
+        """Extract active validators from epoch system state."""
+        return gepoch.epoch.system_state.validators.active_validators
 
 
 class GetBasicCurrentEpochInfo(GetEpoch):

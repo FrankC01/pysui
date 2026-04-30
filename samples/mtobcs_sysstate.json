@@ -1,0 +1,19 @@
+{
+  "targets": [
+    {
+      "type": "Structure",
+      "value": "0x3::sui_system_state_inner::SuiSystemStateInnerV2",
+      "out_file": "sui_system_state_inner_bcs.py"
+    },
+    {
+      "type": "Structure",
+      "value": "0x3::validator_set::ValidatorSet",
+      "out_file": "validator_set_bcs.py"
+    },
+    {
+      "type": "Structure",
+      "value": "0x3::validator::Validator",
+      "out_file": "validator_bcs.py"
+    }
+  ]
+}

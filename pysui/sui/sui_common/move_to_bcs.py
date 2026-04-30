@@ -13,13 +13,45 @@ import uuid
 import logging
 
 from pysui.sui.sui_common.config import PysuiConfiguration
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
+from pysui.abstracts.async_client import AsyncClientBase
+from pysui.sui.sui_common.factory import client_factory
+from pysui.sui.sui_common.sui_commands import GetMoveDataType as GetMoveDataTypeSC
+from pysui.sui.sui_utils import hexstring_to_sui_id
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.bcs_ast as bcs_ast
 from pysui.sui.sui_common.bcs_ast import BcsAst
 import pysui.sui.sui_common.mtobcs_types as mtypes
-import pysui.sui.sui_pgql.pgql_query as qn
-import pysui.sui.sui_pgql.pgql_types as qtype
 import pysui.sui.sui_bcs.bcs_stnd as bcse
+
+
+def _normalize_fq_type(fq: str) -> str:
+    """Pad the package address in a fully-qualified Move type to 32 bytes."""
+    parts = fq.split("::")
+    if len(parts) == 3:
+        parts[0] = hexstring_to_sui_id(parts[0])
+    return "::".join(parts)
+
+_PROTO_SCALAR_BODY_TYPES: frozenset = frozenset({
+    sui_prot.OpenSignatureBodyType.ADDRESS,
+    sui_prot.OpenSignatureBodyType.BOOL,
+    sui_prot.OpenSignatureBodyType.U8,
+    sui_prot.OpenSignatureBodyType.U16,
+    sui_prot.OpenSignatureBodyType.U32,
+    sui_prot.OpenSignatureBodyType.U64,
+    sui_prot.OpenSignatureBodyType.U128,
+    sui_prot.OpenSignatureBodyType.U256,
+})
+
+_PROTO_SCALAR_REFS: dict = {
+    sui_prot.OpenSignatureBodyType.U8: "bcse.U8",
+    sui_prot.OpenSignatureBodyType.U16: "bcse.U16",
+    sui_prot.OpenSignatureBodyType.U32: "bcse.U32",
+    sui_prot.OpenSignatureBodyType.U64: "bcse.U64",
+    sui_prot.OpenSignatureBodyType.U128: "bcse.U128",
+    sui_prot.OpenSignatureBodyType.U256: "bcse.U256",
+    sui_prot.OpenSignatureBodyType.ADDRESS: "bcse.Address",
+    sui_prot.OpenSignatureBodyType.BOOL: "bool",
+}
 
 logger = logging.getLogger("mtobcs")
 
@@ -125,7 +157,7 @@ class MoveDataType:
         self,
         *,
         cfg: Optional[PysuiConfiguration] = None,
-        client: Optional[AsyncGqlClient] = None,
+        client: Optional[AsyncClientBase] = None,
         target: mtypes.GenericStructure | mtypes.Structure,
     ):
         """Initialize"""
@@ -134,7 +166,7 @@ class MoveDataType:
         if client:
             self.client = client
         else:
-            self.client: AsyncGqlClient = AsyncGqlClient(pysui_config=cfg)
+            self.client: AsyncClientBase = client_factory(cfg)
         self.target = target
         self.python_stub = (
             Path(inspect.getfile(inspect.currentframe())).parent / "mtobcs_pre.py"
@@ -144,12 +176,25 @@ class MoveDataType:
         self._generated: Any = None
         self._compiled: Any = None
 
-    def _handle_simple(self, fname: str, fval: str) -> MoveFieldNode:
-        """Convert scalars and simples."""
-        if sfield := bcse.MOVE_STD_SCALAR_REFS.get(fval):
-            return MoveStandardField(fname, sfield)
-        else:
+    def _handle_simple(self, fname: str, fval: Any) -> MoveFieldNode:
+        """Convert scalars and simples. Accepts str (legacy root path) or OpenSignatureBody (proto path)."""
+        if isinstance(fval, str):
+            if sfield := bcse.MOVE_STD_SCALAR_REFS.get(fval):
+                return MoveStandardField(fname, sfield)
             return MoveScalarField(fname, fval)
+        # OpenSignatureBody scalar
+        if ref := _PROTO_SCALAR_REFS.get(fval.type):
+            return MoveStandardField(fname, ref)
+        return MoveScalarField(fname, str(fval.type))
+
+    def _type_param_name(self, body: sui_prot.OpenSignatureBody) -> str:
+        """Extract short name from a concrete type param body for name mangling."""
+        if body.type in _PROTO_SCALAR_BODY_TYPES:
+            ref = _PROTO_SCALAR_REFS.get(body.type, str(body.type))
+            return ref.split(".")[-1] if "." in ref else ref
+        elif body.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+            return body.type_name.split("::")[-1]
+        return str(body.type)
 
     def _build_parmed_assets(
         self, s_field: MoveFieldNode, fetch_decl: dict, parm_list: list
@@ -158,43 +203,46 @@ class MoveDataType:
         name_list = [fetch_decl[self._DECL_TYPE_NAME]]
         if len(fetch_decl[self._DECL_PARMS]) == len(parm_list):
             for tparm in parm_list:
-                if isinstance(tparm, str):
-                    name_list.append(tparm)
-                elif isinstance(tparm, dict):
-                    if "datatype" in tparm and "package" in tparm["datatype"]:
-                        name_list.append(tparm["datatype"]["type"])
-                    else:
-                        raise NotImplementedError("Ugh")
-                else:
-                    raise NotImplementedError("Ugh")
+                name_list.append(self._type_param_name(tparm))
             new_name = "_".join(name_list)
             fetch_decl[self._DECL_TYPE_NAME] = new_name
             fetch_decl[self._DECL_PARMS] = parm_list
             s_field.data = new_name
 
     def _handle_vector(
-        self, fname: str, fval: Any, type_parms: Any
+        self, fname: str, fbody: sui_prot.OpenSignatureBody, type_parms: Any
     ) -> tuple[MoveFieldNode, list]:
         """Capture vector information."""
         depth_level: int = 0
-        i_val = fval
+        current = fbody
         voft = False
-        while isinstance(i_val, dict):
-            if i_val.get("vector"):
-                depth_level += 1
-                i_val = i_val["vector"]
-            else:
-                break
-        if isinstance(i_val, str):
-            s_field = self._handle_simple(fname, i_val)
+        while current.type == sui_prot.OpenSignatureBodyType.VECTOR:
+            depth_level += 1
+            current = current.type_parameter_instantiation[0]
+        if current.type in _PROTO_SCALAR_BODY_TYPES:
+            s_field = self._handle_simple(fname, current)
             s_fetch = []
-        elif isinstance(i_val, dict) and i_val.get("datatype"):
+        elif current.type == sui_prot.OpenSignatureBodyType.DATATYPE:
             voft = True
-            s_field, s_fetch = self._handle_reference(fname, i_val.get("datatype"))
+            s_field, s_fetch = self._handle_reference(fname, current)
             if s_fetch and type_parms:
                 self._build_parmed_assets(s_field, s_fetch[0], type_parms)
+        elif current.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
+            idx = current.type_parameter
+            if type_parms and isinstance(type_parms, list) and idx < len(type_parms):
+                concrete = type_parms[idx]
+                if concrete.type in _PROTO_SCALAR_BODY_TYPES:
+                    s_field = self._handle_simple(fname, concrete)
+                    s_fetch = []
+                elif concrete.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+                    voft = True
+                    s_field, s_fetch = self._handle_reference(fname, concrete)
+                else:
+                    raise NotImplementedError(f"Vector of concrete type {concrete.type} not handled for '{fname}'.")
+            else:
+                raise NotImplementedError(f"Vector of TYPE_PARAMETER {idx} without type_parms for '{fname}'.")
         else:
-            raise NotImplementedError(f"Vector of {i_val} not handled.")
+            raise NotImplementedError(f"Vector of {current.type} not handled.")
         return (
             MoveVectorField(
                 ident=fname,
@@ -205,61 +253,50 @@ class MoveDataType:
             s_fetch,
         )
 
-    def _process_typeparm_fortype(self, fval: dict) -> list[dict | None]:
-        """."""
-        if tparm := fval.get("typeParameters"):
-            if (
-                tparm
-                and not isinstance(tparm[0], str)
-                and tparm[0].get("datatype")
-                and tparm[0]["datatype"].get("package")
-            ):
-                return [
-                    {
-                        self._FETCH_DECL: BcsAst.fully_qualified_reference(
-                            tparm[0].get("datatype")
-                        )
-                    }
-                ]
+    def _process_typeparm_fortype(self, fbody: sui_prot.OpenSignatureBody) -> list[dict]:
+        """Return fetch entries for the first DATATYPE type param of an Optional."""
+        tparms = fbody.type_parameter_instantiation
+        if tparms and tparms[0].type == sui_prot.OpenSignatureBodyType.DATATYPE:
+            fq = _normalize_fq_type(tparms[0].type_name)
+            if fq in bcse.MOVE_STD_STRUCT_REFS:
+                return []
+            return [{self._FETCH_DECL: fq}]
         return []
 
     def _handle_reference(
         self,
         fname: str,
-        fval: dict,
+        fbody: sui_prot.OpenSignatureBody,
         type_info: Optional[dict] = None,
     ) -> tuple[MoveFieldNode, list[dict]]:
         """Resolve datatype references."""
-        if "typeParameter" in fval:
-            return self._handle_simple(fname, fval["typeParameter"]), []
-        targ = BcsAst.fully_qualified_reference(fval)
+        if fbody.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
+            return MoveScalarField(fname, fbody.type_parameter), []
+        targ = _normalize_fq_type(fbody.type_name)
         f_field = None
         f_fetch: list[dict] = []
         if t_str := bcse.MOVE_STD_STRUCT_REFS.get(targ):
             f_field = MoveStructureField(fname, t_str)
         elif targ == bcse.MOVE_OPTIONAL_TYPE:
-            stype: bool = False
-            sval = None
-            # if typeparm := fval.get("typeParameters"):
-            #     if typeparm and isinstance(typeparm[0], str):
-            #         stype = True
-            #         sval = typeparm[0]
-            #     else:
-            f_fetch.extend(self._process_typeparm_fortype(fval))
-            f_field = MoveOptionalField(ident=fname, data=fval)
+            f_fetch.extend(self._process_typeparm_fortype(fbody))
+            f_field = MoveOptionalField(ident=fname, data=fbody)
         else:
-            # Here the name should be processed with the
-            fv_type = fval["type"]
-            # Take the fv_type base name, if type parms, append the type name within
-            type_name, carry_parms = BcsAst.struct_field_type(
-                fv_type, fval["typeParameters"]
-            )
-            f_field = MoveStructureField(fname, type_name)
+            _, _, type_name = targ.split("::")
+            parm_names = []
+            for tp in fbody.type_parameter_instantiation:
+                if tp.type in _PROTO_SCALAR_BODY_TYPES:
+                    ref = _PROTO_SCALAR_REFS.get(tp.type, str(tp.type))
+                    parm_names.append(ref.split(".")[-1] if "." in ref else ref)
+                elif tp.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+                    parm_names.append(tp.type_name.split("::")[-1])
+                # Skip TYPE_PARAMETER (abstract) — _build_parmed_assets fills concrete names
+            mangled = BcsAst.struct_field_type_proto(type_name, parm_names)
+            f_field = MoveStructureField(fname, mangled)
             f_fetch.append(
                 {
                     self._FETCH_DECL: targ,
-                    self._DECL_PARMS: fval["typeParameters"],
-                    self._DECL_TYPE_NAME: type_name,
+                    self._DECL_PARMS: fbody.type_parameter_instantiation,
+                    self._DECL_TYPE_NAME: mangled,
                 }
             )
         return f_field, f_fetch
@@ -268,7 +305,7 @@ class MoveDataType:
         self,
         type_decl: str,
         struc_name: str,
-        mstrut: qtype.MoveStructureGQL,
+        descriptor: sui_prot.DatatypeDescriptor,
         type_parms: dict | None = None,
     ) -> tuple[MoveStructureNode, list[dict]]:
         """."""
@@ -277,108 +314,90 @@ class MoveDataType:
         direct_fields: list[MoveFieldNode] = []
         fetch_fields: list[dict] = []
 
-        for field in mstrut.fields:
-            fname = field["field_name"]
-            fbody = field["field_type"]["signature"]["body"]
-            if isinstance(fbody, str):
-                # print(f"\nsimple {fbody}\n")
+        for field in descriptor.fields:
+            fname = field.name
+            fbody = field.type  # OpenSignatureBody
+            if fbody.type in _PROTO_SCALAR_BODY_TYPES:
                 direct_fields.append(self._handle_simple(fname, fbody))
-            else:
-                if field_type := fbody.get("datatype"):
-                    # print(f"\nComplex {field_type}\n")
-                    s_field, s_fetch = self._handle_reference(fname, field_type)
-                    direct_fields.append(s_field)
-                    if s_fetch:
-                        fetch_fields.extend(s_fetch)
-                elif fbody.get("vector"):
-                    # print(f"\nVector {field_type}\n")
-                    s_field, s_fetch = self._handle_vector(
-                        fname, fbody, type_parms.get(self._DECL_PARMS)
-                    )
-                    direct_fields.append(s_field)
-                    if s_fetch:
-                        fetch_fields.extend(s_fetch)
-                # Indirection
-                elif "typeParameter" in fbody:
-                    idex = fbody["typeParameter"]
-                    if dparm := type_parms.get(self._DECL_PARMS):
+            elif fbody.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+                s_field, s_fetch = self._handle_reference(fname, fbody)
+                direct_fields.append(s_field)
+                if s_fetch:
+                    fetch_fields.extend(s_fetch)
+            elif fbody.type == sui_prot.OpenSignatureBodyType.VECTOR:
+                s_field, s_fetch = self._handle_vector(
+                    fname, fbody, type_parms.get(self._DECL_PARMS) if type_parms else None
+                )
+                direct_fields.append(s_field)
+                if s_fetch:
+                    fetch_fields.extend(s_fetch)
+            elif fbody.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
+                idex = fbody.type_parameter
+                if type_parms and (dparm := type_parms.get(self._DECL_PARMS)):
+                    if isinstance(dparm, list) and idex < len(dparm):
                         of_type = dparm[idex]
-                        if isinstance(of_type, str):
+                        if of_type.type in _PROTO_SCALAR_BODY_TYPES:
                             direct_fields.append(self._handle_simple(fname, of_type))
                         else:
-                            s_field, s_fetch = self._handle_reference(
-                                fname, of_type.get("datatype", of_type)
-                            )
+                            s_field, s_fetch = self._handle_reference(fname, of_type)
                             direct_fields.append(s_field)
                             if s_fetch:
                                 fetch_fields.extend(s_fetch)
                 else:
-                    # Should log fbody
-                    # print(fbody)
-                    logger.warning(f"Unhandled {fbody}")
+                    logger.warning(f"TYPE_PARAMETER {idex} with no concrete params for field '{fname}'")
+            else:
+                logger.warning(f"Unhandled field type {fbody.type} for '{fname}'")
         return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
 
     def _process_enum(
         self,
         type_decl: str,
         enum_name: str,
-        menum: qtype.MoveEnumGQL,
+        descriptor: sui_prot.DatatypeDescriptor,
         type_parms: dict | None = None,
     ) -> tuple[MoveEnumNode, list]:
         """."""
         direct_variants: list[MoveVariantField] = []
         fetch_fields: list = []
-        for variant in menum.variants:
-            vname = variant.variant_name
+        for variant in descriptor.variants:
+            vname = variant.name
             variant_members: list = []
-            for field_member in variant.fields:
-                fname = field_member["field_name"]
-                fbody = field_member["field_type"]["signature"]["body"]
-                if isinstance(fbody, str):
+            for field in variant.fields:
+                fname = field.name
+                fbody = field.type  # OpenSignatureBody
+                if fbody.type in _PROTO_SCALAR_BODY_TYPES:
                     variant_members.append(self._handle_simple(fname, fbody))
-                #     direct_fields
+                elif fbody.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+                    s_field, s_fetch = self._handle_reference(fname, fbody)
+                    variant_members.append(s_field)
+                    if s_fetch:
+                        fetch_fields.extend(s_fetch)
+                elif fbody.type == sui_prot.OpenSignatureBodyType.VECTOR:
+                    s_field, s_fetch = self._handle_vector(fname, fbody, None)
+                    variant_members.append(s_field)
+                    if s_fetch:
+                        fetch_fields.extend(s_fetch)
                 else:
-                    if fbody.get("datatype"):
-                        s_field, s_fetch = self._handle_reference(
-                            fname, fbody["datatype"]
-                        )
-                        variant_members.append(s_field)
-                        if s_fetch:
-                            fetch_fields.extend(s_fetch)
-                    elif fbody.get("vector"):
-                        variant_members.append(self._handle_vector(fname, fbody))
-
+                    logger.warning(f"Unhandled enum variant field type {fbody.type} for '{fname}'")
             direct_variants.append(MoveVariantField(vname, variant_members))
         return MoveEnumNode(enum_name, direct_variants, type_decl), fetch_fields
 
     async def _fetch_type(
-        self, *, client: AsyncGqlClient, move_type_decl: dict
+        self, *, client: AsyncClientBase, move_type_decl: dict
     ) -> tuple[bcs_ast.Node, list]:
-        """Fetch a Move structure declaration and depedencies."""
+        """Fetch a Move structure declaration and dependencies."""
         type_decl = move_type_decl[self._FETCH_DECL]
         addy, mod, type_name = type_decl.split("::")
         logger.info(f"Fetching '{type_decl}' definition")
-        # print(f"Fetching: {type_decl}")
-        result = await client.execute_query_node(
-            with_node=qn.GetMoveDataType(
-                package=addy, module_name=mod, data_type_name=type_name
-            )
+        result = await client.execute(
+            command=GetMoveDataTypeSC(package=addy, module_name=mod, type_name=type_name)
         )
         if result.is_ok():
-            if isinstance(result.result_data, qtype.MoveStructureGQL):
-                fn = self._process_structure
-                return fn(
-                    type_decl,
-                    type_name,
-                    result.result_data,
-                    move_type_decl,
-                )
-            return self._process_enum(
-                type_decl,
-                type_name,
-                result.result_data,
-                move_type_decl,
-            )
+            response: sui_prot.GetDatatypeResponse = result.result_data
+            descriptor = response.datatype
+            if descriptor.kind == sui_prot.DatatypeDescriptorDatatypeKind.STRUCT:
+                return self._process_structure(type_decl, type_name, descriptor, move_type_decl)
+            return self._process_enum(type_decl, type_name, descriptor, move_type_decl)
         else:
             raise ValueError(result.result_string)
 
@@ -604,41 +623,50 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         # From the immediate class, get the classname
         # class ClassName_optional_ident(canoser.RustOptional):
         #   _type = Any
-        # Resolve any typeParameters in node.data
         cdef: ast.ClassDef = self.first_from_top(ast.ClassDef)
         opt_name: str = f"{cdef.name}_optional_{node.ident}"
         logger.info(
             f"Generating '{opt_name}' optional type for '{cdef.name}' field '{node.ident}'"
         )
-        type_parm = node.data["typeParameters"][0]
+        # node.data is an OpenSignatureBody for the Option<T> field
+        type_parm = node.data.type_parameter_instantiation[0]
         ast_type: ast.Name = ast.Name("Any", ast.Load())
         cdoc: str = None
-        # A straight up scalar type?
-        if isinstance(type_parm, str):
-            ast_type = ast.Name(
-                bcse.MOVE_STD_SCALAR_REFS.get(type_parm, type_parm), ast.Load()
-            )
-        # A reference to another structure - Use structure 'type' name as type
-        elif (
-            isinstance(type_parm, dict)
-            and type_parm.get("datatype")
-            and type_parm["datatype"].get("package")
-        ):
-            type_parm = type_parm["datatype"]
-            fq_ref = BcsAst.fully_qualified_reference(type_parm)
-            # Process dependent if found
-            if depedendent := self._needs_processing(cdef.name, fq_ref):
-                self.visit(depedendent)
-            ast_type = ast.Name(type_parm["type"], ast.Load())
-        # A unknown generic reference - Use Any as type
-        elif isinstance(type_parm, dict) and next(iter(type_parm)) == "typeParameter":
+        if type_parm.type in _PROTO_SCALAR_BODY_TYPES:
+            ref = _PROTO_SCALAR_REFS.get(type_parm.type, str(type_parm.type))
+            ast_type = ast.Name(ref, ast.Load())
+        elif type_parm.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+            fq_ref = _normalize_fq_type(type_parm.type_name)
+            _, _, short_name = fq_ref.split("::")
+            if std_ref := bcse.MOVE_STD_STRUCT_REFS.get(fq_ref):
+                ast_type = ast.Name(std_ref, ast.Load())
+            else:
+                if depedendent := self._needs_processing(cdef.name, fq_ref):
+                    self.visit(depedendent)
+                ast_type = ast.Name(short_name, ast.Load())
+        elif type_parm.type == sui_prot.OpenSignatureBodyType.VECTOR:
+            depth_level = 0
+            current = type_parm
+            while current.type == sui_prot.OpenSignatureBodyType.VECTOR:
+                depth_level += 1
+                current = current.type_parameter_instantiation[0]
+            if current.type in _PROTO_SCALAR_BODY_TYPES:
+                inner_field = MoveScalarField(opt_name, _PROTO_SCALAR_REFS.get(current.type, str(current.type)))
+            elif current.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+                fq_ref = current.type_name
+                _, _, short_name = fq_ref.split("::")
+                inner_field = MoveStructureField(opt_name, bcse.MOVE_STD_STRUCT_REFS.get(fq_ref, short_name))
+            else:
+                raise NotImplementedError(f"Option<vector<{current.type}>> not handled.")
+            vec_node = MoveVectorField(ident=opt_name, levels=depth_level, base_data=inner_field)
+            ast_type = BcsAst.generate_nested_vector(depth_level, self, vec_node)
+        elif type_parm.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
             logger.warning(f"`{opt_name}` Optional class may require fixup.")
             cdoc = "_type Any MUST be replaced with concrete type."
         else:
-            raise NotImplementedError(f"Unknown optional type {type_parm}")
+            raise NotImplementedError(f"Unknown optional type {type_parm.type}")
 
         optdef: ast.ClassDef = BcsAst.optional_type(self, opt_name, ast_type, cdoc)
-        # optdef: ast.Classdef = BcsAst.optional_base(opt_name, ast_type)
         self.ast_module.body.append(optdef)
         expr = ast.parse(opt_name).body[0].value
         container = self.peek_first()

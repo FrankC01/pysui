@@ -856,6 +856,61 @@ class MoveEnum(PGQL_Fragment):
         )
 
 
+class MoveStructureSC(PGQL_Fragment):
+    """MoveStructureSC — superset of MoveStructure that also fetches typeParameters with constraints and isPhantom."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        return (
+            DSLFragment("MoveStructSC")
+            .on(schema.MoveStruct)
+            .select(
+                schema.MoveStruct.name.alias("struct_name"),
+                schema.MoveStruct.abilities,
+                schema.MoveStruct.typeParameters.select(
+                    schema.MoveDatatypeTypeParameter.constraints,
+                    schema.MoveDatatypeTypeParameter.isPhantom,
+                ),
+                schema.MoveStruct.fields.select(
+                    schema.MoveField.name.alias("field_name"),
+                    schema.MoveField.type.alias("field_type").select(
+                        schema.OpenMoveType.signature
+                    ),
+                ),
+            )
+        )
+
+
+class MoveEnumSC(PGQL_Fragment):
+    """MoveEnumSC — superset of MoveEnum that also fetches typeParameters with constraints and isPhantom."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        return (
+            DSLFragment("MoveEnumSC")
+            .on(schema.MoveEnum)
+            .select(
+                schema.MoveEnum.name.alias("enum_name"),
+                schema.MoveEnum.abilities,
+                schema.MoveEnum.typeParameters.select(
+                    schema.MoveDatatypeTypeParameter.constraints,
+                    schema.MoveDatatypeTypeParameter.isPhantom,
+                ),
+                schema.MoveEnum.variants.select(
+                    schema.MoveEnumVariant.name.alias("variant_name"),
+                    schema.MoveEnumVariant.fields.select(
+                        schema.MoveField.name.alias("field_name"),
+                        schema.MoveField.type.alias("field_type").select(
+                            schema.OpenMoveType.signature
+                        ),
+                    ),
+                ),
+            )
+        )
+
+
 class MoveFunction(PGQL_Fragment):
     """MoveFunction reusable fragment"""
 

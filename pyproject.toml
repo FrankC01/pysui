@@ -83,7 +83,7 @@ version = { attr = "pysui.version.__version__" }
 readme = { file = ["README.md"], content-type = "text/markdown" }
 
 [tool.setuptools.package-data]
-mypkg = ["*.json"]
+samples = ["*.json"]
 
 [project.urls]
 changelog = "https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md"

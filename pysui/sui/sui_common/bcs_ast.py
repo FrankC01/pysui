@@ -247,3 +247,10 @@ class BcsAst:
             new_name = "_".join(name_list)
             return new_name, new_tparms
         return new_name, new_tparms
+
+    @staticmethod
+    def struct_field_type_proto(base_name: str, type_param_names: list[str]) -> str:
+        """Forms a type name from base plus concrete type-param names (proto-shape sibling)."""
+        if not type_param_names:
+            return base_name
+        return "_".join([base_name] + type_param_names)
