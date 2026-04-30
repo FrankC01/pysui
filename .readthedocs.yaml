@@ -16,8 +16,8 @@ build:
     post_create_environment:
       - pip install sphinx==8.1.3 sphinx-rtd-theme==3.0.2
     pre_build:
-      - python gen_doc_qnode.py
-      - python gen_doc_reqs.py
+      - python bin/gen_doc_qnode.py
+      - python bin/gen_doc_reqs.py
       - sphinx-apidoc -o doc/source pysui/ pysui/sui/sui_grpc/suimsgs
 
 # Build documentation in the docs/ directory with Sphinx

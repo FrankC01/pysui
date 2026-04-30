@@ -64,6 +64,7 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 ### Fixed
 
+- Fixed `.readthedocs.yaml` to get clean documentation builds
 - `pysui/sui/sui_common/txn_arg_encoder.py`: fixed double-encoding bug in `_encode_vector`, `_encode_datatype`, and `_encode_option` — raw BCS bytes from `_raw_value()` were incorrectly re-encoded through `PureInput.as_input()`; now wrapped directly as `bcs.BuilderArg("Pure", raw_bytes)`
 - `pysui/sui/sui_common/txn_arg_encoder.py`: fixed gRPC protobuf field name `type_parameter_index` → `type_parameter` in `_grpc_body_to_variant` TYPE_PARAMETER case
 - `pysui/sui/sui_pgql/pgql_txn_argb.py`: applied same double-encoding fix to the independent sync GQL encoder
