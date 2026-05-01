@@ -134,7 +134,6 @@ class AsyncSuiTransaction(txbase):
                     gas_budget = compute_gas_budget(
                         int(summary["computationCost"]),
                         int(summary["storageCost"]),
-                        int(summary.get("storageRebate", 0)),
                         _cei.reference_gas_price,
                     )
                 else:

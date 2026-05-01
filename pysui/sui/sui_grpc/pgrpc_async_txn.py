@@ -148,7 +148,6 @@ class AsyncSuiTransaction(txbase):
                     gas_budget = compute_gas_budget(
                         gas_used.computation_cost or 0,
                         gas_used.storage_cost or 0,
-                        gas_used.storage_rebate or 0,
                         _cei.reference_gas_price,
                     )
                 else:

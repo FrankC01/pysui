@@ -21,9 +21,8 @@ import asyncio
 import pytest
 import pytest_asyncio
 
-import pysui.sui.sui_pgql.pgql_query as qn
-import pysui.sui.sui_grpc.pgrpc_requests as rn
-from pysui import AsyncGqlClient, SuiGrpcClient
+from pysui import AsyncClientBase
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_all_owned_objects as grpc_get_all_objects,
     async_get_all_owned_gas_objects as grpc_get_coins,
@@ -79,7 +78,7 @@ def _assert_grpc_success(result, label: str) -> None:
 
 @pytest_asyncio.fixture(scope="session")
 async def phoney_gql_id(
-    gql_session_client: AsyncGqlClient,
+    gql_session_client: AsyncClientBase,
     published_gql: PublishedPackage,
 ) -> str:
     """Create a Phoney object via GQL and return its object ID."""
@@ -92,9 +91,8 @@ async def phoney_gql_id(
         target=f"{pkg_addr}::parms::create_phoney",
         arguments=[],
     )
-    result = await gql_session_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    txdict = await txer.build_and_sign()
+    result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     assert result.is_ok(), f"create_phoney GQL transport error: {result.result_string}"
     assert result.result_data.status == "SUCCESS", (
         f"create_phoney GQL on-chain failure: {result.result_data.execution_error}"
@@ -117,7 +115,7 @@ async def phoney_gql_id(
 
 @pytest_asyncio.fixture(scope="session")
 async def phoney_grpc_id(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
     published_grpc: PublishedPackage,
 ) -> str:
     """Create a Phoney object via gRPC and return its object ID."""
@@ -131,7 +129,7 @@ async def phoney_grpc_id(
         arguments=[],
     )
     result = await grpc_session_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     assert result.is_ok(), f"create_phoney gRPC transport error: {result.result_string}"
     assert result.result_data.transaction.effects.status.success, (
@@ -141,7 +139,7 @@ async def phoney_grpc_id(
 
     # Fetch the Phoney object via type-filtered query.
     phoney_result = await grpc_session_client.execute(
-        request=rn.GetObjectsOwnedByAddress(
+        command=cmd.GetObjectsForType(
             owner=addr,
             object_type=f"{pkg_addr}::parms::Phoney",
         )
@@ -161,7 +159,7 @@ async def phoney_grpc_id(
 
 @pytest.mark.order(100)
 async def test_check_uints_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_uints (GQL): u16, u32, u64, u128, u256 as Python ints."""
     await asyncio.sleep(SETTLE_SECS)
@@ -170,15 +168,13 @@ async def test_check_uints_gql(
         target=f"{published_gql.pkg_addr}::parms::check_uints",
         arguments=[1, 2, 3, 4, 5],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_uints")
 
 
 @pytest.mark.order(101)
 async def test_check_uints_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_uints (gRPC): u16, u32, u64, u128, u256 as Python ints."""
     await asyncio.sleep(SETTLE_SECS)
@@ -188,7 +184,7 @@ async def test_check_uints_grpc(
         arguments=[1, 2, 3, 4, 5],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_uints")
 
@@ -200,7 +196,7 @@ async def test_check_uints_grpc(
 
 @pytest.mark.order(102)
 async def test_check_optional_uints_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_optional_uints (GQL): mix of ints and None for Option<uN>."""
     await asyncio.sleep(SETTLE_SECS)
@@ -209,15 +205,13 @@ async def test_check_optional_uints_gql(
         target=f"{published_gql.pkg_addr}::parms::check_optional_uints",
         arguments=[1, 2, 3, None, 5],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_optional_uints")
 
 
 @pytest.mark.order(103)
 async def test_check_optional_uints_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_optional_uints (gRPC): mix of ints and None for Option<uN>."""
     await asyncio.sleep(SETTLE_SECS)
@@ -227,7 +221,7 @@ async def test_check_optional_uints_grpc(
         arguments=[1, 2, 3, None, 5],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_optional_uints")
 
@@ -239,7 +233,7 @@ async def test_check_optional_uints_grpc(
 
 @pytest.mark.order(104)
 async def test_check_uints_vectors_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_uints_vectors (GQL): vector<uN> passed as bytes slices."""
     await asyncio.sleep(SETTLE_SECS)
@@ -250,15 +244,13 @@ async def test_check_uints_vectors_gql(
         target=f"{published_gql.pkg_addr}::parms::check_uints_vectors",
         arguments=args,
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_uints_vectors")
 
 
 @pytest.mark.order(105)
 async def test_check_uints_vectors_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_uints_vectors (gRPC): vector<uN> passed as bytes slices."""
     await asyncio.sleep(SETTLE_SECS)
@@ -270,7 +262,7 @@ async def test_check_uints_vectors_grpc(
         arguments=args,
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_uints_vectors")
 
@@ -282,7 +274,7 @@ async def test_check_uints_vectors_grpc(
 
 @pytest.mark.order(106)
 async def test_check_optional_uint_vectors_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_optional_uint_vectors (GQL): Option<vector<uN>> with mix of None/bytes."""
     await asyncio.sleep(SETTLE_SECS)
@@ -291,15 +283,13 @@ async def test_check_optional_uint_vectors_gql(
         target=f"{published_gql.pkg_addr}::parms::check_optional_uint_vectors",
         arguments=[None, _SAMP_BYTES, None, None, None],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_optional_uint_vectors")
 
 
 @pytest.mark.order(107)
 async def test_check_optional_uint_vectors_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_optional_uint_vectors (gRPC): Option<vector<uN>> with mix of None/bytes."""
     await asyncio.sleep(SETTLE_SECS)
@@ -309,7 +299,7 @@ async def test_check_optional_uint_vectors_grpc(
         arguments=[None, _SAMP_BYTES, None, None, None],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_optional_uint_vectors")
 
@@ -321,7 +311,7 @@ async def test_check_optional_uint_vectors_grpc(
 
 @pytest.mark.order(108)
 async def test_check_vec_u8_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_vec_u8 (GQL): vector<u8> passed as a Python string."""
     await asyncio.sleep(SETTLE_SECS)
@@ -330,15 +320,13 @@ async def test_check_vec_u8_gql(
         target=f"{published_gql.pkg_addr}::parms::check_vec_u8",
         arguments=["Foo"],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_vec_u8")
 
 
 @pytest.mark.order(109)
 async def test_check_vec_u8_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_vec_u8 (gRPC): vector<u8> passed as a Python string."""
     await asyncio.sleep(SETTLE_SECS)
@@ -348,7 +336,7 @@ async def test_check_vec_u8_grpc(
         arguments=["Foo"],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_vec_u8")
 
@@ -360,7 +348,7 @@ async def test_check_vec_u8_grpc(
 
 @pytest.mark.order(110)
 async def test_check_vec_optional_u8_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_vec_optional_u8 (GQL): Option<vector<u8>> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
@@ -369,15 +357,13 @@ async def test_check_vec_optional_u8_gql(
         target=f"{published_gql.pkg_addr}::parms::check_vec_optional_u8",
         arguments=[None],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_vec_optional_u8")
 
 
 @pytest.mark.order(111)
 async def test_check_vec_optional_u8_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_vec_optional_u8 (gRPC): Option<vector<u8>> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
@@ -387,7 +373,7 @@ async def test_check_vec_optional_u8_grpc(
         arguments=[None],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_vec_optional_u8")
 
@@ -399,7 +385,7 @@ async def test_check_vec_optional_u8_grpc(
 
 @pytest.mark.order(112)
 async def test_check_vec_deep_u8_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_vec_deep_u8 (GQL): vector<vector<vector<u8>>> via nested list of bytes."""
     await asyncio.sleep(SETTLE_SECS)
@@ -408,16 +394,14 @@ async def test_check_vec_deep_u8_gql(
         target=f"{published_gql.pkg_addr}::parms::check_vec_deep_u8",
         arguments=[[[_SAMP_BYTES]]],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_vec_deep_u8")
 
 
 @pytest.mark.order(113)
 @pytest.mark.skip(reason="Known bug: gRPC deeply nested vector encoding - see issue #376")
 async def test_check_vec_deep_u8_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_vec_deep_u8 (gRPC): vector<vector<vector<u8>>> via nested list of bytes."""
     await asyncio.sleep(SETTLE_SECS)
@@ -427,7 +411,7 @@ async def test_check_vec_deep_u8_grpc(
         arguments=[[[_SAMP_BYTES]]],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_vec_deep_u8")
 
@@ -439,7 +423,7 @@ async def test_check_vec_deep_u8_grpc(
 
 @pytest.mark.order(114)
 async def test_check_address_vec_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_address_vec (GQL): vector<address> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
@@ -448,15 +432,13 @@ async def test_check_address_vec_gql(
         target=f"{published_gql.pkg_addr}::parms::check_address_vec",
         arguments=[[_ADDR_A, _ADDR_B]],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_address_vec")
 
 
 @pytest.mark.order(115)
 async def test_check_address_vec_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_address_vec (gRPC): vector<address> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
@@ -466,7 +448,7 @@ async def test_check_address_vec_grpc(
         arguments=[[_ADDR_A, _ADDR_B]],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_address_vec")
 
@@ -478,7 +460,7 @@ async def test_check_address_vec_grpc(
 
 @pytest.mark.order(116)
 async def test_check_id_vec_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_id_vec (GQL): vector<ID> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
@@ -487,15 +469,13 @@ async def test_check_id_vec_gql(
         target=f"{published_gql.pkg_addr}::parms::check_id_vec",
         arguments=[[_ADDR_A, _ADDR_B]],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_id_vec")
 
 
 @pytest.mark.order(117)
 async def test_check_id_vec_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_id_vec (gRPC): vector<ID> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
@@ -505,7 +485,7 @@ async def test_check_id_vec_grpc(
         arguments=[[_ADDR_A, _ADDR_B]],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_id_vec")
 
@@ -517,7 +497,7 @@ async def test_check_id_vec_grpc(
 
 @pytest.mark.order(118)
 async def test_check_string_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_string (GQL): &String passed as Python str."""
     await asyncio.sleep(SETTLE_SECS)
@@ -526,15 +506,13 @@ async def test_check_string_gql(
         target=f"{published_gql.pkg_addr}::parms::check_string",
         arguments=["foo"],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_string")
 
 
 @pytest.mark.order(119)
 async def test_check_string_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_string (gRPC): &String passed as Python str."""
     await asyncio.sleep(SETTLE_SECS)
@@ -544,7 +522,7 @@ async def test_check_string_grpc(
         arguments=["foo"],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_string")
 
@@ -556,7 +534,7 @@ async def test_check_string_grpc(
 
 @pytest.mark.order(120)
 async def test_check_string_option_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_string_option (GQL): Option<String> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
@@ -565,15 +543,13 @@ async def test_check_string_option_gql(
         target=f"{published_gql.pkg_addr}::parms::check_string_option",
         arguments=[None],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_string_option")
 
 
 @pytest.mark.order(121)
 async def test_check_string_option_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_string_option (gRPC): Option<String> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
@@ -583,7 +559,7 @@ async def test_check_string_option_grpc(
         arguments=[None],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_string_option")
 
@@ -595,7 +571,7 @@ async def test_check_string_option_grpc(
 
 @pytest.mark.order(122)
 async def test_check_string_vec_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_string_vec (GQL): vector<String> passed as list of Python strs."""
     await asyncio.sleep(SETTLE_SECS)
@@ -604,15 +580,13 @@ async def test_check_string_vec_gql(
         target=f"{published_gql.pkg_addr}::parms::check_string_vec",
         arguments=[["foo", "bar"]],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_string_vec")
 
 
 @pytest.mark.order(123)
 async def test_check_string_vec_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_string_vec (gRPC): vector<String> passed as list of Python strs."""
     await asyncio.sleep(SETTLE_SECS)
@@ -622,7 +596,7 @@ async def test_check_string_vec_grpc(
         arguments=[["foo", "bar"]],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_string_vec")
 
@@ -634,7 +608,7 @@ async def test_check_string_vec_grpc(
 
 @pytest.mark.order(124)
 async def test_check_vec_option_string_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_vec_option_string (GQL): vector<Option<String>> with mixed str/None."""
     await asyncio.sleep(SETTLE_SECS)
@@ -643,15 +617,13 @@ async def test_check_vec_option_string_gql(
         target=f"{published_gql.pkg_addr}::parms::check_vec_option_string",
         arguments=[["foo", None, "Bar"]],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_vec_option_string")
 
 
 @pytest.mark.order(125)
 async def test_check_vec_option_string_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_vec_option_string (gRPC): vector<Option<String>> with mixed str/None."""
     await asyncio.sleep(SETTLE_SECS)
@@ -661,7 +633,7 @@ async def test_check_vec_option_string_grpc(
         arguments=[["foo", None, "Bar"]],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_vec_option_string")
 
@@ -673,7 +645,7 @@ async def test_check_vec_option_string_grpc(
 
 @pytest.mark.order(126)
 async def test_check_bool_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_bool (GQL): bool passed as Python True."""
     await asyncio.sleep(SETTLE_SECS)
@@ -682,15 +654,13 @@ async def test_check_bool_gql(
         target=f"{published_gql.pkg_addr}::parms::check_bool",
         arguments=[True],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_bool")
 
 
 @pytest.mark.order(127)
 async def test_check_bool_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_bool (gRPC): bool passed as Python True."""
     await asyncio.sleep(SETTLE_SECS)
@@ -700,7 +670,7 @@ async def test_check_bool_grpc(
         arguments=[True],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_bool")
 
@@ -712,7 +682,7 @@ async def test_check_bool_grpc(
 
 @pytest.mark.order(128)
 async def test_get_sender_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """get_sender (GQL): address return value used as recipient in transfer_objects."""
     await asyncio.sleep(SETTLE_SECS)
@@ -723,15 +693,13 @@ async def test_get_sender_gql(
         arguments=[],
     )
     await txer.transfer_objects(transfers=split_res, recipient=addr_result)
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL get_sender")
 
 
 @pytest.mark.order(129)
 async def test_get_sender_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """get_sender (gRPC): address return value used as recipient in transfer_objects."""
     await asyncio.sleep(SETTLE_SECS)
@@ -747,7 +715,7 @@ async def test_get_sender_grpc(
     )
     await txer.transfer_objects(transfers=[split_res], recipient=addr_result)
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC get_sender")
 
@@ -759,7 +727,7 @@ async def test_get_sender_grpc(
 
 @pytest.mark.order(132)
 async def test_check_phoney_gql(
-    gql_session_client: AsyncGqlClient,
+    gql_session_client: AsyncClientBase,
     published_gql: PublishedPackage,
     phoney_gql_id: str,
 ) -> None:
@@ -783,15 +751,14 @@ async def test_check_phoney_gql(
         type_arguments=[f"{pkg_addr}::parms::Phoney"],
     )
     await txer.transfer_objects(transfers=[popped], recipient=addr)
-    result = await gql_session_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    txdict = await txer.build_and_sign()
+    result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     _assert_gql_success(result, "GQL check_phoney")
 
 
 @pytest.mark.order(133)
 async def test_check_phoney_grpc(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
     published_grpc: PublishedPackage,
     phoney_grpc_id: str,
 ) -> None:
@@ -816,7 +783,7 @@ async def test_check_phoney_grpc(
     )
     await txer.transfer_objects(transfers=[popped], recipient=addr)
     result = await grpc_session_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_phoney")
 
@@ -828,7 +795,7 @@ async def test_check_phoney_grpc(
 
 @pytest.mark.order(134)
 async def test_burn_phoney_gql(
-    gql_session_client: AsyncGqlClient,
+    gql_session_client: AsyncClientBase,
     published_gql: PublishedPackage,
     phoney_gql_id: str,
 ) -> None:
@@ -841,15 +808,14 @@ async def test_burn_phoney_gql(
         target=f"{pkg_addr}::parms::burn_phoney",
         arguments=[phoney_gql_id],
     )
-    result = await gql_session_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    txdict = await txer.build_and_sign()
+    result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     _assert_gql_success(result, "GQL burn_phoney")
 
 
 @pytest.mark.order(135)
 async def test_burn_phoney_grpc(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
     published_grpc: PublishedPackage,
     phoney_grpc_id: str,
 ) -> None:
@@ -863,7 +829,7 @@ async def test_burn_phoney_grpc(
         arguments=[phoney_grpc_id],
     )
     result = await grpc_session_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC burn_phoney")
 
@@ -883,7 +849,7 @@ async def test_burn_phoney_grpc(
     strict=True,
 )
 async def test_check_all_gql(
-    gql_client: AsyncGqlClient, published_gql: PublishedPackage
+    gql_client: AsyncClientBase, published_gql: PublishedPackage
 ) -> None:
     """check_all (GQL): expected to fail — ParmScalars is not callable directly."""
     txer = await gql_client.transaction()
@@ -892,9 +858,7 @@ async def test_check_all_gql(
         type_arguments=["u8"],
         arguments=[True, 1, 256, "hello", None, b"bytes", ["a", "b"], None, []],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    result = await gql_client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign()))
     _assert_gql_success(result, "GQL check_all")
 
 
@@ -907,7 +871,7 @@ async def test_check_all_gql(
     strict=True,
 )
 async def test_check_all_grpc(
-    grpc_client: SuiGrpcClient, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
 ) -> None:
     """check_all (gRPC): expected to fail — ParmScalars is not callable directly."""
     txer = await grpc_client.transaction()
@@ -917,6 +881,6 @@ async def test_check_all_grpc(
         arguments=[True, 1, 256, "hello", None, b"bytes", ["a", "b"], None, []],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_all")

@@ -31,11 +31,9 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from pysui import AsyncSuiGQLClient as AsyncGqlClient, PysuiConfiguration, SuiGrpcClient
+from pysui import AsyncClientBase, PysuiConfiguration, client_factory
 from pysui.sui.sui_common.config.confgroup import SUI_GQL_RPC_GROUP, SUI_GRPC_GROUP
 from pysui.sui.sui_constants import DEVNET_FAUCET_URLV1, TESTNET_FAUCET_URLV1
-import pysui.sui.sui_pgql.pgql_query as qn
-import pysui.sui.sui_grpc.pgrpc_requests as rn
 from pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 import ChangedObjectInputObjectState
 import pysui.sui.sui_common.sui_commands as cmd
 
@@ -113,7 +111,7 @@ async def json_faucet(
 
 
 async def fund_accumulator_gql(
-    client: AsyncGqlClient,
+    client: AsyncClientBase,
     amount: int = 1_000_000,
     recipient: Optional[str] = None,
 ) -> None:
@@ -130,9 +128,8 @@ async def fund_accumulator_gql(
         type_arguments=["0x2::sui::SUI"],
         arguments=[scres, target],
     )
-    result = await client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    txdict = await txer.build_and_sign()
+    result = await client.execute(command=cmd.ExecuteTransaction(**txdict))
     assert result.is_ok(), f"fund_accumulator_gql failed: {result.result_string}"
     await asyncio.sleep(SETTLE_SECS)
 
@@ -169,63 +166,12 @@ class PublishedPackage(NamedTuple):
 # ---------------------------------------------------------------------------
 
 
-async def _gql_extract_publish_result(
-    result_data, client: AsyncGqlClient
-) -> PublishedPackage:
-    """Return PublishedPackage from a GQL ExecutionResultGQL via wait_for_transaction."""
-    tx_result = await client.wait_for_transaction(
-        digest=result_data.digest, poll_interval=1
-    )
-    assert tx_result.is_ok(), f"wait_for_transaction failed: {tx_result.result_string}"
-    changes = tx_result.result_data.object_changes().nodes
-
-    pkg_addr = next(
-        (n.address for n in changes if n.output_state and n.output_state.is_package()),
-        None,
-    )
-    cap_id = next(
-        (
-            n.address
-            for n in changes
-            if n.created
-            and n.output_state
-            and n.output_state.is_object()
-            and n.output_state.as_move_content
-            and "UpgradeCap" in n.output_state.as_move_content.object_type
-        ),
-        None,
-    )
-    # ParmObject is created by init() and transferred to sender at publish time.
-    # init() in parms.move MUST remain intact for this fixture to work.
-    parm_obj_id = next(
-        (
-            n.address
-            for n in changes
-            if n.created
-            and n.output_state
-            and n.output_state.is_object()
-            and n.output_state.as_move_content
-            and "ParmObject" in n.output_state.as_move_content.object_type
-        ),
-        None,
-    )
-    assert pkg_addr, "Could not find published package address in object changes"
-    assert cap_id, "Could not find UpgradeCap in object changes"
-    assert parm_obj_id, (
-        "Could not find ParmObject in object changes — "
-        "parms::init() must transfer ParmObject to sender"
-    )
-    return PublishedPackage(pkg_addr=pkg_addr, cap_id=cap_id, parm_obj_id=parm_obj_id)
-
-
-def _grpc_extract_publish_result(result_data) -> PublishedPackage:
-    """Return PublishedPackage from a gRPC ExecuteTransactionResponse."""
-    effects = result_data.transaction.effects
-
+def _extract_publish_result(changed_objects) -> PublishedPackage:
+    """Return PublishedPackage from an ExecutedTransaction effects.changed_objects list."""
     pkg_addr = next(
         (
             co.object_id
-            for co in effects.changed_objects
+            for co in changed_objects
             if co.input_state == ChangedObjectInputObjectState.DOES_NOT_EXIST
             and co.object_type == "package"
         ),
@@ -234,7 +180,7 @@ def _grpc_extract_publish_result(result_data) -> PublishedPackage:
     cap_id = next(
         (
             co.object_id
-            for co in effects.changed_objects
+            for co in changed_objects
             if co.input_state == ChangedObjectInputObjectState.DOES_NOT_EXIST
             and co.object_type
             and co.object_type.endswith("UpgradeCap")
@@ -246,7 +192,7 @@ def _grpc_extract_publish_result(result_data) -> PublishedPackage:
     parm_obj_id = next(
         (
             co.object_id
-            for co in effects.changed_objects
+            for co in changed_objects
             if co.input_state == ChangedObjectInputObjectState.DOES_NOT_EXIST
             and co.object_type
             and co.object_type.endswith("ParmObject")
@@ -293,17 +239,17 @@ def grpc_cfg() -> PysuiConfiguration:
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
-async def gql_session_client(gql_cfg: PysuiConfiguration) -> AsyncGqlClient:
+async def gql_session_client(gql_cfg: PysuiConfiguration) -> AsyncClientBase:
     """Long-lived GQL client shared across the session."""
-    client = AsyncGqlClient(pysui_config=gql_cfg)
+    client = client_factory(gql_cfg)
     yield client
     await client.close()
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
-async def grpc_session_client(grpc_cfg: PysuiConfiguration) -> SuiGrpcClient:
+async def grpc_session_client(grpc_cfg: PysuiConfiguration) -> AsyncClientBase:
     """Long-lived gRPC client shared across the session."""
-    client = SuiGrpcClient(pysui_config=grpc_cfg)
+    client = client_factory(grpc_cfg)
     yield client
     client.close()
 
@@ -331,8 +277,8 @@ async def _faucet_to_target(faucet_url: str, address: str, current_mist: int) ->
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def ensure_session_gas(
-    gql_session_client: AsyncGqlClient,
-    grpc_session_client: SuiGrpcClient,
+    gql_session_client: AsyncClientBase,
+    grpc_session_client: AsyncClientBase,
     gql_cfg: PysuiConfiguration,
 ) -> None:
     """Preflight: ensure each sender address has >= 10 SUI in coins and >= 10 SUI in accumulator.
@@ -349,8 +295,8 @@ async def ensure_session_gas(
 
     # Pass 1 — top up coin objects for all sender addresses via faucet.
     for address in addresses:
-        result = await grpc_session_client.execute_grpc_request(
-            request=rn.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
+        result = await grpc_session_client.execute(
+            command=cmd.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
         )
         assert result.is_ok(), f"GetAddressCoinBalance failed for {address}: {result.result_string}"
         await _faucet_to_target(faucet_url, address, result.result_data.balance.coin_balance or 0)
@@ -358,13 +304,23 @@ async def ensure_session_gas(
     # Pass 2 — top up address accumulator for all sender addresses.
     #           GQL client's coin objects pay for each send_funds transaction.
     for address in addresses:
-        result = await grpc_session_client.execute_grpc_request(
-            request=rn.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
+        result = await grpc_session_client.execute(
+            command=cmd.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
         )
         assert result.is_ok(), f"GetAddressCoinBalance failed for {address}: {result.result_string}"
         shortfall = _TARGET_ACCUM_MIST - (result.result_data.balance.address_balance or 0)
         if shortfall > 0:
             await fund_accumulator_gql(gql_session_client, amount=shortfall, recipient=address)
+            # Verify the accumulator was actually funded.
+            verify = await grpc_session_client.execute(
+                command=cmd.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
+            )
+            assert verify.is_ok(), f"Post-fund balance check failed for {address}: {verify.result_string}"
+            funded = verify.result_data.balance.address_balance or 0
+            assert funded >= _TARGET_ACCUM_MIST, (
+                f"Accumulator underfunded for {address}: "
+                f"expected >= {_TARGET_ACCUM_MIST}, got {funded}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -375,9 +331,9 @@ async def ensure_session_gas(
 @pytest_asyncio.fixture
 async def gql_client(
     gql_cfg: PysuiConfiguration, ensure_session_gas: None
-) -> AsyncGqlClient:
+) -> AsyncClientBase:
     """Per-test GQL client."""
-    client = AsyncGqlClient(pysui_config=gql_cfg)
+    client = client_factory(gql_cfg)
     yield client
     await client.close()
 
@@ -385,13 +341,13 @@ async def gql_client(
 @pytest_asyncio.fixture
 async def grpc_client(
     grpc_cfg: PysuiConfiguration, ensure_session_gas: None
-) -> SuiGrpcClient:
+) -> AsyncClientBase:
     """Per-test gRPC client.
 
     Created as an async fixture so SuiGrpcClient (which captures the event loop
     via grpclib Channel at __init__ time) is created in the test's loop.
     """
-    client = SuiGrpcClient(pysui_config=grpc_cfg)
+    client = client_factory(grpc_cfg)
     yield client
     client.close()
 
@@ -419,13 +375,13 @@ def recipient_address(gql_cfg: PysuiConfiguration) -> str:
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def sui_test_project_path(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
     tmp_path_factory,
 ) -> str:
     """Copy tests/sui-test to a tmp dir, updating Move.toml devnet chain ID."""
-    result = await grpc_session_client.execute(request=rn.GetServiceInfo())
-    assert result.is_ok(), f"GetServiceInfo failed: {result.result_string}"
-    chain_id = result.result_data.chain_id
+    result = await grpc_session_client.execute(command=cmd.GetChainIdentifier())
+    assert result.is_ok(), f"GetChainIdentifier failed: {result.result_string}"
+    chain_id = result.result_data
 
     dst = tmp_path_factory.mktemp("sui-test-project")
     shutil.copytree(_SUI_TEST_SRC, str(dst), dirs_exist_ok=True)
@@ -440,7 +396,7 @@ async def sui_test_project_path(
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def published_gql(
-    gql_session_client: AsyncGqlClient,
+    gql_session_client: AsyncClientBase,
     gql_cfg: PysuiConfiguration,
     sui_test_project_path: str,
     ensure_session_gas: None,
@@ -468,20 +424,23 @@ async def published_gql(
         transfers=[cap_result],
         recipient=gql_session_client.config.active_address,
     )
-    result = await gql_session_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
-    )
+    txdict = await txer.build_and_sign()
+    result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     assert result.is_ok(), f"GQL publish failed: {result.result_string}"
     assert result.result_data.status == "SUCCESS", (
         f"GQL publish on-chain failure: {result.result_data.execution_error}"
     )
     await asyncio.sleep(SETTLE_SECS)
-    return await _gql_extract_publish_result(result.result_data, gql_session_client)
+    tx_result = await gql_session_client.wait_for_transaction(
+        digest=result.result_data.digest, poll_interval=1
+    )
+    assert tx_result.is_ok(), f"wait_for_transaction failed: {tx_result.result_string}"
+    return _extract_publish_result(tx_result.result_data.effects.changed_objects)
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def published_grpc(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
     grpc_cfg: PysuiConfiguration,
     sui_test_project_path: str,
     ensure_session_gas: None,
@@ -508,15 +467,14 @@ async def published_grpc(
         transfers=[cap_result],
         recipient=grpc_session_client.config.active_address,
     )
-    result = await grpc_session_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
-    )
+    txdict = await txer.build_and_sign(use_account_for_gas=True)
+    result = await grpc_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     assert result.is_ok(), f"gRPC publish failed: {result.result_string}"
     assert result.result_data.transaction.effects.status.success, (
         "gRPC publish on-chain execution failed"
     )
     await asyncio.sleep(SETTLE_SECS)
-    return _grpc_extract_publish_result(result.result_data)
+    return _extract_publish_result(result.result_data.transaction.effects.changed_objects)
 
 
 # ---------------------------------------------------------------------------
@@ -533,8 +491,8 @@ class TxnDigests(NamedTuple):
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def txn_digests(
-    gql_session_client: AsyncGqlClient,
-    grpc_session_client: SuiGrpcClient,
+    gql_session_client: AsyncClientBase,
+    grpc_session_client: AsyncClientBase,
     ensure_session_gas: None,
 ) -> TxnDigests:
     """Submit one trivial PTB per protocol and return both digests.

@@ -58,10 +58,9 @@ GraphQL — ``GqlSerialTransactionExecutor``
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_common.factory import client_factory
+    from pysui import PysuiConfiguration, client_factory
     from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
-    from pysui.sui.sui_common.executors import ExecutorContext
+    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_coins_low(ctx: ExecutorContext) -> list[str] | None:
         # return new coin IDs to continue, or None/[] to halt
@@ -94,10 +93,9 @@ GraphQL — ``GqlSerialTransactionExecutor``
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_common.factory import client_factory
+    from pysui import PysuiConfiguration, client_factory
     from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
-    from pysui.sui.sui_common.executors import ExecutorContext
+    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
         # perform top-up, return funding address for logging, or None to halt
@@ -135,10 +133,9 @@ The gRPC serial executor has the same interface as the GraphQL one; only the cli
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_common.factory import client_factory
+    from pysui import PysuiConfiguration, client_factory
     from pysui.sui.sui_grpc.grpc_serial_exec import GrpcSerialTransactionExecutor
-    from pysui.sui.sui_common.executors import ExecutorContext
+    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_coins_low(ctx: ExecutorContext) -> list[str] | None:
         return None
@@ -170,10 +167,9 @@ The gRPC serial executor has the same interface as the GraphQL one; only the cli
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_common.factory import client_factory
+    from pysui import PysuiConfiguration, client_factory
     from pysui.sui.sui_grpc.grpc_serial_exec import GrpcSerialTransactionExecutor
-    from pysui.sui.sui_common.executors import ExecutorContext
+    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
         return None
@@ -222,8 +218,7 @@ during execution but cannot start it from zero.
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_common.factory import client_factory
+    from pysui import PysuiConfiguration, client_factory
     from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
     from pysui.sui.sui_common.executors import GasCoin
 
@@ -263,10 +258,9 @@ during execution but cannot start it from zero.
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_common.factory import client_factory
+    from pysui import PysuiConfiguration, client_factory
     from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
-    from pysui.sui.sui_common.executors import ExecutorContext
+    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
         # top up balance and return truthy to continue, or None/falsy to halt
@@ -309,8 +303,7 @@ Same interface as the GraphQL parallel executor; only the client type and import
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_common.factory import client_factory
+    from pysui import PysuiConfiguration, client_factory
     from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
     from pysui.sui.sui_common.executors import GasCoin
 
@@ -349,10 +342,9 @@ Same interface as the GraphQL parallel executor; only the client type and import
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_common.factory import client_factory
+    from pysui import PysuiConfiguration, client_factory
     from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
-    from pysui.sui.sui_common.executors import ExecutorContext
+    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
         return None
@@ -398,16 +390,23 @@ Each element is either a success value or a failure tuple:
 
 .. code-block:: python
 
-    from pysui.sui.sui_common.executors import ExecutorError
+    import dataclasses
+    from pysui.sui.sui_common.executors import ExecutorError, ExecutionSkipped
     from pysui.sui.sui_common.types import TransactionEffects
+
+    def print_result(r):
+        if isinstance(r, ExecutionSkipped):
+            print(f"Skipped tx {r.transaction_index}: {r.reason}")
+        elif isinstance(r, tuple):
+            err, exc = r
+            print(f"Error: {err.name} — {exc}")
+        else:
+            # TransactionEffects is a dataclass — serialise as needed
+            print(dataclasses.asdict(r))
 
     results = await executor.execute_transactions(txns)
     for r in results:
-        if isinstance(r, tuple):
-            err, exc = r
-            print(f"{err.name}: {exc}")
-        else:
-            print(r)
+        print_result(r)
 
 ---
 
@@ -422,7 +421,7 @@ Serial executors (``GqlSerialTransactionExecutor``, ``GrpcSerialTransactionExecu
    * - Parameter
      - Description
    * - ``client``
-     - Async protocol client (``AsyncSuiGQLClient`` or ``SuiGrpcClient``)
+     - Async protocol client (``AsyncClientBase``; use ``client_factory()`` to obtain)
    * - ``sender``
      - Sender address string or ``SigningMultiSig``
    * - ``sponsor``

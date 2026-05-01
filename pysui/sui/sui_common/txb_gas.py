@@ -22,20 +22,17 @@ T = TypeVar("T")
 def compute_gas_budget(
     computation_cost: int,
     storage_cost: int,
-    storage_rebate: int,
     gas_price: int,
 ) -> int:
-    """Compute the transaction gas budget using the TS SDK formula.
+    """Compute the transaction gas budget.
 
-    Computes ``max(computationCost + overhead, computationCost + overhead + storageCost - storageRebate)``
+    Computes ``max(computationCost + overhead, computationCost + overhead + storageCost)``
     where ``overhead = GAS_SAFE_OVERHEAD * gasPrice``.
 
     :param computation_cost: Computation cost from simulation, in MIST
     :type computation_cost: int
     :param storage_cost: Storage cost from simulation, in MIST
     :type storage_cost: int
-    :param storage_rebate: Storage rebate from simulation, in MIST
-    :type storage_rebate: int
     :param gas_price: Current reference gas price
     :type gas_price: int
     :return: Gas budget in MIST
@@ -44,7 +41,7 @@ def compute_gas_budget(
     overhead = _GAS_SAFE_OVERHEAD * gas_price
     return max(
         computation_cost + overhead,
-        computation_cost + overhead + storage_cost - storage_rebate,
+        computation_cost + overhead + storage_cost,
     )
 
 
@@ -184,7 +181,6 @@ async def async_get_gas_data(
         return compute_gas_budget(
             gas_used.computation_cost or 0,
             gas_used.storage_cost or 0,
-            gas_used.storage_rebate or 0,
             active_gas_price,
         )
 

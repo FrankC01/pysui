@@ -86,40 +86,32 @@ class _FakeTxn:
 
 
 class TestComputeGasBudget:
-    """compute_gas_budget correctness: overhead, rebate handling, branch selection."""
+    """compute_gas_budget correctness: overhead and branch selection."""
 
     def test_overhead_applied_to_computation_cost(self):
         """overhead = GAS_SAFE_OVERHEAD * gas_price is always added to computation cost."""
         comp, gas_price = 1_000_000, 1000
-        result = compute_gas_budget(comp, storage_cost=0, storage_rebate=0, gas_price=gas_price)
+        result = compute_gas_budget(comp, storage_cost=0, gas_price=gas_price)
         assert result == comp + _GAS_SAFE_OVERHEAD * gas_price
 
-    def test_zero_rebate_storage_added(self):
-        """With zero rebate and positive storage, second branch wins (comp + overhead + storage)."""
+    def test_storage_cost_fully_added(self):
+        """Positive storage cost is fully included — second branch wins (comp + overhead + storage)."""
         comp, storage, gas_price = 1_000_000, 500_000, 1000
         overhead = _GAS_SAFE_OVERHEAD * gas_price
-        result = compute_gas_budget(comp, storage, storage_rebate=0, gas_price=gas_price)
+        result = compute_gas_budget(comp, storage, gas_price=gas_price)
         assert result == comp + overhead + storage
 
-    def test_partial_rebate_reduces_storage_net(self):
-        """Partial rebate shrinks the net storage component; second branch still wins."""
-        comp, storage, rebate, gas_price = 1_000_000, 500_000, 200_000, 1000
+    def test_zero_storage_first_branch_wins(self):
+        """storage_cost=0 → both branches equal; first branch is returned."""
+        comp, gas_price = 1_000_000, 1000
         overhead = _GAS_SAFE_OVERHEAD * gas_price
-        result = compute_gas_budget(comp, storage, rebate, gas_price)
-        assert result == comp + overhead + storage - rebate
-
-    def test_rebate_exceeds_storage_first_branch_wins(self):
-        """rebate > storage → second branch is smaller than first; first branch is returned."""
-        comp, storage, rebate, gas_price = 1_000_000, 300_000, 500_000, 1000
-        overhead = _GAS_SAFE_OVERHEAD * gas_price
-        # second branch = comp + overhead + 300k - 500k = comp + overhead - 200k < first branch
-        result = compute_gas_budget(comp, storage, rebate, gas_price)
+        result = compute_gas_budget(comp, storage_cost=0, gas_price=gas_price)
         assert result == comp + overhead
 
     def test_zero_gas_price_produces_zero_overhead(self):
         """gas_price=0 → overhead=0; budget equals computation cost alone (edge case)."""
         result = compute_gas_budget(
-            computation_cost=2_000_000, storage_cost=0, storage_rebate=0, gas_price=0
+            computation_cost=2_000_000, storage_cost=0, gas_price=0
         )
         assert result == 2_000_000
 
