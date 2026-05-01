@@ -68,6 +68,23 @@ Transaction Execution
      - Simulate a ``TransactionKind`` without committing
 
 
+Transactions
+------------
+
+.. list-table::
+   :widths: 35 65
+   :header-rows: 1
+
+   * - Command
+     - Description
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransaction` :sup:`1,2,3`
+     - Fetch a single executed transaction by digest; ``None`` if not found or pruned
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransactions` :sup:`1,2,3`
+     - Fetch multiple transactions by digest list; result list matches input length with ``None`` in unresolved slots
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransactionKind` :sup:`1,2,3`
+     - Fetch only the ``TransactionKind`` discriminator for a transaction
+
+
 Coin / Balance
 --------------
 
@@ -242,6 +259,19 @@ Network / Chain Info
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetProtocolConfig`
      - Fetch the current node's protocol configuration and feature flags
 
+
+----
+
+GQL Caveats
+-----------
+
+Some commands return partial data when executed via the GraphQL transport because
+the GQL schema does not expose every field that the gRPC protocol provides.
+Superscript numbers in the command tables above refer to the caveats below.
+
+1. ``MoveCall.type_arguments`` — not populated via GQL; always an empty list on that transport.
+2. ``ChangeEpochTransaction.system_packages`` — not populated via GQL; always an empty list.
+3. ``EndOfEpochTransactionKind.execution_time_observations`` — not populated via GQL; always an empty list.
 
 ----
 

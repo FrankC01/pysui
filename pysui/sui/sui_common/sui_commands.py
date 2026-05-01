@@ -865,3 +865,87 @@ class GetCurrentValidators(SuiCommand):
         """Return gRPC current-validators request."""
         return rn.GetCurrentValidatorsSC()
 
+
+@dataclass(kw_only=True)
+class GetTransaction(SuiCommand):
+    """Fetch a single transaction by digest.
+
+    Returns the canonical :class:`~pysui.sui.sui_grpc.suimsgs.sui.rpc.v2.ExecutedTransaction`
+    proto on both protocols, or ``None`` when the digest is not found or has been pruned.
+
+    .. note::
+       GQL limitations apply — see caveats :sup:`1,2,3` in the SuiCommands reference.
+    """
+
+    gql_class: ClassVar[type] = pgql_query.GetTransactionSC
+    grpc_class: ClassVar[type] = rn.GetTransactionSC
+
+    digest: str
+
+    def gql_node(self) -> pgql_query.GetTransactionSC:
+        """Return GQL transaction query node."""
+        return self.gql_class(digest=self.digest)
+
+    def grpc_request(self) -> rn.GetTransactionSC:
+        """Return gRPC get-transaction request."""
+        return self.grpc_class(digest=self.digest)
+
+
+@dataclass(kw_only=True)
+class GetTransactions(SuiCommand):
+    """Fetch multiple transactions by digest list.
+
+    Returns a ``list[ExecutedTransaction | None]`` guaranteed to be the same length as the
+    input list.  Slots for digests that are not found or have been pruned contain ``None``.
+
+    .. note::
+       GQL limitations apply — see caveats :sup:`1,2,3` in the SuiCommands reference.
+
+    :raises ValueError: if *digests* is empty.
+    """
+
+    gql_class: ClassVar[type] = pgql_query.GetTransactionsSC
+    grpc_class: ClassVar[type] = rn.GetTransactionsSC
+
+    digests: list[str]
+
+    def __post_init__(self) -> None:
+        """Validate that at least one digest is provided and none are None."""
+        if not self.digests:
+            raise ValueError("GetTransactions requires at least one digest")
+        if any(d is None for d in self.digests):
+            raise ValueError("GetTransactions does not accept None values in digest list")
+
+    def gql_node(self) -> pgql_query.GetTransactionsSC:
+        """Return GQL multi-transaction query node."""
+        return self.gql_class(digests=self.digests)
+
+    def grpc_request(self) -> rn.GetTransactionsSC:
+        """Return gRPC batch-get-transactions request."""
+        return self.grpc_class(transactions=self.digests)
+
+
+@dataclass(kw_only=True)
+class GetTransactionKind(SuiCommand):
+    """Fetch the transaction kind for a single transaction by digest.
+
+    Returns the canonical :class:`~pysui.sui.sui_grpc.suimsgs.sui.rpc.v2.TransactionKind`
+    proto on both protocols, or ``None`` when the digest is not found.
+
+    .. note::
+       GQL limitations apply — see caveats :sup:`1,2,3` in the SuiCommands reference.
+    """
+
+    gql_class: ClassVar[type] = pgql_query.GetTransactionKindSC
+    grpc_class: ClassVar[type] = rn.GetTransactionKindSC
+
+    digest: str
+
+    def gql_node(self) -> pgql_query.GetTransactionKindSC:
+        """Return GQL transaction-kind query node."""
+        return self.gql_class(digest=self.digest)
+
+    def grpc_request(self) -> rn.GetTransactionKindSC:
+        """Return gRPC get-transaction-kind request."""
+        return self.grpc_class(digest=self.digest)
+

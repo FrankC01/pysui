@@ -3,25 +3,25 @@
 
 # -*- coding: utf-8 -*-
 
-"""Integration tests: SC getter commands (Steps 1-9, no gas required).
+"""Integration tests: SuiCommand getter and transaction-query commands.
 
-These tests exercise the GQL SC-sibling encode_fn path for all read-only
-SuiCommand subclasses implemented through Phase 5 Step 9.  They query
-only stable framework objects (0x2 package, 0x5 system state, 0x6 clock)
-and the active address's owned objects.  No faucet, no coin operations,
-and no transactions are needed.
+These tests exercise the GQL SC-sibling encode_fn path and the gRPC path for
+all read-only SuiCommand subclasses and transaction-query SuiCommands.  They
+query only stable framework objects (0x2, 0x5, 0x6) and the active address's
+owned objects, plus a live transaction submitted by the TxnDigests fixture.
 
-Run in isolation (no publish/faucet side effects):
-    pytest tests/integration_tests/test_sc_getters.py
+Run in isolation:
+    pytest tests/integration_tests/test_suicommands.py
 
 Commands covered:
-  Checkpoints : GetLatestCheckpoint, GetCheckpointBySequence
-  Package/mod : GetPackage, GetModule, GetMoveDataType, GetStructure, GetFunction
-  Paged       : GetStructures (SC paging branch), GetFunctions (SC paging branch)
-  Objects     : GetObject, GetMultipleObjects
-  Owned       : GetCoins, GetGas, GetObjectsOwnedByAddress
-  High-complex: GetDynamicFields
-  System state: GetLatestSuiSystemState, GetCurrentValidators (devnet + testnet paging)
+  Checkpoints  : GetLatestCheckpoint, GetCheckpointBySequence
+  Package/mod  : GetPackage, GetModule, GetMoveDataType, GetStructure, GetFunction
+  Paged        : GetStructures (SC paging), GetFunctions (SC paging)
+  Objects      : GetObject, GetMultipleObjects
+  Owned        : GetCoins, GetGas, GetObjectsOwnedByAddress
+  High-complex : GetDynamicFields
+  System state : GetLatestSuiSystemState, GetCurrentValidators
+  Transactions : GetTransaction, GetTransactions, GetTransactionKind
 """
 
 import pytest
@@ -47,6 +47,9 @@ from pysui.sui.sui_common.sui_commands import (
     GetPackage,
     GetStructure,
     GetStructures,
+    GetTransaction,
+    GetTransactions,
+    GetTransactionKind,
 )
 
 pytestmark = [
@@ -65,6 +68,9 @@ _SYSTEM_STATE_OBJ = (
 _CLOCK_OBJ = (
     "0x0000000000000000000000000000000000000000000000000000000000000006"
 )
+
+# Valid-format (32-byte base58) digest that does not exist on any network.
+_NONEXISTENT_DIGEST = "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi"
 
 
 # ---------------------------------------------------------------------------
@@ -511,3 +517,126 @@ async def test_get_current_validators_grpc_testnet() -> None:
         )
     finally:
         client.close()
+
+
+# ---------------------------------------------------------------------------
+# Transaction query tests — require txn_digests fixture (live PTBs submitted
+# once per session; digest1 via GQL, digest2 via gRPC)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(36)
+async def test_get_transaction_gql(txn_digests, gql_session_client: AsyncGqlClient) -> None:
+    """GetTransaction(digest1) via GQL returns ExecutedTransaction."""
+    result = await gql_session_client.execute(
+        command=GetTransaction(digest=txn_digests.digest1)
+    )
+    assert result.is_ok(), f"GetTransaction GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ExecutedTransaction)
+
+
+@pytest.mark.order(37)
+async def test_get_transaction_grpc(txn_digests, grpc_session_client: SuiGrpcClient) -> None:
+    """GetTransaction(digest1) via gRPC returns ExecutedTransaction."""
+    result = await grpc_session_client.execute(
+        command=GetTransaction(digest=txn_digests.digest1)
+    )
+    assert result.is_ok(), f"GetTransaction gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ExecutedTransaction)
+
+
+@pytest.mark.order(38)
+async def test_get_transaction_not_found_gql(gql_session_client: AsyncGqlClient) -> None:
+    """GetTransaction with non-existent digest via GQL returns is_ok() with None."""
+    result = await gql_session_client.execute(
+        command=GetTransaction(digest=_NONEXISTENT_DIGEST)
+    )
+    assert result.is_ok(), f"GetTransaction not-found GQL: {result.result_string}"
+    assert result.result_data is None
+
+
+@pytest.mark.order(39)
+async def test_get_transaction_not_found_grpc(grpc_session_client: SuiGrpcClient) -> None:
+    """GetTransaction with non-existent digest via gRPC returns is_ok() with None."""
+    result = await grpc_session_client.execute(
+        command=GetTransaction(digest=_NONEXISTENT_DIGEST)
+    )
+    assert result.is_ok(), f"GetTransaction not-found gRPC: {result.result_string}"
+    assert result.result_data is None
+
+
+@pytest.mark.order(40)
+async def test_get_transactions_mixed_gql(
+    txn_digests, gql_session_client: AsyncGqlClient
+) -> None:
+    """GetTransactions([digest1, nonexistent, digest2]) via GQL returns list of 3; slot 1 is None."""
+    result = await gql_session_client.execute(
+        command=GetTransactions(
+            digests=[txn_digests.digest1, _NONEXISTENT_DIGEST, txn_digests.digest2]
+        )
+    )
+    assert result.is_ok(), f"GetTransactions mixed GQL: {result.result_string}"
+    assert isinstance(result.result_data, list)
+    assert len(result.result_data) == 3
+    assert result.result_data[1] is None
+
+
+@pytest.mark.order(41)
+async def test_get_transactions_mixed_grpc(
+    txn_digests, grpc_session_client: SuiGrpcClient
+) -> None:
+    """GetTransactions([digest1, nonexistent, digest2]) via gRPC returns list of 3; slot 1 is None."""
+    result = await grpc_session_client.execute(
+        command=GetTransactions(
+            digests=[txn_digests.digest1, _NONEXISTENT_DIGEST, txn_digests.digest2]
+        )
+    )
+    assert result.is_ok(), f"GetTransactions mixed gRPC: {result.result_string}"
+    assert isinstance(result.result_data, list)
+    assert len(result.result_data) == 3
+    assert result.result_data[1] is None
+
+
+@pytest.mark.order(42)
+def test_get_transactions_none_slot_gql(txn_digests) -> None:
+    """GetTransactions([digest1, None, digest2]) raises ValueError at construction — None is invalid."""
+    with pytest.raises(ValueError):
+        GetTransactions(digests=[txn_digests.digest1, None, txn_digests.digest2])  # type: ignore[list-item]
+
+
+@pytest.mark.order(43)
+def test_get_transactions_none_slot_grpc(txn_digests) -> None:
+    """GetTransactions([digest1, None, digest2]) raises ValueError at construction — None is invalid."""
+    with pytest.raises(ValueError):
+        GetTransactions(digests=[txn_digests.digest1, None, txn_digests.digest2])  # type: ignore[list-item]
+
+
+@pytest.mark.order(44)
+def test_get_transactions_empty_raises() -> None:
+    """GetTransactions([]) raises ValueError at construction."""
+    with pytest.raises(ValueError):
+        GetTransactions(digests=[])
+
+
+@pytest.mark.order(45)
+async def test_get_transaction_kind_gql(
+    txn_digests, gql_session_client: AsyncGqlClient
+) -> None:
+    """GetTransactionKind(digest1) via GQL returns TransactionKind."""
+    result = await gql_session_client.execute(
+        command=GetTransactionKind(digest=txn_digests.digest1)
+    )
+    assert result.is_ok(), f"GetTransactionKind GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.TransactionKind)
+
+
+@pytest.mark.order(46)
+async def test_get_transaction_kind_grpc(
+    txn_digests, grpc_session_client: SuiGrpcClient
+) -> None:
+    """GetTransactionKind(digest1) via gRPC returns TransactionKind."""
+    result = await grpc_session_client.execute(
+        command=GetTransactionKind(digest=txn_digests.digest1)
+    )
+    assert result.is_ok(), f"GetTransactionKind gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.TransactionKind)

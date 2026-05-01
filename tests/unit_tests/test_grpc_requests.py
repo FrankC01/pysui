@@ -286,6 +286,82 @@ class TestTransactionRequests:
         obj = gr.GetTxKind(digest="abc")
         assert obj.field_mask is not None
 
+    def test_get_transaction_sc_is_get_transaction(self):
+        assert issubclass(gr.GetTransactionSC, gr.GetTransaction)
+
+    def test_get_transaction_sc_has_render(self):
+        assert hasattr(gr.GetTransactionSC, "render")
+
+    def test_get_transaction_sc_render_returns_transaction(self):
+        obj = gr.GetTransactionSC(digest="abc")
+        tx = sui_prot.ExecutedTransaction()
+        response = sui_prot.GetTransactionResponse(transaction=tx)
+        assert obj.render(response) is tx
+
+    def test_get_transaction_sc_render_none_for_missing(self):
+        obj = gr.GetTransactionSC(digest="abc")
+        response = sui_prot.GetTransactionResponse()
+        assert obj.render(response) is None
+
+    def test_get_transactions_sc_is_get_transactions(self):
+        assert issubclass(gr.GetTransactionsSC, gr.GetTransactions)
+
+    def test_get_transactions_sc_has_render(self):
+        assert hasattr(gr.GetTransactionsSC, "render")
+
+    def test_get_transactions_sc_render_returns_list(self):
+        obj = gr.GetTransactionsSC(transactions=["d1", "d2"])
+        tx1 = sui_prot.ExecutedTransaction()
+        tx2 = sui_prot.ExecutedTransaction()
+        response = sui_prot.BatchGetTransactionsResponse(
+            transactions=[
+                sui_prot.GetTransactionResult(transaction=tx1),
+                sui_prot.GetTransactionResult(transaction=tx2),
+            ]
+        )
+        result = obj.render(response)
+        assert result == [tx1, tx2]
+
+    def test_get_transactions_sc_render_preserves_none_slot(self):
+        obj = gr.GetTransactionsSC(transactions=["d1", "fake", "d2"])
+        tx1 = sui_prot.ExecutedTransaction()
+        tx2 = sui_prot.ExecutedTransaction()
+        response = sui_prot.BatchGetTransactionsResponse(
+            transactions=[
+                sui_prot.GetTransactionResult(transaction=tx1),
+                sui_prot.GetTransactionResult(),
+                sui_prot.GetTransactionResult(transaction=tx2),
+            ]
+        )
+        result = obj.render(response)
+        assert len(result) == 3
+        assert result[0] is tx1
+        assert result[1] is None
+        assert result[2] is tx2
+
+    def test_get_transaction_kind_sc_is_get_transaction(self):
+        assert issubclass(gr.GetTransactionKindSC, gr.GetTransaction)
+
+    def test_get_transaction_kind_sc_has_render(self):
+        assert hasattr(gr.GetTransactionKindSC, "render")
+
+    def test_get_transaction_kind_sc_field_mask(self):
+        obj = gr.GetTransactionKindSC(digest="abc")
+        assert obj.field_mask is not None
+
+    def test_get_transaction_kind_sc_render_returns_kind(self):
+        obj = gr.GetTransactionKindSC(digest="abc")
+        kind = sui_prot.TransactionKind()
+        tx = sui_prot.Transaction(kind=kind)
+        executed = sui_prot.ExecutedTransaction(transaction=tx)
+        response = sui_prot.GetTransactionResponse(transaction=executed)
+        assert obj.render(response) is kind
+
+    def test_get_transaction_kind_sc_render_none_for_missing(self):
+        obj = gr.GetTransactionKindSC(digest="abc")
+        response = sui_prot.GetTransactionResponse()
+        assert obj.render(response) is None
+
     def test_execute_transaction_bytes_tx(self):
         obj = gr.ExecuteTransaction(tx_bytestr=b"\x00\x01", sig_array=[b"\x02"])
         assert obj.service == absreq.Service.TRANSACTION

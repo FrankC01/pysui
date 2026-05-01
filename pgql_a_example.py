@@ -109,8 +109,8 @@ async def do_gas_ids(client: AsyncSuiGQLClient):
     result = await client.execute(
         command=cmd.GetCoins(owner=client.config.active_address)
     )
-    if result.is_ok() and result.result_data.data:
-        cids = [x.coin_object_id for x in result.result_data.data]
+    if result.is_ok() and result.result_data.objects:
+        cids = [x.object_id for x in result.result_data.objects]
         result = handle_result(
             await client.execute_query_node(  # protocol-level access: GetMultipleGasObjects
                 with_node=qn.GetMultipleGasObjects(coin_object_ids=cids)
@@ -119,7 +119,7 @@ async def do_gas_ids(client: AsyncSuiGQLClient):
     elif result.is_err():
         print(f"Error calling GraphQL {result.result_string}")
     else:
-        print(f"Data return from call is empty {result.result_data.data}")
+        print(f"Data return from call is empty {result.result_data.objects}")
 
 
 async def do_sysstate(client: AsyncSuiGQLClient):
@@ -146,11 +146,11 @@ async def do_address_balances(client: AsyncClientBase):
     )
     handle_result(result)
     if result.is_ok():
-        while result.result_data.next_cursor.hasNextPage:
+        while result.result_data.next_page_token:
             result = await client.execute(
                 command=cmd.GetAddressCoinBalances(
                     owner=client.config.active_address,
-                    next_page=result.result_data.next_cursor,
+                    next_page=result.result_data.next_page_token,
                 )
             )
             handle_result(result)
@@ -296,41 +296,27 @@ async def do_chain_id(client: AsyncClientBase):
     handle_result(await client.execute(command=cmd.GetChainIdentifier()))
 
 
-async def do_tx(client: AsyncSuiGQLClient):
-    """Fetch specific transaction by it's digest.
-    protocol-level access: GetTx SuiCommand removed; use legacy GQL query directly.
-    """
+async def do_tx(client: AsyncClientBase):
+    """Fetch specific transaction by its digest."""
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetTx(digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz")
+        await client.execute(
+            command=cmd.GetTransaction(digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz")
         )
     )
 
 
-async def do_txs(client: AsyncSuiGQLClient):
-    """Fetch transactions.
-    protocol-level access: GetMultipleTx (batch by digest) is not supported by GraphQL via SuiCommand.
-    Use GetFilteredTx for filtered queries over GraphQL.
-
-    We loop through 3 pages.
-    """
-    result = await client.execute_query_node(  # protocol-level access: gql_class=None for GetMultipleTx
-        with_node=qn.GetMultipleTx()
+async def do_txs(client: AsyncClientBase):
+    """Fetch multiple transactions by digest list."""
+    handle_result(
+        await client.execute(
+            command=cmd.GetTransactions(
+                digests=[
+                    "A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz",
+                    # Add additional digests here
+                ]
+            )
+        )
     )
-    handle_result(result)
-    if result.is_ok():
-        max_page = 3
-        in_page = 0
-        while True:
-            in_page += 1
-            if in_page < max_page and result.result_data.next_cursor:
-                result = await client.execute_query_node(
-                    with_node=qn.GetMultipleTx(next_page=result.result_data.next_cursor)
-                )
-                handle_result(result)
-            else:
-                break
-        print("DONE")
 
 
 async def do_filter_txs(client: AsyncSuiGQLClient):
@@ -358,13 +344,11 @@ async def do_filter_txs(client: AsyncSuiGQLClient):
             break
 
 
-async def do_tx_kind(client: AsyncSuiGQLClient):
-    """Fetch the PTB details from transaction.
-    protocol-level access: GetTxKind SuiCommand removed; use legacy GQL query directly.
-    """
+async def do_tx_kind(client: AsyncClientBase):
+    """Fetch the ProgrammableTransaction kind from a transaction."""
     handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetTxKind(digest="ENTER TRANSACTION DIGEST HERE")
+        await client.execute(
+            command=cmd.GetTransactionKind(digest="ENTER TRANSACTION DIGEST HERE")
         )
     )
 
@@ -384,10 +368,11 @@ async def do_sequence_cp(client: AsyncClientBase):
     """."""
     result = await client.execute(command=cmd.GetLatestCheckpoint())
     if result.is_ok():
-        cp: ptypes.CheckpointGQL = result.result_data
         handle_result(
             await client.execute(
-                command=cmd.GetCheckpointBySequence(sequence_number=cp.sequence_number)
+                command=cmd.GetCheckpointBySequence(
+                    sequence_number=result.result_data.checkpoint.sequence_number
+                )
             )
         )
     else:
@@ -617,10 +602,10 @@ async def do_split_any_half(client: AsyncClientBase):
     result = await client.execute(
         command=cmd.GetCoins(owner=client.config.active_address)
     )
-    if result.is_ok() and len(result.result_data.data) > 1:
-        amount = int(int(result.result_data.data[0].balance) / 2)
+    if result.is_ok() and len(result.result_data.objects) > 1:
+        amount = int(int(result.result_data.objects[0].balance) / 2)
         txer: AsyncSuiTransaction = await client.transaction()
-        scres = await txer.split_coin(coin=result.result_data.data[0], amounts=[amount])
+        scres = await txer.split_coin(coin=result.result_data.objects[0], amounts=[amount])
         await txer.transfer_objects(
             transfers=[scres], recipient=client.config.active_address
         )
@@ -678,12 +663,12 @@ async def do_unstake(client: AsyncClientBase):
 
     owner = client.config.active_address
     result = await client.execute(command=cmd.GetDelegatedStakes(owner=owner))
-    if result.is_ok() and result.result_data.staked_coins:
+    if result.is_ok() and result.result_data.objects:
         txer: AsyncSuiTransaction = await client.transaction()
 
         # Unstake the first staked coin
         await txer.unstake_coin(
-            staked_coin=result.result_data.staked_coins[0].object_id
+            staked_coin=result.result_data.objects[0].object_id
         )
         # Uncomment to simulate (dry run)
         handle_result(

@@ -26,9 +26,9 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 - `pysui/sui/sui_pgql/pgql_types.py`: new `OpenMove*GQL` dataclass hierarchy mirroring the GQL schema — `OpenMoveTypeGQL`, `OpenMoveTypeSignatureGQL`, `OpenMoveScalarBodyGQL`, `OpenMoveVectorBodyGQL`, `OpenMoveDatatypeBodyGQL`, `OpenMoveTypeParamBodyGQL` — replaces fragile dict-based Move type representation
 - `pysui/sui/sui_common/txn_arg_encoder.py`: new metadata-driven argument encoder using `@singledispatch` over `OpenMoveBodyGQL` variants; `_BaseArgParser` ABC with abstract `fetch_or_transpose_object` for protocol-specific object resolution; shared by both GQL and gRPC transaction builders
-- 68 integration tests across two suites: `tests/integration_tests/test_move_call_encoding.py` (33 tests covering scalar, vector, Option, object reference, and generic type parameter encoding across GQL async, GQL sync, gRPC, and caching transaction builders) and `tests/integration_tests/test_sc_getters.py` (35 tests covering all SuiCommand getter subclasses against live GQL and gRPC transports)
+- 82 integration tests across two suites: `tests/integration_tests/test_move_call_encoding.py` (36 tests covering scalar, vector, Option, object reference, and generic type parameter encoding across GQL async, GQL sync, gRPC, and caching transaction builders) and `tests/integration_tests/test_suicommands.py` (46 tests covering all SuiCommand subclasses against live GQL and gRPC transports)
 
-- Added 800 offline unit tests (no network required) across 25 files in `tests/unit_tests/`
+- Added 867 offline unit tests (no network required) across 25 files in `tests/unit_tests/`
 - `GqlParallelTransactionExecutor`: GraphQL parallel transaction executor with conflict tracking,
   gas coin pool management (coins mode), and address-balance mode
 - `GrpcSerialTransactionExecutor`: gRPC serial transaction executor with the same interface as
@@ -43,9 +43,9 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 - `AsyncClientBase` abstract base class (`pysui/abstracts/async_client.py`): replaces `PysuiClient` as the shared async interface; declares `execute(command, *, timeout=None, headers=None) -> SuiRpcResult` as a fourth abstract method alongside `transaction()`, `__aenter__()`, and `__aexit__()`; `client_factory()` return annotation updated from `PysuiClient` to `AsyncClientBase`
 
-- `SuiCommand` ABC (`pysui/sui/sui_common/sui_command.py`) and 38 built-in subclasses (`pysui/sui/sui_common/sui_commands.py`): protocol-neutral request objects forming the **Unified Client Interface (UCI)**; `await client.execute(command=...)` dispatches identically on both `AsyncSuiGQLClient` and `SuiGrpcClient`; every subclass works on both transports and returns the same canonical gRPC proto dataclass output regardless of protocol; `GetStructures` and `GetFunctions` auto-paginate transparently on GraphQL; all 38 subclasses exported from `pysui`
+- `SuiCommand` ABC (`pysui/sui/sui_common/sui_command.py`) and 41 built-in subclasses (`pysui/sui/sui_common/sui_commands.py`): protocol-neutral request objects forming the **Unified Client Interface (UCI)**; `await client.execute(command=...)` dispatches identically on both `AsyncSuiGQLClient` and `SuiGrpcClient`; every subclass works on both transports and returns the same canonical gRPC proto dataclass output regardless of protocol; `GetStructures` and `GetFunctions` auto-paginate transparently on GraphQL; all 41 subclasses exported from `pysui`; includes `GetTransaction`, `GetTransactions`, and `GetTransactionKind` for fetching executed transactions by digest
 
-- SC sibling query nodes in `pysui/sui/sui_pgql/pgql_query.py`: 22 GQL-side protocol bridges whose `encode_fn()` produces gRPC proto dataclasses directly, enabling the UCI canonical-output guarantee across all 38 SuiCommand subclasses
+- SC sibling query nodes in `pysui/sui/sui_pgql/pgql_query.py`: 25 GQL-side protocol bridges whose `encode_fn()` produces gRPC proto dataclasses directly, enabling the UCI canonical-output guarantee across all 41 SuiCommand subclasses
 
 ### Deprecated
 

@@ -37,6 +37,7 @@ from pysui.sui.sui_constants import DEVNET_FAUCET_URLV1, TESTNET_FAUCET_URLV1
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 from pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 import ChangedObjectInputObjectState
+import pysui.sui.sui_common.sui_commands as cmd
 
 
 _FAUCET_BY_PROFILE: dict[str, str] = {
@@ -348,7 +349,7 @@ async def ensure_session_gas(
 
     # Pass 1 — top up coin objects for all sender addresses via faucet.
     for address in addresses:
-        result = await grpc_session_client.execute(
+        result = await grpc_session_client.execute_grpc_request(
             request=rn.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
         )
         assert result.is_ok(), f"GetAddressCoinBalance failed for {address}: {result.result_string}"
@@ -357,7 +358,7 @@ async def ensure_session_gas(
     # Pass 2 — top up address accumulator for all sender addresses.
     #           GQL client's coin objects pay for each send_funds transaction.
     for address in addresses:
-        result = await grpc_session_client.execute(
+        result = await grpc_session_client.execute_grpc_request(
             request=rn.GetAddressCoinBalance(owner=address, coin_type="0x2::sui::SUI")
         )
         assert result.is_ok(), f"GetAddressCoinBalance failed for {address}: {result.result_string}"
@@ -516,3 +517,55 @@ async def published_grpc(
     )
     await asyncio.sleep(SETTLE_SECS)
     return _grpc_extract_publish_result(result.result_data)
+
+
+# ---------------------------------------------------------------------------
+# TxnDigests — one known-good digest per protocol for transaction query tests
+# ---------------------------------------------------------------------------
+
+
+class TxnDigests(NamedTuple):
+    """A pair of on-chain transaction digests, one submitted per protocol."""
+
+    digest1: str  # submitted via GQL ExecuteTransaction SuiCommand
+    digest2: str  # submitted via gRPC ExecuteTransaction SuiCommand
+
+
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def txn_digests(
+    gql_session_client: AsyncGqlClient,
+    grpc_session_client: SuiGrpcClient,
+    ensure_session_gas: None,
+) -> TxnDigests:
+    """Submit one trivial PTB per protocol and return both digests.
+
+    Each PTB: split_coin(gas, [1_000]) + transfer_objects([result], active_address).
+    Implicitly exercises ExecuteTransaction SuiCommand on both protocols.
+    """
+    # GQL PTB
+    gql_txer = await gql_session_client.transaction()
+    gql_coin = await gql_txer.split_coin(coin=gql_txer.gas, amounts=[1_000])
+    await gql_txer.transfer_objects(
+        transfers=[gql_coin], recipient=gql_session_client.config.active_address
+    )
+    gql_result = await gql_session_client.execute(
+        command=cmd.ExecuteTransaction(**await gql_txer.build_and_sign())
+    )
+    assert gql_result.is_ok(), f"GQL ExecuteTransaction failed: {gql_result.result_string}"
+    digest1: str = gql_result.result_data.digest
+    await asyncio.sleep(SETTLE_SECS)
+
+    # gRPC PTB
+    grpc_txer = await grpc_session_client.transaction()
+    grpc_coin = await grpc_txer.split_coin(coin=grpc_txer.gas, amounts=[1_000])
+    await grpc_txer.transfer_objects(
+        transfers=[grpc_coin], recipient=grpc_session_client.config.active_address
+    )
+    grpc_result = await grpc_session_client.execute(
+        command=cmd.ExecuteTransaction(**await grpc_txer.build_and_sign())
+    )
+    assert grpc_result.is_ok(), f"gRPC ExecuteTransaction failed: {grpc_result.result_string}"
+    digest2: str = grpc_result.result_data.transaction.digest
+    await asyncio.sleep(SETTLE_SECS)
+
+    return TxnDigests(digest1=digest1, digest2=digest2)

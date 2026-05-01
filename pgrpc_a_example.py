@@ -230,20 +230,20 @@ async def do_chain_id(client: AsyncClientBase):
 
 
 async def do_tx(client: AsyncClientBase):
-    """Fetch specific transaction by it's digest."""
+    """Fetch specific transaction by its digest."""
     handle_result(
         await client.execute(
-            command=cmd.GetTx(digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe")
+            command=cmd.GetTransaction(digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe")
         )
     )
 
 
 async def do_txs(client: AsyncClientBase):
-    """Fetch transactions."""
+    """Fetch multiple transactions by digest list."""
     handle_result(
         await client.execute(
-            command=cmd.GetMultipleTx(
-                transactions=["4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"]
+            command=cmd.GetTransactions(
+                digests=["4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"]
             )
         )
     )
@@ -257,10 +257,10 @@ async def do_filter_txs(client: AsyncClientBase):
 
 
 async def do_tx_kind(client: AsyncClientBase):
-    """Fetch the PTB details from transaction."""
+    """Fetch the ProgrammableTransaction kind from a transaction."""
     handle_result(
         await client.execute(
-            command=cmd.GetTxKind(digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe")
+            command=cmd.GetTransactionKind(digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe")
         )
     )
 

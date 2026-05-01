@@ -17,6 +17,7 @@ from pysui import PysuiConfiguration, PysuiClient
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
+import pysui.sui.sui_common.sui_commands as cmd
 
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
@@ -552,7 +553,7 @@ async def txn_count(client: PysuiClient, _args: argparse.Namespace) -> None:
 
 async def txn_txn(client: PysuiClient, args: argparse.Namespace) -> None:
     """Transaction information request handler."""
-    result = await client.execute_query_node(with_node=qn.GetTx(digest=args.digest))
+    result = await client.execute(command=cmd.GetTransaction(digest=args.digest))
     handle_result(result)
 
 

@@ -259,8 +259,8 @@ class GetCoinSummarySC(GetCoinSummary):
             balance = None
             if "asMoveObject" in obj and "contents" in obj["asMoveObject"]:
                 contents = obj["asMoveObject"]["contents"].get("json")
-                if contents and isinstance(contents, dict) and "fields" in contents:
-                    balance = contents["fields"].get("balance")
+                if contents and isinstance(contents, dict):
+                    balance = contents.get("balance")
             return sui_prot.GetObjectResponse(
                 object=sui_prot.Object(
                     object_id=flat.get("address"),
@@ -1303,6 +1303,148 @@ class GetTxKind(PGQL_QueryNode):
     def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionKindGQL], None]:
         """Return the serializer to TransactionKindGQL function."""
         return pgql_type.TransactionKindGQL.from_query  # type: ignore[return-value]
+
+
+class GetTransactionSC(GetTx):
+    """SC variant: maps GQL transaction query to ExecutedTransaction proto."""
+
+    def __init__(self, *, digest: str) -> None:
+        """QueryNode initializer."""
+        super().__init__(digest=digest)
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build transaction query with metadata + BCS fields. Kind decoded from BCS."""
+        tx_effects = frag.StandardTxEffects().fragment(schema)
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
+        qres = schema.Query.transaction(digest=self.digest)
+        qres.select(
+            schema.Transaction.digest,
+            schema.Transaction.signatures.select(schema.UserSignature.signatureBytes),
+            schema.Transaction.sender.select(
+                submitter_address=schema.Address.address
+            ),
+            schema.Transaction.expiration.select(schema.Epoch.epochId),
+            schema.Transaction.gasInput.select(
+                transaction_budget=schema.GasInput.gasBudget,
+                price=schema.GasInput.gasPrice,
+                sponsor=schema.GasInput.gasSponsor.select(
+                    sponsor_address=schema.Address.address
+                ),
+                sponsor_pay_with=schema.GasInput.gasPayment.select(
+                    gas_objects=schema.ObjectConnection.nodes.select(base_object)
+                ),
+            ),
+            schema.Transaction.effects.select(
+                tx_effects,
+                schema.TransactionEffects.effectsBcs,
+            ),
+            schema.Transaction.transactionBcs,
+        )
+        return dsl_gql(
+            tx_effects,
+            base_object,
+            std_object,
+            gas_cost,
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], "sui_prot.ExecutedTransaction | None"]:
+        """Return encoder mapping GQL transaction dict to ExecutedTransaction proto."""
+
+        def _encode(in_data: dict) -> "sui_prot.ExecutedTransaction | None":
+            return _encode_executed_tx(in_data.get("transaction"))
+
+        return _encode
+
+
+class GetTransactionsSC(GetMultipleTransactions):
+    """SC variant: maps GQL multi-transaction query to list[ExecutedTransaction | None]."""
+
+    def __init__(self, *, digests: list[str]) -> None:
+        """QueryNode initializer."""
+        super().__init__(digests=digests)
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build multi-transaction query with metadata + BCS fields. Kind decoded from BCS."""
+        tx_effects = frag.StandardTxEffects().fragment(schema)
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        gas_cost = frag.GasCost().fragment(schema)
+        qres = schema.Query.multiGetTransactions(keys=self.digests)
+        qres.select(
+            schema.Transaction.digest,
+            schema.Transaction.signatures.select(schema.UserSignature.signatureBytes),
+            schema.Transaction.sender.select(
+                submitter_address=schema.Address.address
+            ),
+            schema.Transaction.expiration.select(schema.Epoch.epochId),
+            schema.Transaction.gasInput.select(
+                transaction_budget=schema.GasInput.gasBudget,
+                price=schema.GasInput.gasPrice,
+                sponsor=schema.GasInput.gasSponsor.select(
+                    sponsor_address=schema.Address.address
+                ),
+                sponsor_pay_with=schema.GasInput.gasPayment.select(
+                    gas_objects=schema.ObjectConnection.nodes.select(base_object)
+                ),
+            ),
+            schema.Transaction.effects.select(
+                tx_effects,
+                schema.TransactionEffects.effectsBcs,
+            ),
+            schema.Transaction.transactionBcs,
+        )
+        return dsl_gql(
+            tx_effects,
+            base_object,
+            std_object,
+            gas_cost,
+            DSLQuery(qres),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], "list[sui_prot.ExecutedTransaction | None]"]:
+        """Return encoder mapping GQL multi-transaction dict to list of ExecutedTransaction protos."""
+
+        def _encode(in_data: dict) -> "list[sui_prot.ExecutedTransaction | None]":
+            tx_list = in_data.get("multiGetTransactions") or []
+            return [_encode_executed_tx(tx) for tx in tx_list]
+
+        return _encode
+
+
+class GetTransactionKindSC(GetTxKind):
+    """SC variant: maps GQL transaction kind query to TransactionKind proto."""
+
+    def __init__(self, digest: str) -> None:
+        """QueryNode initializer."""
+        super().__init__(digest=digest)
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Minimal kind query: fetch only __typename to stay under the 300-node limit."""
+        qres = schema.Query.transaction(digest=self.digest).alias("transaction")
+        qres.select(
+            schema.Transaction.kind.select(
+                tx_kind=DSLMetaField("__typename"),
+            )
+        )
+        return dsl_gql(DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], "sui_prot.TransactionKind | None"]:
+        """Return encoder mapping GQL transaction kind dict to TransactionKind proto."""
+
+        def _encode(in_data: dict) -> "sui_prot.TransactionKind | None":
+            tx_block = in_data.get("transaction")
+            if not tx_block:
+                return None
+            kind_dict = tx_block.get("kind") or {}
+            return _encode_tx_kind(kind_dict)
+
+        return _encode
 
 
 class GetDelegatedStakes(PGQL_QueryNode):
@@ -2914,9 +3056,7 @@ def _encode_coin_from_move_obj(mo_dict: dict) -> sui_prot.Object:
     if isinstance(contents, dict):
         coin_json = contents.get("json") or {}
         if isinstance(coin_json, dict):
-            fields = coin_json.get("fields") or {}
-            if isinstance(fields, dict):
-                balance_raw = fields.get("balance")
+            balance_raw = coin_json.get("balance")
     return sui_prot.Object(
         object_id=mo_dict.get("coin_object_id"),
         version=int(mo_dict.get("version") or 0),
@@ -3723,3 +3863,436 @@ class GetCurrentValidatorsSC(GetCurrentValidators):
         return _encode
 
 
+def _parse_gql_datetime(ts_str: "str | None") -> "datetime.datetime | None":
+    if not ts_str:
+        return None
+    if ts_str.endswith("Z"):
+        ts_str = ts_str[:-1] + "+00:00"
+    return datetime.datetime.fromisoformat(ts_str)
+
+
+def _encode_argument(arg_dict: dict) -> "sui_prot.Argument":
+    tn = arg_dict.get("__typename")
+    if tn == "GasCoin":
+        return sui_prot.Argument(kind=sui_prot.ArgumentArgumentKind.GAS)
+    if tn == "Input":
+        return sui_prot.Argument(
+            kind=sui_prot.ArgumentArgumentKind.INPUT,
+            input=arg_dict.get("input_index"),
+        )
+    if tn == "TxResult":
+        ix = arg_dict.get("result_index")
+        return sui_prot.Argument(
+            kind=sui_prot.ArgumentArgumentKind.RESULT,
+            result=arg_dict.get("cmd"),
+            subresult=ix,
+        )
+    return sui_prot.Argument()
+
+
+def _encode_ptb_inputs(inputs_conn: "dict | None") -> "list[sui_prot.Input]":
+    if not inputs_conn:
+        return []
+    nodes = inputs_conn.get("nodes") or []
+    result = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        tn = node.get("input_typename")
+        if tn == "OwnedOrImmutable":
+            obj = node.get("object") or {}
+            inp = sui_prot.Input(
+                kind=sui_prot.InputInputKind.IMMUTABLE_OR_OWNED,
+                object_id=obj.get("address"),
+                version=obj.get("version"),
+                digest=obj.get("digest"),
+            )
+        elif tn == "Pure":
+            b64 = node.get("base64_bytes")
+            inp = sui_prot.Input(
+                kind=sui_prot.InputInputKind.PURE,
+                pure=base64.b64decode(b64) if b64 else b"",
+            )
+        elif tn == "SharedInput":
+            inp = sui_prot.Input(
+                kind=sui_prot.InputInputKind.SHARED,
+                object_id=node.get("address"),
+                version=node.get("initialSharedVersion"),
+                mutable=node.get("mutable"),
+            )
+        elif tn == "Receiving":
+            obj = node.get("object") or {}
+            inp = sui_prot.Input(
+                kind=sui_prot.InputInputKind.RECEIVING,
+                object_id=obj.get("address"),
+                version=obj.get("version"),
+                digest=obj.get("digest"),
+            )
+        else:
+            inp = sui_prot.Input()
+        result.append(inp)
+    return result
+
+
+def _encode_ptb_commands(commands_conn: "dict | None") -> "list[sui_prot.Command]":
+    if not commands_conn:
+        return []
+    nodes = commands_conn.get("nodes") or []
+    result = []
+    for cmd in nodes:
+        if not isinstance(cmd, dict):
+            continue
+        tn = cmd.get("tx_typename")
+        if tn == "MoveCallCommand":
+            func = cmd.get("function") or {}
+            module = func.get("module") or {}
+            package = module.get("package") or {}
+            result.append(
+                sui_prot.Command(
+                    move_call=sui_prot.MoveCall(
+                        package=package.get("address"),
+                        module=module.get("name"),
+                        function=func.get("name"),
+                        arguments=[
+                            _encode_argument(a) for a in (cmd.get("arguments") or [])
+                        ],
+                    )
+                )
+            )
+        elif tn == "TransferObjectsCommand":
+            result.append(
+                sui_prot.Command(
+                    transfer_objects=sui_prot.TransferObjects(
+                        objects=[
+                            _encode_argument(a) for a in (cmd.get("inputs") or [])
+                        ],
+                        address=_encode_argument(cmd.get("address") or {}),
+                    )
+                )
+            )
+        elif tn == "SplitCoinsCommand":
+            result.append(
+                sui_prot.Command(
+                    split_coins=sui_prot.SplitCoins(
+                        coin=_encode_argument(cmd.get("coin") or {}),
+                        amounts=[
+                            _encode_argument(a) for a in (cmd.get("amounts") or [])
+                        ],
+                    )
+                )
+            )
+        elif tn == "MergeCoinsCommand":
+            result.append(
+                sui_prot.Command(
+                    merge_coins=sui_prot.MergeCoins(
+                        coin=_encode_argument(cmd.get("coin") or {}),
+                        coins_to_merge=[
+                            _encode_argument(a) for a in (cmd.get("coins") or [])
+                        ],
+                    )
+                )
+            )
+        elif tn == "PublishCommand":
+            result.append(
+                sui_prot.Command(
+                    publish=sui_prot.Publish(
+                        modules=[
+                            base64.b64decode(m) for m in (cmd.get("modules") or [])
+                        ],
+                        dependencies=cmd.get("dependencies") or [],
+                    )
+                )
+            )
+        elif tn == "UpgradeCommand":
+            result.append(
+                sui_prot.Command(
+                    upgrade=sui_prot.Upgrade(
+                        modules=[
+                            base64.b64decode(m) for m in (cmd.get("modules") or [])
+                        ],
+                        dependencies=cmd.get("dependencies") or [],
+                        package=cmd.get("currentPackage"),
+                        ticket=_encode_argument(cmd.get("upgradeTicket") or {}),
+                    )
+                )
+            )
+        elif tn == "MakeMoveVecCommand":
+            vtype = (cmd.get("vector_type") or {}).get("repr")
+            result.append(
+                sui_prot.Command(
+                    make_move_vector=sui_prot.MakeMoveVector(
+                        element_type=vtype,
+                        elements=[
+                            _encode_argument(a) for a in (cmd.get("elements") or [])
+                        ],
+                    )
+                )
+            )
+        else:
+            result.append(sui_prot.Command())
+    return result
+
+
+def _encode_programmable_tx(kind_dict: dict) -> "sui_prot.ProgrammableTransaction":
+    return sui_prot.ProgrammableTransaction(
+        inputs=_encode_ptb_inputs(kind_dict.get("inputs")),
+        commands=_encode_ptb_commands(kind_dict.get("commands")),
+    )
+
+
+def _encode_ccp_kind(kind_dict: dict) -> "sui_prot.ConsensusCommitPrologue":
+    return sui_prot.ConsensusCommitPrologue(
+        epoch=(kind_dict.get("epoch") or {}).get("epochId"),
+        round=kind_dict.get("consensusRound"),
+        commit_timestamp=_parse_gql_datetime(kind_dict.get("commitTimestamp")),
+        consensus_commit_digest=kind_dict.get("consensusCommitDigest"),
+        sub_dag_index=kind_dict.get("subDagIndex"),
+        additional_state_digest=kind_dict.get("additionalStateDigest"),
+    )
+
+
+def _encode_auth_state_update_kind(kind_dict: dict) -> "sui_prot.AuthenticatorStateUpdate":
+    jwks = []
+    for node in ((kind_dict.get("newActiveJwks") or {}).get("nodes") or []):
+        jwk_id = sui_prot.JwkId(iss=node.get("iss"), kid=node.get("kid"))
+        jwk = sui_prot.Jwk(
+            kty=node.get("kty"), e=node.get("e"), n=node.get("n"), alg=node.get("alg")
+        )
+        epoch_id = (node.get("epoch") or {}).get("epochId")
+        jwks.append(sui_prot.ActiveJwk(id=jwk_id, jwk=jwk, epoch=epoch_id))
+    return sui_prot.AuthenticatorStateUpdate(
+        epoch=(kind_dict.get("epoch") or {}).get("epochId"),
+        round=kind_dict.get("consensusRound"),
+        new_active_jwks=jwks,
+        authenticator_object_initial_shared_version=kind_dict.get(
+            "authenticatorObjInitialSharedVersion"
+        ),
+    )
+
+
+def _encode_randomness_update_kind(kind_dict: dict) -> "sui_prot.RandomnessStateUpdate":
+    rb = kind_dict.get("randomBytes")
+    return sui_prot.RandomnessStateUpdate(
+        epoch=(kind_dict.get("epoch") or {}).get("epochId"),
+        randomness_round=kind_dict.get("randomnessRound"),
+        random_bytes=base64.b64decode(rb) if rb else b"",
+        randomness_object_initial_shared_version=kind_dict.get(
+            "randomnessObjInitialSharedVersion"
+        ),
+    )
+
+
+def _encode_change_epoch_kind(kind_dict: dict) -> "sui_prot.ChangeEpoch":
+    return sui_prot.ChangeEpoch(
+        epoch=(kind_dict.get("epoch") or {}).get("epochId"),
+        protocol_version=(kind_dict.get("protocolConfigs") or {}).get("protocolVersion"),
+        storage_charge=int(kind_dict.get("storageCharge") or 0),
+        computation_charge=int(kind_dict.get("computationCharge") or 0),
+        storage_rebate=int(kind_dict.get("storageRebate") or 0),
+        non_refundable_storage_fee=int(kind_dict.get("nonRefundableStorageFee") or 0),
+        epoch_start_timestamp=_parse_gql_datetime(kind_dict.get("epochStartTimestamp")),
+    )
+
+
+def _encode_end_of_epoch_kind(kind_dict: dict) -> "sui_prot.EndOfEpochTransaction":
+    transactions = []
+    for node in ((kind_dict.get("transactions") or {}).get("nodes") or []):
+        tx_kind = node.get("tx_kind")
+        if tx_kind == "ChangeEpochTransaction":
+            transactions.append(
+                sui_prot.EndOfEpochTransactionKind(
+                    change_epoch=_encode_change_epoch_kind(node)
+                )
+            )
+        elif tx_kind == "AuthenticatorStateExpireTransaction":
+            min_epoch = (node.get("minEpoch") or {}).get("epochId")
+            transactions.append(
+                sui_prot.EndOfEpochTransactionKind(
+                    authenticator_state_expire=sui_prot.AuthenticatorStateExpire(
+                        min_epoch=min_epoch,
+                        authenticator_object_initial_shared_version=node.get(
+                            "authenticatorObjInitialSharedVersion"
+                        ),
+                    )
+                )
+            )
+        else:
+            transactions.append(sui_prot.EndOfEpochTransactionKind())
+    return sui_prot.EndOfEpochTransaction(transactions=transactions)
+
+
+def _encode_genesis_kind(kind_dict: dict) -> "sui_prot.GenesisTransaction":
+    objs = []
+    for node in ((kind_dict.get("objects") or {}).get("nodes") or []):
+        objs.append(
+            sui_prot.Object(
+                object_id=node.get("address"),
+                version=node.get("version"),
+                digest=node.get("digest"),
+            )
+        )
+    return sui_prot.GenesisTransaction(objects=objs)
+
+
+def _encode_tx_kind(kind_dict: dict) -> "sui_prot.TransactionKind":
+    tn = kind_dict.get("tx_kind")
+    if tn == "ProgrammableTransaction":
+        return sui_prot.TransactionKind(
+            programmable_transaction=_encode_programmable_tx(kind_dict)
+        )
+    if tn == "ChangeEpochTransaction":
+        return sui_prot.TransactionKind(change_epoch=_encode_change_epoch_kind(kind_dict))
+    if tn == "GenesisTransaction":
+        return sui_prot.TransactionKind(genesis=_encode_genesis_kind(kind_dict))
+    if tn == "ConsensusCommitPrologueTransaction":
+        return sui_prot.TransactionKind(
+            consensus_commit_prologue=_encode_ccp_kind(kind_dict)
+        )
+    if tn == "AuthenticatorStateUpdateTransaction":
+        return sui_prot.TransactionKind(
+            authenticator_state_update=_encode_auth_state_update_kind(kind_dict)
+        )
+    if tn == "EndOfEpochTransaction":
+        return sui_prot.TransactionKind(end_of_epoch=_encode_end_of_epoch_kind(kind_dict))
+    if tn == "RandomnessStateUpdateTransaction":
+        return sui_prot.TransactionKind(
+            randomness_state_update=_encode_randomness_update_kind(kind_dict)
+        )
+    return sui_prot.TransactionKind()
+
+
+def _encode_gas_payment(
+    gas_input: dict, sender_addr: "str | None"
+) -> "sui_prot.GasPayment":
+    sponsor = gas_input.get("sponsor") or {}
+    owner = sponsor.get("sponsor_address") or sender_addr
+    gas_objects = (gas_input.get("sponsor_pay_with") or {}).get("gas_objects") or []
+    obj_refs = [
+        sui_prot.ObjectReference(
+            object_id=go.get("object_id"),
+            version=go.get("version"),
+            digest=go.get("object_digest"),
+        )
+        for go in gas_objects
+        if isinstance(go, dict)
+    ]
+    return sui_prot.GasPayment(
+        objects=obj_refs,
+        owner=owner,
+        price=int(gas_input.get("price") or 0),
+        budget=int(gas_input.get("transaction_budget") or 0),
+    )
+
+
+def _encode_expiration(
+    exp_dict: "dict | None",
+) -> "sui_prot.TransactionExpiration | None":
+    if not exp_dict:
+        return None
+    epoch_id = exp_dict.get("epochId")
+    if epoch_id is not None:
+        return sui_prot.TransactionExpiration(
+            kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
+            epoch=epoch_id,
+        )
+    return None
+
+
+def _encode_balance_changes(nodes: list) -> "list[sui_prot.BalanceChange]":
+    result = []
+    for bc in nodes:
+        if not isinstance(bc, dict):
+            continue
+        coin_type_dict = bc.get("coinType") or {}
+        result.append(
+            sui_prot.BalanceChange(
+                address=(bc.get("change_to") or {}).get("object_id"),
+                coin_type=coin_type_dict.get("coin_type"),
+                amount=bc.get("balance_change"),
+            )
+        )
+    return result
+
+
+def _encode_executed_tx(
+    tx_dict: "dict | None",
+) -> "sui_prot.ExecutedTransaction | None":
+    if not tx_dict:
+        return None
+    digest = tx_dict.get("digest")
+    if not digest:
+        return None
+
+    sigs = []
+    for s in (tx_dict.get("signatures") or []):
+        sig_bytes = s.get("signatureBytes")
+        if sig_bytes:
+            sigs.append(
+                sui_prot.UserSignature(
+                    bcs=sui_prot.Bcs(value=base64.b64decode(sig_bytes))
+                )
+            )
+
+    kind_dict = tx_dict.get("kind") or {}
+    tx_kind = _encode_tx_kind(kind_dict)
+
+    sender_dict = tx_dict.get("sender") or {}
+    sender_addr = sender_dict.get("submitter_address")
+
+    expiration = _encode_expiration(tx_dict.get("expiration"))
+
+    gas_input = tx_dict.get("gasInput") or {}
+    gas_payment = _encode_gas_payment(gas_input, sender_addr)
+
+    tx_bcs_b64 = tx_dict.get("transactionBcs")
+    tx_bcs = sui_prot.Bcs(value=base64.b64decode(tx_bcs_b64)) if tx_bcs_b64 else None
+
+    eff_dict = tx_dict.get("effects") or {}
+    status_str = eff_dict.get("status")
+    exec_status = (
+        sui_prot.ExecutionStatus(success=(status_str == "SUCCESS")) if status_str else None
+    )
+
+    gas_effects = eff_dict.get("gasEffects") or {}
+    gas_summary = gas_effects.get("gasSummary") or {}
+    gas_used = sui_prot.GasCostSummary(
+        computation_cost=int(gas_summary.get("computationCost") or 0),
+        storage_cost=int(gas_summary.get("storageCost") or 0),
+        storage_rebate=int(gas_summary.get("storageRebate") or 0),
+        non_refundable_storage_fee=int(gas_summary.get("nonRefundableStorageFee") or 0),
+    )
+
+    bc_nodes = (eff_dict.get("balanceChanges") or {}).get("nodes") or []
+    balance_changes = _encode_balance_changes(bc_nodes)
+
+    checkpoint_dict = eff_dict.get("checkpoint") or {}
+    checkpoint_seq = checkpoint_dict.get("sequenceNumber")
+    checkpoint_epoch = (checkpoint_dict.get("epoch") or {}).get("epochId")
+    ts_str = eff_dict.get("timestamp") or checkpoint_dict.get("timestamp")
+    timestamp = _parse_gql_datetime(ts_str)
+
+    effects_bcs_b64 = eff_dict.get("effectsBcs")
+    effects_bcs = (
+        sui_prot.Bcs(value=base64.b64decode(effects_bcs_b64)) if effects_bcs_b64 else None
+    )
+
+    return sui_prot.ExecutedTransaction(
+        digest=digest,
+        transaction=sui_prot.Transaction(
+            bcs=tx_bcs,
+            kind=tx_kind,
+            sender=sender_addr,
+            gas_payment=gas_payment,
+            expiration=expiration,
+        ),
+        signatures=sigs,
+        effects=sui_prot.TransactionEffects(
+            bcs=effects_bcs,
+            status=exec_status,
+            epoch=checkpoint_epoch,
+            gas_used=gas_used,
+        ),
+        balance_changes=balance_changes,
+        checkpoint=checkpoint_seq,
+        timestamp=timestamp,
+    )

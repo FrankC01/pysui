@@ -849,6 +849,48 @@ class GetTxKind(GetTransaction):
         super().__init__(digest=digest, field_mask=["transaction.kind"])
 
 
+class GetTransactionSC(GetTransaction):
+    """SC sibling: unwraps GetTransactionResponse → ExecutedTransaction | None."""
+
+    not_found_as_none: bool = True
+
+    def render(
+        self, obj: sui_prot.GetTransactionResponse
+    ) -> sui_prot.ExecutedTransaction | None:
+        """Extract ExecutedTransaction from gRPC wrapper; None for non-existent digest."""
+        return obj.transaction
+
+
+class GetTransactionsSC(GetTransactions):
+    """SC sibling: unwraps BatchGetTransactionsResponse → list[ExecutedTransaction | None]."""
+
+    not_found_as_none: bool = True
+
+    def render(
+        self, obj: sui_prot.BatchGetTransactionsResponse
+    ) -> list[sui_prot.ExecutedTransaction | None]:
+        """Extract transaction from each result slot; None preserved at original index."""
+        return [item.transaction for item in obj.transactions]
+
+
+class GetTransactionKindSC(GetTransaction):
+    """SC sibling: field-masks to transaction.kind, extracts TransactionKind."""
+
+    not_found_as_none: bool = True
+
+    def __init__(self, *, digest: str) -> None:
+        """Initializer."""
+        super().__init__(digest=digest, field_mask=["transaction.kind"])
+
+    def render(
+        self, obj: sui_prot.GetTransactionResponse
+    ) -> sui_prot.TransactionKind | None:
+        """Extract TransactionKind from nested gRPC response; None if digest not found."""
+        if obj.transaction is None:
+            return None
+        return obj.transaction.transaction.kind
+
+
 class ExecuteTransaction(absreq.PGRPC_Request):
     """Executes a signed transaction block on the chain."""
 

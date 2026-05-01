@@ -529,3 +529,300 @@ class TestSCSiblings:
         assert result.epoch == 7
         assert result.reference_gas_price == 750
         assert result.end is None
+
+
+# ---------------------------------------------------------------------------
+# TestTransactionSCEncode — GetTransactionSC / GetTransactionsSC / GetTransactionKindSC
+# ---------------------------------------------------------------------------
+
+import base64
+
+
+def _minimal_tx_dict(digest: str = "FakeDigest1111") -> dict:
+    """Build a minimal but structurally complete GQL transaction dict."""
+    return {
+        "digest": digest,
+        "signatures": [
+            {"signatureBytes": base64.b64encode(b"fakesig").decode()}
+        ],
+        "kind": {
+            "tx_kind": "ProgrammableTransaction",
+            "inputs": {"nodes": []},
+            "commands": {"nodes": []},
+        },
+        "sender": {"submitter_address": _ADDR},
+        "expiration": None,
+        "gasInput": {
+            "transaction_budget": "1000000",
+            "price": "1000",
+            "sponsor": None,
+            "sponsor_pay_with": {
+                "gas_objects": [
+                    {
+                        "object_id": "0x" + "c" * 64,
+                        "version": 1,
+                        "object_digest": "gasobjdigest",
+                    }
+                ]
+            },
+        },
+        "transactionBcs": base64.b64encode(b"txbcsbytes").decode(),
+        "effects": {
+            "status": "SUCCESS",
+            "timestamp": "2024-01-15T12:00:00Z",
+            "balanceChanges": {
+                "nodes": [
+                    {
+                        "coinType": {"coin_type": "0x2::sui::SUI"},
+                        "balance_change": "-1000",
+                        "change_to": {"object_id": _ADDR},
+                    }
+                ]
+            },
+            "gasEffects": {
+                "gasObject": None,
+                "gasSummary": {
+                    "computationCost": "100",
+                    "storageCost": "200",
+                    "storageRebate": "50",
+                    "nonRefundableStorageFee": "10",
+                },
+            },
+            "checkpoint": {"sequenceNumber": 42, "epoch": {"epochId": 3}},
+            "effectsBcs": base64.b64encode(b"effectsbcsbytes").decode(),
+        },
+    }
+
+
+class TestTransactionSCEncode:
+    """Verify encode_fn shapes for GetTransactionSC, GetTransactionsSC, GetTransactionKindSC."""
+
+    # --- GetTransactionSC ---
+
+    def test_get_transaction_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetTransactionSC.encode_fn())
+
+    def test_get_transaction_sc_encode_null_transaction_returns_none(self):
+        result = qn.GetTransactionSC.encode_fn()({"transaction": None})
+        assert result is None
+
+    def test_get_transaction_sc_encode_missing_digest_returns_none(self):
+        result = qn.GetTransactionSC.encode_fn()({"transaction": {}})
+        assert result is None
+
+    def test_get_transaction_sc_encode_missing_key_returns_none(self):
+        result = qn.GetTransactionSC.encode_fn()({})
+        assert result is None
+
+    def test_get_transaction_sc_encode_returns_executed_transaction(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.ExecutedTransaction)
+
+    def test_get_transaction_sc_encode_digest(self):
+        raw = {"transaction": _minimal_tx_dict("MyDigestABC")}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert result.digest == "MyDigestABC"
+
+    def test_get_transaction_sc_encode_sender(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert result.transaction.sender == _ADDR
+
+    def test_get_transaction_sc_encode_signatures(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert len(result.signatures) == 1
+        assert isinstance(result.signatures[0], sui_prot.UserSignature)
+        assert result.signatures[0].bcs.value == b"fakesig"
+
+    def test_get_transaction_sc_encode_transaction_bcs(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert result.transaction.bcs.value == b"txbcsbytes"
+
+    def test_get_transaction_sc_encode_effects_bcs(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert result.effects.bcs.value == b"effectsbcsbytes"
+
+    def test_get_transaction_sc_encode_effects_success(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert result.effects.status.success is True
+
+    def test_get_transaction_sc_encode_effects_failure(self):
+        tx = _minimal_tx_dict()
+        tx["effects"]["status"] = "FAILURE"
+        result = qn.GetTransactionSC.encode_fn()({"transaction": tx})
+        assert result.effects.status.success is False
+
+    def test_get_transaction_sc_encode_gas_summary(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        gs = result.effects.gas_used
+        assert isinstance(gs, sui_prot.GasCostSummary)
+        assert gs.computation_cost == 100
+        assert gs.storage_cost == 200
+        assert gs.storage_rebate == 50
+        assert gs.non_refundable_storage_fee == 10
+
+    def test_get_transaction_sc_encode_checkpoint(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert result.checkpoint == 42
+
+    def test_get_transaction_sc_encode_epoch(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert result.effects.epoch == 3
+
+    def test_get_transaction_sc_encode_timestamp_parsed(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert isinstance(result.timestamp, datetime.datetime)
+
+    def test_get_transaction_sc_encode_balance_changes(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert len(result.balance_changes) == 1
+        bc = result.balance_changes[0]
+        assert isinstance(bc, sui_prot.BalanceChange)
+        assert bc.coin_type == "0x2::sui::SUI"
+        assert bc.amount == "-1000"
+        assert bc.address == _ADDR
+
+    def test_get_transaction_sc_encode_gas_payment_fields(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        gp = result.transaction.gas_payment
+        assert isinstance(gp, sui_prot.GasPayment)
+        assert gp.price == 1000
+        assert gp.budget == 1000000
+        assert len(gp.objects) == 1
+        assert gp.objects[0].object_id == "0x" + "c" * 64
+
+    def test_get_transaction_sc_encode_kind_programmable(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        tk = result.transaction.kind
+        assert isinstance(tk, sui_prot.TransactionKind)
+        assert tk.programmable_transaction is not None
+
+    def test_get_transaction_sc_encode_expiration_none(self):
+        raw = {"transaction": _minimal_tx_dict()}
+        result = qn.GetTransactionSC.encode_fn()(raw)
+        assert result.transaction.expiration is None
+
+    def test_get_transaction_sc_encode_expiration_epoch(self):
+        tx = _minimal_tx_dict()
+        tx["expiration"] = {"epochId": 99}
+        result = qn.GetTransactionSC.encode_fn()({"transaction": tx})
+        exp = result.transaction.expiration
+        assert exp is not None
+        assert exp.epoch == 99
+
+    # --- GetTransactionsSC ---
+
+    def test_get_transactions_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetTransactionsSC.encode_fn())
+
+    def test_get_transactions_sc_uses_correct_key(self):
+        raw = {"transactions": [_minimal_tx_dict()]}
+        result = qn.GetTransactionsSC.encode_fn()(raw)
+        # "transactions" key is wrong — SC uses "multiGetTransactions"
+        assert result == []
+
+    def test_get_transactions_sc_correct_key_returns_list(self):
+        raw = {"multiGetTransactions": [_minimal_tx_dict("D1"), _minimal_tx_dict("D2")]}
+        result = qn.GetTransactionsSC.encode_fn()(raw)
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+    def test_get_transactions_sc_returns_executed_transaction_items(self):
+        raw = {"multiGetTransactions": [_minimal_tx_dict("D1")]}
+        result = qn.GetTransactionsSC.encode_fn()(raw)
+        assert isinstance(result[0], sui_prot.ExecutedTransaction)
+        assert result[0].digest == "D1"
+
+    def test_get_transactions_sc_none_slot_propagates(self):
+        raw = {"multiGetTransactions": [_minimal_tx_dict("D1"), None, _minimal_tx_dict("D3")]}
+        result = qn.GetTransactionsSC.encode_fn()(raw)
+        assert len(result) == 3
+        assert result[0].digest == "D1"
+        assert result[1] is None
+        assert result[2].digest == "D3"
+
+    def test_get_transactions_sc_empty_list(self):
+        raw = {"multiGetTransactions": []}
+        result = qn.GetTransactionsSC.encode_fn()(raw)
+        assert result == []
+
+    def test_get_transactions_sc_missing_key_returns_empty(self):
+        result = qn.GetTransactionsSC.encode_fn()({})
+        assert result == []
+
+    # --- GetTransactionKindSC ---
+
+    def test_get_transaction_kind_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetTransactionKindSC.encode_fn())
+
+    def test_get_transaction_kind_sc_null_transaction_returns_none(self):
+        result = qn.GetTransactionKindSC.encode_fn()({"transaction": None})
+        assert result is None
+
+    def test_get_transaction_kind_sc_missing_key_returns_none(self):
+        result = qn.GetTransactionKindSC.encode_fn()({})
+        assert result is None
+
+    def test_get_transaction_kind_sc_returns_transaction_kind(self):
+        raw = {
+            "transaction": {
+                "kind": {
+                    "tx_kind": "ProgrammableTransaction",
+                    "inputs": {"nodes": []},
+                    "commands": {"nodes": []},
+                }
+            }
+        }
+        result = qn.GetTransactionKindSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.TransactionKind)
+
+    def test_get_transaction_kind_sc_programmable_transaction_populated(self):
+        raw = {
+            "transaction": {
+                "kind": {
+                    "tx_kind": "ProgrammableTransaction",
+                    "inputs": {"nodes": []},
+                    "commands": {"nodes": []},
+                }
+            }
+        }
+        result = qn.GetTransactionKindSC.encode_fn()(raw)
+        assert result.programmable_transaction is not None
+        assert isinstance(result.programmable_transaction, sui_prot.ProgrammableTransaction)
+
+    def test_get_transaction_kind_sc_empty_kind_returns_empty_proto(self):
+        raw = {"transaction": {"kind": {}}}
+        result = qn.GetTransactionKindSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.TransactionKind)
+
+    def test_get_transaction_kind_sc_change_epoch_kind(self):
+        raw = {
+            "transaction": {
+                "kind": {
+                    "tx_kind": "ChangeEpochTransaction",
+                    "epoch": {"epochId": 5},
+                    "protocolConfigs": {"protocolVersion": 3},
+                    "storageCharge": "100",
+                    "computationCharge": "200",
+                    "storageRebate": "50",
+                    "nonRefundableStorageFee": "0",
+                    "epochStartTimestamp": None,
+                }
+            }
+        }
+        result = qn.GetTransactionKindSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.TransactionKind)
+        assert result.change_epoch is not None
+        assert result.change_epoch.epoch == 5

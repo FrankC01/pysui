@@ -45,7 +45,11 @@ Request Classes
 +-------------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetLatestSuiSystemState`         |
 +-------------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetLatestSuiSystemStateSC`       |
++-------------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetCurrentValidators`            |
++-------------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetCurrentValidatorsSC`          |
 +-------------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetBasicCurrentEpochInfo`        |
 +-------------------------------------------------------------------------------+
@@ -104,6 +108,12 @@ Request Classes
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetMultipleTx`                   |
 +-------------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetTxKind`                       |
++-------------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetTransactionSC`                |
++-------------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetTransactionsSC`               |
++-------------------------------------------------------------------------------+
+| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetTransactionKindSC`            |
 +-------------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.ExecuteTransaction`              |
 +-------------------------------------------------------------------------------+

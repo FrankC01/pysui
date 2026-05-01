@@ -438,7 +438,7 @@ class ProgrammableTxKind(PGQL_Fragment):
                         )
                     ),
                 ),
-                schema.ProgrammableTransactionBlock.transactions.select(
+                schema.ProgrammableTransaction.commands.select(
                     DSLInlineFragment()
                     .on(schema.CommandConnection)
                     .select(
@@ -660,15 +660,14 @@ class ConsensusCommitPrologueKind(PGQL_Fragment):
                 schema.ConsensusCommitPrologueTransaction.round.alias("consensusRound"),
                 schema.ConsensusCommitPrologueTransaction.commitTimestamp,
                 schema.ConsensusCommitPrologueTransaction.consensusCommitDigest,
+                schema.ConsensusCommitPrologueTransaction.subDagIndex,
+                schema.ConsensusCommitPrologueTransaction.additionalStateDigest,
             )
         )
 
 
 class AuthenticatorStateUpdateTransactionKind(PGQL_Fragment):
-    """Details of AuthenticatorStateUpdateTransaction.
-
-    Not used by any pysui QueryNode but available to those creating them.
-    """
+    """Details of AuthenticatorStateUpdateTransaction."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -701,10 +700,7 @@ class AuthenticatorStateUpdateTransactionKind(PGQL_Fragment):
 
 
 class RandomnessStateUpdateTransactionKind(PGQL_Fragment):
-    """Details of RandomnessStateUpdateTransaction.
-
-    Not used by any pysui QueryNode but available to those creating them.
-    """
+    """Details of RandomnessStateUpdateTransaction."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
@@ -714,9 +710,7 @@ class RandomnessStateUpdateTransactionKind(PGQL_Fragment):
             DSLFragment("RandomnessStateUpdateTxKind")
             .on(schema.RandomnessStateUpdateTransaction)
             .select(
-                schema.RandomnessStateUpdateTransaction.epoch.select(
-                    schema.Epoch.epochId
-                ),
+                schema.RandomnessStateUpdateTransaction.epoch,
                 schema.RandomnessStateUpdateTransaction.randomnessRound,
                 schema.RandomnessStateUpdateTransaction.randomBytes,
                 schema.RandomnessStateUpdateTransaction.randomnessObjInitialSharedVersion,
@@ -724,19 +718,78 @@ class RandomnessStateUpdateTransactionKind(PGQL_Fragment):
         )
 
 
+class ChangeEpochTransactionKind(PGQL_Fragment):
+    """Details of ChangeEpochTransaction. systemPackages omitted — GQL cannot provide raw module bytes or direct dependencies."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        return (
+            DSLFragment("ChangeEpochTxKind")
+            .on(schema.ChangeEpochTransaction)
+            .select(
+                schema.ChangeEpochTransaction.epoch.select(schema.Epoch.epochId),
+                schema.ChangeEpochTransaction.protocolConfigs.select(
+                    schema.ProtocolConfigs.protocolVersion
+                ),
+                schema.ChangeEpochTransaction.storageCharge,
+                schema.ChangeEpochTransaction.computationCharge,
+                schema.ChangeEpochTransaction.storageRebate,
+                schema.ChangeEpochTransaction.nonRefundableStorageFee,
+                schema.ChangeEpochTransaction.epochStartTimestamp,
+            )
+        )
+
+
+class EndOfEpochTransactionKind(PGQL_Fragment):
+    """Details of EndOfEpochTransaction. Maps only the 3 gRPC-backed variants.
+    StoreExecutionTimeObservationsTransaction is an empty GQL placeholder — no fields to map."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        chg_epoch = ChangeEpochTransactionKind().fragment(schema)
+        return (
+            DSLFragment("EndOfEpochTxKind")
+            .on(schema.EndOfEpochTransaction)
+            .select(
+                schema.EndOfEpochTransaction.transactions.select(
+                    schema.EndOfEpochTransactionKindConnection.nodes.select(
+                        DSLInlineFragment()
+                        .on(schema.ChangeEpochTransaction)
+                        .select(chg_epoch),
+                        DSLInlineFragment()
+                        .on(schema.AuthenticatorStateExpireTransaction)
+                        .select(
+                            schema.AuthenticatorStateExpireTransaction.minEpoch.select(
+                                schema.Epoch.epochId
+                            ),
+                            schema.AuthenticatorStateExpireTransaction.authenticatorObjInitialSharedVersion,
+                        ),
+                        tx_kind=DSLMetaField("__typename"),
+                    )
+                )
+            )
+        )
+
+
 class StandardTransactionKind(PGQL_Fragment):
-    """Details a transactions kind. Supports ProgrammableTransaction type only."""
+    """Details a transaction's kind. Covers all 7 gRPC-mapped TransactionKind variants."""
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:
         """."""
         prg_kind = ProgrammableTxKind().fragment(schema)
         ccp_kind = ConsensusCommitPrologueKind().fragment(schema)
+        auth_kind = AuthenticatorStateUpdateTransactionKind().fragment(schema)
+        rnd_kind = RandomnessStateUpdateTransactionKind().fragment(schema)
+        chg_epoch_kind = ChangeEpochTransactionKind().fragment(schema)
+        eoe_kind = EndOfEpochTransactionKind().fragment(schema)
         return (
             DSLFragment("TxKind")
             .on(schema.Transaction)
             .select(
-                schema.TransactionBlock.kind.select(
+                schema.Transaction.kind.select(
                     DSLInlineFragment()
                     .on(schema.ProgrammableTransaction)
                     .select(prg_kind),
@@ -747,9 +800,25 @@ class StandardTransactionKind(PGQL_Fragment):
                     .on(schema.GenesisTransaction)
                     .select(
                         schema.GenesisTransaction.objects.select(
-                            schema.ObjectConnection.nodes.select(schema.Object.address)
+                            schema.ObjectConnection.nodes.select(
+                                schema.Object.address,
+                                schema.Object.version,
+                                schema.Object.digest,
+                            )
                         )
                     ),
+                    DSLInlineFragment()
+                    .on(schema.AuthenticatorStateUpdateTransaction)
+                    .select(auth_kind),
+                    DSLInlineFragment()
+                    .on(schema.RandomnessStateUpdateTransaction)
+                    .select(rnd_kind),
+                    DSLInlineFragment()
+                    .on(schema.ChangeEpochTransaction)
+                    .select(chg_epoch_kind),
+                    DSLInlineFragment()
+                    .on(schema.EndOfEpochTransaction)
+                    .select(eoe_kind),
                     tx_kind=DSLMetaField("__typename"),
                 ),
             )

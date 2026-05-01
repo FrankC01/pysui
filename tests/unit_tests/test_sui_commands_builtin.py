@@ -57,6 +57,9 @@ from pysui.sui.sui_common.sui_commands import (
     GetStructures,
     SimulateTransaction,
     SimulateTransactionKind,
+    GetTransaction,
+    GetTransactions,
+    GetTransactionKind,
 )
 
 
@@ -564,3 +567,91 @@ class TestParameterRouting:
         ).grpc_request()
         assert isinstance(req, rn.GetMoveDataType)
         assert req.type_name == "MyStruct"
+
+
+# ---------------------------------------------------------------------------
+# Transaction query SuiCommands
+# ---------------------------------------------------------------------------
+
+
+class TestTransactionCommands:
+    """Construction, node/request dispatch, and invariants for transaction query commands."""
+
+    def test_get_transaction_is_sui_command(self):
+        assert isinstance(GetTransaction(digest=DIGEST), SuiCommand)
+
+    def test_get_transaction_stores_digest(self):
+        cmd = GetTransaction(digest=DIGEST)
+        assert cmd.digest == DIGEST
+
+    def test_get_transaction_gql_node_type(self):
+        node = GetTransaction(digest=DIGEST).gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetTransactionSC)
+
+    def test_get_transaction_grpc_request_type(self):
+        req = GetTransaction(digest=DIGEST).grpc_request()
+        assert _is_grpc(req)
+        assert isinstance(req, rn.GetTransactionSC)
+
+    def test_get_transaction_gql_node_carries_digest(self):
+        node = GetTransaction(digest=DIGEST).gql_node()
+        assert node.digest == DIGEST
+
+    def test_get_transaction_grpc_request_carries_digest(self):
+        req = GetTransaction(digest=DIGEST).grpc_request()
+        assert req.digest == DIGEST
+
+    def test_get_transactions_is_sui_command(self):
+        assert isinstance(GetTransactions(digests=[DIGEST]), SuiCommand)
+
+    def test_get_transactions_stores_digests(self):
+        cmd = GetTransactions(digests=[DIGEST, "OtherDigest"])
+        assert cmd.digests == [DIGEST, "OtherDigest"]
+
+    def test_get_transactions_empty_list_raises(self):
+        with pytest.raises(ValueError, match="digest"):
+            GetTransactions(digests=[])
+
+    def test_get_transactions_gql_node_type(self):
+        node = GetTransactions(digests=[DIGEST]).gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetTransactionsSC)
+
+    def test_get_transactions_grpc_request_type(self):
+        req = GetTransactions(digests=[DIGEST]).grpc_request()
+        assert _is_grpc(req)
+        assert isinstance(req, rn.GetTransactionsSC)
+
+    def test_get_transactions_gql_node_carries_digests(self):
+        node = GetTransactions(digests=[DIGEST]).gql_node()
+        assert node.digests == [DIGEST]
+
+    def test_get_transactions_grpc_request_carries_digests(self):
+        req = GetTransactions(digests=[DIGEST]).grpc_request()
+        assert req.transactions == [DIGEST]
+
+    def test_get_transaction_kind_is_sui_command(self):
+        assert isinstance(GetTransactionKind(digest=DIGEST), SuiCommand)
+
+    def test_get_transaction_kind_stores_digest(self):
+        cmd = GetTransactionKind(digest=DIGEST)
+        assert cmd.digest == DIGEST
+
+    def test_get_transaction_kind_gql_node_type(self):
+        node = GetTransactionKind(digest=DIGEST).gql_node()
+        assert _is_gql(node)
+        assert isinstance(node, pgql_query.GetTransactionKindSC)
+
+    def test_get_transaction_kind_grpc_request_type(self):
+        req = GetTransactionKind(digest=DIGEST).grpc_request()
+        assert _is_grpc(req)
+        assert isinstance(req, rn.GetTransactionKindSC)
+
+    def test_get_transaction_kind_gql_node_carries_digest(self):
+        node = GetTransactionKind(digest=DIGEST).gql_node()
+        assert node.digest == DIGEST
+
+    def test_get_transaction_kind_grpc_request_carries_digest(self):
+        req = GetTransactionKind(digest=DIGEST).grpc_request()
+        assert req.digest == DIGEST

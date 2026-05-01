@@ -20,7 +20,7 @@ from gql.dsl import (
     DSLSchema,
 )
 
-from graphql import print_ast
+from graphql import GraphQLError, print_ast
 from graphql.error.syntax_error import GraphQLSyntaxError
 from graphql.utilities.print_schema import print_schema
 from graphql.language.printer import print_ast
@@ -418,8 +418,8 @@ class SuiGQLClient(BaseSuiGQLClient):
         total_poll = 0
         while True:
             logging.info(f"Polling {digest} for {total_poll} times")
-            res = self.execute_query_node(with_node=qn.GetTx(digest=digest))
-            if res.is_ok() and not isinstance(res.result_data, pgql_type.NoopGQL):
+            res = self.execute_query_node(with_node=qn.GetTransactionSC(digest=digest))
+            if res.is_ok() and res.result_data is not None:
                 return res
             total_poll += poll_interval
             if total_poll < timeout:
@@ -757,7 +757,7 @@ class AsyncSuiGQLClient(AsyncClientBase, BaseSuiGQLClient):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = node.encode_fn()
             return await self._execute(qdoc_node, with_headers, encode_fn, timeout)
-        except ValueError as ve:
+        except (ValueError, GraphQLError) as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
@@ -778,13 +778,13 @@ class AsyncSuiGQLClient(AsyncClientBase, BaseSuiGQLClient):
         :return: Standard Sui Result
         :rtype: SuiRpcResult
         """
-        import pysui.sui.sui_pgql.pgql_query as qn
+        from pysui.sui.sui_common.sui_commands import GetTransaction
 
         total_poll = 0
         while True:
             logging.info(f"Polling {digest} for {total_poll} times")
-            res = await self.execute_query_node(with_node=qn.GetTx(digest=digest))
-            if res.is_ok() and not isinstance(res.result_data, pgql_type.NoopGQL):
+            res = await self.execute(command=GetTransaction(digest=digest))
+            if res.is_ok() and res.result_data is not None:
                 return res
             total_poll += poll_interval
             if total_poll < timeout:

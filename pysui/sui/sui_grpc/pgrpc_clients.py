@@ -16,6 +16,7 @@ import urllib.parse as urlparse
 import betterproto2
 import dataclasses_json
 from deprecated.sphinx import deprecated
+from grpclib.const import Status as GRPCStatus
 from grpclib.exceptions import GRPCError
 
 from pysui import SDK_CURRENT_VERSION
@@ -214,7 +215,13 @@ class SuiGrpcClient(AsyncClientBase, PysuiClient):
             if hasattr(request, "render"):
                 result = request.render(result)
             return SuiRpcResult(True, None, result)
-        except (GRPCError, ValueError) as e:
+        except GRPCError as e:
+            if e.status == GRPCStatus.NOT_FOUND and getattr(request, "not_found_as_none", False):
+                return SuiRpcResult(True, None, None)
+            traceback_str = traceback.format_exc()
+            logger.error(traceback_str)
+            return SuiRpcResult(False, e.args)
+        except (ValueError, AttributeError) as e:
             traceback_str = traceback.format_exc()
             logger.error(traceback_str)
             return SuiRpcResult(False, e.args)
