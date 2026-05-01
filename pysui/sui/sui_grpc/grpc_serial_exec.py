@@ -27,6 +27,7 @@ from pysui.sui.sui_common.types import (
 )
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+import pysui.sui.sui_common.sui_commands as cmd
 
 grpc_ser_txn_exc_logger = logging.getLogger(__name__)
 
@@ -213,7 +214,7 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
         :raises TypeError: If result type is unexpected
         """
         result = await self._client.execute(
-            request=rn.ExecuteTransaction(tx_bytestr=tx_str, sig_array=sigs)
+            command=cmd.ExecuteTransaction(tx_bytestr=tx_str, sig_array=sigs)
         )
         if not result.is_ok():
             raise ValueError(f"gRPC execute_transaction failed: {result.result_string}")
@@ -236,12 +237,12 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
         :raises ValueError: If balance fetch fails
         """
         result = await self._client.execute(
-            request=rn.GetAddressCoinBalance(owner=self._signing_block.payer_address)
+            command=cmd.GetAddressCoinBalance(owner=self._signing_block.payer_address)
         )
         if not result.is_ok():
             raise ValueError("Failed to fetch initial balance")
         bal = result.result_data.balance
-        return bal.coin_balance if self._on_coins_low else bal.address_balance
+        return bal.address_balance if self._use_account_gas else bal.coin_balance
 
     async def reset_cache(self) -> None:
         """Reset the internal cache."""

@@ -128,9 +128,9 @@ class AsyncSuiTransaction(txbase):
             _cei: sui_prot.Epoch = _res.result_data
             min_epoch = txn_expires_after or _cei.epoch
             tx_kind = self.builder.finish_for_inspect()
-            result = await self.client.execute(command=cmd.GetServiceInfo(), timeout=30.0)
+            result = await self.client.execute(command=cmd.GetChainIdentifier(), timeout=30.0)
             if result.is_ok():
-                chain_id = result.result_data.chain_id
+                chain_id = result.result_data
             else:
                 raise ValueError("Error getting chain id")
             pay_addy = self.signer_block.payer_address
@@ -156,7 +156,7 @@ class AsyncSuiTransaction(txbase):
             gas_data = bcs.GasData(
                 [],
                 bcs.Address.from_str(pay_addy),
-                _cei.epoch.reference_gas_price,
+                _cei.reference_gas_price,
                 gas_budget,
             )
             return bcs.TransactionData(

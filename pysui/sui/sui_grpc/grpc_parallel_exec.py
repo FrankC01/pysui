@@ -21,6 +21,7 @@ from pysui.sui.sui_common.types import TransactionEffects
 
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_grpc.grpc_serial_exec import _grpc_effects_to_common
 
 grpc_par_txn_exc_logger = logging.getLogger(__name__)
@@ -115,7 +116,7 @@ class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
     ) -> TransactionEffects:
         grpc_exec: _BaseCachingExecutor = caching_exec
         result = await self._client.execute(
-            request=rn.ExecuteTransaction(tx_bytestr=tx_str, sig_array=sigs)
+            command=cmd.ExecuteTransaction(tx_bytestr=tx_str, sig_array=sigs)
         )
         if not result.is_ok():
             raise ValueError(f"gRPC execute_transaction failed: {result.result_string}")
@@ -164,7 +165,7 @@ class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
         )
 
         result = await self._client.execute(
-            request=rn.ExecuteTransaction(tx_bytestr=tx_str, sig_array=sigs)
+            command=cmd.ExecuteTransaction(tx_bytestr=tx_str, sig_array=sigs)
         )
         if not result.is_ok():
             raise ValueError(f"refill: gRPC execute failed: {result.result_string}")
@@ -202,7 +203,7 @@ class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
 
     async def _fetch_balance(self) -> int:
         result = await self._client.execute(
-            request=rn.GetAddressCoinBalance(owner=self._gas_owner)
+            command=cmd.GetAddressCoinBalance(owner=self._gas_owner)
         )
         if not result.is_ok():
             raise ValueError(f"Failed to fetch balance for {self._gas_owner}")
