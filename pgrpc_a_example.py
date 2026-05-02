@@ -10,7 +10,7 @@ import asyncio
 from pysui import (
     PysuiConfiguration,
     SuiRpcResult,
-    SuiGrpcClient,
+    GrpcProtocolClient,
     client_factory,
     AsyncClientBase,
 )
@@ -69,7 +69,7 @@ async def do_gas(client: AsyncClientBase):
         print(f"Total coins in page: {len(result.result_data.objects)}")
 
 
-async def do_all_gas(client: SuiGrpcClient):
+async def do_all_gas(client: GrpcProtocolClient):
     """Fetch all coins for owner."""
     try:
         # This will include all coins whether active, pruned or deleted.
@@ -135,7 +135,7 @@ async def do_object(client: AsyncClientBase):
     handle_result(await client.execute(command=cmd.GetObject(object_id="0x6")))
 
 
-async def do_objects(client: SuiGrpcClient):
+async def do_objects(client: GrpcProtocolClient):
     """Fetch all objects held by owner."""
     try:
         objects: list = await async_get_all_owned_objects(
@@ -309,7 +309,7 @@ async def do_digest_cp(client: AsyncClientBase):
         print(result.result_string)
 
 
-async def do_checkpoints(client: SuiGrpcClient):
+async def do_checkpoints(client: GrpcProtocolClient):
     """Uses subscriptions for checkpoints.
     Note: Mysten Lab servers have rate restrictions.
     Note: Use execute_grpc_request(request=rn.SubscribeCheckpoint(field_mask=[...]))
@@ -327,7 +327,7 @@ async def do_checkpoints(client: SuiGrpcClient):
             break
 
 
-async def do_refgas(client: SuiGrpcClient):
+async def do_refgas(client: GrpcProtocolClient):
     """Fetch the most current system state summary."""
     print(f"Current reference gas price: {await client.current_gas_price}")
 

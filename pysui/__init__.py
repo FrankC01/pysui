@@ -43,8 +43,8 @@ from pysui.sui.sui_common.config.confgroup import GroupProtocol
 from pysui.sui.sui_common.client import PysuiClient
 from pysui.abstracts.async_client import AsyncClientBase
 from pysui.sui.sui_common.factory import client_factory
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
-from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
+from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
+from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 
 from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
 from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor

@@ -36,9 +36,21 @@ side effect — callers relying on this behavior must call `make_active()` expli
 - `use_account_for_gas` moved from the transaction constructor to build-time
 parameters on build(), build_and_sign(), and transaction_data()
 
+- `MoveFunctionGQL.parameters` changed from `list[dict]` to `list[OpenMoveTypeGQL]` — any code iterating raw dicts from function metadata must migrate to the new dataclass accessors
+- `MoveFunctionGQL.returns` changed from `Optional[list]` to `list[OpenMoveTypeGQL]` — same migration required
+
+- `GqlProtocolClient.transaction()` is now `async def` — all call sites must add `await`
+
+- `SerialTransactionExecutor` renamed to `GqlSerialTransactionExecutor` — protocol prefix added
+  to all executor class names for consistency; update imports accordingly
+
+- `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations; old names no longer exist
+
 ## PyPi current
 
 **Release-0.98.0 - Released 2026-04-13**
+
+- [Latest PyPi Version](https://pypi.org/project/pysui/)
 
 ### Client Instantiation Migration Guide
 
@@ -128,8 +140,6 @@ asyncio.run(main())
 ```
 
 Added support for Mysten `address balance`
-
-- [Latest PyPi Version](https://pypi.org/project/pysui/)
 
 ### FULL Documentation
 

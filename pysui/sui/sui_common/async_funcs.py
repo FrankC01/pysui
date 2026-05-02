@@ -14,7 +14,7 @@ from typing import Any, Coroutine, Optional, cast
 
 
 logger = logging.getLogger("async_funcs")
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient as AsyncGqlClient
+from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient as AsyncGqlClient
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_bcs.bcs_txne as bcst
@@ -131,7 +131,7 @@ async def merge_sui(
     """merge_all Sui coins for a given address.
 
     :param client: Sui node client
-    :type client: AsyncSuiGQLClient
+    :type client: GqlProtocolClient
     :param address: address of gas owner whose coins to merge
     :type address: str
     :param exclude: list of sui coin object ids to exclude from merge, defaults to None

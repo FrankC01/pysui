@@ -59,7 +59,6 @@ GraphQL — ``GqlSerialTransactionExecutor``
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
     from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_coins_low(ctx: ExecutorContext) -> list[str] | None:
@@ -69,8 +68,7 @@ GraphQL — ``GqlSerialTransactionExecutor``
     async def run():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)
-        executor = GqlSerialTransactionExecutor(
-            client=client,
+        executor = await client.serial_executor(
             sender=cfg.active_address,
             default_gas_budget=5_000_000,
             min_balance_threshold=100_000_000,
@@ -94,7 +92,6 @@ GraphQL — ``GqlSerialTransactionExecutor``
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
     from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
@@ -104,8 +101,7 @@ GraphQL — ``GqlSerialTransactionExecutor``
     async def run():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)
-        executor = GqlSerialTransactionExecutor(
-            client=client,
+        executor = await client.serial_executor(
             sender=cfg.active_address,
             default_gas_budget=5_000_000,
             min_balance_threshold=100_000_000,
@@ -134,7 +130,6 @@ The gRPC serial executor has the same interface as the GraphQL one; only the cli
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_grpc.grpc_serial_exec import GrpcSerialTransactionExecutor
     from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_coins_low(ctx: ExecutorContext) -> list[str] | None:
@@ -143,8 +138,7 @@ The gRPC serial executor has the same interface as the GraphQL one; only the cli
     async def run():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
         client = client_factory(cfg)
-        executor = GrpcSerialTransactionExecutor(
-            client=client,
+        executor = await client.serial_executor(
             sender=cfg.active_address,
             default_gas_budget=5_000_000,
             min_balance_threshold=100_000_000,
@@ -168,7 +162,6 @@ The gRPC serial executor has the same interface as the GraphQL one; only the cli
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_grpc.grpc_serial_exec import GrpcSerialTransactionExecutor
     from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
@@ -177,8 +170,7 @@ The gRPC serial executor has the same interface as the GraphQL one; only the cli
     async def run():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
         client = client_factory(cfg)
-        executor = GrpcSerialTransactionExecutor(
-            client=client,
+        executor = await client.serial_executor(
             sender=cfg.active_address,
             default_gas_budget=5_000_000,
             min_balance_threshold=100_000_000,
@@ -219,14 +211,12 @@ during execution but cannot start it from zero.
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
     from pysui.sui.sui_common.executors import GasCoin
 
     async def run():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)
-        executor = GqlParallelTransactionExecutor(
-            client=client,
+        executor = await client.parallel_executor(
             sender=cfg.active_address,
             gas_mode="coins",
             max_tasks=4,
@@ -259,7 +249,6 @@ during execution but cannot start it from zero.
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
     from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
@@ -269,8 +258,7 @@ during execution but cannot start it from zero.
     async def run():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)
-        executor = GqlParallelTransactionExecutor(
-            client=client,
+        executor = await client.parallel_executor(
             sender=cfg.active_address,
             gas_mode="addressBalance",
             max_tasks=4,
@@ -304,14 +292,12 @@ Same interface as the GraphQL parallel executor; only the client type and import
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
     from pysui.sui.sui_common.executors import GasCoin
 
     async def run():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
         client = client_factory(cfg)
-        executor = GrpcParallelTransactionExecutor(
-            client=client,
+        executor = await client.parallel_executor(
             sender=cfg.active_address,
             gas_mode="coins",
             max_tasks=4,
@@ -343,7 +329,6 @@ Same interface as the GraphQL parallel executor; only the client type and import
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
     from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
     async def on_balance_low(ctx: ExecutorContext) -> str | None:
@@ -352,8 +337,7 @@ Same interface as the GraphQL parallel executor; only the client type and import
     async def run():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
         client = client_factory(cfg)
-        executor = GrpcParallelTransactionExecutor(
-            client=client,
+        executor = await client.parallel_executor(
             sender=cfg.active_address,
             gas_mode="addressBalance",
             max_tasks=4,
@@ -421,7 +405,7 @@ Serial executors (``GqlSerialTransactionExecutor``, ``GrpcSerialTransactionExecu
    * - Parameter
      - Description
    * - ``client``
-     - Async protocol client (``AsyncClientBase``; use ``client_factory()`` to obtain)
+     - Injected automatically by the factory method — do not pass directly
    * - ``sender``
      - Sender address string or ``SigningMultiSig``
    * - ``sponsor``

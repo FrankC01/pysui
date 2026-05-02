@@ -13,7 +13,7 @@ AsyncClientBase
 ---------------
 
 :class:`AsyncClientBase` is the abstract base class for all async pysui clients. Both
-:class:`AsyncSuiGQLClient` and :class:`SuiGrpcClient` inherit from it. Type your client
+:class:`GqlProtocolClient` and :class:`GrpcProtocolClient` inherit from it. Type your client
 parameter as :class:`AsyncClientBase` and your code becomes transport-agnostic — the active
 protocol is determined by :class:`PysuiConfiguration` at runtime.
 

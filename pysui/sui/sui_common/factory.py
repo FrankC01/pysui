@@ -54,14 +54,14 @@ def client_factory(
         resolved_protocol = pysui_config.active_group.group_protocol
 
     if resolved_protocol == GroupProtocol.GRAPHQL:
-        from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
+        from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
 
-        return AsyncSuiGQLClient(pysui_config=pysui_config)
+        return GqlProtocolClient(pysui_config=pysui_config)
 
     if resolved_protocol == GroupProtocol.GRPC:
-        from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
+        from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 
-        return SuiGrpcClient(pysui_config=pysui_config)
+        return GrpcProtocolClient(pysui_config=pysui_config)
 
     raise NotImplementedError(
         f"No client implementation for protocol '{resolved_protocol}'. "

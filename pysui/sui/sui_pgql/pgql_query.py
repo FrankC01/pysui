@@ -2663,6 +2663,95 @@ class ExecuteTransaction(PGQL_QueryNode):
         return pgql_type.ExecutionResultGQL.from_query  # type: ignore[return-value]
 
 
+class ExecuteTransactionSC(ExecuteTransaction):
+    """SC variant: adds objectChanges to execute mutation; encode_fn maps to ExecuteTransactionResponse proto."""
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Execute mutation extended with objectChanges and effectsBcs for proto mapping."""
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+
+        qres = schema.Mutation.executeTransaction(
+            transactionDataBcs=self.tx_data, signatures=self.sigs
+        ).select(
+            schema.ExecutionResult.effects.select(
+                schema.TransactionEffects.status,
+                schema.TransactionEffects.digest,
+                effects_bcs=schema.TransactionEffects.effectsBcs,
+                object_changes=schema.TransactionEffects.objectChanges.select(
+                    schema.ObjectChangeConnection.nodes.select(
+                        address=schema.ObjectChange.address,
+                        created=schema.ObjectChange.idCreated,
+                        input_state=schema.ObjectChange.inputState.select(std_object),
+                        output_state=schema.ObjectChange.outputState.select(std_object),
+                    )
+                ),
+            ),
+        )
+        return dsl_gql(base_object, std_object, DSLMutation(qres))
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], "sui_prot.ExecuteTransactionResponse"]:
+        """Return encoder mapping GQL executeTransaction to ExecuteTransactionResponse proto."""
+
+        def _encode(in_data: dict) -> "sui_prot.ExecuteTransactionResponse":
+            raw = in_data.get("executeTransaction") or {}
+            effects = raw.get("effects") or {}
+
+            status_str = effects.get("status")
+            exec_status = (
+                sui_prot.ExecutionStatus(success=(status_str == "SUCCESS"))
+                if status_str else None
+            )
+
+            digest = effects.get("digest")
+
+            effects_bcs_b64: str | None = effects.get("effects_bcs")
+            effects_bcs_proto = (
+                sui_prot.Bcs(value=base64.b64decode(effects_bcs_b64))
+                if effects_bcs_b64 else None
+            )
+
+            nodes = (effects.get("object_changes") or {}).get("nodes") or []
+            changed_objects: list[sui_prot.ChangedObject] = []
+            for node in nodes:
+                obj_id = node.get("address")
+                created = node.get("created", False)
+                in_state = (
+                    sui_prot.ChangedObjectInputObjectState.DOES_NOT_EXIST
+                    if created
+                    else sui_prot.ChangedObjectInputObjectState.EXISTS
+                )
+                out = node.get("output_state") or {}
+                if out.get("as_move_package"):
+                    obj_type = "package"
+                else:
+                    mc = out.get("as_move_content") or {}
+                    obj = mc.get("as_object") or {}
+                    type_repr = obj.get("object_type_repr") or {}
+                    obj_type = type_repr.get("object_type")
+                changed_objects.append(
+                    sui_prot.ChangedObject(
+                        object_id=obj_id,
+                        input_state=in_state,
+                        object_type=obj_type,
+                    )
+                )
+
+            return sui_prot.ExecuteTransactionResponse(
+                transaction=sui_prot.ExecutedTransaction(
+                    digest=digest,
+                    effects=sui_prot.TransactionEffects(
+                        bcs=effects_bcs_proto,
+                        status=exec_status,
+                        changed_objects=changed_objects,
+                    ),
+                )
+            )
+
+        return _encode
+
+
 # ---------------------------------------------------------------------------
 # SC siblings — these subclasses inherit as_document_node() unchanged and
 # override encode_fn() to return gRPC proto instances instead of GQL types.
@@ -2768,8 +2857,8 @@ class GetEpochSC(GetEpoch):
                 epoch=sui_prot.Epoch(
                     epoch=epoch_data.get("epochId"),
                     reference_gas_price=int(rgp) if rgp else None,
-                    start=datetime.datetime.fromisoformat(start_ts) if start_ts else None,
-                    end=datetime.datetime.fromisoformat(end_ts) if end_ts else None,
+                    start=_parse_gql_datetime(start_ts),
+                    end=_parse_gql_datetime(end_ts),
                 )
             )
 
@@ -2791,8 +2880,8 @@ class GetBasicCurrentEpochInfoSC(GetBasicCurrentEpochInfo):
             return sui_prot.Epoch(
                 epoch=epoch_data.get("epochId"),
                 reference_gas_price=int(rgp) if rgp else None,
-                start=datetime.datetime.fromisoformat(start_ts) if start_ts else None,
-                end=datetime.datetime.fromisoformat(end_ts) if end_ts else None,
+                start=_parse_gql_datetime(start_ts),
+                end=_parse_gql_datetime(end_ts),
             )
 
         return _encode
@@ -3100,7 +3189,7 @@ def _encode_checkpoint_from_raw(cp_dict: dict) -> sui_prot.GetCheckpointResponse
     ts: Optional[datetime.datetime] = None
     if ts_str:
         try:
-            ts = datetime.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            ts = _parse_gql_datetime(ts_str)
         except ValueError:
             pass
     seq = cp_dict.get("sequenceNumber")

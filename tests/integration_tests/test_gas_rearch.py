@@ -13,9 +13,8 @@ import asyncio
 
 import pytest
 
-import pysui.sui.sui_pgql.pgql_query as qn
-import pysui.sui.sui_grpc.pgrpc_requests as rn
-from pysui import AsyncGqlClient, SuiGrpcClient
+from pysui import AsyncClientBase
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_pgql.pgql_utils import (
     async_get_all_owned_gas_objects as gql_get_coins,
 )
@@ -36,7 +35,7 @@ from tests.integration_tests.conftest import (
 
 
 @pytest.mark.asyncio
-async def test_faucet_increases_coin_count(gql_client: AsyncGqlClient) -> None:
+async def test_faucet_increases_coin_count(gql_client: AsyncClientBase) -> None:
     """_json_faucet adds exactly one new SUI coin object to the active address."""
     addr = str(gql_client.config.active_address)
     before = await gql_get_coins(owner=addr, client=gql_client)
@@ -56,7 +55,7 @@ async def test_faucet_increases_coin_count(gql_client: AsyncGqlClient) -> None:
 
 @pytest.mark.asyncio
 async def test_uc1_gql_auto_gas_transfer_executes(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
 ) -> None:
     """UC1 (GQL): transfer_objects with no budget/coins — auto gas selection succeeds."""
     await asyncio.sleep(SETTLE_SECS)
@@ -70,15 +69,15 @@ async def test_uc1_gql_auto_gas_transfer_executes(
         transfers=[coins[0].coin_object_id],
         recipient=addr,
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     assert result.is_ok(), f"UC1 GQL transfer failed: {result.result_string}"
 
 
 @pytest.mark.asyncio
 async def test_uc1_grpc_auto_gas_transfer_executes(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
 ) -> None:
     """UC1 (gRPC): transfer_objects with no budget/coins — auto gas selection succeeds."""
     await asyncio.sleep(SETTLE_SECS)
@@ -92,7 +91,7 @@ async def test_uc1_grpc_auto_gas_transfer_executes(
         recipient=addr,
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign())
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     assert result.is_ok(), f"UC1 gRPC transfer failed: {result.result_string}"
 
@@ -104,7 +103,7 @@ async def test_uc1_grpc_auto_gas_transfer_executes(
 
 @pytest.mark.asyncio
 async def test_uc7_gql_address_balance_gas_executes(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
 ) -> None:
     """UC7 (GQL): use_account_for_gas=True with no GasCoin PTB — empty payment succeeds."""
     await asyncio.sleep(SETTLE_SECS)
@@ -119,8 +118,8 @@ async def test_uc7_gql_address_balance_gas_executes(
         transfers=[coins[0].coin_object_id],
         recipient=addr,
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(
             **await txer.build_and_sign(use_account_for_gas=True)
         )
     )
@@ -134,7 +133,7 @@ async def test_uc7_gql_address_balance_gas_executes(
 
 @pytest.mark.asyncio
 async def test_uc12_gql_split_gas_coin_executes(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
 ) -> None:
     """UC12 (GQL): split_coin(txer.gas) — gas_source_draw inflation allows execution."""
     await asyncio.sleep(SETTLE_SECS)
@@ -142,24 +141,24 @@ async def test_uc12_gql_split_gas_coin_executes(
     txer = await gql_client.transaction()
     # Split 0.001 SUI from gas coin; budget must cover fee + split amount.
     split_res = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
-    await txer.transfer_objects(transfers=split_res, recipient=addr)
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    await txer.transfer_objects(transfers=[split_res], recipient=addr)
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     assert result.is_ok(), f"UC12 GQL split-gas failed: {result.result_string}"
 
 
 @pytest.mark.asyncio
 async def test_uc12_grpc_split_gas_coin_executes(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
 ) -> None:
     """UC12 (gRPC): split_coin(txer.gas) — gas_source_draw inflation allows execution."""
     await asyncio.sleep(SETTLE_SECS)
     addr = str(grpc_client.config.active_address)
     txer = await grpc_client.transaction()
     split_res = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
-    await txer.transfer_objects(transfers=split_res, recipient=addr)
+    await txer.transfer_objects(transfers=[split_res], recipient=addr)
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign())
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     assert result.is_ok(), f"UC12 gRPC split-gas failed: {result.result_string}"

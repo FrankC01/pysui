@@ -9,7 +9,7 @@ import asyncio
 from collections.abc import Callable
 import dataclasses
 import logging
-from typing import Optional, TypeAlias
+from typing import Any, Optional, TypeAlias
 import traceback
 import urllib.parse as urlparse
 
@@ -66,7 +66,7 @@ def _map_pconstraints(in_bound: sui_prot.ProtocolConfig):
     return ProtocolConfig(TransactionConstraints(*ordered_list))
 
 
-class SuiGrpcClient(AsyncClientBase, PysuiClient):
+class GrpcProtocolClient(AsyncClientBase, PysuiClient):
     """Asynchronous gRPC client."""
 
     def __init__(
@@ -118,7 +118,7 @@ class SuiGrpcClient(AsyncClientBase, PysuiClient):
             channel.close()
         self._channel.close()
 
-    async def __aenter__(self) -> "SuiGrpcClient":
+    async def __aenter__(self) -> "GrpcProtocolClient":
         """Enter async context manager."""
         return self
 
@@ -151,6 +151,44 @@ class SuiGrpcClient(AsyncClientBase, PysuiClient):
         kwargs["txn_constraints"] = await self.protocol()
         kwargs["gas_price"] = await self.current_gas_price
         return AsyncSuiTransaction(**kwargs)
+
+    async def serial_executor(self, **kwargs) -> Any:
+        """Return a gRPC serial transaction executor.
+
+        The caller owns the executor lifecycle — calling client.close() does not
+        drain or close executor resources. Concurrent serial_executor() calls over
+        the same sender will race on coin selection if both use coin-object gas.
+
+        :param sender: The address of the transaction sender
+        :type sender: Union[str, SigningMultiSig]
+        :param sponsor: Optional sponsor address, defaults to None
+        :type sponsor: Union[str, SigningMultiSig], optional
+        :param default_gas_budget: Default gas budget per transaction, defaults to 50_000_000
+        :type default_gas_budget: int, optional
+        """
+        import pysui.sui.sui_grpc.grpc_serial_exec as sexec
+
+        kwargs["client"] = self
+        return sexec.GrpcSerialTransactionExecutor(**kwargs)
+
+    async def parallel_executor(self, **kwargs) -> Any:
+        """Return a gRPC parallel transaction executor.
+
+        The caller owns the executor lifecycle — calling client.close() does not
+        drain or close executor resources. Concurrent parallel_executor() calls over
+        the same sender will race on coin selection if both use coin-object gas.
+
+        :param sender: The address of the transaction sender
+        :type sender: Union[str, SigningMultiSig]
+        :param sponsor: Optional sponsor address, defaults to None
+        :type sponsor: Union[str, SigningMultiSig], optional
+        :param default_gas_budget: Default gas budget per transaction, defaults to 50_000_000
+        :type default_gas_budget: int, optional
+        """
+        import pysui.sui.sui_grpc.grpc_parallel_exec as pexec
+
+        kwargs["client"] = self
+        return pexec.GrpcParallelTransactionExecutor(**kwargs)
 
     async def _dispatch_grpc_request(
         self, request: absreq.PGRPC_Request, **kwargs

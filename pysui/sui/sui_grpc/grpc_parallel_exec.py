@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Awaitable, Callable, Optional, Union
 
-from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
+from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor
 from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
 from pysui.sui.sui_common.executors.exec_types import ExecutorContext
@@ -69,7 +69,7 @@ class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
     def __init__(
         self,
         *,
-        client: SuiGrpcClient,
+        client: GrpcProtocolClient,
         sender: Union[str, SigningMultiSig],
         sponsor: Optional[Union[str, SigningMultiSig]] = None,
         gas_mode: str = "coins",

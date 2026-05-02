@@ -344,7 +344,7 @@ async def grpc_client(
 ) -> AsyncClientBase:
     """Per-test gRPC client.
 
-    Created as an async fixture so SuiGrpcClient (which captures the event loop
+    Created as an async fixture so GrpcProtocolClient (which captures the event loop
     via grpclib Channel at __init__ time) is created in the test's loop.
     """
     client = client_factory(grpc_cfg)
@@ -427,15 +427,11 @@ async def published_gql(
     txdict = await txer.build_and_sign()
     result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     assert result.is_ok(), f"GQL publish failed: {result.result_string}"
-    assert result.result_data.status == "SUCCESS", (
-        f"GQL publish on-chain failure: {result.result_data.execution_error}"
+    assert result.result_data.transaction.effects.status.success, (
+        "GQL publish on-chain execution failed"
     )
     await asyncio.sleep(SETTLE_SECS)
-    tx_result = await gql_session_client.wait_for_transaction(
-        digest=result.result_data.digest, poll_interval=1
-    )
-    assert tx_result.is_ok(), f"wait_for_transaction failed: {tx_result.result_string}"
-    return _extract_publish_result(tx_result.result_data.effects.changed_objects)
+    return _extract_publish_result(result.result_data.transaction.effects.changed_objects)
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
@@ -510,7 +506,7 @@ async def txn_digests(
         command=cmd.ExecuteTransaction(**await gql_txer.build_and_sign())
     )
     assert gql_result.is_ok(), f"GQL ExecuteTransaction failed: {gql_result.result_string}"
-    digest1: str = gql_result.result_data.digest
+    digest1: str = gql_result.result_data.transaction.digest
     await asyncio.sleep(SETTLE_SECS)
 
     # gRPC PTB

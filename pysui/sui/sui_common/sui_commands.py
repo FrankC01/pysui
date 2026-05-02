@@ -25,7 +25,7 @@ from pysui.sui.sui_pgql.pgql_types import PagingCursor
 class ExecuteTransaction(SuiCommand):
     """Execute a signed transaction on-chain."""
 
-    gql_class: ClassVar[type] = pgql_query.ExecuteTransaction
+    gql_class: ClassVar[type] = pgql_query.ExecuteTransactionSC
     grpc_class: ClassVar[type] = rn.ExecuteTransaction
 
     tx_bytestr: str | bytes
@@ -42,7 +42,7 @@ class ExecuteTransaction(SuiCommand):
             s if isinstance(s, str) else base64.b64encode(s).decode()
             for s in self.sig_array
         ]
-        return pgql_query.ExecuteTransaction(tx_bytestr=tx_b64, sig_array=sigs_b64)
+        return pgql_query.ExecuteTransactionSC(tx_bytestr=tx_b64, sig_array=sigs_b64)
 
     def grpc_request(self) -> rn.ExecuteTransaction:
         """Return gRPC execute-transaction request."""

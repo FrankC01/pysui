@@ -27,9 +27,10 @@ Commands covered:
 import pytest
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui import AsyncSuiGQLClient as AsyncGqlClient, PysuiConfiguration, SuiGrpcClient
+from pysui import client_factory, GroupProtocol, PysuiConfiguration, AsyncClientBase
 from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC
 from pysui.sui.sui_common.sui_commands import (
+    ExecuteTransaction,
     GetCheckpointBySequence,
     GetCoins,
     GetCurrentValidators,
@@ -79,7 +80,7 @@ _NONEXISTENT_DIGEST = "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi"
 
 
 @pytest.mark.order(1)
-async def test_get_latest_checkpoint_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_latest_checkpoint_gql(gql_session_client: AsyncClientBase) -> None:
     """GetLatestCheckpoint via GQL SC sibling returns GetCheckpointResponse."""
     result = await gql_session_client.execute(command=GetLatestCheckpoint())
     assert result.is_ok(), f"GetLatestCheckpoint GQL: {result.result_string}"
@@ -89,7 +90,7 @@ async def test_get_latest_checkpoint_gql(gql_session_client: AsyncGqlClient) -> 
 
 
 @pytest.mark.order(2)
-async def test_get_latest_checkpoint_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_latest_checkpoint_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetLatestCheckpoint via gRPC returns GetCheckpointResponse."""
     result = await grpc_session_client.execute(command=GetLatestCheckpoint())
     assert result.is_ok(), f"GetLatestCheckpoint gRPC: {result.result_string}"
@@ -99,7 +100,7 @@ async def test_get_latest_checkpoint_grpc(grpc_session_client: SuiGrpcClient) ->
 
 @pytest.mark.order(3)
 async def test_get_checkpoint_by_sequence_gql(
-    gql_session_client: AsyncGqlClient,
+    gql_session_client: AsyncClientBase,
 ) -> None:
     """GetCheckpointBySequence(1) via GQL SC sibling returns GetCheckpointResponse."""
     result = await gql_session_client.execute(
@@ -112,7 +113,7 @@ async def test_get_checkpoint_by_sequence_gql(
 
 @pytest.mark.order(4)
 async def test_get_checkpoint_by_sequence_grpc(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
 ) -> None:
     """GetCheckpointBySequence(1) via gRPC returns GetCheckpointResponse."""
     result = await grpc_session_client.execute(
@@ -128,7 +129,7 @@ async def test_get_checkpoint_by_sequence_grpc(
 
 
 @pytest.mark.order(5)
-async def test_get_package_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_package_gql(gql_session_client: AsyncClientBase) -> None:
     """GetPackage(0x2) via GQL SC sibling returns GetPackageResponse."""
     result = await gql_session_client.execute(command=GetPackage(package=_FRAMEWORK))
     assert result.is_ok(), f"GetPackage GQL: {result.result_string}"
@@ -137,7 +138,7 @@ async def test_get_package_gql(gql_session_client: AsyncGqlClient) -> None:
 
 
 @pytest.mark.order(6)
-async def test_get_package_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_package_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetPackage(0x2) via gRPC returns GetPackageResponse."""
     result = await grpc_session_client.execute(command=GetPackage(package=_FRAMEWORK))
     assert result.is_ok(), f"GetPackage gRPC: {result.result_string}"
@@ -145,7 +146,7 @@ async def test_get_package_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 
 @pytest.mark.order(7)
-async def test_get_module_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_module_gql(gql_session_client: AsyncClientBase) -> None:
     """GetModule(0x2, coin) via GQL SC sibling returns Module."""
     result = await gql_session_client.execute(
         command=GetModule(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
@@ -155,7 +156,7 @@ async def test_get_module_gql(gql_session_client: AsyncGqlClient) -> None:
 
 
 @pytest.mark.order(8)
-async def test_get_module_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_module_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetModule(0x2, coin) via gRPC returns Module."""
     result = await grpc_session_client.execute(
         command=GetModule(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
@@ -165,7 +166,7 @@ async def test_get_module_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 
 @pytest.mark.order(9)
-async def test_get_move_datatype_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_move_datatype_gql(gql_session_client: AsyncClientBase) -> None:
     """GetMoveDataType(0x2::coin::Coin) via GQL SC sibling returns GetDatatypeResponse."""
     result = await gql_session_client.execute(
         command=GetMoveDataType(
@@ -180,7 +181,7 @@ async def test_get_move_datatype_gql(gql_session_client: AsyncGqlClient) -> None
 
 
 @pytest.mark.order(10)
-async def test_get_move_datatype_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_move_datatype_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetMoveDataType(0x2::coin::Coin) via gRPC returns GetDatatypeResponse."""
     result = await grpc_session_client.execute(
         command=GetMoveDataType(
@@ -194,7 +195,7 @@ async def test_get_move_datatype_grpc(grpc_session_client: SuiGrpcClient) -> Non
 
 
 @pytest.mark.order(11)
-async def test_get_structure_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_structure_gql(gql_session_client: AsyncClientBase) -> None:
     """GetStructure(0x2::coin::Coin) via GQL SC sibling returns GetDatatypeResponse."""
     result = await gql_session_client.execute(
         command=GetStructure(
@@ -209,7 +210,7 @@ async def test_get_structure_gql(gql_session_client: AsyncGqlClient) -> None:
 
 
 @pytest.mark.order(12)
-async def test_get_structure_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_structure_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetStructure(0x2::coin::Coin) via gRPC returns GetDatatypeResponse."""
     result = await grpc_session_client.execute(
         command=GetStructure(
@@ -223,7 +224,7 @@ async def test_get_structure_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 
 @pytest.mark.order(13)
-async def test_get_function_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_function_gql(gql_session_client: AsyncClientBase) -> None:
     """GetFunction(0x2::coin::split) via GQL SC sibling returns GetFunctionResponse."""
     result = await gql_session_client.execute(
         command=GetFunction(
@@ -238,7 +239,7 @@ async def test_get_function_gql(gql_session_client: AsyncGqlClient) -> None:
 
 
 @pytest.mark.order(14)
-async def test_get_function_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_function_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetFunction(0x2::coin::split) via gRPC returns GetFunctionResponse."""
     result = await grpc_session_client.execute(
         command=GetFunction(
@@ -257,7 +258,7 @@ async def test_get_function_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 
 @pytest.mark.order(15)
-async def test_get_structures_gql_paged(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_structures_gql_paged(gql_session_client: AsyncClientBase) -> None:
     """GetStructures(0x2::coin) via GQL SC paging branch returns MoveStructuresGRPC."""
     result = await gql_session_client.execute(
         command=GetStructures(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
@@ -268,7 +269,7 @@ async def test_get_structures_gql_paged(gql_session_client: AsyncGqlClient) -> N
 
 
 @pytest.mark.order(16)
-async def test_get_structures_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_structures_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetStructures(0x2::coin) via gRPC returns MoveStructuresGRPC."""
     result = await grpc_session_client.execute(
         command=GetStructures(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
@@ -279,7 +280,7 @@ async def test_get_structures_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 
 @pytest.mark.order(17)
-async def test_get_functions_gql_paged(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_functions_gql_paged(gql_session_client: AsyncClientBase) -> None:
     """GetFunctions(0x2::coin) via GQL SC paging branch returns MoveFunctionsGRPC."""
     result = await gql_session_client.execute(
         command=GetFunctions(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
@@ -290,7 +291,7 @@ async def test_get_functions_gql_paged(gql_session_client: AsyncGqlClient) -> No
 
 
 @pytest.mark.order(18)
-async def test_get_functions_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_functions_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetFunctions(0x2::coin) via gRPC returns MoveFunctionsGRPC."""
     result = await grpc_session_client.execute(
         command=GetFunctions(package=_FRAMEWORK, module_name=_FRAMEWORK_MODULE)
@@ -306,7 +307,7 @@ async def test_get_functions_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 
 @pytest.mark.order(19)
-async def test_get_object_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_object_gql(gql_session_client: AsyncClientBase) -> None:
     """GetObject(0x6 Clock) via GQL SC sibling returns Object."""
     result = await gql_session_client.execute(command=GetObject(object_id=_CLOCK_OBJ))
     assert result.is_ok(), f"GetObject GQL: {result.result_string}"
@@ -314,7 +315,7 @@ async def test_get_object_gql(gql_session_client: AsyncGqlClient) -> None:
 
 
 @pytest.mark.order(20)
-async def test_get_object_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_object_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetObject(0x6 Clock) via gRPC SC sibling returns Object (same as GQL path)."""
     result = await grpc_session_client.execute(command=GetObject(object_id=_CLOCK_OBJ))
     assert result.is_ok(), f"GetObject gRPC: {result.result_string}"
@@ -322,7 +323,7 @@ async def test_get_object_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 
 @pytest.mark.order(21)
-async def test_get_multiple_objects_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_multiple_objects_gql(gql_session_client: AsyncClientBase) -> None:
     """GetMultipleObjects([0x5, 0x6]) via GQL SC sibling returns BatchGetObjectsResponse."""
     result = await gql_session_client.execute(
         command=GetMultipleObjects(object_ids=[_SYSTEM_STATE_OBJ, _CLOCK_OBJ])
@@ -333,7 +334,7 @@ async def test_get_multiple_objects_gql(gql_session_client: AsyncGqlClient) -> N
 
 
 @pytest.mark.order(22)
-async def test_get_multiple_objects_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_multiple_objects_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetMultipleObjects([0x5, 0x6]) via gRPC returns BatchGetObjectsResponse."""
     result = await grpc_session_client.execute(
         command=GetMultipleObjects(object_ids=[_SYSTEM_STATE_OBJ, _CLOCK_OBJ])
@@ -349,7 +350,7 @@ async def test_get_multiple_objects_grpc(grpc_session_client: SuiGrpcClient) -> 
 
 
 @pytest.mark.order(23)
-async def test_get_coins_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_coins_gql(gql_session_client: AsyncClientBase) -> None:
     """GetCoins for active address via GQL SC sibling returns ListOwnedObjectsResponse."""
     owner = gql_session_client.config.active_address
     result = await gql_session_client.execute(command=GetCoins(owner=owner))
@@ -358,7 +359,7 @@ async def test_get_coins_gql(gql_session_client: AsyncGqlClient) -> None:
 
 
 @pytest.mark.order(24)
-async def test_get_coins_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_coins_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetCoins for active address via gRPC returns ListOwnedObjectsResponse."""
     owner = grpc_session_client.config.active_address
     result = await grpc_session_client.execute(command=GetCoins(owner=owner))
@@ -367,7 +368,7 @@ async def test_get_coins_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 
 @pytest.mark.order(25)
-async def test_get_gas_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_gas_gql(gql_session_client: AsyncClientBase) -> None:
     """GetGas for active address via GQL SC sibling returns ListOwnedObjectsResponse."""
     owner = gql_session_client.config.active_address
     result = await gql_session_client.execute(command=GetGas(owner=owner))
@@ -376,7 +377,7 @@ async def test_get_gas_gql(gql_session_client: AsyncGqlClient) -> None:
 
 
 @pytest.mark.order(26)
-async def test_get_gas_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_gas_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetGas for active address via gRPC returns ListOwnedObjectsResponse."""
     owner = grpc_session_client.config.active_address
     result = await grpc_session_client.execute(command=GetGas(owner=owner))
@@ -386,7 +387,7 @@ async def test_get_gas_grpc(grpc_session_client: SuiGrpcClient) -> None:
 
 @pytest.mark.order(27)
 async def test_get_objects_owned_by_address_gql(
-    gql_session_client: AsyncGqlClient,
+    gql_session_client: AsyncClientBase,
 ) -> None:
     """GetObjectsOwnedByAddress for active address via GQL SC sibling returns ListOwnedObjectsResponse."""
     owner = gql_session_client.config.active_address
@@ -399,7 +400,7 @@ async def test_get_objects_owned_by_address_gql(
 
 @pytest.mark.order(28)
 async def test_get_objects_owned_by_address_grpc(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
 ) -> None:
     """GetObjectsOwnedByAddress for active address via gRPC returns ListOwnedObjectsResponse."""
     owner = grpc_session_client.config.active_address
@@ -416,7 +417,7 @@ async def test_get_objects_owned_by_address_grpc(
 
 
 @pytest.mark.order(29)
-async def test_get_dynamic_fields_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_dynamic_fields_gql(gql_session_client: AsyncClientBase) -> None:
     """GetDynamicFields(0x5 SuiSystemState) via GQL SC sibling returns ListDynamicFieldsResponse."""
     result = await gql_session_client.execute(
         command=GetDynamicFields(object_id=_SYSTEM_STATE_OBJ)
@@ -431,7 +432,7 @@ async def test_get_dynamic_fields_gql(gql_session_client: AsyncGqlClient) -> Non
 
 
 @pytest.mark.order(30)
-async def test_get_latest_sui_system_state_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_latest_sui_system_state_gql(gql_session_client: AsyncClientBase) -> None:
     """GetLatestSuiSystemState via GQL SC sibling returns SystemState."""
     result = await gql_session_client.execute(command=GetLatestSuiSystemState())
     assert result.is_ok(), f"GetLatestSuiSystemState GQL: {result.result_string}"
@@ -440,7 +441,7 @@ async def test_get_latest_sui_system_state_gql(gql_session_client: AsyncGqlClien
 
 
 @pytest.mark.order(31)
-async def test_get_latest_sui_system_state_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_latest_sui_system_state_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetLatestSuiSystemState via gRPC SC sibling returns SystemState."""
     result = await grpc_session_client.execute(command=GetLatestSuiSystemState())
     assert result.is_ok(), f"GetLatestSuiSystemState gRPC: {result.result_string}"
@@ -449,7 +450,7 @@ async def test_get_latest_sui_system_state_grpc(grpc_session_client: SuiGrpcClie
 
 
 @pytest.mark.order(32)
-async def test_get_current_validators_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_current_validators_gql(gql_session_client: AsyncClientBase) -> None:
     """GetCurrentValidators via GQL SC paging branch returns list[Validator] (devnet)."""
     result = await gql_session_client.execute(command=GetCurrentValidators())
     assert result.is_ok(), f"GetCurrentValidators GQL: {result.result_string}"
@@ -459,7 +460,7 @@ async def test_get_current_validators_gql(gql_session_client: AsyncGqlClient) ->
 
 
 @pytest.mark.order(33)
-async def test_get_current_validators_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_current_validators_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetCurrentValidators via gRPC SC sibling returns list[Validator] (devnet)."""
     result = await grpc_session_client.execute(command=GetCurrentValidators())
     assert result.is_ok(), f"GetCurrentValidators gRPC: {result.result_string}"
@@ -484,7 +485,7 @@ async def test_get_current_validators_gql_testnet() -> None:
         group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
         profile_name="testnet",
     )
-    client = AsyncGqlClient(pysui_config=cfg)
+    client = client_factory(cfg, protocol=GroupProtocol.GRAPHQL)
     try:
         result = await client.execute(command=GetCurrentValidators())
         assert result.is_ok(), f"GetCurrentValidators GQL testnet: {result.result_string}"
@@ -505,7 +506,7 @@ async def test_get_current_validators_grpc_testnet() -> None:
         group_name=PysuiConfiguration.SUI_GRPC_GROUP,
         profile_name="testnet",
     )
-    client = SuiGrpcClient(pysui_config=cfg)
+    client = client_factory(cfg, protocol=GroupProtocol.GRPC)
     try:
         result = await client.execute(command=GetCurrentValidators())
         assert result.is_ok(), f"GetCurrentValidators gRPC testnet: {result.result_string}"
@@ -526,7 +527,7 @@ async def test_get_current_validators_grpc_testnet() -> None:
 
 
 @pytest.mark.order(36)
-async def test_get_transaction_gql(txn_digests, gql_session_client: AsyncGqlClient) -> None:
+async def test_get_transaction_gql(txn_digests, gql_session_client: AsyncClientBase) -> None:
     """GetTransaction(digest1) via GQL returns ExecutedTransaction."""
     result = await gql_session_client.execute(
         command=GetTransaction(digest=txn_digests.digest1)
@@ -536,7 +537,7 @@ async def test_get_transaction_gql(txn_digests, gql_session_client: AsyncGqlClie
 
 
 @pytest.mark.order(37)
-async def test_get_transaction_grpc(txn_digests, grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_transaction_grpc(txn_digests, grpc_session_client: AsyncClientBase) -> None:
     """GetTransaction(digest1) via gRPC returns ExecutedTransaction."""
     result = await grpc_session_client.execute(
         command=GetTransaction(digest=txn_digests.digest1)
@@ -546,7 +547,7 @@ async def test_get_transaction_grpc(txn_digests, grpc_session_client: SuiGrpcCli
 
 
 @pytest.mark.order(38)
-async def test_get_transaction_not_found_gql(gql_session_client: AsyncGqlClient) -> None:
+async def test_get_transaction_not_found_gql(gql_session_client: AsyncClientBase) -> None:
     """GetTransaction with non-existent digest via GQL returns is_ok() with None."""
     result = await gql_session_client.execute(
         command=GetTransaction(digest=_NONEXISTENT_DIGEST)
@@ -556,7 +557,7 @@ async def test_get_transaction_not_found_gql(gql_session_client: AsyncGqlClient)
 
 
 @pytest.mark.order(39)
-async def test_get_transaction_not_found_grpc(grpc_session_client: SuiGrpcClient) -> None:
+async def test_get_transaction_not_found_grpc(grpc_session_client: AsyncClientBase) -> None:
     """GetTransaction with non-existent digest via gRPC returns is_ok() with None."""
     result = await grpc_session_client.execute(
         command=GetTransaction(digest=_NONEXISTENT_DIGEST)
@@ -567,7 +568,7 @@ async def test_get_transaction_not_found_grpc(grpc_session_client: SuiGrpcClient
 
 @pytest.mark.order(40)
 async def test_get_transactions_mixed_gql(
-    txn_digests, gql_session_client: AsyncGqlClient
+    txn_digests, gql_session_client: AsyncClientBase
 ) -> None:
     """GetTransactions([digest1, nonexistent, digest2]) via GQL returns list of 3; slot 1 is None."""
     result = await gql_session_client.execute(
@@ -583,7 +584,7 @@ async def test_get_transactions_mixed_gql(
 
 @pytest.mark.order(41)
 async def test_get_transactions_mixed_grpc(
-    txn_digests, grpc_session_client: SuiGrpcClient
+    txn_digests, grpc_session_client: AsyncClientBase
 ) -> None:
     """GetTransactions([digest1, nonexistent, digest2]) via gRPC returns list of 3; slot 1 is None."""
     result = await grpc_session_client.execute(
@@ -620,7 +621,7 @@ def test_get_transactions_empty_raises() -> None:
 
 @pytest.mark.order(45)
 async def test_get_transaction_kind_gql(
-    txn_digests, gql_session_client: AsyncGqlClient
+    txn_digests, gql_session_client: AsyncClientBase
 ) -> None:
     """GetTransactionKind(digest1) via GQL returns TransactionKind."""
     result = await gql_session_client.execute(
@@ -632,7 +633,7 @@ async def test_get_transaction_kind_gql(
 
 @pytest.mark.order(46)
 async def test_get_transaction_kind_grpc(
-    txn_digests, grpc_session_client: SuiGrpcClient
+    txn_digests, grpc_session_client: AsyncClientBase
 ) -> None:
     """GetTransactionKind(digest1) via gRPC returns TransactionKind."""
     result = await grpc_session_client.execute(
@@ -640,3 +641,49 @@ async def test_get_transaction_kind_grpc(
     )
     assert result.is_ok(), f"GetTransactionKind gRPC: {result.result_string}"
     assert isinstance(result.result_data, sui_prot.TransactionKind)
+
+
+# ---------------------------------------------------------------------------
+# ExecuteTransaction GQL SC — verify ExecuteTransactionSC encode_fn path
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(47)
+async def test_execute_transaction_gql_changed_objects(
+    gql_session_client: AsyncClientBase,
+    ensure_session_gas: None,
+) -> None:
+    """ExecuteTransaction via GQL returns ExecuteTransactionResponse with changed_objects.
+
+    PTB: split_coin(gas, [1_000]) + transfer_objects([split], active_address).
+    The split creates one new coin — verifies DOES_NOT_EXIST input_state mapping in
+    ExecuteTransactionSC.encode_fn().
+    """
+    txer = await gql_session_client.transaction()
+    split = await txer.split_coin(coin=txer.gas, amounts=[1_000])
+    await txer.transfer_objects(
+        transfers=[split], recipient=gql_session_client.config.active_address
+    )
+    result = await gql_session_client.execute(
+        command=ExecuteTransaction(**await txer.build_and_sign())
+    )
+    assert result.is_ok(), f"ExecuteTransaction GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.ExecuteTransactionResponse), (
+        f"expected ExecuteTransactionResponse, got {type(result.result_data)}"
+    )
+    assert result.result_data.transaction is not None, "transaction field is None"
+    assert result.result_data.transaction.digest, "digest is empty"
+    assert result.result_data.transaction.effects is not None, "effects field is None"
+    assert result.result_data.transaction.effects.status is not None, "status is None"
+    assert result.result_data.transaction.effects.status.success, (
+        "on-chain execution failed"
+    )
+    new_objs = [
+        co
+        for co in result.result_data.transaction.effects.changed_objects
+        if co.input_state == sui_prot.ChangedObjectInputObjectState.DOES_NOT_EXIST
+    ]
+    assert new_objs, (
+        f"expected >= 1 newly created object (split coin); "
+        f"changed_objects={result.result_data.transaction.effects.changed_objects}"
+    )

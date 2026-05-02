@@ -13,7 +13,7 @@ import asyncio
 
 from pysui import PysuiConfiguration, SuiRpcResult, client_factory, AsyncClientBase
 from pysui.sui.sui_common.client import PysuiClient
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
+from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
 from pysui.sui.sui_common.trxn_base import FundsSource
 from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
@@ -81,7 +81,7 @@ async def do_gas(client: AsyncClientBase):
         print(f"Total coins in page: {len(result.result_data.objects)}")
 
 
-async def do_all_gas(client: AsyncSuiGQLClient):
+async def do_all_gas(client: GqlProtocolClient):
     """Fetch all coins for owner.
     protocol-level access: async_get_all_owned_gas_objects is GraphQL-specific.
     """
@@ -100,7 +100,7 @@ async def do_all_gas(client: AsyncSuiGQLClient):
         raise ve
 
 
-async def do_gas_ids(client: AsyncSuiGQLClient):
+async def do_gas_ids(client: GqlProtocolClient):
     """Fetch coins by the ids.
     protocol-level access: GetMultipleGasObjects has no SuiCommand equivalent.
     """
@@ -122,7 +122,7 @@ async def do_gas_ids(client: AsyncSuiGQLClient):
         print(f"Data return from call is empty {result.result_data.objects}")
 
 
-async def do_sysstate(client: AsyncSuiGQLClient):
+async def do_sysstate(client: GqlProtocolClient):
     """Fetch the most current system state summary."""
     handle_result(await client.execute(command=cmd.GetLatestSuiSystemState()))
 
@@ -176,7 +176,7 @@ async def do_object_content(client: AsyncClientBase):
     )
 
 
-async def do_objects(client: AsyncSuiGQLClient):
+async def do_objects(client: GqlProtocolClient):
     """Fetch all objects held by owner.
     protocol-level access: async_get_all_owned_objects is GraphQL-specific.
     """
@@ -204,7 +204,7 @@ async def do_past_object(client: AsyncClientBase):
     )
 
 
-async def do_multiple_object_versions(client: AsyncSuiGQLClient):
+async def do_multiple_object_versions(client: GqlProtocolClient):
     """Fetchs object details by version.
     protocol-level access: GetMultipleVersionedObjects has no SuiCommand equivalent.
     To run, change the objectID str and version int.
@@ -266,7 +266,7 @@ async def do_dynamics(client: AsyncClientBase):
     )
 
 
-async def do_event(client: AsyncSuiGQLClient):
+async def do_event(client: GqlProtocolClient):
     """Fetch events matching a filter.
     protocol-level access: GetEvents SuiCommand removed; use legacy GQL query directly.
     """
@@ -277,14 +277,14 @@ async def do_event(client: AsyncSuiGQLClient):
     )
 
 
-async def do_configs(client: AsyncSuiGQLClient):
+async def do_configs(client: GqlProtocolClient):
     """Fetch the GraphQL, Protocol and System configurations.
     protocol-level access: rpc_config is a GraphQL-specific property.
     """
     print(client.rpc_config.to_json(indent=2))
 
 
-async def do_service_config(client: AsyncSuiGQLClient):
+async def do_service_config(client: GqlProtocolClient):
     """Fetch the GraphQL service configuration.
     protocol-level access: rpc_config is a GraphQL-specific property.
     """
@@ -319,7 +319,7 @@ async def do_txs(client: AsyncClientBase):
     )
 
 
-async def do_filter_txs(client: AsyncSuiGQLClient):
+async def do_filter_txs(client: GqlProtocolClient):
     """Fetch all transactions matching filter.
     protocol-level access: GetFilteredTx SuiCommand removed; use legacy GQL query directly.
 
@@ -379,14 +379,14 @@ async def do_sequence_cp(client: AsyncClientBase):
         print(result.result_string)
 
 
-async def do_checkpoints(client: AsyncSuiGQLClient):
+async def do_checkpoints(client: GqlProtocolClient):
     """Fetch checkpoint list.
     protocol-level access: GetCheckpoints has no SuiCommand equivalent.
     """
     handle_result(await client.execute_query_node(with_node=qn.GetCheckpoints()))
 
 
-async def do_refgas(client: AsyncSuiGQLClient):
+async def do_refgas(client: GqlProtocolClient):
     """Fetch the current reference gas price.
     protocol-level access: GetReferenceGasPrice has no SuiCommand equivalent.
     """
@@ -409,17 +409,17 @@ async def do_owned_nameservice(client: AsyncClientBase):
     )
 
 
-async def do_all_validators(client: AsyncSuiGQLClient):
+async def do_all_validators(client: GqlProtocolClient):
     """Fetch all validators from current Epoch (GQL paging handled internally)."""
     handle_result(await client.execute(command=cmd.GetCurrentValidators()))
 
 
-async def do_validators(client: AsyncSuiGQLClient):
+async def do_validators(client: GqlProtocolClient):
     """Fetch the most current validator detail."""
     handle_result(await client.execute(command=cmd.GetCurrentValidators()))
 
 
-async def do_validator_xchange_rates(client: AsyncSuiGQLClient):
+async def do_validator_xchange_rates(client: GqlProtocolClient):
     """Get exchange rate table entries.
 
     Uses the protocol-level GQL query to retrieve the exchange rate address

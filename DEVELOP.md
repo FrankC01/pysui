@@ -55,6 +55,23 @@ assuming you've set one up for own app/library development.
 
 See [README](https://github.com/FrankC01/pysui/blob/main/README.md)
 
+## Unit Tests
+
+Unit tests live in `tests/unit_tests/` and `tests/async_tests/`. They require no live node and
+run entirely offline. Run these first — they are the fast feedback loop for validating changes
+before touching the integration suite.
+
+```bash
+pytest tests/unit_tests/       # offline unit tests
+pytest tests/async_tests/      # async unit tests
+```
+
+Or run the full offline suite together:
+
+```bash
+pytest tests/unit_tests/ tests/async_tests/
+```
+
 ## Integration Tests
 
 Integration tests live in `tests/integration_tests/` and require a live Sui node with a funded wallet.

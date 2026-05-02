@@ -40,7 +40,7 @@ class AsyncSuiTransaction(txbase):
         """__init__ Initialize the asynchronous SuiTransaction.
 
         :param client: The asynchronous SuiGQLClient
-        :type client: AsyncSuiGQLClient
+        :type client: GqlProtocolClient
         :param initial_sender: The address of the sender of the transaction, defaults to None
         :type initial_sender: Union[str, SigningMultiSig], optional
         :param compress_inputs: Reuse identical inputs, defaults to False
@@ -128,12 +128,11 @@ class AsyncSuiTransaction(txbase):
                     )
                 )
                 if _res.is_ok():
-                    summary = _res.result_data.transaction_block.gas_effects[
-                        "gasSummary"
-                    ]
+                    gas_used = (_res.result_data.transaction.effects.gas_used
+                                or sui_prot.GasCostSummary())
                     gas_budget = compute_gas_budget(
-                        int(summary["computationCost"]),
-                        int(summary["storageCost"]),
+                        gas_used.computation_cost or 0,
+                        gas_used.storage_cost or 0,
                         _cei.reference_gas_price,
                     )
                 else:

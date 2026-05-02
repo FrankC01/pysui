@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pysui import client_factory, GroupProtocol
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
-from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
+from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
+from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 
 
 def _make_config(protocol: GroupProtocol) -> MagicMock:
@@ -44,25 +44,25 @@ def test_other_protocol_raises():
 # ---------------------------------------------------------------------------
 
 
-@patch("pysui.sui.sui_pgql.pgql_clients.AsyncSuiGQLClient", autospec=True)
+@patch("pysui.sui.sui_pgql.pgql_clients.GqlProtocolClient", autospec=True)
 def test_active_graphql_group_returns_gql_client(mock_gql):
-    """Active group with GRAPHQL protocol returns AsyncSuiGQLClient."""
+    """Active group with GRAPHQL protocol returns GqlProtocolClient."""
     cfg = _make_config(GroupProtocol.GRAPHQL)
     result = client_factory(cfg)
     mock_gql.assert_called_once_with(pysui_config=cfg)
     assert result is mock_gql.return_value
 
 
-@patch("pysui.sui.sui_grpc.pgrpc_clients.SuiGrpcClient", autospec=True)
+@patch("pysui.sui.sui_grpc.pgrpc_clients.GrpcProtocolClient", autospec=True)
 def test_active_grpc_group_returns_grpc_client(mock_grpc):
-    """Active group with GRPC protocol returns SuiGrpcClient."""
+    """Active group with GRPC protocol returns GrpcProtocolClient."""
     cfg = _make_config(GroupProtocol.GRPC)
     result = client_factory(cfg)
     mock_grpc.assert_called_once_with(pysui_config=cfg)
     assert result is mock_grpc.return_value
 
 
-@patch("pysui.sui.sui_pgql.pgql_clients.AsyncSuiGQLClient", autospec=True)
+@patch("pysui.sui.sui_pgql.pgql_clients.GqlProtocolClient", autospec=True)
 def test_explicit_group_graphql(mock_gql):
     """Explicit group_name + GRAPHQL protocol activates group and returns GQL client."""
     cfg = _make_config(GroupProtocol.OTHER)
@@ -72,7 +72,7 @@ def test_explicit_group_graphql(mock_gql):
     assert result is mock_gql.return_value
 
 
-@patch("pysui.sui.sui_grpc.pgrpc_clients.SuiGrpcClient", autospec=True)
+@patch("pysui.sui.sui_grpc.pgrpc_clients.GrpcProtocolClient", autospec=True)
 def test_explicit_group_grpc(mock_grpc):
     """Explicit group_name + GRPC protocol activates group and returns gRPC client."""
     cfg = _make_config(GroupProtocol.OTHER)

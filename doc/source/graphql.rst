@@ -67,11 +67,11 @@ To write a copy of the live Sui GraphQL schema to the current directory:
 
     import asyncio
     from pysui import PysuiConfiguration
-    from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
+    from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = AsyncSuiGQLClient(pysui_config=cfg, write_schema=True)
+        client = GqlProtocolClient(pysui_config=cfg, write_schema=True)
         print(f"Schema written to: {client.base_schema_version}.graphql")
 
     if __name__ == "__main__":
@@ -88,11 +88,11 @@ per-call. If not provided, headers default to ``None``.
 
     import asyncio
     import pysui.sui.sui_common.sui_commands as cmd
-    from pysui import PysuiConfiguration, AsyncSuiGQLClient
+    from pysui import PysuiConfiguration, GqlProtocolClient
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = AsyncSuiGQLClient(
+        client = GqlProtocolClient(
             pysui_config=cfg,
             default_header={"headers": {"from": "youremail@acme.org"}},
         )
@@ -119,7 +119,7 @@ The GraphQL client exposes four execution paths:
 ``execute(command=...)``
     **Primary path.** Accepts a :py:class:`~pysui.sui.sui_common.sui_command.SuiCommand`
     instance and dispatches to the appropriate GQL query internally.  Works identically
-    on both ``AsyncSuiGQLClient`` and ``SuiGrpcClient`` — see :doc:`sui_commands` for
+    on both ``GqlProtocolClient`` and ``GrpcProtocolClient`` — see :doc:`sui_commands` for
     the full command list.
 
 ``execute_query_string``
@@ -144,7 +144,7 @@ String Queries
    :linenos:
 
     import asyncio
-    from pysui import PysuiConfiguration, AsyncSuiGQLClient
+    from pysui import PysuiConfiguration, GqlProtocolClient
 
     _QUERY = """
         query {
@@ -160,7 +160,7 @@ String Queries
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = AsyncSuiGQLClient(pysui_config=cfg)
+        client = GqlProtocolClient(pysui_config=cfg)
         result = await client.execute_query_string(string=_QUERY)
         print(result)
 
@@ -175,13 +175,13 @@ GraphQL Request Queries
 
     import asyncio
     from gql import gql
-    from pysui import PysuiConfiguration, AsyncSuiGQLClient
+    from pysui import PysuiConfiguration, GqlProtocolClient
 
     _QUERY = """..."""  # same query string as above
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = AsyncSuiGQLClient(pysui_config=cfg)
+        client = GqlProtocolClient(pysui_config=cfg)
         result = await client.execute_document_node(with_node=gql(_QUERY))
         if result.is_ok():
             print(result.result_data)
@@ -203,12 +203,12 @@ pysui QueryNode Queries *(deprecated path)*
    :linenos:
 
     import asyncio
-    from pysui import PysuiConfiguration, AsyncSuiGQLClient
+    from pysui import PysuiConfiguration, GqlProtocolClient
     import pysui.sui.sui_pgql.pgql_query as qn
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = AsyncSuiGQLClient(pysui_config=cfg)
+        client = GqlProtocolClient(pysui_config=cfg)
         # Protocol-level access: custom QueryNode with no SuiCommand equivalent
         result = await client.execute_query_node(
             with_node=qn.GetObjectContent(

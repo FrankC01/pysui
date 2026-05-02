@@ -17,10 +17,12 @@ parameters on build(), build_and_sign(), and transaction_data()
 - `MoveFunctionGQL.parameters` changed from `list[dict]` to `list[OpenMoveTypeGQL]` — any code iterating raw dicts from function metadata must migrate to the new dataclass accessors
 - `MoveFunctionGQL.returns` changed from `Optional[list]` to `list[OpenMoveTypeGQL]` — same migration required
 
-- `AsyncSuiGQLClient.transaction()` is now `async def` — all call sites must add `await` (aligns with `SuiGrpcClient.transaction()` for protocol-agnostic code via `client_factory`)
+- `GqlProtocolClient.transaction()` is now `async def` — all call sites must add `await` (aligns with `GrpcProtocolClient.transaction()` for protocol-agnostic code via `client_factory`)
 
 - `SerialTransactionExecutor` renamed to `GqlSerialTransactionExecutor` — protocol prefix added
   to all executor class names for consistency; update imports accordingly
+
+- `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations; old names no longer exist
 
 ### Added
 
@@ -43,17 +45,19 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 - `AsyncClientBase` abstract base class (`pysui/abstracts/async_client.py`): replaces `PysuiClient` as the shared async interface; declares `execute(command, *, timeout=None, headers=None) -> SuiRpcResult` as a fourth abstract method alongside `transaction()`, `__aenter__()`, and `__aexit__()`; `client_factory()` return annotation updated from `PysuiClient` to `AsyncClientBase`
 
-- `SuiCommand` ABC (`pysui/sui/sui_common/sui_command.py`) and 41 built-in subclasses (`pysui/sui/sui_common/sui_commands.py`): protocol-neutral request objects forming the **Unified Client Interface (UCI)**; `await client.execute(command=...)` dispatches identically on both `AsyncSuiGQLClient` and `SuiGrpcClient`; every subclass works on both transports and returns the same canonical gRPC proto dataclass output regardless of protocol; `GetStructures` and `GetFunctions` auto-paginate transparently on GraphQL; all 41 subclasses exported from `pysui`; includes `GetTransaction`, `GetTransactions`, and `GetTransactionKind` for fetching executed transactions by digest
+- `SuiCommand` ABC (`pysui/sui/sui_common/sui_command.py`) and 41 built-in subclasses (`pysui/sui/sui_common/sui_commands.py`): protocol-neutral request objects forming the **Unified Client Interface (UCI)**; `await client.execute(command=...)` dispatches identically on both `GqlProtocolClient` and `GrpcProtocolClient`; every subclass works on both transports and returns the same canonical gRPC proto dataclass output regardless of protocol; `GetStructures` and `GetFunctions` auto-paginate transparently on GraphQL; all 41 subclasses exported from `pysui`; includes `GetTransaction`, `GetTransactions`, and `GetTransactionKind` for fetching executed transactions by digest
+
+- `serial_executor(**kwargs)` and `parallel_executor(**kwargs)` factory methods added to both `GqlProtocolClient` and `GrpcProtocolClient`; executor creation via these methods is the UCI-conformant pattern — direct instantiation of executor classes is not part of the UCI contract
 
 - SC sibling query nodes in `pysui/sui/sui_pgql/pgql_query.py`: 25 GQL-side protocol bridges whose `encode_fn()` produces gRPC proto dataclasses directly, enabling the UCI canonical-output guarantee across all 41 SuiCommand subclasses
 
 ### Deprecated
 
-- `SuiGrpcClient.execute(request=...)` renamed to `execute_grpc_request(request=...)`; the old
+- `GrpcProtocolClient.execute(request=...)` renamed to `execute_grpc_request(request=...)`; the old
   name now dispatches via `execute(command: SuiCommand)` — existing callers must migrate to
   `execute_grpc_request(request=...)` or switch to `execute(command=...)`; targeted for removal
   at v1.0.0
-- `AsyncSuiGQLClient.execute_query_node(with_node=...)`: use `execute(command=...)` for standard
+- `GqlProtocolClient.execute_query_node(with_node=...)`: use `execute(command=...)` for standard
   queries; `execute_document_node()` and `execute_query_string()` remain as EC-5 escape hatches
   for custom GQL queries with no `SuiCommand` equivalent; targeted for removal at v1.0.0
 

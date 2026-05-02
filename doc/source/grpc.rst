@@ -34,7 +34,7 @@ gRPC client bound to the active configuration group. See
 
     async def main():
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)  # returns SuiGrpcClient
+        client = client_factory(cfg)  # returns GrpcProtocolClient
         # All operations through client.execute(command=...)
 
     if __name__ == "__main__":
@@ -53,7 +53,7 @@ Fetch Example
     async def get_object_example():
         """Fetch an object by ID."""
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)
+        client = client_factory(cfg)  # returns GrpcProtocolClient
 
         result: SuiRpcResult = await client.execute(
             command=cmd.GetObject(

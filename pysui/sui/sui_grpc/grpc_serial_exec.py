@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Optional, Union
 if TYPE_CHECKING:
     from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 
-from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
+from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 from pysui.sui.sui_common.executors import (
     ExecutorContext,
@@ -148,7 +148,7 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
     def __init__(
         self,
         *,
-        client: SuiGrpcClient,
+        client: GrpcProtocolClient,
         sender: Union[str, SigningMultiSig],
         sponsor: Optional[Union[str, SigningMultiSig]] = None,
         default_gas_budget: int = 50_000_000,
@@ -163,7 +163,7 @@ class GrpcSerialTransactionExecutor(_BaseSerialExecutor):
         """Initialize GrpcSerialTransactionExecutor.
 
         :param client: Asynchronous gRPC client
-        :type client: SuiGrpcClient
+        :type client: GrpcProtocolClient
         :param sender: Sender address or SigningMultiSig
         :type sender: Union[str, SigningMultiSig]
         :param sponsor: Optional sponsor address or SigningMultiSig, defaults to None

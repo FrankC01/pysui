@@ -40,7 +40,7 @@ class AsyncSuiTransaction(txbase):
         """__init__ Initialize the asynchronous SuiTransaction.
 
         :param client: The asynchronous SuiGQLClient
-        :type client: SuiGrpcClient
+        :type client: GrpcProtocolClient
         :param compress_inputs: reuse same inputs, defaults to True
         :type compress_inputs: Optional[bool], optional
         :param initial_sender: initial sender of transactions, defaults to None

@@ -17,13 +17,13 @@ client receives checkpoint events as an async iterator.
    :linenos:
 
     import asyncio
-    from pysui import PysuiConfiguration, SuiGrpcClient, client_factory
+    from pysui import PysuiConfiguration, client_factory
     import pysui.sui.sui_common.sui_commands as cmd
 
     async def stream_checkpoints():
         """Stream checkpoint events via gRPC subscription."""
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)  # returns SuiGrpcClient
+        client = client_factory(cfg)  # returns GrpcProtocolClient
 
         result = await client.execute(command=cmd.SubscribeCheckpoint())
 
@@ -55,13 +55,13 @@ latest checkpoint batch.
    :linenos:
 
     import asyncio
-    from pysui import PysuiConfiguration, AsyncSuiGQLClient, client_factory
+    from pysui import PysuiConfiguration, client_factory
     import pysui.sui.sui_pgql.pgql_query as qn
 
     async def poll_checkpoints():
         """Fetch the current checkpoint batch via GraphQL (EC-5)."""
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = client_factory(cfg)  # returns AsyncSuiGQLClient
+        client = client_factory(cfg)  # returns GqlProtocolClient
 
         result = await client.execute_query_node(with_node=qn.GetCheckpoints())
         if result.is_ok():

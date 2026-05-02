@@ -101,7 +101,7 @@ Copy it to a local script and run with:
     async def graphql_example():
         """GraphQL async split and transfer."""
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = client_factory(cfg)  # returns AsyncSuiGQLClient
+        client = client_factory(cfg)  # returns GqlProtocolClient
 
         txer: gql_async.AsyncSuiTransaction = await client.transaction()
         scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
@@ -121,7 +121,7 @@ Copy it to a local script and run with:
     async def grpc_example():
         """gRPC async split and transfer."""
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)  # returns SuiGrpcClient
+        client = client_factory(cfg)  # returns GrpcProtocolClient
 
         txer: grpc_async.AsyncSuiTransaction = await client.transaction()
         scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])

@@ -38,7 +38,7 @@ from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
 from samples.cmd_argsg import build_async_gas_parser, pre_config_pull
 
 
-from pysui import PysuiConfiguration, AsyncGqlClient, PysuiClient, client_factory, __version__
+from pysui import PysuiConfiguration, GqlProtocolClient, PysuiClient, client_factory, __version__
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 
@@ -82,7 +82,7 @@ async def get_all_gas(
     """get_all_gas Gets all SuiGas for each address in configuration.
 
     :param client: Asynchronous Sui Client
-    :type client: AsyncSuiGQLClient
+    :type client: GqlProtocolClient
     :return: Dictionary of all gas objects for each address
     :rtype: dict[str, list[SuiGas]]
     """

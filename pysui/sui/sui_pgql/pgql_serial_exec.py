@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable, Optional, Union
 if TYPE_CHECKING:
     from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
 
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
+from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
 from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 from pysui.sui.sui_common.executors import (
     ExecutorContext,
@@ -29,6 +29,7 @@ from pysui.sui.sui_common.types import (
 import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_bcs.bcs_txne as bcst
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 gql_ser_txn_exc_logger = logging.getLogger(__name__)
 
@@ -123,7 +124,7 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
     def __init__(
         self,
         *,
-        client: AsyncSuiGQLClient,
+        client: GqlProtocolClient,
         sender: Union[str, SigningMultiSig],
         sponsor: Optional[Union[str, SigningMultiSig]] = None,
         default_gas_budget: int = 50_000_000,
@@ -138,7 +139,7 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
         """Initialize GqlSerialTransactionExecutor.
 
         :param client: Asynchronous GraphQL client
-        :type client: AsyncSuiGQLClient
+        :type client: GqlProtocolClient
         :param sender: Sender address or SigningMultiSig
         :type sender: Union[str, SigningMultiSig]
         :param sponsor: Optional sponsor address or SigningMultiSig, defaults to None
@@ -194,10 +195,10 @@ class GqlSerialTransactionExecutor(_BaseSerialExecutor):
         )
         if not result.is_ok():
             raise ValueError(f"GQL execute_transaction failed: {result.result_string}")
-        if not isinstance(result.result_data, ptypes.ExecutionResultGQL):
+        if not isinstance(result.result_data, sui_prot.ExecuteTransactionResponse):
             raise TypeError(f"unexpected result type {type(result.result_data).__name__}")
 
-        effects_bcs = bcst.TransactionEffects.deserialize(base64.b64decode(result.result_data.effects_bcs))
+        effects_bcs = bcst.TransactionEffects.deserialize(result.result_data.transaction.effects.bcs.value)
         common_effects = _gql_effects_to_common(effects_bcs)
 
         if common_effects.gas_object is not None:

@@ -429,7 +429,7 @@ class SuiGQLClient(BaseSuiGQLClient):
                 raise ValueError("Timeout error while waiting for transaction block.")
 
 
-class AsyncSuiGQLClient(AsyncClientBase, BaseSuiGQLClient):
+class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
     """Asynchronous pysui GraphQL client."""
 
     @versionchanged(
@@ -482,6 +482,44 @@ class AsyncSuiGQLClient(AsyncClientBase, BaseSuiGQLClient):
         kwargs["client"] = self
         return asynctxn.AsyncSuiTransaction(**kwargs)
 
+    async def serial_executor(self, **kwargs) -> Any:
+        """Return a GQL serial transaction executor.
+
+        The caller owns the executor lifecycle — calling client.close() does not
+        drain or close executor resources. Concurrent serial_executor() calls over
+        the same sender will race on coin selection if both use coin-object gas.
+
+        :param sender: The address of the transaction sender
+        :type sender: Union[str, SigningMultiSig]
+        :param sponsor: Optional sponsor address, defaults to None
+        :type sponsor: Union[str, SigningMultiSig], optional
+        :param default_gas_budget: Default gas budget per transaction, defaults to 50_000_000
+        :type default_gas_budget: int, optional
+        """
+        import pysui.sui.sui_pgql.pgql_serial_exec as sexec
+
+        kwargs["client"] = self
+        return sexec.GqlSerialTransactionExecutor(**kwargs)
+
+    async def parallel_executor(self, **kwargs) -> Any:
+        """Return a GQL parallel transaction executor.
+
+        The caller owns the executor lifecycle — calling client.close() does not
+        drain or close executor resources. Concurrent parallel_executor() calls over
+        the same sender will race on coin selection if both use coin-object gas.
+
+        :param sender: The address of the transaction sender
+        :type sender: Union[str, SigningMultiSig]
+        :param sponsor: Optional sponsor address, defaults to None
+        :type sponsor: Union[str, SigningMultiSig], optional
+        :param default_gas_budget: Default gas budget per transaction, defaults to 50_000_000
+        :type default_gas_budget: int, optional
+        """
+        import pysui.sui.sui_pgql.pgql_parallel_exec as pexec
+
+        kwargs["client"] = self
+        return pexec.GqlParallelTransactionExecutor(**kwargs)
+
     @property
     def session(self) -> Any:
         """Return the underlying GraphQL transport session."""
@@ -495,7 +533,7 @@ class AsyncSuiGQLClient(AsyncClientBase, BaseSuiGQLClient):
             except AttributeError:
                 pass
 
-    async def __aenter__(self) -> "AsyncSuiGQLClient":
+    async def __aenter__(self) -> "GqlProtocolClient":
         """Enter async context manager."""
         return self
 

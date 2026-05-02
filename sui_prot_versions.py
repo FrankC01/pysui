@@ -7,7 +7,7 @@
 
 import asyncio
 
-from pysui import PysuiConfiguration, SuiRpcResult, SuiGrpcClient, client_factory
+from pysui import PysuiConfiguration, SuiRpcResult, GrpcProtocolClient, client_factory
 from pysui.sui.sui_common.client import PysuiClient
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 

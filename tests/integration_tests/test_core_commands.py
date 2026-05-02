@@ -24,9 +24,8 @@ import asyncio
 import pytest
 import pytest_asyncio
 
-import pysui.sui.sui_pgql.pgql_query as qn
-import pysui.sui.sui_grpc.pgrpc_requests as rn
-from pysui import AsyncGqlClient, SuiGrpcClient
+from pysui import AsyncClientBase
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_pgql.pgql_utils import (
     async_get_all_owned_gas_objects as gql_get_coins,
     async_get_all_owned_objects as gql_get_objects,
@@ -74,7 +73,7 @@ def _assert_grpc_success(result, label: str) -> None:
 
 
 @pytest.mark.order(1)
-async def test_move_call_gql_send_funds_executes(gql_client: AsyncGqlClient) -> None:
+async def test_move_call_gql_send_funds_executes(gql_client: AsyncClientBase) -> None:
     """move_call (GQL): 0x2::coin::send_funds deposits to address accumulator."""
     await asyncio.sleep(SETTLE_SECS)
     txer = await gql_client.transaction()
@@ -84,14 +83,14 @@ async def test_move_call_gql_send_funds_executes(gql_client: AsyncGqlClient) -> 
         type_arguments=["0x2::sui::SUI"],
         arguments=[split_res, gql_client.config.active_address],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     _assert_gql_success(result, "GQL move_call send_funds")
 
 
 @pytest.mark.order(2)
-async def test_move_call_grpc_send_funds_executes(grpc_client: SuiGrpcClient) -> None:
+async def test_move_call_grpc_send_funds_executes(grpc_client: AsyncClientBase) -> None:
     """move_call (gRPC): 0x2::coin::send_funds deposits to address accumulator."""
     await asyncio.sleep(SETTLE_SECS)
     addr = str(grpc_client.config.active_address)
@@ -105,7 +104,7 @@ async def test_move_call_grpc_send_funds_executes(grpc_client: SuiGrpcClient) ->
         arguments=[split_res, grpc_client.config.active_address],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC move_call send_funds")
 
@@ -117,7 +116,7 @@ async def test_move_call_grpc_send_funds_executes(grpc_client: SuiGrpcClient) ->
 
 @pytest.mark.order(3)
 async def test_transfer_objects_gql_self_transfer_executes(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
 ) -> None:
     """transfer_objects (GQL): transfer a coin object to self."""
     await asyncio.sleep(SETTLE_SECS)
@@ -127,15 +126,15 @@ async def test_transfer_objects_gql_self_transfer_executes(
 
     txer = await gql_client.transaction()
     await txer.transfer_objects(transfers=[coins[0].coin_object_id], recipient=addr)
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     _assert_gql_success(result, "GQL transfer_objects self")
 
 
 @pytest.mark.order(4)
 async def test_transfer_objects_grpc_self_transfer_executes(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
 ) -> None:
     """transfer_objects (gRPC): transfer a coin object to self."""
     await asyncio.sleep(SETTLE_SECS)
@@ -146,14 +145,14 @@ async def test_transfer_objects_grpc_self_transfer_executes(
     txer = await grpc_client.transaction()
     await txer.transfer_objects(transfers=[coins[0].object_id], recipient=addr)
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC transfer_objects self")
 
 
 @pytest.mark.order(5)
 async def test_transfer_objects_gql_to_other_address_executes(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
     recipient_address: str,
 ) -> None:
     """transfer_objects (GQL): transfer a coin to a different address."""
@@ -166,15 +165,15 @@ async def test_transfer_objects_gql_to_other_address_executes(
     await txer.transfer_objects(
         transfers=[coins[0].coin_object_id], recipient=recipient_address
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     _assert_gql_success(result, "GQL transfer_objects to other")
 
 
 @pytest.mark.order(6)
 async def test_transfer_objects_grpc_to_other_address_executes(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
     recipient_address: str,
 ) -> None:
     """transfer_objects (gRPC): transfer a coin to a different address."""
@@ -188,7 +187,7 @@ async def test_transfer_objects_grpc_to_other_address_executes(
         transfers=[coins[0].object_id], recipient=recipient_address
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC transfer_objects to other")
 
@@ -200,7 +199,7 @@ async def test_transfer_objects_grpc_to_other_address_executes(
 
 @pytest.mark.order(7)
 async def test_split_coin_gql_from_non_gas_executes(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
 ) -> None:
     """split_coin (GQL): split 1 MIST from a non-gas coin and transfer result to self."""
     await asyncio.sleep(SETTLE_SECS)
@@ -210,16 +209,16 @@ async def test_split_coin_gql_from_non_gas_executes(
 
     txer = await gql_client.transaction()
     split_res = await txer.split_coin(coin=coins[0].coin_object_id, amounts=[1_000])
-    await txer.transfer_objects(transfers=split_res, recipient=addr)
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    await txer.transfer_objects(transfers=[split_res], recipient=addr)
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     _assert_gql_success(result, "GQL split_coin")
 
 
 @pytest.mark.order(8)
 async def test_split_coin_grpc_from_non_gas_executes(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
 ) -> None:
     """split_coin (gRPC): split 1 MIST from a non-gas coin and transfer result to self."""
     await asyncio.sleep(SETTLE_SECS)
@@ -229,9 +228,9 @@ async def test_split_coin_grpc_from_non_gas_executes(
 
     txer = await grpc_client.transaction()
     split_res = await txer.split_coin(coin=coins[0].object_id, amounts=[1_000])
-    await txer.transfer_objects(transfers=split_res, recipient=addr)
+    await txer.transfer_objects(transfers=[split_res], recipient=addr)
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC split_coin")
 
@@ -243,7 +242,7 @@ async def test_split_coin_grpc_from_non_gas_executes(
 
 @pytest.mark.order(9)
 async def test_merge_coins_gql_into_gas_executes(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
 ) -> None:
     """merge_coins (GQL): merge one faucet coin into txer.gas."""
     await asyncio.sleep(SETTLE_SECS)
@@ -253,15 +252,15 @@ async def test_merge_coins_gql_into_gas_executes(
 
     txer = await gql_client.transaction()
     await txer.merge_coins(merge_to=txer.gas, merge_from=[coins[0].coin_object_id])
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     _assert_gql_success(result, "GQL merge_coins")
 
 
 @pytest.mark.order(10)
 async def test_merge_coins_grpc_into_gas_executes(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
 ) -> None:
     """merge_coins (gRPC): merge one faucet coin into txer.gas."""
     await asyncio.sleep(SETTLE_SECS)
@@ -272,7 +271,7 @@ async def test_merge_coins_grpc_into_gas_executes(
     txer = await grpc_client.transaction()
     await txer.merge_coins(merge_to=txer.gas, merge_from=[coins[0].object_id])
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC merge_coins")
 
@@ -309,7 +308,7 @@ async def test_publish_grpc_contract_executes(
 
 @pytest.mark.order(13)
 async def test_make_move_vector_gql_swap_ab_executes(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
     published_gql: PublishedPackage,
 ) -> None:
     """make_move_vector (GQL): negative test — swap_a_b returns vector<Coin<T>> which
@@ -331,8 +330,8 @@ async def test_make_move_vector_gql_swap_ab_executes(
         arguments=[vec_arg],
     )
     await txer.transfer_objects(transfers=[swap_result], recipient=addr)
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     assert result.is_ok(), f"GQL make_move_vector transport error: {result.result_string}"
     assert result.result_data.status == "FAILURE", (
@@ -342,7 +341,7 @@ async def test_make_move_vector_gql_swap_ab_executes(
 
 @pytest.mark.order(14)
 async def test_make_move_vector_grpc_swap_ab_executes(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
     published_grpc: PublishedPackage,
 ) -> None:
     """make_move_vector (gRPC): negative test — swap_a_b returns vector<Coin<T>> which
@@ -365,7 +364,7 @@ async def test_make_move_vector_grpc_swap_ab_executes(
     )
     await txer.transfer_objects(transfers=[swap_result], recipient=addr)
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     assert result.is_ok(), f"gRPC make_move_vector transport error: {result.result_string}"
     assert not result.result_data.transaction.effects.status.success, (
@@ -380,7 +379,7 @@ async def test_make_move_vector_grpc_swap_ab_executes(
 
 @pytest.mark.order(15)
 async def test_publish_upgrade_gql_version_increments(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
     published_gql: PublishedPackage,
     sui_test_project_path: str,
 ) -> None:
@@ -392,14 +391,14 @@ async def test_publish_upgrade_gql_version_increments(
     await txer.publish_upgrade(
         project_path=sui_test_project_path, upgrade_cap=cap_id
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     _assert_gql_success(result, "GQL publish_upgrade")
     await asyncio.sleep(SETTLE_SECS)
 
-    cap_result = await gql_client.execute_query_node(
-        with_node=qn.GetObject(object_id=cap_id)
+    cap_result = await gql_client.execute(
+        command=cmd.GetObject(object_id=cap_id)
     )
     assert cap_result.is_ok(), f"GetObject(UpgradeCap) failed: {cap_result.result_string}"
     # content dict contains Move-level UpgradeCap fields; "version" starts at 1 and
@@ -411,7 +410,7 @@ async def test_publish_upgrade_gql_version_increments(
 
 @pytest.mark.order(16)
 async def test_publish_upgrade_grpc_version_increments(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
     published_grpc: PublishedPackage,
     sui_test_project_path: str,
 ) -> None:
@@ -424,13 +423,13 @@ async def test_publish_upgrade_grpc_version_increments(
         project_path=sui_test_project_path, upgrade_cap=cap_id
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC publish_upgrade")
     await asyncio.sleep(SETTLE_SECS)
 
     cap_result = await grpc_client.execute(
-        request=rn.GetObject(object_id=cap_id)
+        command=cmd.GetObject(object_id=cap_id)
     )
     assert cap_result.is_ok(), f"GetObject(UpgradeCap) failed: {cap_result.result_string}"
     # Object.json is a google.protobuf.Value; UpgradeCap.version is a string_value in betterproto2.
@@ -446,7 +445,7 @@ async def test_publish_upgrade_grpc_version_increments(
 
 @pytest.mark.order(17)
 async def test_pay_service_gql_executes(
-    gql_session_client: AsyncGqlClient,
+    gql_session_client: AsyncClientBase,
     published_gql: PublishedPackage,
 ) -> None:
     """pay_service (GQL): deposit EServiceFee MIST into ParmObject.service balance."""
@@ -461,15 +460,15 @@ async def test_pay_service_gql_executes(
         arguments=[parm_obj_id, pay_coin],
     )
     await txer.merge_coins(merge_to=txer.gas, merge_from=[pay_coin])
-    result = await gql_session_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     _assert_gql_success(result, "GQL pay_service")
 
 
 @pytest.mark.order(18)
 async def test_get_service_gql_executes(
-    gql_session_client: AsyncGqlClient,
+    gql_session_client: AsyncClientBase,
     published_gql: PublishedPackage,
 ) -> None:
     """get_service (GQL): withdraw all from service balance and transfer result coin."""
@@ -484,15 +483,15 @@ async def test_get_service_gql_executes(
         arguments=[parm_obj_id, None],
     )
     await txer.transfer_objects(transfers=[coin_result], recipient=addr)
-    result = await gql_session_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     _assert_gql_success(result, "GQL get_service")
 
 
 @pytest.mark.order(19)
 async def test_pay_service_grpc_executes(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
     published_grpc: PublishedPackage,
 ) -> None:
     """pay_service (gRPC): deposit EServiceFee MIST into ParmObject.service balance."""
@@ -511,14 +510,14 @@ async def test_pay_service_grpc_executes(
     )
     await txer.merge_coins(merge_to=source_coin, merge_from=[pay_coin])
     result = await grpc_session_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC pay_service")
 
 
 @pytest.mark.order(20)
 async def test_get_service_grpc_executes(
-    grpc_session_client: SuiGrpcClient,
+    grpc_session_client: AsyncClientBase,
     published_grpc: PublishedPackage,
 ) -> None:
     """get_service (gRPC): withdraw all from service balance and transfer result coin."""
@@ -534,7 +533,7 @@ async def test_get_service_grpc_executes(
     )
     await txer.transfer_objects(transfers=[coin_result], recipient=addr)
     result = await grpc_session_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC get_service")
 
@@ -546,7 +545,7 @@ async def test_get_service_grpc_executes(
 
 @pytest.mark.order(21)
 async def test_merge_coins_gql_same_object_rejected(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
 ) -> None:
     """merge_coins (GQL): merging a coin into itself fails on-chain."""
     await asyncio.sleep(SETTLE_SECS)
@@ -557,8 +556,8 @@ async def test_merge_coins_gql_same_object_rejected(
     coin_id = coins[0].coin_object_id
     txer = await gql_client.transaction()
     await txer.merge_coins(merge_to=coin_id, merge_from=[coin_id])
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(**await txer.build_and_sign())
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     # Chain accepts the tx at transport but rejects on-chain
     assert result.is_ok(), f"Unexpected transport error: {result.result_string}"
@@ -569,7 +568,7 @@ async def test_merge_coins_gql_same_object_rejected(
 
 @pytest.mark.order(22)
 async def test_merge_coins_grpc_same_object_rejected(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
 ) -> None:
     """merge_coins (gRPC): merging a coin into itself fails on-chain."""
     await asyncio.sleep(SETTLE_SECS)
@@ -581,7 +580,7 @@ async def test_merge_coins_grpc_same_object_rejected(
     txer = await grpc_client.transaction()
     await txer.merge_coins(merge_to=coin_id, merge_from=[coin_id])
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     # Chain accepts the tx at transport but rejects on-chain
     assert result.is_ok(), f"Unexpected transport error: {result.result_string}"
@@ -597,7 +596,7 @@ async def test_merge_coins_grpc_same_object_rejected(
 
 @pytest.mark.order(23)
 async def test_move_call_gql_insufficient_gas_fails(
-    gql_client: AsyncGqlClient,
+    gql_client: AsyncClientBase,
 ) -> None:
     """move_call (GQL): gas_budget=1 causes on-chain InsufficientGas execution failure."""
     await asyncio.sleep(SETTLE_SECS)
@@ -608,8 +607,8 @@ async def test_move_call_gql_insufficient_gas_fails(
         type_arguments=["0x2::sui::SUI"],
         arguments=[split_res, gql_client.config.active_address],
     )
-    result = await gql_client.execute_query_node(
-        with_node=qn.ExecuteTransaction(
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(
             **await txer.build_and_sign(gas_budget="1")
         )
     )
@@ -622,7 +621,7 @@ async def test_move_call_gql_insufficient_gas_fails(
 
 @pytest.mark.order(24)
 async def test_move_call_grpc_insufficient_gas_fails(
-    grpc_client: SuiGrpcClient,
+    grpc_client: AsyncClientBase,
 ) -> None:
     """move_call (gRPC): gas_budget=1 causes on-chain InsufficientGas execution failure."""
     await asyncio.sleep(SETTLE_SECS)
@@ -634,7 +633,7 @@ async def test_move_call_grpc_insufficient_gas_fails(
         arguments=[split_res, grpc_client.config.active_address],
     )
     result = await grpc_client.execute(
-        request=rn.ExecuteTransaction(
+        command=cmd.ExecuteTransaction(
             **await txer.build_and_sign(gas_budget="1", use_account_for_gas=True)
         )
     )

@@ -48,21 +48,25 @@ The **Unified Client Interface (UCI)** builds on three pillars:
    with any ``SuiCommand`` subclass. The same code runs identically on both
    GraphQL and gRPC transports. Switching protocols requires only a
    configuration change — no application code changes.
-   See :doc:`sui_commands` for the full list of 36 available commands.
+   See :doc:`sui_commands` for the full list of 41 available commands.
 
 2. **Shared Transaction Infrastructure**: :doc:`Programmable Transaction Blocks (PTBs) <transactions>`
-   with unified transaction builders and executor abstractions work across
+   with unified transaction builders and executor factories work across
    all protocols, providing consistent semantics for building, signing,
-   and executing transactions.
+   and executing transactions. Executor instances are obtained via
+   ``await client.serial_executor(**kwargs)`` or
+   ``await client.parallel_executor(**kwargs)`` — direct instantiation
+   of executor classes is not part of the UCI contract.
 
 3. **Protocol-Level Access**: When you need capabilities beyond ``SuiCommand``:
    Use :doc:`GraphQL QueryNodes <graphql_queries>` via ``execute_query_node``
    for custom queries, or :doc:`gRPC Requests <grpc_requests>` via
    ``execute_grpc_request`` for direct gRPC interactions.
 
-This design keeps the client stable as the Sui protocol evolves: new
-capabilities are added as new ``SuiCommand`` subclasses or transaction
-abstractions without changing the core client API.
+Together, these pillars fully encapsulate all protocol details: developers
+write against commands, transaction builders, and executor factories — not
+against transport-specific APIs. Direct protocol access remains available
+when needed, but is never required for standard use.
 
 Quick Start — Unified Client Interface
 ---------------------------------------
