@@ -507,21 +507,13 @@ async def do_split_any_half(client: AsyncClientBase):
 async def do_execute(client: AsyncClientBase):
     """Execute a split/transfer transaction."""
     txer: AsyncSuiTransaction = await client.transaction()
-    scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
+    scres = await txer.split_coin(coin=txer.gas, amounts=[300_000_000])
     await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
-    bdict = await txer.build_and_sign()
-    # Demonstrate verifying signature
     handle_result(
         await client.execute(
-            command=cmd.VerifySignature(
-                address=client.config.active_address,
-                message_type="Transaction",
-                message=bdict["tx_bytestr"],
-                signature=bdict["sig_array"][0],
-            )
+            command=cmd.ExecuteTransaction(**await txer.build_and_sign())
         )
     )
-    handle_result(await client.execute(command=cmd.ExecuteTransaction(**bdict)))
 
 
 async def do_stake(client: AsyncClientBase):

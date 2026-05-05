@@ -80,7 +80,24 @@ class SimulateTransaction(SuiCommand):
 
 @dataclass(kw_only=True)
 class SimulateTransactionKind(SuiCommand):
-    """Simulate a TransactionKind (programmable transaction) without committing."""
+    """Simulate a TransactionKind (programmable transaction) without committing.
+
+    Both protocols return a ``SimulateTransactionResponse`` proto shape. The GQL path
+    has five fields that the gRPC path populates but GQL cannot provide due to schema
+    or server limitations (schema version 1.70.2):
+
+    - ``transaction.transaction.expiration`` — expiration lives in ``TransactionData``,
+      not ``TransactionKind``; the GQL entry point accepts ``TransactionKind`` BCS only.
+    - ``transaction.effects.version`` — ``TransactionEffects`` in the GQL schema has no
+      ``version`` field.
+    - ``transaction.effects.changedObjects`` ACCUMULATOR_WRITE entries — GQL
+      ``objectChanges`` only surfaces OBJECT_WRITE nodes; accumulator writes (gas
+      deductions, balance splits/merges) are invisible.
+    - ``transaction.objects[n].json`` — GQL server returns ``null`` for
+      ``MoveObject.contents.json`` on simulated (not-yet-committed) objects.
+    - ``transaction.objects[n].balance`` — no unconditional coin-balance scalar in GQL;
+      ``Object.balance`` requires a caller-supplied ``coinType`` argument.
+    """
 
     gql_class: ClassVar[type] = pgql_query.SimulateTransactionKindSC
     grpc_class: ClassVar[type] = rn.SimulateTransactionKind

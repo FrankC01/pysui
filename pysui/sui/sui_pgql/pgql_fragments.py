@@ -230,6 +230,7 @@ class StandardObject(PGQL_Fragment):
                     has_public_transfer=schema.MoveObject.hasPublicTransfer,
                     as_object=schema.MoveObject.contents.select(
                         content=schema.MoveValue.json,
+                        contents_bcs=schema.MoveValue.bcs,
                         object_type_repr=schema.MoveValue.type.select(
                             object_type=schema.MoveType.repr
                         ),
