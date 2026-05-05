@@ -24,6 +24,10 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 - `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations; old names no longer exist
 
+- `AsyncSuiTransaction` is now a single protocol-agnostic class at `pysui.sui.sui_common.async_txn`; `pysui.sui.sui_pgql.pgql_async_txn` and `pysui.sui.sui_grpc.pgrpc_async_txn` are deleted — update all imports to the new location
+
+- Legacy GQL object types (`ObjectReadGQL`, `SuiCoinObjectGQL`, `SuiCoinObjectSummaryGQL`, `SuiStakedCoinGQL`) are no longer accepted as transaction method arguments — pass `sui_prot.Object` (obtained via `GetObject` SuiCommand) instead
+
 ### Added
 
 - `pysui/sui/sui_pgql/pgql_types.py`: new `OpenMove*GQL` dataclass hierarchy mirroring the GQL schema — `OpenMoveTypeGQL`, `OpenMoveTypeSignatureGQL`, `OpenMoveScalarBodyGQL`, `OpenMoveVectorBodyGQL`, `OpenMoveDatatypeBodyGQL`, `OpenMoveTypeParamBodyGQL` — replaces fragile dict-based Move type representation
@@ -64,6 +68,8 @@ parameters on build(), build_and_sign(), and transaction_data()
 ### Changed
 
 - Re-engineered the full transaction process paths for Async protocols and Serial/Parallel Executors (UCI)
+- `GetGas` SuiCommand on gRPC now auto-accumulates all pages (Tier 2 paging parity with GQL) — no caller-side pagination loop required
+- `async_funcs.merge_sui` and `split_to_distribution` are now UCI-compliant internally (SuiCommands only; GQL-specific fetch/execute paths removed)
 - Documentation updated
 
 ### Fixed
@@ -79,6 +85,7 @@ parameters on build(), build_and_sign(), and transaction_data()
 - `pysui/sui/sui_common/config/pysui_config.py`: corrected `faucet_url` property typo (`faucet_urls` → `faucet_url`)
 - `pysui/sui/sui_pgql/pgql_async_txn.py`: corrected `async_fetch_or_transpose_object` → `fetch_or_transpose_object` method name typo
 - `pysui/sui/sui_common/move_to_bcs.py`: updated `mtobcs` processing to conform with UCI — added concrete parameterized `VecMap<K,V>` and `VecSet<T>` subclass generation; previously these types were mapped to opaque BCS stubs with empty `_fields`, silently consuming zero bytes and causing deserialization failures on framework types such as `ValidatorSet` and `SuiSystemStateInnerV2`
+- `pgql_parallel_exec._refill_coin_pool`: fixed isinstance check against wrong type (`ExecutionResultGQL` → `sui_prot.ExecuteTransactionResponse`)
 
 ### Changed
 

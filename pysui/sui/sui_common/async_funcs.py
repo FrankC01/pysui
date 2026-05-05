@@ -6,7 +6,6 @@
 """Async cache mimmicing funtools @cache."""
 
 import asyncio
-import base64
 import logging
 from enum import IntEnum
 from collections import OrderedDict
@@ -14,11 +13,8 @@ from typing import Any, Coroutine, Optional, cast
 
 
 logger = logging.getLogger("async_funcs")
-from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient as AsyncGqlClient
-import pysui.sui.sui_pgql.pgql_types as pgql_type
-import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_bcs.bcs_txne as bcst
-from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
+import pysui.sui.sui_common.sui_commands as cmd
 from pysui import SuiRpcResult
 
 
@@ -113,102 +109,101 @@ class OperationStatus(IntEnum):
 
 async def merge_sui(
     *,
-    client: AsyncGqlClient,
+    client: Any,
     address: str,
     merge_only: Optional[list[str]] = None,
     exclude: Optional[list[str]] = None,
     wait: Optional[bool] = False,
-) -> Coroutine[
-    Any,
-    Any,
-    tuple[
-        OperationStatus,
-        bcst.TransactionEffects,
-        pgql_type.SuiCoinObjectGQL,
-        pgql_type.TransactionResultGQL,
-    ],
-]:
-    """merge_all Sui coins for a given address.
+) -> Coroutine[Any, Any, tuple[OperationStatus, Any, str, Any]]:
+    """Merge all Sui coins for a given address.
 
-    :param client: Sui node client
-    :type client: GqlProtocolClient
+    :param client: Sui node client (GqlProtocolClient or GrpcProtocolClient)
+    :type client: Any
     :param address: address of gas owner whose coins to merge
     :type address: str
-    :param exclude: list of sui coin object ids to exclude from merge, defaults to None
+    :param merge_only: restrict merge to these coin object IDs, defaults to None
+    :type merge_only: Optional[list[str]], optional
+    :param exclude: coin object IDs to exclude from merge, defaults to None
     :type exclude: Optional[list[str]], optional
+    :param wait: wait for transaction finality, defaults to False
+    :type wait: Optional[bool], optional
     :raises ValueError: address has no sui coins at all
     :raises ValueError: address has no mergeable coins
     :raises ValueError: transaction failure
-    :return: The uncommitted transaction effects and Sui coin merged into
-    :rtype: Coroutine[Any, Any, tuple[OperationStatus,bcst.TransactionEffects, pgql_type.SuiCoinObjectGQL]]
+    :return: (status, effects, gas_coin_id, exec_result)
+    :rtype: Coroutine[Any, Any, tuple[OperationStatus, Any, str, Any]]
     """
-    from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
+    from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
-    # Get object references
     in_use: list[str] = exclude or []
-    merge_only: list[str] = merge_only or []
-    # Get all active gas for address
-    coin_list: list[pgql_type.SuiCoinObjectGQL] = await async_get_all_owned_gas_objects(
-        address, client
-    )
-    if not coin_list:
-        raise ValueError(f"Address {address} has no gas coins")
-    else:
-        logger.debug(f"{len(coin_list)} found for {address}")
-    # Eliminate in use if provided
-    if in_use:
-        coin_list[:] = [coin for coin in coin_list if coin.coin_object_id not in in_use]
-    # Use explicit list of coin ids if provided
-    if merge_only:
-        coin_list[:] = [coin for coin in coin_list if coin.coin_object_id in merge_only]
+    merge_only_ids: set[str] = set(merge_only or [])
 
-    # If noting available, throw exception
-    if not coin_list:
+    # Fetch gas coins via SuiCommand (auto-paged by execute() for both protocols)
+    gas_result = await client.execute(command=cmd.GetGas(owner=address))
+    if not gas_result.is_ok():
+        raise ValueError(f"GetGas failed for {address}: {gas_result.result_string}")
+    response = gas_result.result_data
+    # GQL returns SuiCoinObjectsGQL (.data), gRPC returns ListOwnedObjectsResponse (.objects)
+    raw_coins = list(getattr(response, "objects", None) or getattr(response, "data", []))
+
+    if not raw_coins:
+        raise ValueError(f"Address {address} has no gas coins")
+    logger.debug(f"{len(raw_coins)} found for {address}")
+
+    # Normalize to (id, balance) for protocol-neutral filtering and sorting
+    # Both SuiCoinObjectGQL (.object_id property) and sui_prot.Object (.object_id) work
+    coin_data: list[tuple[str, int]] = [
+        (c.object_id, int(c.balance or 0)) for c in raw_coins
+    ]
+
+    if in_use:
+        coin_data = [(cid, bal) for cid, bal in coin_data if cid not in in_use]
+    if merge_only_ids:
+        coin_data = [(cid, bal) for cid, bal in coin_data if cid in merge_only_ids]
+
+    if not coin_data:
         logger.debug(f"Address {address} has no mergeable coins")
         raise ValueError(f"Address {address} has no mergeable coins")
-    # If one return it
-    if len(coin_list) == 1:
-        ret_coin = coin_list[0]
-        logger.debug(
-            f"Address {address} already has only 1 coin, returning {ret_coin.coin_object_id}"
-        )
-        return (OperationStatus.ONE_COIN_NO_MERGE, None, ret_coin, None)
-    # Otherwise smash lowest to highesst and return it
-    coin_list.sort(key=lambda x: int(x.balance), reverse=True)
+
+    if len(coin_data) == 1:
+        ret_id = coin_data[0][0]
+        logger.debug(f"Address {address} already has only 1 coin, returning {ret_id}")
+        return (OperationStatus.ONE_COIN_NO_MERGE, None, ret_id, None)
+
+    coin_data.sort(key=lambda x: x[1], reverse=True)
+    use_as_gas_id = coin_data.pop(0)[0]
+    merge_from_ids = [cid for cid, _ in coin_data]
+    logger.debug(f"{len(merge_from_ids)} coins merging to {use_as_gas_id}")
 
     tx: AsyncSuiTransaction = await client.transaction()
-
-    use_as_gas = coin_list.pop(0)
-    logger.debug(f"{len(coin_list)} coins merging to {use_as_gas.coin_object_id}")
-    await tx.merge_coins(merge_to=tx.gas, merge_from=coin_list)
-    res = await client.execute_query_node(
-        with_node=qn.ExecuteTransaction(
-            **await tx.build_and_sign(use_gas_objects=[use_as_gas])
+    await tx.merge_coins(merge_to=tx.gas, merge_from=merge_from_ids)
+    res = await client.execute(
+        command=cmd.ExecuteTransaction(
+            **await tx.build_and_sign(use_gas_objects=[use_as_gas_id])
         )
     )
     if res.is_err():
-        logger.warn(f"merge_all_sui transaction failed {res.result_string}")
+        logger.warning(f"merge_all_sui transaction failed {res.result_string}")
         raise ValueError(f"Failed smashing coins with {res.result_string}")
 
-    # Deserialize tx effects and get updated gas coin information
+    # res.result_data is sui_prot.ExecuteTransactionResponse for both GQL and gRPC
+    etxn = res.result_data.transaction
     tx_effects = bcst.TransactionEffects.deserialize(
-        base64.b64decode(res.result_data.effects_bcs)
+        etxn.effects.bcs.value  # bytes; decoded from base64 by GQL encode_fn or raw gRPC
     ).value
-    # If failed, stop ops
+
     if tx_effects.status.enum_name != "Success":
-        logger.debug(f"Merge gas failed {tx_effects.ExecutionStatus.to_json(indent=2)}")
-        return (OperationStatus.OPS_FAIL, tx_effects, use_as_gas, None)
+        logger.debug(f"Merge gas failed {tx_effects.status.to_json(indent=2)}")
+        return (OperationStatus.OPS_FAIL, tx_effects, use_as_gas_id, None)
 
     if wait:
-        res: SuiRpcResult = await client.wait_for_transaction(
-            digest=tx_effects.transactionDigest.to_digest_str()
-        )
-        if res.is_err():
-            raise ValueError(f"Merge transaction `{res.result_data.digest}` failed.")
-        return (OperationStatus.MERGE, tx_effects, use_as_gas, res.result_data)
+        wait_res: SuiRpcResult = await client.wait_for_transaction(digest=etxn.digest)
+        if wait_res.is_err():
+            raise ValueError(f"Merge transaction `{etxn.digest}` failed.")
+        return (OperationStatus.MERGE, tx_effects, use_as_gas_id, wait_res.result_data)
 
-    logger.debug(f"Merge gas returning {use_as_gas.coin_object_id}")
-    return (OperationStatus.MERGE, tx_effects, use_as_gas, None)
+    logger.debug(f"Merge gas returning {use_as_gas_id}")
+    return (OperationStatus.MERGE, tx_effects, use_as_gas_id, None)
 
 
 async def split_to_distribution(
@@ -221,23 +216,18 @@ async def split_to_distribution(
     wait: Optional[bool] = False,
 ):
     """."""
-    from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
+    from pysui.sui.sui_common.async_txn import AsyncSuiTransaction  # noqa: F401
 
     # Merge the gas available to address
-    merge_tuple: pgql_type.SuiCoinObjectGQL = await asyncio.gather(
+    merge_tuple: Any = await asyncio.gather(
         merge_sui(
             client=client, address=address, merge_only=merge_only, exclude=exclude
         ),
         return_exceptions=True,
     )
     if isinstance(merge_tuple[0], tuple):
-        merge_status, effects, mcoin, _mexec = cast(
-            tuple[
-                OperationStatus,
-                bcst.TransactionEffects,
-                pgql_type.SuiCoinObjectGQL,
-                pgql_type.TransactionResultGQL,
-            ],
+        merge_status, effects, mcoin_id, _mexec = cast(
+            tuple[OperationStatus, Any, str, Any],
             merge_tuple,
         )
         # We have a mergable coin
@@ -245,7 +235,7 @@ async def split_to_distribution(
             merge_status == OperationStatus.MERGE
             and effects.status.enum_name != "Success"
         ):
-            logger.debug(f"Have coin to splay{mcoin.coin_object_id}")
+            logger.debug(f"Have coin to splay {mcoin_id}")
 
     else:
         raise merge_tuple[0]

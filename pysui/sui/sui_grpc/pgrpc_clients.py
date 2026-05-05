@@ -24,7 +24,6 @@ from pysui.sui.sui_common.client import PysuiClient
 from pysui.abstracts.async_client import AsyncClientBase
 from pysui.sui.sui_common.sui_command import SuiCommand
 
-from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
 
@@ -129,27 +128,25 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
     async def transaction(
         self,
         **kwargs,
-    ) -> AsyncSuiTransaction:
-        """transaction _summary_
+    ) -> Any:
+        """Return a unified AsyncSuiTransaction for the gRPC protocol.
 
-        :param compress_inputs: reuse same inputs, defaults to True
+        :param compress_inputs: Reuse identical inputs, defaults to True
         :type compress_inputs: Optional[bool], optional
-        :param initial_sender: initial sender of transactions, defaults to None
+        :param initial_sender: Initial sender of transactions, defaults to None
         :type initial_sender: Union[str, SigningMultiSig], optional
-        :param initial_sponsor: initial sponser of transactions, defaults to None
+        :param initial_sponsor: Initial sponsor of transactions, defaults to None
         :type initial_sponsor: Union[str, SigningMultiSig], optional
-        :param builder: move call parameter builder, defaults to None
+        :param builder: Move call parameter builder, defaults to None
         :type builder: Optional[Any], optional
-        :param arg_parser: transaction command argument parser validator, defaults to None
-        :type arg_parser: Optional[Any], optional
-        :param merge_gas_budget: global gas budget for each transaction, defaults to False
+        :param merge_gas_budget: Global gas budget for each transaction, defaults to False
         :type merge_gas_budget: Optional[bool], optional
-        :return: gRPC Transaction builder
+        :return: Unified async transaction builder
         :rtype: AsyncSuiTransaction
         """
+        from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
+
         kwargs["client"] = self
-        kwargs["txn_constraints"] = await self.protocol()
-        kwargs["gas_price"] = await self.current_gas_price
         return AsyncSuiTransaction(**kwargs)
 
     async def serial_executor(self, **kwargs) -> Any:
@@ -316,7 +313,24 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             kwargs["timeout"] = timeout
         if headers is not None:
             kwargs["metadata"] = headers
-        return await self._dispatch_grpc_request(request, **kwargs)
+
+        if not command.grpc_requires_paging:
+            return await self._dispatch_grpc_request(request, **kwargs)
+
+        accumulated: list[sui_prot.Object] = []
+        while True:
+            result = await self._dispatch_grpc_request(request, **kwargs)
+            if not result.is_ok():
+                return result
+            page: sui_prot.ListOwnedObjectsResponse = result.result_data
+            accumulated.extend(page.objects)
+            if not page.next_page_token:
+                break
+            command.grpc_page_token = page.next_page_token
+            request = command.grpc_request()
+        return SuiRpcResult(
+            True, None, sui_prot.ListOwnedObjectsResponse(objects=accumulated)
+        )
 
 
 def _clean_url(url: str) -> tuple[str | None, int | None] | None:

@@ -119,26 +119,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
         _expected_type: Optional[OpenMoveDatatypeBodyGQL],
     ) -> bcs.ObjectArg:
         """Resolve object eagerly via on-chain fetch or direct type dispatch."""
-        # GQL object types — use GQL reference constructors directly
-        if isinstance(
-            arg,
-            (
-                pgql_type.ObjectReadGQL,
-                pgql_type.SuiCoinObjectGQL,
-                pgql_type.SuiCoinObjectSummaryGQL,
-                pgql_type.SuiStakedCoinGQL,
-            ),
-        ):
-            owner_kind = arg.object_owner.obj_owner_kind
-            if owner_kind in ("AddressOwner", "Immutable", "Parent"):
-                obj_ref = bcs.ObjectReference.from_gql_ref(arg)
-                return bcs.ObjectArg("Receiving" if is_receiving else "ImmOrOwnedObject", obj_ref)
-            if owner_kind == "Shared":
-                shared_ref = bcs.SharedObjectReference.from_gql_ref(arg, is_mutable)
-                return bcs.ObjectArg("SharedObject", shared_ref)
-            raise ValueError(f"Unknown GQL owner kind: {owner_kind}")
-
-        # gRPC Object type — already canonical
+        # sui_prot.Object is the canonical object type for both GQL and gRPC protocols
         object_def: Optional[sui_prot.Object] = None
         if isinstance(arg, sui_prot.Object):
             object_def = arg

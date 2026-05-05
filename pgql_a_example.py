@@ -15,7 +15,7 @@ from pysui import PysuiConfiguration, SuiRpcResult, client_factory, AsyncClientB
 from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
 from pysui.sui.sui_common.trxn_base import FundsSource
-from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
+from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
 import pysui.sui.sui_pgql.pgql_query as qn  # protocol-level access: queries without a SuiCommand
 import pysui.sui.sui_pgql.pgql_types as ptypes
@@ -300,7 +300,9 @@ async def do_tx(client: AsyncClientBase):
     """Fetch specific transaction by its digest."""
     handle_result(
         await client.execute(
-            command=cmd.GetTransaction(digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz")
+            command=cmd.GetTransaction(
+                digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz"
+            )
         )
     )
 
@@ -605,7 +607,9 @@ async def do_split_any_half(client: AsyncClientBase):
     if result.is_ok() and len(result.result_data.objects) > 1:
         amount = int(int(result.result_data.objects[0].balance) / 2)
         txer: AsyncSuiTransaction = await client.transaction()
-        scres = await txer.split_coin(coin=result.result_data.objects[0], amounts=[amount])
+        scres = await txer.split_coin(
+            coin=result.result_data.objects[0], amounts=[amount]
+        )
         await txer.transfer_objects(
             transfers=[scres], recipient=client.config.active_address
         )
@@ -617,10 +621,13 @@ async def do_split_any_half(client: AsyncClientBase):
 
 
 async def do_execute(client: AsyncClientBase):
-    """Execute a transaction."""
+    """Splits an amount from active address account and sends to other account."""
+    recipient: str = (
+        "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28"
+    )
     txer: AsyncSuiTransaction = await client.transaction()
-    scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    scres = await txer.split_coin(coin=txer.gas, amounts=[300_000_000])
+    await txer.transfer_objects(transfers=[scres], recipient=recipient)
     handle_result(
         await client.execute(
             command=cmd.ExecuteTransaction(**await txer.build_and_sign())
@@ -667,9 +674,7 @@ async def do_unstake(client: AsyncClientBase):
         txer: AsyncSuiTransaction = await client.transaction()
 
         # Unstake the first staked coin
-        await txer.unstake_coin(
-            staked_coin=result.result_data.objects[0].object_id
-        )
+        await txer.unstake_coin(staked_coin=result.result_data.objects[0].object_id)
         # Uncomment to simulate (dry run)
         handle_result(
             await client.execute(
@@ -721,7 +726,7 @@ async def do_account_to_sui_coin(client: AsyncClientBase):
     Execution, vs. DryRun, also demonstrates funding the transaction with sender account balance vs. gas coins.
     """
     # If set_balance is None, will use the total account balance
-    set_balance: int = 1000000
+    set_balance: int = 1_000
     # Get the current balance
     curr_balance_res = await client.execute(
         command=cmd.GetAddressCoinBalance(owner=client.config.active_address)
@@ -763,9 +768,7 @@ async def do_account_to_sui_coin(client: AsyncClientBase):
         # Using the new build and signing method
 
         # txdict = await txer.build_and_sign(use_account_for_gas=True)
-        # handle_result(
-        #     await client.execute(command=cmd.ExecuteTransaction(**txdict))
-        # )
+        # handle_result(await client.execute(command=cmd.ExecuteTransaction(**txdict)))
 
 
 async def main():

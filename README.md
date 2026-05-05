@@ -46,6 +46,10 @@ parameters on build(), build_and_sign(), and transaction_data()
 
 - `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations; old names no longer exist
 
+- `AsyncSuiTransaction` is now a single protocol-agnostic class at `pysui.sui.sui_common.async_txn`; `pysui.sui.sui_pgql.pgql_async_txn` and `pysui.sui.sui_grpc.pgrpc_async_txn` are deleted — update all imports to the new location
+
+- Legacy GQL object types (`ObjectReadGQL`, `SuiCoinObjectGQL`, `SuiCoinObjectSummaryGQL`, `SuiStakedCoinGQL`) are no longer accepted as transaction method arguments — pass `sui_prot.Object` (obtained via `GetObject` SuiCommand) instead
+
 ## PyPi current
 
 **Release-0.98.0 - Released 2026-04-13**

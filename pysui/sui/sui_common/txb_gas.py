@@ -105,6 +105,14 @@ def coins_for_budget(
     return [ref_fn(c) for c in selected]
 
 
+def _coin_obj_ref(coin) -> bcs.ObjectReference:
+    """Build ObjectReference from either a GQL or gRPC coin object."""
+    try:
+        return bcs.ObjectReference.from_grpc_ref(coin)
+    except (ValueError, TypeError):
+        return bcs.ObjectReference.from_gql_ref(coin)
+
+
 async def async_get_gas_data(
     *,
     signing,
@@ -146,23 +154,13 @@ async def async_get_gas_data(
     from pysui.sui.sui_common import sui_commands as cmd
 
     async def _fetch_gas() -> list:
-        """Fetch all gas coins for the payer via GetGas (auto-paged for GQL, looped for gRPC)."""
-        all_objects: list = []
-        gas_cmd = cmd.GetGas(owner=signing.payer_address)
-        while True:
-            result = await client.execute(command=gas_cmd)
-            if not result.is_ok():
-                raise ValueError(f"Failed to fetch gas coins: {result.result_string}")
-            response = result.result_data
-            all_objects.extend(response.objects)
-            if response.next_page_token:
-                gas_cmd = cmd.GetGas(
-                    owner=signing.payer_address,
-                    grpc_page_token=response.next_page_token,
-                )
-            else:
-                break
-        return all_objects
+        """Fetch all gas coins (auto-paged by execute(); works for both GQL and gRPC)."""
+        result = await client.execute(command=cmd.GetGas(owner=signing.payer_address))
+        if not result.is_ok():
+            raise ValueError(f"Failed to fetch gas coins: {result.result_string}")
+        response = result.result_data
+        # GQL: SuiCoinObjectsGQL (.data), gRPC: ListOwnedObjectsResponse (.objects)
+        return list(getattr(response, "objects", None) or getattr(response, "data", []))
 
     async def _simulate_budget() -> int:
         """Simulate the transaction to determine gas budget."""
@@ -212,8 +210,8 @@ async def async_get_gas_data(
         coins_for_budget(
             use_coins,
             required,
-            balance_fn=lambda x: x.balance or 0,
-            ref_fn=bcs.ObjectReference.from_grpc_ref,
+            balance_fn=lambda x: int(x.balance or 0),
+            ref_fn=_coin_obj_ref,
             merge=merge_gas,
         ),
         bcs.Address.from_str(signing.payer_address),

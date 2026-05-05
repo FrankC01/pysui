@@ -225,6 +225,7 @@ class TestPagingFlags:
 
     def test_get_gas_paging_true(self):
         assert GetGas.gql_requires_paging is True
+        assert GetGas.grpc_requires_paging is True
 
     def test_get_object_paging_false(self):
         assert GetObject.gql_requires_paging is False

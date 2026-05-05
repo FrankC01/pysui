@@ -40,7 +40,7 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 from pysui import PysuiConfiguration, PysuiClient, client_factory, __version__, SuiRpcResult
-from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
+from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from samples.cmd_argsg import build_splay_parser, pre_config_pull
 
 

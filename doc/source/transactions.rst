@@ -55,13 +55,11 @@ transaction builders. ``optional_object`` is not available on JSON-RPC.
 Executing Transactions
 ----------------------
 
-+--------------------------+---------------------------------------------------------------------+
-|  Implementation          | Class                                                               |
-+==========================+=====================================================================+
-| GraphQL  asynchronous    | :py:class:`pysui.sui.sui_pgql.pgql_async_txn.AsyncSuiTransaction`   |
-+--------------------------+---------------------------------------------------------------------+
-| gRPC asynchronous        | :py:class:`pysui.sui.sui_grpc.pgrpc_async_txn.AsyncSuiTransaction`  |
-+--------------------------+---------------------------------------------------------------------+
++--------------------------+-----------------------------------------------------------------+
+|  Implementation          | Class                                                           |
++==========================+=================================================================+
+| GraphQL and gRPC async   | :py:class:`pysui.sui.sui_common.async_txn.AsyncSuiTransaction`  |
++--------------------------+-----------------------------------------------------------------+
 
 For JSON-RPC transaction classes see :doc:`jsonrpc_transactions`.
 
@@ -94,8 +92,7 @@ Copy it to a local script and run with:
     from pysui import PysuiConfiguration, SuiRpcResult, client_factory
 
     import pysui.sui.sui_common.sui_commands as cmd
-    import pysui.sui.sui_pgql.pgql_async_txn as gql_async
-    import pysui.sui.sui_grpc.pgrpc_async_txn as grpc_async
+    from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
 
     async def graphql_example():
@@ -103,7 +100,7 @@ Copy it to a local script and run with:
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)  # returns GqlProtocolClient
 
-        txer: gql_async.AsyncSuiTransaction = await client.transaction()
+        txer: AsyncSuiTransaction = await client.transaction()
         scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
         await txer.transfer_objects(
             transfers=scres, recipient=client.config.active_address
@@ -123,7 +120,7 @@ Copy it to a local script and run with:
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
         client = client_factory(cfg)  # returns GrpcProtocolClient
 
-        txer: grpc_async.AsyncSuiTransaction = await client.transaction()
+        txer: AsyncSuiTransaction = await client.transaction()
         scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
         await txer.transfer_objects(
             transfers=scres, recipient=client.config.active_address

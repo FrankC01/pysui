@@ -14,7 +14,7 @@ import sys
 from pysui import __version__, SuiRpcResult
 
 from pysui import PysuiConfiguration, PysuiClient
-from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
+from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 import pysui.sui.sui_pgql.pgql_query as qn
 import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_common.sui_commands as cmd

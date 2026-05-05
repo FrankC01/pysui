@@ -3140,9 +3140,10 @@ def _encode_coin_from_move_obj(mo_dict: dict) -> sui_prot.Object:
     prev_tx_info = mo_dict.get("previousTransaction") or {}
     prev_tx: Optional[str] = prev_tx_info.get("previous_transaction") if isinstance(prev_tx_info, dict) else None
     contents = mo_dict.get("contents") or {}
-    coin_type: Optional[str] = contents.get("coin_type") if isinstance(contents, dict) else None
+    coin_type: Optional[str] = None
     balance_raw = None
     if isinstance(contents, dict):
+        coin_type = (contents.get("type") or {}).get("coin_type")
         coin_json = contents.get("json") or {}
         if isinstance(coin_json, dict):
             balance_raw = coin_json.get("balance")

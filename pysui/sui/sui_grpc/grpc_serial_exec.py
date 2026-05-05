@@ -10,7 +10,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Optional, Union
 
 if TYPE_CHECKING:
-    from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
+    from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
 from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig

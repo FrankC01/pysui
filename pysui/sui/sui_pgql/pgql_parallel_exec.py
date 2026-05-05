@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import base64
 import logging
 from typing import Awaitable, Callable, Optional, Union
 
@@ -20,7 +19,6 @@ from pysui.sui.sui_common.executors.object_registry import AbstractObjectRegistr
 from pysui.sui.sui_common.txb_signing import SigningMultiSig
 from pysui.sui.sui_common.types import TransactionEffects
 
-import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
@@ -164,10 +162,10 @@ class GqlParallelTransactionExecutor(_BaseParallelExecutor):
         )
         if not result.is_ok():
             raise ValueError(f"refill: GQL execute failed: {result.result_string}")
-        if not isinstance(result.result_data, ptypes.ExecutionResultGQL):
+        if not isinstance(result.result_data, sui_prot.ExecuteTransactionResponse):
             raise TypeError(f"refill: unexpected result type {type(result.result_data).__name__}")
 
-        effects_bcs = bcst.TransactionEffects.deserialize(base64.b64decode(result.result_data.effects_bcs))
+        effects_bcs = bcst.TransactionEffects.deserialize(result.result_data.transaction.effects.bcs.value)
         common_effects = _gql_effects_to_common(effects_bcs)
 
         new_coins: list[GasCoin] = []

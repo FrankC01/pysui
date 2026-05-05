@@ -11,7 +11,7 @@ import logging
 from typing import TYPE_CHECKING, Awaitable, Callable, Optional, Union
 
 if TYPE_CHECKING:
-    from pysui.sui.sui_pgql.pgql_async_txn import AsyncSuiTransaction
+    from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
 from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
 from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
@@ -26,7 +26,6 @@ from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExe
 from pysui.sui.sui_common.types import (
     TransactionEffects, ExecutionStatus, GasCostSummary, Owner, ChangedObject
 )
-import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot

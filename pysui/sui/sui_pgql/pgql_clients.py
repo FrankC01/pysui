@@ -477,10 +477,10 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
         :type merge_gas_budget: bool, optional
         """
-        import pysui.sui.sui_pgql.pgql_async_txn as asynctxn
+        from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
         kwargs["client"] = self
-        return asynctxn.AsyncSuiTransaction(**kwargs)
+        return AsyncSuiTransaction(**kwargs)
 
     async def serial_executor(self, **kwargs) -> Any:
         """Return a GQL serial transaction executor.

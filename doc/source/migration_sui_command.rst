@@ -22,8 +22,8 @@ protocol is determined by :class:`PysuiConfiguration` at runtime.
 .. code-block:: python
 
     # Old — protocol-specific type
-    from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
-    client: AsyncSuiGQLClient = client_factory(config)  # binds you to GraphQL
+    from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
+    client: GqlProtocolClient = client_factory(config)  # binds you to GraphQL
 
     # New — UCI type
     from pysui import AsyncClientBase, client_factory
@@ -56,17 +56,17 @@ Quick Start
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
+    from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
     import pysui.sui.sui_pgql.pgql_query as qn
 
-    gql_client: AsyncSuiGQLClient = client_factory(PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP))
+    gql_client: GqlProtocolClient = client_factory(PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP))
     result = await gql_client.execute_query_node(with_node=qn.GetCoins(owner=addr))
 
     # gRPC version:
-    from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
+    from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
     import pysui.sui.sui_grpc.pgrpc_requests as rn
 
-    grpc_client: SuiGrpcClient = client_factory(PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP))
+    grpc_client: GrpcProtocolClient = client_factory(PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP))
     result = await grpc_client.execute_grpc_request(request=rn.GetCoins(owner=addr))
 
 **New approach** — unified interface:
@@ -119,8 +119,8 @@ The :func:`client_factory()` function now returns :class:`AsyncClientBase`. Upda
 .. code-block:: python
 
     # Old
-    from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
-    client: AsyncSuiGQLClient = client_factory(config)  # ❌ Misleading
+    from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
+    client: GqlProtocolClient = client_factory(config)  # ❌ Misleading
 
     # New
     from pysui import AsyncClientBase, client_factory

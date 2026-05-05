@@ -24,10 +24,13 @@ Commands covered:
   Transactions : GetTransaction, GetTransactions, GetTransactionKind
 """
 
+import asyncio
+
 import pytest
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui import client_factory, GroupProtocol, PysuiConfiguration, AsyncClientBase
+from tests.integration_tests.conftest import SETTLE_SECS, CentralBank, GasBank
 from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC
 from pysui.sui.sui_common.sui_commands import (
     ExecuteTransaction,
@@ -651,7 +654,7 @@ async def test_get_transaction_kind_grpc(
 @pytest.mark.order(47)
 async def test_execute_transaction_gql_changed_objects(
     gql_session_client: AsyncClientBase,
-    ensure_session_gas: None,
+    central_bank: CentralBank,
 ) -> None:
     """ExecuteTransaction via GQL returns ExecuteTransactionResponse with changed_objects.
 
@@ -659,6 +662,14 @@ async def test_execute_transaction_gql_changed_objects(
     The split creates one new coin — verifies DOES_NOT_EXIST input_state mapping in
     ExecuteTransactionSC.encode_fn().
     """
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="split_gas_1k_transfer_self",
+        gas_source=GasBank.COIN,
+        gas_fee=1_988_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_session_client.transaction()
     split = await txer.split_coin(coin=txer.gas, amounts=[1_000])
     await txer.transfer_objects(

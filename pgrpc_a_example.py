@@ -15,7 +15,7 @@ from pysui import (
     AsyncClientBase,
 )
 from pysui.sui.sui_common.client import PysuiClient
-from pysui.sui.sui_grpc.pgrpc_async_txn import AsyncSuiTransaction
+from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.sui.sui_common.trxn_base import FundsSource
 from pysui.sui.sui_grpc.pgrpc_utils import (
     async_get_all_owned_gas_objects,
@@ -233,7 +233,9 @@ async def do_tx(client: AsyncClientBase):
     """Fetch specific transaction by its digest."""
     handle_result(
         await client.execute(
-            command=cmd.GetTransaction(digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe")
+            command=cmd.GetTransaction(
+                digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"
+            )
         )
     )
 
@@ -260,7 +262,9 @@ async def do_tx_kind(client: AsyncClientBase):
     """Fetch the ProgrammableTransaction kind from a transaction."""
     handle_result(
         await client.execute(
-            command=cmd.GetTransactionKind(digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe")
+            command=cmd.GetTransactionKind(
+                digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"
+            )
         )
     )
 

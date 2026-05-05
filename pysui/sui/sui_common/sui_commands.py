@@ -15,7 +15,6 @@ import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_pgql.pgql_query as pgql_query
 from pysui.sui.sui_pgql.pgql_types import PagingCursor
 
-
 # ---------------------------------------------------------------------------
 # Transaction execution
 # ---------------------------------------------------------------------------
@@ -211,6 +210,7 @@ class GetGas(SuiCommand):
     grpc_class: ClassVar[type] = rn.GetGas
     gql_requires_paging: ClassVar[bool] = True
     gql_page_list_path: ClassVar[tuple] = ("qres", "coins", "coin_objects")
+    grpc_requires_paging: ClassVar[bool] = True
 
     owner: str
     next_page: Optional[PagingCursor] = None
@@ -380,9 +380,7 @@ class GetDynamicFields(SuiCommand):
 
     def gql_node(self) -> pgql_query.GetDynamicFieldsSC:
         """Return GQL dynamic-fields query node."""
-        return self.gql_class(
-            object_id=self.object_id, next_page=self.next_page
-        )
+        return self.gql_class(object_id=self.object_id, next_page=self.next_page)
 
     def grpc_request(self) -> rn.GetDynamicFields:
         """Return gRPC list-dynamic-fields request."""
@@ -481,7 +479,9 @@ class GetMultipleObjectContent(SuiCommand):
 
     def grpc_request(self) -> rn.GetMultipleObjects:
         """Return gRPC batch-get-objects request with contents field mask."""
-        return rn.GetMultipleObjects(object_ids=self.object_ids, field_mask=["contents"])
+        return rn.GetMultipleObjects(
+            object_ids=self.object_ids, field_mask=["contents"]
+        )
 
 
 @dataclass(kw_only=True)
@@ -533,11 +533,15 @@ class GetObjectsForType(SuiCommand):
 
     def gql_node(self) -> pgql_query.GetObjectsForTypeSC:
         """Return GraphQL query node."""
-        return self.gql_class(owner=self.owner, object_type=self.object_type, next_page=self.next_page)
+        return self.gql_class(
+            owner=self.owner, object_type=self.object_type, next_page=self.next_page
+        )
 
     def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
         """Return gRPC list-owned-objects request with type filter."""
-        return rn.GetObjectsOwnedByAddress(owner=self.owner, object_type=self.object_type)
+        return rn.GetObjectsOwnedByAddress(
+            owner=self.owner, object_type=self.object_type
+        )
 
 
 @dataclass(kw_only=True)
@@ -555,7 +559,10 @@ class GetCoinSummary(SuiCommand):
 
     def grpc_request(self) -> rn.GetObject:
         """Return gRPC get-object request with balance and metadata field masks."""
-        return rn.GetObject(object_id=self.coin_id, field_mask=["object_id", "version", "digest", "balance"])
+        return rn.GetObject(
+            object_id=self.coin_id,
+            field_mask=["object_id", "version", "digest", "balance"],
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -685,7 +692,13 @@ class GetStructures(SuiCommand):
     gql_class: ClassVar[type] = pgql_query.GetStructuresSC
     grpc_class: ClassVar[type] = rn.GetStructures
     gql_requires_paging: ClassVar[bool] = True
-    gql_page_list_path: ClassVar[tuple[str, ...]] = ("object", "asMovePackage", "module", "structs", "nodes")
+    gql_page_list_path: ClassVar[tuple[str, ...]] = (
+        "object",
+        "asMovePackage",
+        "module",
+        "structs",
+        "nodes",
+    )
 
     package: str
     module_name: str
@@ -739,7 +752,13 @@ class GetFunctions(SuiCommand):
     gql_class: ClassVar[type] = pgql_query.GetFunctionsSC
     grpc_class: ClassVar[type] = rn.GetFunctions
     gql_requires_paging: ClassVar[bool] = True
-    gql_page_list_path: ClassVar[tuple[str, ...]] = ("object", "asMovePackage", "module", "functions", "nodes")
+    gql_page_list_path: ClassVar[tuple[str, ...]] = (
+        "object",
+        "asMovePackage",
+        "module",
+        "functions",
+        "nodes",
+    )
 
     package: str
     module_name: str
@@ -914,7 +933,9 @@ class GetTransactions(SuiCommand):
         if not self.digests:
             raise ValueError("GetTransactions requires at least one digest")
         if any(d is None for d in self.digests):
-            raise ValueError("GetTransactions does not accept None values in digest list")
+            raise ValueError(
+                "GetTransactions does not accept None values in digest list"
+            )
 
     def gql_node(self) -> pgql_query.GetTransactionsSC:
         """Return GQL multi-transaction query node."""
@@ -948,4 +969,3 @@ class GetTransactionKind(SuiCommand):
     def grpc_request(self) -> rn.GetTransactionKindSC:
         """Return gRPC get-transaction-kind request."""
         return self.grpc_class(digest=self.digest)
-

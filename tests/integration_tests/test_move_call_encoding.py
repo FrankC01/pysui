@@ -23,19 +23,15 @@ import pytest_asyncio
 
 from pysui import AsyncClientBase
 import pysui.sui.sui_common.sui_commands as cmd
-from pysui.sui.sui_grpc.pgrpc_utils import (
-    async_get_all_owned_objects as grpc_get_all_objects,
-    async_get_all_owned_gas_objects as grpc_get_coins,
-)
 from pysui.sui.sui_pgql.pgql_utils import (
     async_get_all_owned_objects as gql_get_all_objects,
 )
 
 from tests.integration_tests.conftest import (
     SETTLE_SECS,
+    CentralBank,
+    GasBank,
     PublishedPackage,
-    json_faucet,
-    _faucet_url_for,
 )
 
 pytestmark = [
@@ -59,8 +55,8 @@ _ADDR_B = "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4"
 
 def _assert_gql_success(result, label: str) -> None:
     assert result.is_ok(), f"{label} transport error: {result.result_string}"
-    assert result.result_data.status == "SUCCESS", (
-        f"{label} on-chain failure: {result.result_data.execution_error}"
+    assert result.result_data.transaction.effects.status.success, (
+        f"{label} on-chain execution failed"
     )
 
 
@@ -94,8 +90,8 @@ async def phoney_gql_id(
     txdict = await txer.build_and_sign()
     result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     assert result.is_ok(), f"create_phoney GQL transport error: {result.result_string}"
-    assert result.result_data.status == "SUCCESS", (
-        f"create_phoney GQL on-chain failure: {result.result_data.execution_error}"
+    assert result.result_data.transaction.effects.status.success, (
+        "create_phoney GQL on-chain failure"
     )
     await asyncio.sleep(SETTLE_SECS)
 
@@ -159,10 +155,19 @@ async def phoney_grpc_id(
 
 @pytest.mark.order(100)
 async def test_check_uints_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_uints (GQL): u16, u32, u64, u128, u256 as Python ints."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_uints",
@@ -174,10 +179,19 @@ async def test_check_uints_gql(
 
 @pytest.mark.order(101)
 async def test_check_uints_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_uints (gRPC): u16, u32, u64, u128, u256 as Python ints."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_uints",
@@ -196,10 +210,19 @@ async def test_check_uints_grpc(
 
 @pytest.mark.order(102)
 async def test_check_optional_uints_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_optional_uints (GQL): mix of ints and None for Option<uN>."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_optional_uints",
@@ -211,10 +234,19 @@ async def test_check_optional_uints_gql(
 
 @pytest.mark.order(103)
 async def test_check_optional_uints_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_optional_uints (gRPC): mix of ints and None for Option<uN>."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_optional_uints",
@@ -233,10 +265,19 @@ async def test_check_optional_uints_grpc(
 
 @pytest.mark.order(104)
 async def test_check_uints_vectors_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_uints_vectors (GQL): vector<uN> passed as bytes slices."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     alen = len(_SAMP_HEX)
     args = [_SAMP_BYTES[: int(alen / r)] for r in range(1, 6)]
     txer = await gql_client.transaction()
@@ -250,10 +291,19 @@ async def test_check_uints_vectors_gql(
 
 @pytest.mark.order(105)
 async def test_check_uints_vectors_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_uints_vectors (gRPC): vector<uN> passed as bytes slices."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     alen = len(_SAMP_HEX)
     args = [_SAMP_BYTES[: int(alen / r)] for r in range(1, 6)]
     txer = await grpc_client.transaction()
@@ -274,10 +324,19 @@ async def test_check_uints_vectors_grpc(
 
 @pytest.mark.order(106)
 async def test_check_optional_uint_vectors_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_optional_uint_vectors (GQL): Option<vector<uN>> with mix of None/bytes."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_optional_uint_vectors",
@@ -289,10 +348,19 @@ async def test_check_optional_uint_vectors_gql(
 
 @pytest.mark.order(107)
 async def test_check_optional_uint_vectors_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_optional_uint_vectors (gRPC): Option<vector<uN>> with mix of None/bytes."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_optional_uint_vectors",
@@ -311,10 +379,19 @@ async def test_check_optional_uint_vectors_grpc(
 
 @pytest.mark.order(108)
 async def test_check_vec_u8_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_vec_u8 (GQL): vector<u8> passed as a Python string."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_u8",
@@ -326,10 +403,19 @@ async def test_check_vec_u8_gql(
 
 @pytest.mark.order(109)
 async def test_check_vec_u8_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_vec_u8 (gRPC): vector<u8> passed as a Python string."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_vec_u8",
@@ -348,10 +434,19 @@ async def test_check_vec_u8_grpc(
 
 @pytest.mark.order(110)
 async def test_check_vec_optional_u8_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_vec_optional_u8 (GQL): Option<vector<u8>> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_optional_u8",
@@ -363,10 +458,19 @@ async def test_check_vec_optional_u8_gql(
 
 @pytest.mark.order(111)
 async def test_check_vec_optional_u8_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_vec_optional_u8 (gRPC): Option<vector<u8>> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_vec_optional_u8",
@@ -385,10 +489,19 @@ async def test_check_vec_optional_u8_grpc(
 
 @pytest.mark.order(112)
 async def test_check_vec_deep_u8_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_vec_deep_u8 (GQL): vector<vector<vector<u8>>> via nested list of bytes."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_deep_u8",
@@ -423,10 +536,19 @@ async def test_check_vec_deep_u8_grpc(
 
 @pytest.mark.order(114)
 async def test_check_address_vec_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_address_vec (GQL): vector<address> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_address_vec",
@@ -438,10 +560,19 @@ async def test_check_address_vec_gql(
 
 @pytest.mark.order(115)
 async def test_check_address_vec_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_address_vec (gRPC): vector<address> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_address_vec",
@@ -460,10 +591,19 @@ async def test_check_address_vec_grpc(
 
 @pytest.mark.order(116)
 async def test_check_id_vec_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_id_vec (GQL): vector<ID> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_id_vec",
@@ -475,10 +615,19 @@ async def test_check_id_vec_gql(
 
 @pytest.mark.order(117)
 async def test_check_id_vec_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_id_vec (gRPC): vector<ID> as list of hex address strings."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_id_vec",
@@ -497,10 +646,19 @@ async def test_check_id_vec_grpc(
 
 @pytest.mark.order(118)
 async def test_check_string_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_string (GQL): &String passed as Python str."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_string",
@@ -512,10 +670,19 @@ async def test_check_string_gql(
 
 @pytest.mark.order(119)
 async def test_check_string_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_string (gRPC): &String passed as Python str."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_string",
@@ -534,10 +701,19 @@ async def test_check_string_grpc(
 
 @pytest.mark.order(120)
 async def test_check_string_option_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_string_option (GQL): Option<String> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_string_option",
@@ -549,10 +725,19 @@ async def test_check_string_option_gql(
 
 @pytest.mark.order(121)
 async def test_check_string_option_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_string_option (gRPC): Option<String> passed as None."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_string_option",
@@ -571,10 +756,19 @@ async def test_check_string_option_grpc(
 
 @pytest.mark.order(122)
 async def test_check_string_vec_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_string_vec (GQL): vector<String> passed as list of Python strs."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_string_vec",
@@ -586,10 +780,19 @@ async def test_check_string_vec_gql(
 
 @pytest.mark.order(123)
 async def test_check_string_vec_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_string_vec (gRPC): vector<String> passed as list of Python strs."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_string_vec",
@@ -608,10 +811,19 @@ async def test_check_string_vec_grpc(
 
 @pytest.mark.order(124)
 async def test_check_vec_option_string_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_vec_option_string (GQL): vector<Option<String>> with mixed str/None."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_vec_option_string",
@@ -623,10 +835,19 @@ async def test_check_vec_option_string_gql(
 
 @pytest.mark.order(125)
 async def test_check_vec_option_string_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_vec_option_string (gRPC): vector<Option<String>> with mixed str/None."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_vec_option_string",
@@ -645,10 +866,19 @@ async def test_check_vec_option_string_grpc(
 
 @pytest.mark.order(126)
 async def test_check_bool_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_bool (GQL): bool passed as Python True."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_bool",
@@ -660,10 +890,19 @@ async def test_check_bool_gql(
 
 @pytest.mark.order(127)
 async def test_check_bool_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_bool (gRPC): bool passed as Python True."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_bool",
@@ -682,10 +921,19 @@ async def test_check_bool_grpc(
 
 @pytest.mark.order(128)
 async def test_get_sender_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """get_sender (GQL): address return value used as recipient in transfer_objects."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_get_sender_gql",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=2_000_000,
+    )
     txer = await gql_client.transaction()
     split_res = await txer.split_coin(coin=txer.gas, amounts=[1_000_000, 1_000_000])
     addr_result = await txer.move_call(
@@ -699,16 +947,21 @@ async def test_get_sender_gql(
 
 @pytest.mark.order(129)
 async def test_get_sender_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """get_sender (gRPC): address return value used as recipient in transfer_objects."""
     await asyncio.sleep(SETTLE_SECS)
-    addr = str(grpc_client.config.active_address)
-    coins = await grpc_get_coins(owner=addr, client=grpc_client)
-    assert len(coins) >= 1, "Need at least 1 coin for get_sender split"
-    source_coin = coins[0].object_id
+    _, coins = await central_bank.withdraw(
+        pattern_id="move_call_get_sender_grpc",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[1_000_000],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
-    split_res = await txer.split_coin(coin=source_coin, amounts=[1_000_000])
+    split_res = await txer.split_coin(coin=coins[0], amounts=[1_000_000])
     addr_result = await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::get_sender",
         arguments=[],
@@ -730,9 +983,17 @@ async def test_check_phoney_gql(
     gql_session_client: AsyncClientBase,
     published_gql: PublishedPackage,
     phoney_gql_id: str,
+    central_bank: CentralBank,
 ) -> None:
     """check_phoney (GQL): wrap Phoney in optional_object, check, destroy_some, transfer back."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     pkg_addr = published_gql.pkg_addr
     addr = str(gql_session_client.config.active_address)
 
@@ -761,9 +1022,17 @@ async def test_check_phoney_grpc(
     grpc_session_client: AsyncClientBase,
     published_grpc: PublishedPackage,
     phoney_grpc_id: str,
+    central_bank: CentralBank,
 ) -> None:
     """check_phoney (gRPC): wrap Phoney in optional_object, check, destroy_some, transfer back."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     pkg_addr = published_grpc.pkg_addr
     addr = str(grpc_session_client.config.active_address)
 
@@ -798,9 +1067,17 @@ async def test_burn_phoney_gql(
     gql_session_client: AsyncClientBase,
     published_gql: PublishedPackage,
     phoney_gql_id: str,
+    central_bank: CentralBank,
 ) -> None:
     """burn_phoney (GQL): consume and delete the Phoney object created in this session."""
     await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     pkg_addr = published_gql.pkg_addr
 
     txer = await gql_session_client.transaction()
@@ -812,26 +1089,6 @@ async def test_burn_phoney_gql(
     result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     _assert_gql_success(result, "GQL burn_phoney")
 
-
-@pytest.mark.order(135)
-async def test_burn_phoney_grpc(
-    grpc_session_client: AsyncClientBase,
-    published_grpc: PublishedPackage,
-    phoney_grpc_id: str,
-) -> None:
-    """burn_phoney (gRPC): consume and delete the Phoney object created in this session."""
-    await asyncio.sleep(SETTLE_SECS)
-    pkg_addr = published_grpc.pkg_addr
-
-    txer = await grpc_session_client.transaction()
-    await txer.move_call(
-        target=f"{pkg_addr}::parms::burn_phoney",
-        arguments=[phoney_grpc_id],
-    )
-    result = await grpc_session_client.execute(
-        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
-    )
-    _assert_grpc_success(result, "gRPC burn_phoney")
 
 
 # ---------------------------------------------------------------------------
@@ -849,9 +1106,19 @@ async def test_burn_phoney_grpc(
     strict=True,
 )
 async def test_check_all_gql(
-    gql_client: AsyncClientBase, published_gql: PublishedPackage
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_all (GQL): expected to fail — ParmScalars is not callable directly."""
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await gql_client.transaction()
     await txer.move_call(
         target=f"{published_gql.pkg_addr}::parms::check_all",
@@ -871,9 +1138,19 @@ async def test_check_all_gql(
     strict=True,
 )
 async def test_check_all_grpc(
-    grpc_client: AsyncClientBase, published_grpc: PublishedPackage
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
 ) -> None:
     """check_all (gRPC): expected to fail — ParmScalars is not callable directly."""
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
     txer = await grpc_client.transaction()
     await txer.move_call(
         target=f"{published_grpc.pkg_addr}::parms::check_all",
@@ -884,3 +1161,214 @@ async def test_check_all_grpc(
         command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC check_all")
+
+
+# ---------------------------------------------------------------------------
+# 20. make_move_vector (swap_a_b — negative: vector<Coin<T>> lacks store)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(138)
+async def test_make_move_vector_gql_swap_ab_executes(
+    gql_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """make_move_vector (GQL): negative test — swap_a_b returns vector<Coin<T>> which
+    lacks `store`, so transfer_objects on it must fail on-chain."""
+    await asyncio.sleep(SETTLE_SECS)
+    _, coins = await central_bank.withdraw(
+        pattern_id="make_move_vector_swap_fail",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[None, None],
+        sui_draw=0,
+    )
+    pkg_addr = published_gql.pkg_addr
+    addr = str(gql_client.config.active_address)
+
+    txer = await gql_client.transaction()
+    vec_arg = await txer.make_move_vector(
+        items=[coins[0], coins[1]],
+        item_type="0x2::coin::Coin<0x2::sui::SUI>",
+    )
+    swap_result = await txer.move_call(
+        target=f"{pkg_addr}::parms::swap_a_b",
+        type_arguments=["0x2::sui::SUI"],
+        arguments=[vec_arg],
+    )
+    await txer.transfer_objects(transfers=[swap_result], recipient=addr)
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+    )
+    assert result.is_ok(), f"GQL make_move_vector transport error: {result.result_string}"
+    assert not result.result_data.transaction.effects.status.success, (
+        "Expected on-chain failure (vector lacks store), but transaction succeeded"
+    )
+
+
+@pytest.mark.order(139)
+async def test_make_move_vector_grpc_swap_ab_executes(
+    grpc_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """make_move_vector (gRPC): negative test — swap_a_b returns vector<Coin<T>> which
+    lacks `store`, so transfer_objects on it must fail on-chain."""
+    await asyncio.sleep(SETTLE_SECS)
+    _, coins = await central_bank.withdraw(
+        pattern_id="make_move_vector_swap_fail_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[None, None],
+        sui_draw=0,
+    )
+    pkg_addr = published_grpc.pkg_addr
+    addr = str(grpc_client.config.active_address)
+
+    txer = await grpc_client.transaction()
+    vec_arg = await txer.make_move_vector(
+        items=[coins[0], coins[1]],
+        item_type="0x2::coin::Coin<0x2::sui::SUI>",
+    )
+    swap_result = await txer.move_call(
+        target=f"{pkg_addr}::parms::swap_a_b",
+        type_arguments=["0x2::sui::SUI"],
+        arguments=[vec_arg],
+    )
+    await txer.transfer_objects(transfers=[swap_result], recipient=addr)
+    result = await grpc_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+    )
+    assert result.is_ok(), f"gRPC make_move_vector transport error: {result.result_string}"
+    assert not result.result_data.transaction.effects.status.success, (
+        "Expected on-chain failure (vector lacks store), but transaction succeeded"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 21. pay_service → get_service lifecycle (ordered: pay must run before get)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(140)
+async def test_pay_service_gql_executes(
+    gql_session_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """pay_service (GQL): deposit EServiceFee MIST into ParmObject.service balance."""
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="split_gas_1m100_pay_service_merge_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=1_000_000,
+    )
+    pkg_addr = published_gql.pkg_addr
+    parm_obj_id = published_gql.parm_obj_id
+    txer = await gql_session_client.transaction()
+    pay_coin = await txer.split_coin(coin=txer.gas, amounts=[1_000_100])
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::pay_service",
+        arguments=[parm_obj_id, pay_coin],
+    )
+    await txer.merge_coins(merge_to=txer.gas, merge_from=[pay_coin])
+    result = await gql_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+    )
+    _assert_gql_success(result, "GQL pay_service")
+
+
+@pytest.mark.order(141)
+async def test_get_service_gql_executes(
+    gql_session_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """get_service (GQL): withdraw all from service balance and transfer result coin."""
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_get_service_transfer",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    pkg_addr = published_gql.pkg_addr
+    parm_obj_id = published_gql.parm_obj_id
+    addr = str(gql_session_client.config.active_address)
+
+    txer = await gql_session_client.transaction()
+    coin_result = await txer.move_call(
+        target=f"{pkg_addr}::parms::get_service",
+        arguments=[parm_obj_id, None],
+    )
+    await txer.transfer_objects(transfers=[coin_result], recipient=addr)
+    result = await gql_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+    )
+    _assert_gql_success(result, "GQL get_service")
+
+
+@pytest.mark.order(142)
+async def test_pay_service_grpc_executes(
+    grpc_session_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """pay_service (gRPC): deposit EServiceFee MIST into ParmObject.service balance."""
+    await asyncio.sleep(SETTLE_SECS)
+    _, coins = await central_bank.withdraw(
+        pattern_id="split_nongascoin_1m100_pay_service_merge_coin_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[1_000_100],
+        sui_draw=0,
+    )
+    pkg_addr = published_grpc.pkg_addr
+    parm_obj_id = published_grpc.parm_obj_id
+    source_coin = coins[0]
+    txer = await grpc_session_client.transaction()
+    pay_coin = await txer.split_coin(coin=source_coin, amounts=[1_000_100])
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::pay_service",
+        arguments=[parm_obj_id, pay_coin],
+    )
+    await txer.merge_coins(merge_to=source_coin, merge_from=[pay_coin])
+    result = await grpc_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+    )
+    _assert_grpc_success(result, "gRPC pay_service")
+
+
+@pytest.mark.order(143)
+async def test_get_service_grpc_executes(
+    grpc_session_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """get_service (gRPC): withdraw all from service balance and transfer result coin."""
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_get_service_transfer_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    pkg_addr = published_grpc.pkg_addr
+    parm_obj_id = published_grpc.parm_obj_id
+    addr = str(grpc_session_client.config.active_address)
+
+    txer = await grpc_session_client.transaction()
+    coin_result = await txer.move_call(
+        target=f"{pkg_addr}::parms::get_service",
+        arguments=[parm_obj_id, None],
+    )
+    await txer.transfer_objects(transfers=[coin_result], recipient=addr)
+    result = await grpc_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+    )
+    _assert_grpc_success(result, "gRPC get_service")
