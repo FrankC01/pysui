@@ -1,0 +1,331 @@
+{
+  "generated": "2026-05-04",
+  "note": "Cross-reference: pattern_id → test/fixture → assumed bank.withdraw() call. Signature not yet finalized — values derived from test_cost_model.json (withdrawal_form → gas_source, fee_mist → gas_fee, sui_coins, sui_draw). 65 entries total.",
+  "entries": [
+    {
+      "pattern_id": "split_gas_500k_send_funds",
+      "test_name": "test_move_call_gql_send_funds_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_gas_500k_send_funds\", gas_source=GasBank.COIN, gas_fee=1_000_000, sui_coins=[], sui_draw=500_000)"
+    },
+    {
+      "pattern_id": "split_nongascoin_500k_send_funds_accum",
+      "test_name": "test_move_call_grpc_send_funds_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_nongascoin_500k_send_funds_accum\", gas_source=GasBank.ACCOUNT, gas_fee=1_988_000, sui_coins=[500_000], sui_draw=0)"
+    },
+    {
+      "pattern_id": "transfer_coin_to_self",
+      "test_name": "test_transfer_objects_gql_self_transfer_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"transfer_coin_to_self\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "transfer_coin_to_self",
+      "test_name": "test_uc1_gql_auto_gas_transfer_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"transfer_coin_to_self\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "transfer_coin_to_self",
+      "test_name": "test_uc1_grpc_auto_gas_transfer_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"transfer_coin_to_self\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "transfer_coin_to_self_accum",
+      "test_name": "test_transfer_objects_grpc_self_transfer_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"transfer_coin_to_self_accum\", gas_source=GasBank.ACCOUNT, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "transfer_coin_to_self_accum",
+      "test_name": "test_uc7_gql_address_balance_gas_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"transfer_coin_to_self_accum\", gas_source=GasBank.ACCOUNT, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "transfer_coin_to_other",
+      "test_name": "test_transfer_objects_gql_to_other_address_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"transfer_coin_to_other\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "transfer_coin_to_other_accum",
+      "test_name": "test_transfer_objects_grpc_to_other_address_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"transfer_coin_to_other_accum\", gas_source=GasBank.ACCOUNT, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_nongascoin_1k_transfer_self",
+      "test_name": "test_split_coin_gql_from_non_gas_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_nongascoin_1k_transfer_self\", gas_source=GasBank.COIN, gas_fee=2_976_000, sui_coins=[1_000], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_nongascoin_1k_transfer_self_accum",
+      "test_name": "test_split_coin_grpc_from_non_gas_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_nongascoin_1k_transfer_self_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_976_000, sui_coins=[1_000], sui_draw=0)"
+    },
+    {
+      "pattern_id": "merge_coin_into_gas",
+      "test_name": "test_merge_coins_gql_into_gas_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"merge_coin_into_gas\", gas_source=GasBank.COIN, gas_fee=1_000_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "merge_coin_to_coin_accum",
+      "test_name": "test_merge_coins_grpc_into_gas_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"merge_coin_to_coin_accum\", gas_source=GasBank.ACCOUNT, gas_fee=1_988_000, sui_coins=[None, None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "make_move_vector_swap_fail",
+      "test_name": "test_make_move_vector_gql_swap_ab_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"make_move_vector_swap_fail\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[None, None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "make_move_vector_swap_fail_accum",
+      "test_name": "test_make_move_vector_grpc_swap_ab_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"make_move_vector_swap_fail_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[None, None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_gas_1m100_pay_service_merge_gas",
+      "test_name": "test_pay_service_gql_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_gas_1m100_pay_service_merge_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=1_000_000)"
+    },
+    {
+      "pattern_id": "move_call_get_service_transfer",
+      "test_name": "test_get_service_gql_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_get_service_transfer\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_nongascoin_1m100_pay_service_merge_coin_accum",
+      "test_name": "test_pay_service_grpc_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_nongascoin_1m100_pay_service_merge_coin_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[1_000_100], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_get_service_transfer_accum",
+      "test_name": "test_get_service_grpc_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_get_service_transfer_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "merge_same_object_negative",
+      "test_name": "test_merge_coins_gql_same_object_rejected",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"merge_same_object_negative\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "merge_same_object_negative_accum",
+      "test_name": "test_merge_coins_grpc_same_object_rejected",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"merge_same_object_negative_accum\", gas_source=GasBank.ACCOUNT, gas_fee=1_988_000, sui_coins=[None], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_gas_500k_send_funds_budget1_fail",
+      "test_name": "test_move_call_gql_insufficient_gas_fails",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_gas_500k_send_funds_budget1_fail\", gas_source=GasBank.COIN, gas_fee=1_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_nongascoin_500k_send_funds_budget1_fail_accum",
+      "test_name": "test_move_call_grpc_insufficient_gas_fails",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_nongascoin_500k_send_funds_budget1_fail_accum\", gas_source=GasBank.ACCOUNT, gas_fee=1_988_000, sui_coins=[500_000], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_gas_1k_transfer_self",
+      "test_name": "test_execute_transaction_gql_changed_objects",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_gas_1k_transfer_self\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_gas_1k_transfer_self",
+      "test_name": "FIXTURE:txn_digests(GQL)",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_gas_1k_transfer_self\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_gas_1k_transfer_self",
+      "test_name": "FIXTURE:txn_digests(gRPC)",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_gas_1k_transfer_self\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_gas_1m_transfer_self",
+      "test_name": "test_uc12_gql_split_gas_coin_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_gas_1m_transfer_self\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "split_gas_1m_transfer_self",
+      "test_name": "test_uc12_grpc_split_gas_coin_executes",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"split_gas_1m_transfer_self\", gas_source=GasBank.COIN, gas_fee=1_988_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_uints_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_optional_uints_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_uints_vectors_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_optional_uint_vectors_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_vec_u8_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_vec_optional_u8_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_vec_deep_u8_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_address_vec_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_id_vec_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_string_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_string_option_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_string_vec_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_vec_option_string_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_bool_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_phoney_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_burn_phoney_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "test_name": "test_check_all_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_auto_gas\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_uints_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_optional_uints_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_uints_vectors_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_optional_uint_vectors_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_vec_u8_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_vec_optional_u8_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_address_vec_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_id_vec_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_string_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_string_option_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_string_vec_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_vec_option_string_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_bool_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_phoney_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_burn_phoney_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "test_name": "test_check_all_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_parms_accum\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "move_call_get_sender_gql",
+      "test_name": "test_get_sender_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_get_sender_gql\", gas_source=GasBank.COIN, gas_fee=2_000_000, sui_coins=[], sui_draw=2_000_000)"
+    },
+    {
+      "pattern_id": "move_call_get_sender_grpc",
+      "test_name": "test_get_sender_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"move_call_get_sender_grpc\", gas_source=GasBank.ACCOUNT, gas_fee=2_000_000, sui_coins=[1_000_000], sui_draw=0)"
+    },
+    {
+      "pattern_id": "publish_contract_gql",
+      "test_name": "FIXTURE:published_gql",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"publish_contract_gql\", gas_source=GasBank.COIN, gas_fee=3_500_000, sui_coins=[], sui_draw=0)"
+    },
+    {
+      "pattern_id": "publish_contract_grpc",
+      "test_name": "FIXTURE:published_grpc",
+      "withdrawal_call": "await bank.withdraw(pattern_id=\"publish_contract_grpc\", gas_source=GasBank.ACCOUNT, gas_fee=3_500_000, sui_coins=[], sui_draw=0)"
+    }
+  ]
+}

@@ -1,0 +1,474 @@
+{
+  "fee_tiers": {
+    "A": 1000000,
+    "B": 1988000,
+    "C": 2976000,
+    "D": 0
+  },
+  "fee_tier_notes": {
+    "A": "split(txer.gas) + send_funds  OR  merge_coin_into_gas",
+    "B": "split(txer.gas) + transfer_objects  OR  transfer_objects only  OR  merge  OR  split(explicit) + send_funds",
+    "C": "split(explicit_coin) + transfer_objects",
+    "D": "contract-dependent (publish/upgrade/move_call against published package); skip in simulate_costs.py; fee_mist on each pattern is the actual static estimate used by bank simulation",
+    "delta": "988000 MIST between each tier"
+  },
+  "patterns": [
+    {
+      "pattern_id": "split_gas_500k_send_funds",
+      "description": "split_coin(txer.gas, [500_000]) + move_call(0x2::coin::send_funds)",
+      "withdrawal_form": "Form2",
+      "notes": "Gas coin inflated by 500_000 MIST split amount; amount moves to addrBalance permanently",
+      "fee_tier": "A",
+      "coin_draw_mist": 500000,
+      "sui_coins": [],
+      "sui_draw": 500000,
+      "fee_mist": 1000000,
+      "ignore": false,
+      "tests": [
+        "test_move_call_gql_send_funds_executes"
+      ]
+    },
+    {
+      "pattern_id": "split_nongascoin_500k_send_funds_accum",
+      "description": "split_coin(coins[0], [500_000]) + move_call(0x2::coin::send_funds); use_account_for_gas=True",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Explicit non-gas coin needed; gas drawn from address accumulator; bank provides 500_000 MIST coin",
+      "fee_tier": "B",
+      "coin_draw_mist": 0,
+      "sui_coins": [500000],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_move_call_grpc_send_funds_executes"
+      ]
+    },
+    {
+      "pattern_id": "transfer_coin_to_self",
+      "description": "transfer_objects([coins[0]], self); auto gas from remaining coins",
+      "withdrawal_form": "Form1",
+      "notes": "Needs >= 2 coin objects: one to transfer, one for gas; gas auto-selected",
+      "fee_tier": "B",
+      "coin_draw_mist": 0,
+      "sui_coins": [null],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_transfer_objects_gql_self_transfer_executes",
+        "test_uc1_gql_auto_gas_transfer_executes",
+        "test_uc1_grpc_auto_gas_transfer_executes"
+      ]
+    },
+    {
+      "pattern_id": "transfer_coin_to_self_accum",
+      "description": "transfer_objects([coins[0]], self); use_account_for_gas=True",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Explicit coin needed; gas from address accumulator",
+      "fee_tier": "B",
+      "coin_draw_mist": 0,
+      "sui_coins": [null],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_transfer_objects_grpc_self_transfer_executes",
+        "test_uc7_gql_address_balance_gas_executes"
+      ]
+    },
+    {
+      "pattern_id": "transfer_coin_to_other",
+      "description": "transfer_objects([coins[0]], recipient_address); auto gas from remaining coins",
+      "withdrawal_form": "Form1",
+      "notes": "Needs >= 2 coins; sends one coin to second keystore address; bank provides static coin that leaves permanently",
+      "fee_tier": "B",
+      "coin_draw_mist": 1000,
+      "sui_coins": [null],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_transfer_objects_gql_to_other_address_executes"
+      ]
+    },
+    {
+      "pattern_id": "transfer_coin_to_other_accum",
+      "description": "transfer_objects([coins[0]], recipient_address); use_account_for_gas=True",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Explicit coin; gas from accumulator; coin goes to second address",
+      "fee_tier": "B",
+      "coin_draw_mist": 0,
+      "sui_coins": [null],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_transfer_objects_grpc_to_other_address_executes"
+      ]
+    },
+    {
+      "pattern_id": "split_nongascoin_1k_transfer_self",
+      "description": "split_coin(coins[0], [1_000]) + transfer_objects([split_res], self); auto gas",
+      "withdrawal_form": "Form1",
+      "notes": "Needs >= 2 coins: one to split from, one for gas; bank provides 1_000 MIST coin",
+      "fee_tier": "C",
+      "coin_draw_mist": 0,
+      "sui_coins": [1000],
+      "sui_draw": 0,
+      "fee_mist": 2976000,
+      "ignore": false,
+      "tests": [
+        "test_split_coin_gql_from_non_gas_executes"
+      ]
+    },
+    {
+      "pattern_id": "split_nongascoin_1k_transfer_self_accum",
+      "description": "split_coin(coins[0], [1_000]) + transfer_objects([split_res], self); use_account_for_gas=True",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Explicit non-gas coin for split; gas from accumulator; bank provides 1_000 MIST coin",
+      "fee_tier": "C",
+      "coin_draw_mist": 0,
+      "sui_coins": [1000],
+      "sui_draw": 0,
+      "fee_mist": 2976000,
+      "ignore": false,
+      "tests": [
+        "test_split_coin_grpc_from_non_gas_executes"
+      ]
+    },
+    {
+      "pattern_id": "merge_coin_into_gas",
+      "description": "merge_coins(txer.gas, [coins[0]]); auto gas",
+      "withdrawal_form": "Form1+Form2",
+      "notes": "Explicit source coin consumed; merge target IS txer.gas; bank provides static coin",
+      "fee_tier": "A",
+      "coin_draw_mist": 0,
+      "sui_coins": [null],
+      "sui_draw": 0,
+      "fee_mist": 1000000,
+      "ignore": false,
+      "tests": [
+        "test_merge_coins_gql_into_gas_executes"
+      ]
+    },
+    {
+      "pattern_id": "merge_coin_to_coin_accum",
+      "description": "merge_coins(coins[1], [coins[0]]); use_account_for_gas=True",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Needs >= 2 explicit coins; gas from accumulator; txer.gas incompatible with use_account_for_gas",
+      "fee_tier": "B",
+      "coin_draw_mist": 0,
+      "sui_coins": [null, null],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_merge_coins_grpc_into_gas_executes"
+      ]
+    },
+    {
+      "pattern_id": "make_move_vector_swap_fail",
+      "description": "make_move_vector([coins[0], coins[1]], Coin<SUI>) + move_call(pkg::parms::swap_a_b) + transfer_objects([result], self); auto gas; EXPECTED ON-CHAIN FAILURE",
+      "withdrawal_form": "Form1",
+      "notes": "Needs >= 3 coins; on-chain failure expected (vector lacks store); gas consumed despite failure",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [null, null],
+      "sui_draw": 0,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_make_move_vector_gql_swap_ab_executes"
+      ]
+    },
+    {
+      "pattern_id": "make_move_vector_swap_fail_accum",
+      "description": "make_move_vector([coins[0], coins[1]], Coin<SUI>) + move_call(pkg::parms::swap_a_b) + transfer_objects([result], self); use_account_for_gas=True; EXPECTED ON-CHAIN FAILURE",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Needs >= 3 explicit coins; on-chain failure expected; gas from accumulator",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [null, null],
+      "sui_draw": 0,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_make_move_vector_grpc_swap_ab_executes"
+      ]
+    },
+    {
+      "pattern_id": "split_gas_1m100_pay_service_merge_gas",
+      "description": "split_coin(txer.gas, [1_000_100]) + move_call(pkg::parms::pay_service, [parm_obj, coin]) + merge_coins(txer.gas, [coin]); auto gas",
+      "withdrawal_form": "Form2",
+      "notes": "Gas inflated by 1_000_100 MIST; 1_000_000 is EServiceFee exits account permanently, 100 merges back; sui_draw=1_000_000 reflects the permanent drain beyond the fee",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 1000000,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_pay_service_gql_executes"
+      ]
+    },
+    {
+      "pattern_id": "move_call_get_service_transfer",
+      "description": "move_call(pkg::parms::get_service, [parm_obj, None]) + transfer_objects([coin_result], self); auto gas",
+      "withdrawal_form": "Form2",
+      "notes": "Depends on pay_service having run first; retrieves service balance coin",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_get_service_gql_executes"
+      ]
+    },
+    {
+      "pattern_id": "split_nongascoin_1m100_pay_service_merge_coin_accum",
+      "description": "split_coin(coins[0], [1_000_100]) + move_call(pkg::parms::pay_service, [parm_obj, coin]) + merge_coins(coins[0], [coin]); use_account_for_gas=True",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Explicit coin for split/merge source; gas from accumulator; bank provides 1_000_100 MIST coin",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [1000100],
+      "sui_draw": 0,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_pay_service_grpc_executes"
+      ]
+    },
+    {
+      "pattern_id": "move_call_get_service_transfer_accum",
+      "description": "move_call(pkg::parms::get_service, [parm_obj, None]) + transfer_objects([coin_result], self); use_account_for_gas=True",
+      "withdrawal_form": "Form3",
+      "notes": "No explicit coin consumed; gas from accumulator only; retrieves service balance",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_get_service_grpc_executes"
+      ]
+    },
+    {
+      "pattern_id": "merge_same_object_negative",
+      "description": "merge_coins(coin_id, [coin_id]); EXPECTED ON-CHAIN FAILURE (same object as both args); auto gas",
+      "withdrawal_form": "Form1",
+      "notes": "Negative test; on-chain failure expected; gas still consumed",
+      "fee_tier": "B",
+      "coin_draw_mist": 0,
+      "sui_coins": [null],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_merge_coins_gql_same_object_rejected"
+      ]
+    },
+    {
+      "pattern_id": "merge_same_object_negative_accum",
+      "description": "merge_coins(coin_id, [coin_id]); EXPECTED ON-CHAIN FAILURE; use_account_for_gas=True",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Negative test; explicit coin; gas from accumulator",
+      "fee_tier": "B",
+      "coin_draw_mist": 0,
+      "sui_coins": [null],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_merge_coins_grpc_same_object_rejected"
+      ]
+    },
+    {
+      "pattern_id": "split_gas_500k_send_funds_budget1_fail",
+      "description": "split_coin(txer.gas, [500_000]) + move_call(0x2::coin::send_funds); gas_budget=1; EXPECTED InsufficientGas FAILURE",
+      "withdrawal_form": "Form2",
+      "notes": "Negative test; tx fails at gas check; split does not execute; minimum fee charged",
+      "fee_tier": "A",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 1000000,
+      "ignore": false,
+      "tests": [
+        "test_move_call_gql_insufficient_gas_fails"
+      ]
+    },
+    {
+      "pattern_id": "split_nongascoin_500k_send_funds_budget1_fail_accum",
+      "description": "split_coin(coins[0], [500_000]) + move_call(0x2::coin::send_funds); gas_budget=1; use_account_for_gas=True; EXPECTED InsufficientGas FAILURE",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Negative test; explicit coin needed for PTB construction; tx fails at gas check; bank provides 500_000 MIST coin",
+      "fee_tier": "B",
+      "coin_draw_mist": 0,
+      "sui_coins": [500000],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_move_call_grpc_insufficient_gas_fails"
+      ]
+    },
+    {
+      "pattern_id": "split_gas_1k_transfer_self",
+      "description": "split_coin(txer.gas, [1_000]) + transfer_objects([split_res], self); auto gas",
+      "withdrawal_form": "Form2",
+      "notes": "Minimal split; self-transfer returns 1_000 to coinBalance; used as digest source (x2: GQL + gRPC) and suicommands changed_objects verification",
+      "fee_tier": "B",
+      "coin_draw_mist": 1000,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_execute_transaction_gql_changed_objects",
+        "FIXTURE:txn_digests(GQL)",
+        "FIXTURE:txn_digests(gRPC)"
+      ]
+    },
+    {
+      "pattern_id": "split_gas_1m_transfer_self",
+      "description": "split_coin(txer.gas, [1_000_000]) + transfer_objects([split_res], self); auto gas",
+      "withdrawal_form": "Form2",
+      "notes": "UC12 canonical pattern; self-transfer returns 1_000_000 to coinBalance",
+      "fee_tier": "B",
+      "coin_draw_mist": 1000000,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 1988000,
+      "ignore": false,
+      "tests": [
+        "test_uc12_gql_split_gas_coin_executes",
+        "test_uc12_grpc_split_gas_coin_executes"
+      ]
+    },
+    {
+      "pattern_id": "move_call_parms_auto_gas",
+      "description": "move_call(pkg::parms::fn) with scalar/vector/string/bool/object args; no explicit coin from bank; auto gas (txer.gas)",
+      "withdrawal_form": "Form2",
+      "notes": "All simple parms.move calls (GQL transport); includes check_phoney, burn_phoney (multi-call PTBs) and check_all (xfail but runs). test_check_vec_deep_u8_gql runs normally (not skipped).",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_check_uints_gql",
+        "test_check_optional_uints_gql",
+        "test_check_uints_vectors_gql",
+        "test_check_optional_uint_vectors_gql",
+        "test_check_vec_u8_gql",
+        "test_check_vec_optional_u8_gql",
+        "test_check_vec_deep_u8_gql",
+        "test_check_address_vec_gql",
+        "test_check_id_vec_gql",
+        "test_check_string_gql",
+        "test_check_string_option_gql",
+        "test_check_string_vec_gql",
+        "test_check_vec_option_string_gql",
+        "test_check_bool_gql",
+        "test_check_phoney_gql",
+        "test_burn_phoney_gql",
+        "test_check_all_gql"
+      ]
+    },
+    {
+      "pattern_id": "move_call_parms_accum",
+      "description": "move_call(pkg::parms::fn) with scalar/vector/string/bool/object args; no explicit coin from bank; use_account_for_gas=True",
+      "withdrawal_form": "Form3",
+      "notes": "All simple parms.move calls (gRPC transport); gas from accumulator. test_check_vec_deep_u8_grpc is @pytest.mark.skip — never runs, excluded from simulation.",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_check_uints_grpc",
+        "test_check_optional_uints_grpc",
+        "test_check_uints_vectors_grpc",
+        "test_check_optional_uint_vectors_grpc",
+        "test_check_vec_u8_grpc",
+        "test_check_vec_optional_u8_grpc",
+        "test_check_address_vec_grpc",
+        "test_check_id_vec_grpc",
+        "test_check_string_grpc",
+        "test_check_string_option_grpc",
+        "test_check_string_vec_grpc",
+        "test_check_vec_option_string_grpc",
+        "test_check_bool_grpc",
+        "test_check_phoney_grpc",
+        "test_burn_phoney_grpc",
+        "test_check_all_grpc"
+      ]
+    },
+    {
+      "pattern_id": "move_call_get_sender_gql",
+      "description": "split_coin(txer.gas, [1_000_000, 1_000_000]) + move_call(pkg::parms::get_sender) + transfer_objects(split_res, addr_result); auto gas",
+      "withdrawal_form": "Form2",
+      "notes": "get_sender returns tx sender address; splits 2x1_000_000 from txer.gas; coins transferred to self as new objects; sui_draw=2_000_000 (drawn from fat coin, not returned to fat coin)",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 2000000,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_get_sender_gql"
+      ]
+    },
+    {
+      "pattern_id": "move_call_get_sender_grpc",
+      "description": "split_coin(coins[0], [1_000_000]) + move_call(pkg::parms::get_sender) + transfer_objects([split_res], addr_result); use_account_for_gas=True",
+      "withdrawal_form": "Form1+Form3",
+      "notes": "Explicit coin for split source; gas from accumulator; bank provides 1_000_000 MIST coin; split result transferred to self",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [1000000],
+      "sui_draw": 0,
+      "fee_mist": 2000000,
+      "ignore": true,
+      "tests": [
+        "test_get_sender_grpc"
+      ]
+    },
+    {
+      "pattern_id": "publish_contract_gql",
+      "description": "publish(sui-test) + transfer_objects([cap], addr); gas from coin objects",
+      "withdrawal_form": "Form2",
+      "notes": "Session fixture published_gql — runs once per session; gas from fat coin; no explicit coin inputs required",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 3500000,
+      "ignore": true,
+      "tests": [
+        "FIXTURE:published_gql"
+      ]
+    },
+    {
+      "pattern_id": "publish_contract_grpc",
+      "description": "publish(sui-test) + transfer_objects([cap], addr); use_account_for_gas=True",
+      "withdrawal_form": "Form3",
+      "notes": "Session fixture published_grpc — runs once per session; gas from address accumulator; no explicit coin inputs required",
+      "fee_tier": "D",
+      "coin_draw_mist": 0,
+      "sui_coins": [],
+      "sui_draw": 0,
+      "fee_mist": 3500000,
+      "ignore": true,
+      "tests": [
+        "FIXTURE:published_grpc"
+      ]
+    }
+  ]
+}
