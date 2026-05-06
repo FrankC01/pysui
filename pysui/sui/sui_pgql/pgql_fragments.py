@@ -347,6 +347,159 @@ class StandardTxEffects(PGQL_Fragment):
         )
 
 
+class ExecutedObject(PGQL_Fragment):
+    """ExecutedObject fragment — StandardObject fields plus MoveObject.balance.
+
+    Used by ExecutedTxEffects for objectChanges nodes in ExecuteTransaction /
+    GetTransaction / GetTransactions SuiCommands. Extends StandardObject without
+    modifying it, preserving backwards compatibility for all other callers.
+    balance is needed to satisfy the sui_prot.Object proto contract; it is not
+    in StandardObject because most query contexts do not require it.
+    """
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
+        base_object = BaseObject()
+        return (
+            DSLFragment("ExecutedObject")
+            .on(schema.Object)
+            .select(
+                schema.Object.objectBcs.alias("bcs"),
+                base_object.fragment(schema),
+                schema.Object.owner.select(
+                    DSLInlineFragment()
+                    .on(schema.AddressOwner)
+                    .select(
+                        address_id=schema.AddressOwner.address.select(
+                            schema.Address.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Shared)
+                    .select(
+                        initial_version=schema.Shared.initialSharedVersion,
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Immutable)
+                    .select(
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.ObjectOwner)
+                    .select(
+                        parent_id=schema.ObjectOwner.address.select(
+                            schema.Address.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                ),
+                storage_rebate=schema.Object.storageRebate,
+                prior_transaction=schema.Object.previousTransaction.select(
+                    previous_transaction_digest=schema.Transaction.digest
+                ),
+                as_move_content=schema.Object.asMoveObject.select(
+                    has_public_transfer=schema.MoveObject.hasPublicTransfer,
+                    as_object=schema.MoveObject.contents.select(
+                        content=schema.MoveValue.json,
+                        contents_bcs=schema.MoveValue.bcs,
+                        object_type_repr=schema.MoveValue.type.select(
+                            object_type=schema.MoveType.repr
+                        ),
+                    ),
+                ),
+                as_move_package=schema.Object.asMovePackage.select(
+                    bcs=schema.MovePackage.moduleBcs
+                ),
+            )
+        )
+
+
+class ExecutedTxEffects(PGQL_Fragment):
+    """ExecutedTxEffects fragment — StandardTxEffects using ExecutedObject for objectChanges.
+
+    Used by ExecuteTransaction / GetTransaction / GetTransactions SuiCommands to
+    satisfy the sui_prot.Object contract (contents, json, balance). StandardTxEffects
+    is not modified; this fragment exists solely to serve those SuiCommands without
+    breaking existing callers of StandardTxEffects.
+    """
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """."""
+        exec_obj = ExecutedObject().fragment(schema)
+        gas_cost = GasCost().fragment(schema)
+
+        return (
+            DSLFragment("ExecutedTxEffects")
+            .on(schema.TransactionEffects)
+            .select(
+                schema.TransactionEffects.status,
+                schema.TransactionEffects.executionError.select(
+                    schema.ExecutionError.abortCode,
+                    schema.ExecutionError.sourceLineNumber,
+                    schema.ExecutionError.instructionOffset,
+                    schema.ExecutionError.identifier,
+                    schema.ExecutionError.constant,
+                    schema.ExecutionError.message,
+                ),
+                schema.TransactionEffects.timestamp,
+                schema.TransactionEffects.balanceChanges.select(
+                    schema.BalanceChangeConnection.nodes.select(
+                        schema.BalanceChange.coinType.select(
+                            coin_type=schema.MoveType.repr
+                        ),
+                        balance_change=schema.BalanceChange.amount,
+                        change_to=schema.BalanceChange.owner.select(
+                            object_id=schema.Address.address
+                        ),
+                    )
+                ),
+                schema.TransactionEffects.gasEffects.select(
+                    schema.GasEffects.gasObject.select(
+                        gas_object_id=schema.Object.address,
+                    ),
+                    schema.GasEffects.gasSummary.select(gas_cost),
+                ),
+                schema.TransactionEffects.objectChanges.select(
+                    schema.ObjectChangeConnection.nodes.select(
+                        address=schema.ObjectChange.address,
+                        deleted=schema.ObjectChange.idDeleted,
+                        created=schema.ObjectChange.idCreated,
+                        input_state=schema.ObjectChange.inputState.select(exec_obj),
+                        output_state=schema.ObjectChange.outputState.select(exec_obj),
+                    )
+                ),
+                schema.TransactionEffects.checkpoint.select(
+                    schema.Checkpoint.sequenceNumber,
+                    schema.Checkpoint.networkTotalTransactions,
+                    schema.Checkpoint.timestamp,
+                    schema.Checkpoint.epoch.select(
+                        schema.Epoch.epochId,
+                        schema.Epoch.startTimestamp,
+                        schema.Epoch.endTimestamp,
+                    ),
+                ),
+                schema.TransactionEffects.events.select(
+                    schema.EventConnection.nodes.select(
+                        schema.Event.sequenceNumber,
+                        schema.Event.timestamp,
+                        schema.Event.contents.select(schema.MoveValue.json),
+                        schema.Event.transactionModule.select(
+                            schema.MoveModule.package.select(
+                                schema.MovePackage.version,
+                                package_id=schema.MovePackage.address,
+                            ),
+                            module_name=schema.MoveModule.name,
+                        ),
+                    )
+                ),
+            )
+        )
+
+
 @versionchanged(version="0.91.0", reason="GraphQL Beta changes to fields.")
 class StandardTransaction(PGQL_Fragment):
     """StandardTransaction reusable fragment."""

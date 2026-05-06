@@ -301,7 +301,7 @@ async def do_tx(client: AsyncClientBase):
     handle_result(
         await client.execute(
             command=cmd.GetTransaction(
-                digest="A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz"
+                digest="Du3fukucFwku6mKJfR3oor464w62LdSLG55Rf7HWpc2Q"
             )
         )
     )
@@ -313,8 +313,8 @@ async def do_txs(client: AsyncClientBase):
         await client.execute(
             command=cmd.GetTransactions(
                 digests=[
-                    "A8kCT1n8dmCWchz5WnKPsQ8x7U49ExgMEWJ13nRULpiz",
-                    # Add additional digests here
+                    "Du3fukucFwku6mKJfR3oor464w62LdSLG55Rf7HWpc2Q",
+                    "7SbfCCV9nVSMJBkLYMVrNVKfBJoRPzZSjdcmNB41gcQ8",
                 ]
             )
         )
@@ -595,6 +595,30 @@ async def inspect_example(client: AsyncClientBase):
     await do_dry_run_txkind(txer)
 
 
+async def do_merge_to_one(client: AsyncClientBase):
+    """If more than 1 Sui coin, merge to one.
+
+    This takes the highest balanced coin and reserves it for gas, which
+    is also the target to merge to.
+    """
+    result = await client.execute(
+        command=cmd.GetCoins(owner=client.config.active_address)
+    )
+    if result.is_ok() and len(result.result_data.objects) > 1:
+        d_coins = sorted(
+            result.result_data.objects, key=lambda p: p.balance, reverse=True
+        )
+        txer: AsyncSuiTransaction = await client.transaction()
+        await txer.merge_coins(merge_to=txer.gas, merge_from=d_coins[1:])
+        handle_result(
+            await client.execute(
+                command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+            )
+        )
+    else:
+        print("Only one coin exists for this address")
+
+
 async def do_split_any_half(client: AsyncClientBase):
     """Split the 1st coin in wallet to another another equal to 1/2 in wallet.
 
@@ -712,6 +736,7 @@ async def do_sui_coin_to_account(client: AsyncClientBase):
             command=cmd.SimulateTransactionKind(
                 tx_kind=txer.raw_kind(),
                 tx_meta={"sender": client.config.active_address},
+                gas_selection=True,
             )
         )
     )
@@ -832,6 +857,7 @@ async def main():
         # await do_package(client_init)
         # await inspect_example(client_init)
         # await do_dry_run(client_init)
+        # await do_merge_to_one(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)
         # await do_stake(client_init)

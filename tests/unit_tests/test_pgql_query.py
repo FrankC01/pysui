@@ -539,57 +539,53 @@ import base64
 
 
 def _minimal_tx_dict(digest: str = "FakeDigest1111") -> dict:
-    """Build a minimal but structurally complete GQL transaction dict."""
+    """Build a minimal but structurally complete GQL SC transaction dict.
+
+    Keys mirror what _encode_executed_tx reads from a live GQL SC response:
+    - transactionJson: proto-format JSON blob (camelCase); parsed via Transaction.from_dict()
+    - transactionBcs: base64 raw BCS for the Transaction
+    - signatures: list of {signatureBytes: base64} from the GQL query
+    - effects: dict of typed GQL fields + proto JSON blobs read by _encode_executed_tx
+      - effectsJson parsed via TransactionEffects.from_dict()
+      - balanceChangesJson parsed via BalanceChange.from_dict() per element
+      - checkpoint.sequenceNumber and timestamp are typed GQL fields (not in JSON blobs)
+    """
     return {
-        "digest": digest,
-        "signatures": [
-            {"signatureBytes": base64.b64encode(b"fakesig").decode()}
-        ],
-        "kind": {
-            "tx_kind": "ProgrammableTransaction",
-            "inputs": {"nodes": []},
-            "commands": {"nodes": []},
-        },
-        "sender": {"submitter_address": _ADDR},
-        "expiration": None,
-        "gasInput": {
-            "transaction_budget": "1000000",
-            "price": "1000",
-            "sponsor": None,
-            "sponsor_pay_with": {
-                "gas_objects": [
-                    {
-                        "object_id": "0x" + "c" * 64,
-                        "version": 1,
-                        "object_digest": "gasobjdigest",
-                    }
-                ]
+        "transactionJson": {
+            "digest": digest,
+            "sender": _ADDR,
+            "kind": {"programmableTransaction": {}},
+            "gasPayment": {
+                "objects": [{"objectId": "0x" + "c" * 64}],
+                "price": "1000",
+                "budget": "1000000",
             },
         },
         "transactionBcs": base64.b64encode(b"txbcsbytes").decode(),
+        "signatures": [
+            {"signatureBytes": base64.b64encode(b"fakesig").decode()}
+        ],
         "effects": {
-            "status": "SUCCESS",
-            "timestamp": "2024-01-15T12:00:00Z",
-            "balanceChanges": {
-                "nodes": [
-                    {
-                        "coinType": {"coin_type": "0x2::sui::SUI"},
-                        "balance_change": "-1000",
-                        "change_to": {"object_id": _ADDR},
-                    }
-                ]
-            },
-            "gasEffects": {
-                "gasObject": None,
-                "gasSummary": {
+            "effectsJson": {
+                "status": {"success": True},
+                "epoch": "3",
+                "gasUsed": {
                     "computationCost": "100",
                     "storageCost": "200",
                     "storageRebate": "50",
                     "nonRefundableStorageFee": "10",
                 },
             },
-            "checkpoint": {"sequenceNumber": 42, "epoch": {"epochId": 3}},
+            "balanceChangesJson": [
+                {
+                    "address": _ADDR,
+                    "coinType": "0x2::sui::SUI",
+                    "amount": "-1000",
+                }
+            ],
             "effectsBcs": base64.b64encode(b"effectsbcsbytes").decode(),
+            "checkpoint": {"sequenceNumber": 42},
+            "timestamp": "2024-01-15T12:00:00Z",
         },
     }
 
@@ -653,7 +649,7 @@ class TestTransactionSCEncode:
 
     def test_get_transaction_sc_encode_effects_failure(self):
         tx = _minimal_tx_dict()
-        tx["effects"]["status"] = "FAILURE"
+        tx["effects"]["effectsJson"]["status"] = {"success": False}
         result = qn.GetTransactionSC.encode_fn()({"transaction": tx})
         assert result.effects.status.success is False
 
@@ -716,7 +712,7 @@ class TestTransactionSCEncode:
 
     def test_get_transaction_sc_encode_expiration_epoch(self):
         tx = _minimal_tx_dict()
-        tx["expiration"] = {"epochId": 99}
+        tx["transactionJson"]["expiration"] = {"epoch": "99"}
         result = qn.GetTransactionSC.encode_fn()({"transaction": tx})
         exp = result.transaction.expiration
         assert exp is not None

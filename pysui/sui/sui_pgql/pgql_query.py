@@ -8,6 +8,7 @@
 from typing import Any, Optional, Callable, Union
 import base64
 import datetime
+import re
 import warnings
 from deprecated.sphinx import versionadded, versionchanged, deprecated
 from gql import gql, GraphQLRequest
@@ -25,7 +26,7 @@ from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode, PGQL_NoOp
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_fragments as frag
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
-from pysui.sui.sui_bcs.bcs import TransactionKind, TransactionData
+from pysui.sui.sui_bcs.bcs import TransactionKind, TransactionData, SuiSignature
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_grpc.suimsgs.google import protobuf as _google_protobuf
 import pysui.sui.sui_grpc.pgrpc_requests as _rn
@@ -1315,8 +1316,8 @@ class GetTransactionSC(GetTx):
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build transaction query with metadata + BCS fields. Kind decoded from BCS."""
-        tx_effects = frag.StandardTxEffects().fragment(schema)
-        std_object = frag.StandardObject().fragment(schema)
+        tx_effects = frag.ExecutedTxEffects().fragment(schema)
+        exec_object = frag.ExecutedObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
         qres = schema.Query.transaction(digest=self.digest)
@@ -1340,13 +1341,16 @@ class GetTransactionSC(GetTx):
             schema.Transaction.effects.select(
                 tx_effects,
                 schema.TransactionEffects.effectsBcs,
+                schema.TransactionEffects.effectsJson,
+                schema.TransactionEffects.balanceChangesJson,
             ),
             schema.Transaction.transactionBcs,
+            schema.Transaction.transactionJson,
         )
         return dsl_gql(
             tx_effects,
+            exec_object,
             base_object,
-            std_object,
             gas_cost,
             DSLQuery(qres),
         )
@@ -1370,8 +1374,8 @@ class GetTransactionsSC(GetMultipleTransactions):
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build multi-transaction query with metadata + BCS fields. Kind decoded from BCS."""
-        tx_effects = frag.StandardTxEffects().fragment(schema)
-        std_object = frag.StandardObject().fragment(schema)
+        tx_effects = frag.ExecutedTxEffects().fragment(schema)
+        exec_object = frag.ExecutedObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
         gas_cost = frag.GasCost().fragment(schema)
         qres = schema.Query.multiGetTransactions(keys=self.digests)
@@ -1395,13 +1399,16 @@ class GetTransactionsSC(GetMultipleTransactions):
             schema.Transaction.effects.select(
                 tx_effects,
                 schema.TransactionEffects.effectsBcs,
+                schema.TransactionEffects.effectsJson,
+                schema.TransactionEffects.balanceChangesJson,
             ),
             schema.Transaction.transactionBcs,
+            schema.Transaction.transactionJson,
         )
         return dsl_gql(
             tx_effects,
+            exec_object,
             base_object,
-            std_object,
             gas_cost,
             DSLQuery(qres),
         )
@@ -2604,6 +2611,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                     schema.TransactionEffects.digest,
                     schema.TransactionEffects.effectsDigest,
                     schema.TransactionEffects.effectsBcs,
+                    schema.TransactionEffects.effectsJson,
                     schema.TransactionEffects.lamportVersion,
                     schema.TransactionEffects.status,
                     schema.TransactionEffects.executionError.select(
@@ -2625,17 +2633,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                     schema.TransactionEffects.checkpoint.select(
                         schema.Checkpoint.sequenceNumber,
                     ),
-                    schema.TransactionEffects.balanceChanges.select(
-                        schema.BalanceChangeConnection.nodes.select(
-                            schema.BalanceChange.coinType.select(
-                                coin_type=schema.MoveType.repr
-                            ),
-                            balance_change=schema.BalanceChange.amount,
-                            change_to=schema.BalanceChange.owner.select(
-                                object_id=schema.Address.address
-                            ),
-                        )
-                    ),
+                    schema.TransactionEffects.balanceChangesJson,
                     schema.TransactionEffects.events.select(
                         schema.EventConnection.nodes.select(
                             schema.Event.sequenceNumber,
@@ -2663,6 +2661,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                     ),
                     schema.TransactionEffects.transaction.select(
                         schema.Transaction.transactionBcs,
+                        schema.Transaction.transactionJson,
                         schema.Transaction.digest,
                     ),
                     object_changes=schema.TransactionEffects.objectChanges.select(
@@ -2706,9 +2705,15 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
             raw = in_data.get("simulate") or {}
             eff = raw.get("effects") or {}
 
+            # --- Transaction ---
             txn_node = eff.get("transaction") or {}
             txn_bcs_b64 = txn_node.get("transactionBcs")
-            if txn_bcs_b64:
+            txn_json = txn_node.get("transactionJson")
+            if txn_json:
+                self.transaction = sui_prot.Transaction.from_dict(txn_json, ignore_unknown_fields=True)
+                if txn_bcs_b64:
+                    self.transaction.bcs = sui_prot.Bcs(name="TransactionData", value=base64.b64decode(txn_bcs_b64))
+            elif txn_bcs_b64:
                 txn_bcs_bytes = base64.b64decode(txn_bcs_b64)
                 self.transaction.bcs = sui_prot.Bcs(name="TransactionData", value=txn_bcs_bytes)
                 self.transaction.version = 1
@@ -2719,47 +2724,82 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                     price=gas_data.Price,
                     budget=gas_data.Budget,
                 )
-            txn_digest = txn_node.get("digest")
-            if txn_digest:
-                self.transaction.digest = txn_digest
+                if txn_node.get("digest"):
+                    self.transaction.digest = txn_node["digest"]
 
+            # --- Effects via effectsJson ---
+            effects_proto = sui_prot.TransactionEffects.from_dict(
+                eff.get("effectsJson") or {}, ignore_unknown_fields=True
+            )
             effects_bcs_b64 = eff.get("effectsBcs")
-            effects_bcs = (
-                sui_prot.Bcs(name="TransactionEffects", value=base64.b64decode(effects_bcs_b64))
-                if effects_bcs_b64 else None
-            )
+            if effects_bcs_b64:
+                effects_proto.bcs = sui_prot.Bcs(name="TransactionEffects", value=base64.b64decode(effects_bcs_b64))
 
-            status_str = eff.get("status")
-            err_dict = eff.get("executionError") or {}
-            exec_status = (
-                sui_prot.ExecutionStatus(
-                    success=(status_str == "SUCCESS"),
-                    error=sui_prot.ExecutionError(
-                        abort_code=err_dict.get("abortCode"),
-                        message=err_dict.get("message"),
-                    ) if err_dict else None,
-                )
-                if status_str else None
-            )
+            # --- objectChanges typed nodes: object_type_map + ObjectSet ---
+            def _owner_from_flat(f: dict) -> "sui_prot.Owner | None":
+                kind = f.get("obj_owner_kind")
+                if kind == "AddressOwner":
+                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address=f.get("address"))
+                if kind == "Shared":
+                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=f.get("initial_version"))
+                if kind == "Immutable":
+                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.IMMUTABLE)
+                if kind == "ObjectOwner":
+                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.OBJECT, address=f.get("address"))
+                return None
 
-            epoch_id = (eff.get("epoch") or {}).get("epochId")
+            object_type_map: dict[str, str] = {}
+            objects: list[sui_prot.Object] = []
+            for node in (eff.get("object_changes") or {}).get("nodes") or []:
+                addr = node.get("address")
+                for state_key in ("input_state", "output_state"):
+                    obj_node = node.get(state_key)
+                    if isinstance(obj_node, dict) and addr and addr not in object_type_map:
+                        flat: dict = {}
+                        pgql_type._fast_flat(obj_node, flat)
+                        obj_type = flat.get("object_type") or ("package" if obj_node.get("as_move_package") else None)
+                        if obj_type:
+                            object_type_map[addr] = obj_type
 
-            gas_summary = (eff.get("gasEffects") or {}).get("gasSummary") or {}
-            gas_used = sui_prot.GasCostSummary(
-                computation_cost=int(gas_summary.get("computationCost") or 0),
-                storage_cost=int(gas_summary.get("storageCost") or 0),
-                storage_rebate=int(gas_summary.get("storageRebate") or 0),
-                non_refundable_storage_fee=int(
-                    gas_summary.get("nonRefundableStorageFee") or 0
-                ),
-            )
+                out = node.get("output_state")
+                if out:
+                    flat_out: dict = {}
+                    pgql_type._fast_flat(out, flat_out)
+                    out_type = flat_out.get("object_type") or ("package" if out.get("as_move_package") else None)
+                    bcs_b64 = flat_out.get("bcs")
+                    contents_bcs_b64 = flat_out.get("contents_bcs")
+                    obj_json = flat_out.get("content")
+                    objects.append(
+                        sui_prot.Object(
+                            object_id=flat_out.get("object_id"),
+                            version=int(flat_out.get("version") or 0),
+                            digest=flat_out.get("object_digest"),
+                            object_type=out_type,
+                            owner=_owner_from_flat(flat_out),
+                            bcs=sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_b64)) if bcs_b64 else None,
+                            previous_transaction=flat_out.get("previous_transaction_digest"),
+                            has_public_transfer=flat_out.get("has_public_transfer"),
+                            storage_rebate=int(flat_out.get("storage_rebate")) if flat_out.get("storage_rebate") is not None else None,
+                            json=_google_protobuf.Value.from_dict(obj_json) if obj_json is not None else None,
+                            contents=sui_prot.Bcs(name=out_type, value=base64.b64decode(contents_bcs_b64)) if contents_bcs_b64 else None,
+                        )
+                    )
+
+            # Back-fill object_type from typed nodes (effectsJson omits objectType)
+            for co in effects_proto.changed_objects:
+                if not co.object_type and co.object_id in object_type_map:
+                    co.object_type = object_type_map[co.object_id]
+
+            # --- Balance changes via balanceChangesJson ---
+            balance_changes = [
+                sui_prot.BalanceChange.from_dict(bc)
+                for bc in (eff.get("balanceChangesJson") or [])
+            ]
 
             timestamp = _parse_gql_datetime(eff.get("timestamp"))
             checkpoint_seq = (eff.get("checkpoint") or {}).get("sequenceNumber")
 
-            bc_nodes = (eff.get("balanceChanges") or {}).get("nodes") or []
-            balance_changes = _encode_balance_changes(bc_nodes)
-
+            # --- Events (typed — no eventsJson in GQL) ---
             events: list[sui_prot.Event] = []
             for ev in ((eff.get("events") or {}).get("nodes") or []):
                 ev_bcs_b64 = ev.get("eventBcs")
@@ -2780,103 +2820,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                     )
                 )
 
-            dep_nodes = (eff.get("dependencies") or {}).get("nodes") or []
-            dependencies = [n.get("digest") for n in dep_nodes if n.get("digest")]
-
-            def _owner_from_flat(f: dict) -> "sui_prot.Owner | None":
-                kind = f.get("obj_owner_kind")
-                if kind == "AddressOwner":
-                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address=f.get("address"))
-                if kind == "Shared":
-                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=f.get("initial_version"))
-                if kind == "Immutable":
-                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.IMMUTABLE)
-                if kind == "ObjectOwner":
-                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.OBJECT, address=f.get("address"))
-                return None
-
-            obj_nodes = (eff.get("object_changes") or {}).get("nodes") or []
-            objects: list[sui_prot.Object] = []
-            changed_objects: list[sui_prot.ChangedObject] = []
-            for node in obj_nodes:
-                obj_id = node.get("address")
-                created = node.get("created", False)
-                deleted = node.get("deleted", False)
-                if created:
-                    id_op = sui_prot.ChangedObjectIdOperation.CREATED
-                elif deleted:
-                    id_op = sui_prot.ChangedObjectIdOperation.DELETED
-                else:
-                    id_op = sui_prot.ChangedObjectIdOperation.NONE
-
-                in_dict = node.get("input_state")
-                if in_dict:
-                    flat_in: dict = {}
-                    pgql_type._fast_flat(in_dict, flat_in)
-                    in_state = sui_prot.ChangedObjectInputObjectState.EXISTS
-                    in_ver = int(flat_in.get("version") or 0)
-                    in_dig = flat_in.get("object_digest")
-                    in_owner = _owner_from_flat(flat_in)
-                    obj_type = flat_in.get("object_type") or ("package" if in_dict.get("as_move_package") else None)
-                else:
-                    in_state = sui_prot.ChangedObjectInputObjectState.DOES_NOT_EXIST
-                    in_ver = in_dig = in_owner = obj_type = None
-
-                out = node.get("output_state")
-                if out:
-                    flat_out: dict = {}
-                    pgql_type._fast_flat(out, flat_out)
-                    out_type = flat_out.get("object_type") or ("package" if out.get("as_move_package") else None)
-                    obj_type = out_type or obj_type
-                    out_owner = _owner_from_flat(flat_out)
-                    out_ver = int(flat_out.get("version") or 0)
-                    out_dig = flat_out.get("object_digest")
-                    out_state = (
-                        sui_prot.ChangedObjectOutputObjectState.PACKAGE_WRITE
-                        if out.get("as_move_package")
-                        else sui_prot.ChangedObjectOutputObjectState.OBJECT_WRITE
-                    )
-                    bcs_b64 = flat_out.get("bcs")
-                    contents_bcs_b64 = flat_out.get("contents_bcs")
-                    obj_json = flat_out.get("content")
-                    objects.append(
-                        sui_prot.Object(
-                            object_id=flat_out.get("object_id"),
-                            version=out_ver,
-                            digest=out_dig,
-                            object_type=obj_type,
-                            owner=out_owner,
-                            bcs=sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_b64)) if bcs_b64 else None,
-                            previous_transaction=flat_out.get("previous_transaction_digest"),
-                            has_public_transfer=flat_out.get("has_public_transfer"),
-                            storage_rebate=int(flat_out.get("storage_rebate")) if flat_out.get("storage_rebate") is not None else None,
-                            json=_google_protobuf.Value.from_dict(obj_json) if obj_json is not None else None,
-                            contents=sui_prot.Bcs(
-                                name=obj_type,
-                                value=base64.b64decode(contents_bcs_b64),
-                            ) if contents_bcs_b64 else None,
-                        )
-                    )
-                else:
-                    out_state = sui_prot.ChangedObjectOutputObjectState.DOES_NOT_EXIST
-                    out_owner = out_ver = out_dig = None
-
-                changed_objects.append(
-                    sui_prot.ChangedObject(
-                        object_id=obj_id,
-                        input_state=in_state,
-                        input_version=in_ver,
-                        input_digest=in_dig,
-                        input_owner=in_owner,
-                        output_state=out_state,
-                        output_version=out_ver,
-                        output_digest=out_dig,
-                        output_owner=out_owner,
-                        id_operation=id_op,
-                        object_type=obj_type,
-                    )
-                )
-
+            # --- CommandResult outputs ---
             cmd_outputs: list[sui_prot.CommandResult] = []
             for cmd in (raw.get("outputs") or []):
                 return_vals = []
@@ -2926,17 +2870,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                 transaction=sui_prot.ExecutedTransaction(
                     transaction=self.transaction,
                     signatures=[],
-                    effects=sui_prot.TransactionEffects(
-                        bcs=effects_bcs,
-                        digest=eff.get("effectsDigest"),
-                        transaction_digest=eff.get("digest"),
-                        lamport_version=eff.get("lamportVersion"),
-                        status=exec_status,
-                        epoch=epoch_id,
-                        gas_used=gas_used,
-                        dependencies=dependencies,
-                        changed_objects=changed_objects,
-                    ),
+                    effects=effects_proto,
                     balance_changes=balance_changes,
                     timestamp=timestamp,
                     checkpoint=checkpoint_seq,
@@ -3066,90 +3000,42 @@ class ExecuteTransaction(PGQL_QueryNode):
 
 
 class ExecuteTransactionSC(ExecuteTransaction):
-    """SC variant: adds objectChanges to execute mutation; encode_fn maps to ExecuteTransactionResponse proto."""
+    """SC variant: executes a transaction and returns an ExecutedTransaction proto."""
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Execute mutation extended with objectChanges and effectsBcs for proto mapping."""
-        std_object = frag.StandardObject().fragment(schema)
+        """Execute transaction; fetch fields that mirror GetTransactionSC via effects.transaction."""
+        tx_effects = frag.ExecutedTxEffects().fragment(schema)
+        exec_object = frag.ExecutedObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
-
+        gas_cost = frag.GasCost().fragment(schema)
         qres = schema.Mutation.executeTransaction(
             transactionDataBcs=self.tx_data, signatures=self.sigs
         ).select(
             schema.ExecutionResult.effects.select(
-                schema.TransactionEffects.status,
-                schema.TransactionEffects.digest,
-                effects_bcs=schema.TransactionEffects.effectsBcs,
-                object_changes=schema.TransactionEffects.objectChanges.select(
-                    schema.ObjectChangeConnection.nodes.select(
-                        address=schema.ObjectChange.address,
-                        created=schema.ObjectChange.idCreated,
-                        input_state=schema.ObjectChange.inputState.select(std_object),
-                        output_state=schema.ObjectChange.outputState.select(std_object),
-                    )
+                tx_effects,
+                schema.TransactionEffects.effectsBcs,
+                schema.TransactionEffects.effectsJson,
+                schema.TransactionEffects.balanceChangesJson,
+                schema.TransactionEffects.transaction.select(
+                    schema.Transaction.signatures.select(
+                        schema.UserSignature.signatureBytes
+                    ),
+                    schema.Transaction.transactionBcs,
+                    schema.Transaction.transactionJson,
                 ),
-            ),
+            )
         )
-        return dsl_gql(base_object, std_object, DSLMutation(qres))
+        return dsl_gql(tx_effects, exec_object, base_object, gas_cost, DSLMutation(qres))
 
     @staticmethod
-    def encode_fn() -> Callable[[dict], "sui_prot.ExecuteTransactionResponse"]:
-        """Return encoder mapping GQL executeTransaction to ExecuteTransactionResponse proto."""
+    def encode_fn() -> Callable[[dict], "sui_prot.ExecutedTransaction | None"]:
+        """Return encoder mapping executeTransaction response to ExecutedTransaction proto."""
 
-        def _encode(in_data: dict) -> "sui_prot.ExecuteTransactionResponse":
-            raw = in_data.get("executeTransaction") or {}
-            effects = raw.get("effects") or {}
-
-            status_str = effects.get("status")
-            exec_status = (
-                sui_prot.ExecutionStatus(success=(status_str == "SUCCESS"))
-                if status_str else None
-            )
-
-            digest = effects.get("digest")
-
-            effects_bcs_b64: str | None = effects.get("effects_bcs")
-            effects_bcs_proto = (
-                sui_prot.Bcs(value=base64.b64decode(effects_bcs_b64))
-                if effects_bcs_b64 else None
-            )
-
-            nodes = (effects.get("object_changes") or {}).get("nodes") or []
-            changed_objects: list[sui_prot.ChangedObject] = []
-            for node in nodes:
-                obj_id = node.get("address")
-                created = node.get("created", False)
-                in_state = (
-                    sui_prot.ChangedObjectInputObjectState.DOES_NOT_EXIST
-                    if created
-                    else sui_prot.ChangedObjectInputObjectState.EXISTS
-                )
-                out = node.get("output_state") or {}
-                if out.get("as_move_package"):
-                    obj_type = "package"
-                else:
-                    mc = out.get("as_move_content") or {}
-                    obj = mc.get("as_object") or {}
-                    type_repr = obj.get("object_type_repr") or {}
-                    obj_type = type_repr.get("object_type")
-                changed_objects.append(
-                    sui_prot.ChangedObject(
-                        object_id=obj_id,
-                        input_state=in_state,
-                        object_type=obj_type,
-                    )
-                )
-
-            return sui_prot.ExecuteTransactionResponse(
-                transaction=sui_prot.ExecutedTransaction(
-                    digest=digest,
-                    effects=sui_prot.TransactionEffects(
-                        bcs=effects_bcs_proto,
-                        status=exec_status,
-                        changed_objects=changed_objects,
-                    ),
-                )
-            )
+        def _encode(in_data: dict) -> "sui_prot.ExecutedTransaction | None":
+            effects_dict = (in_data.get("executeTransaction") or {}).get("effects") or {}
+            txn_inner = effects_dict.get("transaction") or {}
+            tx_dict = {**txn_inner, "effects": effects_dict}
+            return _encode_executed_tx(tx_dict)
 
         return _encode
 
@@ -3502,16 +3388,55 @@ def _gql_sig_to_proto_open_sig(sig_dict: dict) -> sui_prot.OpenSignature:
 
 
 def _encode_object_from_raw(obj_dict: dict) -> sui_prot.Object:
-    """Map a StandardObject raw GQL dict to an Object proto."""
+    """Map a StandardObject or ExecutedObject raw GQL dict to an Object proto.
+
+    All dict keys are DSL aliases defined in BaseObject / StandardObject / ExecutedObject
+    fragments (pgql_fragments.py) — they are snake_case aliases, not camelCase GQL field
+    names, so betterproto2 from_dict() cannot be used here.
+
+    Key alias mappings (fragment → dict key):
+      BaseObject:      Object.address                 → "object_id"
+                       Object.digest                  → "object_digest"
+                       Object.version                 → "version"
+      StandardObject:  Object.objectBcs.alias("bcs")  → "bcs"  (Base64 scalar, not Bcs message)
+                       Object.storageRebate            → "storage_rebate"
+                       Object.previousTransaction.Transaction.digest
+                                                      → "prior_transaction.previous_transaction_digest"
+                       Object.asMoveObject             → "as_move_content"
+                       MoveObject.contents             → "as_move_content.as_object"
+                       MoveValue.type.MoveType.repr    → "as_move_content.as_object.object_type_repr.object_type"
+                       MoveObject.hasPublicTransfer    → "as_move_content.has_public_transfer"
+      ExecutedObject:  MoveValue.json                 → "as_move_content.as_object.content"
+                                                         (Move struct as parsed dict; maps → Object.json via
+                                                          _google_protobuf.Value.from_dict(); also used to
+                                                          derive Object.balance for Coin<T> objects.)
+                       MoveValue.bcs                  → "as_move_content.as_object.contents_bcs"
+                                                         (Base64 BCS of Move struct value;
+                                                          maps → Object.contents as Bcs(name=object_type, value=...))
+
+    Object.balance is derived from content JSON rather than MoveObject.balance:
+    MoveObject.balance(coinType) requires a coinType argument and returns a composite
+    Balance type — unusable in a generic fragment. For Coin<T> objects, MoveValue.json
+    produces {"balance": "..."}, so balance is parsed from json_str after deserialization.
+
+    ExecutedObject-only fields are absent when called from StandardObject callers — .get()
+    returns None and those proto fields are left unset, which is correct behaviour.
+
+    Protocol gaps (never available from GQL typed fields):
+      Object.id_operation — not a GQL typed field; sourced from effectsJson if needed
+    """
     if not obj_dict:
         return sui_prot.Object()
     bcs_str: Optional[str] = obj_dict.get("bcs")
-    object_bcs = sui_prot.Bcs(value=base64.b64decode(bcs_str)) if bcs_str else None
+    object_bcs = sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_str)) if bcs_str else None
     owner = _owner_from_inline_frag(obj_dict.get("owner"))
     prior_tx = obj_dict.get("prior_transaction") or {}
     prev_tx: Optional[str] = prior_tx.get("previous_transaction_digest") if isinstance(prior_tx, dict) else None
     object_type: Optional[str] = None
     has_public_transfer: Optional[bool] = None
+    contents_bcs: Optional[sui_prot.Bcs] = None
+    json_val: Optional[_google_protobuf.Value] = None
+    balance: Optional[int] = None
     as_move_content = obj_dict.get("as_move_content")
     if isinstance(as_move_content, dict):
         has_public_transfer = as_move_content.get("has_public_transfer")
@@ -3520,6 +3445,20 @@ def _encode_object_from_raw(obj_dict: dict) -> sui_prot.Object:
             obj_type_repr = as_object.get("object_type_repr") or {}
             if isinstance(obj_type_repr, dict):
                 object_type = obj_type_repr.get("object_type")
+            cbcs = as_object.get("contents_bcs")
+            if cbcs and object_type:
+                contents_bcs = sui_prot.Bcs(name=object_type, value=base64.b64decode(cbcs))
+            # content (MoveValue.json) arrives as a parsed dict from the GQL scalar.
+            # Wrapped as google.protobuf.Value for Object.json; balance extracted for Coin<T>.
+            content = as_object.get("content")
+            if isinstance(content, dict):
+                json_val = _google_protobuf.Value.from_dict(content)
+                bal_raw = content.get("balance")
+                if bal_raw is not None:
+                    try:
+                        balance = int(bal_raw)
+                    except (ValueError, TypeError):
+                        pass
     sr = obj_dict.get("storage_rebate")
     return sui_prot.Object(
         object_id=obj_dict.get("object_id"),
@@ -3531,6 +3470,9 @@ def _encode_object_from_raw(obj_dict: dict) -> sui_prot.Object:
         bcs=object_bcs,
         previous_transaction=prev_tx,
         storage_rebate=int(sr) if sr is not None else None,
+        contents=contents_bcs,
+        json=json_val,
+        balance=balance,
     )
 
 
@@ -4706,85 +4648,281 @@ def _encode_balance_changes(nodes: list) -> "list[sui_prot.BalanceChange]":
     return result
 
 
+_SIG_SCHEME_MAP = {
+    0: sui_prot.SignatureScheme.ED25519,
+    1: sui_prot.SignatureScheme.SECP256K1,
+    2: sui_prot.SignatureScheme.SECP256R1,
+    3: sui_prot.SignatureScheme.MULTISIG,
+    4: sui_prot.SignatureScheme.BLS12381,
+    5: sui_prot.SignatureScheme.ZKLOGIN,
+    6: sui_prot.SignatureScheme.PASSKEY,
+}
+
+
+def _parse_simple_sig_bytes(raw: bytes) -> "sui_prot.SimpleSignature | None":
+    """Parse raw [flag + sig + pubkey] bytes into a SimpleSignature proto."""
+    if not raw:
+        return None
+    scheme = _SIG_SCHEME_MAP.get(raw[0])
+    if scheme is None:
+        return None
+    return sui_prot.SimpleSignature(
+        scheme=scheme,
+        signature=raw[1:65],
+        public_key=raw[65:],
+    )
+
+
+def _parse_user_signature(sig_b64: str) -> "sui_prot.UserSignature":
+    """Parse a base64-encoded Sui signature into a fully-populated UserSignature proto.
+
+    Decodes the BCS blob, dispatches on the flag byte via SuiSignature enum,
+    and populates the appropriate proto variant. Falls back to BCS-only on any
+    unrecognized or unparseable variant.
+    """
+    raw = base64.b64decode(sig_b64)
+    sig_bcs = sui_prot.Bcs(name="UserSignatureBytes", value=raw)
+    fallback = sui_prot.UserSignature(bcs=sig_bcs)
+    try:
+        parsed = SuiSignature.deserialize(raw)
+    except Exception:
+        return fallback
+
+    flag = parsed.index
+    payload = parsed.value
+    scheme = _SIG_SCHEME_MAP.get(flag)
+
+    # --- Simple schemes: Ed25519 (0), Secp256k1 (1), Secp256r1 (2), Bls12381 (4) ---
+    if flag in (0, 1, 2, 4):
+        return sui_prot.UserSignature(
+            bcs=sig_bcs,
+            scheme=scheme,
+            simple=sui_prot.SimpleSignature(
+                scheme=scheme,
+                signature=bytes(payload.Signature),
+                public_key=bytes(payload.PublicKey),
+            ),
+        )
+
+    # --- MultiSig (3) ---
+    if flag == 3:
+        ms_sigs = []
+        for cs in payload.Sigs:
+            sig_raw = bytes(cs.Sig)
+            cs_scheme = _SIG_SCHEME_MAP.get(sig_raw[0])
+            if cs_scheme is not None:
+                ms_sigs.append(sui_prot.MultisigMemberSignature(
+                    scheme=cs_scheme,
+                    signature=sig_raw[1:],
+                ))
+        members = []
+        for pk in payload.PkMap:
+            pk_scheme = _SIG_SCHEME_MAP.get(pk.index)
+            if pk_scheme is not None:
+                members.append(sui_prot.MultisigMember(
+                    public_key=sui_prot.MultisigMemberPublicKey(
+                        scheme=pk_scheme,
+                        public_key=bytes(pk.value.PublicKey),
+                    ),
+                    weight=pk.value.Weight,
+                ))
+        return sui_prot.UserSignature(
+            bcs=sig_bcs,
+            scheme=scheme,
+            multisig=sui_prot.MultisigAggregatedSignature(
+                signatures=ms_sigs,
+                bitmap=payload.BitMap.Bitmap,
+                committee=sui_prot.MultisigCommittee(
+                    members=members,
+                    threshold=payload.Threshold,
+                ),
+            ),
+        )
+
+    # --- ZkLogin (5) ---
+    if flag == 5:
+        pp = payload.Inputs.ProofPoints
+        b = pp.B
+        proof = sui_prot.ZkLoginProof(
+            a=sui_prot.CircomG1(e0=pp.A[0], e1=pp.A[1], e2=pp.A[2]) if len(pp.A) >= 3 else None,
+            b=sui_prot.CircomG2(
+                e00=b[0].Items[0], e01=b[0].Items[1],
+                e10=b[1].Items[0], e11=b[1].Items[1],
+                e20=b[2].Items[0], e21=b[2].Items[1],
+            ) if len(b) >= 3 else None,
+            c=sui_prot.CircomG1(e0=pp.C[0], e1=pp.C[1], e2=pp.C[2]) if len(pp.C) >= 3 else None,
+        )
+        try:
+            iss_fragment = base64.urlsafe_b64decode(
+                payload.Inputs.IssBase64Details.Value + "=="
+            ).decode("utf-8", errors="replace")
+            m = re.search(r'"iss"\s*:\s*"([^"]+)"', iss_fragment)
+            iss = m.group(1) if m else None
+        except Exception:
+            iss = None
+        return sui_prot.UserSignature(
+            bcs=sig_bcs,
+            scheme=scheme,
+            zklogin=sui_prot.ZkLoginAuthenticator(
+                inputs=sui_prot.ZkLoginInputs(
+                    proof_points=proof,
+                    iss_base64_details=sui_prot.ZkLoginClaim(
+                        value=payload.Inputs.IssBase64Details.Value,
+                        index_mod_4=payload.Inputs.IssBase64Details.IndexMod4,
+                    ),
+                    header_base64=payload.Inputs.HeaderBase64,
+                    address_seed=payload.Inputs.AddressSeed,
+                ),
+                max_epoch=payload.MaxEpoch,
+                signature=_parse_simple_sig_bytes(bytes(payload.UserSignature)),
+                public_identifier=sui_prot.ZkLoginPublicIdentifier(iss=iss),
+            ),
+        )
+
+    # --- Passkey (6) ---
+    if flag == 6:
+        return sui_prot.UserSignature(
+            bcs=sig_bcs,
+            scheme=scheme,
+            passkey=sui_prot.PasskeyAuthenticator(
+                authenticator_data=bytes(payload.AuthenticatorData),
+                client_data_json=payload.ClientDataJson,
+                signature=_parse_simple_sig_bytes(bytes(payload.UserSignature)),
+            ),
+        )
+
+    return fallback
+
+
 def _encode_executed_tx(
     tx_dict: "dict | None",
 ) -> "sui_prot.ExecutedTransaction | None":
+    """Map a GQL transaction response dict to an ExecutedTransaction proto.
+
+    GQL → gRPC mapping strategy (confirmed against Mysten Labs TS SDK, 2026-05-05):
+
+    JSON blob fields (primary data source for typed proto fields):
+      transactionJson      → Transaction proto (excl. bcs/signatures)
+      effectsJson          → TransactionEffects proto (excl. bcs)
+      balanceChangesJson   → list[BalanceChange] proto
+    These blobs match the gRPC proto JSON format. betterproto2 from_dict() handles
+    camelCase → snake_case automatically and resolves string enum values via
+    field_type.from_string(). Typed GQL fields for enum states (inputState,
+    outputState, idOperation, accumulatorWrite) and effects.version do NOT exist
+    as GQL typed fields — confirmed by Mysten Labs; JSON blobs are the only source.
+
+    BCS fields (excluded from all JSON blobs, set separately):
+      transactionBcs       → transaction.bcs  (Bcs.name = "TransactionData")
+      effectsBcs           → effects.bcs      (Bcs.name = "TransactionEffects")
+      UserSignature.bcs    → set in _parse_user_signature (Bcs.name = "UserSignatureBytes")
+      Object.bcs           → set in _encode_object_from_raw (Bcs.name = "Object")
+    GQL Bcs scalar has no name field; name is deterministic from the field that
+    provides the bytes and must be hardcoded here.
+
+    Signatures: sourced from effects.transaction.signatures (GQL nesting under effects),
+    not from a top-level signatures field. signatureBytes is Base64; full parsing
+    (scheme, simple/multisig/zklogin variants) is done in _parse_user_signature.
+
+    checkpoint / timestamp: not in any JSON blob; sourced from StandardTxEffects
+    typed fields (checkpoint.sequenceNumber, timestamp).
+
+    objects (ObjectSet): GQL name is objectChanges (ObjectChangeConnection), not
+    objects. Each ObjectChange node has inputState: Object and outputState: Object —
+    both versions of every mutated object. gRPC ObjectSet flattens these as
+    separate Object entries (input version + output version per changed object,
+    plus output-only for created objects). Mapped via _encode_object_from_raw()
+    which handles the StandardObject DSL alias → proto field translation.
+
+    Protocol gaps (no GQL equivalent — will always be empty):
+      TransactionEffects.events_digest, .auxiliary_data_digest,
+      .unchanged_loaded_runtime_objects, .version; Transaction.version.
+    """
     if not tx_dict:
         return None
-    digest = tx_dict.get("digest")
+
+    # transactionJson matches proto format; digest is the authoritative identity key
+    tx_json = tx_dict.get("transactionJson") or {}
+    digest = tx_json.get("digest")
     if not digest:
         return None
 
-    sigs = []
-    for s in (tx_dict.get("signatures") or []):
-        sig_bytes = s.get("signatureBytes")
-        if sig_bytes:
-            sigs.append(
-                sui_prot.UserSignature(
-                    bcs=sui_prot.Bcs(value=base64.b64decode(sig_bytes))
-                )
-            )
-
-    kind_dict = tx_dict.get("kind") or {}
-    tx_kind = _encode_tx_kind(kind_dict)
-
-    sender_dict = tx_dict.get("sender") or {}
-    sender_addr = sender_dict.get("submitter_address")
-
-    expiration = _encode_expiration(tx_dict.get("expiration"))
-
-    gas_input = tx_dict.get("gasInput") or {}
-    gas_payment = _encode_gas_payment(gas_input, sender_addr)
-
+    # from_dict() populates all Transaction fields except bcs and signatures
+    transaction = sui_prot.Transaction.from_dict(tx_json, ignore_unknown_fields=True)
     tx_bcs_b64 = tx_dict.get("transactionBcs")
-    tx_bcs = sui_prot.Bcs(value=base64.b64decode(tx_bcs_b64)) if tx_bcs_b64 else None
+    if tx_bcs_b64:
+        transaction.bcs = sui_prot.Bcs(name="TransactionData", value=base64.b64decode(tx_bcs_b64))
+
+    # signatures are under effects.transaction.signatures in GQL (not top-level)
+    sigs = [
+        _parse_user_signature(s["signatureBytes"])
+        for s in (tx_dict.get("signatures") or [])
+        if s.get("signatureBytes")
+    ]
 
     eff_dict = tx_dict.get("effects") or {}
-    status_str = eff_dict.get("status")
-    exec_status = (
-        sui_prot.ExecutionStatus(success=(status_str == "SUCCESS")) if status_str else None
-    )
 
-    gas_effects = eff_dict.get("gasEffects") or {}
-    gas_summary = gas_effects.get("gasSummary") or {}
-    gas_used = sui_prot.GasCostSummary(
-        computation_cost=int(gas_summary.get("computationCost") or 0),
-        storage_cost=int(gas_summary.get("storageCost") or 0),
-        storage_rebate=int(gas_summary.get("storageRebate") or 0),
-        non_refundable_storage_fee=int(gas_summary.get("nonRefundableStorageFee") or 0),
-    )
+    # effectsJson matches proto format; from_dict() populates all TransactionEffects fields except bcs
+    effects_json = eff_dict.get("effectsJson") or {}
+    effects = sui_prot.TransactionEffects.from_dict(effects_json, ignore_unknown_fields=True)
+    effects_bcs_b64 = eff_dict.get("effectsBcs")
+    if effects_bcs_b64:
+        effects.bcs = sui_prot.Bcs(name="TransactionEffects", value=base64.b64decode(effects_bcs_b64))
 
-    bc_nodes = (eff_dict.get("balanceChanges") or {}).get("nodes") or []
-    balance_changes = _encode_balance_changes(bc_nodes)
+    # balanceChangesJson is on TransactionEffects (not Transaction) in GQL schema
+    balance_changes = [
+        sui_prot.BalanceChange.from_dict(bc, ignore_unknown_fields=True)
+        for bc in (eff_dict.get("balanceChangesJson") or [])
+        if isinstance(bc, dict)
+    ]
 
+    # checkpoint and timestamp are typed fields from StandardTxEffects fragment — not in JSON blobs
     checkpoint_dict = eff_dict.get("checkpoint") or {}
     checkpoint_seq = checkpoint_dict.get("sequenceNumber")
-    checkpoint_epoch = (checkpoint_dict.get("epoch") or {}).get("epochId")
     ts_str = eff_dict.get("timestamp") or checkpoint_dict.get("timestamp")
     timestamp = _parse_gql_datetime(ts_str)
 
-    effects_bcs_b64 = eff_dict.get("effectsBcs")
-    effects_bcs = (
-        sui_prot.Bcs(value=base64.b64decode(effects_bcs_b64)) if effects_bcs_b64 else None
-    )
+    # GQL objectChanges → gRPC ExecutedTransaction.objects (ObjectSet)
+    # Each ObjectChange node yields up to two Object entries: inputState (pre-tx version)
+    # and outputState (post-tx version). Created objects have inputState=None;
+    # deleted objects have outputState=None. _encode_object_from_raw handles the
+    # StandardObject DSL alias mapping (from_dict() cannot be used due to snake_case aliases).
+    # object_type_map: objectId → objectType; used to patch effects.changedObjects because
+    # effectsJson omits objectType (confirmed GQL indexer behaviour, 2026-05-06).
+    oc_nodes = (eff_dict.get("objectChanges") or {}).get("nodes") or []
+    obj_list = []
+    object_type_map: dict[str, str] = {}
+    for oc in oc_nodes:
+        addr = oc.get("address")
+        for state_key in ("input_state", "output_state"):
+            obj_node = oc.get(state_key)
+            if isinstance(obj_node, dict):
+                obj = _encode_object_from_raw(obj_node)
+                # addr is the ObjectChange.address fallback if BaseObject did not populate object_id
+                if addr and not obj.object_id:
+                    obj.object_id = addr
+                obj_list.append(obj)
+                if addr and addr not in object_type_map:
+                    obj_type = (
+                        (obj_node.get("as_move_content") or {})
+                        .get("as_object", {})
+                        .get("object_type_repr", {})
+                        .get("object_type")
+                    )
+                    if obj_type:
+                        object_type_map[addr] = obj_type
+    objects = sui_prot.ObjectSet(objects=obj_list) if obj_list else None
+
+    for co in effects.changed_objects:
+        if not co.object_type and co.object_id in object_type_map:
+            co.object_type = object_type_map[co.object_id]
 
     return sui_prot.ExecutedTransaction(
         digest=digest,
-        transaction=sui_prot.Transaction(
-            bcs=tx_bcs,
-            kind=tx_kind,
-            sender=sender_addr,
-            gas_payment=gas_payment,
-            expiration=expiration,
-        ),
+        transaction=transaction,
         signatures=sigs,
-        effects=sui_prot.TransactionEffects(
-            bcs=effects_bcs,
-            status=exec_status,
-            epoch=checkpoint_epoch,
-            gas_used=gas_used,
-        ),
+        effects=effects,
         balance_changes=balance_changes,
         checkpoint=checkpoint_seq,
         timestamp=timestamp,
+        objects=objects,
     )

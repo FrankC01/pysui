@@ -1256,6 +1256,121 @@ class MultiSignature(canoser.Struct):
     ]
 
 
+# Sui user-signature BCS deserialization
+
+
+class Ed25519SigPayload(canoser.Struct):
+    """ED25519 signature payload; flag byte is consumed by SuiSignature enum."""
+
+    _fields = [("Signature", [U8, 64, False]), ("PublicKey", [U8, 32, False])]
+
+
+class Secp256k1SigPayload(canoser.Struct):
+    """Secp256k1 signature payload; flag byte is consumed by SuiSignature enum."""
+
+    _fields = [("Signature", [U8, 64, False]), ("PublicKey", [U8, 33, False])]
+
+
+class Secp256r1SigPayload(canoser.Struct):
+    """Secp256r1 signature payload; flag byte is consumed by SuiSignature enum."""
+
+    _fields = [("Signature", [U8, 64, False]), ("PublicKey", [U8, 33, False])]
+
+
+class MultiSigPayload(canoser.Struct):
+    """MultiSig payload without the leading flag byte (SuiSignature enum owns it).
+
+    Covers simple-scheme (Ed25519/Secp256k1/Secp256r1) committee members only.
+    ZkLogin/Passkey committee members use variable-length encoding not captured
+    by MsCompressedSig — deserialization will fail for those edge cases.
+    """
+
+    _fields = [
+        ("Sigs", [MsCompressedSig]),
+        ("BitMap", MsBitmap),
+        ("PkMap", [MsNewPublicKey]),
+        ("Threshold", U16),
+    ]
+
+
+class _ZkLoginStringVec(canoser.Struct):
+    """Vec<String> wrapper enabling Vec<Vec<String>> for the ZkLogin G2 proof point."""
+
+    _fields = [("Items", [str])]
+
+
+class _ZkLoginProofPoints(canoser.Struct):
+    """ZkLogin Groth16 proof points: a(G1), b(G2), c(G1)."""
+
+    _fields = [
+        ("A", [str]),
+        ("B", [_ZkLoginStringVec]),
+        ("C", [str]),
+    ]
+
+
+class _ZkLoginClaim(canoser.Struct):
+    """Base64-encoded iss claim fragment and 4-byte alignment index."""
+
+    _fields = [("Value", str), ("IndexMod4", U8)]
+
+
+class _ZkLoginInputs(canoser.Struct):
+    """ZkLogin proof inputs: proof points, iss claim, JWT header, address seed."""
+
+    _fields = [
+        ("ProofPoints", _ZkLoginProofPoints),
+        ("IssBase64Details", _ZkLoginClaim),
+        ("HeaderBase64", str),
+        ("AddressSeed", str),
+    ]
+
+
+class ZkLoginSigPayload(canoser.Struct):
+    """ZkLogin authenticator payload; flag byte is consumed by SuiSignature enum."""
+
+    _fields = [
+        ("Inputs", _ZkLoginInputs),
+        ("MaxEpoch", U64),
+        ("UserSignature", [U8]),
+    ]
+
+
+class PasskeySigPayload(canoser.Struct):
+    """Passkey (WebAuthn) authenticator payload; flag byte is consumed by SuiSignature enum."""
+
+    _fields = [
+        ("AuthenticatorData", [U8]),
+        ("ClientDataJson", str),
+        ("UserSignature", [U8]),
+    ]
+
+
+class Bls12381SigPayload(canoser.Struct):
+    """BLS12381 min-sig payload; flag byte is consumed by SuiSignature enum.
+    Sui uses fastcrypto::bls12381::min_sig: signature=G1 (48 bytes), pubkey=G2 (96 bytes).
+    Not a valid user-address scheme but appears in validator/authority on-chain data."""
+
+    _fields = [("Signature", [U8, 48, False]), ("PublicKey", [U8, 96, False])]
+
+
+class SuiSignature(canoser.RustEnum):
+    """BCS-dispatched Sui signature. The first byte selects the variant.
+
+    Enum tag values match Sui's SignatureScheme flag bytes exactly.
+    """
+
+    _enums = [
+        ("Ed25519", Ed25519SigPayload),        # 0x00
+        ("Secp256k1", Secp256k1SigPayload),    # 0x01
+        ("Secp256r1", Secp256r1SigPayload),    # 0x02
+        ("MultiSig", MultiSigPayload),          # 0x03
+        ("Bls12381", Bls12381SigPayload),       # 0x04 — authority/validator only
+        ("ZkLogin", ZkLoginSigPayload),         # 0x05
+        ("Passkey", PasskeySigPayload),         # 0x06
+    ]
+
+
 # SuiTransaction
 
 

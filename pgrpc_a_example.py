@@ -234,7 +234,7 @@ async def do_tx(client: AsyncClientBase):
     handle_result(
         await client.execute(
             command=cmd.GetTransaction(
-                digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"
+                digest="Du3fukucFwku6mKJfR3oor464w62LdSLG55Rf7HWpc2Q"
             )
         )
     )
@@ -245,7 +245,10 @@ async def do_txs(client: AsyncClientBase):
     handle_result(
         await client.execute(
             command=cmd.GetTransactions(
-                digests=["4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"]
+                digests=[
+                    "Du3fukucFwku6mKJfR3oor464w62LdSLG55Rf7HWpc2Q",
+                    "7SbfCCV9nVSMJBkLYMVrNVKfBJoRPzZSjdcmNB41gcQ8",
+                ]
             )
         )
     )
@@ -479,6 +482,30 @@ async def do_dry_run(client: AsyncClientBase):
     )
 
 
+async def do_merge_to_one(client: AsyncClientBase):
+    """If more than 1 Sui coin, merge to one.
+
+    This takes the highest balanced coin and reserves it for gas, which
+    is also the target to merge to.
+    """
+    result = await client.execute(
+        command=cmd.GetCoins(owner=client.config.active_address)
+    )
+    if result.is_ok() and len(result.result_data.objects) > 1:
+        d_coins = sorted(
+            result.result_data.objects, key=lambda p: p.balance, reverse=True
+        )
+        txer: AsyncSuiTransaction = await client.transaction()
+        await txer.merge_coins(merge_to=txer.gas, merge_from=d_coins[1:])
+        handle_result(
+            await client.execute(
+                command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+            )
+        )
+    else:
+        print("Only one coin exists for this address")
+
+
 async def do_split_any_half(client: AsyncClientBase):
     """Split the 1st coin in wallet to another another equal to 1/2 in wallet.
 
@@ -508,7 +535,9 @@ async def do_execute(client: AsyncClientBase):
     """Execute a split/transfer transaction."""
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[300_000_000])
-    await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    await txer.transfer_objects(
+        transfers=[scres], recipient=client.config.active_address
+    )
     handle_result(
         await client.execute(
             command=cmd.ExecuteTransaction(**await txer.build_and_sign())
@@ -602,7 +631,7 @@ async def do_sui_coin_to_account(client: AsyncClientBase):
             command=cmd.SimulateTransactionKind(
                 tx_kind=txer.raw_kind(),
                 tx_meta={"sender": client.config.active_address},
-                gas_selection=False,
+                gas_selection=True,
             )
         )
     )
@@ -715,6 +744,7 @@ async def main():
         # await do_module(client_init)
         # await do_package(client_init)
         # await do_dry_run(client_init)
+        # await do_merge_to_one(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)
         # await do_stake(client_init)

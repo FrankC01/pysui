@@ -83,20 +83,19 @@ class SimulateTransactionKind(SuiCommand):
     """Simulate a TransactionKind (programmable transaction) without committing.
 
     Both protocols return a ``SimulateTransactionResponse`` proto shape. The GQL path
-    has five fields that the gRPC path populates but GQL cannot provide due to schema
-    or server limitations (schema version 1.70.2):
+    has four fields that the gRPC path populates but GQL cannot yet provide — all are
+    pending GraphQL schema updates from Mysten Labs (schema version 1.71.1):
 
-    - ``transaction.transaction.expiration`` — expiration lives in ``TransactionData``,
-      not ``TransactionKind``; the GQL entry point accepts ``TransactionKind`` BCS only.
-    - ``transaction.effects.version`` — ``TransactionEffects`` in the GQL schema has no
-      ``version`` field.
-    - ``transaction.effects.changedObjects`` ACCUMULATOR_WRITE entries — GQL
-      ``objectChanges`` only surfaces OBJECT_WRITE nodes; accumulator writes (gas
-      deductions, balance splits/merges) are invisible.
-    - ``transaction.objects[n].json`` — GQL server returns ``null`` for
-      ``MoveObject.contents.json`` on simulated (not-yet-committed) objects.
-    - ``transaction.objects[n].balance`` — no unconditional coin-balance scalar in GQL;
-      ``Object.balance`` requires a caller-supplied ``coinType`` argument.
+    - ``transaction.objects[n].json`` — pending ``SimulationResult.objectsJson`` addition
+      to the GQL schema (Mysten confirmed awareness; not yet shipped as of 1.72.0).
+    - ``transaction.objects[n].balance`` — same blocker as above; will be resolved when
+      ``objectsJson`` lands.
+    - ``transaction.effects.changedObjects[n].accumulatorWrite.value`` — GQL
+      ``effectsJson`` includes the ACCUMULATOR_WRITE entry (address, accumulatorType,
+      operation) but omits the numeric amount; Mysten informed of the discrepancy.
+    - ``commandOutputs[n].mutatedByRef[m].argument`` — gRPC ``CommandOutput`` includes
+      the PTB argument reference identifying which argument was mutated (e.g.,
+      ``{"kind": "GAS"}``); GQL ``CommandOutput`` has no equivalent field.
     """
 
     gql_class: ClassVar[type] = pgql_query.SimulateTransactionKindSC
@@ -239,7 +238,7 @@ class GetGas(SuiCommand):
 
     def grpc_request(self) -> rn.GetGas:
         """Return gRPC get-gas request."""
-        return rn.GetGas(owner=self.owner, page_token=self.grpc_page_token)
+        return self.grpc_class(owner=self.owner, page_token=self.grpc_page_token)
 
 
 @dataclass(kw_only=True)
