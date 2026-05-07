@@ -15,7 +15,7 @@ The ``mtobcs`` utility converts Move structures, enums, and parameterized contai
     options:
     -h, --help            show this help message and exit
     --config CONFIG_PATH  The Pysui Configuration folder to use.
-    --group {user,sui_json_config,sui_gql_config}
+    --group {sui_gql_config,sui_grpc_config}
                             The configuration groups. Default to 'sui_gql_config'
     --profile {devnet,testnet,mainnet}
                             The configuration group profile node. Default to 'devnet' from 'sui_gql_config'
@@ -289,3 +289,44 @@ The two new SuiCommand subclasses — ``GetLatestSuiSystemState`` and
 
     if __name__ == "__main__":
         asyncio.run(main())
+
+Async Gas (async-gas)
+---------------------
+
+The ``async-gas`` utility reports all SUI coin balances for every address in the active
+configuration group. It works with both **GRAPHQL** and **GRPC** groups; the ``--group``
+flag is filtered to show only those two protocol types.
+
+.. code-block:: console
+
+    usage: async-gas [options]
+
+    Report SUI gas for active address. Supports GRAPHQL and GRPC groups.
+
+    options:
+      -h, --help            show this help message and exit
+      --config CONFIG_NAME  The Pysui Configuration folder to use.
+      --group {sui_gql_config,sui_grpc_config}
+                            The configuration group to use. Only GRAPHQL and GRPC
+                            groups are listed. Default: active group.
+      --profile {devnet,testnet,mainnet}
+                            The profile (node endpoint) within the group.
+                            Default: active profile.
+      -v, --version         Show version and exit.
+
+*   --group   The group to query. Only GRAPHQL and GRPC groups appear as choices; custom-named groups with a supported protocol are also listed.
+*   --profile The node endpoint within the chosen group.
+
+Example: default active group
+******************************
+
+.. code-block:: console
+
+    async-gas
+
+Example: explicit gRPC group and testnet profile
+*************************************************
+
+.. code-block:: console
+
+    async-gas --group sui_grpc_config --profile testnet

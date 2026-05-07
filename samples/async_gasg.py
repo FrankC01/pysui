@@ -1,30 +1,17 @@
 #    Copyright Frank V. Castellucci
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#        http://www.apache.org/licenses/LICENSE-2.0
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
+#    SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
 
+"""pysui async gas sample.
 
-"""pysui Asynchronous client example.
-
-Shows:
-* Loading an asynchronous client (see `main`)
-* Fetching all address owned object descriptors from Sui blockchain
-* Fetching all address owned gas objects for each address from Sui blockchain
+Shows fetching all SUI gas objects for the active address via GRAPHQL or GRPC protocol.
 """
 
 import asyncio
 import os
 import pathlib
 import sys
-import json
 
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 PARENT = PROJECT_DIR.parent
@@ -33,104 +20,99 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_async_gas_version = "1.1.1"
-from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_gas_objects
+_async_gas_version = "2.0.0"
+
 from samples.cmd_argsg import build_async_gas_parser, pre_config_pull
-
-
-from pysui import PysuiConfiguration, GqlProtocolClient, PysuiClient, client_factory, __version__
+from pysui import PysuiClient, client_factory, __version__
+from pysui.sui.sui_common.config.confgroup import GroupProtocol
+from pysui.sui.sui_common.sui_commands import GetGas
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
-import pysui.sui.sui_pgql.pgql_types as pgql_type
 
 
-async def _get_all_gas_objects(
-    client: PysuiClient, address_id: str
-) -> list[pgql_type.SuiCoinObjectGQL]:
-    """Retreive all Gas Objects."""
-    try:
-        return await async_get_all_owned_gas_objects(address_id, client)
-    except ValueError as ve:
-        raise ve
+async def _get_gas_gql(client: PysuiClient, address: str) -> list:
+    """Fetch all SUI gas objects for address via GQL (auto-paged by dispatcher)."""
+    result = await client.execute(command=GetGas(owner=address))
+    if result.is_ok():
+        return result.result_data.objects
+    return []
 
 
-def print_gas(gasses: list[pgql_type.SuiCoinObjectGQL]) -> int:
-    """print_gas Prints gas balances for each gas object `gasses`.
+async def _get_gas_grpc(client: PysuiClient, address: str) -> list:
+    """Fetch all SUI gas objects for address via gRPC (manual cursor loop)."""
+    objects: list = []
+    page_token: bytes | None = None
+    while True:
+        result = await client.execute(command=GetGas(owner=address, grpc_page_token=page_token))
+        if not result.is_ok():
+            break
+        resp = result.result_data
+        objects.extend(resp.objects)
+        if not resp.next_page_token:
+            break
+        page_token = resp.next_page_token
+    return objects
 
-    :param gasses: A list of SuiGas type objects
-    :type gasses: list[SuiGas]
-    :return: Total gas summed from all SuiGas in gasses
-    :rtype: int
-    """
+
+def print_gas(gasses: list) -> int:
+    """Print gas balances and return total mist."""
     total: int = 0
-    try:
-        for gas_result in gasses:
-            total += int(gas_result.balance)
-            print(
-                f"{gas_result.coin_object_id} has {int(gas_result.balance):12} -> {int(gas_result.balance)/SUI_COIN_DENOMINATOR:.8f}"
-            )
-        print(f"Total gas {total:12} -> {total/SUI_COIN_DENOMINATOR:.8f}")
-        print()
-    except TypeError:
-        total = 0
-
+    for obj in gasses:
+        total += obj.balance
+        print(
+            f"{obj.object_id} has {obj.balance:12} -> {obj.balance / SUI_COIN_DENOMINATOR:.8f}"
+        )
+    print(f"Total gas {total:12} -> {total / SUI_COIN_DENOMINATOR:.8f}")
+    print()
     return total
 
 
-async def get_all_gas(
-    client: PysuiClient,
-) -> dict[str, list[pgql_type.SuiCoinObjectGQL]]:
-    """get_all_gas Gets all SuiGas for each address in configuration.
-
-    :param client: Asynchronous Sui Client
-    :type client: GqlProtocolClient
-    :return: Dictionary of all gas objects for each address
-    :rtype: dict[str, list[SuiGas]]
-    """
-    addys = [x for x in client.config.model.active_group.address_list]
-
-    addy_list = [_get_all_gas_objects(client, x) for x in addys]
-    gresult = await asyncio.gather(*addy_list, return_exceptions=True)
-    return_map = {}
-    for index, gres in enumerate(gresult):
-        return_map[addys[index]] = gres
-    return return_map
+async def get_all_gas(client: PysuiClient) -> dict:
+    """Get all SUI gas for each address in the active group."""
+    protocol = client.config.active_group.group_protocol
+    fetch = _get_gas_gql if protocol == GroupProtocol.GRAPHQL else _get_gas_grpc
+    addys = client.config.active_group.address_list
+    results = await asyncio.gather(*[fetch(client, a) for a in addys], return_exceptions=True)
+    return dict(zip(addys, results))
 
 
-async def main_run(client: PysuiClient):
-    """Main Asynchronous entry point."""
-    gasses = asyncio.create_task(get_all_gas(client))
-    result = await gasses
+async def main_run(client: PysuiClient) -> None:
+    """Main async entry point."""
+    gas_map = await get_all_gas(client)
     grand_total: int = 0
-    for key, value in result.items():
-        print(f"\nGas objects for: {key}")
-        grand_total += print_gas(value)
+    for address, objects in gas_map.items():
+        print(f"\nGas objects for: {address}")
+        if isinstance(objects, Exception):
+            print(f"  Error: {objects}")
+            continue
+        grand_total += print_gas(objects)
         print()
-    print(
-        f"Grand Total gas {grand_total:12} -> {grand_total/SUI_COIN_DENOMINATOR:.8f}\n"
-    )
+    print(f"Grand Total gas {grand_total:12} -> {grand_total / SUI_COIN_DENOMINATOR:.8f}\n")
     print("Exiting async pysui")
     await client.close()
 
 
-def sdk_version():
-    """Dispay version(s)."""
+def sdk_version() -> None:
+    """Display version(s)."""
     print(f"async_gas_version: {_async_gas_version} SDK version: {__version__}")
 
 
-def main():
-    """Setup asynch loop and run."""
-    # Handle a different client.yaml than default
+def main() -> None:
+    """Setup async loop and run."""
     cfg, arg_line = pre_config_pull(sys.argv[1:].copy())
     parsed = build_async_gas_parser(arg_line, cfg)
-
     cfg.make_active(
         group_name=parsed.group_name, profile_name=parsed.profile_name, persist=False
     )
     if parsed.version:
         sdk_version()
         return
+    if cfg.active_group.group_protocol == GroupProtocol.OTHER:
+        print(
+            f"Error: active group '{cfg.active_group.group_name}' has unsupported protocol. "
+            "Use a GRAPHQL or GRPC group."
+        )
+        sys.exit(1)
     arpc = client_factory(cfg)
-
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:

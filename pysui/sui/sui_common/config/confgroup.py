@@ -70,10 +70,11 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
     protocol: GroupProtocol = GroupProtocol.OTHER
 
     def __post_init__(self):
-        if self.group_name == SUI_GQL_RPC_GROUP:
-            self.protocol = GroupProtocol.GRAPHQL
-        elif self.group_name == SUI_GRPC_GROUP:
-            self.protocol = GroupProtocol.GRPC
+        if self.protocol == GroupProtocol.OTHER:
+            if self.group_name == SUI_GQL_RPC_GROUP:
+                self.protocol = GroupProtocol.GRAPHQL
+            elif self.group_name == SUI_GRPC_GROUP:
+                self.protocol = GroupProtocol.GRPC
 
     def _profile_exists(self, *, profile_name: str) -> Optional[Profile]:
         """Check if a profile, by name, exists."""
