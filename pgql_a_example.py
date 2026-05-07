@@ -564,7 +564,9 @@ async def do_dry_run(client: AsyncClientBase):
 
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    await txer.transfer_objects(
+        transfers=[scres], recipient=client.config.active_address
+    )
     tx_data = await txer.transaction_data()
 
     handle_result(

@@ -468,16 +468,14 @@ async def do_dry_run(client: AsyncClientBase):
 
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    await txer.transfer_objects(
+        transfers=[scres], recipient=client.config.active_address
+    )
+    tx_data = await txer.transaction_data()
 
     handle_result(
         await client.execute(
-            command=cmd.SimulateTransactionKind(
-                tx_kind=txer.raw_kind(),
-                tx_meta={"sender": client.config.active_address},
-                checks_enabled=True,
-                gas_selection=True,
-            )
+            command=cmd.SimulateTransaction(tx_bytestr=tx_data.serialize())
         )
     )
 
