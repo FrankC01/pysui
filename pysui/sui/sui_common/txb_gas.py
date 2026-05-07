@@ -216,5 +216,5 @@ async def async_get_gas_data(
         ),
         bcs.Address.from_str(signing.payer_address),
         active_gas_price,
-        required,
+        budget,
     )
