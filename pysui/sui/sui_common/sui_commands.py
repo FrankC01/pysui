@@ -52,18 +52,34 @@ class ExecuteTransaction(SuiCommand):
 
 @dataclass(kw_only=True)
 class SimulateTransaction(SuiCommand):
-    """Simulate a serialized transaction (BCS bytes or base64 string)."""
+    """Simulate a serialized transaction (BCS bytes or base64 string).
 
-    gql_class: ClassVar[type] = pgql_query.SimulateTransaction
+    Both protocols return a ``SimulateTransactionResponse`` proto shape. The GQL path
+    has four fields that the gRPC path populates but GQL cannot yet provide — all are
+    pending GraphQL schema updates from Mysten Labs (schema version 1.71.1):
+
+    - ``transaction.objects[n].json`` — pending ``SimulationResult.objectsJson`` addition
+      to the GQL schema (Mysten confirmed awareness; not yet shipped as of 1.72.0).
+    - ``transaction.objects[n].balance`` — same blocker as above; will be resolved when
+      ``objectsJson`` lands.
+    - ``transaction.effects.changedObjects[n].accumulatorWrite.value`` — GQL
+      ``effectsJson`` emits this field as ``integerValue`` (camelCase string), not
+      ``value``; pysui pre-processes the dict before ``from_dict()`` to remap the key.
+    - ``commandOutputs[n].mutatedByRef[m].argument`` — gRPC ``CommandOutput`` includes
+      the PTB argument reference identifying which argument was mutated (e.g.,
+      ``{"kind": "GAS"}``); GQL ``CommandOutput`` has no equivalent field.
+    """
+
+    gql_class: ClassVar[type] = pgql_query.SimulateTransactionSC
     grpc_class: ClassVar[type] = rn.SimulateTransaction
 
     tx_bytestr: str | bytes
     checks_enabled: Optional[bool] = True
     gas_selection: Optional[bool] = True
 
-    def gql_node(self) -> pgql_query.SimulateTransaction:
+    def gql_node(self) -> pgql_query.SimulateTransactionSC:
         """Return GQL simulate-transaction query node."""
-        return pgql_query.SimulateTransaction(
+        return pgql_query.SimulateTransactionSC(
             tx_bytestr=self.tx_bytestr,
             skip_checks=self.checks_enabled,
             do_gas_selection=self.gas_selection,
@@ -91,8 +107,8 @@ class SimulateTransactionKind(SuiCommand):
     - ``transaction.objects[n].balance`` — same blocker as above; will be resolved when
       ``objectsJson`` lands.
     - ``transaction.effects.changedObjects[n].accumulatorWrite.value`` — GQL
-      ``effectsJson`` includes the ACCUMULATOR_WRITE entry (address, accumulatorType,
-      operation) but omits the numeric amount; Mysten informed of the discrepancy.
+      ``effectsJson`` emits this field as ``integerValue`` (camelCase string), not
+      ``value``; pysui pre-processes the dict before ``from_dict()`` to remap the key.
     - ``commandOutputs[n].mutatedByRef[m].argument`` — gRPC ``CommandOutput`` includes
       the PTB argument reference identifying which argument was mutated (e.g.,
       ``{"kind": "GAS"}``); GQL ``CommandOutput`` has no equivalent field.

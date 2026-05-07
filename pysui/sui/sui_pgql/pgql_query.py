@@ -2728,8 +2728,16 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                     self.transaction.digest = txn_node["digest"]
 
             # --- Effects via effectsJson ---
+            # betterproto2.from_dict() maps camelCase→snake_case, so "integerValue"
+            # becomes "integer_value" — but the proto field is named "value". Rename
+            # before deserializing so AccumulatorWrite.value is populated correctly.
+            effects_json_dict = eff.get("effectsJson") or {}
+            for _co in effects_json_dict.get("changedObjects") or []:
+                _aw = _co.get("accumulatorWrite")
+                if _aw and "integerValue" in _aw:
+                    _aw["value"] = int(_aw["integerValue"])
             effects_proto = sui_prot.TransactionEffects.from_dict(
-                eff.get("effectsJson") or {}, ignore_unknown_fields=True
+                effects_json_dict, ignore_unknown_fields=True
             )
             effects_bcs_b64 = eff.get("effectsBcs")
             if effects_bcs_b64:
@@ -2956,6 +2964,146 @@ class SimulateTransaction(PGQL_QueryNode):
     def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
         """Return the serialization function."""
         return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
+
+
+class SimulateTransactionSC(SimulateTransactionKindSC):
+    """SC variant: simulates a fully serialized transaction (BCS bytes or base64 string).
+
+    Accepts a pre-serialized ``TransactionData`` BCS blob rather than a structured
+    ``TransactionKind``. Inherits ``encode_fn()`` from ``SimulateTransactionKindSC``
+    unchanged — the GQL ``SimulationResult`` shape is identical for both inputs.
+    The original ``SimulateTransaction`` class is preserved for backwards compatibility.
+    """
+
+    def __init__(
+        self,
+        *,
+        tx_bytestr: bytes | str,
+        skip_checks: Optional[bool] = True,
+        do_gas_selection: Optional[bool] = False,
+    ) -> None:
+        """__init__ Initialize SimulateTransactionSC.
+
+        :param tx_bytestr: Serialized BCS bytes of TransactionData, or base64 string of same
+        :type tx_bytestr: bytes | str
+        :param skip_checks: Whether to skip transaction checks, defaults to True
+        :type skip_checks: Optional[bool]
+        :param do_gas_selection: Whether to perform gas selection, defaults to False
+        :type do_gas_selection: Optional[bool]
+        """
+        transaction = (
+            tx_bytestr if isinstance(tx_bytestr, bytes) else base64.b64decode(tx_bytestr)
+        )
+        self.transaction = sui_prot.Transaction(
+            bcs=sui_prot.Bcs(value=transaction, name="TransactionData")
+        )
+        self.tx_skipchecks = skip_checks
+        self.tx_do_gas_selection = do_gas_selection
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build rich simulate query; self.transaction is pre-set from BCS bytes."""
+        base_object = frag.BaseObject().fragment(schema)
+        std_object = frag.StandardObject().fragment(schema)
+        qres = (
+            schema.Query.simulateTransaction(
+                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
+                checksEnabled=self.tx_skipchecks,
+                doGasSelection=self.tx_do_gas_selection,
+            )
+            .alias("simulate")
+            .select(
+                effects=schema.SimulationResult.effects.select(
+                    schema.TransactionEffects.digest,
+                    schema.TransactionEffects.effectsDigest,
+                    schema.TransactionEffects.effectsBcs,
+                    schema.TransactionEffects.effectsJson,
+                    schema.TransactionEffects.lamportVersion,
+                    schema.TransactionEffects.status,
+                    schema.TransactionEffects.executionError.select(
+                        schema.ExecutionError.abortCode,
+                        schema.ExecutionError.message,
+                    ),
+                    schema.TransactionEffects.epoch.select(
+                        schema.Epoch.epochId,
+                    ),
+                    schema.TransactionEffects.gasEffects.select(
+                        schema.GasEffects.gasSummary.select(
+                            schema.GasCostSummary.computationCost,
+                            schema.GasCostSummary.storageCost,
+                            schema.GasCostSummary.storageRebate,
+                            schema.GasCostSummary.nonRefundableStorageFee,
+                        ),
+                    ),
+                    schema.TransactionEffects.timestamp,
+                    schema.TransactionEffects.checkpoint.select(
+                        schema.Checkpoint.sequenceNumber,
+                    ),
+                    schema.TransactionEffects.balanceChangesJson,
+                    schema.TransactionEffects.events.select(
+                        schema.EventConnection.nodes.select(
+                            schema.Event.sequenceNumber,
+                            schema.Event.eventBcs,
+                            schema.Event.sender.select(
+                                sender_address=schema.Address.address
+                            ),
+                            schema.Event.contents.select(
+                                schema.MoveValue.type.select(
+                                    event_type=schema.MoveType.repr
+                                ),
+                            ),
+                            schema.Event.transactionModule.select(
+                                schema.MoveModule.package.select(
+                                    package_id=schema.MovePackage.address,
+                                ),
+                                module_name=schema.MoveModule.name,
+                            ),
+                        )
+                    ),
+                    schema.TransactionEffects.dependencies.select(
+                        schema.TransactionConnection.nodes.select(
+                            schema.Transaction.digest
+                        )
+                    ),
+                    schema.TransactionEffects.transaction.select(
+                        schema.Transaction.transactionBcs,
+                        schema.Transaction.transactionJson,
+                        schema.Transaction.digest,
+                    ),
+                    object_changes=schema.TransactionEffects.objectChanges.select(
+                        schema.ObjectChangeConnection.nodes.select(
+                            address=schema.ObjectChange.address,
+                            deleted=schema.ObjectChange.idDeleted,
+                            created=schema.ObjectChange.idCreated,
+                            input_state=schema.ObjectChange.inputState.select(std_object),
+                            output_state=schema.ObjectChange.outputState.select(std_object),
+                        )
+                    ),
+                ),
+                outputs=schema.SimulationResult.outputs.select(
+                    schema.CommandResult.returnValues.select(
+                        schema.CommandOutput.value.select(
+                            schema.MoveValue.bcs,
+                            schema.MoveValue.json,
+                            schema.MoveValue.type.select(
+                                value_type=schema.MoveType.repr
+                            ),
+                        ),
+                    ),
+                    schema.CommandResult.mutatedReferences.select(
+                        schema.CommandOutput.value.select(
+                            schema.MoveValue.bcs,
+                            schema.MoveValue.json,
+                            schema.MoveValue.type.select(
+                                value_type=schema.MoveType.repr
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
+        return dsl_gql(base_object, std_object, DSLQuery(qres))
+
+    # encode_fn() inherited from SimulateTransactionKindSC unchanged.
 
 
 class ExecuteTransaction(PGQL_QueryNode):
@@ -4863,6 +5011,10 @@ def _encode_executed_tx(
 
     # effectsJson matches proto format; from_dict() populates all TransactionEffects fields except bcs
     effects_json = eff_dict.get("effectsJson") or {}
+    for _co in effects_json.get("changedObjects") or []:
+        _aw = _co.get("accumulatorWrite")
+        if _aw and "integerValue" in _aw:
+            _aw["value"] = int(_aw["integerValue"])
     effects = sui_prot.TransactionEffects.from_dict(effects_json, ignore_unknown_fields=True)
     effects_bcs_b64 = eff_dict.get("effectsBcs")
     if effects_bcs_b64:
