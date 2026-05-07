@@ -1344,10 +1344,21 @@ class VerifySignature(absreq.PGRPC_Request):
         super().__init__(absreq.Service.SIGNATURE)
         self.address = address
         self.message_type = message_type
-        self.message = sui_prot.Bcs(
-            name=message_type,
-            value=base64.b64decode(message) if isinstance(message, str) else message,
-        )
+        raw_msg = base64.b64decode(message) if isinstance(message, str) else message
+        if message_type == "PersonalMessage":
+            # BCS encodes [u8] as ULEB128(len) + raw bytes; server calls
+            # bcs::from_bytes::<&[u8]>(value) which requires this prefix.
+            n, prefix = len(raw_msg), bytearray()
+            while True:
+                b = n & 0x7F
+                n >>= 7
+                if n:
+                    b |= 0x80
+                prefix.append(b)
+                if not n:
+                    break
+            raw_msg = bytes(prefix) + raw_msg
+        self.message = sui_prot.Bcs(name=message_type, value=raw_msg)
         self.signature = sui_prot.UserSignature(
             bcs=sui_prot.Bcs(
                 name="UserSignature",

@@ -25,6 +25,7 @@ Commands covered:
 """
 
 import asyncio
+import base64
 
 import pytest
 
@@ -54,6 +55,8 @@ from pysui.sui.sui_common.sui_commands import (
     GetTransaction,
     GetTransactions,
     GetTransactionKind,
+    VerifyPersonalMessageSignature,
+    VerifyTransactionSignature,
 )
 
 pytestmark = [
@@ -698,3 +701,104 @@ async def test_execute_transaction_gql_changed_objects(
         f"expected >= 1 newly created object (split coin); "
         f"changed_objects={result.result_data.transaction.effects.changed_objects}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Signature verification — VerifyTransactionSignature, VerifyPersonalMessageSignature
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(48)
+async def test_verify_transaction_signature_gql(
+    gql_session_client: AsyncClientBase,
+) -> None:
+    """VerifyTransactionSignature via GQL returns VerifySignatureResponse with is_valid=True.
+
+    Builds and signs a split-coin PTB without executing it, then verifies the
+    transaction signature using the active address as the expected author.
+    """
+    txer = await gql_session_client.transaction()
+    split = await txer.split_coin(coin=txer.gas, amounts=[1_000])
+    await txer.transfer_objects(
+        transfers=[split], recipient=gql_session_client.config.active_address
+    )
+    signed = await txer.build_and_sign()
+    result = await gql_session_client.execute(
+        command=VerifyTransactionSignature(
+            message=signed["tx_bytestr"],
+            signature=signed["sig_array"][0],
+            author=str(gql_session_client.config.active_address),
+        )
+    )
+    assert result.is_ok(), f"VerifyTransactionSignature GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.VerifySignatureResponse)
+    assert result.result_data.is_valid is True
+
+
+@pytest.mark.order(49)
+async def test_verify_transaction_signature_grpc(
+    grpc_session_client: AsyncClientBase,
+) -> None:
+    """VerifyTransactionSignature via gRPC returns VerifySignatureResponse with is_valid=True.
+
+    Builds and signs a split-coin PTB without executing it, then verifies the
+    transaction signature using the active address as the expected author.
+    """
+    txer = await grpc_session_client.transaction()
+    split = await txer.split_coin(coin=txer.gas, amounts=[1_000])
+    await txer.transfer_objects(
+        transfers=[split], recipient=grpc_session_client.config.active_address
+    )
+    signed = await txer.build_and_sign()
+    result = await grpc_session_client.execute(
+        command=VerifyTransactionSignature(
+            message=signed["tx_bytestr"],
+            signature=signed["sig_array"][0],
+            author=str(grpc_session_client.config.active_address),
+        )
+    )
+    assert result.is_ok(), f"VerifyTransactionSignature gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.VerifySignatureResponse)
+    assert result.result_data.is_valid is True
+
+
+@pytest.mark.order(50)
+async def test_verify_personal_message_signature_gql(
+    gql_session_client: AsyncClientBase,
+) -> None:
+    """VerifyPersonalMessageSignature via GQL returns VerifySignatureResponse with is_valid=True."""
+    author = str(gql_session_client.config.active_address)
+    pm_b64 = base64.b64encode(b"Hello from pysui").decode()
+    keypair = gql_session_client.config.keypair_for_address(address=author)
+    pm_sig_b64 = keypair.sign_personal_message(pm_b64)
+    result = await gql_session_client.execute(
+        command=VerifyPersonalMessageSignature(
+            message=pm_b64,
+            signature=pm_sig_b64,
+            author=author,
+        )
+    )
+    assert result.is_ok(), f"VerifyPersonalMessageSignature GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.VerifySignatureResponse)
+    assert result.result_data.is_valid is True
+
+
+@pytest.mark.order(51)
+async def test_verify_personal_message_signature_grpc(
+    grpc_session_client: AsyncClientBase,
+) -> None:
+    """VerifyPersonalMessageSignature via gRPC returns VerifySignatureResponse with is_valid=True."""
+    author = str(grpc_session_client.config.active_address)
+    pm_b64 = base64.b64encode(b"Hello from pysui").decode()
+    keypair = grpc_session_client.config.keypair_for_address(address=author)
+    pm_sig_b64 = keypair.sign_personal_message(pm_b64)
+    result = await grpc_session_client.execute(
+        command=VerifyPersonalMessageSignature(
+            message=pm_b64,
+            signature=pm_sig_b64,
+            author=author,
+        )
+    )
+    assert result.is_ok(), f"VerifyPersonalMessageSignature gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.VerifySignatureResponse)
+    assert result.result_data.is_valid is True

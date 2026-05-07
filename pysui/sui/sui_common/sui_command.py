@@ -29,6 +29,7 @@ class SuiCommand(ABC):
     gql_requires_paging: ClassVar[bool] = False
     gql_page_list_path: ClassVar[tuple[str, ...]] = ()
     grpc_requires_paging: ClassVar[bool] = False
+    capture_errors: ClassVar[bool] = False
 
     @abstractmethod
     def gql_node(self) -> "PGQL_QueryNode":

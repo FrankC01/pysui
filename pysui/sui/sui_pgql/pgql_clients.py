@@ -550,6 +550,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         with_headers: Optional[dict] = None,
         encode_fn: Optional[Callable[[dict], Any]] = None,
         timeout: float | None = None,
+        capture_errors: bool = False,
     ) -> SuiRpcResult:
         """_execute Execute a GQL Document Node.
 
@@ -574,6 +575,18 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 )
 
         except texc.TransportQueryError as gte:
+            if capture_errors and gte.data is not None and encode_fn is not None:
+                payload = dict(gte.data)
+                payload["_errors"] = [
+                    {
+                        "message": (
+                            getattr(e, "message", None)
+                            or (e.get("message") if isinstance(e, dict) else str(e))
+                        )
+                    }
+                    for e in (gte.errors or [])
+                ]
+                return SuiRpcResult(True, None, encode_fn(payload))
             return SuiRpcResult(
                 False, "TransportQueryError", pgql_type.ErrorGQL.from_query(gte.errors)
             )
@@ -729,7 +742,8 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
 
         if not command.gql_requires_paging:
             return await self._execute_gql_node(
-                node, with_headers=headers, timeout=timeout
+                node, with_headers=headers, timeout=timeout,
+                capture_errors=command.capture_errors,
             )
 
         if command.gql_page_list_path:
@@ -787,6 +801,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         node: PGQL_QueryNode,
         with_headers: Optional[dict] = None,
         timeout: float | None = None,
+        capture_errors: bool = False,
     ) -> SuiRpcResult:
         """Internal: run a PGQL_QueryNode through _qnode_pre_run and _execute."""
         try:
@@ -794,7 +809,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = node.encode_fn()
-            return await self._execute(qdoc_node, with_headers, encode_fn, timeout)
+            return await self._execute(qdoc_node, with_headers, encode_fn, timeout, capture_errors)
         except (ValueError, GraphQLError) as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)

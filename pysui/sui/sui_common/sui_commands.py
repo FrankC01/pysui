@@ -1001,3 +1001,92 @@ class GetTransactionKind(SuiCommand):
     def grpc_request(self) -> rn.GetTransactionKindSC:
         """Return gRPC get-transaction-kind request."""
         return self.grpc_class(digest=self.digest)
+
+
+# ---------------------------------------------------------------------------
+# Signature verification
+# ---------------------------------------------------------------------------
+
+
+@dataclass(kw_only=True)
+class VerifyTransactionSignature(SuiCommand):
+    """Verify a transaction signature (intent scope = TransactionData).
+
+    :param message: Base64-encoded BCS bytes of the ``TransactionData`` that was signed.
+    :param signature: Base64-encoded Sui signature (scheme prefix byte included).
+    :param author: Signer address. Required for GraphQL; optional but recommended for gRPC.
+    :raises ValueError: if ``author`` is omitted on GQL execution.
+    """
+
+    gql_class: ClassVar[type] = pgql_query.VerifySignatureSC
+    grpc_class: ClassVar[type] = rn.VerifySignature
+    capture_errors: ClassVar[bool] = True
+
+    message: str
+    signature: str
+    author: Optional[str] = None
+
+    def gql_node(self) -> pgql_query.VerifySignatureSC:
+        """Return GQL verify-transaction-signature query node."""
+        if self.author is None:
+            raise ValueError(
+                "VerifyTransactionSignature: 'author' is required for GraphQL "
+                "(GQL schema requires SuiAddress!)."
+            )
+        return self.gql_class(
+            intent="TRANSACTION_DATA",
+            message=self.message,
+            signature=self.signature,
+            author=self.author,
+        )
+
+    def grpc_request(self) -> rn.VerifySignature:
+        """Return gRPC verify-transaction-signature request."""
+        return self.grpc_class(
+            address=self.author,
+            message_type="TransactionData",
+            message=self.message,
+            signature=self.signature,
+        )
+
+
+@dataclass(kw_only=True)
+class VerifyPersonalMessageSignature(SuiCommand):
+    """Verify a personal message signature (intent scope = PersonalMessage).
+
+    :param message: Base64-encoded raw message bytes that were signed.
+    :param signature: Base64-encoded Sui signature (scheme prefix byte included).
+    :param author: Signer address. Required for GraphQL; optional but recommended for gRPC.
+    :raises ValueError: if ``author`` is omitted on GQL execution.
+    """
+
+    gql_class: ClassVar[type] = pgql_query.VerifySignatureSC
+    grpc_class: ClassVar[type] = rn.VerifySignature
+    capture_errors: ClassVar[bool] = True
+
+    message: str
+    signature: str
+    author: Optional[str] = None
+
+    def gql_node(self) -> pgql_query.VerifySignatureSC:
+        """Return GQL verify-personal-message-signature query node."""
+        if self.author is None:
+            raise ValueError(
+                "VerifyPersonalMessageSignature: 'author' is required for GraphQL "
+                "(GQL schema requires SuiAddress!)."
+            )
+        return self.gql_class(
+            intent="PERSONAL_MESSAGE",
+            message=self.message,
+            signature=self.signature,
+            author=self.author,
+        )
+
+    def grpc_request(self) -> rn.VerifySignature:
+        """Return gRPC verify-personal-message-signature request."""
+        return self.grpc_class(
+            address=self.author,
+            message_type="PersonalMessage",
+            message=self.message,
+            signature=self.signature,
+        )

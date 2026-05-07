@@ -4445,6 +4445,78 @@ class GetCurrentValidatorsSC(GetCurrentValidators):
         return _encode
 
 
+class VerifySignatureSC(PGQL_QueryNode):
+    """Verify a Sui signature against a message and author address.
+
+    GQL ``verifySignature`` returns ``SignatureVerifyResult { success }``. Failure
+    reasons come back in the top-level GraphQL ``errors`` array, captured via
+    ``capture_errors=True`` on the SuiCommand wrapper and surfaced under ``_errors``.
+
+    Returns a :class:`~sui_prot.VerifySignatureResponse` for protocol parity with gRPC.
+    """
+
+    _VALID_INTENTS = frozenset({"TRANSACTION_DATA", "PERSONAL_MESSAGE"})
+
+    def __init__(
+        self,
+        *,
+        intent: str,
+        message: str,
+        signature: str,
+        author: str,
+    ) -> None:
+        """Initialize VerifySignatureSC.
+
+        :param intent: Must be 'TRANSACTION_DATA' or 'PERSONAL_MESSAGE'
+        :param message: Base64-encoded message bytes
+        :param signature: Base64-encoded Sui signature (scheme prefix byte included)
+        :param author: Signer address (required by GQL schema)
+        """
+        if intent not in self._VALID_INTENTS:
+            raise ValueError(
+                f"VerifySignatureSC: intent must be one of "
+                f"{sorted(self._VALID_INTENTS)}, got {intent!r}"
+            )
+        if not author:
+            raise ValueError("VerifySignatureSC: author is required (GQL constraint)")
+        if not message:
+            raise ValueError("VerifySignatureSC: message must be a non-empty base64 string")
+        if not signature:
+            raise ValueError("VerifySignatureSC: signature must be a non-empty base64 string")
+        self.intent = intent
+        self.message = message
+        self.signature = signature
+        self.author = author
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GQL verifySignature DSL request."""
+        qres = schema.Query.verifySignature(
+            message=self.message,
+            signature=self.signature,
+            intentScope=self.intent,
+            author=self.author,
+        ).select(schema.SignatureVerifyResult.success)
+        return dsl_gql(DSLQuery(qres))
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], sui_prot.VerifySignatureResponse]:
+        """Return encoder: maps GQL success + _errors → VerifySignatureResponse."""
+
+        def _encode(data: dict) -> sui_prot.VerifySignatureResponse:
+            errors = data.get("_errors") or []
+            verify = (data.get("verifySignature") or {})
+            success = verify.get("success")
+            reason: str | None = None
+            if errors:
+                reason = errors[0].get("message")
+            return sui_prot.VerifySignatureResponse(
+                is_valid=bool(success) if success is not None else False,
+                reason=reason,
+            )
+
+        return _encode
+
+
 def _parse_gql_datetime(ts_str: "str | None") -> "datetime.datetime | None":
     if not ts_str:
         return None

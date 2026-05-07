@@ -88,4 +88,12 @@ from pysui.sui.sui_common.sui_commands import (
     GetFunctions,
     GetNameServiceAddress,
     GetNameServiceNames,
+    GetChainIdentifier,
+    GetLatestSuiSystemState,
+    GetCurrentValidators,
+    GetTransaction,
+    GetTransactions,
+    GetTransactionKind,
+    VerifyTransactionSignature,
+    VerifyPersonalMessageSignature,
 )

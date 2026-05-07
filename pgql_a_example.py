@@ -6,6 +6,7 @@
 """Sample module for incremental buildout of Async Sui GraphQL RPC for Pysui 1.0.0."""
 
 import asyncio
+import base64
 
 # import logging
 
@@ -661,6 +662,74 @@ async def do_execute(client: AsyncClientBase):
     )
 
 
+async def do_verify_tx_sig(client: AsyncClientBase):
+    """Build and sign a simple transaction, then verify the signature without executing."""
+    recipient: str = (
+        "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28"
+    )
+    txer: AsyncSuiTransaction = await client.transaction()
+    scres = await txer.split_coin(coin=txer.gas, amounts=[300_000_000])
+    await txer.transfer_objects(transfers=[scres], recipient=recipient)
+
+    signed = await txer.build_and_sign()
+    tx_bytes_b64: str = signed["tx_bytestr"]
+    sig_b64: str = signed["sig_array"][0]
+    author: str = str(client.config.active_address)
+
+    # Happy path — valid signature
+    handle_result(
+        await client.execute(
+            command=cmd.VerifyTransactionSignature(
+                message=tx_bytes_b64,
+                signature=sig_b64,
+                author=author,
+            )
+        )
+    )
+
+    # Failure path — wrong author
+    handle_result(
+        await client.execute(
+            command=cmd.VerifyTransactionSignature(
+                message=tx_bytes_b64,
+                signature=sig_b64,
+                author=recipient,
+            )
+        )
+    )
+
+
+async def do_verify_pm_sig(client: AsyncClientBase):
+    """Sign an arbitrary personal message and verify it; also show tampered-message failure."""
+    pm_b64: str = base64.b64encode(b"Hello from pysui").decode()
+    author: str = str(client.config.active_address)
+    keypair = client.config.keypair_for_address(address=author)
+    pm_sig_b64: str = keypair.sign_personal_message(pm_b64)
+
+    # Happy path — valid signature
+    handle_result(
+        await client.execute(
+            command=cmd.VerifyPersonalMessageSignature(
+                message=pm_b64,
+                signature=pm_sig_b64,
+                author=author,
+            )
+        )
+    )
+
+    # Failure path — tampered message
+    tampered_b64: str = base64.b64encode(b"Goodbye from pysui").decode()
+    handle_result(
+        await client.execute(
+            command=cmd.VerifyPersonalMessageSignature(
+                message=tampered_b64,
+                signature=pm_sig_b64,
+                author=author,
+            )
+        )
+    )
+
+
 async def do_stake(client: AsyncClientBase):
     """Stake some coinage.
 
@@ -818,7 +887,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
@@ -862,6 +931,8 @@ async def main():
         # await do_merge_to_one(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)
+        await do_verify_tx_sig(client_init)
+        await do_verify_pm_sig(client_init)
         # await do_stake(client_init)
         # await do_unstake(client_init)
         # await do_sui_coin_to_account(client_init)
