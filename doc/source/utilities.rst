@@ -330,3 +330,48 @@ Example: explicit gRPC group and testnet profile
 .. code-block:: console
 
     async-gas --group sui_grpc_config --profile testnet
+
+Sui GraphQL Schema Persist (sgqls)
+-----------------------------------
+
+The ``sgqls`` utility fetches and persists the GraphQL schema for each profile in a
+**GRAPHQL** group to the project root. Only GRAPHQL groups are offered as choices.
+
+.. code-block:: console
+
+    usage: sgqls.py [options] command [--command_options]
+
+    Persist Sui GraphQL schemas
+
+    options:
+      -h, --help            show this help message and exit
+      --group {sui_gql_config}
+                            The GraphQL group. Only GRAPHQL groups are listed.
+                            Default to 'sui_gql_config'
+      --profile {all,devnet,testnet,mainnet} [{all,devnet,testnet,mainnet} ...]
+                            GraphQL profile(s) to generate schemas for. Defaults
+                            to 'all'
+
+*   --group    The GRAPHQL group whose profiles will have schemas persisted. Custom-named GRAPHQL groups also appear as choices.
+*   --profile  One or more profile names to fetch schemas for. Use ``all`` (default) to fetch every profile in the group.
+
+Example: persist schemas for all profiles (default)
+****************************************************
+
+.. code-block:: console
+
+    sgqls
+
+Example: persist schema for a single profile
+*********************************************
+
+.. code-block:: console
+
+    sgqls --profile testnet
+
+Example: explicit group and targeted profiles
+*********************************************
+
+.. code-block:: console
+
+    sgqls --group sui_gql_config --profile devnet mainnet
