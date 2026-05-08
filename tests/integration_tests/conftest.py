@@ -202,7 +202,7 @@ async def grpc_session_client(grpc_cfg: PysuiConfiguration) -> AsyncGenerator[As
     """Long-lived gRPC client shared across the session."""
     client = client_factory(grpc_cfg)
     yield client
-    client.close()
+    await client.close()
 
 
 # ---------------------------------------------------------------------------
@@ -542,7 +542,7 @@ async def grpc_client(
     """
     client = client_factory(grpc_cfg)
     yield client
-    client.close()
+    await client.close()
 
 
 # ---------------------------------------------------------------------------

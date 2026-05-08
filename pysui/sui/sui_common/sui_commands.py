@@ -1014,8 +1014,10 @@ class VerifyTransactionSignature(SuiCommand):
 
     :param message: Base64-encoded BCS bytes of the ``TransactionData`` that was signed.
     :param signature: Base64-encoded Sui signature (scheme prefix byte included).
-    :param author: Signer address. Required for GraphQL; optional but recommended for gRPC.
-    :raises ValueError: if ``author`` is omitted on GQL execution.
+    :param author: Signer address. Required for GraphQL. On gRPC, optional — but omitting
+        it reduces the check to "is this a well-formed signature over this message by
+        *any* keypair?" and does **not** verify that the signer is the expected identity.
+    :raises ValueError: if ``author`` is None when ``gql_node()`` is called on the GraphQL protocol.
     """
 
     gql_class: ClassVar[type] = pgql_query.VerifySignatureSC
@@ -1056,8 +1058,10 @@ class VerifyPersonalMessageSignature(SuiCommand):
 
     :param message: Base64-encoded raw message bytes that were signed.
     :param signature: Base64-encoded Sui signature (scheme prefix byte included).
-    :param author: Signer address. Required for GraphQL; optional but recommended for gRPC.
-    :raises ValueError: if ``author`` is omitted on GQL execution.
+    :param author: Signer address. Required for GraphQL. On gRPC, optional — but omitting
+        it reduces the check to "is this a well-formed signature over this message by
+        *any* keypair?" and does **not** verify that the signer is the expected identity.
+    :raises ValueError: if ``author`` is None when ``gql_node()`` is called on the GraphQL protocol.
     """
 
     gql_class: ClassVar[type] = pgql_query.VerifySignatureSC

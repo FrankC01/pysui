@@ -223,7 +223,8 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
                     stub=sui_prot.SubscriptionServiceStub(self._channel)
                 )
                 try:
-                    logger.info(f"Request {request}")
+                    logger.info("Dispatching %s", type(request).__name__)
+                    logger.debug("Request detail: %s", request)
                     result = srv_fn(srv_req, **kwargs)
                     logger.info("Success")
                     return SuiRpcResult(True, None, result)
@@ -244,7 +245,8 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
                 raise NotImplementedError(f"{request.service} not implemented.")
 
         try:
-            logger.info(f"Request {request}")
+            logger.info("Dispatching %s", type(request).__name__)
+            logger.debug("Request detail: %s", request)
             result = await srv_fn(srv_req, **kwargs)
             logger.info("Success")
             if hasattr(request, "render"):
@@ -308,6 +310,8 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             request = command.grpc_request()
         except NotImplementedError:
             return SuiRpcResult(False, "Command not supported by gRPC", None)
+        except (ValueError, TypeError) as exc:
+            return SuiRpcResult(False, str(exc), None)
         kwargs: dict = {}
         if timeout is not None:
             kwargs["timeout"] = timeout

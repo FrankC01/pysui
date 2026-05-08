@@ -23,7 +23,6 @@ from gql.dsl import (
 from graphql import GraphQLError, print_ast
 from graphql.error.syntax_error import GraphQLSyntaxError
 from graphql.utilities.print_schema import print_schema
-from graphql.language.printer import print_ast
 
 import httpx
 
@@ -269,7 +268,7 @@ class SuiGQLClient(BaseSuiGQLClient):
         :rtype: SuiRpcResult
         """
         try:
-            extra_args = with_headers or self._default_header
+            extra_args = dict(with_headers) if with_headers is not None else dict(self._default_header or {})
             extra_args["timeout"] = timeout or self._schema.timeout
             sres = self.client().execute(node, extra_args=extra_args)
             return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
@@ -560,33 +559,34 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         :type with_headers: Optional[dict]
         :param encode_fn: Encoding function, defaults to None
         :type encode_fn: Optional[Callable[[dict], Any]], optional
+        :param timeout: Optional timeout in seconds overriding the schema default
+        :type timeout: float | None
+        :param capture_errors: When True and the GQL response is a partial error, lift the
+            partial data + error list into a successful SuiRpcResult via encode_fn; when
+            False, all TransportQueryErrors return a failed SuiRpcResult
+        :type capture_errors: bool
         :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
         :rtype: SuiRpcResult
         """
         try:
             async with self._slock:
                 _session = await self.async_client()
-                extra_args = with_headers or self._default_header
+                extra_args = dict(with_headers) if with_headers is not None else dict(self._default_header or {})
                 extra_args["timeout"] = timeout or self._schema.timeout
                 sres = await _session.execute(node, extra_args=extra_args)
-
-                return SuiRpcResult(
-                    True, None, sres if not encode_fn else encode_fn(sres)
-                )
+            return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
 
         except texc.TransportQueryError as gte:
-            if capture_errors and gte.data is not None and encode_fn is not None:
-                payload = dict(gte.data)
-                payload["_errors"] = [
-                    {
-                        "message": (
-                            getattr(e, "message", None)
-                            or (e.get("message") if isinstance(e, dict) else str(e))
-                        )
-                    }
-                    for e in (gte.errors or [])
-                ]
-                return SuiRpcResult(True, None, encode_fn(payload))
+            if capture_errors and isinstance(gte.data, dict) and gte.errors and encode_fn is not None:
+                try:
+                    payload = dict(gte.data)
+                    payload["errors"] = [
+                        {"message": e.get("message", str(e)) if isinstance(e, dict) else str(e)}
+                        for e in (gte.errors or [])
+                    ]
+                    return SuiRpcResult(True, None, encode_fn(payload))
+                except Exception:
+                    pass
             return SuiRpcResult(
                 False, "TransportQueryError", pgql_type.ErrorGQL.from_query(gte.errors)
             )
@@ -604,6 +604,10 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 False,
                 "GraphQLSyntaxError",
                 pgql_type.ErrorGQL.from_query(gqe.formatted),
+            )
+        except GraphQLError as gqe:
+            return SuiRpcResult(
+                False, "GraphQLError", pgql_type.ErrorGQL.from_query(gqe.args)
             )
         except TypeError as te:
             return SuiRpcResult(
@@ -739,6 +743,8 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
             node = command.gql_node()
         except NotImplementedError:
             return SuiRpcResult(False, "Command not supported by GraphQL", None)
+        except (ValueError, TypeError) as exc:
+            return SuiRpcResult(False, str(exc), None)
 
         if not command.gql_requires_paging:
             return await self._execute_gql_node(
@@ -775,11 +781,12 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                     node = command.gql_node()
                 else:
                     break
+            command.next_page = None
             return SuiRpcResult(True, None, node.encode_fn()(accumulated))
 
         # Legacy paging: encode each page individually, accumulate decoded .data lists.
         collection: list = []
-        result = await self._execute_gql_node(node, with_headers=headers, timeout=timeout)
+        result = await self._execute_gql_node(node, with_headers=headers, timeout=timeout, capture_errors=command.capture_errors)
         while True:
             if not result.is_ok():
                 return result
@@ -790,10 +797,11 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 command.next_page = cursor
                 node = command.gql_node()
                 result = await self._execute_gql_node(
-                    node, with_headers=headers, timeout=timeout
+                    node, with_headers=headers, timeout=timeout, capture_errors=command.capture_errors
                 )
             else:
                 break
+        command.next_page = None
         return SuiRpcResult(True, None, collection)
 
     async def _execute_gql_node(

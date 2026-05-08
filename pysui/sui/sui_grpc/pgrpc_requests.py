@@ -1332,7 +1332,7 @@ class VerifySignature(absreq.PGRPC_Request):
     ):
         """__init__ _summary_
 
-        :param message_type: Must be 'PersonalMessage' or 'Transaction'
+        :param message_type: Must be 'PersonalMessage' or 'TransactionData'
         :type message_type: str
         :param message: The message base64 encoded string or bytes
         :type message: str | bytes
@@ -1341,10 +1341,18 @@ class VerifySignature(absreq.PGRPC_Request):
         :param address: If provided, this address will be used to compare address derived from signature, defaults to None
         :type address: str | None, optional
         """
+        _VALID_TYPES = frozenset({"PersonalMessage", "TransactionData"})
+        if message_type not in _VALID_TYPES:
+            raise ValueError(
+                f"VerifySignature: message_type must be one of "
+                f"{sorted(_VALID_TYPES)}, got {message_type!r}"
+            )
         super().__init__(absreq.Service.SIGNATURE)
         self.address = address
         self.message_type = message_type
-        raw_msg = base64.b64decode(message) if isinstance(message, str) else message
+        raw_msg = base64.b64decode(message, validate=True) if isinstance(message, str) else bytes(message)
+        if len(raw_msg) > 131072:
+            raise ValueError(f"VerifySignature: message exceeds 131072 bytes ({len(raw_msg)})")
         if message_type == "PersonalMessage":
             # BCS encodes [u8] as ULEB128(len) + raw bytes; server calls
             # bcs::from_bytes::<&[u8]>(value) which requires this prefix.
@@ -1359,15 +1367,11 @@ class VerifySignature(absreq.PGRPC_Request):
                     break
             raw_msg = bytes(prefix) + raw_msg
         self.message = sui_prot.Bcs(name=message_type, value=raw_msg)
+        sig_bytes = base64.b64decode(signature, validate=True) if isinstance(signature, str) else bytes(signature)
+        if len(sig_bytes) > 1024:
+            raise ValueError(f"VerifySignature: signature exceeds 1024 bytes ({len(sig_bytes)})")
         self.signature = sui_prot.UserSignature(
-            bcs=sui_prot.Bcs(
-                name="UserSignature",
-                value=(
-                    base64.b64decode(signature)
-                    if isinstance(signature, str)
-                    else signature
-                ),
-            )
+            bcs=sui_prot.Bcs(name="UserSignature", value=sig_bytes)
         )
 
     def to_request(

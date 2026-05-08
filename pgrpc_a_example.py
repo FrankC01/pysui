@@ -828,7 +828,7 @@ async def main():
         print(ve)
     finally:
         if client_init:
-            client_init.close()
+            await client_init.close()
 
 
 if __name__ == "__main__":

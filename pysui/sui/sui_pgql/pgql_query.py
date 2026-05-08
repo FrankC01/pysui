@@ -4450,7 +4450,7 @@ class VerifySignatureSC(PGQL_QueryNode):
 
     GQL ``verifySignature`` returns ``SignatureVerifyResult { success }``. Failure
     reasons come back in the top-level GraphQL ``errors`` array, captured via
-    ``capture_errors=True`` on the SuiCommand wrapper and surfaced under ``_errors``.
+    ``capture_errors=True`` on the SuiCommand wrapper and surfaced under ``errors``.
 
     Returns a :class:`~sui_prot.VerifySignatureResponse` for protocol parity with gRPC.
     """
@@ -4483,6 +4483,14 @@ class VerifySignatureSC(PGQL_QueryNode):
             raise ValueError("VerifySignatureSC: message must be a non-empty base64 string")
         if not signature:
             raise ValueError("VerifySignatureSC: signature must be a non-empty base64 string")
+        try:
+            base64.b64decode(message, validate=True)
+        except Exception as exc:
+            raise ValueError(f"VerifySignatureSC: message is not valid base64: {exc}") from exc
+        try:
+            base64.b64decode(signature, validate=True)
+        except Exception as exc:
+            raise ValueError(f"VerifySignatureSC: signature is not valid base64: {exc}") from exc
         self.intent = intent
         self.message = message
         self.signature = signature
@@ -4500,17 +4508,18 @@ class VerifySignatureSC(PGQL_QueryNode):
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.VerifySignatureResponse]:
-        """Return encoder: maps GQL success + _errors → VerifySignatureResponse."""
+        """Return encoder: maps GQL success + errors → VerifySignatureResponse."""
 
         def _encode(data: dict) -> sui_prot.VerifySignatureResponse:
-            errors = data.get("_errors") or []
+            errors = data.get("errors") or []
             verify = (data.get("verifySignature") or {})
             success = verify.get("success")
             reason: str | None = None
             if errors:
-                reason = errors[0].get("message")
+                first = errors[0]
+                reason = first.get("message") if isinstance(first, dict) else str(first)
             return sui_prot.VerifySignatureResponse(
-                is_valid=bool(success) if success is not None else False,
+                is_valid=(success is True and not errors),
                 reason=reason,
             )
 

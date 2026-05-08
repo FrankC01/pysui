@@ -519,7 +519,7 @@ class TestGqlNodes:
     def test_simulate_transaction(self):
         node = SimulateTransaction(tx_bytestr=b"txdata").gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.SimulateTransaction)
+        assert isinstance(node, pgql_query.SimulateTransactionSC)
 
 
 # ---------------------------------------------------------------------------

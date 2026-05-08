@@ -100,6 +100,10 @@ class SuiPublicKey(PublicKey):
         """Serialize public key to base64 keystring."""
         return base64.b64encode(self.scheme_and_key()).decode()
 
+    @deprecated(
+        version="0.99.0",
+        reason="Use VerifyPersonalMessageSignature SuiCommand with client.execute() instead.",
+    )
     @versionadded(
         version="0.78.0", reason="Support signature verification using public key."
     )
@@ -209,6 +213,10 @@ class SuiKeyPair(KeyPair):
         sig = bytearray(self.private_key.sign_secure_personal_message(message))
         return base64.b64encode(sig).decode()
 
+    @deprecated(
+        version="0.99.0",
+        reason="Use VerifyPersonalMessageSignature SuiCommand with client.execute() instead.",
+    )
     @versionadded(version="0.71.0", reason="Verify personal message with intent.")
     def verify_personal_message(self, message: str, sig: str) -> bool:
         """Verify the personal message with IntentMessage."""

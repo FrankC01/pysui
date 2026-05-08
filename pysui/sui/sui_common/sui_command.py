@@ -30,6 +30,9 @@ class SuiCommand(ABC):
     gql_page_list_path: ClassVar[tuple[str, ...]] = ()
     grpc_requires_paging: ClassVar[bool] = False
     capture_errors: ClassVar[bool] = False
+    # When True, a GQL TransportQueryError that carries partial data is lifted
+    # into a successful SuiRpcResult via encode_fn rather than returned as a
+    # failure. Only honoured on non-paged commands (gql_requires_paging=False).
 
     @abstractmethod
     def gql_node(self) -> "PGQL_QueryNode":

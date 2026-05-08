@@ -202,7 +202,7 @@ ExecuteTransaction
 Available SuiCommand Subclasses
 -------------------------------
 
-The following 41 SuiCommand subclasses are built-in and re-exported from the top-level
+The following 43 SuiCommand subclasses are built-in and re-exported from the top-level
 :mod:`pysui` module.  Every command listed here works on **both** GraphQL and gRPC
 transports and returns the same canonical output type from either protocol.
 
@@ -264,6 +264,10 @@ transports and returns the same canonical output type from either protocol.
 **Network / Chain Info (2):**
   - :class:`GetChainIdentifier`
   - :class:`GetProtocolConfig`
+
+**Signature Verification (2):**
+  - :class:`VerifyTransactionSignature`
+  - :class:`VerifyPersonalMessageSignature`
 
 All are importable as:
 

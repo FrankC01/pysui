@@ -523,7 +523,7 @@ async def test_get_current_validators_grpc_testnet() -> None:
             f"got {len(result.result_data)}"
         )
     finally:
-        client.close()
+        await client.close()
 
 
 # ---------------------------------------------------------------------------
@@ -659,7 +659,7 @@ async def test_execute_transaction_gql_changed_objects(
     gql_session_client: AsyncClientBase,
     central_bank: CentralBank,
 ) -> None:
-    """ExecuteTransaction via GQL returns ExecuteTransactionResponse with changed_objects.
+    """ExecuteTransaction via GQL returns ExecutedTransaction with changed_objects.
 
     PTB: split_coin(gas, [1_000]) + transfer_objects([split], active_address).
     The split creates one new coin — verifies DOES_NOT_EXIST input_state mapping in
@@ -682,24 +682,23 @@ async def test_execute_transaction_gql_changed_objects(
         command=ExecuteTransaction(**await txer.build_and_sign())
     )
     assert result.is_ok(), f"ExecuteTransaction GQL: {result.result_string}"
-    assert isinstance(result.result_data, sui_prot.ExecuteTransactionResponse), (
-        f"expected ExecuteTransactionResponse, got {type(result.result_data)}"
+    assert isinstance(result.result_data, sui_prot.ExecutedTransaction), (
+        f"expected ExecutedTransaction, got {type(result.result_data)}"
     )
-    assert result.result_data.transaction is not None, "transaction field is None"
-    assert result.result_data.transaction.digest, "digest is empty"
-    assert result.result_data.transaction.effects is not None, "effects field is None"
-    assert result.result_data.transaction.effects.status is not None, "status is None"
-    assert result.result_data.transaction.effects.status.success, (
+    assert result.result_data.digest, "digest is empty"
+    assert result.result_data.effects is not None, "effects field is None"
+    assert result.result_data.effects.status is not None, "status is None"
+    assert result.result_data.effects.status.success, (
         "on-chain execution failed"
     )
     new_objs = [
         co
-        for co in result.result_data.transaction.effects.changed_objects
+        for co in result.result_data.effects.changed_objects
         if co.input_state == sui_prot.ChangedObjectInputObjectState.DOES_NOT_EXIST
     ]
     assert new_objs, (
         f"expected >= 1 newly created object (split coin); "
-        f"changed_objects={result.result_data.transaction.effects.changed_objects}"
+        f"changed_objects={result.result_data.effects.changed_objects}"
     )
 
 
@@ -802,3 +801,62 @@ async def test_verify_personal_message_signature_grpc(
     assert result.is_ok(), f"VerifyPersonalMessageSignature gRPC: {result.result_string}"
     assert isinstance(result.result_data, sui_prot.VerifySignatureResponse)
     assert result.result_data.is_valid is True
+
+
+@pytest.mark.order(52)
+async def test_verify_transaction_signature_invalid_gql(
+    gql_session_client: AsyncClientBase,
+) -> None:
+    """VerifyTransactionSignature GQL with a corrupted signature exercises the capture_errors lift.
+
+    Builds and signs a real PTB, then flips a byte in the signature to produce an
+    invalid signature. The GQL server returns a partial-error response; the
+    capture_errors path should lift this into SuiRpcResult(ok=True) with is_valid=False
+    and a non-None reason string.
+    """
+    txer = await gql_session_client.transaction()
+    split = await txer.split_coin(coin=txer.gas, amounts=[1_000])
+    await txer.transfer_objects(
+        transfers=[split], recipient=gql_session_client.config.active_address
+    )
+    signed = await txer.build_and_sign()
+    raw = bytearray(base64.b64decode(signed["sig_array"][0]))
+    raw[10] ^= 0xFF
+    bad_sig = base64.b64encode(bytes(raw)).decode()
+    result = await gql_session_client.execute(
+        command=VerifyTransactionSignature(
+            message=signed["tx_bytestr"],
+            signature=bad_sig,
+            author=str(gql_session_client.config.active_address),
+        )
+    )
+    assert result.is_ok(), f"capture_errors lift failed: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.VerifySignatureResponse)
+    assert result.result_data.is_valid is False
+    assert result.result_data.reason is not None
+
+
+@pytest.mark.order(53)
+async def test_verify_transaction_signature_invalid_grpc(
+    grpc_session_client: AsyncClientBase,
+) -> None:
+    """VerifyTransactionSignature gRPC with a corrupted signature returns is_valid=False."""
+    txer = await grpc_session_client.transaction()
+    split = await txer.split_coin(coin=txer.gas, amounts=[1_000])
+    await txer.transfer_objects(
+        transfers=[split], recipient=grpc_session_client.config.active_address
+    )
+    signed = await txer.build_and_sign()
+    raw = bytearray(base64.b64decode(signed["sig_array"][0]))
+    raw[10] ^= 0xFF
+    bad_sig = base64.b64encode(bytes(raw)).decode()
+    result = await grpc_session_client.execute(
+        command=VerifyTransactionSignature(
+            message=signed["tx_bytestr"],
+            signature=bad_sig,
+            author=str(grpc_session_client.config.active_address),
+        )
+    )
+    assert result.is_ok(), f"VerifyTransactionSignature gRPC invalid: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.VerifySignatureResponse)
+    assert result.result_data.is_valid is False

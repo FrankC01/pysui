@@ -260,6 +260,22 @@ Network / Chain Info
      - Fetch the current node's protocol configuration and feature flags
 
 
+Signature Verification
+-----------------------
+
+.. list-table::
+   :widths: 35 65
+   :header-rows: 1
+
+   * - Command
+     - Description
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.VerifyTransactionSignature`
+     - Verify a transaction signature against a signer address
+
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.VerifyPersonalMessageSignature`
+     - Verify a personal message signature against a signer address
+
+
 ----
 
 GQL Caveats
