@@ -112,9 +112,9 @@ def main() -> None:
             "Use a GRAPHQL or GRPC group."
         )
         sys.exit(1)
-    arpc = client_factory(cfg)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    arpc = client_factory(cfg)
     try:
         loop.run_until_complete(main_run(arpc))
     except KeyboardInterrupt:
