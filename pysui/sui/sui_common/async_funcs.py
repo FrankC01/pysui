@@ -143,8 +143,8 @@ async def merge_sui(
     if not gas_result.is_ok():
         raise ValueError(f"GetGas failed for {address}: {gas_result.result_string}")
     response = gas_result.result_data
-    # GQL returns SuiCoinObjectsGQL (.data), gRPC returns ListOwnedObjectsResponse (.objects)
-    raw_coins = list(getattr(response, "objects", None) or getattr(response, "data", []))
+    # Both GQL and gRPC return ListOwnedObjectsResponse (.objects) with sui_prot.Object items
+    raw_coins = list(getattr(response, "objects", None) or [])
 
     if not raw_coins:
         raise ValueError(f"Address {address} has no gas coins")
@@ -186,8 +186,8 @@ async def merge_sui(
         logger.warning(f"merge_all_sui transaction failed {res.result_string}")
         raise ValueError(f"Failed smashing coins with {res.result_string}")
 
-    # res.result_data is sui_prot.ExecuteTransactionResponse for both GQL and gRPC
-    etxn = res.result_data.transaction
+    # res.result_data is sui_prot.ExecutedTransaction for both GQL and gRPC
+    etxn = res.result_data
     tx_effects = bcst.TransactionEffects.deserialize(
         etxn.effects.bcs.value  # bytes; decoded from base64 by GQL encode_fn or raw gRPC
     ).value

@@ -376,3 +376,93 @@ Example: explicit group and targeted profiles
 .. code-block:: console
 
     sgqls --group sui_gql_config --profile devnet mainnet
+
+Smash (smash)
+-------------
+
+The ``smash`` utility merges multiple SUI gas coins for an address into a single coin.
+It works with both **GRAPHQL** and **GRPC** groups; the ``--group`` flag is filtered to
+show only those two protocol types.
+
+.. code-block:: console
+
+    usage: smash [options]
+
+    Smash (merge) addresses sui coins to one.
+
+    options:
+      -h, --help            show this help message and exit
+      --config CONFIG_NAME  The Pysui Configuration folder to use.
+      --group {sui_gql_config,sui_grpc_config}
+                            The configuration group to use. Only GRAPHQL and GRPC
+                            groups are listed. Default: active group.
+      --profile {devnet,testnet,mainnet}
+                            The profile (node endpoint) within the group.
+                            Default: active profile.
+      -o OWNER, --owner OWNER
+                            Sui address of gas owner. Mutually exclusive with
+                            '-a/--alias'.
+      -a ALIAS, --alias ALIAS
+                            Alias of owner address. Mutually exclusive with
+                            '-o/--owner'.
+      -i INCLUDE, --include INCLUDE
+                            Restrict the merge to these coin object IDs only.
+                            One or more IDs can be specified.
+      -e EXCLUDE, --exclude EXCLUDE
+                            Exclude these coin object IDs from the merge.
+                            One or more IDs can be specified.
+      -w, --wait            Wait for transaction checkpoint inclusion before
+                            returning. Optional.
+      -v, --version         Show version and exit.
+
+*   --config    Path to a ``PysuiConfiguration`` folder. Defaults to ``~/.pysui``. Pass a custom path to use an alternate configuration (e.g. ``--config /path/to/myconfig``).
+*   --group     The group to use. Only GRAPHQL and GRPC groups appear as choices; custom-named groups with a supported protocol are also listed.
+*   --profile   The node endpoint within the chosen group.
+*   --owner     The Sui address of the coin owner. Mutually exclusive with ``--alias``.
+*   --alias     An alias name for the owner address. Mutually exclusive with ``--owner``.
+*   --include   One or more coin object IDs to merge together. If specified, only these coins are candidates for merge.
+*   --exclude   One or more coin object IDs to exclude from merge. If specified, all other coins are candidates.
+*   --wait      Poll the transaction until checkpoint inclusion before returning.
+
+**Combining --include and --exclude:** These flags are **not** mutually exclusive.
+When both are provided, ``--exclude`` is applied first (filtering out named coins),
+then ``--include`` is applied to the remaining set (selecting only named coins).
+If a coin ID appears in both arguments, the exclude takes precedence.
+
+Example: merge all coins
+*************************
+
+.. code-block:: console
+
+    smash
+
+Example: merge with custom address
+************************************
+
+.. code-block:: console
+
+    smash --owner 0x123456abcdef...
+
+Example: merge only specific coins
+***********************************
+
+.. code-block:: console
+
+    smash --include 0xaaa... 0xbbb... 0xccc...
+
+Example: merge all except specific coins
+*****************************************
+
+.. code-block:: console
+
+    smash --exclude 0xstaking... 0xreserve...
+
+Example: combine include and exclude
+*************************************
+
+.. code-block:: console
+
+    smash --include 0xaaa... 0xbbb... 0xccc... --exclude 0xbbb...
+
+This merges coins ``0xaaa...`` and ``0xccc...`` (``0xbbb...`` is excluded despite being
+in the include list).

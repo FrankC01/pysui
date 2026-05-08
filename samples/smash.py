@@ -9,7 +9,7 @@ import asyncio
 import os
 import pathlib
 import sys
-from typing import Optional, cast
+from typing import Any
 
 PROJECT_DIR = pathlib.Path(os.path.dirname(__file__))
 PARENT = PROJECT_DIR.parent
@@ -34,9 +34,7 @@ logging.basicConfig(
 logger.info("Initializing smash.")
 
 import pysui.sui.sui_common.async_funcs as asfn
-import pysui.sui.sui_bcs.bcs_txne as bcst
-import pysui.sui.sui_pgql.pgql_types as pgql_type
-from pysui import PysuiConfiguration, PysuiClient, client_factory, __version__, SuiRpcResult
+from pysui import PysuiConfiguration, client_factory, __version__
 from samples.cmd_argsg import build_smash_parser, pre_config_pull
 
 
@@ -47,43 +45,28 @@ def sdk_version():
 
 async def main_run(
     *,
-    client: PysuiClient,
+    client: Any,
     includes: list[str],
     excludes: list[str],
     wait: bool,
 ):
     """Main smash asynchronous entry point."""
-    task_result = await asyncio.gather(
-        asfn.merge_sui(
+    try:
+        merge_status, effects, master_coin_id, wait_result = await asfn.merge_sui(
             client=client,
             address=client.config.active_address,
             merge_only=includes,
             exclude=excludes,
             wait=wait,
-        ),
-        return_exceptions=True,
-    )
-    if isinstance(task_result[0], tuple):
-        merge_status, effects, master_coin, wait_result = cast(
-            tuple[
-                asfn.OperationStatus,
-                bcst.TransactionEffects,
-                pgql_type.SuiCoinObjectGQL,
-                pgql_type.TransactionResultGQL,
-            ],
-            task_result[0],
         )
-        # effects, master_coin = task_result[0]
         if merge_status == asfn.OperationStatus.MERGE:
-            print(f"Succesful smash to coin {master_coin.coin_object_id}")
+            print(f"Succesful smash to coin {master_coin_id}")
         elif merge_status == asfn.OperationStatus.ONE_COIN_NO_MERGE:
             print(
                 f"No merge, only 1 Sui coin for address {client.config.active_address}"
             )
+    finally:
         await client.close()
-    else:
-        await client.close()
-        raise task_result[0]
 
 
 def main():
@@ -104,9 +87,9 @@ def main():
     print(
         f"Smashing coins for alias: {cfg.active_address_alias} with address: {cfg.active_address}"
     )
-    arpc = client_factory(cfg)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    arpc = client_factory(cfg)
     try:
         loop.run_until_complete(
             main_run(
