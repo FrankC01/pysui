@@ -933,7 +933,11 @@ def build_splay_parser(
     in_args: list, pconfig: PysuiConfiguration
 ) -> argparse.Namespace:
     """splay spreads all, selected coins or count evenly to itself or other addresses."""
-    parser = _base_parser(pconfig, "splay [options].\n\n" + build_splay_parser.__doc__)
+    parser = _base_parser(
+        pconfig,
+        "splay [options].\n\n" + build_splay_parser.__doc__,
+        group_protocols=[GroupProtocol.GRAPHQL, GroupProtocol.GRPC],
+    )
     addy_arg_group = parser.add_mutually_exclusive_group(required=False)
     addy_arg_group.add_argument(
         "-o",
@@ -982,18 +986,10 @@ def build_splay_parser(
         action=validator.ValidateAddress,
     )
     parser.add_argument(
-        "-b",
-        "--budget",
+        "--dry-run",
+        dest="dry_run",
         required=False,
-        default=10_000_000,
-        help="Budget reserved to execute splay. Optional - defaults to 10_000_000 mists.",
-        action=validator.ValidatePositive,
-    )
-    parser.add_argument(
-        "-w",
-        "--wait",
-        required=False,
-        help="Sets flag to wait for transaction commitment. Optional.",
+        help="Parse and display routing decision without executing. Optional.",
         action="store_true",
     )
     return parser.parse_args(in_args if in_args else ["--help"])

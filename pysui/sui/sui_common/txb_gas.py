@@ -80,7 +80,7 @@ def coins_for_budget(
     # Sort descending and cap at protocol limit before any selection.
     coins = sorted(coins, key=balance_fn, reverse=True)[:_MAX_GAS_PAYMENT_OBJECTS]
 
-    single_fit = [c for c in coins if balance_fn(c) > budget]
+    single_fit = [c for c in coins if balance_fn(c) >= budget]
     if single_fit:
         return [ref_fn(single_fit[0])]
 

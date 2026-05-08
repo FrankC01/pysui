@@ -466,3 +466,117 @@ Example: combine include and exclude
 
 This merges coins ``0xaaa...`` and ``0xccc...`` (``0xbbb...`` is excluded despite being
 in the include list).
+
+Splay (splay)
+-------------
+
+The ``splay`` utility merges all SUI gas coins for an address into one coin, then
+spreads (splays) the balance evenly to itself as *N* new coins or to one or more
+recipient addresses. It works with both **GRAPHQL** and **GRPC** groups; the
+``--group`` flag is filtered to show only those two protocol types.
+
+.. code-block:: console
+
+    usage: splay [options].
+
+    splay spreads all, selected coins or count evenly to itself or other addresses.
+
+    options:
+      -h, --help            show this help message and exit
+      --config CONFIG_NAME  The Pysui Configuration folder to use.
+      --group {sui_gql_config,sui_grpc_config}
+                            The configuration group to use. Only GRAPHQL and GRPC
+                            groups are listed. Default: active group.
+      --profile {devnet,testnet,mainnet}
+                            The profile (node endpoint) within the group.
+                            Default: active profile.
+      -o OWNER, --owner OWNER
+                            Sui address of gas owner. Mutually exclusive with
+                            '-a/--alias'.
+      -a ALIAS, --alias ALIAS
+                            Alias of owner address. Mutually exclusive with
+                            '-o/--owner'.
+      -i INCLUDE [INCLUDE ...], --include INCLUDE [INCLUDE ...]
+                            Restrict the merge step to these coin object IDs only.
+                            One or more IDs can be specified.
+      -e EXCLUDE [EXCLUDE ...], --exclude EXCLUDE [EXCLUDE ...]
+                            Exclude these coin object IDs from the merge step.
+                            One or more IDs can be specified.
+      -m MIST, --mist MIST  Amount per split coin. Express as raw mists (e.g.
+                            ``500000``) or as Sui (e.g. ``1S`` or ``1s``).
+      -n NUMBER, --number NUMBER
+                            Splay into N coins sent back to the signing address.
+                            Must be >= 2. Mutually exclusive with '-r/--recipients'.
+      -r RECIPIENTS [RECIPIENTS ...], --recipients RECIPIENTS [RECIPIENTS ...]
+                            Splay evenly to these recipient addresses.
+                            Mutually exclusive with '-n/--number'.
+      --dry-run             Parse and display the routing decision without
+                            executing. Optional.
+      -v, --version         Show version and exit.
+
+*   --config      Path to a ``PysuiConfiguration`` folder. Defaults to ``~/.pysui``.
+*   --group       The group to use. Only GRAPHQL and GRPC groups appear as choices.
+*   --profile     The node endpoint within the chosen group.
+*   --owner       The Sui address of the coin owner. Mutually exclusive with ``--alias``.
+*   --alias       An alias name for the owner address. Mutually exclusive with ``--owner``.
+*   --include     One or more coin object IDs to restrict the merge step to.
+*   --exclude     One or more coin object IDs to exclude from the merge step.
+*   --mist        Amount per output coin. Omit to split the available balance evenly across all outputs.
+*   --number      Number of coins to create and send to the signing address (>= 2). Mutually exclusive with ``--recipients``.
+*   --recipients  One or more recipient addresses to receive one split coin each. Mutually exclusive with ``--number``.
+*   --dry-run     Print the routing decision (address, recipients/count, mist, include/exclude) without executing any transaction.
+
+**Gas budget:** ``splay`` does not accept an explicit budget argument. The gas cost is
+determined automatically by transaction simulation. If the split amount plus the
+simulated gas cost would exceed the available coin balance, the transaction is
+rejected before submission.
+
+**Routing rules:**
+
+*   ``-n`` and ``-r`` are mutually exclusive.
+*   ``-n`` must be >= 2 (splaying to self requires at least two output coins).
+*   If neither ``-n`` nor ``-r`` is given, recipients are taken from all other
+    addresses in the active configuration group. If no such addresses exist, splay
+    exits with an error.
+
+Example: splay to self (5 coins)
+**********************************
+
+.. code-block:: console
+
+    splay -n 5
+
+Example: splay to self with explicit amount
+*********************************************
+
+.. code-block:: console
+
+    splay -n 5 -m 2S
+
+Example: splay to recipients
+*****************************
+
+.. code-block:: console
+
+    splay -r 0xrecipient1... 0xrecipient2...
+
+Example: splay to one recipient with explicit amount
+*****************************************************
+
+.. code-block:: console
+
+    splay -r 0xrecipient1... -m 10S
+
+Example: splay with custom owner
+**********************************
+
+.. code-block:: console
+
+    splay -o 0x123456abcdef... -r 0xrecipient1...
+
+Example: dry run to preview routing
+*************************************
+
+.. code-block:: console
+
+    splay -n 3 --dry-run

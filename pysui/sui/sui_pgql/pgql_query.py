@@ -248,28 +248,21 @@ class GetCoinSummary(PGQL_QueryNode):
 
 
 class GetCoinSummarySC(GetCoinSummary):
-    """SC variant: encode_fn maps GQL object response to GetObjectResponse proto."""
+    """SC variant: encode_fn maps GQL object response to sui_prot.Object (matches gRPC shape)."""
 
     @staticmethod
-    def encode_fn() -> Callable[[dict], sui_prot.GetObjectResponse]:
-        """Return deserializer producing GetObjectResponse from GQL object dict."""
+    def encode_fn() -> Callable[[dict], sui_prot.Object]:
+        """Return deserializer producing sui_prot.Object from GQL object dict."""
 
-        def _encode(in_data: dict) -> sui_prot.GetObjectResponse:
+        def _encode(in_data: dict) -> sui_prot.Object:
             obj = in_data.get("object", {})
             flat: dict = {}
             pgql_type._fast_flat(obj, flat)
-            balance = None
-            if "asMoveObject" in obj and "contents" in obj["asMoveObject"]:
-                contents = obj["asMoveObject"]["contents"].get("json")
-                if contents and isinstance(contents, dict):
-                    balance = contents.get("balance")
-            return sui_prot.GetObjectResponse(
-                object=sui_prot.Object(
-                    object_id=flat.get("address"),
-                    version=int(flat.get("version", 0)),
-                    digest=flat.get("digest"),
-                    balance=int(balance) if balance else None,
-                )
+            return sui_prot.Object(
+                object_id=flat.get("coin_object_id"),
+                version=flat.get("version", 0),
+                digest=flat.get("object_digest"),
+                balance=int(flat.get("balance", 0)) if flat.get("balance") else None,
             )
 
         return _encode
