@@ -594,7 +594,9 @@ async def inspect_example(client: AsyncClientBase):
 
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    await txer.transfer_objects(transfers=scres, recipient=client.config.active_address)
+    await txer.transfer_objects(
+        transfers=[scres], recipient=client.config.active_address
+    )
     await do_dry_run_txkind(txer)
 
 
