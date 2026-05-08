@@ -111,7 +111,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             return self._protocol_config
         raise ValueError(f"protocol fetch returned {result.result_string}")
 
-    def close(self):
+    async def close(self):
         """Close the base gRPC channel"""
         for channel in self._channels:
             channel.close()
@@ -123,7 +123,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit async context manager and close channel."""
-        self.close()
+        await self.close()
 
     async def transaction(
         self,

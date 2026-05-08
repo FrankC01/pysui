@@ -18,28 +18,34 @@ sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
 from pysui import PysuiConfiguration, GqlProtocolClient as AsyncGqlClient
+from pysui.sui.sui_common.config.confgroup import GroupProtocol
 
 
 def build_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespace:
     """Build the argument parser structure."""
-    # Base menu
-    """Basic parser setting for all commands."""
     parser = argparse.ArgumentParser(
         add_help=True,
         usage="%(prog)s [options] command [--command_options]",
         description="Persist Sui GraphQL schemas",
     )
+    parser.add_argument(
+        "--group",
+        dest="group_name",
+        choices=pconfig.group_names_for_protocol(protocols=[GroupProtocol.GRAPHQL]),
+        default=pconfig.active_group.group_name,
+        required=False,
+        help=f"The GraphQL group. Only GRAPHQL groups are listed. Default to '{pconfig.active_group.group_name}'",
+    )
     schema_targets = pconfig.profile_names()
     schema_targets.insert(0, "all")
     parser.add_argument(
-        "-p",
-        # "--profiles",
-        dest="profs",
+        "--profile",
+        dest="profile_name",
         choices=schema_targets,
-        default="all",
+        default=["all"],
         required=False,
         nargs="+",
-        help="Sui GraphQL profile(s) to generate schemas for. Defaults to 'all'",
+        help="GraphQL profile(s) to generate schemas for. Defaults to 'all'",
     )
     return parser.parse_args(in_args)
 
@@ -59,10 +65,11 @@ def main():
         arg_line = sys.argv[1:].copy()
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         parsed = build_parser(arg_line, cfg)
-        if all_index := "all" in parsed.profs:
+        cfg.make_active(group_name=parsed.group_name, persist=False)
+        if "all" in parsed.profile_name:
             gen_schemas(cfg.profile_names(), cfg)
         else:
-            gen_schemas(parsed.profs, cfg)
+            gen_schemas(parsed.profile_name, cfg)
     except ValueError as ve:
         print(ve.args)
 

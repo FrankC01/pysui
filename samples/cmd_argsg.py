@@ -8,6 +8,7 @@
 import argparse
 from typing import Optional
 from pysui import PysuiConfiguration
+from pysui.sui.sui_common.config.confgroup import GroupProtocol
 import pysui.sui.sui_common.validators as validator
 from pysui.sui.sui_types.scalars import SuiString
 
@@ -767,7 +768,9 @@ def _build_aliases_cmds(subparser) -> None:
 
 
 def _base_parser(
-    pconfig: PysuiConfiguration, desc: Optional[str] = None
+    pconfig: PysuiConfiguration,
+    desc: Optional[str] = None,
+    group_protocols: Optional[list[GroupProtocol]] = None,
 ) -> argparse.ArgumentParser:
     """Basic parser setting for all commands."""
     parser = argparse.ArgumentParser(
@@ -783,10 +786,15 @@ def _base_parser(
         required=False,
         help=f"The Pysui Configuration folder to use. Default to '{pconfig.config}'",
     )
+    _group_choices = (
+        pconfig.group_names_for_protocol(protocols=group_protocols)
+        if group_protocols
+        else pconfig.group_names()
+    )
     parser.add_argument(
         "--group",
         dest="group_name",
-        choices=pconfig.group_names(),
+        choices=_group_choices,
         default=pconfig.active_group.group_name,
         required=False,
         help=f"The GraphQL groups. Default to '{pconfig.active_group_name}'",
@@ -832,12 +840,14 @@ def build_parser(in_args: list, pconfig: PysuiConfiguration) -> argparse.Namespa
 def build_async_gas_parser(
     in_args: list, pconfig: PysuiConfiguration
 ) -> argparse.Namespace:
-    """Build the argument parser structure."""
-    # Base menu
-    parser = _base_parser(pconfig)
+    """Build the argument parser for async-gas."""
+    parser = _base_parser(
+        pconfig,
+        group_protocols=[GroupProtocol.GRAPHQL, GroupProtocol.GRPC],
+    )
     parser.add_help = True
     parser.usage = "%(prog)s [options]"
-    parser.description = "Gather all gas for all objects"
+    parser.description = "Report SUI gas for active address. Supports GRAPHQL and GRPC groups."
     return parser.parse_args(in_args)
 
 

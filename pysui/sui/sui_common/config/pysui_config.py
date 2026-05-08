@@ -300,6 +300,10 @@ class PysuiConfiguration:
         """Return the groups in the configuration."""
         return [x.group_name for x in self._model.groups]
 
+    def group_names_for_protocol(self, *, protocols: list[cfg_group.GroupProtocol]) -> list[str]:
+        """Return group names whose protocol matches any of the given GroupProtocol values."""
+        return [x.group_name for x in self._model.groups if x.protocol in protocols]
+
     def profile_names(self, *, in_group: Optional[str] = None) -> list[str]:
         """Return the profiles in a group. Default to active group."""
         # If group specified and it's not the active
