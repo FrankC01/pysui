@@ -8,28 +8,28 @@ The ``mtobcs`` utility converts Move structures, enums, and parameterized contai
 
 .. code-block:: console
 
-    usage: mtobcs.py [options] command [--command_options]
+    usage: mtobcs [options]
 
-    Generate python module of BCS classes from JSON.
+    Generate python module of BCS classes from JSON. Supports GRAPHQL and GRPC groups.
 
     options:
     -h, --help            show this help message and exit
-    --config CONFIG_PATH  The Pysui Configuration folder to use.
+    --config CONFIG_NAME  The Pysui Configuration folder to use.
     --group {sui_gql_config,sui_grpc_config}
-                            The configuration groups. Default to 'sui_gql_config'
+                            The GraphQL groups. Default to 'sui_gql_config'
     --profile {devnet,testnet,mainnet}
-                            The configuration group profile node. Default to 'devnet' from 'sui_gql_config'
+                            The GraphQL profile node. Default to 'devnet' from 'sui_gql_config'
     -v, --version         Sets flag to show version. Optional.
     -m MOVE_TARGETS, --move-target-file MOVE_TARGETS
                             JSON file containing directives of move package, module and types to convert to BCS structures.
     -o TARGET_OUTPUT_FOLDER, --output-folder TARGET_OUTPUT_FOLDER
                             The folder where the Python BCS module is written to. Default to current folder.
 
-*   --config   This identifies the locaiton of the PysuiConfiguration file containing groups and profiles. Defaults to ``~/.pysui``
-*   --group    The group within the configuration file to set as active
+*   --config   Path to a ``PysuiConfiguration`` folder. Defaults to ``~/.pysui``. Pass a custom path to use an alternate configuration (e.g. ``--config /path/to/myconfig``).
+*   --group    Selects the active group. Only GRAPHQL and GRPC groups are shown as valid choices.
 *   --profile  The profile within the group to set as active
 *   -m         The ``mtobcs`` directive json file (see below)
-*   -o         The output folder where to place the resulting python BCS class declarations. The filename is set in the json directive file 
+*   -o         The output folder where to place the resulting python BCS class declarations. The filename is set in the json directive file
 
 JSON Configuration File 
 ***********************
@@ -314,6 +314,7 @@ flag is filtered to show only those two protocol types.
                             Default: active profile.
       -v, --version         Show version and exit.
 
+*   --config  Path to a ``PysuiConfiguration`` folder. Defaults to ``~/.pysui``. Pass a custom path to use an alternate configuration (e.g. ``--config /path/to/myconfig``).
 *   --group   The group to query. Only GRAPHQL and GRPC groups appear as choices; custom-named groups with a supported protocol are also listed.
 *   --profile The node endpoint within the chosen group.
 

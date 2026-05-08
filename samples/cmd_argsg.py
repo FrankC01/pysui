@@ -6,6 +6,7 @@
 """Argument parsing for samples/walletg."""
 
 import argparse
+from pathlib import Path
 from typing import Optional
 from pysui import PysuiConfiguration
 from pysui.sui.sui_common.config.confgroup import GroupProtocol
@@ -848,6 +849,40 @@ def build_async_gas_parser(
     parser.add_help = True
     parser.usage = "%(prog)s [options]"
     parser.description = "Report SUI gas for active address. Supports GRAPHQL and GRPC groups."
+    return parser.parse_args(in_args)
+
+
+def build_mtobcs_parser(
+    in_args: list, pconfig: PysuiConfiguration
+) -> argparse.Namespace:
+    """Build the argument parser for mtobcs."""
+    parser = _base_parser(
+        pconfig,
+        group_protocols=[GroupProtocol.GRAPHQL, GroupProtocol.GRPC],
+    )
+    parser.add_help = True
+    parser.usage = "%(prog)s [options]"
+    parser.description = (
+        "Generate python module of BCS classes from JSON. Supports GRAPHQL and GRPC groups."
+    )
+    parser.add_argument(
+        "-m",
+        "--move-target-file",
+        dest="move_targets",
+        required=True,
+        action=validator.ValidateFile,
+        help="JSON file of array of maps, each identifies a target for generation",
+    )
+    _default_folder = str(Path.cwd())
+    parser.add_argument(
+        "-o",
+        "--output-folder",
+        dest="target_output_folder",
+        required=False,
+        default=_default_folder,
+        action=validator.ValidateScrOrDir,
+        help=f"The folder where the Python BCS module is written to. Default to '{_default_folder}'",
+    )
     return parser.parse_args(in_args)
 
 
