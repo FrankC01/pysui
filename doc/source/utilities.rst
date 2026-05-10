@@ -1,6 +1,256 @@
 Utilities
 =========
 
+If installing **pysui** via PyPI the following utilities are ready to use from the command line.
+If cloning the pysui repository and running ``pip install -r requirements.txt``, they are located
+in ``samples/`` and can be invoked with:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 50
+
+   * - PyPI command
+     - Clone invocation
+   * - ``wallet``
+     - ``python samples/walletg.py``
+   * - ``mtobcs``
+     - ``python samples/mtobcs.py``
+   * - ``async-gas``
+     - ``python samples/async_gasg.py``
+   * - ``sgqls``
+     - ``python samples/sgqls.py``
+   * - ``smash``
+     - ``python samples/smash.py``
+   * - ``splay``
+     - ``python samples/splay.py``
+
+Wallet (wallet)
+---------------
+
+The ``wallet`` CLI is the Swiss-army-knife companion to the ``sui client`` command. It covers
+chain inspection, address and alias management, coin operations, Move package publishing and
+calling, transaction simulation, and pre-signed transaction submission. It works with both
+**GRAPHQL** and **GRPC** groups via the ``--group`` flag.
+
+.. code-block:: console
+
+    usage: walletg.py [options] command [--command_options]
+
+    options:
+      -h, --help            show this help message and exit
+      --config CONFIG_NAME  The Pysui Configuration folder to use. Default to '~/.pysui'
+      --group {sui_json_config,sui_gql_config,sui_grpc_config}
+                            The active group to use. Default to 'sui_gql_config'
+      --profile {devnet,testnet,mainnet}
+                            The profile node to use.
+      -v, --version         Sets flag to show version. Optional.
+
+    commands:
+      chain-id              Show current chain identifier
+      txns                  Show transaction information (subcommands: count, txn)
+      gas                   Show gas objects and total mist
+      coins                 Show coin type balances
+      object                Show object by id
+      objects               Show all objects
+      package               Show normalized package information
+      active-address        Show active address
+      addresses             Show all addresses
+      new-address           Generate new address and keypair
+      aliases               Sui address alias management (subcommands: list, rename)
+      transfer-object       Transfer an object to another address
+      transfer-sui          Transfer SUI mists to a Sui address
+      pay                   Send coin of any type to recipient(s)
+      merge-coin            Merge two coins together
+      split-coin            Split coin into one or more coins by amount
+      split-coin-equally    Split coin into one or more coins equally
+      publish               Publish a SUI package
+      call                  Call a Move contract function
+      simulate              Simulate a transaction (TransactionData base64 bytes)
+      execute-tx            Execute a signed transaction on blockchain
+      version               Show pysui SDK version
+
+*   --config      Path to a ``PysuiConfiguration`` folder. Defaults to ``~/.pysui``.
+*   --group       Protocol group to use (``sui_json_config``, ``sui_gql_config``, or ``sui_grpc_config``).
+*   --profile     Node endpoint within the chosen group (``devnet``, ``testnet``, ``mainnet``).
+
+**Owner resolution:** Most commands accept ``-o/--owner`` (a Sui address) or ``-a/--alias``
+(an alias name) to identify the acting address. These are mutually exclusive. If neither is
+supplied the active address from the configuration is used.
+
+Chain commands
+**************
+
+``chain-id``
+    Show the current chain identifier for the connected node.
+
+``txns count``
+    Return the total network transaction count from the server.
+
+``txns txn``
+    Return detailed transaction information by digest.
+
+.. code-block:: console
+
+    wallet chain-id
+    wallet txns count
+    wallet txns txn --digest <DIGEST>
+
+Read commands
+*************
+
+``gas``
+    Show all SUI gas coins and the total balance for an address.
+
+``coins``
+    Show all coin-type balances for an address.
+
+``objects``
+    Show all objects owned by an address.
+
+``object``
+    Show a single object by its object ID.
+
+``package``
+    Show normalized Move package information by package ID.
+
+.. code-block:: console
+
+    wallet gas --alias Primary
+    wallet coins --alias Primary
+    wallet objects --alias Primary
+    wallet object --id 0x<OBJECT_ID>
+    wallet package --id 0x<PACKAGE_ID>
+
+Account commands
+****************
+
+``active-address``
+    Print the currently active Sui address from the configuration.
+
+``addresses``
+    List all addresses stored in the configuration.
+
+``new-address``
+    Generate a new keypair and Sui address.
+
+``aliases list``
+    List all aliases and their associated Sui addresses.
+
+``aliases rename``
+    Rename an existing alias.
+
+.. code-block:: console
+
+    wallet active-address
+    wallet addresses
+    wallet aliases list
+    wallet aliases rename --alias OldName --new-alias NewName
+
+Operations commands
+*******************
+
+All operations build a PTB via the pysui transaction builder and execute it on-chain.
+``--budget`` (mists) and ``--gas`` (gas object ID) are optional for every operation;
+if omitted, gas is selected and budgeted automatically by simulation.
+
+``transfer-sui``
+    Split a mist amount from a source gas coin and transfer it to a recipient.
+
+.. code-block:: console
+
+    wallet transfer-sui --alias Primary \
+        --takes 0x<COIN_ID> --mists 1000000 --recipient 0x<ADDRESS>
+
+``transfer-object``
+    Transfer any object to a recipient address.
+
+.. code-block:: console
+
+    wallet transfer-object --alias Primary \
+        --transfer 0x<OBJECT_ID> --recipient 0x<ADDRESS>
+
+``pay``
+    Split and send mist amounts from one or more input coins to one or more recipients.
+    The ``--input-coins``, ``--mists``, and ``--recipients`` lists must be the same length.
+
+.. code-block:: console
+
+    wallet pay --alias Primary \
+        --input-coins 0x<COIN_ID> --mists 500000 --recipients 0x<ADDRESS>
+
+``merge-coin``
+    Merge one coin into another (primary). To merge *all* coins to one, use ``smash`` instead.
+
+.. code-block:: console
+
+    wallet merge-coin --alias Primary \
+        --primary-coin 0x<PRIMARY_ID> --coin-to-merge 0x<SOURCE_ID>
+
+``split-coin``
+    Split a coin into one or more new coins by explicit mist amounts.
+
+.. code-block:: console
+
+    wallet split-coin --alias Primary \
+        --coin 0x<COIN_ID> --amounts 1000000 2000000
+
+``split-coin-equally``
+    Split a coin into *N* equal parts.
+
+.. code-block:: console
+
+    wallet split-coin-equally --alias Primary \
+        --coin 0x<COIN_ID> --count 4
+
+``publish``
+    Build and publish a Move package from a project path.
+
+.. code-block:: console
+
+    wallet publish --alias Primary --project-path ./my_package
+
+``call``
+    Call a Move package function with typed arguments.
+
+.. code-block:: console
+
+    wallet call --alias Primary \
+        --package 0x<PKG_ID> --module my_module --function my_fn \
+        --type-arguments 0x2::sui::SUI \
+        --args 0x<OBJ_ID> 42
+
+Transaction commands
+********************
+
+``simulate``
+    Decode a Base64-encoded ``TransactionData`` blob and simulate it on-chain.
+    ``--checks-enabled`` (default ``True``) and ``--gas-selection`` (default ``True``)
+    control simulation behaviour.
+
+.. code-block:: console
+
+    wallet simulate --txb <BASE64_BYTES>
+    wallet simulate --txb <BASE64_BYTES> --checks-enabled False
+
+``execute-tx``
+    Submit pre-built Base64 transaction bytes together with one or more pre-assembled
+    signatures. Equivalent to ``sui client execute-signed-tx``.
+
+.. code-block:: console
+
+    wallet execute-tx --txb <BASE64_BYTES> \
+        --signatures <SIG1> [<SIG2> ...]
+
+Info commands
+*************
+
+``version``
+    Print the pysui SDK version.
+
+.. code-block:: console
+
+    wallet version
+
 Move to BCS (mtobcs)
 --------------------
 

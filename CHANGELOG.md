@@ -10,124 +10,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **BREAKING CHANGES**
 
 - `profile_names(in_group=...)` no longer mutates the active group as a side effect — callers relying on this behavior must call `make_active()` explicitly
-
-- `use_account_for_gas` moved from the transaction constructor to build-time
-parameters on build(), build_and_sign(), and transaction_data()
-
-- `MoveFunctionGQL.parameters` changed from `list[dict]` to `list[OpenMoveTypeGQL]` — any code iterating raw dicts from function metadata must migrate to the new dataclass accessors
-- `MoveFunctionGQL.returns` changed from `Optional[list]` to `list[OpenMoveTypeGQL]` — same migration required
-
-- `GqlProtocolClient.transaction()` is now `async def` — all call sites must add `await` (aligns with `GrpcProtocolClient.transaction()` for protocol-agnostic code via `client_factory`)
-
-- `SerialTransactionExecutor` renamed to `GqlSerialTransactionExecutor` — protocol prefix added
-  to all executor class names for consistency; update imports accordingly
-
-- `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations; old names no longer exist
-
-- `AsyncSuiTransaction` is now a single protocol-agnostic class at `pysui.sui.sui_common.async_txn`; `pysui.sui.sui_pgql.pgql_async_txn` and `pysui.sui.sui_grpc.pgrpc_async_txn` are deleted — update all imports to the new location
-
-- Legacy GQL object types (`ObjectReadGQL`, `SuiCoinObjectGQL`, `SuiCoinObjectSummaryGQL`, `SuiStakedCoinGQL`) are no longer accepted as transaction method arguments — pass `sui_prot.Object` (obtained via `GetObject` SuiCommand) instead
+- `use_account_for_gas` moved from the transaction constructor to build-time parameters on `build()`, `build_and_sign()`, and `transaction_data()`
+- `MoveFunctionGQL.parameters` changed from `list[dict]` to `list[OpenMoveTypeGQL]`; `MoveFunctionGQL.returns` changed from `Optional[list]` to `list[OpenMoveTypeGQL]` — migrate callers to the new dataclass accessors
+- `GqlProtocolClient.transaction()` is now `async def` — all call sites must add `await`
+- `SerialTransactionExecutor` renamed to `GqlSerialTransactionExecutor` — protocol prefix added to all executor class names; update imports
+- `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations
+- `AsyncSuiTransaction` is now a single protocol-agnostic class at `pysui.sui.sui_common.async_txn`; old module paths deleted — update imports
+- Legacy GQL object types (`ObjectReadGQL`, `SuiCoinObjectGQL`, `SuiCoinObjectSummaryGQL`, `SuiStakedCoinGQL`) are no longer accepted as transaction method arguments — pass `sui_prot.Object` (via `GetObject` SuiCommand) instead
 
 ### Added
 
-- `pysui/sui/sui_pgql/pgql_types.py`: new `OpenMove*GQL` dataclass hierarchy mirroring the GQL schema — `OpenMoveTypeGQL`, `OpenMoveTypeSignatureGQL`, `OpenMoveScalarBodyGQL`, `OpenMoveVectorBodyGQL`, `OpenMoveDatatypeBodyGQL`, `OpenMoveTypeParamBodyGQL` — replaces fragile dict-based Move type representation
-- `pysui/sui/sui_common/txn_arg_encoder.py`: new metadata-driven argument encoder using `@singledispatch` over `OpenMoveBodyGQL` variants; `_BaseArgParser` ABC with abstract `fetch_or_transpose_object` for protocol-specific object resolution; shared by both GQL and gRPC transaction builders
-- 113 integration tests across four suites: `tests/integration_tests/test_move_call_encoding.py` (41 tests covering scalar, vector, Option, object reference, and generic type parameter encoding across GQL async, GQL sync, gRPC, and caching transaction builders), `tests/integration_tests/test_suicommands.py` (53 tests covering all SuiCommand subclasses against live GQL and gRPC transports), `tests/integration_tests/test_core_commands.py` (14 tests covering core PTB commands), and `tests/integration_tests/test_gas_rearch.py` (5 tests covering gas rearchitecture)
-
-- Added 866 offline unit tests (no network required) across 25 files in `tests/unit_tests/`
-- `GqlParallelTransactionExecutor`: GraphQL parallel transaction executor with conflict tracking,
-  gas coin pool management (coins mode), and address-balance mode
-- `GrpcSerialTransactionExecutor`: gRPC serial transaction executor with the same interface as
-  `GqlSerialTransactionExecutor`; coins and address-balance gas modes with optional replenishment callbacks
-- `GrpcParallelTransactionExecutor`: gRPC parallel transaction executor with the same interface as
-  `GqlParallelTransactionExecutor`
-
-- Added `tests/test_deprecations.py` with 8 offline unit tests (no network required):
-  - `TransactionConstraints` backwards-compat re-export from `pgql_types.py` resolves to canonical `sui_common/sui_txn_types.py` location
-  - `PysuiClient` ABC enforcement: missing abstract methods raise `TypeError`; fully-implemented subclass instantiates correctly
-  - `DeprecationWarning` verified on `SuiConfig`, `SuiClient` sync/async (JSON-RPC), `SuiGQLClient` (sync GraphQL), and `SuiTransaction` (sync GraphQL)
-
-- `AsyncClientBase` abstract base class (`pysui/abstracts/async_client.py`): replaces `PysuiClient` as the shared async interface; declares `execute(command, *, timeout=None, headers=None) -> SuiRpcResult` as a fourth abstract method alongside `transaction()`, `__aenter__()`, and `__aexit__()`; `client_factory()` return annotation updated from `PysuiClient` to `AsyncClientBase`
-
-- `SuiCommand` ABC (`pysui/sui/sui_common/sui_command.py`) and 43 built-in subclasses (`pysui/sui/sui_common/sui_commands.py`): protocol-neutral request objects forming the **Unified Client Interface (UCI)**; `await client.execute(command=...)` dispatches identically on both `GqlProtocolClient` and `GrpcProtocolClient`; every subclass works on both transports and returns the same canonical gRPC proto dataclass output regardless of protocol; `GetStructures` and `GetFunctions` auto-paginate transparently on GraphQL; all 43 subclasses exported from `pysui`; includes `GetTransaction`, `GetTransactions`, and `GetTransactionKind` for fetching executed transactions by digest
-
-- `serial_executor(**kwargs)` and `parallel_executor(**kwargs)` factory methods added to both `GqlProtocolClient` and `GrpcProtocolClient`; executor creation via these methods is the UCI-conformant pattern — direct instantiation of executor classes is not part of the UCI contract
-
-- SC sibling query nodes in `pysui/sui/sui_pgql/pgql_query.py`: 26 GQL-side protocol bridges whose `encode_fn()` produces gRPC proto dataclasses directly, enabling the UCI canonical-output guarantee across all 43 SuiCommand subclasses
+- **Unified Client Interface (UCI)**: `SuiCommand` ABC and 43 built-in subclasses — protocol-neutral request objects; `await client.execute(command=...)` dispatches identically on both `GqlProtocolClient` and `GrpcProtocolClient` and returns the same canonical proto output regardless of transport; all 43 subclasses exported from `pysui`
+- `AsyncClientBase` abstract base class — replaces `PysuiClient` as the shared async interface; `client_factory()` return type updated accordingly
+- `serial_executor(**kwargs)` and `parallel_executor(**kwargs)` factory methods on both protocol clients — UCI-conformant executor creation
+- `GqlParallelTransactionExecutor`, `GrpcSerialTransactionExecutor`, `GrpcParallelTransactionExecutor` — new executor classes for gRPC and parallel workflows
+- Metadata-driven argument encoder (`txn_arg_encoder.py`) using `@singledispatch` over `OpenMoveBodyGQL` variants; shared by GQL and gRPC transaction builders; replaces fragile dict-based Move type representation
+- `OpenMove*GQL` dataclass hierarchy in `pgql_types.py` mirroring the GQL schema Move type tree
+- `SimulateTransaction` and `SimulateTransactionKind` SuiCommands replacing `DryRunTransaction` / `DryRunTransactionKind`
+- `VerifyTransactionSignature` and `VerifyPersonalMessageSignature` SuiCommands
+- 888 unit tests (no network required); 113 integration tests against live GQL and gRPC transports
 
 ### Deprecated
 
-- `GrpcProtocolClient.execute(request=...)` renamed to `execute_grpc_request(request=...)`; the old
-  name now dispatches via `execute(command: SuiCommand)` — existing callers must migrate to
-  `execute_grpc_request(request=...)` or switch to `execute(command=...)`; targeted for removal
-  at v1.0.0
-- `GqlProtocolClient.execute_query_node(with_node=...)`: use `execute(command=...)` for standard
-  queries; `execute_document_node()` and `execute_query_string()` remain as EC-5 escape hatches
-  for custom GQL queries with no `SuiCommand` equivalent; targeted for removal at v1.0.0
+- `GrpcProtocolClient.execute(request=...)` → use `execute_grpc_request(request=...)` or `execute(command=SuiCommand)`; targeted for removal at v1.0.0
+- `GqlProtocolClient.execute_query_node(with_node=...)` → use `execute(command=...)`; `execute_document_node()` and `execute_query_string()` remain as escape hatches; targeted for removal at v1.0.0
+- `DryRunTransactionKind` and `DryRunTransaction` emit `DeprecationWarning` pointing to `SimulateTransactionKind` / `SimulateTransaction`
 
 ### Changed
 
-- Re-engineered the full transaction process paths for Async protocols and Serial/Parallel Executors (UCI)
-- `GetGas` SuiCommand on gRPC now auto-accumulates all pages (Tier 2 paging parity with GQL) — no caller-side pagination loop required
-- `async_funcs.merge_sui` and `split_to_distribution` are now UCI-compliant internally (SuiCommands only; GQL-specific fetch/execute paths removed)
+- Gas selection re-architecture: shared `txb_gas.py` with TS SDK formula for budget computation and coin selection with merge support and 256-coin cap
+- `async_funcs.merge_sui` and `split_to_distribution` are now UCI-compliant internally
+- Both GraphQL and gRPC clients now have `execute_for_all(command=...)` to automatically handle pageable outputs
+- Sample utilities wallet, mtobcs, async-gas, sgqls, smash and splay updated for UCI compliance
+- Sphinx / ReadTheDocs documentation re-architected for consistency and improved organization
 - Documentation updated
 
 ### Fixed
 
-- Fixed `.readthedocs.yaml` to get clean documentation builds
-- `pysui/sui/sui_common/txn_arg_encoder.py`: fixed double-encoding bug in `_encode_vector`, `_encode_datatype`, and `_encode_option` — raw BCS bytes from `_raw_value()` were incorrectly re-encoded through `PureInput.as_input()`; now wrapped directly as `bcs.BuilderArg("Pure", raw_bytes)`
-- `pysui/sui/sui_common/txn_arg_encoder.py`: fixed gRPC protobuf field name `type_parameter_index` → `type_parameter` in `_grpc_body_to_variant` TYPE_PARAMETER case
-- `pysui/sui/sui_pgql/pgql_txn_argb.py`: applied same double-encoding fix to the independent sync GQL encoder
-- `pysui/sui/sui_pgql/pgql_clients.py`: fixed `AttributeError` in async client teardown — `close_async()` on a gql.Client that was never connected no longer raises
-- `tests/integration_tests/conftest.py`: fixed `None` guard in `ensure_session_gas` — address/coin balance returns `None` on devnet reset; added `or 0` fallback to prevent fixture crash
-
-- `pysui/sui/sui_pgql/pgql_query.py`: removed dead-code stub `GetObjectsForType` class (lines 245–270) that was silently shadowed by the real implementation; stub had an empty `as_document_node` and wrong `encode_fn` returning `SuiCoinObjectsGQL`
-- `pysui/sui/sui_common/config/pysui_config.py`: corrected `faucet_url` property typo (`faucet_urls` → `faucet_url`)
-- `pysui/sui/sui_pgql/pgql_async_txn.py`: corrected `async_fetch_or_transpose_object` → `fetch_or_transpose_object` method name typo
-- `pysui/sui/sui_common/move_to_bcs.py`: updated `mtobcs` processing to conform with UCI — added concrete parameterized `VecMap<K,V>` and `VecSet<T>` subclass generation; previously these types were mapped to opaque BCS stubs with empty `_fields`, silently consuming zero bytes and causing deserialization failures on framework types such as `ValidatorSet` and `SuiSystemStateInnerV2`
-- `pgql_parallel_exec._refill_coin_pool`: fixed isinstance check against wrong type (`ExecutionResultGQL` → `sui_prot.ExecuteTransactionResponse`)
-
-### Changed
-
-- Gas selection re-architecture: shared `txb_gas.py` with `compute_gas_budget` (TS SDK formula, overhead + rebate) and `coins_for_budget` (merge support, 256-coin cap)
-- `DryRunTransactionKind` → `SimulateTransactionKind` in all async GQL and gRPC gas paths
-- `merge_gas_budget` now correctly wired through to coin selection (was silently ignored)
-- `use_account_for_gas` moved from transaction constructor to build-time parameter on `build()`, `build_and_sign()`, `transaction_data()`
-- PTB inspection (`_inspect_ptb_for_gas_coin`) routes UC7 (address balance) vs hybrid; tracks `gas_source_draw` for `SplitCoin(GasCoin)` commands
-- Added 28 offline unit tests for gas module; 6 live-network integration tests; 62 integration tests covering 7 core PTB commands and move_call argument encoding across GQL and gRPC transports (`test_core_commands.py`, `test_move_call_encoding.py`)
-
-- `pysui/sui/sui_pgql/pgql_query.py`: added `SimulateTransactionKind` and `SimulateTransaction` query nodes (replacements for the dry-run equivalents); `DryRunTransactionKind` and `DryRunTransaction` now emit `DeprecationWarning` on construction pointing to the new names
-- `pysui/sui/sui_pgql/pgql_types.py`: added `SimulateResultGQL` as an alias for `DryRunResultGQL` for use with the new Simulate query nodes
-- `pysui/sui/sui_pgql/pgql_query.py`: added `GetGas`, `GetEpoch`, and `GetPackageVersions` query nodes with matching result types in `pgql_types.py`
-- `pgql_a_example.py`: updated to use `GetGas`, `SimulateTransaction`, `SimulateTransactionKind`; added `do_epoch` and `do_package_versions` examples
-- `pysui/sui/sui_grpc/pgrpc_requests.py`: renamed gRPC request classes to match GQL naming conventions; old names are deprecated subclasses pointing to new names:
-  - `NameLookup` → `GetNameServiceAddress` (also fixed `to_request` bug: was passing `self.name` instead of `self.address`)
-  - `ReverseNameLookup` → `GetNameServiceNames`
-  - `SimulateTransactionLKind` → `SimulateTransactionKind`
-  - `GetDataType` → `GetMoveDataType`; `GetStructure` updated to subclass `GetMoveDataType` directly
-
-- `pysui/sui/sui_pgql/pgql_async_txn.py`, `pgql_sync_txn.py`, `pgrpc_async_txn.py`, `execute/caching_txn.py`: `_function_meta_args` now returns `list[OpenMoveTypeGQL]` instead of `MoveArgSummary`; arg encoding dispatches through new `txn_arg_encoder.py`
-- `pysui/sui/sui_pgql/pgql_txn_async_argb.py`, `pgql_txn_argb.py`, `pysui/sui/sui_grpc/pgrpc_txn_async_argb.py`: rewritten as concrete `_BaseArgParser` subclasses; all old `isinstance`-chain dispatch code replaced with singledispatch-driven encoding; each file now implements only `fetch_or_transpose_object`
-- `pysui/sui/sui_common/trxn_base.py`: converted 7 built-in PTB command signature class attributes (`_SPLIT_COIN`, `_MERGE_COINS`, etc.) from `MoveArgSummary` to `list[OpenMoveTypeGQL]`
-- `pysui/sui/sui_pgql/pgql_types.py`: `MoveFunctionGQL.from_dict` renamed to `from_query`; `arg_summary()` simplified — now emits `DeprecationWarning` and returns `self.parameters` directly; `MoveFieldGQL` updated with `from_query` classmethod using schema-aligned `name`/`type` keys
-
-- `pysui/sui/sui_common/config/confgroup.py`: added module-level group-name constants (`SUI_GQL_RPC_GROUP`, `SUI_GRPC_GROUP`, `SUI_JSON_RPC_GROUP`, `SUI_USER_GROUP`) as single source of truth; added `ProfileGroup.__post_init__` to enforce correct `GroupProtocol` for the two well-known group names on construction and JSON deserialization
-- `pysui/sui/sui_common/config/pysui_config.py`: `PysuiConfiguration` class constants now delegate to `confgroup` constants (no string duplication); `profile_names(in_group=...)` no longer mutates `active_group` as a side effect
-- `pysui/sui/sui_common/config/confmodel.py`: removed dead methods `initialize_gql_rpc` and `initialize_json_rpc` (never called); removed unused `Path` and `load_client_yaml` imports
-- Added `tests/test_pysui_config.py` with 78 offline unit tests covering `ProfileGroup` and `PysuiConfiguration`: protocol assignment, address/alias/profile/keypair operations, `initialize_config`, `make_active`, group/profile management, persistence round-trips, and version migration
-
-- Migrated sample apps from direct client instantiation to `client_factory`:
-  - `samples/async_gasg.py`: `AsyncGqlClient(pysui_config=cfg)` → `client_factory(cfg)`; function signatures updated to `PysuiClient`
-  - `samples/smash.py`: same factory swap; `main_run` signature updated to `PysuiClient`
-  - `samples/splay.py`: same factory swap; all internal function signatures updated to `PysuiClient`
-  - `samples/mtobcs.py`: same factory swap
-  - `samples/sgqls.py`: `SyncGqlClient(write_schema=True)` replaced with `AsyncGqlClient(write_schema=True)`
-  - `samples/cmdsg.py`: all 22 command functions converted to `async def`; `SuiGQLClient` → `PysuiClient`, `SuiTransaction` → `AsyncSuiTransaction`; sync utility imports replaced with async equivalents (`async_get_all_owned_gas_objects`, `async_get_all_owned_objects`, `async_get_all_address_balances`); all `execute_query_node`, `execute_query_string`, and transaction builder calls awaited
-  - `samples/walletg.py`: `SyncGqlClient` replaced with `client_factory`; `main()` now delegates to `async def _run()` via `asyncio.run()`
-
-### Removed
-
-- `pgql_s_example.py`: removed synchronous GraphQL example script; superseded by async client via `client_factory`
+- Double-encoding bug in `txn_arg_encoder.py` and `pgql_txn_argb.py` — raw BCS bytes were incorrectly re-encoded through `PureInput.as_input()`
+- `close_async()` no longer raises `AttributeError` on a GQL client that was never connected
+- `faucet_url` property typo corrected in `pysui_config.py`
+- Dead-code `GetObjectsForType` stub removed from `pgql_query.py` that was silently shadowing the real implementation
+- `mtobcs` updated for UCI — `VecMap<K,V>` and `VecSet<T>` now generate concrete parameterized BCS subclasses; previously generated empty stubs causing silent deserialization failures on framework types
+- Gas budget no longer incorrectly includes `gas_source_draw` in `GasData.budget` — this value is coin-selection only; `GasData.budget` is set to the simulation result only
 
 ## [0.98.0] - 2026-04-13
 
