@@ -59,8 +59,6 @@ async-gas = "samples.async_gasg:main"
 sgqls = "samples.sgqls:main"
 smash= "samples.smash:main"
 splay= "samples.splay:main"
-jtobcs="samples.jtobcs:main"
-bcstoj="samples.bcstoj:main"
 mtobcs="samples.mtobcs:main"
 
 [tool.setuptools.packages.find]
