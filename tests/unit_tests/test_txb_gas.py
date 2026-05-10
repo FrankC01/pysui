@@ -76,8 +76,10 @@ class _FakeTxn:
         self.builder.commands = commands
         self.builder.inputs = inputs
 
-    # Borrow the real implementation; `self` is bound to _FakeTxn instances.
+    # Borrow the real implementations; `self` is bound to _FakeTxn instances.
     _inspect_ptb_for_gas_coin = _SuiTransactionBase._inspect_ptb_for_gas_coin
+    _accumulate_split_coin_draw = _SuiTransactionBase._accumulate_split_coin_draw
+    _any_arg_is_gas_coin = staticmethod(_SuiTransactionBase._any_arg_is_gas_coin)
 
 
 # ---------------------------------------------------------------------------

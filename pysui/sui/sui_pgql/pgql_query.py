@@ -2718,54 +2718,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                 effects_proto.bcs = sui_prot.Bcs(name="TransactionEffects", value=base64.b64decode(effects_bcs_b64))
 
             # --- objectChanges typed nodes: object_type_map + ObjectSet ---
-            def _owner_from_flat(f: dict) -> "sui_prot.Owner | None":
-                kind = f.get("obj_owner_kind")
-                if kind == "AddressOwner":
-                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address=f.get("address"))
-                if kind == "Shared":
-                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=f.get("initial_version"))
-                if kind == "Immutable":
-                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.IMMUTABLE)
-                if kind == "ObjectOwner":
-                    return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.OBJECT, address=f.get("address"))
-                return None
-
-            object_type_map: dict[str, str] = {}
-            objects: list[sui_prot.Object] = []
-            for node in (eff.get("object_changes") or {}).get("nodes") or []:
-                addr = node.get("address")
-                for state_key in ("input_state", "output_state"):
-                    obj_node = node.get(state_key)
-                    if isinstance(obj_node, dict) and addr and addr not in object_type_map:
-                        flat: dict = {}
-                        pgql_type._fast_flat(obj_node, flat)
-                        obj_type = flat.get("object_type") or ("package" if obj_node.get("as_move_package") else None)
-                        if obj_type:
-                            object_type_map[addr] = obj_type
-
-                out = node.get("output_state")
-                if out:
-                    flat_out: dict = {}
-                    pgql_type._fast_flat(out, flat_out)
-                    out_type = flat_out.get("object_type") or ("package" if out.get("as_move_package") else None)
-                    bcs_b64 = flat_out.get("bcs")
-                    contents_bcs_b64 = flat_out.get("contents_bcs")
-                    obj_json = flat_out.get("content")
-                    objects.append(
-                        sui_prot.Object(
-                            object_id=flat_out.get("object_id"),
-                            version=int(flat_out.get("version") or 0),
-                            digest=flat_out.get("object_digest"),
-                            object_type=out_type,
-                            owner=_owner_from_flat(flat_out),
-                            bcs=sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_b64)) if bcs_b64 else None,
-                            previous_transaction=flat_out.get("previous_transaction_digest"),
-                            has_public_transfer=flat_out.get("has_public_transfer"),
-                            storage_rebate=int(flat_out.get("storage_rebate")) if flat_out.get("storage_rebate") is not None else None,
-                            json=_google_protobuf.Value.from_dict(obj_json) if obj_json is not None else None,
-                            contents=sui_prot.Bcs(name=out_type, value=base64.b64decode(contents_bcs_b64)) if contents_bcs_b64 else None,
-                        )
-                    )
+            objects, object_type_map = _encode_simulate_object_changes(eff)
 
             # Back-fill object_type from typed nodes (effectsJson omits objectType)
             for co in effects_proto.changed_objects:
@@ -2782,71 +2735,10 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
             checkpoint_seq = (eff.get("checkpoint") or {}).get("sequenceNumber")
 
             # --- Events (typed — no eventsJson in GQL) ---
-            events: list[sui_prot.Event] = []
-            for ev in ((eff.get("events") or {}).get("nodes") or []):
-                ev_bcs_b64 = ev.get("eventBcs")
-                sender_dict = ev.get("sender") or {}
-                type_dict = (ev.get("contents") or {}).get("type") or {}
-                tx_mod = ev.get("transactionModule") or {}
-                pkg = tx_mod.get("package") or {}
-                events.append(
-                    sui_prot.Event(
-                        package_id=pkg.get("package_id"),
-                        module=tx_mod.get("module_name"),
-                        sender=sender_dict.get("sender_address"),
-                        event_type=type_dict.get("event_type"),
-                        contents=(
-                            sui_prot.Bcs(value=base64.b64decode(ev_bcs_b64))
-                            if ev_bcs_b64 else None
-                        ),
-                    )
-                )
+            events = _encode_simulate_events(((eff.get("events") or {}).get("nodes") or []))
 
             # --- CommandResult outputs ---
-            cmd_outputs: list[sui_prot.CommandResult] = []
-            for cmd in (raw.get("outputs") or []):
-                return_vals = []
-                for rv in (cmd.get("returnValues") or []):
-                    rv_val = rv.get("value") or {}
-                    bcs_b64 = rv_val.get("bcs")
-                    rv_json = rv_val.get("json")
-                    rv_type = (rv_val.get("type") or {}).get("value_type")
-                    return_vals.append(
-                        sui_prot.CommandOutput(
-                            value=(
-                                sui_prot.Bcs(name=rv_type, value=base64.b64decode(bcs_b64))
-                                if bcs_b64 else None
-                            ),
-                            json=(
-                                _google_protobuf.Value.from_dict(rv_json)
-                                if rv_json is not None else None
-                            ),
-                        )
-                    )
-                mutated = []
-                for mr in (cmd.get("mutatedReferences") or []):
-                    mr_val = mr.get("value") or {}
-                    bcs_b64 = mr_val.get("bcs")
-                    mr_json = mr_val.get("json")
-                    mr_type = (mr_val.get("type") or {}).get("value_type")
-                    mutated.append(
-                        sui_prot.CommandOutput(
-                            value=(
-                                sui_prot.Bcs(name=mr_type, value=base64.b64decode(bcs_b64))
-                                if bcs_b64 else None
-                            ),
-                            json=(
-                                _google_protobuf.Value.from_dict(mr_json)
-                                if mr_json is not None else None
-                            ),
-                        )
-                    )
-                cmd_outputs.append(
-                    sui_prot.CommandResult(
-                        return_values=return_vals,
-                        mutated_by_ref=mutated,
-                    )
-                )
+            cmd_outputs = _encode_simulate_outputs(raw.get("outputs") or [])
 
             return sui_prot.SimulateTransactionResponse(
                 transaction=sui_prot.ExecutedTransaction(
@@ -4653,6 +4545,147 @@ class VerifySignatureSC(PGQL_QueryNode):
         return _encode
 
 
+def _owner_from_flat(f: dict) -> "sui_prot.Owner | None":
+    kind = f.get("obj_owner_kind")
+    if kind == "AddressOwner":
+        return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address=f.get("address"))
+    if kind == "Shared":
+        return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=f.get("initial_version"))
+    if kind == "Immutable":
+        return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.IMMUTABLE)
+    if kind == "ObjectOwner":
+        return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.OBJECT, address=f.get("address"))
+    return None
+
+
+def _encode_simulate_object_changes(eff: dict) -> "tuple[list[sui_prot.Object], dict[str, str]]":
+    object_type_map: dict[str, str] = {}
+    objects: list[sui_prot.Object] = []
+    for node in (eff.get("object_changes") or {}).get("nodes") or []:
+        addr = node.get("address")
+        for state_key in ("input_state", "output_state"):
+            obj_node = node.get(state_key)
+            if isinstance(obj_node, dict) and addr and addr not in object_type_map:
+                flat: dict = {}
+                pgql_type._fast_flat(obj_node, flat)
+                obj_type = flat.get("object_type") or ("package" if obj_node.get("as_move_package") else None)
+                if obj_type:
+                    object_type_map[addr] = obj_type
+
+        out = node.get("output_state")
+        if out:
+            flat_out: dict = {}
+            pgql_type._fast_flat(out, flat_out)
+            out_type = flat_out.get("object_type") or ("package" if out.get("as_move_package") else None)
+            bcs_b64 = flat_out.get("bcs")
+            contents_bcs_b64 = flat_out.get("contents_bcs")
+            obj_json = flat_out.get("content")
+            objects.append(
+                sui_prot.Object(
+                    object_id=flat_out.get("object_id"),
+                    version=int(flat_out.get("version") or 0),
+                    digest=flat_out.get("object_digest"),
+                    object_type=out_type,
+                    owner=_owner_from_flat(flat_out),
+                    bcs=sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_b64)) if bcs_b64 else None,
+                    previous_transaction=flat_out.get("previous_transaction_digest"),
+                    has_public_transfer=flat_out.get("has_public_transfer"),
+                    storage_rebate=int(flat_out.get("storage_rebate")) if flat_out.get("storage_rebate") is not None else None,
+                    json=_google_protobuf.Value.from_dict(obj_json) if obj_json is not None else None,
+                    contents=sui_prot.Bcs(name=out_type, value=base64.b64decode(contents_bcs_b64)) if contents_bcs_b64 else None,
+                )
+            )
+    return objects, object_type_map
+
+
+def _encode_simulate_events(nodes: list) -> "list[sui_prot.Event]":
+    events: list[sui_prot.Event] = []
+    for ev in nodes:
+        ev_bcs_b64 = ev.get("eventBcs")
+        sender_dict = ev.get("sender") or {}
+        type_dict = (ev.get("contents") or {}).get("type") or {}
+        tx_mod = ev.get("transactionModule") or {}
+        pkg = tx_mod.get("package") or {}
+        events.append(
+            sui_prot.Event(
+                package_id=pkg.get("package_id"),
+                module=tx_mod.get("module_name"),
+                sender=sender_dict.get("sender_address"),
+                event_type=type_dict.get("event_type"),
+                contents=(
+                    sui_prot.Bcs(value=base64.b64decode(ev_bcs_b64))
+                    if ev_bcs_b64 else None
+                ),
+            )
+        )
+    return events
+
+
+def _decode_command_output_list(items: list) -> "list[sui_prot.CommandOutput]":
+    result = []
+    for item in items:
+        val = item.get("value") or {}
+        bcs_b64 = val.get("bcs")
+        item_json = val.get("json")
+        item_type = (val.get("type") or {}).get("value_type")
+        result.append(
+            sui_prot.CommandOutput(
+                value=(
+                    sui_prot.Bcs(name=item_type, value=base64.b64decode(bcs_b64))
+                    if bcs_b64 else None
+                ),
+                json=(
+                    _google_protobuf.Value.from_dict(item_json)
+                    if item_json is not None else None
+                ),
+            )
+        )
+    return result
+
+
+def _encode_simulate_outputs(outputs: list) -> "list[sui_prot.CommandResult]":
+    cmd_outputs: list[sui_prot.CommandResult] = []
+    for cmd in outputs:
+        cmd_outputs.append(
+            sui_prot.CommandResult(
+                return_values=_decode_command_output_list(cmd.get("returnValues") or []),
+                mutated_by_ref=_decode_command_output_list(cmd.get("mutatedReferences") or []),
+            )
+        )
+    return cmd_outputs
+
+
+def _encode_execute_object_changes(
+    eff_dict: dict, effects: "sui_prot.TransactionEffects"
+) -> "sui_prot.ObjectSet | None":
+    oc_nodes = (eff_dict.get("objectChanges") or {}).get("nodes") or []
+    obj_list = []
+    object_type_map: dict[str, str] = {}
+    for oc in oc_nodes:
+        addr = oc.get("address")
+        for state_key in ("input_state", "output_state"):
+            obj_node = oc.get(state_key)
+            if isinstance(obj_node, dict):
+                obj = _encode_object_from_raw(obj_node)
+                if addr and not obj.object_id:
+                    obj.object_id = addr
+                obj_list.append(obj)
+                if addr and addr not in object_type_map:
+                    obj_type = (
+                        (obj_node.get("as_move_content") or {})
+                        .get("as_object", {})
+                        .get("object_type_repr", {})
+                        .get("object_type")
+                    )
+                    if obj_type:
+                        object_type_map[addr] = obj_type
+    objects = sui_prot.ObjectSet(objects=obj_list) if obj_list else None
+    for co in effects.changed_objects:
+        if not co.object_type and co.object_id in object_type_map:
+            co.object_type = object_type_map[co.object_id]
+    return objects
+
+
 def _parse_gql_datetime(ts_str: "str | None") -> "datetime.datetime | None":
     if not ts_str:
         return None
@@ -5248,33 +5281,7 @@ def _encode_executed_tx(
     # StandardObject DSL alias mapping (from_dict() cannot be used due to snake_case aliases).
     # object_type_map: objectId → objectType; used to patch effects.changedObjects because
     # effectsJson omits objectType (confirmed GQL indexer behaviour, 2026-05-06).
-    oc_nodes = (eff_dict.get("objectChanges") or {}).get("nodes") or []
-    obj_list = []
-    object_type_map: dict[str, str] = {}
-    for oc in oc_nodes:
-        addr = oc.get("address")
-        for state_key in ("input_state", "output_state"):
-            obj_node = oc.get(state_key)
-            if isinstance(obj_node, dict):
-                obj = _encode_object_from_raw(obj_node)
-                # addr is the ObjectChange.address fallback if BaseObject did not populate object_id
-                if addr and not obj.object_id:
-                    obj.object_id = addr
-                obj_list.append(obj)
-                if addr and addr not in object_type_map:
-                    obj_type = (
-                        (obj_node.get("as_move_content") or {})
-                        .get("as_object", {})
-                        .get("object_type_repr", {})
-                        .get("object_type")
-                    )
-                    if obj_type:
-                        object_type_map[addr] = obj_type
-    objects = sui_prot.ObjectSet(objects=obj_list) if obj_list else None
-
-    for co in effects.changed_objects:
-        if not co.object_type and co.object_id in object_type_map:
-            co.object_type = object_type_map[co.object_id]
+    objects = _encode_execute_object_changes(eff_dict, effects)
 
     return sui_prot.ExecutedTransaction(
         digest=digest,

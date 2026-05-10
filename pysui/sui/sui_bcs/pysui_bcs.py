@@ -29,25 +29,7 @@ class BCS_Struct(canoser.Struct):
         jres = json.loads(json_in)
         for key, value in jres.items():
             _ctype = BCS_BASE.classtype_from_name(instance.class_list, key)
-            if not _ctype.list_depth:
-                if _ctype.scalar:
-                    pass
-                else:
-                    jres[key] = _ctype.bcs_class.from_json(json.dumps(value))
-            else:
-                if _ctype.scalar:
-                    _vtype = type(value)
-                    if _vtype != _ctype.bcs_class:
-                        jres[key] = BCS_BASE.convert_to_list_type(_ctype, value, _vtype)
-                else:
-                    vdisp: list = []
-                    for n in BCS_BASE.inner_list(value, _ctype.list_depth):
-                        if n:
-                            vdisp.append(_ctype.bcs_class.from_json(json.dumps(n)))
-                        else:
-                            vdisp.append(_ctype.bcs_class.from_json("null"))
-
-                    jres[key] = BCS_BASE.wrap_list(vdisp, _ctype.list_depth)
+            BCS_BASE._assign_typed_value(jres, key, value, _ctype)
 
         if isinstance(jres, dict):
             return instance.from_dict(jres)
@@ -101,21 +83,7 @@ class BCS_Enum(canoser.RustEnum):
                 pass
             else:
                 value = jres[key]
-                if not _ctype.list_depth:
-                    jres[key] = _ctype.bcs_class.from_json(json.dumps(value))
-                else:
-                    if _ctype.scalar:
-                        _vtype = type(value)
-                        if _vtype != _ctype.bcs_class:
-                            jres[key] = BCS_BASE.convert_to_list_type(
-                                _ctype, value, _vtype
-                            )
-                    else:
-                        vdisp = [
-                            _ctype.bcs_class.from_json(json.dumps(n))
-                            for n in BCS_BASE.inner_list(value, _ctype.list_depth)
-                        ]
-                        jres[key] = BCS_BASE.wrap_list(vdisp, _ctype.list_depth)
+                BCS_BASE._assign_typed_value(jres, key, value, _ctype)
         elif isinstance(jres, list):
             raise NotImplementedError(f"Enum list handling {jres}")
 
@@ -177,25 +145,7 @@ class BCS_Optional(canoser.RustOptional):
         else:
 
             jres = {}
-            if not _ctype.list_depth:
-                if _ctype.scalar:
-                    pass
-                else:
-                    jres[key] = _ctype.bcs_class.from_json(json.dumps(value))
-            else:
-                if _ctype.scalar:
-                    _vtype = type(value)
-                    if _vtype != _ctype.bcs_class:
-                        jres[key] = BCS_BASE.convert_to_list_type(_ctype, value, _vtype)
-                else:
-                    vdisp: list = []
-                    for n in BCS_BASE.inner_list(value, _ctype.list_depth):
-                        if n:
-                            vdisp.append(_ctype.bcs_class.from_json(json.dumps(n)))
-                        else:
-                            vdisp.append(_ctype.bcs_class.from_json("null"))
-
-                jres[key] = BCS_BASE.wrap_list(vdisp, _ctype.list_depth)
+            BCS_BASE._assign_typed_value(jres, key, value, _ctype)
         if isinstance(jres, dict):
             return instance.from_dict(jres)
         raise NotImplementedError(json_in)
@@ -264,6 +214,23 @@ class BCS_BASE:
         for _ in range(depth - 1):
             items = list(items)
         return items
+
+    @staticmethod
+    def _assign_typed_value(jres: dict, key: str, value, _ctype) -> None:
+        """Assign a typed value into jres[key] based on ctype metadata."""
+        if not _ctype.list_depth:
+            if not _ctype.scalar:
+                jres[key] = _ctype.bcs_class.from_json(json.dumps(value))
+        elif _ctype.scalar:
+            _vtype = type(value)
+            if _vtype != _ctype.bcs_class:
+                jres[key] = BCS_BASE.convert_to_list_type(_ctype, value, _vtype)
+        else:
+            vdisp = [
+                _ctype.bcs_class.from_json(json.dumps(n) if n else "null")
+                for n in BCS_BASE.inner_list(value, _ctype.list_depth)
+            ]
+            jres[key] = BCS_BASE.wrap_list(vdisp, _ctype.list_depth)
 
     @staticmethod
     def convert_to_list_type(

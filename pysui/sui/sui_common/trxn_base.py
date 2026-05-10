@@ -228,6 +228,36 @@ class _TransactionBase:
         """Set the gas price."""
         self._current_gas_price = new_price
 
+    @staticmethod
+    def _any_arg_is_gas_coin(args) -> bool:
+        return any(a.enum_name == "GasCoin" for a in args)
+
+    def _accumulate_split_coin_draw(self, cmd_val, inputs_list: list) -> tuple[bool, int]:
+        """Process SplitCoin command for GasCoin usage and gas draw amount."""
+        if cmd_val.FromCoin.enum_name != "GasCoin":
+            return self._any_arg_is_gas_coin(cmd_val.Amount), 0
+        _log = logging.getLogger(__name__)
+        draw = 0
+        for amount_arg in cmd_val.Amount:
+            if amount_arg.enum_name != "Input":
+                _log.warning(
+                    "Dynamic amount in SplitCoin(GasCoin): "
+                    "gas-source draw not tracked for this amount"
+                )
+                continue
+            idx = amount_arg.value
+            if idx >= len(inputs_list):
+                continue
+            call_arg = inputs_list[idx]
+            if call_arg.enum_name != "Pure":
+                _log.warning(
+                    "Non-pure input in SplitCoin(GasCoin): "
+                    "gas-source draw not tracked for this amount"
+                )
+                continue
+            draw += int.from_bytes(bytes(call_arg.value), "little")
+        return True, draw
+
     def _inspect_ptb_for_gas_coin(self) -> tuple[bool, int]:
         """Inspect builder commands for GasCoin usage and accumulate gas-source draw.
 
@@ -236,7 +266,6 @@ class _TransactionBase:
             is the sum of pure-int amounts from SplitCoin(GasCoin, ...) commands.
         :rtype: tuple[bool, int]
         """
-        _log = logging.getLogger(__name__)
         uses_gas_coin = False
         gas_source_draw = 0
         inputs_list = list(self.builder.inputs.values())
@@ -244,52 +273,18 @@ class _TransactionBase:
         for cmd in self.builder.commands:
             cmd_name = cmd.enum_name
             cmd_val = cmd.value
-
             if cmd_name == "SplitCoin":
-                if cmd_val.FromCoin.enum_name == "GasCoin":
-                    uses_gas_coin = True
-                    for amount_arg in cmd_val.Amount:
-                        if amount_arg.enum_name == "Input":
-                            idx = amount_arg.value
-                            if idx < len(inputs_list):
-                                call_arg = inputs_list[idx]
-                                if call_arg.enum_name == "Pure":
-                                    raw = bytes(call_arg.value)
-                                    gas_source_draw += int.from_bytes(raw, "little")
-                                else:
-                                    _log.warning(
-                                        "Non-pure input in SplitCoin(GasCoin): "
-                                        "gas-source draw not tracked for this amount"
-                                    )
-                        else:
-                            _log.warning(
-                                "Dynamic amount in SplitCoin(GasCoin): "
-                                "gas-source draw not tracked for this amount"
-                            )
-                else:
-                    for amount_arg in cmd_val.Amount:
-                        if amount_arg.enum_name == "GasCoin":
-                            uses_gas_coin = True
+                used, draw = self._accumulate_split_coin_draw(cmd_val, inputs_list)
+                uses_gas_coin = uses_gas_coin or used
+                gas_source_draw += draw
             elif cmd_name == "MergeCoins":
-                if cmd_val.ToCoin.enum_name == "GasCoin":
-                    uses_gas_coin = True
-                for from_coin in cmd_val.FromCoins:
-                    if from_coin.enum_name == "GasCoin":
-                        uses_gas_coin = True
+                uses_gas_coin = uses_gas_coin or cmd_val.ToCoin.enum_name == "GasCoin" or self._any_arg_is_gas_coin(cmd_val.FromCoins)
             elif cmd_name == "TransferObjects":
-                for obj in cmd_val.Objects:
-                    if obj.enum_name == "GasCoin":
-                        uses_gas_coin = True
-                if cmd_val.Address.enum_name == "GasCoin":
-                    uses_gas_coin = True
+                uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(cmd_val.Objects) or cmd_val.Address.enum_name == "GasCoin"
             elif cmd_name == "MoveCall":
-                for arg in cmd_val.Arguments:
-                    if arg.enum_name == "GasCoin":
-                        uses_gas_coin = True
+                uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(cmd_val.Arguments)
             elif cmd_name == "MakeMoveVec":
-                for item in cmd_val.Vector:
-                    if item.enum_name == "GasCoin":
-                        uses_gas_coin = True
+                uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(cmd_val.Vector)
 
         return uses_gas_coin, gas_source_draw
 

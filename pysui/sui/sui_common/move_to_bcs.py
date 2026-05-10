@@ -209,6 +209,19 @@ class MoveDataType:
             fetch_decl[self._DECL_PARMS] = parm_list
             s_field.data = new_name
 
+    def _resolve_vector_type_param(
+        self, fname: str, idx: int, type_parms: Any
+    ) -> tuple:
+        """Resolve a TYPE_PARAMETER index to a concrete field when inside a vector."""
+        if not (type_parms and isinstance(type_parms, list) and idx < len(type_parms)):
+            raise NotImplementedError(f"Vector of TYPE_PARAMETER {idx} without type_parms for '{fname}'.")
+        concrete = type_parms[idx]
+        if concrete.type in _PROTO_SCALAR_BODY_TYPES:
+            return self._handle_simple(fname, concrete), []
+        if concrete.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+            return self._handle_reference(fname, concrete)
+        raise NotImplementedError(f"Vector of concrete type {concrete.type} not handled for '{fname}'.")
+
     def _handle_vector(
         self, fname: str, fbody: sui_prot.OpenSignatureBody, type_parms: Any
     ) -> tuple[MoveFieldNode, list]:
@@ -228,19 +241,9 @@ class MoveDataType:
             if s_fetch and type_parms:
                 self._build_parmed_assets(s_field, s_fetch[0], type_parms)
         elif current.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
-            idx = current.type_parameter
-            if type_parms and isinstance(type_parms, list) and idx < len(type_parms):
-                concrete = type_parms[idx]
-                if concrete.type in _PROTO_SCALAR_BODY_TYPES:
-                    s_field = self._handle_simple(fname, concrete)
-                    s_fetch = []
-                elif concrete.type == sui_prot.OpenSignatureBodyType.DATATYPE:
-                    voft = True
-                    s_field, s_fetch = self._handle_reference(fname, concrete)
-                else:
-                    raise NotImplementedError(f"Vector of concrete type {concrete.type} not handled for '{fname}'.")
-            else:
-                raise NotImplementedError(f"Vector of TYPE_PARAMETER {idx} without type_parms for '{fname}'.")
+            s_field, s_fetch = self._resolve_vector_type_param(fname, current.type_parameter, type_parms)
+            if not isinstance(s_field, MoveScalarField):
+                voft = True
         else:
             raise NotImplementedError(f"Vector of {current.type} not handled.")
         return (
@@ -263,6 +266,18 @@ class MoveDataType:
             return [{self._FETCH_DECL: fq}]
         return []
 
+    @staticmethod
+    def _build_parm_names(type_parameter_instantiation) -> list[str]:
+        """Build mangled name components from type parameter instantiation."""
+        parm_names = []
+        for tp in type_parameter_instantiation:
+            if tp.type in _PROTO_SCALAR_BODY_TYPES:
+                ref = _PROTO_SCALAR_REFS.get(tp.type, str(tp.type))
+                parm_names.append(ref.split(".")[-1] if "." in ref else ref)
+            elif tp.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+                parm_names.append(tp.type_name.split("::")[-1])
+        return parm_names
+
     def _handle_reference(
         self,
         fname: str,
@@ -282,14 +297,7 @@ class MoveDataType:
             f_field = MoveOptionalField(ident=fname, data=fbody)
         else:
             _, _, type_name = targ.split("::")
-            parm_names = []
-            for tp in fbody.type_parameter_instantiation:
-                if tp.type in _PROTO_SCALAR_BODY_TYPES:
-                    ref = _PROTO_SCALAR_REFS.get(tp.type, str(tp.type))
-                    parm_names.append(ref.split(".")[-1] if "." in ref else ref)
-                elif tp.type == sui_prot.OpenSignatureBodyType.DATATYPE:
-                    parm_names.append(tp.type_name.split("::")[-1])
-                # Skip TYPE_PARAMETER (abstract) — _build_parmed_assets fills concrete names
+            parm_names = self._build_parm_names(fbody.type_parameter_instantiation)
             mangled = BcsAst.struct_field_type_proto(type_name, parm_names)
             f_field = MoveStructureField(fname, mangled)
             f_fetch.append(
@@ -300,6 +308,33 @@ class MoveDataType:
                 }
             )
         return f_field, f_fetch
+
+    def _dispatch_field(
+        self,
+        fname: str,
+        fbody: sui_prot.OpenSignatureBody,
+        type_parms: dict | None = None,
+    ) -> tuple:
+        """Dispatch a single field body to the appropriate handler."""
+        if fbody.type in _PROTO_SCALAR_BODY_TYPES:
+            return self._handle_simple(fname, fbody), []
+        if fbody.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+            return self._handle_reference(fname, fbody)
+        if fbody.type == sui_prot.OpenSignatureBodyType.VECTOR:
+            vec_parms = type_parms.get(self._DECL_PARMS) if type_parms else None
+            return self._handle_vector(fname, fbody, vec_parms)
+        if fbody.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
+            idex = fbody.type_parameter
+            if type_parms and (dparm := type_parms.get(self._DECL_PARMS)):
+                if isinstance(dparm, list) and idex < len(dparm):
+                    of_type = dparm[idex]
+                    if of_type.type in _PROTO_SCALAR_BODY_TYPES:
+                        return self._handle_simple(fname, of_type), []
+                    return self._handle_reference(fname, of_type)
+            logger.warning(f"TYPE_PARAMETER {idex} with no concrete params for field '{fname}'")
+            return None, []
+        logger.warning(f"Unhandled field type {fbody.type} for '{fname}'")
+        return None, []
 
     def _process_structure(
         self,
@@ -315,38 +350,11 @@ class MoveDataType:
         fetch_fields: list[dict] = []
 
         for field in descriptor.fields:
-            fname = field.name
-            fbody = field.type  # OpenSignatureBody
-            if fbody.type in _PROTO_SCALAR_BODY_TYPES:
-                direct_fields.append(self._handle_simple(fname, fbody))
-            elif fbody.type == sui_prot.OpenSignatureBodyType.DATATYPE:
-                s_field, s_fetch = self._handle_reference(fname, fbody)
+            s_field, s_fetch = self._dispatch_field(field.name, field.type, type_parms)
+            if s_field:
                 direct_fields.append(s_field)
-                if s_fetch:
-                    fetch_fields.extend(s_fetch)
-            elif fbody.type == sui_prot.OpenSignatureBodyType.VECTOR:
-                s_field, s_fetch = self._handle_vector(
-                    fname, fbody, type_parms.get(self._DECL_PARMS) if type_parms else None
-                )
-                direct_fields.append(s_field)
-                if s_fetch:
-                    fetch_fields.extend(s_fetch)
-            elif fbody.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
-                idex = fbody.type_parameter
-                if type_parms and (dparm := type_parms.get(self._DECL_PARMS)):
-                    if isinstance(dparm, list) and idex < len(dparm):
-                        of_type = dparm[idex]
-                        if of_type.type in _PROTO_SCALAR_BODY_TYPES:
-                            direct_fields.append(self._handle_simple(fname, of_type))
-                        else:
-                            s_field, s_fetch = self._handle_reference(fname, of_type)
-                            direct_fields.append(s_field)
-                            if s_fetch:
-                                fetch_fields.extend(s_fetch)
-                else:
-                    logger.warning(f"TYPE_PARAMETER {idex} with no concrete params for field '{fname}'")
-            else:
-                logger.warning(f"Unhandled field type {fbody.type} for '{fname}'")
+            if s_fetch:
+                fetch_fields.extend(s_fetch)
         return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
 
     def _process_enum(
@@ -363,22 +371,11 @@ class MoveDataType:
             vname = variant.name
             variant_members: list = []
             for field in variant.fields:
-                fname = field.name
-                fbody = field.type  # OpenSignatureBody
-                if fbody.type in _PROTO_SCALAR_BODY_TYPES:
-                    variant_members.append(self._handle_simple(fname, fbody))
-                elif fbody.type == sui_prot.OpenSignatureBodyType.DATATYPE:
-                    s_field, s_fetch = self._handle_reference(fname, fbody)
+                s_field, s_fetch = self._dispatch_field(field.name, field.type)
+                if s_field:
                     variant_members.append(s_field)
-                    if s_fetch:
-                        fetch_fields.extend(s_fetch)
-                elif fbody.type == sui_prot.OpenSignatureBodyType.VECTOR:
-                    s_field, s_fetch = self._handle_vector(fname, fbody, None)
-                    variant_members.append(s_field)
-                    if s_fetch:
-                        fetch_fields.extend(s_fetch)
-                else:
-                    logger.warning(f"Unhandled enum variant field type {fbody.type} for '{fname}'")
+                if s_fetch:
+                    fetch_fields.extend(s_fetch)
             direct_variants.append(MoveVariantField(vname, variant_members))
         return MoveEnumNode(enum_name, direct_variants, type_decl), fetch_fields
 
@@ -406,30 +403,50 @@ class MoveDataType:
     ) -> tuple[str, list, MoveStructureNode | None]:
         """."""
         more_fetch = []
-        last_child = None
         children: list = []
         if isinstance(initial_target, mtypes.Structure):
-            return initial_target.value_type, more_fetch, last_child
-        else:
-            dystruct: mtypes.GenericStructure = initial_target
-            name_list: list = ["GenericStructure"]
-            first_field = None
-
-            for key, value in dystruct.properties.items():
-                if bcse.MOVE_STD_SCALAR_REFS.get(value):
-                    name_list.append(value)
-                    children.append(self._handle_simple(key, value))
+            return initial_target.value_type, more_fetch, None
+        dystruct: mtypes.GenericStructure = initial_target
+        name_list: list = ["GenericStructure"]
+        first_field = None
+        for key, value in dystruct.properties.items():
+            if bcse.MOVE_STD_SCALAR_REFS.get(value):
+                name_list.append(value)
+                children.append(self._handle_simple(key, value))
+            else:
+                _, _, ftype = value.split("::")
+                name_list.append(ftype)
+                children.append(self._handle_simple(key, ftype))
+                if first_field:
+                    more_fetch.append({self._FETCH_DECL: value})
                 else:
-                    _, _, ftype = value.split("::")
-                    name_list.append(ftype)
-                    children.append(self._handle_simple(key, ftype))
-                    if first_field:
-                        more_fetch.append({self._FETCH_DECL: value})
-                    else:
-                        first_field = value
+                    first_field = value
+        last_child = MoveStructureNode("_".join(name_list), children)
+        return first_field, more_fetch, last_child
 
-            last_child = MoveStructureNode("_".join(name_list), children)
-            return first_field, more_fetch, last_child
+    async def _process_fetch_queue(self, more_fetch: list, handled: set) -> None:
+        """Process the growing dependency queue, fetching each unresolved type."""
+        def _growing_len(xs):
+            i = 0
+            while i < len(xs):
+                yield xs[i]
+                i += 1
+
+        for x in _growing_len(more_fetch):
+            decl = x[self._FETCH_DECL]
+            decl_type_name = x.get(self._DECL_TYPE_NAME, decl)
+            if decl_type_name.count(":"):
+                decl_type_name = decl_type_name.split("::")[-1]
+            if decl_type_name not in handled:
+                type_node, _more_fetch = await self._fetch_type(
+                    client=self.client, move_type_decl=x
+                )
+                self.children.insert(0, type_node)
+                if decl_type_name == decl:
+                    decl_type_name = type_node.ident
+                handled.add(decl_type_name)
+                if _more_fetch:
+                    more_fetch.extend(_more_fetch)
 
     async def parse_move_target(self) -> str:
         """Parse the move target creating an IR and returning entry point classname.
@@ -453,31 +470,7 @@ class MoveDataType:
             if add_fetch:
                 more_fetch.extend(add_fetch)
 
-            def _growing_len(xs):
-                """Generator for potentially growing list of dependencies"""
-                i = 0
-                while i < len(xs):
-                    yield xs[i]
-                    i += 1
-
-            # For each predecessor (growing list)
-            for x in _growing_len(more_fetch):
-                # Build predecessor data type
-                decl = x[self._FETCH_DECL]
-                decl_type_name = x.get(self._DECL_TYPE_NAME, decl)
-                if decl_type_name.count(":"):
-                    decl_type_name = decl_type_name.split("::")[-1]
-                if decl_type_name not in handled:
-                    type_node, _more_fetch = await self._fetch_type(
-                        client=self.client, move_type_decl=x
-                    )
-                    self.children.insert(0, type_node)
-                    if decl_type_name == decl:
-                        decl_type_name = type_node.ident
-                    handled.add(decl_type_name)
-                    # Found more predecessors
-                    if _more_fetch:
-                        more_fetch.extend(_more_fetch)
+            await self._process_fetch_queue(more_fetch, handled)
 
             if last_child:
                 self.children.append(last_child)
@@ -618,6 +611,24 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         container = self.peek_first()
         container.elts.append(expr)
 
+    def _resolve_optional_vector_field(self, opt_name: str, type_parm) -> ast.expr:
+        """Resolve a vector type parameter inside an Optional field to an ast type expression."""
+        depth_level = 0
+        current = type_parm
+        while current.type == sui_prot.OpenSignatureBodyType.VECTOR:
+            depth_level += 1
+            current = current.type_parameter_instantiation[0]
+        if current.type in _PROTO_SCALAR_BODY_TYPES:
+            inner_field = MoveScalarField(opt_name, _PROTO_SCALAR_REFS.get(current.type, str(current.type)))
+        elif current.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+            fq_ref = current.type_name
+            _, _, short_name = fq_ref.split("::")
+            inner_field = MoveStructureField(opt_name, bcse.MOVE_STD_STRUCT_REFS.get(fq_ref, short_name))
+        else:
+            raise NotImplementedError(f"Option<vector<{current.type}>> not handled.")
+        vec_node = MoveVectorField(ident=opt_name, levels=depth_level, base_data=inner_field)
+        return BcsAst.generate_nested_vector(depth_level, self, vec_node)
+
     def visit_MoveOptionalField(self, node: MoveOptionalField):
         """Generate an unknown ref."""
         # From the immediate class, get the classname
@@ -645,21 +656,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
                     self.visit(depedendent)
                 ast_type = ast.Name(short_name, ast.Load())
         elif type_parm.type == sui_prot.OpenSignatureBodyType.VECTOR:
-            depth_level = 0
-            current = type_parm
-            while current.type == sui_prot.OpenSignatureBodyType.VECTOR:
-                depth_level += 1
-                current = current.type_parameter_instantiation[0]
-            if current.type in _PROTO_SCALAR_BODY_TYPES:
-                inner_field = MoveScalarField(opt_name, _PROTO_SCALAR_REFS.get(current.type, str(current.type)))
-            elif current.type == sui_prot.OpenSignatureBodyType.DATATYPE:
-                fq_ref = current.type_name
-                _, _, short_name = fq_ref.split("::")
-                inner_field = MoveStructureField(opt_name, bcse.MOVE_STD_STRUCT_REFS.get(fq_ref, short_name))
-            else:
-                raise NotImplementedError(f"Option<vector<{current.type}>> not handled.")
-            vec_node = MoveVectorField(ident=opt_name, levels=depth_level, base_data=inner_field)
-            ast_type = BcsAst.generate_nested_vector(depth_level, self, vec_node)
+            ast_type = self._resolve_optional_vector_field(opt_name, type_parm)
         elif type_parm.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
             logger.warning(f"`{opt_name}` Optional class may require fixup.")
             cdoc = "_type Any MUST be replaced with concrete type."

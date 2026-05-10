@@ -107,6 +107,69 @@ class _BaseSerialExecutor(_BaseExecutor, ABC):
             return True
         return False
 
+    async def _try_build_with_replenishment(
+        self, tx
+    ) -> tuple[Optional[str], Optional[ExecutorError], Optional[Exception]]:
+        """Attempt to build a transaction, retrying once after coin replenishment on failure."""
+        try:
+            tx_str = await self._cache.build_transaction(tx, self._signing_block, self._default_gas_budget)
+            return tx_str, None, None
+        except Exception as exc:
+            logger.warning("build_transaction failed: %s", exc)
+            replenished = await self._try_replenish_coins()
+            if not replenished:
+                return None, ExecutorError.BUILDING_ERROR, exc
+            try:
+                tx_str = await self._cache.build_transaction(tx, self._signing_block, self._default_gas_budget)
+                return tx_str, None, None
+            except Exception as exc2:
+                return None, ExecutorError.BUILDING_ERROR, exc2
+
+    def _update_tracked_balance(self, effects: TransactionEffects) -> None:
+        """Deduct net gas cost of executed transaction from tracked balance."""
+        gas = effects.gas_used
+        net_gas = gas.computation_cost + gas.storage_cost - gas.storage_rebate
+        self._tracked_balance = max(0, self._tracked_balance - net_gas)
+
+    async def _check_balance_threshold(
+        self,
+        idx: int,
+        txns: list,
+        results: list,
+        effects: TransactionEffects,
+    ) -> bool:
+        """Check balance against threshold and invoke replenishment callback if needed.
+
+        Returns True if the caller should return results immediately.
+        """
+        if self._min_balance_threshold is None or self._tracked_balance >= self._min_balance_threshold:
+            return False
+        halt_reason = None
+        ctx = self._build_executor_context()
+        if self._on_coins_low is not None:
+            new_coins = await self._on_coins_low(ctx)
+            if new_coins:
+                await self._cache.invalidate_gas_coins()
+                refreshed = await self._fetch_initial_balance()
+                if refreshed is not None:
+                    self._tracked_balance = refreshed
+            else:
+                halt_reason = "coin replenishment declined"
+        elif self._on_balance_low is not None:
+            new_addr = await self._on_balance_low(ctx)
+            if new_addr:
+                refreshed = await self._fetch_initial_balance()
+                if refreshed is not None:
+                    self._tracked_balance = refreshed
+            else:
+                halt_reason = "balance replenishment declined"
+        if halt_reason:
+            results.append(effects)
+            for remaining_idx in range(idx + 1, len(txns)):
+                results.append(ExecutionSkipped(transaction_index=remaining_idx, reason=halt_reason))
+            return True
+        return False
+
     async def execute_transactions(
         self,
         txns: list,
@@ -122,70 +185,20 @@ class _BaseSerialExecutor(_BaseExecutor, ABC):
             if halt:
                 results.append(ExecutionSkipped(transaction_index=idx, reason="Halt after error"))
                 continue
-
+            tx_str, build_err, exc = await self._try_build_with_replenishment(tx)
+            if build_err is not None:
+                results.append((build_err, exc))
+                halt = True
+                continue
             try:
-                tx_str = await self._cache.build_transaction(tx, self._signing_block, self._default_gas_budget)
-            except Exception as exc:
-                logger.warning("build_transaction failed: %s", exc)
-                # Try coin replenishment once
-                replenished = await self._try_replenish_coins()
-                if replenished:
-                    try:
-                        tx_str = await self._cache.build_transaction(tx, self._signing_block, self._default_gas_budget)
-                    except Exception as exc2:
-                        results.append((ExecutorError.BUILDING_ERROR, exc2))
-                        halt = True
-                        continue
-                else:
-                    results.append((ExecutorError.BUILDING_ERROR, exc))
-                    halt = True
-                    continue
-
-            try:
-                # Sign
                 sigs = self._signing_block.get_signatures(config=self._client.config, tx_bytes=tx_str)
                 effects = await self._execute_raw(tx_str, sigs)
                 self._last_digest = effects.transaction_digest
                 await self._apply_effects(effects)
-
-                # Update tracked balance
-                gas = effects.gas_used
-                net_gas = gas.computation_cost + gas.storage_cost - gas.storage_rebate
-                self._tracked_balance = max(0, self._tracked_balance - net_gas)
-
-                # Check balance threshold and call appropriate callback
-                if (
-                    self._min_balance_threshold is not None
-                    and self._tracked_balance < self._min_balance_threshold
-                ):
-                    halt_reason = None
-                    ctx = self._build_executor_context()
-                    if self._on_coins_low is not None:
-                        new_coins = await self._on_coins_low(ctx)
-                        if new_coins:
-                            await self._cache.invalidate_gas_coins()
-                            refreshed = await self._fetch_initial_balance()
-                            if refreshed is not None:
-                                self._tracked_balance = refreshed
-                        else:
-                            halt_reason = "coin replenishment declined"
-                    elif self._on_balance_low is not None:
-                        new_addr = await self._on_balance_low(ctx)
-                        if new_addr:
-                            refreshed = await self._fetch_initial_balance()
-                            if refreshed is not None:
-                                self._tracked_balance = refreshed
-                        else:
-                            halt_reason = "balance replenishment declined"
-
-                    if halt_reason:
-                        results.append(effects)
-                        for remaining_idx in range(idx + 1, len(txns)):
-                            results.append(ExecutionSkipped(transaction_index=remaining_idx, reason=halt_reason))
-                        return results
-
+                self._update_tracked_balance(effects)
+                if await self._check_balance_threshold(idx, txns, results, effects):
+                    return results
                 results.append(effects)
-
             except Exception as exc:
                 logger.warning("execute_raw failed: %s", exc)
                 results.append((ExecutorError.EXECUTING_ERROR, exc))

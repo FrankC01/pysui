@@ -296,6 +296,13 @@ class ProgrammableTransactionBuilder:
 
     @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
     @versionchanged(version="0.30.2", reason="Remove reuse of identical pure inputs")
+    def _find_duplicate_pure(self, value) -> Optional[int]:
+        """Return the index of an existing pure input matching value, or None."""
+        for e_index, evalue in enumerate(self.inputs.values()):
+            if value == evalue.value:
+                return e_index
+        return None
+
     def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
         """input_pure registers a pure input argument in the inputs collection.
 
@@ -309,19 +316,21 @@ class ProgrammableTransactionBuilder:
         out_index = len(self.inputs)
         if key.enum_name == "Pure":
             if self.compress_inputs:
-                e_index = 0
-                for _ekey, evalue in self.inputs.items():
-                    if key.value == evalue.value:
-                        logger.debug(
-                            f"Duplicate object input found at index {e_index}, reusing"
-                        )
-                        return bcs.Argument("Input", e_index)
-                    e_index += 1
+                if (e_index := self._find_duplicate_pure(key.value)) is not None:
+                    logger.debug(f"Duplicate object input found at index {e_index}, reusing")
+                    return bcs.Argument("Input", e_index)
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
         else:
             raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
         logger.debug(f"New pure input created at index {out_index}")
         return bcs.Argument("Input", out_index)
+
+    def _find_duplicate_obj(self, object_arg) -> Optional[int]:
+        """Return the index of an existing object input matching object_arg, or None."""
+        for e_index, evalue in enumerate(self.inputs.values()):
+            if object_arg == evalue.value:
+                return e_index
+        return None
 
     @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
     def input_obj(
@@ -334,14 +343,9 @@ class ProgrammableTransactionBuilder:
         out_index = len(self.inputs)
         if key.enum_name == "Object" and isinstance(object_arg, bcs.ObjectArg):
             if self.compress_inputs:
-                e_index = 0
-                for _ekey, evalue in self.inputs.items():
-                    if object_arg == evalue.value:
-                        logger.debug(
-                            f"Duplicate object input found at index {e_index}, reusing"
-                        )
-                        return bcs.Argument("Input", e_index)
-                    e_index += 1
+                if (e_index := self._find_duplicate_obj(object_arg)) is not None:
+                    logger.debug(f"Duplicate object input found at index {e_index}, reusing")
+                    return bcs.Argument("Input", e_index)
             self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
             self.objects_registry[key.value.to_address_str()] = object_arg.enum_name
         elif key.enum_name == "Unresolved" and isinstance(
@@ -462,6 +466,34 @@ class ProgrammableTransactionBuilder:
 
         return self.command(bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs)))
 
+    def _resolve_arg(self, arg) -> Optional[bcs.Argument]:
+        """Resolve a single move_call argument to a bcs.Argument, or None for skipped types."""
+        if isinstance(arg, bcs.BuilderArg):
+            return self.input_pure(arg)
+        if isinstance(arg, bcs.UnresolvedObjectArg):
+            return self.input_obj_from_unresolved_object(arg)
+        if isinstance(arg, bcs.UnresolvedOptional):
+            return None
+        if isinstance(arg, bcs.ObjectArg):
+            return self.input_obj_from_objarg(arg)
+        if isinstance(arg, bcs.Optional) and isinstance(arg.value, bcs.ObjectArg):
+            return self.input_obj_from_objarg(arg)
+        if isinstance(arg, bcs.Optional) and not isinstance(arg.value, bcs.ObjectArg):
+            return self.input_pure(PureInput.as_input(arg))
+        if isinstance(arg, bcs.FundsWithdrawal):
+            return self.input_obj_from_withdrawal(arg)
+        if isinstance(arg, tuple):
+            return self.input_obj(*arg)
+        if isinstance(arg, bcs.Argument):
+            return arg
+        if isinstance(arg, tuple(bcs.OPTIONAL_SCALARS)):
+            return self.input_pure(PureInput.as_input(arg))
+        if isinstance(arg, list):
+            return self.input_pure(PureInput.as_input(arg))
+        if isinstance(arg, bcs.Variable):
+            return self.input_pure(PureInput.as_input(arg))
+        raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
+
     @versionchanged(version="0.17.0", reason="Add result count for correct arg return.")
     def move_call(  # pylint: disable=too-many-branches
         self,
@@ -484,34 +516,8 @@ class ProgrammableTransactionBuilder:
         logger.debug("Creating MakeCall transaction")
         argrefs: list[bcs.Argument] = []
         for arg in arguments:
-            if isinstance(arg, bcs.BuilderArg):
-                argrefs.append(self.input_pure(arg))
-            elif isinstance(arg, bcs.UnresolvedObjectArg):
-                argrefs.append(self.input_obj_from_unresolved_object(arg))
-            elif isinstance(arg, bcs.UnresolvedOptional):
-                pass
-            elif isinstance(arg, bcs.ObjectArg):
-                argrefs.append(self.input_obj_from_objarg(arg))
-            elif isinstance(arg, bcs.Optional) and isinstance(arg.value, bcs.ObjectArg):
-                argrefs.append(self.input_obj_from_objarg(arg))
-            elif isinstance(arg, bcs.Optional) and not isinstance(
-                arg.value, bcs.ObjectArg
-            ):
-                argrefs.append(self.input_pure(PureInput.as_input(arg)))
-            elif isinstance(arg, bcs.FundsWithdrawal):
-                argrefs.append(self.input_obj_from_withdrawal(arg))
-            elif isinstance(arg, tuple):
-                argrefs.append(self.input_obj(*arg))
-            elif isinstance(arg, bcs.Argument):
-                argrefs.append(arg)
-            elif isinstance(arg, tuple(bcs.OPTIONAL_SCALARS)):
-                argrefs.append(self.input_pure(PureInput.as_input(arg)))
-            elif isinstance(arg, list):
-                argrefs.append(self.input_pure(PureInput.as_input(arg)))
-            elif isinstance(arg, bcs.Variable):
-                argrefs.append(self.input_pure(PureInput.as_input(arg)))
-            else:
-                raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
+            if (resolved := self._resolve_arg(arg)) is not None:
+                argrefs.append(resolved)
 
         return self.command(
             bcs.Command(
@@ -591,6 +597,16 @@ class ProgrammableTransactionBuilder:
             bcs.Command("MergeCoins", bcs.MergeCoins(to_coin, from_args))
         )
 
+    def _resolve_obj_to_argument(self, arg) -> bcs.Argument:
+        """Resolve an ObjectArg, UnresolvedObjectArg, or tuple to a bcs.Argument."""
+        if isinstance(arg, bcs.Argument):
+            return arg
+        if isinstance(arg, bcs.UnresolvedObjectArg):
+            return self.input_obj_from_unresolved_object(arg)
+        if isinstance(arg, bcs.ObjectArg):
+            return self.input_obj_from_objarg(arg)
+        return self.input_obj(*arg)
+
     def transfer_objects(
         self,
         recipient: Union[bcs.BuilderArg, bcs.Argument],
@@ -615,13 +631,7 @@ class ProgrammableTransactionBuilder:
         from_args: list[bcs.Argument] = []
         if isinstance(object_ref, list):
             for fcoin in object_ref:
-                if isinstance(fcoin, bcs.UnresolvedObjectArg):
-                    fcoin = self.input_obj_from_unresolved_object(fcoin)
-                elif isinstance(fcoin, bcs.ObjectArg):
-                    fcoin = self.input_obj_from_objarg(fcoin)
-                elif isinstance(fcoin, tuple):
-                    fcoin = self.input_obj(*fcoin)
-                from_args.append(fcoin)
+                from_args.append(self._resolve_obj_to_argument(fcoin))
         else:
             from_args.append(object_ref)
         return self.command(
@@ -657,14 +667,7 @@ class ProgrammableTransactionBuilder:
                 coin_arg = from_coin
         else:
             coin_arg = from_coin
-        if isinstance(coin_arg, bcs.Argument):
-            pass
-        elif isinstance(coin_arg, bcs.UnresolvedObjectArg):
-            coin_arg = self.input_obj_from_unresolved_object(coin_arg)
-        elif isinstance(coin_arg, bcs.ObjectArg):
-            coin_arg = self.input_obj_from_objarg(coin_arg)
-        else:
-            coin_arg = self.input_obj(*from_coin)
+        coin_arg = self._resolve_obj_to_argument(coin_arg)
         return self.command(
             bcs.Command(
                 "TransferObjects",

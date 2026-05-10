@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sample utilities wallet, mtobcs, async-gas, sgqls, smash and splay updated for UCI compliance
 - Sphinx / ReadTheDocs documentation re-architected for consistency and improved organization
 - Documentation updated
+- Refactored code to reduce CCR001 Cognitive Complexity violations
 
 ### Fixed
 

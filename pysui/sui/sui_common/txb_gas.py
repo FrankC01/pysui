@@ -185,20 +185,15 @@ async def async_get_gas_data(
     # Resolve coin list and budget — parallel when both are unspecified.
     if use_coins is None and budget is None:
         use_coins, budget = await asyncio.gather(_fetch_gas(), _simulate_budget())
-    elif use_coins is None:
-        use_coins = await _fetch_gas()
-    elif budget is None:
-        if use_coins and all(isinstance(x, str) for x in use_coins):
+    else:
+        if use_coins is None:
+            use_coins = await _fetch_gas()
+        elif use_coins and all(isinstance(x, str) for x in use_coins):
             # String IDs: fetch all gas coins then filter to the requested subset.
             all_gas = await _fetch_gas()
-            requested = set(use_coins)
-            use_coins = [x for x in all_gas if x.object_id in requested]
-        budget = await _simulate_budget()
-    else:
-        if use_coins and all(isinstance(x, str) for x in use_coins):
-            all_gas = await _fetch_gas()
-            requested = set(use_coins)
-            use_coins = [x for x in all_gas if x.object_id in requested]
+            use_coins = [x for x in all_gas if x.object_id in set(use_coins)]
+        if budget is None:
+            budget = await _simulate_budget()
 
     required = budget + gas_source_draw
 
