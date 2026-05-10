@@ -168,27 +168,24 @@ class GetAddressCoinBalances(PGQL_QueryNode):
     """
 
     def __init__(
-        self, *, owner: str, next_page: Optional[pgql_type.PagingCursor] = None
+        self, *, owner: str, next_page_token: bytes | None = None
     ):
         """QueryNode initializer.
 
         :param owner: the owner's Sui address
         :type owner: str
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
         """
         self.owner = owner
-        self.next_page = next_page
+        self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
         qres = schema.Query.address(address=self.owner).alias("qres")
         balance_connection = schema.Address.balances
-        if self.next_page:
-            balance_connection(after=self.next_page.endCursor)
+        if self.next_page_token:
+            balance_connection(after=self.next_page_token.decode())
 
         pg_cursor = frag.PageCursor()
 
@@ -276,7 +273,7 @@ class GetCoins(PGQL_QueryNode):
         *,
         owner: str,
         coin_type: Optional[str] = "0x2::coin::Coin<0x2::sui::SUI>",
-        next_page: Optional[pgql_type.PagingCursor] = None,
+        next_page_token: bytes | None = None,
     ):
         """QueryNode initializer.
 
@@ -284,24 +281,21 @@ class GetCoins(PGQL_QueryNode):
         :type owner: str
         :param coin_type: The fully qualified coin type to use in filtering, defaults to "0x2::coin::Coin<0x2::sui::SUI>"
         :type coin_type: str, optional
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
         """
         self.owner = owner
         self.coin_type = coin_type
-        self.next_page = next_page
+        self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
         qres = schema.Query.address(address=self.owner).alias("qres")
         coin_connection = schema.Address.objects(filter={"type": self.coin_type}).alias(
             "coins"
         )
-        if self.next_page:
-            coin_connection(after=self.next_page.endCursor)
+        if self.next_page_token:
+            coin_connection(after=self.next_page_token.decode())
 
         std_coin = frag.StandardCoin()
         pg_cursor = frag.PageCursor()
@@ -331,19 +325,19 @@ class GetGas(GetCoins):
         self,
         *,
         owner: str,
-        next_page: Optional[pgql_type.PagingCursor] = None,
+        next_page_token: bytes | None = None,
     ) -> None:
         """__init__ Initialize GetGas object.
 
         :param owner: Owner's Sui address
         :type owner: str
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
         """
         super().__init__(
             owner=owner,
             coin_type="0x2::coin::Coin<0x2::sui::SUI>",
-            next_page=next_page,
+            next_page_token=next_page_token,
         )
 
 
@@ -455,7 +449,7 @@ class GetObjectsForTypeSC(GetObjectsForType):
         *,
         owner: str,
         object_type: str,
-        next_page: Optional[pgql_type.PagingCursor] = None,
+        next_page_token: bytes | None = None,
     ):
         """QueryNode initializer with owner filter.
 
@@ -463,34 +457,32 @@ class GetObjectsForTypeSC(GetObjectsForType):
         :type owner: str
         :param object_type: The fully qualified type (i.e. `"0x2::coin::Coin<0x2::sui::SUI>"`)
         :type object_type: str
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
         """
         self.owner = owner
         self.object_type = object_type
-        self.next_page = next_page
+        self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest with owner and type filters."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
         std_object = frag.StandardObject().fragment(schema)
         pg_cursor = frag.PageCursor().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
 
-        if self.next_page:
+        if self.next_page_token:
             obj_connection = schema.Query.objects(
                 filter={"owner": self.owner, "type": self.object_type},
-                after=self.next_page.endCursor,
+                after=self.next_page_token.decode(),
             )
         else:
             obj_connection = schema.Query.objects(
                 filter={"owner": self.owner, "type": self.object_type}
-            ).select(
-                cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
-                objects_data=schema.ObjectConnection.nodes.select(std_object),
             )
+        obj_connection.select(
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(std_object),
+        )
 
         return dsl_gql(pg_cursor, std_object, base_object, DSLQuery(obj_connection))
 
@@ -672,26 +664,23 @@ class GetObjectsOwnedByAddress(PGQL_QueryNode):
     """Returns data for all objects by owner."""
 
     def __init__(
-        self, *, owner: str, next_page: Optional[pgql_type.PagingCursor] = None
+        self, *, owner: str, next_page_token: bytes | None = None
     ):
         """QueryNode initializer.
 
         :param owner: Owner's Sui address
         :type owner: str
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
         """
         self.owner = owner
-        self.next_page = next_page
+        self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
         qres = schema.Query.objects(filter={"owner": self.owner})
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
+        if self.next_page_token:
+            qres(after=self.next_page_token.decode())
 
         std_object = frag.StandardObject().fragment(schema)
         base_object = frag.BaseObject().fragment(schema)
@@ -930,29 +919,27 @@ class GetDynamicFields(PGQL_QueryNode):
         self,
         *,
         object_id: str,
-        next_page: Optional[pgql_type.PagingCursor] = None,
+        next_page_token: bytes | None = None,
     ) -> None:
         """QueryNode initializer to featch dynamic fields.
 
         :param object_id: The object id that holds dynamic fields
         :type object_id: str
-        :param next_page: A paging directive, defaults to None
-        :type next_page: Optional[pgql_type.PagingCursor], optional
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
         """
         self.object_id = object_id
-        self.next_page = next_page
+        self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Return a query for dynamic fields."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
         qres = schema.Query.object(address=self.object_id)
         qres = qres.select(
             schema.Object.address.alias("parent_object_id"), schema.Object.version
         )
         dfield_connection = schema.Object.dynamicFields
-        if self.next_page:
-            dfield_connection(after=self.next_page.endCursor)
+        if self.next_page_token:
+            dfield_connection(after=self.next_page_token.decode())
 
         pg_cursor = frag.PageCursor().fragment(schema)
         dfield_connection.select(
@@ -1451,25 +1438,22 @@ class GetTransactionKindSC(GetTxKind):
 class GetDelegatedStakes(PGQL_QueryNode):
     """GetDelegatedStakes return all [StakedSui] coins for owner."""
 
-    def __init__(self, owner: str, next_page: Optional[pgql_type.PagingCursor] = None):
+    def __init__(self, owner: str, next_page_token: bytes | None = None):
         """QueryNode initializer.
 
         :param owner: Owner's Sui address
         :type owner: str
-        :param next_page: _description_, defaults to None
-        :type next_page: Optional[pgql_type.PagingCursor], optional
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
         """
         self.owner = owner
-        self.next_page = next_page
+        self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQL DSL request."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        if self.next_page:
+        if self.next_page_token:
             qres = schema.Query.objects(
-                after=self.next_page.endCursor,
+                after=self.next_page_token.decode(),
                 filter={"owner": self.owner, "type": "0x3::staking_pool::StakedSui"},
             )
         else:
@@ -2169,27 +2153,24 @@ class GetPackageVersions(PGQL_QueryNode):
         self,
         *,
         package_address: str,
-        next_page: Optional[pgql_type.PagingCursor] = None,
+        next_page_token: bytes | None = None,
     ) -> None:
         """__init__ Initialize GetPackageVersions object.
 
         :param package_address: The storage address of any version of the package
         :type package_address: str
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
         """
         self.package_address = package_address
-        self.next_page = next_page
+        self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
         pg_cursor = frag.PageCursor()
         qres = schema.Query.packageVersions(address=self.package_address)
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
+        if self.next_page_token:
+            qres(after=self.next_page_token.decode())
         qres.select(
             cursor=schema.MovePackageConnection.pageInfo.select(
                 pg_cursor.fragment(schema)
@@ -3961,6 +3942,29 @@ class GetCoinsSC(GetCoins):
 class GetGasSC(GetGas):
     """SC variant: encode_fn maps GQL SUI gas coins response to ListOwnedObjectsResponse proto."""
 
+    def __init__(self, *, owner: str, next_page_token: bytes | None = None, **kwargs):
+        super().__init__(owner=owner, next_page_token=next_page_token)
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest with optional paging cursor."""
+        qres = schema.Query.address(address=self.owner).alias("qres")
+        coin_connection = schema.Address.objects(
+            filter={"type": self.coin_type}
+        ).alias("coins")
+        if self.next_page_token:
+            coin_connection(after=self.next_page_token.decode())
+
+        std_coin = frag.StandardCoin()
+        pg_cursor = frag.PageCursor()
+
+        coin_connection.select(std_coin.fragment(schema))
+        qres.select(coin_connection)
+        return dsl_gql(
+            std_coin.fragment(schema),
+            pg_cursor.fragment(schema),
+            DSLQuery(qres),
+        )
+
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
         """Return deserializer producing ListOwnedObjectsResponse from GQL gas dict."""
@@ -4127,26 +4131,62 @@ class GetModuleSC(GetModule):
 
 
 class GetPackageSC(GetPackage):
-    """SC variant: encode_fn maps GQL package response to GetPackageResponse proto."""
+    """SC variant: encode_fn maps GQL package response to PackageModulesResult proto."""
+
+    def __init__(self, *, package: str, next_page_token: bytes | None = None, **kwargs):
+        """Init with bytes-based cursor."""
+        super().__init__(package=package)
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build request using bytes cursor for modules paging."""
+        if self.next_page_token:
+            mod_q = schema.MovePackage.modules(after=self.next_page_token.decode())
+        else:
+            mod_q = schema.MovePackage.modules
+        pg_cursor = frag.PageCursor().fragment(schema)
+        func = frag.MoveFunction().fragment(schema)
+        struc = frag.MoveStructure().fragment(schema)
+        mod = frag.MoveModule().fragment(schema)
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.address.alias("package_id"),
+                schema.MovePackage.version.alias("package_version"),
+                mod_q.select(
+                    schema.MoveModuleConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                    schema.MoveModuleConnection.nodes.select(mod),
+                ),
+            )
+        )
+        return dsl_gql(pg_cursor, func, struc, mod, DSLQuery(qres))
 
     @staticmethod
-    def encode_fn() -> Callable[[dict], sui_prot.GetPackageResponse]:
-        """Return deserializer producing GetPackageResponse from GQL package dict."""
+    def encode_fn() -> Callable[[dict], "_rn.PackageModulesResult"]:
+        """Return deserializer producing PackageModulesResult from GQL package dict."""
 
-        def _encode(in_data: dict) -> sui_prot.GetPackageResponse:
+        def _encode(in_data: dict) -> "_rn.PackageModulesResult":
             pkg_raw = (in_data.get("object") or {}).get("asMovePackage") or {}
             if not pkg_raw:
-                return sui_prot.GetPackageResponse()
+                return _rn.PackageModulesResult(
+                    package=sui_prot.Package(), modules=[], next_page_token=None
+                )
             package_id: str = pkg_raw.get("package_id") or ""
             package_version = pkg_raw.get("package_version")
-            nodes = pkg_raw.get("nodes") or []
+            modules_conn = pkg_raw.get("modules") or {}
+            cursor = modules_conn.get("cursor") or {}
+            nodes = modules_conn.get("nodes") or []
+            end_cursor = cursor.get("endCursor")
+            has_next = cursor.get("hasNextPage", False)
+            next_token = end_cursor.encode() if has_next and end_cursor else None
             modules = [_module_raw_to_proto(m, package_id) for m in nodes if isinstance(m, dict)]
-            return sui_prot.GetPackageResponse(
+            return _rn.PackageModulesResult(
                 package=sui_prot.Package(
                     storage_id=package_id,
                     version=int(package_version) if package_version is not None else None,
-                    modules=modules,
-                )
+                ),
+                modules=modules,
+                next_page_token=next_token,
             )
 
         return _encode
@@ -4158,39 +4198,105 @@ class GetPackageSC(GetPackage):
 
 
 class GetStructuresSC(GetStructures):
-    """SC variant: accumulates raw MoveStruct nodes across pages → MoveStructuresGRPC."""
+    """SC variant: encode_fn maps one GQL page to MoveStructuresGRPC with next_page_token."""
 
-    def encode_fn(self) -> Callable[[list], "_rn.MoveStructuresGRPC"]:
-        """Return deserializer producing MoveStructuresGRPC from accumulated struct nodes."""
+    def __init__(self, *, package: str, module_name: str, next_page_token: bytes | None = None):
+        """Init with bytes-based cursor."""
+        super().__init__(package=package, module_name=module_name)
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build request using bytes cursor for structs paging."""
+        if self.next_page_token:
+            struct_q = schema.MoveModule.structs(after=self.next_page_token.decode())
+        else:
+            struct_q = schema.MoveModule.structs
+        struc = frag.MoveStructure().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    struct_q.select(
+                        schema.MoveStructConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                        schema.MoveStructConnection.nodes.select(struc),
+                    )
+                )
+            )
+        )
+        return dsl_gql(struc, pg_cursor, DSLQuery(qres))
+
+    def encode_fn(self) -> Callable[[dict], "_rn.MoveStructuresGRPC"]:
+        """Return deserializer producing MoveStructuresGRPC from one GQL page dict."""
         defining_id = self.package
         module_name = self.module
 
-        def _encode(nodes: list) -> "_rn.MoveStructuresGRPC":
+        def _encode(in_data: dict) -> "_rn.MoveStructuresGRPC":
+            mod = ((in_data.get("object") or {}).get("asMovePackage") or {}).get("module") or {}
+            structs_conn = mod.get("structs") or {}
+            cursor = structs_conn.get("cursor") or {}
+            nodes = structs_conn.get("nodes") or []
+            end_cursor = cursor.get("endCursor")
+            has_next = cursor.get("hasNextPage", False)
+            next_token = end_cursor.encode() if has_next and end_cursor else None
             return _rn.MoveStructuresGRPC(
                 structures=[
                     _struct_to_datatype(n, defining_id, module_name)
                     for n in nodes
                     if isinstance(n, dict)
-                ]
+                ],
+                next_page_token=next_token,
             )
 
         return _encode
 
 
 class GetFunctionsSC(GetFunctions):
-    """SC variant: accumulates raw MoveFunction nodes across pages → MoveFunctionsGRPC."""
+    """SC variant: encode_fn maps one GQL page to MoveFunctionsGRPC with next_page_token."""
+
+    def __init__(self, *, package: str, module_name: str, next_page_token: bytes | None = None):
+        """Init with bytes-based cursor."""
+        super().__init__(package=package, module_name=module_name)
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build request using bytes cursor for functions paging."""
+        if self.next_page_token:
+            func_q = schema.MoveModule.functions(after=self.next_page_token.decode())
+        else:
+            func_q = schema.MoveModule.functions
+        func = frag.MoveFunction().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    func_q.select(
+                        schema.MoveFunctionConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                        schema.MoveFunctionConnection.nodes.select(func),
+                    )
+                )
+            )
+        )
+        return dsl_gql(func, pg_cursor, DSLQuery(qres))
 
     @staticmethod
-    def encode_fn() -> Callable[[list], "_rn.MoveFunctionsGRPC"]:
-        """Return deserializer producing MoveFunctionsGRPC from accumulated function nodes."""
+    def encode_fn() -> Callable[[dict], "_rn.MoveFunctionsGRPC"]:
+        """Return deserializer producing MoveFunctionsGRPC from one GQL page dict."""
 
-        def _encode(nodes: list) -> "_rn.MoveFunctionsGRPC":
+        def _encode(in_data: dict) -> "_rn.MoveFunctionsGRPC":
+            mod = ((in_data.get("object") or {}).get("asMovePackage") or {}).get("module") or {}
+            funcs_conn = mod.get("functions") or {}
+            cursor = funcs_conn.get("cursor") or {}
+            nodes = funcs_conn.get("nodes") or []
+            end_cursor = cursor.get("endCursor")
+            has_next = cursor.get("hasNextPage", False)
+            next_token = end_cursor.encode() if has_next and end_cursor else None
             return _rn.MoveFunctionsGRPC(
                 functions=[
                     _func_to_descriptor(n)
                     for n in nodes
                     if isinstance(n, dict)
-                ]
+                ],
+                next_page_token=next_token,
             )
 
         return _encode
@@ -4412,19 +4518,47 @@ class GetLatestSuiSystemStateSC(GetLatestSuiSystemState):
 
 
 class GetCurrentValidatorsSC(GetCurrentValidators):
-    """SC variant: inherits BCS query from base; decodes contents.bcs to list[Validator] proto."""
+    """SC variant: encode_fn maps one GQL page to ValidatorsResult with next_page_token."""
 
-    def __init__(self, next_page: pgql_type.PagingCursor | None = None):
+    def __init__(self, next_page_token: bytes | None = None):
         """QueryNode initializer."""
-        super().__init__(next_page=next_page)
+        super().__init__()
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build request using bytes cursor for validators paging."""
+        pg_cursor = frag.PageCursor().fragment(schema)
+        if self.next_page_token:
+            active_vals = schema.ValidatorSet.activeValidators(after=self.next_page_token.decode())
+        else:
+            active_vals = schema.ValidatorSet.activeValidators
+        qres = schema.Query.epoch.select(
+            schema.Epoch.validatorSet.select(
+                active_vals.select(
+                    schema.ValidatorConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                    schema.ValidatorConnection.nodes.select(
+                        schema.Validator.contents.select(schema.MoveValue.bcs)
+                    ),
+                )
+            )
+        )
+        return dsl_gql(pg_cursor, DSLQuery(qres))
 
     @staticmethod
-    def encode_fn() -> Callable[[list], list[sui_prot.Validator]]:
-        """Decode BCS validator blobs to list[Validator] proto."""
+    def encode_fn() -> Callable[[dict], "_rn.ValidatorsResult"]:
+        """Decode one GQL page of BCS validator blobs to ValidatorsResult."""
 
-        def _encode(validators_data: list) -> list[sui_prot.Validator]:
+        def _encode(in_data: dict) -> "_rn.ValidatorsResult":
+            active_conn = (
+                (in_data.get("epoch") or {}).get("validatorSet") or {}
+            ).get("activeValidators") or {}
+            cursor = active_conn.get("cursor") or {}
+            nodes = active_conn.get("nodes") or []
+            end_cursor = cursor.get("endCursor")
+            has_next = cursor.get("hasNextPage", False)
+            next_token = end_cursor.encode() if has_next and end_cursor else None
             result = []
-            for node in validators_data:
+            for node in nodes:
                 if not isinstance(node, dict):
                     continue
                 bcs_b64 = (node.get("contents") or {}).get("bcs")
@@ -4433,7 +4567,7 @@ class GetCurrentValidatorsSC(GetCurrentValidators):
                 bcs_bytes = base64.b64decode(bcs_b64)
                 bcs_v = sui_system_bcs.Validator.deserialize(bcs_bytes)
                 result.append(_bcs_validator_to_proto(bcs_v))
-            return result
+            return _rn.ValidatorsResult(validators=result, next_page_token=next_token)
 
         return _encode
 

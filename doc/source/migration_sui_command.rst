@@ -92,13 +92,13 @@ Type your client parameter as :class:`AsyncClientBase` instead of a concrete pro
     import pysui.sui.sui_common.sui_commands as cmd
 
     async def get_owner_coins(client: AsyncClientBase, owner: str) -> list:
-        """Fetch all coins owned by an address.
+        """Fetch all coins owned by an address — all pages.
 
         Works with both GraphQL and gRPC clients.
         """
-        result = await client.execute(command=cmd.GetCoins(owner=owner))
+        result = await client.execute_for_all(command=cmd.GetCoins(owner=owner))
         if result.is_ok():
-            return result.result_data
+            return result.result_data.objects
         else:
             raise ValueError(result.result_string)
 
@@ -198,6 +198,37 @@ ExecuteTransaction
     bdict = await txer.build_and_sign()
     result = await client.execute(command=cmd.ExecuteTransaction(**bdict))
 
+Paginated Commands (→ execute_for_all)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Commands that return paginated results previously required either a manual cursor
+loop using ``PagingCursor`` objects, or a transport-specific helper such as
+``async_get_all_owned_objects()`` from ``pgql_utils`` / ``pgrpc_utils``.
+Both of those approaches are deprecated in 0.99.0.
+
+.. code-block:: python
+
+    # Old (GQL-specific helper — deprecated)
+    from pysui.sui.sui_pgql.pgql_utils import async_get_all_owned_objects
+    objects = await async_get_all_owned_objects(owner, client)
+
+    # Old (manual PagingCursor loop — deprecated)
+    result = await client.execute_query_node(with_node=qn.GetCoins(owner=addr))
+    while result.result_data.next_cursor.hasNextPage:
+        result = await client.execute_query_node(
+            with_node=qn.GetCoins(owner=addr, next_page=result.result_data.next_cursor)
+        )
+
+    # New (Protocol-agnostic — all pages in one call)
+    import pysui.sui.sui_common.sui_commands as cmd
+    result = await client.execute_for_all(command=cmd.GetObjectsOwnedByAddress(owner=addr))
+    if result.is_ok():
+        for obj in result.result_data.objects:
+            print(obj.to_json(indent=2))
+
+See :ref:`pageable-commands` in the SuiCommand Reference for the full list of
+pageable commands and all three usage patterns.
+
 
 Available SuiCommand Subclasses
 -------------------------------
@@ -205,6 +236,10 @@ Available SuiCommand Subclasses
 The following 43 SuiCommand subclasses are built-in and re-exported from the top-level
 :mod:`pysui` module.  Every command listed here works on **both** GraphQL and gRPC
 transports and returns the same canonical output type from either protocol.
+
+Commands marked *(pageable)* may return partial results from a single
+:meth:`execute` call; use :meth:`execute_for_all` to accumulate all pages.
+See :ref:`pageable-commands` for the full table and usage examples.
 
 **Transaction Execution (3):**
   - :class:`ExecuteTransaction`
@@ -219,11 +254,11 @@ transports and returns the same canonical output type from either protocol.
 **Coin Queries (8):**
   - :class:`GetCoinMetaData`
   - :class:`GetAddressCoinBalance`
-  - :class:`GetAddressCoinBalances`
-  - :class:`GetCoins`
-  - :class:`GetGas`
-  - :class:`GetStaked`
-  - :class:`GetDelegatedStakes`
+  - :class:`GetAddressCoinBalances` *(pageable)*
+  - :class:`GetCoins` *(pageable)*
+  - :class:`GetGas` *(pageable)*
+  - :class:`GetStaked` *(pageable)*
+  - :class:`GetDelegatedStakes` *(pageable)*
   - :class:`GetCoinSummary`
 
 **Object Queries (9):**
@@ -231,31 +266,31 @@ transports and returns the same canonical output type from either protocol.
   - :class:`GetPastObject`
   - :class:`GetMultipleObjects`
   - :class:`GetMultiplePastObjects`
-  - :class:`GetObjectsOwnedByAddress`
-  - :class:`GetDynamicFields`
+  - :class:`GetObjectsOwnedByAddress` *(pageable)*
+  - :class:`GetDynamicFields` *(pageable)*
   - :class:`GetObjectContent`
   - :class:`GetMultipleObjectContent`
-  - :class:`GetObjectsForType`
+  - :class:`GetObjectsForType` *(pageable)*
 
 **Epoch / System State Queries (4):**
   - :class:`GetEpoch`
   - :class:`GetBasicCurrentEpochInfo`
   - :class:`GetLatestSuiSystemState`
-  - :class:`GetCurrentValidators`
+  - :class:`GetCurrentValidators` *(pageable, GQL only)*
 
 **Checkpoint Queries (2):**
   - :class:`GetLatestCheckpoint`
   - :class:`GetCheckpointBySequence`
 
 **Move Package & Type Queries (8):**
-  - :class:`GetPackage`
-  - :class:`GetPackageVersions`
+  - :class:`GetPackage` *(pageable, GQL only)*
+  - :class:`GetPackageVersions` *(pageable)*
   - :class:`GetModule`
   - :class:`GetMoveDataType`
   - :class:`GetStructure`
-  - :class:`GetStructures`
+  - :class:`GetStructures` *(pageable, GQL only)*
   - :class:`GetFunction`
-  - :class:`GetFunctions`
+  - :class:`GetFunctions` *(pageable, GQL only)*
 
 **Name Service (2):**
   - :class:`GetNameServiceAddress`

@@ -30,9 +30,11 @@ only a configuration change.
 All commands are exported from ``pysui`` directly and also from
 :py:mod:`pysui.sui.sui_common.sui_commands`.
 
-Commands that paginate on GraphQL but return a flat result on gRPC
-(``GetStructures``, ``GetFunctions``) auto-paginate
-internally on the GQL transport — the caller always receives the full result.
+Commands whose result set may span multiple pages expose a ``next_page_token``
+field.  Use :meth:`~pysui.sui.sui_common.client.AsyncClientBase.execute_for_all`
+to accumulate all pages automatically, or iterate manually by passing the returned
+token back into a fresh command.  See :ref:`pageable-commands` for the full list
+and usage examples.
 
 .. note::
 
@@ -219,13 +221,13 @@ Move / Packages
      - Fetch a specific Move struct by name
 
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetStructures`
-     - Fetch all structs in a Move module (auto-paginated on GQL)
+     - Fetch all structs in a Move module
 
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetFunction`
      - Fetch a specific Move function by name
 
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetFunctions`
-     - Fetch all functions in a Move module (auto-paginated on GQL)
+     - Fetch all functions in a Move module
 
 
 Name Service
@@ -291,20 +293,134 @@ Superscript numbers in the command tables above refer to the caveats below.
 
 ----
 
+.. _pageable-commands:
+
+Pageable Commands
+-----------------
+
+The following SuiCommands require paging to retrieve all results where the
+protocol column is ``True``.  A ``—`` means that protocol returns all results
+in a single call.
+
+.. list-table::
+   :widths: 52 12 12
+   :header-rows: 1
+
+   * - Command
+     - GQL
+     - gRPC
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetAddressCoinBalances`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCoins`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetGas`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetStaked`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetDelegatedStakes`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectsOwnedByAddress`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetDynamicFields`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectsForType`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPackageVersions`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPackage`
+     - True
+     - —
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetStructures`
+     - True
+     - —
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetFunctions`
+     - True
+     - —
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCurrentValidators`
+     - True
+     - —
+
+Three usage patterns are available, illustrated here with
+:py:class:`~pysui.sui.sui_common.sui_commands.GetGas`.  All patterns work
+identically on both transports — no protocol-specific code is required.
+
+**Form 1 — single page.**  :meth:`execute` returns one page.
+``result_data.next_page_token`` is set when more pages remain.
+
+.. code-block:: python
+
+   async def do_gas(client: AsyncClientBase):
+       result = await client.execute(
+           command=cmd.GetGas(owner=client.config.active_address)
+       )
+       if result.is_ok():
+           print(f"Coins this page: {len(result.result_data.objects)}")
+           if result.result_data.next_page_token:
+               print("  (more pages available)")
+
+**Form 2 — manual iteration.**  Pass the returned ``next_page_token`` back into
+a fresh command each loop; stop when the token is ``None``.
+
+.. code-block:: python
+
+   async def do_all_gas(client: AsyncClientBase):
+       owner = client.config.active_address
+       all_coins, next_page_token = [], None
+       while True:
+           result = await client.execute(
+               command=cmd.GetGas(owner=owner, next_page_token=next_page_token)
+           )
+           if not result.is_ok():
+               break
+           all_coins.extend(result.result_data.objects)
+           next_page_token = result.result_data.next_page_token
+           if not next_page_token:
+               break
+       print(f"Total coins: {len(all_coins)}")
+
+**Form 3 — automatic accumulation.**
+:meth:`~pysui.sui.sui_common.client.AsyncClientBase.execute_for_all` accumulates
+every page internally and returns a single result containing the complete list.
+
+.. code-block:: python
+
+   async def do_all_gas_alt(client: AsyncClientBase):
+       result = await client.execute_for_all(
+           command=cmd.GetGas(owner=client.config.active_address)
+       )
+       if result.is_ok():
+           print(f"Total coins: {len(result.result_data.objects)}")
+           print(f"Total mists: {sum(int(x.balance) for x in result.result_data.objects)}")
+
+----
+
 Extending SuiCommand
 --------------------
 
 User-defined commands follow the same pattern as built-ins: subclass
-:py:class:`~pysui.sui.sui_common.sui_command.SuiCommand`, declare
-``gql_class`` and ``grpc_class`` as ``ClassVar``, and implement
-``gql_node()`` and ``grpc_request()``.  Raise ``NotImplementedError``
-from the unsupported side to return a graceful ``SuiRpcResult`` error
-rather than an exception.
+:py:class:`~pysui.sui.sui_common.sui_command.SuiCommand`, declare the
+``ClassVar`` fields, and implement ``gql_node()`` and ``grpc_request()``.
+Raise ``NotImplementedError`` from the unsupported side to return a graceful
+``SuiRpcResult`` error rather than an exception.
+
+Non-pageable command
+~~~~~~~~~~~~~~~~~~~~
+
+For commands that return a complete result in a single call:
 
 .. code-block:: python
 
    from dataclasses import dataclass
-   from typing import ClassVar, Optional
+   from typing import ClassVar
    from pysui.sui.sui_common.sui_command import SuiCommand
    import pysui.sui.sui_pgql.pgql_query as pgql_query
    import pysui.sui.sui_grpc.pgrpc_requests as rn
@@ -320,3 +436,36 @@ rather than an exception.
 
        def grpc_request(self):
            return self.grpc_class(param=self.my_param)
+
+Pageable command
+~~~~~~~~~~~~~~~~
+
+For commands whose result set may span multiple pages, declare the four
+paging ``ClassVar`` fields and expose ``next_page_token``.
+:meth:`~pysui.sui.sui_common.client.AsyncClientBase.execute_for_all`
+reads these fields to drive automatic page accumulation.
+
+.. code-block:: python
+
+   from dataclasses import dataclass
+   from typing import ClassVar, Optional
+   from pysui.sui.sui_common.sui_command import SuiCommand
+   import pysui.sui.sui_pgql.pgql_query as pgql_query
+   import pysui.sui.sui_grpc.pgrpc_requests as rn
+
+   @dataclass(kw_only=True)
+   class MyPageableCommand(SuiCommand):
+       gql_class: ClassVar[type] = pgql_query.SomeListQueryNode
+       grpc_class: ClassVar[type] = rn.SomeListRequest
+       is_pageable_gql: ClassVar[bool] = True
+       paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("items",)
+       is_pageable_grpc: ClassVar[bool] = True
+       paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("items",)
+       my_param: str
+       next_page_token: Optional[bytes] = None
+
+       def gql_node(self):
+           return self.gql_class(param=self.my_param, next_page_token=self.next_page_token)
+
+       def grpc_request(self):
+           return self.grpc_class(param=self.my_param, page_token=self.next_page_token)

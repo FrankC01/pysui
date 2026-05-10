@@ -24,15 +24,18 @@ class SuiCommand(ABC):
     ``SuiRpcResult(False, "Command not supported by <protocol>", None)``.
     """
 
-    gql_class: ClassVar[type] = None
-    grpc_class: ClassVar[type] = None
-    gql_requires_paging: ClassVar[bool] = False
-    gql_page_list_path: ClassVar[tuple[str, ...]] = ()
-    grpc_requires_paging: ClassVar[bool] = False
+    gql_class: ClassVar[type | None] = None
+    grpc_class: ClassVar[type | None] = None
     capture_errors: ClassVar[bool] = False
     # When True, a GQL TransportQueryError that carries partial data is lifted
     # into a successful SuiRpcResult via encode_fn rather than returned as a
-    # failure. Only honoured on non-paged commands (gql_requires_paging=False).
+    # failure.
+
+    # Paging contract
+    is_pageable_gql: ClassVar[bool] = False
+    is_pageable_grpc: ClassVar[bool] = False
+    paginated_field_path_gql: ClassVar[tuple[str, ...] | None] = None
+    paginated_field_path_grpc: ClassVar[tuple[str, ...] | None] = None
 
     @abstractmethod
     def gql_node(self) -> "PGQL_QueryNode":

@@ -138,8 +138,8 @@ async def merge_sui(
     in_use: list[str] = exclude or []
     merge_only_ids: set[str] = set(merge_only or [])
 
-    # Fetch gas coins via SuiCommand (auto-paged by execute() for both protocols)
-    gas_result = await client.execute(command=cmd.GetGas(owner=address))
+    # Fetch all gas coins across all pages for both protocols
+    gas_result = await client.execute_for_all(command=cmd.GetGas(owner=address))
     if not gas_result.is_ok():
         raise ValueError(f"GetGas failed for {address}: {gas_result.result_string}")
     response = gas_result.result_data

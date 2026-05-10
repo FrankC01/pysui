@@ -1194,6 +1194,7 @@ class MoveStructuresGRPC:
     """Module DataTypes."""
 
     structures: list[sui_prot.DatatypeDescriptor]
+    next_page_token: Optional[bytes] = None
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -1202,6 +1203,26 @@ class MoveFunctionsGRPC:
     """Module Functions."""
 
     functions: list[sui_prot.FunctionDescriptor]
+    next_page_token: Optional[bytes] = None
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class PackageModulesResult:
+    """GQL GetPackage paging result: package metadata + one page of modules."""
+
+    package: sui_prot.Package
+    modules: list[sui_prot.Module]
+    next_page_token: Optional[bytes] = None
+
+
+@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
+@dataclasses.dataclass
+class ValidatorsResult:
+    """GQL GetCurrentValidators paging result: one page of active validators."""
+
+    validators: list[sui_prot.Validator]
+    next_page_token: Optional[bytes] = None
 
 
 class GetStructures(GetPackage):

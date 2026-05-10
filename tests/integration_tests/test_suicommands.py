@@ -259,7 +259,7 @@ async def test_get_function_grpc(grpc_session_client: AsyncClientBase) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Paged queries — SC paging branch (gql_page_list_path non-empty)
+# Paged queries — pageable SuiCommands (execute_for_all accumulates all pages)
 # ---------------------------------------------------------------------------
 
 
@@ -493,7 +493,7 @@ async def test_get_current_validators_gql_testnet() -> None:
     )
     client = client_factory(cfg, protocol=GroupProtocol.GRAPHQL)
     try:
-        result = await client.execute(command=GetCurrentValidators())
+        result = await client.execute_for_all(command=GetCurrentValidators())
         assert result.is_ok(), f"GetCurrentValidators GQL testnet: {result.result_string}"
         assert isinstance(result.result_data, list)
         assert isinstance(result.result_data[0], sui_prot.Validator)
@@ -514,7 +514,7 @@ async def test_get_current_validators_grpc_testnet() -> None:
     )
     client = client_factory(cfg, protocol=GroupProtocol.GRPC)
     try:
-        result = await client.execute(command=GetCurrentValidators())
+        result = await client.execute_for_all(command=GetCurrentValidators())
         assert result.is_ok(), f"GetCurrentValidators gRPC testnet: {result.result_string}"
         assert isinstance(result.result_data, list)
         assert isinstance(result.result_data[0], sui_prot.Validator)

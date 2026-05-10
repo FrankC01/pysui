@@ -21,10 +21,6 @@ from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 import pysui.sui.sui_pgql.pgql_query as qn  # protocol-level access: queries without a SuiCommand
 import pysui.sui.sui_pgql.pgql_types as ptypes
 import pysui.sui.sui_common.sui_commands as cmd
-from pysui.sui.sui_pgql.pgql_utils import (
-    async_get_all_owned_gas_objects,
-    async_get_all_owned_objects,
-)
 
 
 def handle_result(result: SuiRpcResult) -> SuiRpcResult:
@@ -74,31 +70,66 @@ async def do_objects_for_type(client: AsyncClientBase):
 
 
 async def do_gas(client: AsyncClientBase):
-    """Fetch 0x2::sui::SUI (default) for owner."""
+    """Fetch one page of 0x2::sui::SUI gas coins for owner.
+
+    Returns a single page — the owner may have more coins than shown here.
+    See do_all_gas() for full accumulation across all pages.
+    """
     result = handle_result(
         await client.execute(command=cmd.GetGas(owner=client.config.active_address))
     )
     if result.is_ok():
-        print(f"Total coins in page: {len(result.result_data.objects)}")
+        print(f"Coins this page: {len(result.result_data.objects)}")
+        if result.result_data.next_page_token:
+            print("  (more pages available — call do_all_gas() for full list)")
 
 
-async def do_all_gas(client: GqlProtocolClient):
-    """Fetch all coins for owner.
-    protocol-level access: async_get_all_owned_gas_objects is GraphQL-specific.
+async def do_all_gas(client: AsyncClientBase):
+    """Fetch ALL 0x2::sui::SUI gas coins for owner using manual page iteration.
+
+    Demonstrates how a caller implements paging with execute() directly:
+    hold the next_page_token from each result and pass it into a fresh command
+    when requesting the next page. The result and command are fully decoupled —
+    the token can be stored and used much later. See do_all_gas_alt() for the
+    alternate way using the client to do the paging and return a full result.
     """
-    try:
-        # This will include all coins whether active, pruned or deleted.
-        # Change only_active to True for only active coins
-        all_coins = await async_get_all_owned_gas_objects(
-            owner=client.config.active_address, client=client, only_active=False
+    owner = client.config.active_address
+    all_coins = []
+    next_page_token = None
+    while True:
+        result = await client.execute(
+            command=cmd.GetGas(owner=owner, next_page_token=next_page_token)
         )
-        for coin in all_coins:
-            print(coin.to_json(indent=2))
-        print(f"Total coins: {len(all_coins)}")
-        print(f"Total mists: {sum([int(x.balance) for x in all_coins])}")
+        if not result.is_ok():
+            print(f"Error: {result.result_string}")
+            break
+        page = result.result_data
+        all_coins.extend(page.objects)
+        next_page_token = page.next_page_token
+        if not next_page_token:
+            break
+    for coin in all_coins:
+        print(coin.to_json(indent=2))
+    print(f"Total coins: {len(all_coins)}")
+    print(f"Total mists: {sum([int(x.balance) for x in all_coins])}")
 
-    except ValueError as ve:
-        raise ve
+
+async def do_all_gas_alt(client: AsyncClientBase):
+    """Fetch ALL 0x2::sui::SUI gas coins for owner using execute_for_all().
+
+    The client handles paging internally — accumulating all pages and returning
+    a single result whose result_data contains the full coin list.
+    """
+    result = handle_result(
+        await client.execute_for_all(
+            command=cmd.GetGas(owner=client.config.active_address)
+        )
+    )
+    if result.is_ok():
+        print(f"Total coins: {len(result.result_data.objects)}")
+        print(
+            f"Total mists: {sum([int(x.balance) for x in result.result_data.objects])}"
+        )
 
 
 async def do_gas_ids(client: GqlProtocolClient):
@@ -151,7 +182,7 @@ async def do_address_balances(client: AsyncClientBase):
             result = await client.execute(
                 command=cmd.GetAddressCoinBalances(
                     owner=client.config.active_address,
-                    next_page=result.result_data.next_page_token,
+                    next_page_token=result.result_data.next_page_token,
                 )
             )
             handle_result(result)
@@ -177,18 +208,16 @@ async def do_object_content(client: AsyncClientBase):
     )
 
 
-async def do_objects(client: GqlProtocolClient):
-    """Fetch all objects held by owner.
-    protocol-level access: async_get_all_owned_objects is GraphQL-specific.
-    """
-    try:
-        objects: list = await async_get_all_owned_objects(
-            client.config.active_address, client
+async def do_objects(client: AsyncClientBase):
+    """Fetch all objects held by owner using execute_for_all()."""
+    result = handle_result(
+        await client.execute_for_all(
+            command=cmd.GetObjectsOwnedByAddress(owner=client.config.active_address)
         )
-        for object in objects:
-            print(object.to_json(indent=2))
-    except ValueError as ve:
-        raise ve
+    )
+    if result.is_ok():
+        for obj in result.result_data.objects:
+            print(obj.to_json(indent=2))
 
 
 async def do_past_object(client: AsyncClientBase):
@@ -413,12 +442,12 @@ async def do_owned_nameservice(client: AsyncClientBase):
 
 
 async def do_all_validators(client: GqlProtocolClient):
-    """Fetch all validators from current Epoch (GQL paging handled internally)."""
-    handle_result(await client.execute(command=cmd.GetCurrentValidators()))
+    """Fetch all validators from current Epoch, accumulating all pages."""
+    handle_result(await client.execute_for_all(command=cmd.GetCurrentValidators()))
 
 
 async def do_validators(client: GqlProtocolClient):
-    """Fetch the most current validator detail."""
+    """Fetch the first page of current validator detail."""
     handle_result(await client.execute(command=cmd.GetCurrentValidators()))
 
 
@@ -475,7 +504,7 @@ async def do_structs(client: AsyncClientBase):
 
     This is a testnet object!!!
     """
-    result = await client.execute(
+    result = await client.execute_for_all(
         command=cmd.GetStructures(
             package="0x2",
             module_name="coin",
@@ -506,7 +535,7 @@ async def do_funcs(client: AsyncClientBase):
 
     This is a testnet object!!!
     """
-    result = await client.execute(
+    result = await client.execute_for_all(
         command=cmd.GetFunctions(
             package="0x2",
             module_name="coin",
@@ -536,7 +565,7 @@ async def do_package(client: AsyncClientBase):
 
     This is a testnet object!!!
     """
-    result = await client.execute(
+    result = await client.execute_for_all(
         command=cmd.GetPackage(
             package="0x2",
         )
@@ -891,6 +920,7 @@ async def main():
         # await do_coins_for_type(client_init)
         await do_gas(client_init)
         # await do_all_gas(client_init)
+        # await do_all_gas_alt(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
         # await do_address_balance(client_init)

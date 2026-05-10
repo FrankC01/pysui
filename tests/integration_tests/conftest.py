@@ -330,7 +330,7 @@ class CentralBank:
         from a prior withdraw that weren't fully consumed) without relying solely
         on the 1-fat-coin invariant.
         """
-        pre_result = await self._client.execute(command=cmd.GetGas(owner=self._address))
+        pre_result = await self._client.execute_for_all(command=cmd.GetGas(owner=self._address))
         if not pre_result.is_ok():
             raise RuntimeError(f"GetGas failed before bank split: {pre_result.result_string}")
         pre_ids = {c.object_id for c in (pre_result.result_data.objects or [])}
@@ -351,7 +351,7 @@ class CentralBank:
 
         await asyncio.sleep(SETTLE_SECS)
 
-        post_result = await self._client.execute(command=cmd.GetGas(owner=self._address))
+        post_result = await self._client.execute_for_all(command=cmd.GetGas(owner=self._address))
         if not post_result.is_ok():
             raise RuntimeError(f"GetGas failed after bank split: {post_result.result_string}")
 
@@ -402,7 +402,7 @@ async def _bank_audit(client: AsyncClientBase, address: str) -> tuple[int, int, 
     if not bal_result.is_ok():
         raise RuntimeError(f"GetAddressCoinBalance failed: {bal_result.result_string}")
 
-    gas_result = await client.execute(command=cmd.GetGas(owner=address))
+    gas_result = await client.execute_for_all(command=cmd.GetGas(owner=address))
     if not gas_result.is_ok():
         raise RuntimeError(f"GetGas failed: {gas_result.result_string}")
 

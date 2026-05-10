@@ -154,8 +154,8 @@ async def async_get_gas_data(
     from pysui.sui.sui_common import sui_commands as cmd
 
     async def _fetch_gas() -> list:
-        """Fetch all gas coins (auto-paged by execute(); works for both GQL and gRPC)."""
-        result = await client.execute(command=cmd.GetGas(owner=signing.payer_address))
+        """Fetch all gas coins across all pages for both GQL and gRPC."""
+        result = await client.execute_for_all(command=cmd.GetGas(owner=signing.payer_address))
         if not result.is_ok():
             raise ValueError(f"Failed to fetch gas coins: {result.result_string}")
         response = result.result_data

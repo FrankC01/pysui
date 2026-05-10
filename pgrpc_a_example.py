@@ -18,12 +18,9 @@ from pysui import (
 from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.sui.sui_common.trxn_base import FundsSource
-from pysui.sui.sui_grpc.pgrpc_utils import (
-    async_get_all_owned_gas_objects,
-    async_get_all_owned_objects,
-)
 
 import pysui.sui.sui_common.sui_commands as cmd
+import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
@@ -62,29 +59,66 @@ async def do_coins_for_type(client: AsyncClientBase):
 
 
 async def do_gas(client: AsyncClientBase):
-    """Fetch 0x2::sui::SUI (default) for owner."""
+    """Fetch one page of 0x2::sui::SUI gas coins for owner.
+
+    Returns a single page — the owner may have more coins than shown here.
+    See do_all_gas() for full accumulation across all pages.
+    """
     result = handle_result(
         await client.execute(command=cmd.GetGas(owner=client.config.active_address))
     )
     if result.is_ok():
-        print(f"Total coins in page: {len(result.result_data.objects)}")
+        print(f"Coins this page: {len(result.result_data.objects)}")
+        if result.result_data.next_page_token:
+            print("  (more pages available — call do_all_gas() for full list)")
 
 
-async def do_all_gas(client: GrpcProtocolClient):
-    """Fetch all coins for owner."""
-    try:
-        # This will include all coins whether active, pruned or deleted.
-        # Change only_active to True for only active coins
-        all_coins = await async_get_all_owned_gas_objects(
-            owner=client.config.active_address, client=client, only_active=False
+async def do_all_gas(client: AsyncClientBase):
+    """Fetch ALL 0x2::sui::SUI gas coins for owner using manual page iteration.
+
+    Demonstrates how a caller implements paging with execute() directly:
+    hold the next_page_token from each result and pass it into a fresh command
+    when requesting the next page. The result and command are fully decoupled —
+    the token can be stored and used much later. See do_all_gas_alt() for the
+    alternate way using the client to do the paging and return a full result.
+    """
+    owner = client.config.active_address
+    all_coins = []
+    next_page_token = None
+    while True:
+        result = await client.execute(
+            command=cmd.GetGas(owner=owner, next_page_token=next_page_token)
         )
-        for coin in all_coins:
-            print(coin.to_json(indent=2))
-        print(f"Total coins: {len(all_coins)}")
-        print(f"Total mists: {sum([int(x.balance) for x in all_coins])}")
+        if not result.is_ok():
+            print(f"Error: {result.result_string}")
+            break
+        page = result.result_data
+        all_coins.extend(page.objects)
+        next_page_token = page.next_page_token
+        if not next_page_token:
+            break
+    for coin in all_coins:
+        print(coin.to_json(indent=2))
+    print(f"Total coins: {len(all_coins)}")
+    print(f"Total mists: {sum([int(x.balance) for x in all_coins])}")
 
-    except ValueError as ve:
-        raise ve
+
+async def do_all_gas_alt(client: AsyncClientBase):
+    """Fetch ALL 0x2::sui::SUI gas coins for owner using execute_for_all().
+
+    The client handles paging internally — accumulating all pages and returning
+    a single result whose result_data contains the full coin list.
+    """
+    result = handle_result(
+        await client.execute_for_all(
+            command=cmd.GetGas(owner=client.config.active_address)
+        )
+    )
+    if result.is_ok():
+        print(f"Total coins: {len(result.result_data.objects)}")
+        print(
+            f"Total mists: {sum([int(x.balance) for x in result.result_data.objects])}"
+        )
 
 
 async def do_gas_ids(client: AsyncClientBase):
@@ -92,7 +126,7 @@ async def do_gas_ids(client: AsyncClientBase):
 
     # Use gas found for active address to use to validate
     # fetching by coin ids
-    result = await client.execute(
+    result = await client.execute_for_all(
         command=cmd.GetGas(owner=client.config.active_address)
     )
     if result.is_ok() and result.result_data.objects:
@@ -136,16 +170,16 @@ async def do_object(client: AsyncClientBase):
     handle_result(await client.execute(command=cmd.GetObject(object_id="0x6")))
 
 
-async def do_objects(client: GrpcProtocolClient):
-    """Fetch all objects held by owner."""
-    try:
-        objects: list = await async_get_all_owned_objects(
-            client.config.active_address, client
+async def do_objects(client: AsyncClientBase):
+    """Fetch all objects held by owner using execute_for_all()."""
+    result = handle_result(
+        await client.execute_for_all(
+            command=cmd.GetObjectsOwnedByAddress(owner=client.config.active_address)
         )
-        for object in objects:
-            print(object.to_json(indent=2))
-    except ValueError as ve:
-        raise ve
+    )
+    if result.is_ok():
+        for obj in result.result_data.objects:
+            print(obj.to_json(indent=2))
 
 
 async def do_past_object(client: AsyncClientBase):
@@ -213,16 +247,18 @@ async def do_dynamics(client: AsyncClientBase):
 
 async def do_event(client: AsyncClientBase):
     """Fetch events.
-    protocol-level access: GetEvents is not supported by gRPC — returns SuiRpcResult(False, ...) gracefully.
+    GetEvents has no SuiCommand equivalent — GQL protocol only.
+    Use pgql_a_example.py do_events() for the GQL path.
     """
-    handle_result(await client.execute(command=cmd.GetEvents()))
+    # No UCI equivalent; use qn.GetEvents() via GqlProtocolClient.execute_query_node()
+    pass
 
 
-async def do_service_config(client: AsyncClientBase):
+async def do_service_config(client: GrpcProtocolClient):
     """Fetch the gRPC, Protocol and System configurations.
-    protocol-level access: GetServiceInfo is not supported by GQL — returns SuiRpcResult(False, ...) gracefully.
+    GetServiceInfo has no SuiCommand equivalent — gRPC protocol only.
     """
-    handle_result(await client.execute(command=cmd.GetServiceInfo()))
+    handle_result(await client.execute_grpc_request(request=rn.GetServiceInfo()))
 
 
 async def do_chain_id(client: AsyncClientBase):
@@ -257,9 +293,11 @@ async def do_txs(client: AsyncClientBase):
 
 async def do_filter_txs(client: AsyncClientBase):
     """Fetch all transactions matching filter.
-    protocol-level access: GetFilteredTx is not supported by gRPC — returns SuiRpcResult(False, ...) gracefully.
+    GetFilteredTx has no SuiCommand equivalent — GQL protocol only.
+    Use pgql_a_example.py do_filter_txs() for the GQL path.
     """
-    handle_result(await client.execute(command=cmd.GetFilteredTx()))
+    # No UCI equivalent; use qn.GetFilteredTx() via GqlProtocolClient.execute_query_node()
+    pass
 
 
 async def do_tx_kind(client: AsyncClientBase):
@@ -303,14 +341,16 @@ async def do_sequence_cp(client: AsyncClientBase):
         print(result.result_string)
 
 
-async def do_digest_cp(client: AsyncClientBase):
-    """."""
+async def do_digest_cp(client: GrpcProtocolClient):
+    """Fetch checkpoint by digest.
+    GetCheckpointByDigest has no SuiCommand equivalent — gRPC protocol only.
+    """
     result = await client.execute(command=cmd.GetLatestCheckpoint())
     if result.is_ok():
         cp: sui_prot.GetCheckpointResponse = result.result_data
         handle_result(
-            await client.execute(
-                command=cmd.GetCheckpointByDigest(digest=cp.checkpoint.digest)
+            await client.execute_grpc_request(
+                request=rn.GetCheckpointByDigest(digest=cp.checkpoint.digest)
             )
         )
     else:
@@ -323,7 +363,7 @@ async def do_checkpoints(client: GrpcProtocolClient):
     Note: Use execute_grpc_request(request=rn.SubscribeCheckpoint(field_mask=[...]))
           to customize the fields returned by the subscription.
     """
-    so_res = await client.execute(command=cmd.SubscribeCheckpoint())
+    so_res = await client.execute_grpc_request(request=rn.SubscribeCheckpoint())
 
     # List maximum of 3
     max_try = 2
@@ -360,7 +400,7 @@ async def do_owned_nameservice(client: AsyncClientBase):
 
 async def do_validators(client: AsyncClientBase):
     """Fetch the most current validator detail."""
-    handle_result(await client.execute(command=cmd.GetCurrentValidators()))
+    handle_result(await client.execute_for_all(command=cmd.GetCurrentValidators()))
 
 
 async def do_all_validators(client: AsyncClientBase):
@@ -394,7 +434,7 @@ async def do_structs(client: AsyncClientBase):
 
     This is a testnet object!!!
     """
-    result = await client.execute(
+    result = await client.execute_for_all(
         command=cmd.GetStructures(
             package="0x2",
             module_name="coin",
@@ -425,7 +465,7 @@ async def do_funcs(client: AsyncClientBase):
 
     This is a testnet object!!!
     """
-    result = await client.execute(
+    result = await client.execute_for_all(
         command=cmd.GetFunctions(
             package="0x2",
             module_name="coin",
@@ -455,7 +495,7 @@ async def do_package(client: AsyncClientBase):
 
     This is a testnet object!!!
     """
-    result = await client.execute(
+    result = await client.execute_for_all(
         command=cmd.GetPackage(
             package="0x2",
         )
@@ -511,7 +551,7 @@ async def do_split_any_half(client: AsyncClientBase):
     This will only run if there is more than 1 coin in wallet.
     """
 
-    result = await client.execute(
+    result = await client.execute_for_all(
         command=cmd.GetGas(owner=client.config.active_address)
     )
     if result.is_ok() and len(result.result_data.objects) > 1:
@@ -650,12 +690,12 @@ async def do_unstake(client: AsyncClientBase):
 
     owner = client.config.active_address
     result = await client.execute(command=cmd.GetDelegatedStakes(owner=owner))
-    if result.is_ok() and result.result_data.staked_coins:
+    if result.is_ok() and result.result_data.objects:
         txer: AsyncSuiTransaction = await client.transaction()
 
         # Unstake the first staked coin
         await txer.unstake_coin(
-            staked_coin=result.result_data.staked_coins[0].object_id
+            staked_coin=result.result_data.objects[0].object_id
         )
         # Uncomment to dry run
         handle_result(
@@ -779,6 +819,7 @@ async def main():
         # await do_coins_for_type(client_init)
         await do_gas(client_init)
         # await do_all_gas(client_init)
+        # await do_all_gas_alt(client_init)
         # await do_gas_ids(client_init)
         # await do_sysstate(client_init)
         # await do_address_balance(client_init)

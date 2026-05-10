@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 import logging
 import asyncio
 from time import sleep
-from typing import Callable, Any, Optional, Union
+from typing import Callable, Any, ClassVar, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 
 from gql import Client, gql, GraphQLRequest
@@ -431,6 +431,8 @@ class SuiGQLClient(BaseSuiGQLClient):
 class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
     """Asynchronous pysui GraphQL client."""
 
+    _protocol: ClassVar[str] = "gql"
+
     @versionchanged(
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
@@ -746,63 +748,10 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         except (ValueError, TypeError) as exc:
             return SuiRpcResult(False, str(exc), None)
 
-        if not command.gql_requires_paging:
-            return await self._execute_gql_node(
-                node, with_headers=headers, timeout=timeout,
-                capture_errors=command.capture_errors,
-            )
-
-        if command.gql_page_list_path:
-            # SC paging: fetch raw dicts per page, accumulate list, encode once at end.
-            # gql_page_list_path navigates to the container whose "nodes" key holds items
-            # and whose "cursor" key holds PageInfo.
-            path = command.gql_page_list_path
-            accumulated: list = []
-            while True:
-                try:
-                    qdoc_node = self._qnode_pre_run(node)
-                except ValueError as ve:
-                    return SuiRpcResult(
-                        False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
-                    )
-                result = await self._execute(qdoc_node, headers, None, timeout)
-                if not result.is_ok():
-                    return result
-                parent = result.result_data
-                for key in path[:-1]:
-                    parent = parent[key]
-                accumulated.extend(parent.get(path[-1], []))
-                cursor_info = parent.get("cursor", {})
-                if cursor_info.get("hasNextPage", False):
-                    command.next_page = pgql_type.PagingCursor(
-                        hasNextPage=True,
-                        endCursor=cursor_info.get("endCursor"),
-                    )
-                    node = command.gql_node()
-                else:
-                    break
-            command.next_page = None
-            return SuiRpcResult(True, None, node.encode_fn()(accumulated))
-
-        # Legacy paging: encode each page individually, accumulate decoded .data lists.
-        collection: list = []
-        result = await self._execute_gql_node(node, with_headers=headers, timeout=timeout, capture_errors=command.capture_errors)
-        while True:
-            if not result.is_ok():
-                return result
-            data = result.result_data
-            collection.extend(getattr(data, "data", [data]))
-            cursor = getattr(data, "next_cursor", None)
-            if cursor and getattr(cursor, "hasNextPage", False):
-                command.next_page = cursor
-                node = command.gql_node()
-                result = await self._execute_gql_node(
-                    node, with_headers=headers, timeout=timeout, capture_errors=command.capture_errors
-                )
-            else:
-                break
-        command.next_page = None
-        return SuiRpcResult(True, None, collection)
+        return await self._execute_gql_node(
+            node, with_headers=headers, timeout=timeout,
+            capture_errors=command.capture_errors,
+        )
 
     async def _execute_gql_node(
         self,

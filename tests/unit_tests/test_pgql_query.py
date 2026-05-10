@@ -54,12 +54,12 @@ class TestConstruction:
         obj = qn.GetCoins(owner=_ADDR)
         assert obj.owner == _ADDR
         assert obj.coin_type == _SUI_COIN
-        assert obj.next_page is None
+        assert obj.next_page_token is None
 
     def test_get_coins_with_all_args(self):
-        obj = qn.GetCoins(owner=_ADDR, coin_type="0xfoo::bar::BAZ", next_page=_LIVE_CURSOR)
+        obj = qn.GetCoins(owner=_ADDR, coin_type="0xfoo::bar::BAZ", next_page_token=b"tok1")
         assert obj.coin_type == "0xfoo::bar::BAZ"
-        assert obj.next_page.hasNextPage is True
+        assert obj.next_page_token == b"tok1"
 
     def test_get_epoch_defaults(self):
         obj = qn.GetEpoch()
@@ -78,8 +78,8 @@ class TestConstruction:
         assert obj.package_address == "0x2"
 
     def test_get_package_versions_with_next_page(self):
-        obj = qn.GetPackageVersions(package_address="0x2", next_page=_LIVE_CURSOR)
-        assert obj.next_page.endCursor == "tok1"
+        obj = qn.GetPackageVersions(package_address="0x2", next_page_token=b"tok1")
+        assert obj.next_page_token == b"tok1"
 
     def test_get_tx_stores_digest(self):
         obj = qn.GetTx(digest="FakeTxDigest123")
@@ -142,8 +142,8 @@ class TestGetGas:
         assert qn.GetGas.encode_fn() == pt.SuiCoinObjectsGQL.from_query
 
     def test_get_gas_with_next_page(self):
-        obj = qn.GetGas(owner=_ADDR, next_page=_LIVE_CURSOR)
-        assert obj.next_page.hasNextPage is True
+        obj = qn.GetGas(owner=_ADDR, next_page_token=b"tok1")
+        assert obj.next_page_token == b"tok1"
 
 
 # ---------------------------------------------------------------------------
@@ -254,30 +254,32 @@ class TestDeprecationWarnings:
 # ---------------------------------------------------------------------------
 
 class TestNoopShortCircuit:
-    """When next_page.hasNextPage is False, the query returns PGQL_NoOp immediately.
+    """PagingCursor-based classes short-circuit to PGQL_NoOp when hasNextPage is False.
 
-    We pass schema=None to confirm the guard fires before schema access.
+    next_page_token-based classes (added in 0.99.0) use bytes | None — there is no
+    exhausted-cursor concept; None simply means no more pages.
     """
 
-    def test_get_coins_exhausted_cursor(self):
-        obj = qn.GetCoins(owner=_ADDR, next_page=_EXHAUSTED_CURSOR)
-        assert obj.as_document_node(None) is PGQL_NoOp
+    def test_get_coins_no_token_is_none(self):
+        """next_page_token defaults to None — no PGQL_NoOp guard."""
+        obj = qn.GetCoins(owner=_ADDR)
+        assert obj.next_page_token is None
 
-    def test_get_gas_exhausted_cursor(self):
-        obj = qn.GetGas(owner=_ADDR, next_page=_EXHAUSTED_CURSOR)
-        assert obj.as_document_node(None) is PGQL_NoOp
+    def test_get_gas_no_token_is_none(self):
+        obj = qn.GetGas(owner=_ADDR)
+        assert obj.next_page_token is None
 
-    def test_get_objects_owned_exhausted_cursor(self):
-        obj = qn.GetObjectsOwnedByAddress(owner=_ADDR, next_page=_EXHAUSTED_CURSOR)
-        assert obj.as_document_node(None) is PGQL_NoOp
+    def test_get_objects_owned_no_token_is_none(self):
+        obj = qn.GetObjectsOwnedByAddress(owner=_ADDR)
+        assert obj.next_page_token is None
 
     def test_get_checkpoints_exhausted_cursor(self):
         obj = qn.GetCheckpoints(next_page=_EXHAUSTED_CURSOR)
         assert obj.as_document_node(None) is PGQL_NoOp
 
-    def test_get_package_versions_exhausted_cursor(self):
-        obj = qn.GetPackageVersions(package_address="0x2", next_page=_EXHAUSTED_CURSOR)
-        assert obj.as_document_node(None) is PGQL_NoOp
+    def test_get_package_versions_no_token_is_none(self):
+        obj = qn.GetPackageVersions(package_address="0x2")
+        assert obj.next_page_token is None
 
     def test_get_all_coin_balances_exhausted_cursor(self):
         with warnings.catch_warnings():
@@ -286,11 +288,9 @@ class TestNoopShortCircuit:
         assert obj.as_document_node(None) is PGQL_NoOp
 
     def test_live_cursor_does_not_short_circuit(self):
-        """A live cursor should NOT trigger the PGQL_NoOp guard."""
-        obj = qn.GetCoins(owner=_ADDR, next_page=_LIVE_CURSOR)
-        # We cannot call as_document_node without a schema when cursor is live,
-        # but we can assert the guard condition is false.
-        assert obj.next_page.hasNextPage is True
+        """A live next_page_token should be stored as-is."""
+        obj = qn.GetCoins(owner=_ADDR, next_page_token=b"tok1")
+        assert obj.next_page_token == b"tok1"
 
 
 # ---------------------------------------------------------------------------

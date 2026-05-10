@@ -416,7 +416,7 @@ async def _audit(client: AsyncClientBase, address: str) -> tuple[int, int, list]
     if not bal_result.is_ok():
         raise RuntimeError(f"GetAddressCoinBalance failed: {bal_result.result_string}")
 
-    gas_result = await client.execute(command=cmd.GetGas(owner=address))
+    gas_result = await client.execute_for_all(command=cmd.GetGas(owner=address))
     if not gas_result.is_ok():
         raise RuntimeError(f"GetGas failed: {gas_result.result_string}")
 

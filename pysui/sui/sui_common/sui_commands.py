@@ -195,19 +195,23 @@ class GetAddressCoinBalances(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetAddressCoinBalancesSC
     grpc_class: ClassVar[type] = rn.GetAddressCoinBalances
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("balances",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("balances",)
 
     owner: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetAddressCoinBalancesSC:
         """Return GQL address-coin-balances query node."""
         return pgql_query.GetAddressCoinBalancesSC(
-            owner=self.owner, next_page=self.next_page
+            owner=self.owner, next_page_token=self.next_page_token
         )
 
     def grpc_request(self) -> rn.GetAddressCoinBalances:
-        """Return gRPC list-balances request (first page)."""
-        return rn.GetAddressCoinBalances(owner=self.owner)
+        """Return gRPC list-balances request."""
+        return rn.GetAddressCoinBalances(owner=self.owner, page_token=self.next_page_token)
 
 
 @dataclass(kw_only=True)
@@ -216,22 +220,26 @@ class GetCoins(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetCoinsSC
     grpc_class: ClassVar[type] = rn.GetCoins
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("objects",)
 
     owner: str
     coin_type: Optional[str] = "0x2::coin::Coin<0x2::sui::SUI>"
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetCoinsSC:
         """Return GQL coins query node."""
         return self.gql_class(
             owner=self.owner,
             coin_type=self.coin_type,
-            next_page=self.next_page,
+            next_page_token=self.next_page_token,
         )
 
     def grpc_request(self) -> rn.GetCoins:
         """Return gRPC get-owned-objects request filtered to coin type."""
-        return rn.GetCoins(owner=self.owner, coin_type=self.coin_type)
+        return rn.GetCoins(owner=self.owner, coin_type=self.coin_type, page_token=self.next_page_token)
 
 
 @dataclass(kw_only=True)
@@ -240,21 +248,21 @@ class GetGas(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetGasSC
     grpc_class: ClassVar[type] = rn.GetGas
-    gql_requires_paging: ClassVar[bool] = True
-    gql_page_list_path: ClassVar[tuple] = ("qres", "coins", "coin_objects")
-    grpc_requires_paging: ClassVar[bool] = True
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("objects",)
 
     owner: str
-    next_page: Optional[PagingCursor] = None
-    grpc_page_token: Optional[bytes] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetGasSC:
         """Return GQL gas-coins query node."""
-        return self.gql_class(owner=self.owner, next_page=self.next_page)
+        return self.gql_class(owner=self.owner, next_page_token=self.next_page_token)
 
     def grpc_request(self) -> rn.GetGas:
         """Return gRPC get-gas request."""
-        return self.grpc_class(owner=self.owner, page_token=self.grpc_page_token)
+        return self.grpc_class(owner=self.owner, page_token=self.next_page_token)
 
 
 @dataclass(kw_only=True)
@@ -263,17 +271,21 @@ class GetStaked(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetDelegatedStakesSC
     grpc_class: ClassVar[type] = rn.GetStaked
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("objects",)
 
     owner: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetDelegatedStakesSC:
         """Return GQL staked-coins query node."""
-        return self.gql_class(self.owner, next_page=self.next_page)
+        return self.gql_class(self.owner, next_page_token=self.next_page_token)
 
     def grpc_request(self) -> rn.GetStaked:
         """Return gRPC get-staked request."""
-        return rn.GetStaked(owner=self.owner)
+        return rn.GetStaked(owner=self.owner, page_token=self.next_page_token)
 
 
 @dataclass(kw_only=True)
@@ -282,17 +294,21 @@ class GetDelegatedStakes(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetDelegatedStakesSC
     grpc_class: ClassVar[type] = rn.GetDelegatedStakes
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("objects",)
 
     owner: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetDelegatedStakesSC:
         """Return GQL delegated-stakes query node."""
-        return self.gql_class(self.owner, next_page=self.next_page)
+        return self.gql_class(self.owner, next_page_token=self.next_page_token)
 
     def grpc_request(self) -> rn.GetDelegatedStakes:
         """Return gRPC get-delegated-stakes request."""
-        return rn.GetDelegatedStakes(owner=self.owner)
+        return rn.GetDelegatedStakes(owner=self.owner, page_token=self.next_page_token)
 
 
 # ---------------------------------------------------------------------------
@@ -387,17 +403,21 @@ class GetObjectsOwnedByAddress(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetObjectsOwnedByAddressSC
     grpc_class: ClassVar[type] = rn.GetObjectsOwnedByAddress
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("objects",)
 
     owner: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetObjectsOwnedByAddressSC:
         """Return GQL owned-objects query node."""
-        return self.gql_class(owner=self.owner, next_page=self.next_page)
+        return self.gql_class(owner=self.owner, next_page_token=self.next_page_token)
 
     def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
         """Return gRPC list-owned-objects request."""
-        return rn.GetObjectsOwnedByAddress(owner=self.owner)
+        return rn.GetObjectsOwnedByAddress(owner=self.owner, page_token=self.next_page_token)
 
 
 @dataclass(kw_only=True)
@@ -406,17 +426,21 @@ class GetDynamicFields(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetDynamicFieldsSC
     grpc_class: ClassVar[type] = rn.GetDynamicFields
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("dynamic_fields",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("dynamic_fields",)
 
     object_id: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetDynamicFieldsSC:
         """Return GQL dynamic-fields query node."""
-        return self.gql_class(object_id=self.object_id, next_page=self.next_page)
+        return self.gql_class(object_id=self.object_id, next_page_token=self.next_page_token)
 
     def grpc_request(self) -> rn.GetDynamicFields:
         """Return gRPC list-dynamic-fields request."""
-        return rn.GetDynamicFields(object_id=self.object_id)
+        return rn.GetDynamicFields(object_id=self.object_id, page_token=self.next_page_token)
 
 
 # ---------------------------------------------------------------------------
@@ -442,6 +466,7 @@ class GetEpoch(SuiCommand):
         return rn.GetEpoch(epoch_number=self.epoch_id)
 
 
+@dataclass(kw_only=True)
 class GetBasicCurrentEpochInfo(SuiCommand):
     """Fetch the minimal current epoch fields needed for gas and expiry building."""
 
@@ -558,21 +583,25 @@ class GetObjectsForType(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetObjectsForTypeSC
     grpc_class: ClassVar[type] = rn.GetObjectsOwnedByAddress
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("objects",)
 
     owner: str
     object_type: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetObjectsForTypeSC:
         """Return GraphQL query node."""
         return self.gql_class(
-            owner=self.owner, object_type=self.object_type, next_page=self.next_page
+            owner=self.owner, object_type=self.object_type, next_page_token=self.next_page_token
         )
 
     def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
         """Return gRPC list-owned-objects request with type filter."""
         return rn.GetObjectsOwnedByAddress(
-            owner=self.owner, object_type=self.object_type
+            owner=self.owner, object_type=self.object_type, page_token=self.next_page_token
         )
 
 
@@ -608,13 +637,15 @@ class GetPackage(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetPackageSC
     grpc_class: ClassVar[type] = rn.GetPackage
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("modules",)
 
     package: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetPackageSC:
         """Return GQL package query node."""
-        return self.gql_class(package=self.package, next_page=self.next_page)
+        return self.gql_class(package=self.package, next_page_token=self.next_page_token)
 
     def grpc_request(self) -> rn.GetPackage:
         """Return gRPC get-package request."""
@@ -627,19 +658,23 @@ class GetPackageVersions(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetPackageVersionsSC
     grpc_class: ClassVar[type] = rn.GetPackageVersions
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("versions",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("versions",)
 
     package_address: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetPackageVersionsSC:
         """Return GQL package-versions query node."""
         return pgql_query.GetPackageVersionsSC(
-            package_address=self.package_address, next_page=self.next_page
+            package_address=self.package_address, next_page_token=self.next_page_token
         )
 
     def grpc_request(self) -> rn.GetPackageVersions:
         """Return gRPC list-package-versions request."""
-        return rn.GetPackageVersions(package_storage_id=self.package_address)
+        return rn.GetPackageVersions(package_storage_id=self.package_address, page_token=self.next_page_token)
 
 
 @dataclass(kw_only=True)
@@ -723,25 +758,19 @@ class GetStructures(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetStructuresSC
     grpc_class: ClassVar[type] = rn.GetStructures
-    gql_requires_paging: ClassVar[bool] = True
-    gql_page_list_path: ClassVar[tuple[str, ...]] = (
-        "object",
-        "asMovePackage",
-        "module",
-        "structs",
-        "nodes",
-    )
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("structures",)
 
     package: str
     module_name: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetStructuresSC:
         """Return GQL structures query node."""
         return self.gql_class(
             package=self.package,
             module_name=self.module_name,
-            next_page=self.next_page,
+            next_page_token=self.next_page_token,
         )
 
     def grpc_request(self) -> rn.GetStructures:
@@ -783,25 +812,19 @@ class GetFunctions(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetFunctionsSC
     grpc_class: ClassVar[type] = rn.GetFunctions
-    gql_requires_paging: ClassVar[bool] = True
-    gql_page_list_path: ClassVar[tuple[str, ...]] = (
-        "object",
-        "asMovePackage",
-        "module",
-        "functions",
-        "nodes",
-    )
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("functions",)
 
     package: str
     module_name: str
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetFunctionsSC:
         """Return GQL functions query node."""
         return self.gql_class(
             package=self.package,
             module_name=self.module_name,
-            next_page=self.next_page,
+            next_page_token=self.next_page_token,
         )
 
     def grpc_request(self) -> rn.GetFunctions:
@@ -894,23 +917,18 @@ class GetLatestSuiSystemState(SuiCommand):
 
 @dataclass(kw_only=True)
 class GetCurrentValidators(SuiCommand):
-    """Fetch all currently active validators (GQL paging handled internally)."""
+    """Fetch all currently active validators (GQL paging handled via execute_for_all)."""
 
     gql_class: ClassVar[type] = pgql_query.GetCurrentValidatorsSC
     grpc_class: ClassVar[type] = rn.GetCurrentValidatorsSC
-    gql_requires_paging: ClassVar[bool] = True
-    gql_page_list_path: ClassVar[tuple[str, ...]] = (
-        "epoch",
-        "validatorSet",
-        "activeValidators",
-        "nodes",
-    )
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("validators",)
 
-    next_page: Optional[PagingCursor] = None
+    next_page_token: Optional[bytes] = None
 
     def gql_node(self) -> pgql_query.GetCurrentValidatorsSC:
         """Return GQL current-validators query node."""
-        return pgql_query.GetCurrentValidatorsSC(next_page=self.next_page)
+        return pgql_query.GetCurrentValidatorsSC(next_page_token=self.next_page_token)
 
     def grpc_request(self) -> rn.GetCurrentValidatorsSC:
         """Return gRPC current-validators request."""

@@ -7,6 +7,7 @@
 
 from typing import Optional, Callable, ParamSpec
 from functools import partial
+from deprecated.sphinx import deprecated
 from pysui.sui.sui_pgql.pgql_clients import BaseSuiGQLClient
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_query as qn
@@ -14,6 +15,7 @@ import pysui.sui.sui_pgql.pgql_query as qn
 _P = ParamSpec("P")
 
 
+@deprecated(version="0.99.0", reason="Archive-backed nodes no longer prune objects from query results; this filter is no longer needed.")
 def active_types_only(
     objects: list[pgql_type.PGQL_Type],
 ) -> list[pgql_type.PGQL_Type]:
@@ -33,6 +35,7 @@ def active_types_only(
     return objects
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 def sync_cursored_collector(
     pfn: Callable[_P, list],
     client: BaseSuiGQLClient,
@@ -50,7 +53,7 @@ def sync_cursored_collector(
     :return: A list of results
     :rtype: list
     """
-    collection = list = []
+    collection: list = []
     result = client.execute_query_node(with_node=pfn())
     while True:
         if result.is_ok():
@@ -74,6 +77,7 @@ def sync_cursored_collector(
     return collection
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 async def async_cursored_collector(
     pfn: Callable[_P, list],
     client: BaseSuiGQLClient,
@@ -91,7 +95,7 @@ async def async_cursored_collector(
     :return: A list of results
     :rtype: list
     """
-    collection = list = []
+    collection: list = []
     result = await client.execute_query_node(with_node=pfn())
     while True:
         if result.is_ok():
@@ -112,6 +116,7 @@ async def async_cursored_collector(
     return collection
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=cmd.GetGas(owner=owner)) instead.")
 def get_all_owned_gas_objects(
     owner: str, client: BaseSuiGQLClient, only_active: Optional[bool] = True
 ) -> list[pgql_type.SuiCoinObjectGQL]:
@@ -135,6 +140,7 @@ def get_all_owned_gas_objects(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 def get_all_address_balances(
     owner: str, client: BaseSuiGQLClient
 ) -> list[pgql_type.BalanceGQL]:
@@ -154,6 +160,7 @@ def get_all_address_balances(
     return all_bal
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=cmd.GetObjectsOwnedByAddress(owner=owner)) instead.")
 def get_all_owned_objects(
     owner: str, client: BaseSuiGQLClient, only_active: Optional[bool] = True
 ) -> list[pgql_type.ObjectReadGQL]:
@@ -177,6 +184,7 @@ def get_all_owned_objects(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 def get_gas_objects_by_ids(
     client: BaseSuiGQLClient, gas_ids: list[str], only_active: Optional[bool] = True
 ) -> list[pgql_type.SuiCoinObjectGQL]:
@@ -200,6 +208,7 @@ def get_gas_objects_by_ids(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 def get_objects_by_ids(
     client: BaseSuiGQLClient, object_ids: list[str], only_active: Optional[bool] = True
 ) -> list[pgql_type.ObjectReadGQL]:
@@ -223,6 +232,7 @@ def get_objects_by_ids(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=cmd.GetGas(owner=owner)) instead.")
 async def async_get_all_owned_gas_objects(
     owner: str, client: BaseSuiGQLClient, only_active: Optional[bool] = True
 ) -> list[pgql_type.SuiCoinObjectGQL]:
@@ -246,6 +256,7 @@ async def async_get_all_owned_gas_objects(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 async def async_get_all_address_balances(
     owner: str, client: BaseSuiGQLClient
 ) -> list[pgql_type.BalanceGQL]:
@@ -267,6 +278,7 @@ async def async_get_all_address_balances(
     return all_bal
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=cmd.GetObjectsOwnedByAddress(owner=owner)) instead.")
 async def async_get_all_owned_objects(
     owner: str, client: BaseSuiGQLClient, only_active: Optional[bool] = True
 ) -> list[pgql_type.ObjectReadGQL]:
@@ -290,6 +302,7 @@ async def async_get_all_owned_objects(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 async def async_get_gas_objects_by_ids(
     client: BaseSuiGQLClient, gas_ids: list[str], only_active: Optional[bool] = True
 ) -> list[pgql_type.SuiCoinObjectGQL]:
@@ -313,6 +326,7 @@ async def async_get_gas_objects_by_ids(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 async def async_get_objects_by_ids(
     client: BaseSuiGQLClient, object_ids: list[str], only_active: Optional[bool] = True
 ) -> list[pgql_type.ObjectReadGQL]:

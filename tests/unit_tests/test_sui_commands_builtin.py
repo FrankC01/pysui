@@ -209,26 +209,31 @@ class TestAllAreSubcommands:
 
 
 # ---------------------------------------------------------------------------
-# gql_requires_paging
+# paging flags
 # ---------------------------------------------------------------------------
 
 
 class TestPagingFlags:
-    def test_get_structures_paging_true(self):
-        assert GetStructures.gql_requires_paging is True
+    def test_get_structures_pageable_gql(self):
+        assert GetStructures.is_pageable_gql is True
+        assert GetStructures.paginated_field_path_gql == ("structures",)
 
-    def test_get_functions_paging_true(self):
-        assert GetFunctions.gql_requires_paging is True
+    def test_get_functions_pageable_gql(self):
+        assert GetFunctions.is_pageable_gql is True
+        assert GetFunctions.paginated_field_path_gql == ("functions",)
 
-    def test_get_coins_paging_false(self):
-        assert GetCoins.gql_requires_paging is False
+    def test_get_coins_paging_true(self):
+        assert GetCoins.is_pageable_gql is True
+        assert GetCoins.paginated_field_path_gql == ("objects",)
 
     def test_get_gas_paging_true(self):
-        assert GetGas.gql_requires_paging is True
-        assert GetGas.grpc_requires_paging is True
+        assert GetGas.is_pageable_gql is True
+        assert GetGas.paginated_field_path_gql == ("objects",)
+        assert GetGas.is_pageable_grpc is True
+        assert GetGas.paginated_field_path_grpc == ("objects",)
 
     def test_get_object_paging_false(self):
-        assert GetObject.gql_requires_paging is False
+        assert GetObject.is_pageable_gql is False
 
 
 # ---------------------------------------------------------------------------

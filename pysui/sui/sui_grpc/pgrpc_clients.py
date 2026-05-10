@@ -9,7 +9,7 @@ import asyncio
 from collections.abc import Callable
 import dataclasses
 import logging
-from typing import Any, Optional, TypeAlias
+from typing import Any, ClassVar, Optional, TypeAlias
 import traceback
 import urllib.parse as urlparse
 
@@ -67,6 +67,8 @@ def _map_pconstraints(in_bound: sui_prot.ProtocolConfig):
 
 class GrpcProtocolClient(AsyncClientBase, PysuiClient):
     """Asynchronous gRPC client."""
+
+    _protocol: ClassVar[str] = "grpc"
 
     def __init__(
         self, *, pysui_config: PysuiConfiguration, default_header: dict | None = None
@@ -318,23 +320,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         if headers is not None:
             kwargs["metadata"] = headers
 
-        if not command.grpc_requires_paging:
-            return await self._dispatch_grpc_request(request, **kwargs)
-
-        accumulated: list[sui_prot.Object] = []
-        while True:
-            result = await self._dispatch_grpc_request(request, **kwargs)
-            if not result.is_ok():
-                return result
-            page: sui_prot.ListOwnedObjectsResponse = result.result_data
-            accumulated.extend(page.objects)
-            if not page.next_page_token:
-                break
-            command.grpc_page_token = page.next_page_token
-            request = command.grpc_request()
-        return SuiRpcResult(
-            True, None, sui_prot.ListOwnedObjectsResponse(objects=accumulated)
-        )
+        return await self._dispatch_grpc_request(request, **kwargs)
 
 
 def _clean_url(url: str) -> tuple[str | None, int | None] | None:

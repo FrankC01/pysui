@@ -29,28 +29,12 @@ from pysui.sui.sui_common.sui_commands import GetGas
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 
 
-async def _get_gas_gql(client: PysuiClient, address: str) -> list:
-    """Fetch all SUI gas objects for address via GQL (auto-paged by dispatcher)."""
-    result = await client.execute(command=GetGas(owner=address))
+async def _get_gas(client: PysuiClient, address: str) -> list:
+    """Fetch all SUI gas objects for address, accumulating all pages."""
+    result = await client.execute_for_all(command=GetGas(owner=address))
     if result.is_ok():
         return result.result_data.objects
     return []
-
-
-async def _get_gas_grpc(client: PysuiClient, address: str) -> list:
-    """Fetch all SUI gas objects for address via gRPC (manual cursor loop)."""
-    objects: list = []
-    page_token: bytes | None = None
-    while True:
-        result = await client.execute(command=GetGas(owner=address, grpc_page_token=page_token))
-        if not result.is_ok():
-            break
-        resp = result.result_data
-        objects.extend(resp.objects)
-        if not resp.next_page_token:
-            break
-        page_token = resp.next_page_token
-    return objects
 
 
 def print_gas(gasses: list) -> int:
@@ -68,10 +52,8 @@ def print_gas(gasses: list) -> int:
 
 async def get_all_gas(client: PysuiClient) -> dict:
     """Get all SUI gas for each address in the active group."""
-    protocol = client.config.active_group.group_protocol
-    fetch = _get_gas_gql if protocol == GroupProtocol.GRAPHQL else _get_gas_grpc
     addys = client.config.active_group.address_list
-    results = await asyncio.gather(*[fetch(client, a) for a in addys], return_exceptions=True)
+    results = await asyncio.gather(*[_get_gas(client, a) for a in addys], return_exceptions=True)
     return dict(zip(addys, results))
 
 

@@ -7,6 +7,7 @@
 
 from typing import Any, Optional, Callable, ParamSpec
 from functools import partial
+from deprecated.sphinx import deprecated
 from pysui.sui.sui_common.client import PysuiClient
 
 
@@ -19,6 +20,7 @@ import pysui.sui.sui_bcs.bcs as bcs
 P = ParamSpec("P")
 
 
+@deprecated(version="0.99.0", reason="Archive-backed nodes no longer prune objects from query results; this filter is no longer needed.")
 def active_types_only(
     objects: list[sui_prot.Object],
 ) -> list[sui_prot.Object]:
@@ -36,6 +38,15 @@ def active_types_only(
     return objects
 
 
+@deprecated(
+    version="0.99.0",
+    reason=(
+        "Use client.execute_for_all(command=<SuiCommand>) instead. "
+        "Note: this function hard-codes '.objects' as the result field and is already "
+        "broken for commands whose response does not have an 'objects' attribute "
+        "(e.g. GetAddressCoinBalances). Migrate to execute_for_all() immediately."
+    ),
+)
 async def async_cursored_collector(
     pfn: Callable[P, list],
     client: PysuiClient,
@@ -77,6 +88,7 @@ async def async_cursored_collector(
     return collection
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=cmd.GetGas(owner=owner)) instead.")
 async def async_get_all_owned_gas_objects(
     owner: str, client: PysuiClient, only_active: Optional[bool] = True
 ) -> list[sui_prot.Object]:
@@ -100,6 +112,7 @@ async def async_get_all_owned_gas_objects(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=cmd.GetObjectsOwnedByAddress(owner=owner)) instead.")
 async def async_get_all_owned_objects(
     owner: str, client: PysuiClient, only_active: Optional[bool] = True
 ) -> list[sui_prot.Object]:
@@ -125,6 +138,7 @@ async def async_get_all_owned_objects(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 async def async_get_gas_objects_by_ids(
     client: PysuiClient, gas_ids: list[str], only_active: Optional[bool] = True
 ) -> list[sui_prot.Object]:
@@ -151,6 +165,7 @@ async def async_get_gas_objects_by_ids(
     )
 
 
+@deprecated(version="0.99.0", reason="Use client.execute_for_all(command=<SuiCommand>) instead.")
 async def async_get_objects_by_ids(
     client: PysuiClient, object_ids: list[str], only_active: Optional[bool] = True
 ) -> list[sui_prot.Object]:
