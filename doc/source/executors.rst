@@ -1,4 +1,3 @@
-
 Transaction Executors
 =====================
 
@@ -7,7 +6,7 @@ All executors are asynchronous-only.
 
 Two execution strategies are available:
 
-- **Serial** — one transaction at a time, backed by an object cache for efficient gas and object resolution
+- **Serial** — one transaction at a time, or one batch of transactions with each transaction execution serialized, backed by an object cache for efficient gas and object resolution
 - **Parallel** — multiple concurrent transactions, with built-in conflict tracking (owned-object serialisation), gas coin pool management, and balance monitoring
 
 ---
@@ -18,10 +17,11 @@ Gas Funding Modes
 Both serial and parallel executors support two gas funding modes:
 
 **Coins mode**
-    Gas is paid from one or more ``Coin<SUI>`` objects owned by the sender (or sponsor).
+    Gas is paid from one or more ``Coin<SUI>`` objects owned by the sender.
     The executor tracks which coin objects are being used and updates them from transaction effects.
 
-    For serial executors, set ``on_coins_low`` to opt in to coin-balance threshold monitoring.
+    For serial executors, use :meth:`serial_executor_with_coins` and optionally set
+    ``on_coins_low`` to opt in to coin-balance threshold monitoring.
     For parallel executors, pass ``gas_mode="coins"`` and call ``seed_coin_pool`` before
     the first ``execute_transactions`` call.
 
@@ -29,14 +29,15 @@ Both serial and parallel executors support two gas funding modes:
     Gas is drawn from the sender's accumulated address balance (SUI accumulator).
     No coin objects need to be managed — the node selects gas automatically.
 
-    For serial executors, set ``on_balance_low`` to opt in to address-balance threshold monitoring.
+    For serial executors, use :meth:`serial_executor_with_account` and optionally set
+    ``on_balance_low`` to opt in to address-balance threshold monitoring.
     For parallel executors, pass ``gas_mode="addressBalance"``.
 
 Address balance mode is the higher-throughput option: it eliminates coin check-out/check-in
 overhead and pool contention, relying only on the concurrency semaphore as back-pressure.
 Coins mode gives tighter control over which objects pay gas, at the cost of pool management.
 
-For both serial executors: passing neither ``on_coins_low`` nor ``on_balance_low`` is valid —
+For serial executors: passing neither ``on_coins_low`` nor ``on_balance_low`` is valid —
 the executor uses gas coins and works without threshold monitoring.
 
 ---
@@ -44,35 +45,48 @@ the executor uses gas coins and works without threshold monitoring.
 Serial Executors
 ----------------
 
-Serial executors execute transactions one at a time in the order provided.
-An internal object cache is primed on the first transaction (gas objects are consolidated);
-subsequent transactions resolve from cache, making them significantly faster.
+Serial executors execute transactions in the order provided; multiple transactions can be
+batched into a list and submitted in a single ``execute_transactions`` call, where each is
+executed serially in sequence. An internal object cache is primed on the first transaction
+(gas objects are consolidated); subsequent transactions resolve from cache, making them
+significantly faster.
 
-Note: ``execute_transactions`` is not re-entrant. Concurrent calls on the same instance are
-serialized by an internal lock.
+``PysuiSerialExecutor`` is the single concrete serial executor class, shared across both
+GraphQL and gRPC transports. Only the :func:`client_factory` group name differs between
+transports — the executor interface is identical.
 
-GraphQL — ``GqlSerialTransactionExecutor``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Obtain an instance via :meth:`serial_executor_with_coins` (coins gas mode) or
+:meth:`serial_executor_with_account` (address balance gas mode).
 
-**Coins gas mode** (``on_coins_low``):
+Restrictions
+~~~~~~~~~~~~
+
+- **Not re-entrant** — submissions to ``execute_transactions()`` must be serialized by
+  the user. Concurrent calls on the same instance will result in conflicting gas coin
+  versions and undefined object cache state.
+
+- **No sponsored transactions** — only the sender's gas coin is used. Sponsor-pays
+  patterns are not supported by the serial executor.
+
+- **Gas coin threshold with** ``txn.gas`` **references** — if the transactions being
+  submitted reference ``txn.gas`` directly (e.g.
+  ``txn.split_coin(coin=txn.gas, amounts=[...])``) the gas coin balance is consumed by
+  both gas fees *and* the PTB operation. In this case ``min_balance_threshold`` may need
+  a significantly higher starting value than the default.
+
+**Coins gas mode** (``serial_executor_with_coins``):
 
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
-
-    async def on_coins_low(ctx: ExecutorContext) -> list[str] | None:
-        # return new coin IDs to continue, or None/[] to halt
-        return None
 
     async def run():
+        # Use SUI_GQL_RPC_GROUP for GraphQL or SUI_GRPC_GROUP for gRPC
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)
-        executor = await client.serial_executor(
+        executor, primary_coin_id = await client.serial_executor_with_coins(
             sender=cfg.active_address,
-            default_gas_budget=5_000_000,
             min_balance_threshold=100_000_000,
-            on_coins_low=on_coins_low,
         )
 
         txn = await executor.new_transaction()
@@ -85,9 +99,101 @@ GraphQL — ``GqlSerialTransactionExecutor``
                 err, exc = r
                 print(f"Error: {err.name} — {exc}")
             else:
-                print(r)
+                print(r.to_json(indent=2))
 
-**Address balance gas mode** (``on_balance_low``):
+``serial_executor_with_coins`` parameters:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Parameter
+     - Description
+   * - ``sender``
+     - Sender address string or ``SigningMultiSig``
+   * - ``coins``
+     - Optional list of coin object IDs (``list[str]``) or pre-fetched ``sui_prot.Object``
+       instances. If ``None``, fetches enough SUI coins owned by ``sender`` to cover
+       ``min_balance_threshold`` — not all SUI coins.
+   * - ``min_balance_threshold``
+     - Minimum MIST balance the managed gas coin must maintain before ``on_coins_low``
+       fires (default: ``10_000_000``). The default may be too low for workloads that
+       submit many transactions or transactions with high gas consumption — increase it
+       accordingly.
+   * - ``on_coins_low``
+     - Async callback invoked when the gas coin balance drops below
+       ``min_balance_threshold``. Receives an ``ExecutorContext``. Return a list of
+       additional coins to merge into the gas coin, or ``None``/``[]`` to halt the
+       executor. See the example below.
+   * - ``on_failure``
+     - Controls behavior when a transaction fails (e.g. no SUI coins available) with
+       remaining transactions still queued. ``"continue"`` (default) processes remaining
+       transactions; ``"exit"`` halts the batch immediately.
+
+Returns ``(PysuiSerialExecutor, str)`` — the configured executor and the object ID of
+the primary gas coin for the ``SerialExecutor`` to pay for transactions from. The object
+ID is returned to ensure this coin is not used outside of the executor.
+
+**Using** ``on_coins_low`` **— class-based pattern:**
+
+The callback is invoked after the managed gas coin balance drops below
+``min_balance_threshold``. A common pattern is a small class that holds a reference to
+the primary coin object ID (returned by the factory) so the callback can exclude it from
+the replenishment list:
+
+.. code-block:: python
+
+    from pysui import PysuiConfiguration, client_factory
+    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
+    import pysui.sui.sui_common.sui_commands as cmd
+
+    class CoinManager:
+        def __init__(self, client, sender: str):
+            self._client = client
+            self._sender = sender
+            self._avoid_use: str = None
+
+        def set_in_use(self, coin_id: str):
+            self._avoid_use = coin_id
+
+        async def on_coins_low(self, ctx: ExecutorContext) -> list | None:
+            result = await self._client.execute_for_all(
+                cmd.GetGas(owner=self._sender)
+            )
+            if result.is_err():
+                return None
+            coins = result.result_data.objects
+            # Exclude the coin currently managed by the executor
+            available = [c for c in coins if c.object_id != self._avoid_use]
+            return available if available else None
+
+    async def run():
+        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
+        client = client_factory(cfg)
+
+        cm = CoinManager(client, cfg.active_address)
+
+        executor, primary_coin_id = await client.serial_executor_with_coins(
+            sender=cfg.active_address,
+            min_balance_threshold=100_000_000,
+            on_coins_low=cm.on_coins_low,
+        )
+        # Set after factory returns — the callback captures self (cm) by reference,
+        # so it will see the updated value when it fires during execution.
+        cm.set_in_use(primary_coin_id)
+
+        txn = await executor.new_transaction()
+        coin = await txn.split_coin(coin=txn.gas, amounts=[1_000_000_000])
+        await txn.transfer_objects(transfers=[coin], recipient=cfg.active_address)
+
+        results = await executor.execute_transactions([txn])
+        for r in results:
+            if isinstance(r, tuple):
+                err, exc = r
+                print(f"Error: {err.name} — {exc}")
+            else:
+                print(r.to_json(indent=2))
+
+**Address balance gas mode** (``serial_executor_with_account``):
 
 .. code-block:: python
 
@@ -99,11 +205,11 @@ GraphQL — ``GqlSerialTransactionExecutor``
         return None
 
     async def run():
+        # Use SUI_GQL_RPC_GROUP for GraphQL or SUI_GRPC_GROUP for gRPC
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)
-        executor = await client.serial_executor(
+        executor = await client.serial_executor_with_account(
             sender=cfg.active_address,
-            default_gas_budget=5_000_000,
             min_balance_threshold=100_000_000,
             on_balance_low=on_balance_low,
         )
@@ -118,76 +224,7 @@ GraphQL — ``GqlSerialTransactionExecutor``
                 err, exc = r
                 print(f"Error: {err.name} — {exc}")
             else:
-                print(r)
-
-gRPC — ``GrpcSerialTransactionExecutor``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The gRPC serial executor has the same interface as the GraphQL one; only the client type differs.
-
-**Coins gas mode**:
-
-.. code-block:: python
-
-    from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
-
-    async def on_coins_low(ctx: ExecutorContext) -> list[str] | None:
-        return None
-
-    async def run():
-        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)
-        executor = await client.serial_executor(
-            sender=cfg.active_address,
-            default_gas_budget=5_000_000,
-            min_balance_threshold=100_000_000,
-            on_coins_low=on_coins_low,
-        )
-
-        txn = await executor.new_transaction()
-        coin = await txn.split_coin(coin=txn.gas, amounts=[1_000_000_000])
-        await txn.transfer_objects(transfers=[coin], recipient=cfg.active_address)
-
-        results = await executor.execute_transactions([txn])
-        for r in results:
-            if isinstance(r, tuple):
-                err, exc = r
-                print(f"Error: {err.name} — {exc}")
-            else:
-                print(r)
-
-**Address balance gas mode**:
-
-.. code-block:: python
-
-    from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
-
-    async def on_balance_low(ctx: ExecutorContext) -> str | None:
-        return None
-
-    async def run():
-        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)
-        executor = await client.serial_executor(
-            sender=cfg.active_address,
-            default_gas_budget=5_000_000,
-            min_balance_threshold=100_000_000,
-            on_balance_low=on_balance_low,
-        )
-
-        txn = await executor.new_transaction()
-        coin = await txn.split_coin(coin=txn.gas, amounts=[1_000_000_000])
-        await txn.transfer_objects(transfers=[coin], recipient=cfg.active_address)
-
-        results = await executor.execute_transactions([txn])
-        for r in results:
-            if isinstance(r, tuple):
-                err, exc = r
-                print(f"Error: {err.name} — {exc}")
-            else:
-                print(r)
+                print(r.to_json(indent=2))
 
 ---
 
@@ -369,14 +406,12 @@ Each element is either a success value or a failure tuple:
 
 **Parallel executors** return ``TransactionEffects | (ExecutorError, Exception)``.
 
-**Serial executors** return ``TransactionEffects | (ExecutorError, Exception) | ExecutionSkipped``.
+**Serial executors** return ``sui_prot.ExecutedTransaction | (ExecutorError, Exception) | ExecutionSkipped``.
 ``ExecutionSkipped`` is returned for transactions after a halt (e.g. replenishment declined).
 
 .. code-block:: python
 
-    import dataclasses
     from pysui.sui.sui_common.executors import ExecutorError, ExecutionSkipped
-    from pysui.sui.sui_common.types import TransactionEffects
 
     def print_result(r):
         if isinstance(r, ExecutionSkipped):
@@ -385,8 +420,8 @@ Each element is either a success value or a failure tuple:
             err, exc = r
             print(f"Error: {err.name} — {exc}")
         else:
-            # TransactionEffects is a dataclass — serialise as needed
-            print(dataclasses.asdict(r))
+            # ExecutedTransaction — serialise as needed
+            print(r.to_json(indent=2))
 
     results = await executor.execute_transactions(txns)
     for r in results:
@@ -397,29 +432,7 @@ Each element is either a success value or a failure tuple:
 Constructor Parameters
 -----------------------
 
-Serial executors (``GqlSerialTransactionExecutor``, ``GrpcSerialTransactionExecutor``):
-
-.. list-table::
-   :header-rows: 1
-
-   * - Parameter
-     - Description
-   * - ``client``
-     - Injected automatically by the factory method — do not pass directly
-   * - ``sender``
-     - Sender address string or ``SigningMultiSig``
-   * - ``sponsor``
-     - Optional sponsor address or ``SigningMultiSig``
-   * - ``default_gas_budget``
-     - Gas budget per transaction (default: ``50_000_000``)
-   * - ``min_balance_threshold``
-     - Balance level that triggers the replenishment callback; requires one of the callbacks below
-   * - ``on_coins_low``
-     - Async callback for coins mode; return new coin IDs or ``None``/``[]`` to halt
-   * - ``on_balance_low``
-     - Async callback for address balance mode; return funding address or ``None`` to halt
-
-Parallel executors (``GqlParallelTransactionExecutor``, ``GrpcParallelTransactionExecutor``) add:
+Parallel executors (``GqlParallelTransactionExecutor``, ``GrpcParallelTransactionExecutor``):
 
 .. list-table::
    :header-rows: 1

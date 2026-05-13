@@ -11,6 +11,8 @@ import logging
 from typing import TYPE_CHECKING, Any, Union
 from dataclasses import dataclass
 
+from pysui.sui.sui_common.shared_types import ObjectSummary
+
 # ptypes is imported only for type-checker visibility (TYPE_CHECKING guard) to avoid
 # a circular import: sui_common (lower layer) must not import sui_pgql (upper layer)
 # at runtime. The quoted annotation on MoveFunctionCacheEntry.parameters is required
@@ -19,17 +21,6 @@ if TYPE_CHECKING:
     import pysui.sui.sui_pgql.pgql_types as ptypes
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ObjectCacheEntry:
-    """Cached object reference with version, digest, and owner metadata."""
-
-    objectId: str
-    version: str
-    digest: str
-    owner: str | None = None
-    initialSharedVersion: str | None = None
 
 
 @dataclass
@@ -54,8 +45,8 @@ class MoveFunctionEntry:
 class CacheEntryTypes:
     """Type registry of supported cache categories and their entry shapes."""
 
-    OwnedObject: ObjectCacheEntry
-    SharedOrImmutableObject: ObjectCacheEntry
+    OwnedObject: ObjectSummary
+    SharedOrImmutableObject: ObjectSummary
     MoveFunction: MoveFunctionCacheEntry
     Custom: Any
 
@@ -66,48 +57,44 @@ class AbstractAsyncCache(ABC):
     @abstractmethod
     async def _get(
         self, cache_type: str, prop: str
-    ) -> Union[ObjectCacheEntry, MoveFunctionCacheEntry]:
+    ) -> Union[ObjectSummary, MoveFunctionCacheEntry]:
         """Fetch a single entry from the underlying cache store."""
-        pass
 
     @abstractmethod
     async def _set(
         self,
         cache_type: str,
         prop: str,
-        val: Union[ObjectCacheEntry, MoveFunctionCacheEntry],
+        val: Union[ObjectSummary, MoveFunctionCacheEntry],
     ) -> None:
         """Persist a single entry into the underlying cache store."""
-        pass
 
     @abstractmethod
     async def _delete(self, cache_type: str, prop: str) -> None:
         """Remove a single entry from the underlying cache store."""
-        pass
 
     @abstractmethod
     async def _clear(self, cache_type: Union[str, None]) -> None:
         """Clear all entries for one cache type or all types when None."""
-        pass
 
     async def get_object(
         self, id: str
-    ) -> Union[ObjectCacheEntry, MoveFunctionCacheEntry, None]:
+    ) -> Union[ObjectSummary, MoveFunctionCacheEntry, None]:
         """Return cached object entry by id from owned or shared/immutable buckets."""
         res = await self._get("OwnedObject", id)
         if not res:
             res = await self._get("SharedOrImmutableObject", id)
 
-        return res if res else None
+        return res
 
     async def get_objects(
         self, ids: list[str]
-    ) -> list[Union[ObjectCacheEntry, MoveFunctionCacheEntry, None]]:
+    ) -> list[Union[ObjectSummary, MoveFunctionCacheEntry, None]]:
         """Return cached object entries for the given list of object ids."""
         # P2 fix: replace asyncio.gather on in-memory dict ops with direct iteration
         return [await self.get_object(x) for x in ids]
 
-    async def add_object(self, obj: ObjectCacheEntry) -> ObjectCacheEntry:
+    async def add_object(self, obj: ObjectSummary) -> ObjectSummary:
         """Add an object entry to the appropriate owned or shared/immutable bucket."""
         if obj.owner:
             await self._set("OwnedObject", obj.objectId, obj)
@@ -116,7 +103,7 @@ class AbstractAsyncCache(ABC):
 
         return obj
 
-    async def add_objects(self, objs: list[ObjectCacheEntry]) -> list[ObjectCacheEntry]:
+    async def add_objects(self, objs: list[ObjectSummary]) -> list[ObjectSummary]:
         """Add multiple object entries to the cache."""
         # P2 fix: replace asyncio.gather on in-memory dict ops with direct iteration
         return [await self.add_object(x) for x in objs]
@@ -185,7 +172,7 @@ class AsyncInMemoryCache(AbstractAsyncCache):
     def __init__(self):
         """."""
         self._cache: dict[
-            str, dict[str, Union[ObjectCacheEntry, MoveFunctionCacheEntry, Any]]
+            str, dict[str, Union[ObjectSummary, MoveFunctionCacheEntry, Any]]
         ] = {
             "OwnedObject": {},
             "SharedOrImmutableObject": {},
@@ -195,14 +182,14 @@ class AsyncInMemoryCache(AbstractAsyncCache):
 
     async def _get(
         self, cache_type: str, entry_type: str
-    ) -> Union[ObjectCacheEntry, MoveFunctionCacheEntry, Any, None]:
+    ) -> Union[ObjectSummary, MoveFunctionCacheEntry, Any, None]:
         """Fetch a single entry from the in-memory dict store."""
         res = self._cache.get(cache_type)
         return res.get(entry_type) if res else None
 
     async def _set(
         self, cache_type: str, entry_type: str, val: Any
-    ) -> Union[ObjectCacheEntry, MoveFunctionCacheEntry, Any, None]:
+    ) -> Union[ObjectSummary, MoveFunctionCacheEntry, Any, None]:
         """Persist a single entry into the in-memory dict store."""
         self._cache[cache_type][entry_type] = val
         return val
@@ -240,7 +227,7 @@ class AsyncObjectCache(AsyncInMemoryCache):
 
     async def getObjects(
         self, ids: list[str]
-    ) -> list[Union[ObjectCacheEntry, MoveFunctionCacheEntry, None]]:
+    ) -> list[Union[ObjectSummary, MoveFunctionCacheEntry, None]]:
         """Return cached object entries for the given ids (camelCase alias)."""
         return await self.get_objects(ids)
 
@@ -273,24 +260,27 @@ class AsyncObjectCache(AsyncInMemoryCache):
         return await self.delete_custom(key)
 
     async def applyEffects(self, effects) -> None:
-        """Apply execution effects to the cache using the protocol-agnostic common type."""
-        from pysui.sui.sui_common.types import TransactionEffects as TxEffects
+        """Apply execution effects to the cache."""
+        import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
         lamport_version = str(effects.lamport_version)
         deleted: list[str] = []
-        added: list[ObjectCacheEntry] = []
+        added: list[ObjectSummary] = []
         for changed in effects.changed_objects:
-            if changed.output_state == "DoesNotExist":
+            if changed.output_state == sui_prot.ChangedObjectOutputObjectState.DOES_NOT_EXIST:
                 deleted.append(changed.object_id)
-            elif changed.output_state in ("ObjectWrite", "PackageWrite"):
+            elif changed.output_state in (
+                sui_prot.ChangedObjectOutputObjectState.OBJECT_WRITE,
+                sui_prot.ChangedObjectOutputObjectState.PACKAGE_WRITE,
+            ):
                 owner = changed.output_owner
                 added.append(
-                    ObjectCacheEntry(
+                    ObjectSummary(
                         objectId=changed.object_id,
                         version=lamport_version,
                         digest=changed.output_digest or "",
-                        owner=None if (owner is None or owner.kind == "SharedInitialVersion") else owner.address,
-                        initialSharedVersion=str(owner.initial_shared_version) if owner and owner.kind == "SharedInitialVersion" else None,
+                        owner=None if (owner is None or owner.kind == sui_prot.OwnerOwnerKind.SHARED) else owner.address,
+                        initialSharedVersion=str(owner.version) if owner and owner.kind == sui_prot.OwnerOwnerKind.SHARED else None,
                     )
                 )
         if added or deleted:

@@ -233,7 +233,7 @@ pageable commands and all three usage patterns.
 Available SuiCommand Subclasses
 -------------------------------
 
-The following 43 SuiCommand subclasses are built-in and re-exported from the top-level
+The following 45 SuiCommand subclasses are built-in and re-exported from the top-level
 :mod:`pysui` module.  Every command listed here works on **both** GraphQL and gRPC
 transports and returns the same canonical output type from either protocol.
 
@@ -261,7 +261,7 @@ See :ref:`pageable-commands` for the full table and usage examples.
   - :class:`GetDelegatedStakes` *(pageable)*
   - :class:`GetCoinSummary`
 
-**Object Queries (9):**
+**Object Queries (11):**
   - :class:`GetObject`
   - :class:`GetPastObject`
   - :class:`GetMultipleObjects`
@@ -271,6 +271,8 @@ See :ref:`pageable-commands` for the full table and usage examples.
   - :class:`GetObjectContent`
   - :class:`GetMultipleObjectContent`
   - :class:`GetObjectsForType` *(pageable)*
+  - :class:`GetObjectSummary`
+  - :class:`GetMultipleObjectSummary`
 
 **Epoch / System State Queries (4):**
   - :class:`GetEpoch`

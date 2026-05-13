@@ -46,9 +46,8 @@ from pysui.sui.sui_common.factory import client_factory
 from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
 from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 
-from pysui.sui.sui_pgql.pgql_serial_exec import GqlSerialTransactionExecutor
+from pysui.sui.sui_common.executors.serial_executor import PysuiSerialExecutor
 from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
-from pysui.sui.sui_grpc.grpc_serial_exec import GrpcSerialTransactionExecutor
 from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
 
 from pysui.sui.sui_common.sui_command import SuiCommand

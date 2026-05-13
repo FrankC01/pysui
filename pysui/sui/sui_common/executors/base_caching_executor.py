@@ -8,10 +8,9 @@
 from __future__ import annotations
 
 import logging
-from abc import ABC
 from typing import TYPE_CHECKING, Optional
 
-from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectCacheEntry
+from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectSummary
 from pysui.sui.sui_common.types import TransactionEffects
 import pysui.sui.sui_bcs.bcs as bcs
 
@@ -21,7 +20,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class _BaseCachingExecutor(ABC):
+class _BaseCachingExecutor:
     """Protocol-agnostic base for caching transaction executors."""
 
     def __init__(
@@ -38,7 +37,7 @@ class _BaseCachingExecutor(ABC):
     def _from_cache_to_builder(
         self,
         unres: bcs.UnresolvedObjectArg,
-        cachm: ObjectCacheEntry,
+        cachm: ObjectSummary,
     ) -> tuple[bcs.BuilderArg, bcs.CallArg]:
         """Convert a cache entry + unresolved arg to resolved (BuilderArg, CallArg)."""
         co_addy: bcs.Address = bcs.Address.from_str(unres.ObjectStr)
@@ -73,12 +72,11 @@ class _BaseCachingExecutor(ABC):
         """Resolve all UnresolvedObjectArg inputs via the SuiCommand object-fetch path.
 
         Cache hits are resolved without a network round-trip. Cache misses are
-        batch-fetched via ``_FetchObjectsForResolution`` whose ``render()`` normalizes
-        the response to ``list[ObjectCacheEntry]``. All fetched entries are written back
-        to the per-executor cache so subsequent transactions in the same batch avoid
-        redundant fetches.
+        batch-fetched via ``GetMultipleObjectSummary`` whose result is ``list[ObjectSummary]``.
+        All fetched entries are written back to the per-executor cache so subsequent
+        transactions in the same batch avoid redundant fetches.
         """
-        from pysui.sui.sui_common._internal_commands import _FetchObjectsForResolution
+        from pysui.sui.sui_common.sui_commands import GetMultipleObjectSummary
 
         unresolved: dict[int, bcs.UnresolvedObjectArg] = txn.builder.get_unresolved_inputs()
         if not unresolved:
@@ -98,12 +96,12 @@ class _BaseCachingExecutor(ABC):
 
         if fetch_ids:
             result = await self._client.execute(
-                command=_FetchObjectsForResolution(object_ids=list(fetch_ids.values()))
+                command=GetMultipleObjectSummary(object_ids=list(fetch_ids.values()))
             )
             if not result.is_ok():
                 raise ValueError(f"Failed to fetch objects for resolution: {result.result_string}")
 
-            entries: list[ObjectCacheEntry] = result.result_data
+            entries: list[ObjectSummary] = result.result_data
             inv_fetch: dict[str, int] = {v: k for k, v in fetch_ids.items()}
 
             for entry in entries:
@@ -119,15 +117,18 @@ class _BaseCachingExecutor(ABC):
         self,
         txn,
         signer_block,
-        default_gas_budget: int = 50_000_000,
-    ) -> str:
-        """Resolve deferred object inputs then build, injecting gas from cache."""
+        gas_objects_override: Optional[list] = None,
+    ) -> dict:
+        """Resolve deferred object inputs then build and sign, injecting gas from cache."""
         await self._resolve_object_inputs(txn)
-        gas_objects = await self.cache.getCustom("gasCoins")
-        return await txn.build(
-            gas_budget=default_gas_budget,
-            use_gas_objects=gas_objects or None,
-            use_account_for_gas=self._use_account_gas and not gas_objects,
+        if gas_objects_override is not None:
+            use_gas = gas_objects_override
+        else:
+            gas_objects = await self.cache.getCustom("gasCoins")
+            use_gas = gas_objects or None
+        return await txn.build_and_sign(
+            use_gas_objects=use_gas,
+            use_account_for_gas=self._use_account_gas and not use_gas,
         )
 
     async def apply_effects(self, effects: TransactionEffects) -> None:

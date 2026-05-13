@@ -157,6 +157,12 @@ Objects
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectsForType`
      - Fetch all objects of a specific Move type owned by an address
 
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectSummary`
+     - Fetch a thin summary (object ID, version, digest, owner) for a single object
+
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetMultipleObjectSummary`
+     - Fetch thin summaries (object ID, version, digest, owner) for a list of objects
+
 
 Epoch / System State
 --------------------

@@ -17,13 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations
 - `AsyncSuiTransaction` is now a single protocol-agnostic class at `pysui.sui.sui_common.async_txn`; old module paths deleted — update imports
 - Legacy GQL object types (`ObjectReadGQL`, `SuiCoinObjectGQL`, `SuiCoinObjectSummaryGQL`, `SuiStakedCoinGQL`) are no longer accepted as transaction method arguments — pass `sui_prot.Object` (via `GetObject` SuiCommand) instead
+- `GqlSerialTransactionExecutor` and `GrpcSerialTransactionExecutor` replaced by `PysuiSerialExecutor` — single protocol-agnostic serial executor class; update imports and instantiation
+- `client.serial_executor()` replaced by `client.serial_executor_with_coins()` — factory signature changed; see executor documentation
+- `execute_transactions()` now returns `list[sui_prot.ExecutedTransaction]` instead of `list[TransactionEffects]` — update all result-handling code
+- `default_gas_budget` parameter removed from serial executor constructors — gas budget is now determined automatically by simulation
 
 ### Added
 
-- **Unified Client Interface (UCI)**: `SuiCommand` ABC and 43 built-in subclasses — protocol-neutral request objects; `await client.execute(command=...)` dispatches identically on both `GqlProtocolClient` and `GrpcProtocolClient` and returns the same canonical proto output regardless of transport; all 43 subclasses exported from `pysui`
+- **Unified Client Interface (UCI)**: `SuiCommand` ABC and 45 built-in subclasses — protocol-neutral request objects; `await client.execute(command=...)` dispatches identically on both `GqlProtocolClient` and `GrpcProtocolClient` and returns the same canonical proto output regardless of transport; all 45 subclasses exported from `pysui`
 - `AsyncClientBase` abstract base class — replaces `PysuiClient` as the shared async interface; `client_factory()` return type updated accordingly
 - `serial_executor(**kwargs)` and `parallel_executor(**kwargs)` factory methods on both protocol clients — UCI-conformant executor creation
-- `GqlParallelTransactionExecutor`, `GrpcSerialTransactionExecutor`, `GrpcParallelTransactionExecutor` — new executor classes for gRPC and parallel workflows
+- `GqlParallelTransactionExecutor`, `GrpcParallelTransactionExecutor` — new executor classes for parallel workflows
 - Metadata-driven argument encoder (`txn_arg_encoder.py`) using `@singledispatch` over `OpenMoveBodyGQL` variants; shared by GQL and gRPC transaction builders; replaces fragile dict-based Move type representation
 - `OpenMove*GQL` dataclass hierarchy in `pgql_types.py` mirroring the GQL schema Move type tree
 - `SimulateTransaction` and `SimulateTransactionKind` SuiCommands replacing `DryRunTransaction` / `DryRunTransactionKind`

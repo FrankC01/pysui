@@ -28,9 +28,9 @@ def _make_grpc_client():
 
 
 def _make_grpc_serial_executor(**kwargs):
-    from pysui.sui.sui_grpc.grpc_serial_exec import GrpcSerialTransactionExecutor
+    from pysui.sui.sui_common.executors.serial_executor import PysuiSerialExecutor
     client = _make_grpc_client()
-    ex = GrpcSerialTransactionExecutor(client=client, sender="0xsender", **kwargs)
+    ex = PysuiSerialExecutor(client=client, sender="0xsender", **kwargs)
     ex._tracked_balance = 1_000_000
     return ex, client
 
@@ -107,11 +107,11 @@ class TestSerialNewTransaction:
 
     @pytest.mark.asyncio
     async def test_new_transaction_defined_on_base_not_concrete(self):
-        """new_transaction is resolved from _BaseSerialExecutor, not GrpcSerialTransactionExecutor."""
+        """new_transaction is resolved from _BaseSerialExecutor, not PysuiSerialExecutor."""
         from pysui.sui.sui_common.executors.base_executor import _BaseSerialExecutor
-        from pysui.sui.sui_grpc.grpc_serial_exec import GrpcSerialTransactionExecutor
+        from pysui.sui.sui_common.executors.serial_executor import PysuiSerialExecutor
 
-        for klass in GrpcSerialTransactionExecutor.__mro__:
+        for klass in PysuiSerialExecutor.__mro__:
             if "new_transaction" in klass.__dict__:
                 owner = klass
                 break

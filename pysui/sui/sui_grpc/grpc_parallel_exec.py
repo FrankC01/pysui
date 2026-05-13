@@ -22,7 +22,7 @@ from pysui.sui.sui_common.types import TransactionEffects
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
-from pysui.sui.sui_grpc.grpc_serial_exec import _grpc_effects_to_common
+from pysui.sui.sui_common.executors._effects_compat import _grpc_effects_to_common
 
 grpc_par_txn_exc_logger = logging.getLogger(__name__)
 
@@ -121,13 +121,13 @@ class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
         if not result.is_ok():
             raise ValueError(f"gRPC execute_transaction failed: {result.result_string}")
 
-        response: sui_prot.ExecuteTransactionResponse = result.result_data
-        if response.transaction is None:
-            raise ValueError("ExecuteTransactionResponse.transaction is None")
+        response: sui_prot.ExecutedTransaction | None = result.result_data
+        if response is None:
+            raise ValueError("ExecuteTransaction returned None")
 
-        grpc_effects = response.transaction.effects
+        grpc_effects = response.effects
         if grpc_effects is None:
-            raise ValueError("ExecuteTransactionResponse.transaction.effects is None")
+            raise ValueError("ExecutedTransaction.effects is None")
 
         common_effects = _grpc_effects_to_common(grpc_effects)
 
@@ -170,11 +170,11 @@ class GrpcParallelTransactionExecutor(_BaseParallelExecutor):
         if not result.is_ok():
             raise ValueError(f"refill: gRPC execute failed: {result.result_string}")
 
-        response: sui_prot.ExecuteTransactionResponse = result.result_data
-        if response.transaction is None:
-            raise ValueError("refill: ExecuteTransactionResponse.transaction is None")
+        response: sui_prot.ExecutedTransaction | None = result.result_data
+        if response is None:
+            raise ValueError("refill: ExecuteTransaction returned None")
 
-        grpc_effects = response.transaction.effects
+        grpc_effects = response.effects
         common_effects = _grpc_effects_to_common(grpc_effects)
 
         new_coins: list[GasCoin] = []

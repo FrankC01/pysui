@@ -22,7 +22,7 @@ from pysui.sui.sui_common.txn_arg_encoder import (
     OpenMoveDatatypeBodyGQL,
     encode_arg,
 )
-from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectCacheEntry
+from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectSummary
 from pysui.sui.sui_common.executors.object_id_extract import extract_object_id
 from pysui.sui.sui_pgql.pgql_types import OpenMoveTypeGQL
 
@@ -81,7 +81,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
         oid = extract_object_id(arg)
 
         if self._object_cache is not None:
-            entry: Optional[ObjectCacheEntry] = await self._object_cache.get_object(oid)
+            entry: Optional[ObjectSummary] = await self._object_cache.get_object(oid)
             if entry is not None:
                 if entry.initialSharedVersion is not None:
                     shared_ref = bcs.SharedObjectReference(

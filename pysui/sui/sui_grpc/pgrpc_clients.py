@@ -9,9 +9,14 @@ import asyncio
 from collections.abc import Callable
 import dataclasses
 import logging
-from typing import Any, ClassVar, Optional, TypeAlias
+from typing import Any, Awaitable, ClassVar, Optional, TypeAlias, Union, Literal, TYPE_CHECKING
 import traceback
 import urllib.parse as urlparse
+
+if TYPE_CHECKING:
+    from pysui.sui.sui_common.txb_signing import SigningMultiSig
+    from pysui.sui.sui_common.executors.serial_executor import PysuiSerialExecutor
+    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
 import betterproto2
 import dataclasses_json
@@ -151,24 +156,31 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         kwargs["client"] = self
         return AsyncSuiTransaction(**kwargs)
 
-    async def serial_executor(self, **kwargs) -> Any:
-        """Return a gRPC serial transaction executor.
+    async def serial_executor_with_coins(
+        self,
+        sender: Union[str, "SigningMultiSig"],
+        *,
+        coins: Optional[Union[list[str], list[sui_prot.Object]]] = None,
+        min_balance_threshold: int = 10_000_000,
+        on_coins_low: Optional[Callable[["ExecutorContext"], Awaitable[Optional[list]]]] = None,
+        on_failure: Literal["continue", "exit"] = "continue",
+    ) -> "tuple[PysuiSerialExecutor, str]":
+        """Async factory: create a PysuiSerialExecutor pre-seeded with gas coins.
 
-        The caller owns the executor lifecycle — calling client.close() does not
-        drain or close executor resources. Concurrent serial_executor() calls over
-        the same sender will race on coin selection if both use coin-object gas.
-
-        :param sender: The address of the transaction sender
-        :type sender: Union[str, SigningMultiSig]
-        :param sponsor: Optional sponsor address, defaults to None
-        :type sponsor: Union[str, SigningMultiSig], optional
-        :param default_gas_budget: Default gas budget per transaction, defaults to 50_000_000
-        :type default_gas_budget: int, optional
+        Delegates to PysuiSerialExecutor.with_coins(). Returns (executor, primary_coin_id).
         """
-        import pysui.sui.sui_grpc.grpc_serial_exec as sexec
+        from pysui.sui.sui_common.executors.serial_executor import (
+            PysuiSerialExecutor,
+        )
 
-        kwargs["client"] = self
-        return sexec.GrpcSerialTransactionExecutor(**kwargs)
+        return await PysuiSerialExecutor.with_coins(
+            client=self,
+            sender=sender,
+            coins=coins,
+            min_balance_threshold=min_balance_threshold,
+            on_coins_low=on_coins_low,
+            on_failure=on_failure,
+        )
 
     async def parallel_executor(self, **kwargs) -> Any:
         """Return a gRPC parallel transaction executor.
@@ -321,6 +333,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             kwargs["metadata"] = headers
 
         return await self._dispatch_grpc_request(request, **kwargs)
+
 
 
 def _clean_url(url: str) -> tuple[str | None, int | None] | None:

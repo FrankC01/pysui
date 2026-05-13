@@ -901,7 +901,7 @@ async def do_account_to_sui_coin(client: AsyncClientBase):
 async def main():
     """."""
     try:
-        client_init: PysuiClient = client_factory(
+        client_init: AsyncClientBase = client_factory(
             PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
                 profile_name="devnet",

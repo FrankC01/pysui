@@ -22,7 +22,7 @@ from pysui.sui.sui_common.types import TransactionEffects
 import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_pgql.pgql_serial_exec import _gql_effects_to_common
+from pysui.sui.sui_common.executors._effects_compat import _gql_effects_to_common
 
 gql_par_txn_exc_logger = logging.getLogger(__name__)
 
@@ -119,10 +119,10 @@ class GqlParallelTransactionExecutor(_BaseParallelExecutor):
         )
         if not result.is_ok():
             raise ValueError(f"GQL execute_transaction failed: {result.result_string}")
-        if not isinstance(result.result_data, sui_prot.ExecuteTransactionResponse):
+        if not isinstance(result.result_data, sui_prot.ExecutedTransaction):
             raise TypeError(f"unexpected result type {type(result.result_data).__name__}")
 
-        effects_bcs = bcst.TransactionEffects.deserialize(result.result_data.transaction.effects.bcs.value)
+        effects_bcs = bcst.TransactionEffects.deserialize(result.result_data.effects.bcs.value)
         common_effects = _gql_effects_to_common(effects_bcs)
 
         if common_effects.gas_object is not None and self._gas_mode == "coins":
@@ -162,10 +162,10 @@ class GqlParallelTransactionExecutor(_BaseParallelExecutor):
         )
         if not result.is_ok():
             raise ValueError(f"refill: GQL execute failed: {result.result_string}")
-        if not isinstance(result.result_data, sui_prot.ExecuteTransactionResponse):
+        if not isinstance(result.result_data, sui_prot.ExecutedTransaction):
             raise TypeError(f"refill: unexpected result type {type(result.result_data).__name__}")
 
-        effects_bcs = bcst.TransactionEffects.deserialize(result.result_data.transaction.effects.bcs.value)
+        effects_bcs = bcst.TransactionEffects.deserialize(result.result_data.effects.bcs.value)
         common_effects = _gql_effects_to_common(effects_bcs)
 
         new_coins: list[GasCoin] = []

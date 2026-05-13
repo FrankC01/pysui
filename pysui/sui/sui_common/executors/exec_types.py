@@ -7,6 +7,7 @@
 
 from dataclasses import dataclass
 from enum import IntEnum
+from pysui.sui.sui_common.shared_types import ObjectSummary
 
 
 @dataclass
@@ -17,6 +18,13 @@ class ExecutorContext:
     gas_owner: str
     gas_coins: list[str]
     tracked_balance: int
+
+
+@dataclass
+class GasSummary(ObjectSummary):
+    """Gas coin with balance for SE internal tracking."""
+
+    balance: int = 0
 
 
 @dataclass

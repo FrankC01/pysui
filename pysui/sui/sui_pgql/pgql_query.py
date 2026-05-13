@@ -30,6 +30,7 @@ from pysui.sui.sui_bcs.bcs import TransactionKind, TransactionData, SuiSignature
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_grpc.suimsgs.google import protobuf as _google_protobuf
 import pysui.sui.sui_grpc.pgrpc_requests as _rn
+from pysui.sui.sui_common.shared_types import ObjectSummary
 import pysui.sui.sui_bcs.sui_system_bcs as sui_system_bcs
 from pysui.sui.sui_types.scalars import SuiU64
 
@@ -785,38 +786,84 @@ class GetMultipleObjects(PGQL_QueryNode):
         return pgql_type.ObjectReadsGQL.from_query
 
 
-class _GetMultipleObjectsResolvedSC(GetMultipleObjects):
-    """Internal GQL variant: encode_fn normalizes multiGetObjects → list[ObjectCacheEntry].
+class GetMultipleObjectsSummarySC(GetMultipleObjects):
+    """SC variant: encode_fn normalizes multiGetObjects → list[ObjectSummary]."""
 
-    Used by _FetchObjectsForResolution. Not for external use.
-    """
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest using the leaner SummaryObject fragment."""
+        obj_ids = [{"address": cid} for cid in self.object_ids]
+        qres = schema.Query.multiGetObjects(keys=obj_ids)
+        summary_frag = frag.SummaryObject().fragment(schema)
+        qres.select(summary_frag)
+        return dsl_gql(summary_frag, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], list]:
-        """Return deserializer producing list[ObjectCacheEntry] from multiGetObjects response."""
-        from pysui.sui.sui_common.executors.cache import ObjectCacheEntry as _OCE
+        """Return deserializer producing list[ObjectSummary] from multiGetObjects response."""
 
         def _encode(in_data: dict) -> list:
-            reads = pgql_type.ObjectReadsGQL.from_query(in_data)
-            entries: list[_OCE] = []
-            for obj in reads.data:
-                if not isinstance(obj, pgql_type.ObjectReadGQL):
+            entries: list[ObjectSummary] = []
+            for raw in in_data.get("multiGetObjects", []):
+                if raw is None:
                     continue
-                ow = obj.object_owner
                 owner_str = None
                 shared_v = None
-                if isinstance(ow, pgql_type.SuiObjectOwnedAddress):
-                    owner_str = ow.address_id
-                elif isinstance(ow, pgql_type.SuiObjectOwnedShared):
-                    shared_v = str(ow.initial_version)
-                entries.append(_OCE(
-                    objectId=obj.object_id,
-                    version=str(obj.version),
-                    digest=obj.object_digest,
+                ow = raw.get("owner") or {}
+                kind = ow.get("obj_owner_kind", "")
+                if kind == "AddressOwner":
+                    owner_str = ow.get("address_id")
+                elif kind == "Shared":
+                    shared_v = str(ow.get("initial_version", 0))
+                elif kind == "ObjectOwner":
+                    owner_str = ow.get("parent_id")
+                entries.append(ObjectSummary(
+                    objectId=raw.get("object_id", ""),
+                    version=str(raw.get("version", 0)),
+                    digest=raw.get("object_digest", ""),
                     owner=owner_str,
                     initialSharedVersion=shared_v,
                 ))
             return entries
+
+        return _encode
+
+
+class GetObjectSummarySC(GetObject):
+    """SC variant: encode_fn resolves a single object to ObjectSummary."""
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest using the SummaryObject fragment."""
+        summary_frag = frag.SummaryObject().fragment(schema)
+        return dsl_gql(
+            summary_frag,
+            DSLQuery(
+                object=schema.Query.object(address=self.object_id).select(summary_frag)
+            ),
+        )
+
+    @staticmethod
+    def encode_fn() -> Callable[[dict], "ObjectSummary"]:
+        """Return deserializer producing ObjectSummary from single-object response."""
+
+        def _encode(in_data: dict) -> ObjectSummary:
+            raw = in_data.get("object") or {}
+            owner_str = None
+            shared_v = None
+            ow = raw.get("owner") or {}
+            kind = ow.get("obj_owner_kind", "")
+            if kind == "AddressOwner":
+                owner_str = ow.get("address_id")
+            elif kind == "Shared":
+                shared_v = str(ow.get("initial_version", 0))
+            elif kind == "ObjectOwner":
+                owner_str = ow.get("parent_id")
+            return ObjectSummary(
+                objectId=raw.get("object_id", ""),
+                version=str(raw.get("version", 0)),
+                digest=raw.get("object_digest", ""),
+                owner=owner_str,
+                initialSharedVersion=shared_v,
+            )
 
         return _encode
 

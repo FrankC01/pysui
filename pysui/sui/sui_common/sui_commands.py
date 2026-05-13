@@ -372,6 +372,42 @@ class GetMultipleObjects(SuiCommand):
 
 
 @dataclass(kw_only=True)
+class GetObjectSummary(SuiCommand):
+    """Fetch a thin summary (id, version, digest, owner) for a single object."""
+
+    gql_class: ClassVar[type] = pgql_query.GetObjectSummarySC
+    grpc_class: ClassVar[type] = rn.GetObjectSummarySC
+
+    object_id: str
+
+    def gql_node(self) -> pgql_query.GetObjectSummarySC:
+        """Return GQL object-summary query node."""
+        return self.gql_class(object_id=self.object_id)
+
+    def grpc_request(self) -> rn.GetObjectSummarySC:
+        """Return gRPC get-object-summary request."""
+        return self.grpc_class(object_id=self.object_id)
+
+
+@dataclass(kw_only=True)
+class GetMultipleObjectSummary(SuiCommand):
+    """Fetch thin summaries (id, version, digest, owner) for a list of objects."""
+
+    gql_class: ClassVar[type] = pgql_query.GetMultipleObjectsSummarySC
+    grpc_class: ClassVar[type] = rn.GetMultipleObjectsSummarySC
+
+    object_ids: list[str]
+
+    def gql_node(self) -> pgql_query.GetMultipleObjectsSummarySC:
+        """Return GQL multi-object-summary query node."""
+        return self.gql_class(object_ids=self.object_ids)
+
+    def grpc_request(self) -> rn.GetMultipleObjectsSummarySC:
+        """Return gRPC batch-get-objects-summary request."""
+        return self.grpc_class(object_ids=self.object_ids)
+
+
+@dataclass(kw_only=True)
 class GetMultiplePastObjects(SuiCommand):
     """Fetch specific versions of multiple objects.
 

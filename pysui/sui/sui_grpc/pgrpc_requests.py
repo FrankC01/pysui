@@ -16,7 +16,7 @@ from pysui.sui.sui_bcs.bcs import TransactionKind
 from pysui.sui.sui_bcs import bcs
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_common.executors.cache import ObjectCacheEntry
+from pysui.sui.sui_common.shared_types import ObjectSummary
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
@@ -231,6 +231,8 @@ class GetObject(absreq.PGRPC_Request):
         )
 
 
+
+
 # TODO: Move to gRPC types
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
@@ -344,12 +346,19 @@ class GetMultipleObjects(absreq.PGRPC_Request):
         )
 
 
-class _GetMultipleObjectsResolvedSC(GetMultipleObjects):
-    """Internal SC variant: normalizes BatchGetObjectsResponse → list[ObjectCacheEntry]."""
+_SUMMARY_FIELD_MASK = ["owner", "version", "object_id", "digest"]
 
-    def render(self, resp: sui_prot.BatchGetObjectsResponse) -> list[ObjectCacheEntry]:
-        """Convert gRPC batch response to protocol-agnostic ObjectCacheEntry list."""
-        entries: list[ObjectCacheEntry] = []
+
+class GetMultipleObjectsSummarySC(GetMultipleObjects):
+    """SC variant: normalizes BatchGetObjectsResponse → list[ObjectSummary]."""
+
+    def __init__(self, *, object_ids: list[str]) -> None:
+        """Initializer."""
+        super().__init__(object_ids=object_ids, field_mask=_SUMMARY_FIELD_MASK)
+
+    def render(self, resp: sui_prot.BatchGetObjectsResponse) -> list[ObjectSummary]:
+        """Convert gRPC batch response to list[ObjectSummary]."""
+        entries: list[ObjectSummary] = []
         for obj_result in resp.objects:
             obj = obj_result.object
             if obj is None:
@@ -362,7 +371,7 @@ class _GetMultipleObjectsResolvedSC(GetMultipleObjects):
                 else "OWNER_KIND_UNKNOWN"
             )
             if owner_kind == "SHARED":
-                entries.append(ObjectCacheEntry(
+                entries.append(ObjectSummary(
                     objectId=oid_str,
                     version=str(version),
                     digest=digest_str,
@@ -370,20 +379,61 @@ class _GetMultipleObjectsResolvedSC(GetMultipleObjects):
                     initialSharedVersion=str(obj.owner.version or 0),
                 ))
             elif owner_kind in ("ADDRESS", "OBJECT"):
-                entries.append(ObjectCacheEntry(
+                entries.append(ObjectSummary(
                     objectId=oid_str,
                     version=str(version),
                     digest=digest_str,
                     owner=obj.owner.address if owner_kind == "ADDRESS" else None,
                 ))
             else:
-                entries.append(ObjectCacheEntry(
+                entries.append(ObjectSummary(
                     objectId=oid_str,
                     version=str(version),
                     digest=digest_str,
                     owner=None,
                 ))
         return entries
+
+
+class GetObjectSummarySC(GetObject):
+    """SC variant: resolves a single object to ObjectSummary."""
+
+    def __init__(self, *, object_id: str) -> None:
+        """Initializer."""
+        super().__init__(object_id=object_id, field_mask=_SUMMARY_FIELD_MASK)
+
+    def render(self, resp: sui_prot.GetObjectResponse) -> ObjectSummary:
+        """Convert gRPC GetObjectResponse to ObjectSummary."""
+        obj = resp.object
+        oid_str: str = obj.object_id or ""
+        version: int = obj.version or 0
+        digest_str: str = obj.digest or ""
+        owner_kind: str = (
+            obj.owner.kind.name if obj.owner and obj.owner.kind is not None
+            else "OWNER_KIND_UNKNOWN"
+        )
+        if owner_kind == "SHARED":
+            return ObjectSummary(
+                objectId=oid_str,
+                version=str(version),
+                digest=digest_str,
+                owner=None,
+                initialSharedVersion=str(obj.owner.version or 0),
+            )
+        elif owner_kind in ("ADDRESS", "OBJECT"):
+            return ObjectSummary(
+                objectId=oid_str,
+                version=str(version),
+                digest=digest_str,
+                owner=obj.owner.address if owner_kind == "ADDRESS" else None,
+            )
+        else:
+            return ObjectSummary(
+                objectId=oid_str,
+                version=str(version),
+                digest=digest_str,
+                owner=None,
+            )
 
 
 class GetDynamicFields(absreq.PGRPC_Request):
@@ -942,6 +992,12 @@ class ExecuteTransaction(absreq.PGRPC_Request):
             signatures=self.signatures,
             read_mask=self.field_mask,
         )
+
+    def render(
+        self, response: sui_prot.ExecuteTransactionResponse
+    ) -> sui_prot.ExecutedTransaction | None:
+        """Unwrap ExecuteTransactionResponse to ExecutedTransaction."""
+        return response.transaction
 
 
 class SimulateTransaction(absreq.PGRPC_Request):

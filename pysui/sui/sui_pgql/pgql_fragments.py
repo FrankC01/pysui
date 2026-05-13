@@ -180,6 +180,52 @@ class BaseObject(PGQL_Fragment):
         )
 
 
+class SummaryObject(PGQL_Fragment):
+    """SummaryObject reusable fragment — id, version, digest, and owner only."""
+
+    @cache
+    def fragment(self, schema: DSLSchema) -> DSLFragment:
+        """Return the reusable DSL fragment for this query node."""
+        return (
+            DSLFragment("SummaryObject")
+            .on(schema.Object)
+            .select(
+                schema.Object.version,
+                object_digest=schema.Object.digest,
+                object_id=schema.Object.address,
+                owner=schema.Object.owner.select(
+                    DSLInlineFragment()
+                    .on(schema.AddressOwner)
+                    .select(
+                        address_id=schema.AddressOwner.address.select(
+                            schema.Address.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Shared)
+                    .select(
+                        initial_version=schema.Shared.initialSharedVersion,
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.Immutable)
+                    .select(
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.ObjectOwner)
+                    .select(
+                        parent_id=schema.ObjectOwner.address.select(
+                            schema.Address.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                ),
+            )
+        )
+
+
 class StandardObject(PGQL_Fragment):
     """StandardObject reusable fragment."""
 
