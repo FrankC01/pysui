@@ -694,9 +694,7 @@ async def do_unstake(client: AsyncClientBase):
         txer: AsyncSuiTransaction = await client.transaction()
 
         # Unstake the first staked coin
-        await txer.unstake_coin(
-            staked_coin=result.result_data.objects[0].object_id
-        )
+        await txer.unstake_coin(staked_coin=result.result_data.objects[0].object_id)
         # Uncomment to dry run
         handle_result(
             await client.execute(
@@ -802,7 +800,7 @@ async def main():
     """Example main."""
     client_init: PysuiClient = None
     try:
-        client_init = client_factory(
+        client_init: AsyncClientBase = client_factory(
             PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP,
                 profile_name="devnet",
