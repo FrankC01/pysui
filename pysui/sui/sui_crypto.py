@@ -312,7 +312,10 @@ class SuiKeyPair(KeyPair):
     @classmethod
     def from_b64(cls, indata: str) -> "SuiKeyPair":
         """Generate KeyPair from base64 keystring."""
-        signature, pub_list, prv_list = pfc.keys_from_keystring(indata)
+        try:
+            signature, pub_list, prv_list = pfc.keys_from_keystring(indata)
+        except ValueError as exc:
+            raise ValueError(f"Invalid keystring: {exc}") from exc
         return cls.from_pfc_bytes(
             SignatureScheme(signature),
             bytes(pub_list),
@@ -323,7 +326,10 @@ class SuiKeyPair(KeyPair):
     @classmethod
     def from_bech32(cls, indata: str) -> "KeyPair":
         """Convert bech32 encoded string to keypair."""
-        signature, pub_list, prv_list = pfc.decode_bech32(indata, SUI_BECH32_HRP)
+        try:
+            signature, pub_list, prv_list = pfc.decode_bech32(indata, SUI_BECH32_HRP)
+        except ValueError as exc:
+            raise ValueError(f"Invalid bech32 keystring: {exc}") from exc
         if signature == 255:
             raise ValueError(f"Invalid HRP or variant {indata}")
         return cls.from_pfc_bytes(
@@ -673,9 +679,12 @@ def create_new_keypair(
         ][scheme]
     )
 
-    phrase, pub_list, prv_list = pfc.generate_new_keypair(
-        scheme, derv_path, str(word_counts)
-    )
+    try:
+        phrase, pub_list, prv_list = pfc.generate_new_keypair(
+            scheme, derv_path, str(word_counts)
+        )
+    except ValueError as exc:
+        raise ValueError(f"Keypair generation failed: {exc}") from exc
     return str(phrase), SuiKeyPair.from_pfc_bytes(
         scheme, bytes(pub_list), bytes(prv_list)
     )
@@ -700,7 +709,10 @@ def recover_key_and_address(
     :rtype: tuple[str, KeyPair, SuiAddress]
     """
     mnemonics = " ".join(mnemonics) if mnemonics is list else mnemonics
-    pub_list, prv_list = pfc.keys_from_mnemonics(keytype, derv_path, mnemonics)
+    try:
+        pub_list, prv_list = pfc.keys_from_mnemonics(keytype, derv_path, mnemonics)
+    except ValueError as exc:
+        raise ValueError(f"Key recovery failed: {exc}") from exc
     new_kp = SuiKeyPair.from_pfc_bytes(keytype, bytes(pub_list), bytes(prv_list))
     return mnemonics, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())  # type: ignore
 
