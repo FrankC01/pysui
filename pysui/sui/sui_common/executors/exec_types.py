@@ -5,15 +5,16 @@
 
 """Shared executor types and context."""
 
+from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Any, Awaitable, Callable, Literal, Optional, Union
+from typing import Any, Awaitable, Callable, Literal
 from pysui.sui.sui_common.shared_types import ObjectSummary
 from pysui.sui.sui_common.txb_signing import SigningMultiSig
 
 
-class SerialGasMode(Enum):
-    """Gas funding mode for SerialExecutor."""
+class GasMode(Enum):
+    """Gas funding mode for executors."""
 
     COINS = "coins"
     ADDRESS_BALANCE = "address_balance"
@@ -30,17 +31,7 @@ class GasStatus(Enum):
 
 @dataclass
 class ExecutorContext:
-    """Context passed to gas replenishment callbacks (Parallel Executor)."""
-
-    sender: str
-    gas_owner: str
-    gas_coins: list[str]
-    tracked_balance: int
-
-
-@dataclass
-class SerialExecutorContext:
-    """Context passed to on_balance_low callback for SerialExecutor."""
+    """Context passed to on_balance_low callback."""
 
     sender: str
     tracked_balance: int
@@ -50,20 +41,24 @@ class SerialExecutorContext:
 
 @dataclass
 class ExecutorOptions:
-    """Full parameterization for SerialExecutor construction."""
+    """Full parameterization for executor construction."""
 
-    sender: Union[str, SigningMultiSig]
-    gas_mode: SerialGasMode
+    sender: str | SigningMultiSig
+    gas_mode: GasMode
     initial_coins: list
     min_threshold_balance: int
-    on_balance_low: Optional[Callable[[SerialExecutorContext], Awaitable[list | None]]] = None
+    on_balance_low: Callable[[ExecutorContext], Awaitable[list | None]] | None = None
     max_retries: int = 1
     on_failure: Literal["continue", "exit"] = "continue"
+    max_concurrent: int = 10
 
 
 @dataclass
 class GasSummary(ObjectSummary):
-    """Gas coin with balance for SE internal tracking."""
+    """Gas coin with balance for SE internal tracking.
+
+    Inherits objectId, version, and digest from ObjectSummary.
+    """
 
     balance: int = 0
 

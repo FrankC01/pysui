@@ -48,13 +48,12 @@ from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 
 from pysui.sui.sui_common.executors.serial_executor import SerialExecutor
 from pysui.sui.sui_common.executors.exec_types import (
-    SerialGasMode,
+    GasMode,
     GasStatus,
-    SerialExecutorContext,
+    ExecutorContext,
     ExecutorOptions,
 )
-from pysui.sui.sui_pgql.pgql_parallel_exec import GqlParallelTransactionExecutor
-from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
+from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
 
 from pysui.sui.sui_common.sui_command import SuiCommand
 from pysui.sui.sui_common.sui_commands import (

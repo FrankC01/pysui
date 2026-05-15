@@ -5,10 +5,11 @@
 
 """Concrete serial transaction executor — protocol-agnostic."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
@@ -18,21 +19,26 @@ from pysui.sui.sui_common.executors.exec_types import (
     ExecutionSkipped,
     ExecutorError,
     GasSummary,
-    SerialGasMode,
+    GasMode,
     GasStatus,
     ExecutorOptions,
-    SerialExecutorContext,
 )
 from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor
+from pysui.sui.sui_common.executors.gas_utils import (
+    _SUI_COIN_TYPE,
+    acquire_coins,
+    send_funds_to_account,
+    update_tracked_balance,
+    update_tracked_balance_from_accumulator,
+    run_replenishment,
+)
+from pysui.sui.sui_common.executors._queue_types import _SENTINEL, _QueueItem
 from pysui.sui.sui_common.validators import valid_sui_address
+from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
 
 logger = logging.getLogger(__name__)
-
-_SUI_COIN_TYPE = "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
-
-_SEND_FUNDS_GAS_OVERHEAD = 3_000_000  # gas budget estimate for the split+send_funds PTB in Option B
 
 
 class SerialQueueProcessor:
@@ -48,25 +54,25 @@ class SerialQueueProcessor:
         *,
         client,
         signer_block: SignerBlock,
-        gas_mode: SerialGasMode,
+        gas_mode: GasMode,
         min_threshold_balance: int,
     ) -> None:
         self._client = client
         self._signing_block = signer_block
         self._gas_mode = gas_mode
         self._min_threshold_balance = min_threshold_balance
-        self._gas_summary: Optional[GasSummary] = None
+        self._gas_summary: GasSummary | None = None
         self._tracked_balance: int = 0
         self._cache = _BaseCachingExecutor(
             client=client,
             gas_owner=signer_block.sender_str,
-            use_account_gas=(gas_mode == SerialGasMode.ADDRESS_BALANCE),
+            use_account_gas=(gas_mode == GasMode.ADDRESS_BALANCE),
         )
 
     def seed_funds(
         self,
         *,
-        gas_summary: Optional[GasSummary] = None,
+        gas_summary: GasSummary | None = None,
         tracked_balance: int = 0,
     ) -> None:
         """Set initial gas state after executor initialization PTBs complete.
@@ -77,6 +83,14 @@ class SerialQueueProcessor:
         """
         self._gas_summary = gas_summary
         self._tracked_balance = tracked_balance if gas_summary is None else gas_summary.balance
+
+    @property
+    def sender_str(self) -> str:
+        return self._signing_block.sender_str
+
+    @property
+    def tracked_balance(self) -> int:
+        return self._tracked_balance
 
     async def add_funds(self, coins: list) -> None:
         """Merge new coins into gas state after on_balance_low returns candidates.
@@ -108,7 +122,7 @@ class SerialQueueProcessor:
                 f"add_funds: provided coins total {total} < min_threshold_balance {self._min_threshold_balance}"
             )
 
-        if self._gas_mode == SerialGasMode.COINS:
+        if self._gas_mode == GasMode.COINS:
             await self._merge_into_gas_coin(candidates)
         else:
             await self._send_funds_to_account(candidates, self._tracked_balance)
@@ -130,83 +144,15 @@ class SerialQueueProcessor:
         await self._refresh_coins_balance(result.result_data)
 
     async def _send_funds_to_account(self, candidates: list, existing_balance: int = 0) -> None:
-        """ADDRESS_BALANCE mode: send primary coin to account balance via send_funds.
-
-        Option A: use non-primary coin as gas.
-        Option B: no separate gas coin but primary has surplus — split and send, primary pays gas.
-        Fallback: fetch another coin via GetGas (on_balance_low context only).
-        Balance updated from accumulator write in tx result — no network call.
-        """
-        sorted_candidates = sorted(candidates, key=lambda o: o.balance or 0, reverse=True)
-        primary = sorted_candidates[0]
-        not_primary = sorted_candidates[1:]
-
-        send_tx = await self._new_transaction()
-
-        if not_primary:
-            # Option A: use non-primary as gas coin; send primary whole
-            gas_coin = not_primary[0]
-            await send_tx.move_call(
-                target="0x2::coin::send_funds",
-                type_arguments=["0x2::sui::SUI"],
-                arguments=[primary, self._signing_block.sender_str],
-            )
-            gas_obj = sui_prot.Object(
-                object_id=gas_coin.object_id,
-                version=gas_coin.version,
-                digest=gas_coin.digest,
-                balance=gas_coin.balance or 0,
-            )
-            build_dict = await send_tx.build_and_sign(use_gas_objects=[gas_obj])
-
-        elif primary.balance > (self._min_threshold_balance - existing_balance) + _SEND_FUNDS_GAS_OVERHEAD:
-            # Option B: split deficit from primary; primary (residual ~3M) pays gas
-            amount_to_send = self._min_threshold_balance - existing_balance
-            what_we_send = await send_tx.split_coin(coin=send_tx.gas, amounts=[amount_to_send])
-            await send_tx.move_call(
-                target="0x2::coin::send_funds",
-                type_arguments=["0x2::sui::SUI"],
-                arguments=[what_we_send, self._signing_block.sender_str],
-            )
-            gas_obj = sui_prot.Object(
-                object_id=primary.object_id,
-                version=primary.version,
-                digest=primary.digest,
-                balance=primary.balance or 0,
-            )
-            build_dict = await send_tx.build_and_sign(use_gas_objects=[gas_obj])
-
-        else:
-            # Fallback: fetch another coin from chain (on_balance_low context only)
-            result = await self._client.execute_for_all(
-                command=cmd.GetGas(owner=self._signing_block.sender_str)
-            )
-            if not result.is_ok():
-                raise ValueError(f"send_funds: failed to fetch gas coins: {result.result_string}")
-            other_coins = [
-                o for o in result.result_data.objects
-                if o.object_id != primary.object_id
-            ]
-            if not other_coins:
-                raise ValueError("send_funds: no gas coin available — hard stop")
-            gas_coin = other_coins[0]
-            await send_tx.move_call(
-                target="0x2::coin::send_funds",
-                type_arguments=["0x2::sui::SUI"],
-                arguments=[primary, self._signing_block.sender_str],
-            )
-            gas_obj = sui_prot.Object(
-                object_id=gas_coin.object_id,
-                version=gas_coin.version,
-                digest=gas_coin.digest,
-                balance=gas_coin.balance or 0,
-            )
-            build_dict = await send_tx.build_and_sign(use_gas_objects=[gas_obj])
-
-        result = await self._client.execute(command=cmd.ExecuteTransaction(**build_dict))
-        if not result.is_ok():
-            raise ValueError(f"send_funds: transaction failed: {result.result_string}")
-        self._update_tracked_balance_from_accumulator(result.result_data)
+        executed_tx = await send_funds_to_account(
+            client=self._client,
+            sender=self._signing_block.sender_str,
+            candidates=candidates,
+            existing_balance=existing_balance,
+            min_threshold_balance=self._min_threshold_balance,
+            new_transaction_fn=self._new_transaction,
+        )
+        self._update_tracked_balance_from_accumulator(executed_tx)
 
     async def process(self, txn) -> tuple:
         """Full execution lifecycle. Returns (GasStatus, result).
@@ -215,7 +161,7 @@ class SerialQueueProcessor:
         Never raises — all failures are returned as (GasStatus.TXN_ERROR, error_tuple).
         """
         gas_objects_override = None
-        if self._gas_mode == SerialGasMode.COINS and self._gas_summary is not None:
+        if self._gas_mode == GasMode.COINS and self._gas_summary is not None:
             gas_objects_override = [
                 sui_prot.Object(
                     object_id=self._gas_summary.objectId,
@@ -254,7 +200,7 @@ class SerialQueueProcessor:
         self._update_gas_summary(executed_tx)
         self._update_tracked_balance(executed_tx.effects)
 
-        if self._gas_mode == SerialGasMode.COINS:
+        if self._gas_mode == GasMode.COINS:
             if executed_tx.effects and executed_tx.effects.gas_object:
                 go = executed_tx.effects.gas_object
                 if go.object_id:
@@ -290,32 +236,12 @@ class SerialQueueProcessor:
                         break
 
     def _update_tracked_balance(self, effects: "sui_prot.TransactionEffects") -> None:
-        """Deduct net gas cost from tracked balance."""
-        gas = effects.gas_used
-        net_gas = (gas.computation_cost or 0) + (gas.storage_cost or 0) - (gas.storage_rebate or 0)
-        self._tracked_balance = max(0, self._tracked_balance - net_gas)
+        self._tracked_balance = update_tracked_balance(effects, self._tracked_balance)
 
     def _update_tracked_balance_from_accumulator(
         self, executed_tx: "sui_prot.ExecutedTransaction"
     ) -> None:
-        """ADDRESS_BALANCE mode: update _tracked_balance from accumulator write in tx result.
-
-        MERGE operation (send_funds): adds value to _tracked_balance.
-        SPLIT operation (redeem_funds): subtracts value from _tracked_balance.
-        No network call — derives balance from tx result only.
-        """
-        if executed_tx is None or executed_tx.effects is None:
-            return
-        for changed_obj in executed_tx.effects.changed_objects:
-            output_state = str(changed_obj.output_state)
-            if "ACCUMULATOR" in output_state:
-                acc = changed_obj.accumulator_write
-                if acc is not None:
-                    if "MERGE" in str(acc.operation):
-                        self._tracked_balance += acc.value
-                    elif "SPLIT" in str(acc.operation):
-                        self._tracked_balance = max(0, self._tracked_balance - acc.value)
-                break
+        self._tracked_balance = update_tracked_balance_from_accumulator(executed_tx, self._tracked_balance)
 
     async def _refresh_coins_balance(self, executed_tx) -> None:
         """COINS mode: update _gas_summary from tx result, then set _tracked_balance."""
@@ -325,20 +251,9 @@ class SerialQueueProcessor:
 
     async def _new_transaction(self, **kwargs):
         """Create a new DEFERRED transaction using this processor's cache."""
-        from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode
         kwargs["mode"] = TxnArgMode.DEFERRED
         kwargs["object_cache"] = self._cache.cache
         return await self._client.transaction(**kwargs)
-
-
-_SENTINEL = object()
-
-
-@dataclass
-class _QueueItem:
-    txn: object
-    future: asyncio.Future
-    retry_count: int = 0
 
 
 class SerialExecutor:
@@ -358,8 +273,9 @@ class SerialExecutor:
         self._client = client
         self._options = options
         self._dead: bool = False
-        self._task: Optional[asyncio.Task] = None
-        self._queue: asyncio.Queue = asyncio.Queue()
+        self._closing: bool = False
+        self._task: asyncio.Task[None] | None = None
+        self._queue: asyncio.Queue[_QueueItem | object] = asyncio.Queue()
         signer_block = SignerBlock(sender=options.sender)
         self._qp = SerialQueueProcessor(
             client=client,
@@ -370,54 +286,23 @@ class SerialExecutor:
 
     async def _initialize(self) -> None:
         """Async initialization: fetch/validate coins, seed gas management, start processor."""
-        sender = self._qp._signing_block.sender_str
+        sender = self._qp.sender_str
         gas_mode = self._options.gas_mode
         threshold = self._options.min_threshold_balance
 
-        # Step 1: Acquire candidate coins — provided or self-heal via GetGas
-        if self._options.initial_coins:
-            coins = self._options.initial_coins
-            if isinstance(coins[0], str):
-                if not all(valid_sui_address(c) for c in coins):
-                    raise ValueError("initial_coins: one or more entries are not valid object IDs")
-                result = await self._client.execute(
-                    command=cmd.GetMultipleObjects(object_ids=list(coins))
-                )
-                if not result.is_ok():
-                    raise ValueError(f"Failed to fetch initial coins: {result.result_string}")
-                obj_list = [o for o in result.result_data if o.object_type == _SUI_COIN_TYPE]
-            else:
-                obj_list = [o for o in coins if o.object_type == _SUI_COIN_TYPE]
-        else:
-            # Empty or None — self-heal
-            result = await self._client.execute_for_all(command=cmd.GetGas(owner=sender))
-            if not result.is_ok():
-                raise ValueError(f"Failed to fetch gas coins: {result.result_string}")
-            obj_list = result.result_data.objects
-
-        if not obj_list:
-            raise ValueError(f"No SUI coins found for sender {sender}")
-
-        # Step 2: Working set — sort descending, accumulate until threshold met
-        sorted_coins = sorted(obj_list, key=lambda o: o.balance or 0, reverse=True)
-        selected = []
-        running = 0
-        for o in sorted_coins:
-            selected.append(o)
-            running += o.balance or 0
-            if running >= threshold:
-                break
-        if running < threshold:
-            raise ValueError(
-                f"Insufficient balance {running} < min_threshold_balance {threshold}"
-            )
+        selected = await acquire_coins(
+            client=self._client,
+            sender=sender,
+            initial_coins=self._options.initial_coins,
+            threshold=threshold,
+        )
 
         # Step 3: Identify primary (fattest — already first after sort)
         primary = selected[0]
         rest = selected[1:]
 
         # Step 4: Seed gas management BEFORE any PTB so post-tx update methods work uniformly
-        if gas_mode == SerialGasMode.COINS:
+        if gas_mode == GasMode.COINS:
             fat_coin = GasSummary(
                 objectId=primary.object_id,
                 version=str(primary.version),
@@ -483,9 +368,14 @@ class SerialExecutor:
 
     async def close(self) -> None:
         """Signal shutdown and wait for the processor coroutine to finish."""
-        self._queue.put_nowait(_SENTINEL)
+        if not self._closing:
+            self._closing = True
+            self._queue.put_nowait(_SENTINEL)
         if self._task is not None:
-            await self._task
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
 
     async def new_transaction(self, **kwargs):
         """Create a new DEFERRED transaction using this executor's object cache."""
@@ -547,28 +437,20 @@ class SerialExecutor:
 
     async def _replenish(self) -> bool:
         """Call on_balance_low; pass returned coins to QP.add_funds(). Returns False on hard stop."""
-        if self._options.on_balance_low is None:
-            logger.warning("SerialExecutor: balance low but no on_balance_low callback — hard stop")
-            return False
-        ctx = SerialExecutorContext(
-            sender=self._qp._signing_block.sender_str,
-            tracked_balance=self._qp._tracked_balance,
+        return await run_replenishment(
+            on_balance_low=self._options.on_balance_low,
+            sender=self._qp.sender_str,
+            tracked_balance=self._qp.tracked_balance,
             min_threshold_balance=self._options.min_threshold_balance,
             client=self._client,
+            add_funds_fn=self._qp.add_funds,
+            label="SerialExecutor",
         )
-        coins = await self._options.on_balance_low(ctx)
-        if not coins:
-            logger.warning("SerialExecutor: on_balance_low returned None/[] — hard stop")
-            return False
-        try:
-            await self._qp.add_funds(coins)
-        except Exception as exc:
-            logger.warning("SerialExecutor: add_funds failed: %s — hard stop", exc)
-            return False
-        return True
 
     async def _hard_stop(self, reason: str) -> None:
         """Mark executor dead and drain remaining queued items to ExecutionSkipped."""
+        if self._dead:
+            return
         self._dead = True
         while not self._queue.empty():
             try:
@@ -581,3 +463,5 @@ class SerialExecutor:
             except asyncio.QueueEmpty:
                 break
         self._queue.put_nowait(_SENTINEL)
+        if self._task is not None and not self._task.done():
+            self._task.cancel()

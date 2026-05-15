@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from pysui.sui.sui_common.txb_signing import SigningMultiSig
     from pysui.sui.sui_common.executors.serial_executor import SerialExecutor
     from pysui.sui.sui_common.executors.exec_types import ExecutorOptions
+    from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
 
 import betterproto2
 import dataclasses_json
@@ -171,24 +172,20 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         await se._initialize()
         return se
 
-    async def parallel_executor(self, **kwargs) -> Any:
-        """Return a gRPC parallel transaction executor.
+    async def parallel_executor(self, *, options: "ExecutorOptions") -> "ParallelExecutor":
+        """Async factory: create and initialize a ParallelExecutor.
 
-        The caller owns the executor lifecycle — calling client.close() does not
-        drain or close executor resources. Concurrent parallel_executor() calls over
-        the same sender will race on coin selection if both use coin-object gas.
+        Performs coin selection and gas state seeding before returning
+        a ready-to-use executor with the background coroutine running.
 
-        :param sender: The address of the transaction sender
-        :type sender: Union[str, SigningMultiSig]
-        :param sponsor: Optional sponsor address, defaults to None
-        :type sponsor: Union[str, SigningMultiSig], optional
-        :param default_gas_budget: Default gas budget per transaction, defaults to 50_000_000
-        :type default_gas_budget: int, optional
+        :param options: Full executor parameterization via ExecutorOptions
+        :return: Initialized ParallelExecutor
         """
-        import pysui.sui.sui_grpc.grpc_parallel_exec as pexec
+        from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
 
-        kwargs["client"] = self
-        return pexec.GrpcParallelTransactionExecutor(**kwargs)
+        pe = ParallelExecutor(client=self, options=options)
+        await pe._initialize()
+        return pe
 
     async def _dispatch_grpc_request(
         self, request: absreq.PGRPC_Request, **kwargs

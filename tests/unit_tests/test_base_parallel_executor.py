@@ -3,511 +3,714 @@
 
 # -*- coding: utf-8 -*-
 
-"""Unit tests for _BaseParallelExecutor."""
+"""Unit tests for _BaseParallelExecutor — concrete two-queue design."""
 
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
-from pysui.sui.sui_common.executors.exec_types import ExecutorError
+from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
+from pysui.sui.sui_common.executors._queue_types import _QueueItem
+from pysui.sui.sui_common.executors.exec_types import (
+    ExecutorOptions,
+    GasMode,
+    ExecutorContext,
+    ExecutionSkipped,
+    ExecutorError,
+)
 from pysui.sui.sui_common.executors.gas_pool import GasCoin
-from pysui.sui.sui_common.executors.object_registry import (
-    InMemoryObjectRegistry,
-    _set_object_registry_for_tests,
-)
-from pysui.sui.sui_common.types import (
-    TransactionEffects,
-    ExecutionStatus,
-    GasCostSummary,
-    ChangedObject,
-    Owner,
-)
 
 
-# ---------------------------------------------------------------------------
-# Test double — concrete _BaseParallelExecutor subclass
-# ---------------------------------------------------------------------------
-
-class _TestParallelExecutor(_BaseParallelExecutor):
-    """Minimal concrete subclass for testing."""
-
-    def __init__(self, effects_factory=None, **kwargs):
-        super().__init__(**kwargs)
-        self._effects_factory = effects_factory or (lambda: _make_effects())
-        self._execute_count = 0
-
-    def _create_caching_executor(self):
-        mock = MagicMock()
-        mock.build_transaction = AsyncMock(return_value="dGVzdA==")
-        mock.apply_effects = AsyncMock()
-        mock.sync_to_registry = AsyncMock()
-        mock.update_gas_coins = AsyncMock()
-        return mock
-
-    async def _execute_single(self, tx_str, sigs, caching_exec):
-        self._execute_count += 1
-        return self._effects_factory()
-
-    async def _refill_coin_pool(self, n: int) -> list[GasCoin]:
-        return [
-            GasCoin(object_id=f"0x{'ff' * 31}{i:02x}", version="1", digest="d", balance=5_000_000)
-            for i in range(n)
-        ]
-
-    async def _fetch_balance(self) -> int:
-        return 10_000_000
+_CE_PATH = "pysui.sui.sui_common.executors.base_parallel_executor._BaseCachingExecutor"
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _oid(suffix: str = "01") -> str:
-    return "0x" + "aa" * 31 + suffix
-
-
-def _coin(suffix: str = "01", balance: int = 2_000_000) -> GasCoin:
-    return GasCoin(object_id=_oid(suffix), version="1", digest="d", balance=balance)
-
-
-def _make_effects(
-    *,
-    computation_cost: int = 1000,
-    storage_cost: int = 500,
-    storage_rebate: int = 200,
-    gas_oid: str = "0x" + "ee" * 32,
-) -> TransactionEffects:
-    return TransactionEffects(
-        transaction_digest="fakedigest",
-        status=ExecutionStatus(success=True),
-        gas_used=GasCostSummary(
-            computation_cost=computation_cost,
-            storage_cost=storage_cost,
-            storage_rebate=storage_rebate,
-        ),
-        lamport_version=2,
-        changed_objects=[],
-        gas_object=ChangedObject(
-            object_id=gas_oid,
-            output_state="ObjectWrite",
-            output_digest="newdigest",
-            output_owner=Owner(kind="AddressOwner", address="0xsender"),
-        ),
-    )
-
-
-def _make_mock_client():
+def _make_client():
     client = MagicMock()
     client.config = MagicMock()
+    client.transaction = AsyncMock()
     return client
 
 
-def _make_tx(unresolved_ids: list[str] | None = None):
-    """Make a mock transaction with optional unresolved object inputs."""
+def _make_executor(gas_mode=GasMode.COINS, **option_kwargs) -> ParallelExecutor:
+    client = _make_client()
+    options = ExecutorOptions(
+        sender="0xsender",
+        gas_mode=gas_mode,
+        initial_coins=[],
+        min_threshold_balance=10_000_000,
+        **option_kwargs,
+    )
+    return ParallelExecutor(client=client, options=options)
+
+
+def _gas_coin(suffix="01", balance=5_000_000) -> GasCoin:
+    return GasCoin(object_id=f"0x{'aa' * 31}{suffix}", version="1", digest="d", balance=balance)
+
+
+def _mock_executed_tx(computation_cost=1000, storage_cost=500, storage_rebate=200):
+    gas = MagicMock()
+    gas.computation_cost = computation_cost
+    gas.storage_cost = storage_cost
+    gas.storage_rebate = storage_rebate
+    effects = MagicMock()
+    effects.gas_used = gas
+    effects.gas_object = None
+    effects.changed_objects = []
     tx = MagicMock()
-    if unresolved_ids is not None:
-        unresolved = {
-            i: MagicMock(ObjectStr=oid)
-            for i, oid in enumerate(unresolved_ids)
-        }
-        tx.builder.get_unresolved_inputs.return_value = unresolved
-    else:
-        tx.builder.get_unresolved_inputs.side_effect = AttributeError
+    tx.effects = effects
+    tx.objects = None
     return tx
 
 
-def _make_signing_block_patcher():
-    """Patch SignerBlock.get_signatures to return a fake sig list."""
-    return patch(
-        "pysui.sui.sui_common.executors.base_parallel_executor.SignerBlock.get_signatures",
-        return_value=["sig1"],
+def _ok_result(data):
+    r = MagicMock()
+    r.is_ok.return_value = True
+    r.result_data = data
+    return r
+
+
+def _ce_mock(signed_tx=None):
+    ce = MagicMock()
+    ce.build_transaction = AsyncMock(
+        return_value=signed_tx or {"tx_bytestr": "abc", "sig_array": ["sig"]}
     )
+    ce.apply_effects = AsyncMock()
+    ce.sync_to_registry = AsyncMock()
+    ce.update_gas_coins = AsyncMock()
+    return ce
+
+
+def _txn_mock(unresolved_ids=None):
+    txn = MagicMock()
+    txn.builder.get_unresolved_inputs.return_value = (
+        {i: MagicMock(ObjectStr=oid) for i, oid in enumerate(unresolved_ids)}
+        if unresolved_ids else {}
+    )
+    return txn
 
 
 # ---------------------------------------------------------------------------
 # Construction
 # ---------------------------------------------------------------------------
 
-class TestBaseParallelExecutorConstruction:
-    def _make(self, **kwargs) -> _TestParallelExecutor:
-        defaults = dict(
-            client=_make_mock_client(),
-            sender="0xsender",
-            gas_mode="coins",
-            max_tasks=2,
-        )
-        defaults.update(kwargs)
-        return _TestParallelExecutor(**defaults)
+class TestConstruction:
 
-    def test_coins_mode_creates_pool(self):
-        ex = self._make(gas_mode="coins")
+    def test_coins_mode_creates_gas_pool(self):
+        ex = _make_executor(gas_mode=GasMode.COINS)
         assert ex._gas_pool is not None
 
-    def test_address_balance_mode_no_pool(self):
-        ex = self._make(gas_mode="addressBalance")
+    def test_address_balance_mode_no_gas_pool(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
         assert ex._gas_pool is None
 
-    def test_invalid_gas_mode_raises(self):
-        with pytest.raises(ValueError, match="gas_mode"):
-            self._make(gas_mode="unknown")
+    def test_dead_starts_false(self):
+        ex = _make_executor()
+        assert ex._dead is False
 
-    def test_address_balance_with_threshold_and_no_callback_raises(self):
-        with pytest.raises(ValueError, match="on_balance_low"):
-            self._make(gas_mode="addressBalance", min_balance_threshold=1_000_000)
+    def test_build_task_starts_none(self):
+        ex = _make_executor()
+        assert ex._build_task is None
 
-    def test_address_balance_with_both_threshold_and_callback_ok(self):
-        cb = AsyncMock()
-        ex = self._make(gas_mode="addressBalance", min_balance_threshold=1_000_000, on_balance_low=cb)
-        assert ex._on_balance_low is cb
+    def test_build_queue_empty_initially(self):
+        ex = _make_executor()
+        assert ex._build_queue.empty()
 
-    def test_custom_registry_used(self):
-        reg = InMemoryObjectRegistry()
-        ex = self._make(registry=reg)
-        assert ex._registry is reg
+    def test_semaphore_created_with_max_concurrent(self):
+        ex = _make_executor(max_concurrent=5)
+        assert ex._semaphore._value == 5
 
-    def test_sponsor_sets_gas_owner(self):
-        ex = self._make(sponsor="0xsponsor")
-        assert ex._gas_owner == "0xsponsor"
+    def test_tracked_balance_starts_zero(self):
+        ex = _make_executor()
+        assert ex._tracked_balance == 0
 
-    def test_sender_only_gas_owner(self):
-        ex = self._make()
-        assert ex._gas_owner == "0xsender"
+    def test_has_submit_method(self):
+        assert hasattr(ParallelExecutor, "submit")
 
+    def test_has_close_method(self):
+        assert hasattr(ParallelExecutor, "close")
 
-# ---------------------------------------------------------------------------
-# execute_transactions — address balance mode
-# ---------------------------------------------------------------------------
-
-class TestExecuteTransactionsAddressBalance:
-    def setup_method(self):
-        _set_object_registry_for_tests(InMemoryObjectRegistry())
-
-    def teardown_method(self):
-        _set_object_registry_for_tests(None)
-
-    def _make(self, **kwargs) -> _TestParallelExecutor:
-        defaults = dict(
-            client=_make_mock_client(),
-            sender="0xsender",
-            gas_mode="addressBalance",
-            max_tasks=4,
-        )
-        defaults.update(kwargs)
-        return _TestParallelExecutor(**defaults)
-
-    @pytest.mark.asyncio
-    async def test_empty_list_returns_empty(self):
-        ex = self._make()
-        with _make_signing_block_patcher():
-            results = await ex.execute_transactions([])
-        assert results == []
-
-    @pytest.mark.asyncio
-    async def test_single_success(self):
-        ex = self._make()
-        tx = _make_tx()
-        with _make_signing_block_patcher():
-            results = await ex.execute_transactions([tx])
-        assert len(results) == 1
-        assert isinstance(results[0], TransactionEffects)
-
-    @pytest.mark.asyncio
-    async def test_multiple_success_in_order(self):
-        ex = self._make()
-        txns = [_make_tx() for _ in range(5)]
-        with _make_signing_block_patcher():
-            results = await ex.execute_transactions(txns)
-        assert len(results) == 5
-        assert all(isinstance(r, TransactionEffects) for r in results)
-        assert ex._execute_count == 5
-
-    @pytest.mark.asyncio
-    async def test_failure_returns_error_tuple(self):
-        async def _fail(*args, **kwargs):
-            raise RuntimeError("boom")
-
-        ex = self._make()
-        ex._execute_single = _fail
-        tx = _make_tx()
-        with _make_signing_block_patcher():
-            results = await ex.execute_transactions([tx])
-        assert len(results) == 1
-        assert isinstance(results[0], tuple)
-        err, exc = results[0]
-        assert err == ExecutorError.EXECUTING_ERROR
-        assert "boom" in str(exc)
-
-    @pytest.mark.asyncio
-    async def test_partial_failures_do_not_halt_remaining(self):
-        call_count = 0
-
-        async def _alternate(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 2:
-                raise RuntimeError("middle failure")
-            return _make_effects()
-
-        ex = self._make()
-        ex._execute_single = _alternate
-        txns = [_make_tx() for _ in range(3)]
-        with _make_signing_block_patcher():
-            results = await ex.execute_transactions(txns)
-        assert len(results) == 3
-        assert isinstance(results[0], TransactionEffects)
-        assert isinstance(results[1], tuple)
-        assert isinstance(results[2], TransactionEffects)
-
-    @pytest.mark.asyncio
-    async def test_balance_fetched_once_on_first_call(self):
-        ex = self._make()
-        fetch_count = 0
-
-        async def _count_fetch():
-            nonlocal fetch_count
-            fetch_count += 1
-            return 5_000_000
-
-        ex._fetch_balance = _count_fetch
-        txns = [_make_tx() for _ in range(3)]
-        with _make_signing_block_patcher():
-            await ex.execute_transactions(txns)
-        assert fetch_count == 1
-
-    @pytest.mark.asyncio
-    async def test_balance_not_refetched_on_second_call(self):
-        ex = self._make()
-        fetch_count = 0
-
-        async def _count_fetch():
-            nonlocal fetch_count
-            fetch_count += 1
-            return 5_000_000
-
-        ex._fetch_balance = _count_fetch
-        ex._tracked_balance = 99  # pre-seed so first call skips fetch
-        txns = [_make_tx() for _ in range(2)]
-        with _make_signing_block_patcher():
-            await ex.execute_transactions(txns)
-        assert fetch_count == 0
+    def test_has_new_transaction_method(self):
+        assert hasattr(ParallelExecutor, "new_transaction")
 
 
 # ---------------------------------------------------------------------------
-# execute_transactions — coins mode
+# submit() — Future creation and dead-executor gate
 # ---------------------------------------------------------------------------
 
-class TestExecuteTransactionsCoinsMode:
-    def setup_method(self):
-        _set_object_registry_for_tests(InMemoryObjectRegistry())
-
-    def teardown_method(self):
-        _set_object_registry_for_tests(None)
-
-    def _make(self, **kwargs) -> _TestParallelExecutor:
-        defaults = dict(
-            client=_make_mock_client(),
-            sender="0xsender",
-            gas_mode="coins",
-            max_tasks=4,
-        )
-        defaults.update(kwargs)
-        return _TestParallelExecutor(**defaults)
+class TestSubmit:
 
     @pytest.mark.asyncio
-    async def test_single_tx_with_seeded_pool(self):
-        # low_water_mark=0 prevents auto-refill so pool size is predictable
-        ex = self._make(low_water_mark=0)
-        await ex.seed_coin_pool([_coin()])
-        tx = _make_tx()
-        with _make_signing_block_patcher():
-            results = await ex.execute_transactions([tx])
-        assert isinstance(results[0], TransactionEffects)
-        # Coin is returned to pool at updated version (new object_id from gas_object)
+    async def test_submit_single_returns_future(self):
+        ex = _make_executor()
+        fut = ex.submit(_txn_mock())
+        assert isinstance(fut, asyncio.Future)
+
+    @pytest.mark.asyncio
+    async def test_submit_list_returns_list_of_futures(self):
+        ex = _make_executor()
+        futs = ex.submit([_txn_mock(), _txn_mock(), _txn_mock()])
+        assert isinstance(futs, list)
+        assert len(futs) == 3
+        assert all(isinstance(f, asyncio.Future) for f in futs)
+
+    @pytest.mark.asyncio
+    async def test_submit_to_dead_executor_returns_skipped(self):
+        ex = _make_executor()
+        ex._dead = True
+        fut = ex.submit(_txn_mock())
+        assert fut.done()
+        assert isinstance(fut.result(), ExecutionSkipped)
+
+    @pytest.mark.asyncio
+    async def test_submit_list_to_dead_executor_all_skipped(self):
+        ex = _make_executor()
+        ex._dead = True
+        futs = ex.submit([_txn_mock(), _txn_mock()])
+        assert all(f.done() for f in futs)
+        assert all(isinstance(f.result(), ExecutionSkipped) for f in futs)
+
+    @pytest.mark.asyncio
+    async def test_submit_single_success_address_balance(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            result = await fut
+            await ex.close()
+        assert result is executed_tx
+
+    @pytest.mark.asyncio
+    async def test_submit_single_success_coins_mode(self):
+        ex = _make_executor(gas_mode=GasMode.COINS)
+        await ex._gas_pool.replenish([_gas_coin()])
+        ex._tracked_balance = 20_000_000
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            result = await fut
+            await ex.close()
+        assert result is executed_tx
+
+    @pytest.mark.asyncio
+    async def test_submit_list_all_succeed(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            futs = ex.submit([_txn_mock(), _txn_mock(), _txn_mock()])
+            results = await asyncio.gather(*futs)
+            await ex.close()
+        assert all(r is executed_tx for r in results)
+
+    @pytest.mark.asyncio
+    async def test_build_error_sets_building_error(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ce = _ce_mock()
+        ce.build_transaction = AsyncMock(side_effect=ValueError("build failed"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            result = await fut
+            await ex.close()
+        assert isinstance(result, tuple)
+        err, exc = result
+        assert err == ExecutorError.BUILDING_ERROR
+        assert "build failed" in str(exc)
+
+    @pytest.mark.asyncio
+    async def test_execute_error_continue_does_not_kill_executor(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE, on_failure="continue")
+        bad_result = MagicMock()
+        bad_result.is_ok.return_value = False
+        bad_result.result_string = "network error"
+        ex._client.execute = AsyncMock(return_value=bad_result)
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            result = await fut
+            # Capture _dead before close() — close() always sets it True as part of normal shutdown
+            dead_before_close = ex._dead
+            await ex.close()
+        assert isinstance(result, tuple)
+        assert result[0] == ExecutorError.EXECUTING_ERROR
+        assert dead_before_close is False
+
+    @pytest.mark.asyncio
+    async def test_execute_error_exit_kills_executor(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE, on_failure="exit")
+        bad_result = MagicMock()
+        bad_result.is_ok.return_value = False
+        bad_result.result_string = "network error"
+        ex._client.execute = AsyncMock(return_value=bad_result)
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            result = await fut
+            await ex.close()
+        assert result[0] == ExecutorError.EXECUTING_ERROR
+        assert ex._dead is True
+        # Submit after dead returns ExecutionSkipped immediately
+        fut2 = ex.submit(_txn_mock())
+        assert isinstance(fut2.result(), ExecutionSkipped)
+
+    @pytest.mark.asyncio
+    async def test_coins_mode_gas_coin_available_after_success(self):
+        ex = _make_executor(gas_mode=GasMode.COINS)
+        await ex._gas_pool.replenish([_gas_coin()])
+        # Seed tracked_balance above threshold so post-success balance check doesn't trigger hard_stop
+        ex._tracked_balance = 20_000_000
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            await fut
+            await ex.close()
+        # Pool should not be empty after success — coin was checked back in
         assert ex._gas_pool.size() == 1
 
     @pytest.mark.asyncio
-    async def test_pool_checkout_blocks_until_checkin(self):
-        ex = self._make(max_tasks=2)
-        # Only 1 coin — second task must wait for the first to complete
-        await ex.seed_coin_pool([_coin("01")])
-        txns = [_make_tx(), _make_tx()]
-        with _make_signing_block_patcher():
-            results = await ex.execute_transactions(txns)
-        assert all(isinstance(r, TransactionEffects) for r in results)
+    async def test_build_error_coins_mode_retires_gas_coin(self):
+        """Build failure in COINS mode retires the gas coin — pool is empty after."""
+        ex = _make_executor(gas_mode=GasMode.COINS)
+        await ex._gas_pool.replenish([_gas_coin()])
+        ce = _ce_mock()
+        ce.build_transaction = AsyncMock(side_effect=ValueError("build failed"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            result = await fut
+            await ex.close()
+        assert isinstance(result, tuple)
+        assert result[0] == ExecutorError.BUILDING_ERROR
+        assert ex._gas_pool.size() == 0
 
     @pytest.mark.asyncio
-    async def test_coin_pool_drained_triggers_refill(self):
-        ex = self._make(low_water_mark=5, max_tasks=1)
-        # Start with 3 coins (below low_water_mark=5 → is_low() True after checkout)
-        coins = [_coin(f"{i:02x}") for i in range(3)]
-        await ex.seed_coin_pool(coins)
-
-        refill_called = False
-        original_refill = ex._refill_coin_pool
-
-        async def _tracking_refill(n: int):
-            nonlocal refill_called
-            refill_called = True
-            return await original_refill(n)
-
-        ex._refill_coin_pool = _tracking_refill
-        tx = _make_tx()
-        with _make_signing_block_patcher():
-            await ex.execute_transactions([tx])
-        # Give background refill a chance to run
-        await asyncio.sleep(0.05)
-        assert refill_called
+    async def test_gas_error_retries_exhausted_hard_stops(self):
+        """Gas error with max_retries=0 skips retry and triggers hard stop."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE, max_retries=0)
+        bad_result = MagicMock()
+        bad_result.is_ok.return_value = False
+        bad_result.result_string = "insufficient gas"
+        ex._client.execute = AsyncMock(return_value=bad_result)
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            result = await fut
+            await ex.close()
+        assert isinstance(result, tuple)
+        assert result[0] == ExecutorError.EXECUTING_ERROR
+        assert ex._dead is True
 
     @pytest.mark.asyncio
-    async def test_seed_coin_pool_invalid_in_address_mode(self):
-        ex = self._make(gas_mode="addressBalance")
-        with pytest.raises(RuntimeError, match="coins gas mode"):
-            await ex.seed_coin_pool([_coin()])
-
-    @pytest.mark.asyncio
-    async def test_failure_returns_coin_to_pool(self):
-        ex = self._make()
-        await ex.seed_coin_pool([_coin()])
-
-        async def _fail(*args, **kwargs):
-            raise RuntimeError("execution failed")
-
-        ex._execute_single = _fail
-        tx = _make_tx()
-        with _make_signing_block_patcher():
-            results = await ex.execute_transactions([tx])
-        # Coin was retired (not returned to pool) on failure
-        assert isinstance(results[0], tuple)
+    async def test_submit_success_calls_apply_effects_and_sync(self):
+        """After successful execution, apply_effects and sync_to_registry are called."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock())
+            await fut
+            await ex.close()
+        ce.apply_effects.assert_called_once_with(executed_tx.effects)
+        ce.sync_to_registry.assert_called_once_with(ex._registry)
 
 
 # ---------------------------------------------------------------------------
-# Conflict tracking integration
+# _hard_stop()
 # ---------------------------------------------------------------------------
 
-class TestConflictTrackingIntegration:
-    def setup_method(self):
-        _set_object_registry_for_tests(InMemoryObjectRegistry())
-
-    def teardown_method(self):
-        _set_object_registry_for_tests(None)
-
-    def _make(self) -> _TestParallelExecutor:
-        return _TestParallelExecutor(
-            client=_make_mock_client(),
-            sender="0xsender",
-            gas_mode="addressBalance",
-            max_tasks=8,
-        )
+class TestHardStop:
 
     @pytest.mark.asyncio
-    async def test_serial_order_for_same_object(self):
-        ex = self._make()
-        order: list[int] = []
-
-        call_num = 0
-
-        async def _ordered_execute(tx_str, sigs, caching_exec):
-            nonlocal call_num
-            n = call_num
-            call_num += 1
-            order.append(n)
-            await asyncio.sleep(0.01)
-            return _make_effects()
-
-        ex._execute_single = _ordered_execute
-        shared_oid = "0x" + "cc" * 32
-        txns = [_make_tx([shared_oid]) for _ in range(4)]
-        with _make_signing_block_patcher():
-            await ex.execute_transactions(txns)
-        # All 4 should have executed — order enforced by ConflictTracker
-        assert sorted(order) == list(range(4))
+    async def test_hard_stop_marks_dead(self):
+        ex = _make_executor()
+        await ex._hard_stop("test reason")
+        assert ex._dead is True
 
     @pytest.mark.asyncio
-    async def test_non_overlapping_objects_run_concurrently(self):
-        ex = self._make()
-        entered_times: list[float] = []
+    async def test_hard_stop_drains_queued_items(self):
+        ex = _make_executor()
+        loop = asyncio.get_running_loop()
+        fut1 = loop.create_future()
+        fut2 = loop.create_future()
+        ex._build_queue.put_nowait(_QueueItem(txn=MagicMock(), future=fut1))
+        ex._build_queue.put_nowait(_QueueItem(txn=MagicMock(), future=fut2))
+        await ex._hard_stop("test reason")
+        assert fut1.done()
+        assert fut2.done()
+        assert isinstance(fut1.result(), ExecutionSkipped)
+        assert isinstance(fut2.result(), ExecutionSkipped)
 
-        async def _timed_execute(tx_str, sigs, caching_exec):
-            import time
-            entered_times.append(time.monotonic())
-            await asyncio.sleep(0.05)
-            return _make_effects()
+    @pytest.mark.asyncio
+    async def test_hard_stop_reason_in_skipped(self):
+        ex = _make_executor()
+        loop = asyncio.get_running_loop()
+        fut = loop.create_future()
+        ex._build_queue.put_nowait(_QueueItem(txn=MagicMock(), future=fut))
+        await ex._hard_stop("specific reason")
+        assert fut.result().reason == "specific reason"
 
-        ex._execute_single = _timed_execute
-        # Two transactions using completely different objects — no conflict
-        txns = [_make_tx(["0x" + "aa" * 32]), _make_tx(["0x" + "bb" * 32])]
-        with _make_signing_block_patcher():
-            await ex.execute_transactions(txns)
-        # Both should have started within 10ms of each other (concurrent)
-        assert len(entered_times) == 2
-        assert abs(entered_times[1] - entered_times[0]) < 0.04
+    @pytest.mark.asyncio
+    async def test_hard_stop_empty_queue_no_error(self):
+        ex = _make_executor()
+        await ex._hard_stop("no items")
+        assert ex._dead is True
+
+    @pytest.mark.asyncio
+    async def test_hard_stop_idempotent(self):
+        ex = _make_executor()
+        loop = asyncio.get_running_loop()
+        fut = loop.create_future()
+        ex._build_queue.put_nowait(_QueueItem(txn=MagicMock(), future=fut))
+        await ex._hard_stop("first call")
+        # Second call must not raise or double-set the already-resolved future
+        await ex._hard_stop("second call")
+        assert ex._dead is True
 
 
 # ---------------------------------------------------------------------------
-# Gas budget parameter
+# _replenish()
 # ---------------------------------------------------------------------------
 
-class TestGasBudgetParameter:
-    def setup_method(self):
-        _set_object_registry_for_tests(InMemoryObjectRegistry())
-
-    def teardown_method(self):
-        _set_object_registry_for_tests(None)
+class TestReplenishment:
 
     @pytest.mark.asyncio
-    async def test_custom_gas_budget_passed_to_build(self):
-        ex = _TestParallelExecutor(
-            client=_make_mock_client(),
-            sender="0xsender",
-            gas_mode="addressBalance",
-            default_gas_budget=50_000_000,
-        )
-        budgets_seen: list[int] = []
-
-        original_create = ex._create_caching_executor
-
-        def _patched_create():
-            mock = original_create()
-            original_build = mock.build_transaction
-
-            async def _capture_budget(tx, signing_block, budget):
-                budgets_seen.append(budget)
-                return "dGVzdA=="
-
-            mock.build_transaction = _capture_budget
-            return mock
-
-        ex._create_caching_executor = _patched_create
-        tx = _make_tx()
-        with _make_signing_block_patcher():
-            await ex.execute_transactions([tx], gas_budget=999_999)
-        assert budgets_seen == [999_999]
+    async def test_replenish_no_callback_returns_false(self):
+        ex = _make_executor()
+        result = await ex._replenish()
+        assert result is False
 
     @pytest.mark.asyncio
-    async def test_default_gas_budget_used_when_not_specified(self):
-        ex = _TestParallelExecutor(
-            client=_make_mock_client(),
-            sender="0xsender",
-            gas_mode="addressBalance",
-            default_gas_budget=12_345_678,
-        )
-        budgets_seen: list[int] = []
+    async def test_replenish_callback_none_returns_false(self):
+        async def callback(ctx):
+            return None
+        ex = _make_executor(on_balance_low=callback)
+        result = await ex._replenish()
+        assert result is False
 
-        original_create = ex._create_caching_executor
+    @pytest.mark.asyncio
+    async def test_replenish_callback_empty_list_returns_false(self):
+        async def callback(ctx):
+            return []
+        ex = _make_executor(on_balance_low=callback)
+        result = await ex._replenish()
+        assert result is False
 
-        def _patched_create():
-            mock = original_create()
+    @pytest.mark.asyncio
+    async def test_replenish_passes_correct_context(self):
+        captured = None
+        async def callback(ctx):
+            nonlocal captured
+            captured = ctx
+            return None
+        ex = _make_executor(on_balance_low=callback)
+        ex._tracked_balance = 3_000_000
+        await ex._replenish()
+        assert isinstance(captured, ExecutorContext)
+        assert captured.sender == "0xsender"
+        assert captured.tracked_balance == 3_000_000
+        assert captured.min_threshold_balance == 10_000_000
+        assert captured.client is ex._client
 
-            async def _capture_budget(tx, signing_block, budget):
-                budgets_seen.append(budget)
-                return "dGVzdA=="
+    @pytest.mark.asyncio
+    async def test_replenish_add_funds_exception_returns_false(self):
+        async def callback(ctx):
+            return ["0xcoin1"]
+        ex = _make_executor(on_balance_low=callback)
+        with patch.object(ex, "_add_funds", new=AsyncMock(side_effect=ValueError("bad coin"))):
+            result = await ex._replenish()
+        assert result is False
 
-            mock.build_transaction = _capture_budget
-            return mock
+    @pytest.mark.asyncio
+    async def test_replenish_returns_true_on_success(self):
+        """_replenish() returns True when callback provides coins and add_funds succeeds."""
+        returned_coins = [_gas_coin()]
+        async def callback(ctx):
+            return returned_coins
+        ex = _make_executor(on_balance_low=callback)
+        with patch.object(ex, "_add_funds", new=AsyncMock()) as mock_add_funds:
+            result = await ex._replenish()
+        assert result is True
+        mock_add_funds.assert_called_once_with(returned_coins)
 
-        ex._create_caching_executor = _patched_create
-        tx = _make_tx()
-        with _make_signing_block_patcher():
-            await ex.execute_transactions([tx])
-        assert budgets_seen == [12_345_678]
+
+# ---------------------------------------------------------------------------
+# _update_tracked_balance()
+# ---------------------------------------------------------------------------
+
+class TestUpdateTrackedBalance:
+
+    def test_deducts_net_gas(self):
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        effects = MagicMock()
+        effects.gas_used.computation_cost = 1000
+        effects.gas_used.storage_cost = 500
+        effects.gas_used.storage_rebate = 200
+        ex._update_tracked_balance(effects)
+        assert ex._tracked_balance == 1_000_000 - (1000 + 500 - 200)
+
+    def test_clamps_to_zero(self):
+        ex = _make_executor()
+        ex._tracked_balance = 100
+        effects = MagicMock()
+        effects.gas_used.computation_cost = 10_000
+        effects.gas_used.storage_cost = 5_000
+        effects.gas_used.storage_rebate = 0
+        ex._update_tracked_balance(effects)
+        assert ex._tracked_balance == 0
+
+    def test_rebate_reduces_deduction(self):
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        effects = MagicMock()
+        effects.gas_used.computation_cost = 500
+        effects.gas_used.storage_cost = 300
+        effects.gas_used.storage_rebate = 800
+        ex._update_tracked_balance(effects)
+        # net = 500 + 300 - 800 = 0 → balance unchanged
+        assert ex._tracked_balance == 1_000_000
+
+    def test_gas_used_none_no_change(self):
+        """When effects.gas_used is None, tracked balance is unchanged."""
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        effects = MagicMock()
+        effects.gas_used = None
+        ex._update_tracked_balance(effects)
+        assert ex._tracked_balance == 1_000_000
+
+
+# ---------------------------------------------------------------------------
+# _update_tracked_balance_from_accumulator()
+# ---------------------------------------------------------------------------
+
+class TestUpdateTrackedBalanceFromAccumulator:
+
+    def _make_accumulator_tx(self, operation, value):
+        acc = MagicMock()
+        acc.operation = operation
+        acc.value = value
+        changed_obj = MagicMock()
+        changed_obj.output_state = "ACCUMULATOR_WRITE"
+        changed_obj.accumulator_write = acc
+        tx = MagicMock()
+        tx.effects.changed_objects = [changed_obj]
+        return tx
+
+    def test_merge_increases_balance(self):
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        tx = self._make_accumulator_tx("MERGE", 500_000)
+        ex._update_tracked_balance_from_accumulator(tx)
+        assert ex._tracked_balance == 1_500_000
+
+    def test_split_decreases_balance(self):
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        tx = self._make_accumulator_tx("SPLIT", 300_000)
+        ex._update_tracked_balance_from_accumulator(tx)
+        assert ex._tracked_balance == 700_000
+
+    def test_split_clamps_to_zero(self):
+        ex = _make_executor()
+        ex._tracked_balance = 100
+        tx = self._make_accumulator_tx("SPLIT", 1_000_000)
+        ex._update_tracked_balance_from_accumulator(tx)
+        assert ex._tracked_balance == 0
+
+    def test_no_accumulator_entry_no_change(self):
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        changed_obj = MagicMock()
+        changed_obj.output_state = "OWNED"
+        tx = MagicMock()
+        tx.effects.changed_objects = [changed_obj]
+        ex._update_tracked_balance_from_accumulator(tx)
+        assert ex._tracked_balance == 1_000_000
+
+    def test_none_tx_no_change(self):
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        ex._update_tracked_balance_from_accumulator(None)
+        assert ex._tracked_balance == 1_000_000
+
+    def test_empty_changed_objects_no_change(self):
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        tx = MagicMock()
+        tx.effects.changed_objects = []
+        ex._update_tracked_balance_from_accumulator(tx)
+        assert ex._tracked_balance == 1_000_000
+
+    def test_accumulator_write_none_no_change(self):
+        """When accumulator_write is None on an ACCUMULATOR_WRITE object, balance unchanged."""
+        ex = _make_executor()
+        ex._tracked_balance = 1_000_000
+        changed_obj = MagicMock()
+        changed_obj.output_state = "ACCUMULATOR_WRITE"
+        changed_obj.accumulator_write = None
+        tx = MagicMock()
+        tx.effects.changed_objects = [changed_obj]
+        ex._update_tracked_balance_from_accumulator(tx)
+        assert ex._tracked_balance == 1_000_000
+
+
+# ---------------------------------------------------------------------------
+# _update_gas_coin()
+# ---------------------------------------------------------------------------
+
+class TestUpdateGasCoin:
+
+    def _make_executed_tx_with_gas_object(self, output_version=2, output_digest="newdigest"):
+        go = MagicMock()
+        go.output_version = output_version
+        go.output_digest = output_digest
+        effects = MagicMock()
+        effects.gas_object = go
+        tx = MagicMock()
+        tx.effects = effects
+        tx.objects = None
+        return tx
+
+    def test_updates_version_and_digest_from_gas_object(self):
+        ex = _make_executor()
+        coin = _gas_coin(balance=5_000_000)
+        tx = self._make_executed_tx_with_gas_object(output_version=2, output_digest="newdigest")
+        updated = ex._update_gas_coin(tx, coin)
+        assert updated.version == "2"
+        assert updated.digest == "newdigest"
+
+    def test_updates_balance_from_objects_scan(self):
+        ex = _make_executor()
+        coin = _gas_coin(suffix="01", balance=5_000_000)
+        go = MagicMock()
+        go.output_version = 2
+        go.output_digest = "newdigest"
+        effects = MagicMock()
+        effects.gas_object = go
+        obj_entry = MagicMock()
+        obj_entry.object_id = coin.object_id
+        obj_entry.version = 2
+        obj_entry.balance = 4_998_700
+        objects = MagicMock()
+        objects.objects = [obj_entry]
+        tx = MagicMock()
+        tx.effects = effects
+        tx.objects = objects
+        updated = ex._update_gas_coin(tx, coin)
+        assert updated.balance == 4_998_700
+
+    def test_falls_back_to_original_when_no_gas_object(self):
+        ex = _make_executor()
+        coin = _gas_coin(balance=5_000_000)
+        effects = MagicMock()
+        effects.gas_object = None
+        tx = MagicMock()
+        tx.effects = effects
+        tx.objects = None
+        updated = ex._update_gas_coin(tx, coin)
+        assert updated.version == coin.version
+        assert updated.digest == coin.digest
+        assert updated.balance == coin.balance
+
+    def test_object_id_preserved(self):
+        ex = _make_executor()
+        coin = _gas_coin(suffix="01")
+        tx = self._make_executed_tx_with_gas_object()
+        updated = ex._update_gas_coin(tx, coin)
+        assert updated.object_id == coin.object_id
+
+    def test_balance_unchanged_when_objects_is_none(self):
+        ex = _make_executor()
+        coin = _gas_coin(balance=5_000_000)
+        tx = self._make_executed_tx_with_gas_object()
+        # tx.objects is None — balance should stay at original
+        updated = ex._update_gas_coin(tx, coin)
+        assert updated.balance == coin.balance
+
+
+# ---------------------------------------------------------------------------
+# close()
+# ---------------------------------------------------------------------------
+
+class TestClose:
+
+    @pytest.mark.asyncio
+    async def test_close_with_none_build_task(self):
+        """close() is safe when build task has not been started."""
+        ex = _make_executor()
+        await ex.close()
+
+    @pytest.mark.asyncio
+    async def test_close_double_close_is_safe(self):
+        """Second close() call does not raise or deadlock."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._build_task = asyncio.create_task(ex._build_worker())
+        await ex.close()
+        await ex.close()
+
+    @pytest.mark.asyncio
+    async def test_close_marks_dead(self):
+        """close() sets _dead True as part of normal PE shutdown."""
+        ex = _make_executor()
+        ex._build_task = asyncio.create_task(ex._build_worker())
+        await ex.close()
+        assert ex._dead is True
+
+
+# ---------------------------------------------------------------------------
+# ConflictTracking
+# ---------------------------------------------------------------------------
+
+class TestConflictTracking:
+
+    @pytest.mark.asyncio
+    async def test_conflict_ids_extracted_from_txn_inputs(self):
+        """Txn inputs with ObjectStr are extracted for conflict tracking."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        txn = _txn_mock(unresolved_ids=["0xobj1", "0xobj2"])
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(txn)
+            result = await fut
+            await ex.close()
+        assert result is executed_tx
+        txn.builder.get_unresolved_inputs.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_txn_with_no_unresolved_inputs_succeeds(self):
+        """Txn with no unresolved inputs completes normally (empty conflict set)."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=None))
+            result = await fut
+            await ex.close()
+        assert result is executed_tx

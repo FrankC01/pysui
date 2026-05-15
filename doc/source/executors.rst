@@ -217,40 +217,75 @@ to merge in, or ``None``/``[]`` to halt:
 Parallel Executors
 ------------------
 
-Parallel executors run transactions concurrently using ``asyncio.gather``. They include:
+``ParallelExecutor`` is the single concrete parallel executor, shared across both
+GraphQL and gRPC transports. It runs transactions concurrently with:
 
-- **Conflict tracking** — owned objects are serialised automatically across concurrent transactions to prevent equivocation
-- **Coins mode** — a pool of dedicated gas coins; each in-flight transaction holds one exclusively, returned after effects apply
-- **Address balance mode** — no coin pool; the node selects gas from the sender's balance; concurrency bounded by ``max_tasks``
+- **Conflict tracking** — owned-object inputs are serialised automatically across concurrent
+  transactions to prevent equivocation
+- **Coins mode** — a dedicated gas coin pool; each in-flight transaction holds one coin
+  exclusively, returned after effects are applied
+- **Address balance mode** — no coin pool; the node selects gas from the sender's address
+  accumulator; throughput is bounded only by ``max_concurrent``
 
-GraphQL — ``GqlParallelTransactionExecutor``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Obtain an instance via :meth:`parallel_executor`, passing a fully configured
+:class:`ExecutorOptions` instance.
 
-**Coins mode** — requires seeding the pool before the first call.
-``seed_coin_pool`` is mandatory: ``checkout()`` blocks until a coin is available, so an empty
-pool at the start of ``execute_transactions`` will deadlock. Auto-refill maintains the pool
-during execution but cannot start it from zero.
+``ExecutorOptions`` parameters:
+
++----------------------------+--------------------------------------------------------------+
+| Parameter                  | Description                                                  |
++============================+==============================================================+
+| ``sender``                 | Sender address string or ``SigningMultiSig``                 |
++----------------------------+--------------------------------------------------------------+
+| ``gas_mode``               | ``GasMode.COINS`` or ``GasMode.ADDRESS_BALANCE``             |
++----------------------------+--------------------------------------------------------------+
+| ``initial_coins``          | List of coin object IDs (``list[str]``) or pre-fetched coin  |
+|                            | objects. An empty list triggers automatic coin selection via |
+|                            | ``GetGas``. In COINS mode, selected coins are added to the   |
+|                            | gas coin pool. In ADDRESS_BALANCE mode, selected coins are   |
+|                            | sent to the sender's address accumulator when the existing   |
+|                            | balance is below ``min_threshold_balance``.                  |
++----------------------------+--------------------------------------------------------------+
+| ``min_threshold_balance``  | Minimum MIST balance before ``on_balance_low`` fires.        |
+|                            | Default: ``10_000_000``.                                     |
++----------------------------+--------------------------------------------------------------+
+| ``max_concurrent``         | Maximum number of in-flight transactions at once             |
+|                            | (default: ``10``). Controls the concurrency semaphore that   |
+|                            | bounds all submitted tasks.                                  |
++----------------------------+--------------------------------------------------------------+
+| ``on_balance_low``         | Optional async callback invoked when tracked balance drops   |
+|                            | below ``min_threshold_balance``. Receives an                 |
+|                            | :class:`ExecutorContext`. Return a list of coins to add, or  |
+|                            | ``None``/``[]`` to halt.                                     |
++----------------------------+--------------------------------------------------------------+
+| ``max_retries``            | Number of replenishment attempts on gas error before halting |
+|                            | (default: ``1``).                                            |
++----------------------------+--------------------------------------------------------------+
+| ``on_failure``             | Controls behavior when a transaction fails with remaining    |
+|                            | transactions still queued. ``"continue"`` (default)          |
+|                            | continues; ``"exit"`` halts the executor immediately.        |
++----------------------------+--------------------------------------------------------------+
+
+**Coins mode:**
 
 .. code-block:: python
 
+    import asyncio
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors import GasCoin
+    from pysui.sui.sui_common.executors import ExecutorOptions, GasMode
 
     async def run():
+        # Use SUI_GQL_RPC_GROUP for GraphQL or SUI_GRPC_GROUP for gRPC
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)
-        executor = await client.parallel_executor(
+        options = ExecutorOptions(
             sender=cfg.active_address,
-            gas_mode="coins",
-            max_tasks=4,
-            default_gas_budget=50_000_000,
-            low_water_mark=5,
+            gas_mode=GasMode.COINS,
+            initial_coins=[],            # empty → auto-fetch from sender's SUI coins
+            min_threshold_balance=100_000_000,
+            max_concurrent=4,
         )
-
-        # Must seed the pool before calling execute_transactions
-        await executor.seed_coin_pool([
-            GasCoin(object_id="0xABC...", version="1", digest="...", balance=10_000_000),
-        ])
+        executor = await client.parallel_executor(options=options)
 
         txns = []
         for _ in range(8):
@@ -259,36 +294,43 @@ during execution but cannot start it from zero.
             await txn.transfer_objects(transfers=[coin], recipient=cfg.active_address)
             txns.append(txn)
 
-        results = await executor.execute_transactions(txns)
-        for r in results:
-            if isinstance(r, tuple):
-                err, exc = r
+        futures = executor.submit(txns)
+        results = await asyncio.gather(*futures)
+        for result in results:
+            if isinstance(result, tuple):
+                err, exc = result
                 print(f"Error: {err.name} — {exc}")
             else:
-                print(r)
+                print(result.to_json(indent=2))
 
-**Address balance mode** — no pool required; optional low-balance callback:
+        await executor.close()
+
+**Address balance mode:**
 
 .. code-block:: python
 
+    import asyncio
     from pysui import PysuiConfiguration, client_factory
+    from pysui.sui.sui_common.executors import ExecutorOptions, GasMode
     from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 
-    async def on_balance_low(ctx: ExecutorContext) -> str | None:
-        # top up balance and return truthy to continue, or None/falsy to halt
+    async def on_balance_low(ctx: ExecutorContext) -> list | None:
+        # top up and return coins, or None to halt
         return None
 
     async def run():
+        # Use SUI_GQL_RPC_GROUP for GraphQL or SUI_GRPC_GROUP for gRPC
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         client = client_factory(cfg)
-        executor = await client.parallel_executor(
+        options = ExecutorOptions(
             sender=cfg.active_address,
-            gas_mode="addressBalance",
-            max_tasks=4,
-            default_gas_budget=50_000_000,
-            min_balance_threshold=100_000_000,
+            gas_mode=GasMode.ADDRESS_BALANCE,
+            initial_coins=[],
+            min_threshold_balance=100_000_000,
             on_balance_low=on_balance_low,
+            max_concurrent=4,
         )
+        executor = await client.parallel_executor(options=options)
 
         txns = []
         for _ in range(8):
@@ -297,143 +339,55 @@ during execution but cannot start it from zero.
             await txn.transfer_objects(transfers=[coin], recipient=cfg.active_address)
             txns.append(txn)
 
-        results = await executor.execute_transactions(txns)
-        for r in results:
-            if isinstance(r, tuple):
-                err, exc = r
+        futures = executor.submit(txns)
+        results = await asyncio.gather(*futures)
+        for result in results:
+            if isinstance(result, tuple):
+                err, exc = result
                 print(f"Error: {err.name} — {exc}")
             else:
-                print(r)
+                print(result.to_json(indent=2))
 
-gRPC — ``GrpcParallelTransactionExecutor``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Same interface as the GraphQL parallel executor; only the client type and import differ.
-
-**Coins mode**:
-
-.. code-block:: python
-
-    from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors import GasCoin
-
-    async def run():
-        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)
-        executor = await client.parallel_executor(
-            sender=cfg.active_address,
-            gas_mode="coins",
-            max_tasks=4,
-            default_gas_budget=50_000_000,
-        )
-
-        # Must seed the pool before calling execute_transactions
-        await executor.seed_coin_pool([
-            GasCoin(object_id="0xABC...", version="1", digest="...", balance=10_000_000),
-        ])
-
-        txns = []
-        for _ in range(4):
-            txn = await executor.new_transaction()
-            coin = await txn.split_coin(coin=txn.gas, amounts=[1_000_000])
-            await txn.transfer_objects(transfers=[coin], recipient=cfg.active_address)
-            txns.append(txn)
-
-        results = await executor.execute_transactions(txns)
-        for r in results:
-            if isinstance(r, tuple):
-                err, exc = r
-                print(f"Error: {err.name} — {exc}")
-            else:
-                print(r)
-
-**Address balance mode**:
-
-.. code-block:: python
-
-    from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
-
-    async def on_balance_low(ctx: ExecutorContext) -> str | None:
-        return None
-
-    async def run():
-        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)
-        executor = await client.parallel_executor(
-            sender=cfg.active_address,
-            gas_mode="addressBalance",
-            max_tasks=4,
-            default_gas_budget=50_000_000,
-        )
-
-        txns = []
-        for _ in range(4):
-            txn = await executor.new_transaction()
-            coin = await txn.split_coin(coin=txn.gas, amounts=[1_000_000])
-            await txn.transfer_objects(transfers=[coin], recipient=cfg.active_address)
-            txns.append(txn)
-
-        results = await executor.execute_transactions(txns)
-        for r in results:
-            if isinstance(r, tuple):
-                err, exc = r
-                print(f"Error: {err.name} — {exc}")
-            else:
-                print(r)
+        await executor.close()
 
 Result Handling
 ---------------
 
-All ``execute_transactions`` calls return a list of the same length as the input list.
-Each element is either a success value or a failure tuple:
-
-**Parallel executors** return ``TransactionEffects | (ExecutorError, Exception)``.
-
-**Serial executors** return ``sui_prot.ExecutedTransaction | (ExecutorError, Exception) | ExecutionSkipped``.
-``ExecutionSkipped`` is returned for transactions after a halt (e.g. replenishment declined).
+``submit()`` returns a single ``asyncio.Future`` for one transaction, or a list of
+``asyncio.Future`` objects when passed a list. Await futures individually or gather them:
 
 .. code-block:: python
 
+    import asyncio
     from pysui.sui.sui_common.executors import ExecutorError, ExecutionSkipped
+
+    # Single transaction
+    future = executor.submit(txn)
+    result = await future
+
+    # Batch
+    futures = executor.submit([txn1, txn2, txn3])
+    results = await asyncio.gather(*futures)
+
+Each resolved value is one of:
+
+- ``sui_prot.ExecutedTransaction`` — success
+- ``(ExecutorError, Exception)`` — build or execution failure
+- ``ExecutionSkipped`` — transaction was not attempted (executor halted before reaching it)
+
+**Serial executors** use the same result types. ``ExecutionSkipped`` is returned for
+transactions that were queued after a halt (e.g. replenishment declined).
+
+.. code-block:: python
 
     def print_result(r):
         if isinstance(r, ExecutionSkipped):
-            print(f"Skipped tx {r.transaction_index}: {r.reason}")
+            print(f"Skipped: {r.reason}")
         elif isinstance(r, tuple):
             err, exc = r
             print(f"Error: {err.name} — {exc}")
         else:
-            # ExecutedTransaction — serialise as needed
             print(r.to_json(indent=2))
 
-    results = await executor.execute_transactions(txns)
     for r in results:
         print_result(r)
-
-Constructor Parameters
------------------------
-
-Parallel executors (``GqlParallelTransactionExecutor``, ``GrpcParallelTransactionExecutor``):
-
-.. list-table::
-   :header-rows: 1
-
-   * - Parameter
-     - Description
-   * - ``gas_mode``
-     - ``"coins"`` or ``"addressBalance"``
-   * - ``max_tasks``
-     - Maximum concurrent in-flight transactions (default: ``4``)
-   * - ``low_water_mark``
-     - Pool size below which an auto-refill is triggered (coins mode, default: ``5``)
-   * - ``coin_split_amount``
-     - MIST per gas coin in auto-refill splits (default: ``10_000_000``)
-   * - ``min_balance_per_coin``
-     - Retire a coin when its balance falls below this value
-   * - ``min_balance_threshold``
-     - Balance level that triggers ``on_balance_low`` (addressBalance mode)
-   * - ``on_balance_low``
-     - Async callback fired when balance is low (required if ``min_balance_threshold`` set)
-   * - ``registry``
-     - Shared ``AbstractObjectRegistry``; defaults to the process-wide singleton

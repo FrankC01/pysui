@@ -29,11 +29,11 @@ def _make_grpc_client():
 
 def _make_grpc_serial_executor(**kwargs):
     from pysui.sui.sui_common.executors.serial_executor import SerialExecutor
-    from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, SerialGasMode
+    from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, GasMode
     client = _make_grpc_client()
     options = ExecutorOptions(
         sender="0xsender",
-        gas_mode=SerialGasMode.COINS,
+        gas_mode=GasMode.COINS,
         initial_coins=[],
         min_threshold_balance=10_000_000,
     )
@@ -42,9 +42,16 @@ def _make_grpc_serial_executor(**kwargs):
 
 
 def _make_grpc_parallel_executor(**kwargs):
-    from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
+    from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
+    from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, GasMode
     client = _make_grpc_client()
-    ex = GrpcParallelTransactionExecutor(client=client, sender="0xsender", **kwargs)
+    options = ExecutorOptions(
+        sender="0xsender",
+        gas_mode=GasMode.COINS,
+        initial_coins=[],
+        min_threshold_balance=10_000_000,
+    )
+    ex = ParallelExecutor(client=client, options=options)
     return ex, client
 
 
@@ -171,15 +178,26 @@ class TestParallelNewTransaction:
         assert result is sentinel
 
     @pytest.mark.asyncio
-    async def test_new_transaction_defined_on_base_not_concrete(self):
-        """new_transaction is resolved from _BaseParallelExecutor, not GrpcParallelTransactionExecutor."""
-        from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
-        from pysui.sui.sui_grpc.grpc_parallel_exec import GrpcParallelTransactionExecutor
+    async def test_new_transaction_overrides_caller_mode(self):
+        """Executor enforces DEFERRED even if caller explicitly passes a mode."""
+        ex, client = _make_grpc_parallel_executor()
+        client.transaction.return_value = MagicMock()
 
-        for klass in GrpcParallelTransactionExecutor.__mro__:
+        await ex.new_transaction(mode=TxnArgMode.EAGER)
+
+        call_kwargs = client.transaction.call_args.kwargs
+        assert call_kwargs["mode"] == TxnArgMode.DEFERRED
+
+    @pytest.mark.asyncio
+    async def test_new_transaction_defined_on_base_not_concrete(self):
+        """new_transaction is defined on ParallelExecutor (the shell), not _BaseParallelExecutor."""
+        from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
+        from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
+
+        for klass in ParallelExecutor.__mro__:
             if "new_transaction" in klass.__dict__:
                 owner = klass
                 break
         else:
             owner = None
-        assert owner is _BaseParallelExecutor
+        assert owner is ParallelExecutor

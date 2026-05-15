@@ -103,28 +103,28 @@ class TestExecutorError:
         assert isinstance(error_tuple[1], RuntimeError)
 
 
-class TestSerialGasMode:
-    """Test SerialGasMode enum."""
+class TestGasMode:
+    """Test GasMode enum."""
 
     def test_coins_value(self):
-        from pysui.sui.sui_common.executors.exec_types import SerialGasMode
-        assert SerialGasMode.COINS.value == "coins"
+        from pysui.sui.sui_common.executors.exec_types import GasMode
+        assert GasMode.COINS.value == "coins"
 
     def test_address_balance_value(self):
-        from pysui.sui.sui_common.executors.exec_types import SerialGasMode
-        assert SerialGasMode.ADDRESS_BALANCE.value == "address_balance"
+        from pysui.sui.sui_common.executors.exec_types import GasMode
+        assert GasMode.ADDRESS_BALANCE.value == "address_balance"
 
     def test_enum_has_two_members(self):
-        from pysui.sui.sui_common.executors.exec_types import SerialGasMode
-        assert len(SerialGasMode) == 2
+        from pysui.sui.sui_common.executors.exec_types import GasMode
+        assert len(GasMode) == 2
 
     def test_enum_name_coins(self):
-        from pysui.sui.sui_common.executors.exec_types import SerialGasMode
-        assert SerialGasMode.COINS.name == "COINS"
+        from pysui.sui.sui_common.executors.exec_types import GasMode
+        assert GasMode.COINS.name == "COINS"
 
     def test_enum_name_address_balance(self):
-        from pysui.sui.sui_common.executors.exec_types import SerialGasMode
-        assert SerialGasMode.ADDRESS_BALANCE.name == "ADDRESS_BALANCE"
+        from pysui.sui.sui_common.executors.exec_types import GasMode
+        assert GasMode.ADDRESS_BALANCE.name == "ADDRESS_BALANCE"
 
 
 class TestGasStatus:
@@ -151,12 +151,12 @@ class TestGasStatus:
         assert len(GasStatus) == 4
 
 
-class TestSerialExecutorContext:
-    """Test SerialExecutorContext dataclass."""
+class TestExecutorContext:
+    """Test ExecutorContext dataclass."""
 
     def test_creation_with_all_fields(self):
-        from pysui.sui.sui_common.executors.exec_types import SerialExecutorContext
-        ctx = SerialExecutorContext(
+        from pysui.sui.sui_common.executors.exec_types import ExecutorContext
+        ctx = ExecutorContext(
             sender="0xsender",
             tracked_balance=5_000_000,
             min_threshold_balance=10_000_000,
@@ -168,9 +168,9 @@ class TestSerialExecutorContext:
         assert ctx.client is None
 
     def test_client_field_accepts_any(self):
-        from pysui.sui.sui_common.executors.exec_types import SerialExecutorContext
+        from pysui.sui.sui_common.executors.exec_types import ExecutorContext
         mock_client = object()
-        ctx = SerialExecutorContext(
+        ctx = ExecutorContext(
             sender="0xaddr",
             tracked_balance=0,
             min_threshold_balance=1,
@@ -179,8 +179,8 @@ class TestSerialExecutorContext:
         assert ctx.client is mock_client
 
     def test_zero_balances(self):
-        from pysui.sui.sui_common.executors.exec_types import SerialExecutorContext
-        ctx = SerialExecutorContext(
+        from pysui.sui.sui_common.executors.exec_types import ExecutorContext
+        ctx = ExecutorContext(
             sender="0x0",
             tracked_balance=0,
             min_threshold_balance=0,
@@ -194,23 +194,23 @@ class TestExecutorOptions:
     """Test ExecutorOptions dataclass."""
 
     def test_required_fields(self):
-        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, SerialGasMode
+        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, GasMode
         opts = ExecutorOptions(
             sender="0xsender",
-            gas_mode=SerialGasMode.COINS,
+            gas_mode=GasMode.COINS,
             initial_coins=[],
             min_threshold_balance=10_000_000,
         )
         assert opts.sender == "0xsender"
-        assert opts.gas_mode == SerialGasMode.COINS
+        assert opts.gas_mode == GasMode.COINS
         assert opts.initial_coins == []
         assert opts.min_threshold_balance == 10_000_000
 
     def test_defaults(self):
-        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, SerialGasMode
+        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, GasMode
         opts = ExecutorOptions(
             sender="0xsender",
-            gas_mode=SerialGasMode.COINS,
+            gas_mode=GasMode.COINS,
             initial_coins=[],
             min_threshold_balance=1,
         )
@@ -219,12 +219,12 @@ class TestExecutorOptions:
         assert opts.on_failure == "continue"
 
     def test_on_balance_low_callback(self):
-        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, SerialGasMode
+        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, GasMode
         async def callback(ctx):
             return None
         opts = ExecutorOptions(
             sender="0xsender",
-            gas_mode=SerialGasMode.ADDRESS_BALANCE,
+            gas_mode=GasMode.ADDRESS_BALANCE,
             initial_coins=[],
             min_threshold_balance=10_000_000,
             on_balance_low=callback,
@@ -232,10 +232,10 @@ class TestExecutorOptions:
         assert opts.on_balance_low is callback
 
     def test_on_failure_exit(self):
-        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, SerialGasMode
+        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, GasMode
         opts = ExecutorOptions(
             sender="0xsender",
-            gas_mode=SerialGasMode.COINS,
+            gas_mode=GasMode.COINS,
             initial_coins=[],
             min_threshold_balance=1,
             on_failure="exit",
@@ -243,22 +243,22 @@ class TestExecutorOptions:
         assert opts.on_failure == "exit"
 
     def test_address_balance_mode(self):
-        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, SerialGasMode
+        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, GasMode
         opts = ExecutorOptions(
             sender="0xsender",
-            gas_mode=SerialGasMode.ADDRESS_BALANCE,
+            gas_mode=GasMode.ADDRESS_BALANCE,
             initial_coins=[],
             min_threshold_balance=50_000_000,
         )
-        assert opts.gas_mode == SerialGasMode.ADDRESS_BALANCE
+        assert opts.gas_mode == GasMode.ADDRESS_BALANCE
         assert opts.min_threshold_balance == 50_000_000
 
     def test_initial_coins_list(self):
-        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, SerialGasMode
+        from pysui.sui.sui_common.executors.exec_types import ExecutorOptions, GasMode
         coins = ["0xcoin1", "0xcoin2"]
         opts = ExecutorOptions(
             sender="0xsender",
-            gas_mode=SerialGasMode.COINS,
+            gas_mode=GasMode.COINS,
             initial_coins=coins,
             min_threshold_balance=1,
         )

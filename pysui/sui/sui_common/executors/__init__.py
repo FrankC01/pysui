@@ -10,9 +10,8 @@ from pysui.sui.sui_common.executors.exec_types import (
     ExecutionSkipped,
     ExecutorError,
     GasSummary,
-    SerialGasMode,
+    GasMode,
     GasStatus,
-    SerialExecutorContext,
     ExecutorOptions,
 )
 from pysui.sui.sui_common.executors.queue import SerialQueue, ParallelQueue
@@ -36,6 +35,7 @@ from pysui.sui.sui_common.executors.conflict_tracker import (
 from pysui.sui.sui_common.executors.gas_pool import GasCoin, GasCoinPool
 from pysui.sui.sui_common.executors.object_id_extract import extract_object_id
 from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
+from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
 from pysui.sui.sui_common.executors.serial_executor import SerialExecutor
 
 __all__ = [
@@ -43,26 +43,20 @@ __all__ = [
     "ExecutionSkipped",
     "ExecutorError",
     "GasSummary",
-    "SerialQueue",
-    "ParallelQueue",
     "AsyncObjectCache",
     "ObjectSummary",
     "MoveFunctionCacheEntry",
-    "_BaseCachingExecutor",
     "ObjectVersionEntry",
     "AbstractObjectRegistry",
     "InMemoryObjectRegistry",
     "get_object_registry",
-    "_set_object_registry_for_tests",
     "ConflictTracker",
     "ConflictReservation",
     "GasCoin",
     "GasCoinPool",
     "extract_object_id",
-    "_BaseParallelExecutor",
-    "SerialGasMode",
-    "GasStatus",
-    "SerialExecutorContext",
+    "ParallelExecutor",
+    "GasMode",
     "ExecutorOptions",
     "SerialExecutor",
 ]
