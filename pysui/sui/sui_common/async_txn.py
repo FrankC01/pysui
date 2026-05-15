@@ -6,6 +6,8 @@
 """Unified async Sui Transaction builder — protocol-agnostic (GQL and gRPC)."""
 
 import base64
+import hashlib
+import struct as _struct
 from typing import Any, Callable, Optional, Union
 from deprecated.sphinx import versionchanged
 
@@ -29,6 +31,54 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.txb_tx_argparse import TxnArgParse, TxnArgMode
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache
 from pysui.sui.sui_common.async_funcs import AsyncLRU
+
+# Coin reservation constants — used when addressBalance gas mode + GasCoin (txn.gas) is used
+_ACCUMULATOR_ROOT_ID_BYTES = bytes(30) + b'\x0a\xcc'
+_ADDR_0x02_BYTES = bytes(31) + b'\x02'
+_ACCUMULATOR_KEY_TYPE_TAG_BCS = (
+    b'\x07' + _ADDR_0x02_BYTES
+    + b'\x0baccumulator'
+    + b'\x03Key'
+    + b'\x01'
+    + b'\x07' + _ADDR_0x02_BYTES
+    + b'\x07balance'
+    + b'\x07Balance'
+    + b'\x01'
+    + b'\x07' + _ADDR_0x02_BYTES
+    + b'\x03sui'
+    + b'\x03SUI'
+    + b'\x00'
+)
+
+
+def _build_coin_reservation_ref(
+    reserved_balance: int, epoch: int, owner_str: str, chain_id: str
+) -> "bcs.ObjectReference":
+    """Synthetic ObjectRef for addressBalance + GasCoin hybrid gas (coin reservation)."""
+    digest_bytes = bytearray(32)
+    _struct.pack_into('<Q', digest_bytes, 0, reserved_balance)
+    _struct.pack_into('<I', digest_bytes, 8, epoch)
+    digest_bytes[12:32] = b'\xac' * 20
+
+    owner_bytes = bytes.fromhex(owner_str.removeprefix('0x').zfill(64))
+    key_length = _struct.pack('<Q', len(owner_bytes))  # 32 as u64 LE
+    hash_input = (
+        b'\xf0'                           # domain separator (deriveDynamicFieldID)
+        + _ACCUMULATOR_ROOT_ID_BYTES      # parent: 0x0...0acc (32 bytes)
+        + key_length                      # key byte length as u64 LE
+        + owner_bytes                     # key: owner address (32 bytes)
+        + _ACCUMULATOR_KEY_TYPE_TAG_BCS   # type tag BCS
+    )
+    acc_id_bytes = hashlib.blake2b(hash_input, digest_size=32).digest()
+
+    chain_bytes = bytes(bcs.Digest.from_str(chain_id).Digest)
+    obj_id_bytes = bytes(a ^ b for a, b in zip(acc_id_bytes, chain_bytes))
+
+    return bcs.ObjectReference(
+        ObjectID=bcs.Address.from_str('0x' + obj_id_bytes.hex()),
+        SequenceNumber=0,
+        ObjectDigest=bcs.Digest.from_bytes(bytes(digest_bytes)),
+    )
 
 
 class AsyncSuiTransaction(txbase):
@@ -134,6 +184,8 @@ class AsyncSuiTransaction(txbase):
         self,
         gas_budget: Optional[int] = None,
         txn_expires_after: Optional[int] = None,
+        uses_gas_coin: bool = False,
+        gas_source_draw: int = 0,
     ) -> bcs.TransactionData:
         """Build TransactionData using address account balance for gas (UC7).
 
@@ -180,8 +232,15 @@ class AsyncSuiTransaction(txbase):
                     )
                 else:
                     raise ValueError(_res.result_string)
+            payment = (
+                [_build_coin_reservation_ref(
+                    gas_budget + gas_source_draw, _cei.epoch, pay_addy, chain_id
+                )]
+                if uses_gas_coin
+                else []
+            )
             gas_data = bcs.GasData(
-                [],
+                payment,
                 bcs.Address.from_str(pay_addy),
                 _cei.reference_gas_price,
                 gas_budget,
@@ -220,13 +279,8 @@ class AsyncSuiTransaction(txbase):
         uses_gas_coin, gas_source_draw = self._inspect_ptb_for_gas_coin()
 
         if use_account_for_gas:
-            if uses_gas_coin:
-                raise ValueError(
-                    "Hybrid gas payment (txer.gas + address balance) not yet "
-                    "implemented — use coin-only gas payment"
-                )
             return await self._build_txn_data_address_balance(
-                gas_budget, txn_expires_after
+                gas_budget, txn_expires_after, uses_gas_coin, gas_source_draw
             )
 
         # Standard coin path — fetch gas price lazily at build time
@@ -406,14 +460,16 @@ class AsyncSuiTransaction(txbase):
             object_cache=self._object_cache,
         )
         resolved = [
-            c
-            if isinstance(c, bcs.Argument)
-            else await self._argparse.parse(
-                c,
-                mode=self._mode,
-                object_cache=self._object_cache,
-                is_receiving=False,
-                is_mutable=False,
+            (
+                c
+                if isinstance(c, bcs.Argument)
+                else await self._argparse.parse(
+                    c,
+                    mode=self._mode,
+                    object_cache=self._object_cache,
+                    is_receiving=False,
+                    is_mutable=False,
+                )
             )
             for c in merge_from
         ]
@@ -479,14 +535,16 @@ class AsyncSuiTransaction(txbase):
             object_cache=self._object_cache,
         )
         resolved = [
-            t
-            if isinstance(t, bcs.Argument)
-            else await self._argparse.parse(
-                t,
-                mode=self._mode,
-                object_cache=self._object_cache,
-                is_receiving=False,
-                is_mutable=False,
+            (
+                t
+                if isinstance(t, bcs.Argument)
+                else await self._argparse.parse(
+                    t,
+                    mode=self._mode,
+                    object_cache=self._object_cache,
+                    is_receiving=False,
+                    is_mutable=False,
+                )
             )
             for t in transfers
         ]
@@ -570,14 +628,16 @@ class AsyncSuiTransaction(txbase):
             return self.builder.make_move_vector(type_tag, items)
 
         resolved = [
-            item
-            if isinstance(item, bcs.Argument)
-            else await self._argparse.parse(
-                item,
-                mode=self._mode,
-                object_cache=self._object_cache,
-                is_receiving=False,
-                is_mutable=False,
+            (
+                item
+                if isinstance(item, bcs.Argument)
+                else await self._argparse.parse(
+                    item,
+                    mode=self._mode,
+                    object_cache=self._object_cache,
+                    is_receiving=False,
+                    is_mutable=False,
+                )
             )
             for item in items
         ]

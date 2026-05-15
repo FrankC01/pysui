@@ -15,8 +15,8 @@ import urllib.parse as urlparse
 
 if TYPE_CHECKING:
     from pysui.sui.sui_common.txb_signing import SigningMultiSig
-    from pysui.sui.sui_common.executors.serial_executor import PysuiSerialExecutor
-    from pysui.sui.sui_common.executors.exec_types import ExecutorContext
+    from pysui.sui.sui_common.executors.serial_executor import SerialExecutor
+    from pysui.sui.sui_common.executors.exec_types import ExecutorOptions
 
 import betterproto2
 import dataclasses_json
@@ -156,31 +156,20 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         kwargs["client"] = self
         return AsyncSuiTransaction(**kwargs)
 
-    async def serial_executor_with_coins(
-        self,
-        sender: Union[str, "SigningMultiSig"],
-        *,
-        coins: Optional[Union[list[str], list[sui_prot.Object]]] = None,
-        min_balance_threshold: int = 10_000_000,
-        on_coins_low: Optional[Callable[["ExecutorContext"], Awaitable[Optional[list]]]] = None,
-        on_failure: Literal["continue", "exit"] = "continue",
-    ) -> "tuple[PysuiSerialExecutor, str]":
-        """Async factory: create a PysuiSerialExecutor pre-seeded with gas coins.
+    async def serial_executor(self, *, options: "ExecutorOptions") -> "SerialExecutor":
+        """Async factory: create and initialize a SerialExecutor.
 
-        Delegates to PysuiSerialExecutor.with_coins(). Returns (executor, primary_coin_id).
+        Performs coin selection, merging, and gas state seeding before returning
+        a ready-to-use executor with the background coroutine running.
+
+        :param options: Full executor parameterization via ExecutorOptions
+        :return: Initialized SerialExecutor
         """
-        from pysui.sui.sui_common.executors.serial_executor import (
-            PysuiSerialExecutor,
-        )
+        from pysui.sui.sui_common.executors.serial_executor import SerialExecutor
 
-        return await PysuiSerialExecutor.with_coins(
-            client=self,
-            sender=sender,
-            coins=coins,
-            min_balance_threshold=min_balance_threshold,
-            on_coins_low=on_coins_low,
-            on_failure=on_failure,
-        )
+        se = SerialExecutor(client=self, options=options)
+        await se._initialize()
+        return se
 
     async def parallel_executor(self, **kwargs) -> Any:
         """Return a gRPC parallel transaction executor.

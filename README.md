@@ -30,25 +30,7 @@ Python Client SDK for Sui blockchain
 
 **BREAKING CHANGES**
 
-- `profile_names(in_group=...)` no longer mutates the active group as a
-side effect — callers relying on this behavior must call `make_active()` explicitly
-
-- `use_account_for_gas` moved from the transaction constructor to build-time
-parameters on build(), build_and_sign(), and transaction_data()
-
-- `MoveFunctionGQL.parameters` changed from `list[dict]` to `list[OpenMoveTypeGQL]` — any code iterating raw dicts from function metadata must migrate to the new dataclass accessors
-- `MoveFunctionGQL.returns` changed from `Optional[list]` to `list[OpenMoveTypeGQL]` — same migration required
-
-- `GqlProtocolClient.transaction()` is now `async def` — all call sites must add `await`
-
-- `SerialTransactionExecutor` renamed to `GqlSerialTransactionExecutor` — protocol prefix added
-  to all executor class names for consistency; update imports accordingly
-
-- `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations; old names no longer exist
-
-- `AsyncSuiTransaction` is now a single protocol-agnostic class at `pysui.sui.sui_common.async_txn`; `pysui.sui.sui_pgql.pgql_async_txn` and `pysui.sui.sui_grpc.pgrpc_async_txn` are deleted — update all imports to the new location
-
-- Legacy GQL object types (`ObjectReadGQL`, `SuiCoinObjectGQL`, `SuiCoinObjectSummaryGQL`, `SuiStakedCoinGQL`) are no longer accepted as transaction method arguments — pass `sui_prot.Object` (obtained via `GetObject` SuiCommand) instead
+Refer to CHANGELOG.md
 
 ## PyPi current
 

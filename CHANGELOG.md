@@ -9,34 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **BREAKING CHANGES**
 
-- `profile_names(in_group=...)` no longer mutates the active group as a side effect — callers relying on this behavior must call `make_active()` explicitly
-- `use_account_for_gas` moved from the transaction constructor to build-time parameters on `build()`, `build_and_sign()`, and `transaction_data()`
 - `MoveFunctionGQL.parameters` changed from `list[dict]` to `list[OpenMoveTypeGQL]`; `MoveFunctionGQL.returns` changed from `Optional[list]` to `list[OpenMoveTypeGQL]` — migrate callers to the new dataclass accessors
 - `GqlProtocolClient.transaction()` is now `async def` — all call sites must add `await`
-- `SerialTransactionExecutor` renamed to `GqlSerialTransactionExecutor` — protocol prefix added to all executor class names; update imports
-- `AsyncSuiGQLClient` renamed to `GqlProtocolClient`; `SuiGrpcClient` renamed to `GrpcProtocolClient` — update all imports and type annotations
 - `AsyncSuiTransaction` is now a single protocol-agnostic class at `pysui.sui.sui_common.async_txn`; old module paths deleted — update imports
 - Legacy GQL object types (`ObjectReadGQL`, `SuiCoinObjectGQL`, `SuiCoinObjectSummaryGQL`, `SuiStakedCoinGQL`) are no longer accepted as transaction method arguments — pass `sui_prot.Object` (via `GetObject` SuiCommand) instead
-- `GqlSerialTransactionExecutor` and `GrpcSerialTransactionExecutor` replaced by `PysuiSerialExecutor` — single protocol-agnostic serial executor class; update imports and instantiation
-- `client.serial_executor()` replaced by `client.serial_executor_with_coins()` — factory signature changed; see executor documentation
-- `execute_transactions()` now returns `list[sui_prot.ExecutedTransaction]` instead of `list[TransactionEffects]` — update all result-handling code
-- `default_gas_budget` parameter removed from serial executor constructors — gas budget is now determined automatically by simulation
+- `GqlSerialTransactionExecutor` and `GrpcSerialTransactionExecutor` replaced by `SerialExecutor` — single protocol-agnostic serial executor class; update imports and instantiation
+- `client.serial_executor_with_coins()` and `client.serial_executor_with_account()` replaced by `client.serial_executor(*, options: ExecutorOptions)` — pass an `ExecutorOptions` dataclass instance; see executor documentation
+- `SerialExecutor.execute_transactions()` removed — use `submit()`; single transaction `submit(txn)` returns `asyncio.Future`, list of transactions `submit([txn])` returns list of `asyncio.Future`s
+- `default_gas_budget` parameter removed from serial executor constructors — gas budget is now determined automatically by simulation per transaction
 
 ### Added
 
 - **Unified Client Interface (UCI)**: `SuiCommand` ABC and 45 built-in subclasses — protocol-neutral request objects; `await client.execute(command=...)` dispatches identically on both `GqlProtocolClient` and `GrpcProtocolClient` and returns the same canonical proto output regardless of transport; all 45 subclasses exported from `pysui`
 - `AsyncClientBase` abstract base class — replaces `PysuiClient` as the shared async interface; `client_factory()` return type updated accordingly
-- `serial_executor(**kwargs)` and `parallel_executor(**kwargs)` factory methods on both protocol clients — UCI-conformant executor creation
+- `serial_executor(*, options: ExecutorOptions)` and `parallel_executor(**kwargs)` factory methods on both protocol clients — UCI-conformant executor creation
 - `GqlParallelTransactionExecutor`, `GrpcParallelTransactionExecutor` — new executor classes for parallel workflows
 - Metadata-driven argument encoder (`txn_arg_encoder.py`) using `@singledispatch` over `OpenMoveBodyGQL` variants; shared by GQL and gRPC transaction builders; replaces fragile dict-based Move type representation
 - `OpenMove*GQL` dataclass hierarchy in `pgql_types.py` mirroring the GQL schema Move type tree
 - `SimulateTransaction` and `SimulateTransactionKind` SuiCommands replacing `DryRunTransaction` / `DryRunTransactionKind`
 - `VerifyTransactionSignature` and `VerifyPersonalMessageSignature` SuiCommands
-- 888 unit tests (no network required); 113 integration tests against live GQL and gRPC transports
+- 881 unit tests (no network required); 113 integration tests against live GQL and gRPC transports
 
 ### Deprecated
 
-- `GrpcProtocolClient.execute(request=...)` → use `execute_grpc_request(request=...)` or `execute(command=SuiCommand)`; targeted for removal at v1.0.0
+- `GrpcProtocolClient.execute(request=...)` — the `request=` keyword form is targeted for removal at v1.0.0; use `execute_grpc_request(request=...)` or `execute(command=SuiCommand)` instead
 - `GqlProtocolClient.execute_query_node(with_node=...)` → use `execute(command=...)`; `execute_document_node()` and `execute_query_string()` remain as escape hatches; targeted for removal at v1.0.0
 - `DryRunTransactionKind` and `DryRunTransaction` emit `DeprecationWarning` pointing to `SimulateTransactionKind` / `SimulateTransaction`
 
