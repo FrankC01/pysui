@@ -34,13 +34,12 @@ cleanup:
 
 .. code-block:: python
 
-    from pysui import PysuiConfiguration, client_factory, AsyncClientBase
-    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import PysuiConfiguration, client_factory, AsyncClientBase, GetCoins
 
     async def main():
         config = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
         async with client_factory(config) as client:
-            result = await client.execute(command=cmd.GetCoins(owner=config.active_address))
+            result = await client.execute(command=GetCoins(owner=config.active_address))
             if result.is_ok():
                 print(result.result_data)
 
@@ -73,13 +72,12 @@ Quick Start
 
 .. code-block:: python
 
-    from pysui import AsyncClientBase, client_factory
-    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import AsyncClientBase, client_factory, GetCoins
 
     # Works with any protocol; client type is determined at runtime
     config = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
     client: AsyncClientBase = client_factory(config)
-    result = await client.execute(command=cmd.GetCoins(owner=addr))
+    result = await client.execute(command=GetCoins(owner=addr))
 
 Protocol-Agnostic Pattern
 -------------------------
@@ -88,15 +86,14 @@ Type your client parameter as :class:`AsyncClientBase` instead of a concrete pro
 
 .. code-block:: python
 
-    from pysui import AsyncClientBase
-    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import AsyncClientBase, GetCoins
 
     async def get_owner_coins(client: AsyncClientBase, owner: str) -> list:
         """Fetch all coins owned by an address — all pages.
 
         Works with both GraphQL and gRPC clients.
         """
-        result = await client.execute_for_all(command=cmd.GetCoins(owner=owner))
+        result = await client.execute_for_all(command=GetCoins(owner=owner))
         if result.is_ok():
             return result.result_data.objects
         else:
@@ -142,8 +139,8 @@ GetCoins (GraphQL → Unified)
     result = await client.execute_query_node(with_node=qn.GetCoins(owner=addr))
 
     # New (Protocol-agnostic)
-    import pysui.sui.sui_common.sui_commands as cmd
-    result = await client.execute(command=cmd.GetCoins(owner=addr))
+    from pysui import GetCoins
+    result = await client.execute(command=GetCoins(owner=addr))
 
 GetGas (gRPC → Unified)
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -155,8 +152,8 @@ GetGas (gRPC → Unified)
     result = await client.execute_grpc_request(request=rn.GetGas(owner=addr))
 
     # New (Protocol-agnostic)
-    import pysui.sui.sui_common.sui_commands as cmd
-    result = await client.execute(command=cmd.GetGas(owner=addr))
+    from pysui import GetGas
+    result = await client.execute(command=GetGas(owner=addr))
 
 SimulateTransactionKind (gRPC → Unified)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -174,9 +171,9 @@ SimulateTransactionKind (gRPC → Unified)
     )
 
     # New (Protocol-agnostic)
-    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import SimulateTransactionKind
     result = await client.execute(
-        command=cmd.SimulateTransactionKind(
+        command=SimulateTransactionKind(
             tx_kind=kind_bytes,
             tx_meta={"sender": "0x1234..."},
             gas_selection=True,
@@ -194,9 +191,9 @@ ExecuteTransaction
     result = await client.execute_grpc_request(request=rn.ExecuteTransaction(**bdict))
 
     # New (Protocol-agnostic)
-    import pysui.sui.sui_common.sui_commands as cmd
+    from pysui import ExecuteTransaction
     bdict = await txer.build_and_sign()
-    result = await client.execute(command=cmd.ExecuteTransaction(**bdict))
+    result = await client.execute(command=ExecuteTransaction(**bdict))
 
 Paginated Commands (→ execute_for_all)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -220,8 +217,8 @@ Both of those approaches are deprecated in 0.99.0.
         )
 
     # New (Protocol-agnostic — all pages in one call)
-    import pysui.sui.sui_common.sui_commands as cmd
-    result = await client.execute_for_all(command=cmd.GetObjectsOwnedByAddress(owner=addr))
+    from pysui import GetObjectsOwnedByAddress
+    result = await client.execute_for_all(command=GetObjectsOwnedByAddress(owner=addr))
     if result.is_ok():
         for obj in result.result_data.objects:
             print(obj.to_json(indent=2))
@@ -306,13 +303,11 @@ See :ref:`pageable-commands` for the full table and usage examples.
   - :class:`VerifyTransactionSignature`
   - :class:`VerifyPersonalMessageSignature`
 
-All are importable as:
+All are importable directly from the top-level ``pysui`` package:
 
 .. code-block:: python
 
-    import pysui.sui.sui_common.sui_commands as cmd
-
-    # cmd.ExecuteTransaction, cmd.GetCoins, etc.
+    from pysui import GetCoins, GetGas, ExecuteTransaction  # etc.
 
 
 Custom SuiCommand Subclasses (Advanced)
@@ -323,28 +318,28 @@ You can create custom :class:`SuiCommand` subclasses for operations not yet supp
 Implementing a Custom Command
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Subclass :class:`SuiCommand` and implement the protocol-specific methods:
+Subclass :class:`SuiCommand`, declare the ``ClassVar`` fields, and implement the
+protocol-specific methods:
 
 .. code-block:: python
 
     from dataclasses import dataclass
-    from pysui import SuiCommand
+    from typing import ClassVar
+    from pysui.sui.sui_common.sui_command import SuiCommand
     import pysui.sui.sui_pgql.pgql_query as qn
     import pysui.sui.sui_grpc.pgrpc_requests as rn
 
-    @dataclass
+    @dataclass(kw_only=True)
     class MyGetObject(SuiCommand):
-        """A custom command that wraps GetObject on both protocols."""
-
+        gql_class: ClassVar[type] = qn.GetObject
+        grpc_class: ClassVar[type] = rn.GetObject
         object_id: str
 
         def gql_node(self):
-            """Return the GraphQL query node."""
-            return qn.GetObject(object_id=self.object_id)
+            return self.gql_class(object_id=self.object_id)
 
         def grpc_request(self):
-            """Return the gRPC request."""
-            return rn.GetObject(object_id=self.object_id)
+            return self.grpc_class(object_id=self.object_id)
 
 Using a Custom Command
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -376,14 +371,14 @@ transport-specific and will never have a cross-protocol equivalent:
 
 .. code-block:: python
 
-    @dataclass
+    @dataclass(kw_only=True)
     class MyGqlOnlyCommand(SuiCommand):
-        """Example: a hypothetical GQL-only custom command."""
-
+        gql_class: ClassVar[type] = qn.SomeGqlQueryNode
+        grpc_class: ClassVar[type] = None
         some_filter: dict
 
         def gql_node(self):
-            return qn.SomeGqlQueryNode(filter=self.some_filter)
+            return self.gql_class(filter=self.some_filter)
 
         def grpc_request(self):
             raise NotImplementedError("Not supported by gRPC")

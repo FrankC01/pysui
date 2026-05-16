@@ -47,7 +47,7 @@ and usage examples.
 
 .. seealso::
 
-   :doc:`migration_sui_command` — migrating existing code to the UCI.
+   :doc:`migration_to_pysui_uci` — migrating existing code to the UCI.
 
 ----
 

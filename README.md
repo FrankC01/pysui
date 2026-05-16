@@ -26,106 +26,47 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.99.0**
-
-**BREAKING CHANGES**
-
-Refer to CHANGELOG.md
+**Release-0.99.1**
 
 ## PyPi current
 
-**Release-0.98.0 - Released 2026-04-13**
+**Release-0.99.0 - Released 2026-05-16**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
-### Client Instantiation Migration Guide
+> **⚠️ Deprecation Notice:** Release 1.0.0 will **remove** the legacy JSON-RPC client
+> and synchronous GraphQL client. If your code uses either, migrate before upgrading.
+> See the [Migration Guide](https://pysui.readthedocs.io/en/latest/migration_to_pysui_uci.html)
+> on ReadTheDocs.
 
-Release 0.98.0 introduces `client_factory` and `PysuiConfiguration` as the preferred way to create clients.
-The legacy `SuiConfig`, `SuiClient` (JSON-RPC), and `SuiGQLClient` (synchronous GraphQL) are deprecated
-and will be removed in a future release.
+This is a significant release that redesigns pysui around the **Unified Client Interface (UCI)**.
+It introduces breaking changes — see [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
+for the full list.
 
-#### Before (deprecated)
+### Unified Client Interface (UCI)
 
-**JSON-RPC synchronous client:**
-```python
-from pysui import SuiConfig
-from pysui.sui.sui_clients.sync_client import SuiClient
+The **UCI** provides a protocol-agnostic programming model: write application code once and run it
+transparently on either GraphQL or gRPC. The active transport is determined by configuration at
+runtime — no code changes required to switch.
 
-config = SuiConfig.default_config()
-client = SuiClient(config=config)
-```
+The UCI is built on four pillars:
 
-**JSON-RPC asynchronous client:**
-```python
-from pysui import SuiConfig
-from pysui.sui.sui_clients.async_client import SuiClient
+1. **Thin Client Design** — pysui clients carry no convenience methods such as `get_coins` or
+   `get_object`. All data access goes through typed request objects dispatched via
+   `await client.execute(command=...)`, keeping the client surface small and transport-neutral.
 
-config = SuiConfig.default_config()
-client = SuiClient(config=config)
-```
+2. **Protocol-Agnostic Command Execution** — Use `await client.execute(command=...)` with any
+   `SuiCommand` subclass. The same code runs identically on both GraphQL and gRPC. Switching
+   protocols requires only a configuration change.
 
-**GraphQL synchronous client:**
-```python
-from pysui import PysuiConfiguration
-from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
+3. **Shared Transaction Infrastructure** — PTBs with unified transaction builders and executor
+   factories work across all protocols. Obtain a transaction builder via
+   `await client.transaction(**kwargs)`, and executors via `await client.serial_executor(options=...)`
+   or `await client.parallel_executor(options=...)`.
 
-client = SuiGQLClient(pysui_config=PysuiConfiguration())
-```
-
-**GraphQL asynchronous client (direct instantiation):**
-```python
-from pysui import PysuiConfiguration
-from pysui.sui.sui_pgql.pgql_clients import AsyncSuiGQLClient
-
-client = AsyncSuiGQLClient(pysui_config=PysuiConfiguration())
-```
-
-**gRPC asynchronous client (direct instantiation):**
-```python
-from pysui import PysuiConfiguration
-from pysui.sui.sui_grpc.pgrpc_clients import SuiGrpcClient
-
-client = SuiGrpcClient(pysui_config=PysuiConfiguration())
-```
-
-#### After (recommended)
-
-Use `client_factory` with `PysuiConfiguration`. The active group's `group_protocol` setting
-determines whether a `AsyncSuiGQLClient` (GraphQL) or `SuiGrpcClient` (gRPC) is returned.
-Both implement the `PysuiClient` abstract interface.
-
-**Default active group (protocol auto-detected from config):**
-```python
-from pysui import PysuiConfiguration, client_factory
-
-config = PysuiConfiguration()
-client = client_factory(config)   # Returns AsyncSuiGQLClient or SuiGrpcClient
-```
-
-**Non-standard group with explicit protocol:**
-```python
-from pysui import PysuiConfiguration, GroupProtocol, client_factory
-
-config = PysuiConfiguration()
-# group_name selects a named profile group; protocol must be specified explicitly
-client = client_factory(config, group_name="my-custom-group", protocol=GroupProtocol.GRAPHQL)
-```
-
-**Async usage pattern:**
-```python
-import asyncio
-from pysui import PysuiConfiguration, client_factory
-
-async def main():
-    config = PysuiConfiguration()
-    client = client_factory(config)
-    txn = client.transaction(sender=config.active_address)
-    # ... build and execute transaction ...
-
-asyncio.run(main())
-```
-
-Added support for Mysten `address balance`
+4. **Protocol-Level Access** — When you need capabilities beyond `SuiCommand`: use GraphQL
+   QueryNodes via `execute_query_node` for custom queries, or gRPC Requests via
+   `execute_grpc_request` for direct gRPC access.
 
 ### FULL Documentation
 

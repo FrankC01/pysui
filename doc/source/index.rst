@@ -24,7 +24,7 @@ Welcome to pysui's documentation!
    :caption: Unified Client Interface
 
    sui_commands
-   migration_sui_command
+   migration_to_pysui_uci
 
 .. toctree::
    :maxdepth: 1
