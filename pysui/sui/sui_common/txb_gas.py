@@ -195,7 +195,7 @@ async def async_get_gas_data(
         if budget is None:
             budget = await _simulate_budget()
 
-    required = budget + gas_source_draw
+    _reserved = budget + gas_source_draw
 
     use_coins = [x for x in use_coins if x.object_id not in objects_in_use]
     if not use_coins:
@@ -204,7 +204,7 @@ async def async_get_gas_data(
     return bcs.GasData(
         coins_for_budget(
             use_coins,
-            required,
+            _reserved,
             balance_fn=lambda x: int(x.balance or 0),
             ref_fn=_coin_obj_ref,
             merge=merge_gas,

@@ -725,6 +725,14 @@ spreads (splays) the balance evenly to itself as *N* new coins or to one or more
 recipient addresses. It works with both **GRAPHQL** and **GRPC** groups; the
 ``--group`` flag is filtered to show only those two protocol types.
 
+.. note::
+
+   Before computing per-coin amounts, ``splay`` pre-reserves ``N × 1,988,000 MIST``
+   from the available balance (where *N* is the number of output coins). Actual gas
+   consumed is typically less than the reserved amount; the unused portion remains in
+   the original gas coin as a small remainder after the transaction completes. This is
+   expected behaviour — not a loss.
+
 .. code-block:: console
 
     usage: splay [options].
@@ -775,11 +783,6 @@ recipient addresses. It works with both **GRAPHQL** and **GRPC** groups; the
 *   --number      Number of coins to create and send to the signing address (>= 2). Mutually exclusive with ``--recipients``.
 *   --recipients  One or more recipient addresses to receive one split coin each. Mutually exclusive with ``--number``.
 *   --dry-run     Print the routing decision (address, recipients/count, mist, include/exclude) without executing any transaction.
-
-**Gas budget:** ``splay`` does not accept an explicit budget argument. The gas cost is
-determined automatically by transaction simulation. If the split amount plus the
-simulated gas cost would exceed the available coin balance, the transaction is
-rejected before submission.
 
 **Routing rules:**
 
