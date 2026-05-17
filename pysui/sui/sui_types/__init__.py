@@ -15,4 +15,3 @@
 
 from pysui.sui.sui_types.address import *
 from pysui.sui.sui_types.scalars import *
-from pysui.sui.sui_types.collections import *

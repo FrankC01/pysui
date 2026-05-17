@@ -47,7 +47,7 @@ pytestmark = [
 def _assert_gql_success(result, label: str) -> None:
     """Two-layer assertion: transport OK + on-chain SUCCESS."""
     assert result.is_ok(), f"{label} transport error: {result.result_string}"
-    assert result.result_data.transaction.effects.status.success, (
+    assert result.result_data.effects.status.success, (
         f"{label} on-chain execution failed"
     )
 
@@ -55,7 +55,7 @@ def _assert_gql_success(result, label: str) -> None:
 def _assert_grpc_success(result, label: str) -> None:
     """Two-layer gRPC assertion: transport OK + on-chain success."""
     assert result.is_ok(), f"{label} transport error: {result.result_string}"
-    assert result.result_data.transaction.effects.status.success, (
+    assert result.result_data.effects.status.success, (
         f"{label} on-chain execution failed"
     )
 
@@ -352,7 +352,7 @@ async def test_merge_coins_gql_same_object_rejected(
         command=cmd.ExecuteTransaction(**await txer.build_and_sign())
     )
     assert result.is_ok(), f"Unexpected transport error: {result.result_string}"
-    assert not result.result_data.transaction.effects.status.success, (
+    assert not result.result_data.effects.status.success, (
         "Expected on-chain failure for same-object merge"
     )
 
@@ -378,7 +378,7 @@ async def test_merge_coins_grpc_same_object_rejected(
         command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     assert result.is_ok(), f"Unexpected transport error: {result.result_string}"
-    assert not result.result_data.transaction.effects.status.success, (
+    assert not result.result_data.effects.status.success, (
         "Expected on-chain failure for same-object merge"
     )
 
@@ -415,7 +415,7 @@ async def test_move_call_gql_insufficient_gas_fails(
         )
     )
     if result.is_ok():
-        assert not result.result_data.transaction.effects.status.success, (
+        assert not result.result_data.effects.status.success, (
             "Expected on-chain failure with gas_budget=1, got SUCCESS"
         )
 
@@ -447,6 +447,6 @@ async def test_move_call_grpc_insufficient_gas_fails(
         )
     )
     if result.is_ok():
-        assert not result.result_data.transaction.effects.status.success, (
+        assert not result.result_data.effects.status.success, (
             "Expected on-chain failure with gas_budget=1, got success"
         )

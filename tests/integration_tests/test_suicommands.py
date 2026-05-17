@@ -32,7 +32,7 @@ import pytest
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui import client_factory, GroupProtocol, PysuiConfiguration, AsyncClientBase
 from tests.integration_tests.conftest import SETTLE_SECS, CentralBank, GasBank
-from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC
+from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC, PackageModulesResult, ValidatorsResult
 from pysui.sui.sui_common.sui_commands import (
     ExecuteTransaction,
     GetCheckpointBySequence,
@@ -139,7 +139,7 @@ async def test_get_package_gql(gql_session_client: AsyncClientBase) -> None:
     """GetPackage(0x2) via GQL SC sibling returns GetPackageResponse."""
     result = await gql_session_client.execute(command=GetPackage(package=_FRAMEWORK))
     assert result.is_ok(), f"GetPackage GQL: {result.result_string}"
-    assert isinstance(result.result_data, sui_prot.GetPackageResponse)
+    assert isinstance(result.result_data, PackageModulesResult)
     assert result.result_data.package is not None
 
 
@@ -460,9 +460,9 @@ async def test_get_current_validators_gql(gql_session_client: AsyncClientBase) -
     """GetCurrentValidators via GQL SC paging branch returns list[Validator] (devnet)."""
     result = await gql_session_client.execute(command=GetCurrentValidators())
     assert result.is_ok(), f"GetCurrentValidators GQL: {result.result_string}"
-    assert isinstance(result.result_data, list)
-    assert len(result.result_data) > 0
-    assert isinstance(result.result_data[0], sui_prot.Validator)
+    assert isinstance(result.result_data, ValidatorsResult)
+    assert len(result.result_data.validators) > 0
+    assert isinstance(result.result_data.validators[0], sui_prot.Validator)
 
 
 @pytest.mark.order(33)
@@ -495,11 +495,11 @@ async def test_get_current_validators_gql_testnet() -> None:
     try:
         result = await client.execute_for_all(command=GetCurrentValidators())
         assert result.is_ok(), f"GetCurrentValidators GQL testnet: {result.result_string}"
-        assert isinstance(result.result_data, list)
-        assert isinstance(result.result_data[0], sui_prot.Validator)
-        assert len(result.result_data) > _TESTNET_PAGE_SIZE, (
+        assert isinstance(result.result_data, ValidatorsResult)
+        assert isinstance(result.result_data.validators[0], sui_prot.Validator)
+        assert len(result.result_data.validators) > _TESTNET_PAGE_SIZE, (
             f"Paging did not fire: expected > {_TESTNET_PAGE_SIZE} validators, "
-            f"got {len(result.result_data)}"
+            f"got {len(result.result_data.validators)}"
         )
     finally:
         await client.close()

@@ -22,7 +22,6 @@ from pysui.sui.sui_txresults.common import (
     GenericRef,
     SuiTxReturnType,
 )
-from pysui.sui.sui_types.collections import EventID
 
 
 @dataclass
@@ -597,7 +596,7 @@ class EventQueryEnvelope(DataClassJsonMixin):
     # data: list[EventEnvelope]
     data: list[Event]
     has_next_page: bool = field(metadata=config(field_name="hasNextPage"))
-    next_cursor: Union[None, EventID] = field(metadata=config(field_name="nextCursor"))
+    next_cursor: Optional[dict] = field(metadata=config(field_name="nextCursor"))
 
 
 @versionadded(version="0.24.1", reason="Added in Sui RPC API 1.3.0")
