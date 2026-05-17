@@ -37,7 +37,13 @@ import pysui.sui.sui_common.async_funcs as asfn
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
-from pysui import PysuiConfiguration, PysuiClient, client_factory, __version__, SuiRpcResult
+from pysui import (
+    PysuiConfiguration,
+    AsyncClientBase,
+    client_factory,
+    __version__,
+    SuiRpcResult,
+)
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from samples.cmd_argsg import build_splay_parser, pre_config_pull
 
@@ -48,7 +54,7 @@ def sdk_version():
 
 
 async def merge_for_gas(
-    client: PysuiClient,
+    client: AsyncClientBase,
     merge_includes: Optional[str],
     merge_excludes: Optional[str],
 ) -> sui_prot.Object:
@@ -75,14 +81,14 @@ async def merge_for_gas(
 
 
 async def _process_txn(
-    client: PysuiClient,
+    client: AsyncClientBase,
     txn: AsyncSuiTransaction,
     gas_coin: sui_prot.Object,
 ) -> sui_prot.ExecutedTransaction:
     """Execute the transaction.
 
     :param client: Sui node client
-    :type client: PysuiClient
+    :type client: AsyncClientBase
     :param txn: The transaction to sign and execute
     :type txn: AsyncSuiTransaction
     :param gas_coin: The coin to use for transaction gas
@@ -102,7 +108,7 @@ async def _process_txn(
 
 
 async def splay_n_to_self(
-    client: PysuiClient,
+    client: AsyncClientBase,
     mgas: asyncio.Task,
     explicit_count: int,
     amount_per: Optional[int] = None,
@@ -110,7 +116,7 @@ async def splay_n_to_self(
     """Splays coins from and to signing address.
 
     :param client: Sui node client
-    :type client: PysuiClient
+    :type client: AsyncClientBase
     :param mgas: Merge coin task
     :type mgas: asyncio.Task
     :param explicit_count: The number of coins created and sent to signing address
@@ -123,9 +129,10 @@ async def splay_n_to_self(
     task_result = await mgas
     if isinstance(task_result, sui_prot.Object):
         r_balance = int(task_result.balance)
-        distro = amount_per if amount_per else int(r_balance / explicit_count)
+        gas_reserve = explicit_count * 1_988_000
+        distro = amount_per if amount_per else int((r_balance - gas_reserve) / explicit_count)
         total_distro = distro * explicit_count
-        if r_balance >= total_distro:
+        if r_balance >= total_distro + gas_reserve:
             txn: AsyncSuiTransaction = await client.transaction()
             amounts = [distro for x in range(explicit_count)]
             r_coins = await txn.split_coin(coin=txn.gas, amounts=amounts)
@@ -142,7 +149,7 @@ async def splay_n_to_self(
 
 
 async def splay_n_to_others(
-    client: PysuiClient,
+    client: AsyncClientBase,
     recipients: list[str],
     mgas: asyncio.Task,
     amount_per: Optional[int] = None,
@@ -150,7 +157,7 @@ async def splay_n_to_others(
     """Splays coins to recipients.
 
     :param client: Sui node client
-    :type client: PysuiClient
+    :type client: AsyncClientBase
     :param recipients: List of recipients to receive splayed coins
     :type recipients: list[str]
     :param mgas: Merge gas task
@@ -164,9 +171,10 @@ async def splay_n_to_others(
     if isinstance(task_result, sui_prot.Object):
         r_count = len(recipients)
         r_balance = int(task_result.balance)
-        distro = amount_per if amount_per else int(r_balance / r_count)
+        gas_reserve = r_count * 1_988_000
+        distro = amount_per if amount_per else int((r_balance - gas_reserve) / r_count)
         total_distro = distro * r_count
-        if r_balance >= total_distro:
+        if r_balance >= total_distro + gas_reserve:
             txn: AsyncSuiTransaction = await client.transaction()
             if r_count == 1:
                 r_coins = await txn.split_coin(coin=txn.gas, amounts=[distro])
@@ -195,7 +203,7 @@ async def splay_n_to_others(
 
 def _reconcille_args(
     *,
-    client: PysuiClient,
+    client: AsyncClientBase,
     send_to: Optional[list[str]] = None,
     merge_only: Optional[str] = None,
     exclude_from_merge: Optional[str] = None,
@@ -240,7 +248,7 @@ def _reconcille_args(
 
 async def main_run(
     *,
-    client: PysuiClient,
+    client: AsyncClientBase,
     send_to: Optional[list[str]] = None,
     merge_only: Optional[str] = None,
     exclude_from_merge: Optional[str] = None,
@@ -258,7 +266,7 @@ async def main_run(
             mist=mist,
         )
         res = await asyncio.gather(routine)
-        print(res[0])
+        print(res[0].to_json(indent=2))
     finally:
         await client.close()
 

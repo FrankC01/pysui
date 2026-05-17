@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/382) splay.py distribution amounts ignored transaction gas costs
+
 ## [0.99.0] - 2026-05-16
 
 **BREAKING CHANGES**
