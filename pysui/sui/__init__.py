@@ -16,5 +16,3 @@
 
 
 from pysui.sui.sui_constants import *
-from pysui.sui.sui_excepts import SuiInvalidAddress
-from pysui.sui.sui_config import SuiConfig

@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import MagicMock, patch, call
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txb_pure import PureInput
-from pysui.sui.sui_types.scalars import SuiU64
+from pysui.sui.sui_bcs.bcs import SuiU64
 
 
 class TestSplitCoinAmountEncoding:

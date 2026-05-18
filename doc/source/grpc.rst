@@ -74,7 +74,7 @@ Key Behaviours
 --------------
 
 - All gRPC service calls are **asynchronous** — there is no sync gRPC client.
-- Every call returns a :py:class:`pysui.sui.sui_types.sui_txresult.SuiRpcResult`.
+- Every call returns a :py:class:`pysui.SuiRpcResult`.
 - Successful result data is returned as a typed ``dataclass`` instance.
 
 Mysten Labs exposes the following gRPC services:

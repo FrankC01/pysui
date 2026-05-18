@@ -139,4 +139,4 @@ class SignerBlock:
                     sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))
                 else:
                     raise ValueError("BaseMultiSig can not sign for execution")
-        return [x.value for x in sig_list]
+        return sig_list

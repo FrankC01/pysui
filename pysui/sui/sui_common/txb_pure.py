@@ -5,7 +5,6 @@
 
 """Pure argument processor for transactions."""
 
-import binascii
 import logging
 from math import ceil
 from functools import singledispatchmethod
@@ -16,17 +15,6 @@ logger = logging.getLogger(__name__)
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_utils import serialize_uint32_as_uleb128
-
-from pysui.sui.sui_types.scalars import (
-    ObjectID,
-    SuiString,
-    SuiU128,
-    SuiU16,
-    SuiU256,
-    SuiU32,
-    SuiU64,
-    SuiU8,
-)
 
 
 class PureInput:
@@ -62,7 +50,7 @@ class PureInput:
 
     @pure.register
     @classmethod
-    def _(cls, arg: SuiU8) -> list:
+    def _(cls, arg: bcs.SuiU8) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u8->pure {arg.value}")
         return list(arg.to_bytes())
@@ -76,7 +64,7 @@ class PureInput:
 
     @pure.register
     @classmethod
-    def _(cls, arg: SuiU16) -> list:
+    def _(cls, arg: bcs.SuiU16) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u16->pure {arg.value}")
         return list(arg.to_bytes())
@@ -90,7 +78,7 @@ class PureInput:
 
     @pure.register
     @classmethod
-    def _(cls, arg: SuiU32) -> list:
+    def _(cls, arg: bcs.SuiU32) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u32->pure {arg.value}")
         return list(arg.to_bytes())
@@ -104,7 +92,7 @@ class PureInput:
 
     @pure.register
     @classmethod
-    def _(cls, arg: SuiU64) -> list:
+    def _(cls, arg: bcs.SuiU64) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u64->pure {arg.value}")
         return list(arg.to_bytes())
@@ -118,7 +106,7 @@ class PureInput:
 
     @pure.register
     @classmethod
-    def _(cls, arg: SuiU128) -> list:
+    def _(cls, arg: bcs.SuiU128) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u128->pure {arg.value}")
         return list(arg.to_bytes())
@@ -132,7 +120,7 @@ class PureInput:
 
     @pure.register
     @classmethod
-    def _(cls, arg: SuiU256) -> list:
+    def _(cls, arg: bcs.SuiU256) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u256->pure {arg.value}")
         return list(arg.to_bytes())
@@ -155,24 +143,11 @@ class PureInput:
 
     @pure.register
     @classmethod
-    def _(cls, arg: SuiString) -> list:
-        """Convert int to minimal list of bytes."""
-        return cls.pure(arg.value)
-
-    @pure.register
-    @classmethod
     def _(cls, arg: bytes) -> list:
         """Bytes to list."""
         logger.debug(f"bytes->pure {arg}")
         base_list = list(arg)
         return base_list
-
-    @pure.register
-    @classmethod
-    def _(cls, arg: ObjectID) -> list:
-        """Convert ObjectID to list of bytes."""
-        logger.debug(f"ObjectID->pure {arg.value}")
-        return cls.pure(binascii.unhexlify(arg.value[2:]))
 
     @pure.register
     @classmethod

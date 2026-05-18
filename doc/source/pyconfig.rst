@@ -19,15 +19,6 @@ that may be useful in managing configurations outside of your code.
 
 General
 =======
-For JSON RPC pysui relied on the presence of ``~/.sui`` and it's constituent
-configuration elements including ``client.yaml``, ``sui.keystore``,
-and ``sui.aliases`` which were all encapsulated by SuiConfig. While SuiConfig
-supported some maniplations (i.e. adding new keys, alias management, etc.) it
-fell short of a more robust configuration management strategy. In addition, the
-code itself did not gracefully age with the advent of Sui GraphQL RPC. Until
-Mysten eliminates JSON RPC, SuiConfig may continue to be used with the
-JSON RPC clients.
-
 PysuiConfiguration persists to it's own configuration location
 (defaults to ``~/.pysui``) and offers more flexibility when it comes
 to configuration management. Amongst other things:
@@ -36,8 +27,6 @@ to configuration management. Amongst other things:
    location (configurable)
 #. It supports programmatic switching between it's primary components
    (see Anatomy below)
-#. It has a smaller code base that, when legacy JSON RPC support is removed,
-   has a smaller memory footprint
 #. And more...
 
 Anatomy of PysuiConfiguration
@@ -110,14 +99,14 @@ If Sui binaries installed
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 During initialization a check is made for Sui binaries, while not required it
 is necessary to compile Move programs when using
-the SuiTransaction.publish(...) command.
+the ``publish`` transaction command.
 
 The location of the ``sui`` binary will be captured,
 if present, enabling Move project compiling.
 
 If Sui binaries not installed
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Attempting to use the ``publish`` command of a SuiTransaction will fail.
+Attempting to use the ``publish`` transaction command will fail.
 
 Changing PysuiConfig Active
 ===========================
@@ -375,8 +364,8 @@ The following is an example of creating a fictional group:
 FAQ
 ===
 
-Changing a configuration when in use by a pysui GraphQL client
---------------------------------------------------------------
+Changing a configuration when in use by a pysui client
+------------------------------------------------------
 
 Generally not a good idea especially changing the active_group or
 active_profile. You can however change the following safely:

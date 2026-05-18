@@ -18,11 +18,6 @@ from pysui.sui.sui_bcs import bcs
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_constants import SUI_COIN_DENOMINATOR
 
-from pysui.sui.sui_excepts import (
-    SuiMiisingBuildFolder,
-    SuiPackageBuildFail,
-    SuiMiisingModuleByteCode,
-)
 
 _SUI_COIN_TYPE: str = (
     "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI>"
@@ -386,11 +381,7 @@ async def publish(client: PysuiClient, args: argparse.Namespace) -> None:
             gas_budget=args.budget,
             use_gas_objects=[args.gas] if args.gas else None,
         )
-    except (
-        SuiMiisingBuildFolder,
-        SuiPackageBuildFail,
-        SuiMiisingModuleByteCode,
-    ) as exc:
+    except RuntimeError as exc:
         print(exc.args, file=sys.stderr)
 
 

@@ -2,10 +2,9 @@
 Programmable Transaction Blocks
 ================================
 
-``pysui`` supports Programmable Transaction Blocks (PTBs) across all three
-transport protocols. GraphQL and gRPC share the same command set and identical
-calling conventions; both are **async only** for new code. JSON-RPC
-transactions are covered separately — see :doc:`jsonrpc_transactions`.
+``pysui`` supports Programmable Transaction Blocks (PTBs) across GraphQL and
+gRPC. Both share the same command set and identical calling conventions and
+are **async only**.
 
 All transaction builder instances are obtained by calling
 ``client.transaction()`` on the active client.
@@ -14,7 +13,7 @@ Transaction Commands
 --------------------
 
 All commands listed below are available on both the GraphQL and gRPC
-transaction builders. ``optional_object`` is not available on JSON-RPC.
+transaction builders.
 
 +--------------------------+
 |  Command                 |
@@ -45,12 +44,10 @@ transaction builders. ``optional_object`` is not available on JSON-RPC.
 +--------------------------+
 | custom_upgrade           |
 +--------------------------+
-| optional_object \*       |
+| optional_object          |
 +--------------------------+
-| balance_from \*          |
+| balance_from             |
 +--------------------------+
-
-\* GraphQL and gRPC only; not available on JSON-RPC.
 
 Executing Transactions
 ----------------------
@@ -60,8 +57,6 @@ Executing Transactions
 +==========================+=================================================================+
 | GraphQL and gRPC async   | :py:class:`pysui.sui.sui_common.async_txn.AsyncSuiTransaction`  |
 +--------------------------+-----------------------------------------------------------------+
-
-For JSON-RPC transaction classes see :doc:`jsonrpc_transactions`.
 
 Executor classes (serial and parallel) that wrap the transaction lifecycle
 are documented on :doc:`executors`.
@@ -173,5 +168,3 @@ is not required.
         ],
     )
 
-JSON-RPC ``move_call`` requires pysui wrapper types for every argument — see
-:ref:`jsonrpc-move-call` in :doc:`jsonrpc_transactions`.

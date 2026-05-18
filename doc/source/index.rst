@@ -63,13 +63,6 @@ Welcome to pysui's documentation!
 
 .. toctree::
    :maxdepth: 1
-   :caption: JSON-RPC (Legacy)
-
-   jsonrpc_builders
-   jsonrpc_transactions
-
-.. toctree::
-   :maxdepth: 1
    :caption: API Reference
 
    modules

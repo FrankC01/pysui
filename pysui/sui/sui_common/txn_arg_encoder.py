@@ -12,7 +12,6 @@ Replaces the brittle two-phase arg_summary() → Move*Arg → encoder pipeline.
 """
 
 import logging
-import warnings
 from abc import ABC, abstractmethod
 from functools import singledispatch
 from typing import Any, Optional
@@ -20,8 +19,6 @@ from typing import Any, Optional
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txb_pure import PureInput
 from pysui.sui.sui_utils import serialize_uint32_as_uleb128
-import pysui.sui.sui_types as suit
-
 logger = logging.getLogger(__name__)
 
 # Imported here to avoid a circular import; pgql_types imports nothing from sui_common
@@ -45,12 +42,12 @@ _UINT_BCS: dict[str, type] = {
 }
 
 _UINT_SUI: dict[str, type] = {
-    "u8": suit.SuiU8,
-    "u16": suit.SuiU16,
-    "u32": suit.SuiU32,
-    "u64": suit.SuiU64,
-    "u128": suit.SuiU128,
-    "u256": suit.SuiU256,
+    "u8": bcs.SuiU8,
+    "u16": bcs.SuiU16,
+    "u32": bcs.SuiU32,
+    "u64": bcs.SuiU64,
+    "u128": bcs.SuiU128,
+    "u256": bcs.SuiU256,
 }
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -292,19 +289,12 @@ async def _encode_option(
     return bcs.OptionalTypeFactory.as_optional(bcs.BuilderArg("Pure", [1] + raw))
 
 
-# ── gRPC normalization — Step 6: replace with OpenSignature → OpenMoveTypeGQL ──
 
 def grpc_to_raw_parameters(func_response: Any) -> list["OpenMoveTypeGQL"]:
     """Convert gRPC GetFunctionResponse to list[OpenMoveTypeGQL].
 
-    Deprecated shim — Step 6 will replace this with native conversion in
-    pgrpc_txn_async_argb.py. TxContext is skipped here as in MoveFunctionGQL.from_query.
+    TxContext is skipped here as in MoveFunctionGQL.from_query.
     """
-    warnings.warn(
-        "grpc_to_raw_parameters() is a temporary shim; replace in Step 6.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     from pysui.sui.sui_pgql.pgql_types import OpenMoveTypeSignatureGQL
 
     result: list[OpenMoveTypeGQL] = []

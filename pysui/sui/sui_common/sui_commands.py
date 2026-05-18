@@ -1086,8 +1086,7 @@ class VerifyTransactionSignature(SuiCommand):
         """Return GQL verify-transaction-signature query node."""
         if self.author is None:
             raise ValueError(
-                "VerifyTransactionSignature: 'author' is required for GraphQL "
-                "(GQL schema requires SuiAddress!)."
+                "VerifyTransactionSignature: 'author' is required for GraphQL."
             )
         return self.gql_class(
             intent="TRANSACTION_DATA",
@@ -1130,8 +1129,7 @@ class VerifyPersonalMessageSignature(SuiCommand):
         """Return GQL verify-personal-message-signature query node."""
         if self.author is None:
             raise ValueError(
-                "VerifyPersonalMessageSignature: 'author' is required for GraphQL "
-                "(GQL schema requires SuiAddress!)."
+                "VerifyPersonalMessageSignature: 'author' is required for GraphQL."
             )
         return self.gql_class(
             intent="PERSONAL_MESSAGE",

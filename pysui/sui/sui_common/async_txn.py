@@ -19,7 +19,6 @@ from pysui.sui.sui_common.trxn_base import (
 from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txb_pure import PureInput
-from pysui.sui.sui_types.scalars import SuiU64
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_common.txb_gas import (
@@ -433,7 +432,7 @@ class AsyncSuiTransaction(txbase):
             object_cache=self._object_cache,
         )
         encoded_amounts = [
-            a if isinstance(a, bcs.Argument) else PureInput.as_input(SuiU64(a))
+            a if isinstance(a, bcs.Argument) else PureInput.as_input(bcs.SuiU64(a))
             for a in amounts
         ]
         return self.builder.split_coin(parms[0], encoded_amounts)
@@ -792,7 +791,7 @@ class AsyncSuiTransaction(txbase):
             await self._function_meta_args(self._STAKE_REQUEST_TARGET)
         )
         parms = await self._argparse.build_args(
-            [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
+            [self._SYSTEMSTATE_OBJECT, coins, amount, validator_address],
             ars,
             mode=self._mode,
             object_cache=self._object_cache,
@@ -823,7 +822,7 @@ class AsyncSuiTransaction(txbase):
             await self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
         )
         parms = await self._argparse.build_args(
-            [self._SYSTEMSTATE_OBJECT.value, staked_coin],
+            [self._SYSTEMSTATE_OBJECT, staked_coin],
             ars,
             mode=self._mode,
             object_cache=self._object_cache,

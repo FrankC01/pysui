@@ -66,13 +66,4 @@ def test_pysuiclient_abc_satisfied():
 # ---------------------------------------------------------------------------
 
 
-def test_sui_config_deprecated():
-    """SuiConfig emits DeprecationWarning on instantiation."""
-    from pysui.sui.sui_config import SuiConfig
-
-    with patch.object(SuiConfig, "__init__", return_value=None):
-        with pytest.warns(DeprecationWarning, match="SuiConfig"):
-            SuiConfig()
-
-
 

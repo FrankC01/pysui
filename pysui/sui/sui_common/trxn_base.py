@@ -16,11 +16,7 @@ import logging
 
 import base58
 
-from pysui import SuiAddress, ObjectID
-
-from pysui.sui.sui_txresults.single_tx import (
-    TransactionConstraints,
-)
+from pysui.sui.sui_common.types import TransactionConstraints
 
 from .client import PysuiClient
 
@@ -28,7 +24,6 @@ from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
 import pysui.sui.sui_common.txb_transaction_builder as tx_builder
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_types.scalars import SuiString
 from pysui.sui.sui_utils import publish_buildg2
 
 # Standard library logging setup
@@ -39,7 +34,7 @@ class _TransactionBase:
     """."""
 
     _TRANSACTION_GAS_ARGUMENT: bcs.Argument = bcs.Argument("GasCoin")
-    _SYSTEMSTATE_OBJECT: ObjectID = ObjectID("0x5")
+    _SYSTEMSTATE_OBJECT: str = "0x5"
     _STAKE_REQUEST_TARGET: str = "0x3::sui_system::request_add_stake_mul_coin"
     _UNSTAKE_REQUEST_TARGET: str = "0x3::sui_system::request_withdraw_stake"
     _STANDARD_UPGRADE_CAP_TYPE: str = "0x2::package::UpgradeCap"

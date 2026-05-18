@@ -128,16 +128,14 @@ class KeyPair(ABC):
         """Get the keypair private key."""
 
     @abstractmethod
-    def new_sign_secure(self, tx_data: str) -> Union[AbstractType, str]:
+    def new_sign_secure(self, tx_data: str) -> str:
         """Sign transactions securley."""
 
     @abstractmethod
     def sign_personal_message(self, message: str) -> str:
         """Sign arbitrary base64 encoded message with intent, returning a base64 signed personal message."""
 
-    @abstractmethod
-    def verify_signature(self, message: str, signature: str) -> bool:
-        """Verify message with signature, returning true/false."""
+
 
     @classmethod
     @abstractmethod

@@ -26,14 +26,12 @@ from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode, PGQL_NoOp
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_fragments as frag
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
-from pysui.sui.sui_bcs.bcs import TransactionKind, TransactionData, SuiSignature
+from pysui.sui.sui_bcs.bcs import TransactionKind, TransactionData, SuiSignature, SuiU64
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_grpc.suimsgs.google import protobuf as _google_protobuf
 import pysui.sui.sui_grpc.pgrpc_requests as _rn
 from pysui.sui.sui_common.shared_types import ObjectSummary
 import pysui.sui.sui_bcs.sui_system_bcs as sui_system_bcs
-from pysui.sui.sui_types.scalars import SuiU64
-
 
 class GetCoinMetaData(PGQL_QueryNode):
     """GetCoinMetaData returns meta data for a specific `coin_type`."""

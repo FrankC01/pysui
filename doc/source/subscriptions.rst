@@ -74,7 +74,3 @@ latest checkpoint batch.
 
 See ``pgql_a_example.py`` in the project root for a runnable version.
 
-JSON-RPC
---------
-
-Mysten has deprecated subscriptions for JSON-RPC.

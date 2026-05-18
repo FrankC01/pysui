@@ -13,23 +13,10 @@ from typing import Optional, Union
 from functools import singledispatchmethod
 
 from deprecated.sphinx import versionchanged, versionadded
-from pysui.sui.sui_txresults.single_tx import TransactionConstraints
+from pysui.sui.sui_common.types import TransactionConstraints
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txb_pure import PureInput
-from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_types.scalars import (
-    ObjectID,
-    SuiBoolean,
-    SuiInteger,
-    SuiString,
-    SuiU128,
-    SuiU16,
-    SuiU256,
-    SuiU32,
-    SuiU64,
-    SuiU8,
-)
 from pysui.sui.sui_utils import serialize_uint32_as_uleb128, hexstring_to_sui_id
 
 # Well known aliases
@@ -456,7 +443,7 @@ class ProgrammableTransactionBuilder:
                 coin_arg = self.split_coin(
                     from_coin=from_coin,
                     amounts=[
-                        PureInput.as_input(SuiU64(bcs.U64.int_safe(amount.value)))
+                        PureInput.as_input(bcs.SuiU64(bcs.U64.int_safe(amount.value)))
                     ],
                 )
             else:

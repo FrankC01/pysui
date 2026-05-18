@@ -47,16 +47,6 @@ async GraphQL client bound to the active configuration group. See
     if __name__ == "__main__":
         asyncio.run(main())
 
-A synchronous client is also available for scripts that cannot use ``asyncio``:
-
-.. code-block:: python
-
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-
-    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-    client = SuiGQLClient(pysui_config=cfg)
-
 Schema
 ------
 

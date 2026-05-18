@@ -11,7 +11,6 @@ from typing import Optional
 from pysui import PysuiConfiguration
 from pysui.sui.sui_common.config.confgroup import GroupProtocol
 import pysui.sui.sui_common.validators as validator
-from pysui.sui.sui_types.scalars import SuiString
 
 
 def _add_owner_args(subp, required: bool = False) -> None:
@@ -458,14 +457,14 @@ def _build_operations_cmds(subparser) -> None:
         "--module",
         required=True,
         help="Specify the module name in the package.",
-        type=SuiString,
+        type=str,
     )
     subp.add_argument(
         "-f",
         "--function",
         required=True,
         help="Specify the function name in the module.",
-        type=SuiString,
+        type=str,
     )
     subp.add_argument(
         "-t",
@@ -473,14 +472,14 @@ def _build_operations_cmds(subparser) -> None:
         required=False,
         nargs="+",
         help="Generic types (if any).",
-        type=SuiString,
+        type=str,
     )
     subp.add_argument(
         "--args",
         required=False,
         nargs="+",
         help="Function arguments.",
-        type=SuiString,
+        type=str,
     )
     subp.add_argument(
         "-g",
