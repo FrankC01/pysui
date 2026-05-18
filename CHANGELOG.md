@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/383) GQL SimulateTransaction/SimulateTransactionKind objects missing `json` and `balance` fields
 - [bug](https://github.com/FrankC01/pysui/issues/382) splay.py distribution amounts ignored transaction gas costs
 
 ## [0.99.0] - 2026-05-16
