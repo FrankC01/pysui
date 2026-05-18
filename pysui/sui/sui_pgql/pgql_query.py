@@ -4626,7 +4626,8 @@ def _encode_simulate_object_changes(eff: dict) -> "tuple[list[sui_prot.Object], 
             out_type = flat_out.get("object_type") or ("package" if out.get("as_move_package") else None)
             bcs_b64 = flat_out.get("bcs")
             contents_bcs_b64 = flat_out.get("contents_bcs")
-            obj_json = flat_out.get("content")
+            obj_json = ((out.get("as_move_content") or {}).get("as_object") or {}).get("content")
+            obj_balance = int(obj_json["balance"]) if isinstance(obj_json, dict) and "balance" in obj_json else None
             objects.append(
                 sui_prot.Object(
                     object_id=flat_out.get("object_id"),
@@ -4639,6 +4640,7 @@ def _encode_simulate_object_changes(eff: dict) -> "tuple[list[sui_prot.Object], 
                     has_public_transfer=flat_out.get("has_public_transfer"),
                     storage_rebate=int(flat_out.get("storage_rebate")) if flat_out.get("storage_rebate") is not None else None,
                     json=_google_protobuf.Value.from_dict(obj_json) if obj_json is not None else None,
+                    balance=obj_balance,
                     contents=sui_prot.Bcs(name=out_type, value=base64.b64decode(contents_bcs_b64)) if contents_bcs_b64 else None,
                 )
             )
