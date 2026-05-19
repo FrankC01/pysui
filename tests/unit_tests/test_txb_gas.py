@@ -218,18 +218,6 @@ class TestNoDeprecationWarning:
     SimulateTransactionKind. These tests guard against regression.
     """
 
-    def test_pgql_txb_gas_no_deprecation_on_import(self):
-        """pgql_txb_gas must not raise DeprecationWarning when imported."""
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always", DeprecationWarning)
-            import pysui.sui.sui_pgql.pgql_txb_gas  # noqa: F401
-
-        deprecations = [w for w in caught if issubclass(w.category, DeprecationWarning)]
-        assert deprecations == [], (
-            "Unexpected DeprecationWarning(s) from pgql_txb_gas: "
-            + str([str(w.message) for w in deprecations])
-        )
-
     def test_txb_gas_async_get_gas_data_importable(self):
         """async_get_gas_data must be importable from sui_common.txb_gas (unified path)."""
         from pysui.sui.sui_common.txb_gas import async_get_gas_data  # noqa: F401

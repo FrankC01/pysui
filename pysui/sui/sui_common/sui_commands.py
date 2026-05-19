@@ -13,7 +13,6 @@ from pysui.sui.sui_bcs.bcs import TransactionKind
 from pysui.sui.sui_common.sui_command import SuiCommand
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_pgql.pgql_query as pgql_query
-from pysui.sui.sui_pgql.pgql_types import PagingCursor
 
 # ---------------------------------------------------------------------------
 # Transaction execution
@@ -30,7 +29,7 @@ class ExecuteTransaction(SuiCommand):
     tx_bytestr: str | bytes
     sig_array: list[str | bytes]
 
-    def gql_node(self) -> pgql_query.ExecuteTransaction:
+    def gql_node(self) -> pgql_query.ExecuteTransactionSC:
         """Return GQL execute-transaction mutation node."""
         tx_b64 = (
             self.tx_bytestr
@@ -211,7 +210,9 @@ class GetAddressCoinBalances(SuiCommand):
 
     def grpc_request(self) -> rn.GetAddressCoinBalances:
         """Return gRPC list-balances request."""
-        return rn.GetAddressCoinBalances(owner=self.owner, page_token=self.next_page_token)
+        return rn.GetAddressCoinBalances(
+            owner=self.owner, page_token=self.next_page_token
+        )
 
 
 @dataclass(kw_only=True)
@@ -239,7 +240,9 @@ class GetCoins(SuiCommand):
 
     def grpc_request(self) -> rn.GetCoins:
         """Return gRPC get-owned-objects request filtered to coin type."""
-        return rn.GetCoins(owner=self.owner, coin_type=self.coin_type, page_token=self.next_page_token)
+        return rn.GetCoins(
+            owner=self.owner, coin_type=self.coin_type, page_token=self.next_page_token
+        )
 
 
 @dataclass(kw_only=True)
@@ -453,7 +456,9 @@ class GetObjectsOwnedByAddress(SuiCommand):
 
     def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
         """Return gRPC list-owned-objects request."""
-        return rn.GetObjectsOwnedByAddress(owner=self.owner, page_token=self.next_page_token)
+        return rn.GetObjectsOwnedByAddress(
+            owner=self.owner, page_token=self.next_page_token
+        )
 
 
 @dataclass(kw_only=True)
@@ -472,11 +477,15 @@ class GetDynamicFields(SuiCommand):
 
     def gql_node(self) -> pgql_query.GetDynamicFieldsSC:
         """Return GQL dynamic-fields query node."""
-        return self.gql_class(object_id=self.object_id, next_page_token=self.next_page_token)
+        return self.gql_class(
+            object_id=self.object_id, next_page_token=self.next_page_token
+        )
 
     def grpc_request(self) -> rn.GetDynamicFields:
         """Return gRPC list-dynamic-fields request."""
-        return rn.GetDynamicFields(object_id=self.object_id, page_token=self.next_page_token)
+        return rn.GetDynamicFields(
+            object_id=self.object_id, page_token=self.next_page_token
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -631,13 +640,17 @@ class GetObjectsForType(SuiCommand):
     def gql_node(self) -> pgql_query.GetObjectsForTypeSC:
         """Return GraphQL query node."""
         return self.gql_class(
-            owner=self.owner, object_type=self.object_type, next_page_token=self.next_page_token
+            owner=self.owner,
+            object_type=self.object_type,
+            next_page_token=self.next_page_token,
         )
 
     def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
         """Return gRPC list-owned-objects request with type filter."""
         return rn.GetObjectsOwnedByAddress(
-            owner=self.owner, object_type=self.object_type, page_token=self.next_page_token
+            owner=self.owner,
+            object_type=self.object_type,
+            page_token=self.next_page_token,
         )
 
 
@@ -681,7 +694,9 @@ class GetPackage(SuiCommand):
 
     def gql_node(self) -> pgql_query.GetPackageSC:
         """Return GQL package query node."""
-        return self.gql_class(package=self.package, next_page_token=self.next_page_token)
+        return self.gql_class(
+            package=self.package, next_page_token=self.next_page_token
+        )
 
     def grpc_request(self) -> rn.GetPackage:
         """Return gRPC get-package request."""
@@ -710,7 +725,9 @@ class GetPackageVersions(SuiCommand):
 
     def grpc_request(self) -> rn.GetPackageVersions:
         """Return gRPC list-package-versions request."""
-        return rn.GetPackageVersions(package_storage_id=self.package_address, page_token=self.next_page_token)
+        return rn.GetPackageVersions(
+            package_storage_id=self.package_address, page_token=self.next_page_token
+        )
 
 
 @dataclass(kw_only=True)

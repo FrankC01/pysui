@@ -9,8 +9,7 @@ from typing import Any, Optional, Callable, Union
 import base64
 import datetime
 import re
-import warnings
-from deprecated.sphinx import versionadded, versionchanged, deprecated
+from deprecated.sphinx import versionadded, versionchanged
 from gql import gql, GraphQLRequest
 from gql.dsl import (
     DSLQuery,
@@ -33,192 +32,18 @@ import pysui.sui.sui_grpc.pgrpc_requests as _rn
 from pysui.sui.sui_common.shared_types import ObjectSummary
 import pysui.sui.sui_bcs.sui_system_bcs as sui_system_bcs
 
-class GetCoinMetaData(PGQL_QueryNode):
-    """GetCoinMetaData returns meta data for a specific `coin_type`."""
-
-    def __init__(self, *, coin_type: Optional[str] = "0x2::sui::SUI") -> None:
-        """QueryNode initializer.
-
-        :param coin_type: The specific coin type string, defaults to "0x2::sui::SUI"
-        :type coin_type: str, optional
-        """
-        self.coin_type = coin_type
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build the GraphQLRequest."""
-        qres = schema.Query.coinMetadata(coinType=self.coin_type).select(
-            schema.CoinMetadata.decimals,
-            schema.CoinMetadata.name,
-            schema.CoinMetadata.symbol,
-            schema.CoinMetadata.description,
-            schema.CoinMetadata.iconUrl,
-            schema.CoinMetadata.supply,
-            schema.CoinMetadata.address,
-        )
-        return dsl_gql(DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.SuiCoinMetadataGQL]:
-        """Return the serialization to SuiCoinMetadataGQL function."""
-        return pgql_type.SuiCoinMetadataGQL.from_query
 
 
-class GetAddressCoinBalance(PGQL_QueryNode):
-    """GetAddressCoinBalance Returns an addresses balance for specific coin type.
 
-    The resulting total balance is the sum of the `address` balance and any coin balances of `coin_type`.
-    """
-
-    def __init__(self, *, owner: str, coin_type: Optional[str] = "0x2::sui::SUI"):
-        """__init__ _summary_
-
-        :param owner: Address holding balances
-        :type owner: str
-        :param coin_type: _description_, defaults to "0x2::sui::SUI"
-        :type coin_type: _type_, optional
-        """
-        self.owner = owner
-        self.coin_type = coin_type
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        _QUERY = """
-            {
-            address(address:"OWNER") {
-                balance(coinType: "COIN_TYPE") {
-                            coinType {
-                                coinType:repr
-                            }
-                            addressBalance
-                            coinBalance
-                            totalBalance
-                        }
-                    } 
-            }           
-        """
-        _QUERY = _QUERY.replace("OWNER", self.owner).replace(
-            "COIN_TYPE", self.coin_type or ""
-        )
-        return gql(_QUERY)
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.AddressBalanceGQL]:
-        """Return the serializer to BalancesGQL function."""
-        return pgql_type.AddressBalanceGQL.from_query
-
-
-@deprecated(
-    version="0.97.0",
-    reason="Use new GetAddressCoinBalances query instead supporting Sui address balances.",
-)
-class GetAllCoinBalances(PGQL_QueryNode):
-    """GetAllCoins Returns the total coin balances, for all coin types, for owner.
-
-    This is different from legacy Builder as only a list of coin type summaries are returned.
-    You take the coin_type from any list member and call...
-    """
-
-    def __init__(
-        self, *, owner: str, next_page: Optional[pgql_type.PagingCursor] = None
-    ):
-        """QueryNode initializer.
-
-        :param owner: the owner's Sui address
-        :type owner: str
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
-        """
-        self.owner = owner
-        self.next_page = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        qres = schema.Query.address(address=self.owner).alias("qres")
-        balance_connection = schema.Address.balances
-        if self.next_page:
-            balance_connection(after=self.next_page.endCursor)
-
-        pg_cursor = frag.PageCursor()
-
-        balance_connection.select(
-            cursor=schema.BalanceConnection.pageInfo.select(pg_cursor.fragment(schema)),
-            type_balances=schema.BalanceConnection.nodes.select(
-                schema.Balance.totalBalance,
-                schema.Balance.coinType.select(coin_type=schema.MoveType.repr),
-            ),
-        )
-        qres.select(owner_address=schema.Address.address, balances=balance_connection)
-
-        return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.BalancesGQL]:
-        """Return the serializer to BalancesGQL function."""
-        return pgql_type.BalancesGQL.from_query
-
-
-class GetAddressCoinBalances(PGQL_QueryNode):
-    """GetAddressCoinBlances Returns the address and total coin balance, for all coin types of for owner.
-
-    This is different from legacy Builder as only a list of coin type summaries are returned.
-    """
-
-    def __init__(
-        self, *, owner: str, next_page_token: bytes | None = None
-    ):
-        """QueryNode initializer.
-
-        :param owner: the owner's Sui address
-        :type owner: str
-        :param next_page_token: page cursor bytes to advance query, defaults to None
-        :type next_page_token: bytes | None
-        """
-        self.owner = owner
-        self.next_page_token = next_page_token
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        qres = schema.Query.address(address=self.owner).alias("qres")
-        balance_connection = schema.Address.balances
-        if self.next_page_token:
-            balance_connection(after=self.next_page_token.decode())
-
-        pg_cursor = frag.PageCursor()
-
-        balance_connection.select(
-            cursor=schema.BalanceConnection.pageInfo.select(pg_cursor.fragment(schema)),
-            type_balances=schema.BalanceConnection.nodes.select(
-                schema.Balance.addressBalance,
-                schema.Balance.coinBalance,
-                schema.Balance.totalBalance,
-                schema.Balance.coinType.select(coin_type=schema.MoveType.repr),
-            ),
-        )
-        qres.select(owner_address=schema.Address.address, balances=balance_connection)
-
-        return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.BalancesGQL]:
-        """Return the serializer to BalancesGQL function."""
-        return pgql_type.BalancesGQL.from_query
-
-
-@versionchanged(version="0.93.0", reason="owner argument now ignored")
-class GetCoinSummary(PGQL_QueryNode):
-    """GetCoinSummary Returns balance,digest and version"""
+class GetCoinSummarySC(PGQL_QueryNode):
+    """SC variant: encode_fn maps GQL object response to sui_prot.Object (matches gRPC shape)."""
 
     def __init__(self, *, owner: str | None = None, coin_id: str):
         """Set up."""
-        # self.owner = owner
         self.coin_id = coin_id
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest."""
-
         _QUERY = """
             {
             object(address:"COIN_ID") {
@@ -230,21 +55,12 @@ class GetCoinSummary(PGQL_QueryNode):
                         json
                         }
                     }
-                
-                }            
+
+                }
             }
         """
         _QUERY = _QUERY.replace("COIN_ID", self.coin_id)
         return gql(_QUERY)
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.SuiCoinObjectSummaryGQL]:
-        """Return summary serialized to data object."""
-        return pgql_type.SuiCoinObjectSummaryGQL.from_query
-
-
-class GetCoinSummarySC(GetCoinSummary):
-    """SC variant: encode_fn maps GQL object response to sui_prot.Object (matches gRPC shape)."""
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.Object]:
@@ -264,183 +80,7 @@ class GetCoinSummarySC(GetCoinSummary):
         return _encode
 
 
-class GetCoins(PGQL_QueryNode):
-    """GetCoins Returns all Coin objects of a specific type for owner."""
-
-    def __init__(
-        self,
-        *,
-        owner: str,
-        coin_type: Optional[str] = "0x2::coin::Coin<0x2::sui::SUI>",
-        next_page_token: bytes | None = None,
-    ):
-        """QueryNode initializer.
-
-        :param owner: Owner's Sui address
-        :type owner: str
-        :param coin_type: The fully qualified coin type to use in filtering, defaults to "0x2::coin::Coin<0x2::sui::SUI>"
-        :type coin_type: str, optional
-        :param next_page_token: page cursor bytes to advance query, defaults to None
-        :type next_page_token: bytes | None
-        """
-        self.owner = owner
-        self.coin_type = coin_type
-        self.next_page_token = next_page_token
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        qres = schema.Query.address(address=self.owner).alias("qres")
-        coin_connection = schema.Address.objects(filter={"type": self.coin_type}).alias(
-            "coins"
-        )
-        if self.next_page_token:
-            coin_connection(after=self.next_page_token.decode())
-
-        std_coin = frag.StandardCoin()
-        pg_cursor = frag.PageCursor()
-
-        coin_connection.select(std_coin.fragment(schema))
-        qres.select(coin_connection)
-        return dsl_gql(
-            std_coin.fragment(schema),
-            pg_cursor.fragment(schema),
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.SuiCoinObjectsGQL]:
-        """Return the serializer to SuiCoinObjectsGQL function."""
-        return pgql_type.SuiCoinObjectsGQL.from_query
-
-
-@versionadded(version="0.99.0", reason="Convenience alias for GetCoins with SUI coin type.")
-class GetGas(GetCoins):
-    """GetGas Returns all SUI gas coin objects owned by an address.
-
-    Convenience subclass of GetCoins with coin_type fixed to ``0x2::coin::Coin<0x2::sui::SUI>``.
-    """
-
-    def __init__(
-        self,
-        *,
-        owner: str,
-        next_page_token: bytes | None = None,
-    ) -> None:
-        """__init__ Initialize GetGas object.
-
-        :param owner: Owner's Sui address
-        :type owner: str
-        :param next_page_token: page cursor bytes to advance query, defaults to None
-        :type next_page_token: bytes | None
-        """
-        super().__init__(
-            owner=owner,
-            coin_type="0x2::coin::Coin<0x2::sui::SUI>",
-            next_page_token=next_page_token,
-        )
-
-
-class GetLatestSuiSystemState(PGQL_QueryNode):
-    """GetLatestSuiSystemState return the latest known SUI system state."""
-
-    def __init__(self) -> None:
-        """QueryNode initializer."""
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest using BCS system-state path."""
-        qres = schema.Query.epoch.select(
-            schema.Epoch.systemState.select(
-                schema.MoveValue.bcs
-            )
-        )
-        return dsl_gql(DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.SystemStateSummaryGQL]:
-        """Return the serializer to SystemStateSummaryGQL function."""
-        return pgql_type.SystemStateSummaryGQL.from_query
-
-
-class GetObject(PGQL_QueryNode):
-    """Returns a specific object's data."""
-
-    def __init__(self, *, object_id: str):
-        """QueryNode initializer.
-
-        :param object_id: The object id hex string with 0x prefix
-        :type object_id: str
-        """
-        self.object_id = TypeValidator.check_object_id(object_id)
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest"""
-        std_object = frag.StandardObject()
-        base_object = frag.BaseObject()
-        return dsl_gql(
-            std_object.fragment(schema),
-            base_object.fragment(schema),
-            DSLQuery(
-                object=schema.Query.object(address=self.object_id).select(
-                    std_object.fragment(schema),
-                )
-            ),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectReadGQL]:
-        """Return the serializer to ObjectReadGQL function."""
-        return pgql_type.ObjectReadGQL.from_query  # type: ignore[return-value]
-
-
-class GetObjectsForType(PGQL_QueryNode):
-    """GetObjectsForType Returnns all objects of a specific type."""
-
-    def __init__(
-        self,
-        *,
-        object_type: str,
-        next_page: Optional[pgql_type.PagingCursor] = None,
-    ):
-        """QueryNode initializer
-
-        :param object_type: The fully qualified type (i.e. `"0x2::coin::Coin<0x2::sui::SUI>"`)
-        :type object_type: str
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
-        """
-        self.object_type = object_type
-        self.next_page = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        std_object = frag.StandardObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-
-        if self.next_page:
-            obj_connection = schema.Query.objects(
-                filter={"type": self.object_type}, after=self.next_page.endCursor
-            )
-        else:
-            obj_connection = schema.Query.objects(
-                filter={"type": self.object_type}
-            ).select(
-                cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
-                objects_data=schema.ObjectConnection.nodes.select(std_object),
-            )
-
-        return dsl_gql(pg_cursor, std_object, base_object, DSLQuery(obj_connection))
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectReadsGQL]:
-        """Return the serializer to ObjectReadsGQL function."""
-        return pgql_type.ObjectReadsGQL.from_query
-
-
-class GetObjectsForTypeSC(GetObjectsForType):
+class GetObjectsForTypeSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL objects response to ListOwnedObjectsResponse proto."""
 
     def __init__(
@@ -518,18 +158,12 @@ class GetObjectsForTypeSC(GetObjectsForType):
         return _encode
 
 
-@versionchanged(
-    version="0.85.0", reason="Added status and previous transaction digest."
-)
-class GetObjectContent(PGQL_QueryNode):
-    """Returns a specific object's content BCS string."""
+
+class GetObjectContentSC(PGQL_QueryNode):
+    """SC variant: encode_fn maps GQL object content response to GetObjectResponse proto."""
 
     def __init__(self, *, object_id: str):
-        """QueryNode initializer.
-
-        :param object_id: The object id hex string with 0x prefix
-        :type object_id: str
-        """
+        """QueryNode initializer."""
         self.object_id = TypeValidator.check_object_id(object_id)
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
@@ -549,15 +183,6 @@ class GetObjectContent(PGQL_QueryNode):
                 ),
             )
         )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectContentBCS]:
-        """Return the serializer to ObjectReadGQL function."""
-        return pgql_type.ObjectContentBCS.from_query
-
-
-class GetObjectContentSC(GetObjectContent):
-    """SC variant: encode_fn maps GQL object content response to GetObjectResponse proto."""
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.GetObjectResponse]:
@@ -585,22 +210,16 @@ class GetObjectContentSC(GetObjectContent):
         return _encode
 
 
-@versionchanged(
-    version="0.85.0", reason="Added status and previous transaction digest."
-)
-class GetMultipleObjectContent(PGQL_QueryNode):
-    """Returns a specific object's content BCS string."""
+
+class GetMultipleObjectContentSC(PGQL_QueryNode):
+    """SC variant: encode_fn maps GQL objects content response to BatchGetObjectsResponse proto."""
 
     def __init__(
         self,
         *,
         object_ids: list[str],
     ):
-        """QueryNode initializer.
-
-        :param object_id: The object id hex string with 0x prefix
-        :type object_id: str
-        """
+        """QueryNode initializer."""
         self.object_ids = [TypeValidator.check_object_id(x) for x in object_ids]
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
@@ -620,15 +239,6 @@ class GetMultipleObjectContent(PGQL_QueryNode):
         return dsl_gql(
             DSLQuery(object_content),
         )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectsContentBCS]:
-        """Return the serializer to ObjectsContentBCS function."""
-        return pgql_type.ObjectsContentBCS.from_query  # type: ignore[return-value]
-
-
-class GetMultipleObjectContentSC(GetMultipleObjectContent):
-    """SC variant: encode_fn maps GQL objects content response to BatchGetObjectsResponse proto."""
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.BatchGetObjectsResponse]:
@@ -659,95 +269,8 @@ class GetMultipleObjectContentSC(GetMultipleObjectContent):
         return _encode
 
 
-class GetObjectsOwnedByAddress(PGQL_QueryNode):
-    """Returns data for all objects by owner."""
-
-    def __init__(
-        self, *, owner: str, next_page_token: bytes | None = None
-    ):
-        """QueryNode initializer.
-
-        :param owner: Owner's Sui address
-        :type owner: str
-        :param next_page_token: page cursor bytes to advance query, defaults to None
-        :type next_page_token: bytes | None
-        """
-        self.owner = owner
-        self.next_page_token = next_page_token
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        qres = schema.Query.objects(filter={"owner": self.owner})
-        if self.next_page_token:
-            qres(after=self.next_page_token.decode())
-
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        qres.select(
-            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
-            objects_data=schema.ObjectConnection.nodes.select(std_object),
-        )
-
-        return dsl_gql(
-            pg_cursor,
-            std_object,
-            base_object,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectReadsGQL]:
-        """Return the serializer to ObjectReadsGQL function."""
-        return pgql_type.ObjectReadsGQL.from_query
-
-
-@versionchanged(
-    version="0.82.0", reason="Fixes https://github.com/FrankC01/pysui/issues/292"
-)
-@versionchanged(
-    version="0.84.0", reason="Reference https://github.com/FrankC01/pysui/issues/297"
-)
-@versionchanged(version="0.91.0", reason="Paging no longer supported")
-class GetMultipleGasObjects(PGQL_QueryNode):
-    """Return basic Sui gas represnetation for each coin_id string."""
-
-    def __init__(
-        self,
-        *,
-        coin_object_ids: list[str],
-    ):
-        """QueryNode initializer.
-
-        :param coin_object_ids: list of object ids to fetch
-        :type coin_object_ids: list[str]
-        :param next_page: Ignored
-        :type next_page: Ignored
-        """
-        self.coin_ids: list[str] = TypeValidator.check_object_ids(coin_object_ids)
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-
-        std_coin = frag.BaseSuiObjectForCoin().fragment(schema)
-        coin_ids = [{"address": cid} for cid in self.coin_ids]
-        qres = schema.Query.multiGetObjects(keys=coin_ids)
-        qres.select(std_coin)
-
-        return dsl_gql(
-            std_coin,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.SuiCoinFromObjectsGQL]:
-        """Return the serializer to SuiCoinFromObjectsGQL function."""
-        return pgql_type.SuiCoinFromObjectsGQL.from_query  # type: ignore[return-value]
-
-
-@versionchanged(version="0.91.0", reason="Paging no longer supported")
-class GetMultipleObjects(PGQL_QueryNode):
-    """Returns object data for list of object ids."""
+class GetMultipleObjectsSummarySC(PGQL_QueryNode):
+    """SC variant: encode_fn normalizes multiGetObjects → list[ObjectSummary]."""
 
     def __init__(
         self,
@@ -762,30 +285,6 @@ class GetMultipleObjects(PGQL_QueryNode):
         :type next_page: pgql_type.PagingCursor
         """
         self.object_ids = TypeValidator.check_object_ids(object_ids)
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        obj_ids = [{"address": cid} for cid in self.object_ids]
-        qres = schema.Query.multiGetObjects(keys=obj_ids)
-
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        qres.select(std_object)
-
-        return dsl_gql(
-            std_object,
-            base_object,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectReadsGQL]:
-        """Return the serializer to ObjectReadsGQL function."""
-        return pgql_type.ObjectReadsGQL.from_query
-
-
-class GetMultipleObjectsSummarySC(GetMultipleObjects):
-    """SC variant: encode_fn normalizes multiGetObjects → list[ObjectSummary]."""
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest using the leaner SummaryObject fragment."""
@@ -814,20 +313,30 @@ class GetMultipleObjectsSummarySC(GetMultipleObjects):
                     shared_v = str(ow.get("initial_version", 0))
                 elif kind == "ObjectOwner":
                     owner_str = ow.get("parent_id")
-                entries.append(ObjectSummary(
-                    objectId=raw.get("object_id", ""),
-                    version=str(raw.get("version", 0)),
-                    digest=raw.get("object_digest", ""),
-                    owner=owner_str,
-                    initialSharedVersion=shared_v,
-                ))
+                entries.append(
+                    ObjectSummary(
+                        objectId=raw.get("object_id", ""),
+                        version=str(raw.get("version", 0)),
+                        digest=raw.get("object_digest", ""),
+                        owner=owner_str,
+                        initialSharedVersion=shared_v,
+                    )
+                )
             return entries
 
         return _encode
 
 
-class GetObjectSummarySC(GetObject):
+class GetObjectSummarySC(PGQL_QueryNode):
     """SC variant: encode_fn resolves a single object to ObjectSummary."""
+
+    def __init__(self, *, object_id: str):
+        """QueryNode initializer.
+
+        :param object_id: The object id hex string with 0x prefix
+        :type object_id: str
+        """
+        self.object_id = TypeValidator.check_object_id(object_id)
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest using the SummaryObject fragment."""
@@ -866,478 +375,16 @@ class GetObjectSummarySC(GetObject):
         return _encode
 
 
-class GetPastObject(PGQL_QueryNode):
-    """Returns a specific objects version data."""
-
-    def __init__(self, *, object_id: str, version: int):
-        """QueryNode initializer
-
-        :param object_id: The Sui object_id hex string with 0x prefix
-        :type object_id: str
-        :param version: The version of the object to fetch.
-        :type version: int
-        """
-        self.object_id = TypeValidator.check_object_id(object_id)
-        self.version = version
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-
-        return dsl_gql(
-            std_object,
-            base_object,
-            DSLQuery(
-                object=schema.Query.object(
-                    address=self.object_id, version=self.version
-                ).select(
-                    std_object,
-                )
-            ),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectReadGQL]:
-        """Return the serializer to ObjectReadGQL function."""
-        return pgql_type.ObjectReadGQL.from_query  # type: ignore[return-value]
-
-
-@versionadded(version="0.76.0", reason="Sui 1.40.0 introduced")
-@versionchanged(
-    version="0.91.0",
-    reason="GraphQL beta changed object_id to address in dictionary argument",
-)
-class GetMultipleVersionedObjects(PGQL_QueryNode):
-    """GetMultipleVersionedObjects When executed, return the object information for a specified version.
-
-    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
-    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
-    policies.
-    """
-
-    def __init__(self, *, for_versions: list[dict[str, int]]):
-        """QueryNode initializer to fetch past object information for a list of object keys.
-
-        Where each ``dict`` entry must have the following keys::
-
-            {
-                "address": str,  # Object id
-                "version": int   # Version to fetch
-            }
-
-        :param for_versions: The list of object and version dictionaries
-        :type for_versions: list[dict]
-        """
-
-        self.version_list = for_versions
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-
-        return dsl_gql(
-            std_object,
-            base_object,
-            # pg_cursor,
-            DSLQuery(
-                schema.Query.multiGetObjects(keys=self.version_list).select(
-                    std_object,
-                )
-            ),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.ObjectVersionReadsGQL]:
-        """Return the serializer to ObjectReadsGQL function."""
-        return pgql_type.ObjectVersionReadsGQL.from_query
-
-
 @versionchanged(
     version="0.91.0", reason="Name MoveValue dropped 'data', using json instead"
 )
-class GetDynamicFields(PGQL_QueryNode):
-    """GetDynamicFields when executed, returns the list of dynamic field objects owned by an object."""
 
-    def __init__(
-        self,
-        *,
-        object_id: str,
-        next_page_token: bytes | None = None,
-    ) -> None:
-        """QueryNode initializer to featch dynamic fields.
-
-        :param object_id: The object id that holds dynamic fields
-        :type object_id: str
-        :param next_page_token: page cursor bytes to advance query, defaults to None
-        :type next_page_token: bytes | None
-        """
-        self.object_id = object_id
-        self.next_page_token = next_page_token
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Return a query for dynamic fields."""
-        qres = schema.Query.object(address=self.object_id)
-        qres = qres.select(
-            schema.Object.address.alias("parent_object_id"), schema.Object.version
-        )
-        dfield_connection = schema.Object.dynamicFields
-        if self.next_page_token:
-            dfield_connection(after=self.next_page_token.decode())
-
-        pg_cursor = frag.PageCursor().fragment(schema)
-        dfield_connection.select(
-            cursor=schema.DynamicFieldConnection.pageInfo.select(pg_cursor),
-            dynamic_fields=schema.DynamicFieldConnection.nodes.select(
-                schema.DynamicField.name.select(
-                    name_type=schema.MoveValue.type.select(
-                        name_layout=schema.MoveType.layout,
-                    ),
-                    name_data=schema.MoveValue.json,
-                ),
-                field_kind=DSLMetaField("__typename"),
-                field_data=schema.DynamicField.value.select(
-                    DSLInlineFragment()
-                    .on(schema.MoveObject)
-                    .select(
-                        schema.MoveObject.address,
-                        schema.MoveObject.version,
-                        schema.MoveObject.digest,
-                        data_kind=DSLMetaField("__typename"),
-                    ),
-                    DSLInlineFragment()
-                    .on(schema.MoveValue)
-                    .select(
-                        object_type=schema.MoveValue.type.select(
-                            schema.MoveType.layout
-                        ),
-                        data_kind=DSLMetaField("__typename"),
-                    ),
-                ),
-            ),
-        )
-        return dsl_gql(
-            pg_cursor,
-            DSLQuery(qres.select(dfield_connection)),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.DynamicFieldsGQL]:
-        """Return the serializer to DynamicFieldsGQL function."""
-        return pgql_type.DynamicFieldsGQL.from_query  # type: ignore[return-value]
-
-
-@versionchanged(version="0.91.0", reason="Event filter parms changed in GraphQL Beta")
-class GetEvents(PGQL_QueryNode):
-    """GetEvents When executed, return list of events for the filter choice."""
-
-    def __init__(
-        self,
-        *,
-        event_filter: dict,
-        next_page: Optional[pgql_type.PagingCursor] = None,
-    ) -> None:
-        """QueryNode initializer to query chain events of type defined by event_filter.
-
-        Choose one key/value pair from the following options::
-
-            {"afterCheckpoint": int}
-            {"atCheckpoint": int}
-            {"beforeCheckpoint": int}
-            {"sender": "SOME_SUI_ACCOUNT"}
-            {"module": "FULLY_QUALIFIED_MODULE"}
-            {"type": "FULLY_QUALIFIED_EVENT_TYPE"}
-
-        Example::
-
-            {"type": "0x3::validator::StakingRequestEvent"}
-
-        :param event_filter: Filter key/values aligned to Sui GraphQL schema's EventFilter
-        :type event_filter: dict
-        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
-        :type next_page: pgql_type.PagingCursor
-        """
-
-        self.event_filter = event_filter
-        self.next_page = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        pg_cursor = frag.PageCursor()
-        std_event = frag.StandardEvent()
-        qres = schema.Query.events(filter=self.event_filter)
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
-
-        qres.select(
-            cursor=schema.EventConnection.pageInfo.select(pg_cursor.fragment(schema)),
-            events=schema.EventConnection.nodes.select(std_event.fragment(schema)),
-        )
-        return dsl_gql(
-            pg_cursor.fragment(schema), std_event.fragment(schema), DSLQuery(qres)
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.EventsGQL]:
-        """Return the serializer to EventsGQL function."""
-        return pgql_type.EventsGQL.from_query
-
-
-@versionchanged(version="0.91.0", reason="GraphQL Beta changes to fields.")
-class GetTx(PGQL_QueryNode):
-    """GetTx When executed, return the transaction response object."""
-
-    def __init__(self, *, digest: str) -> None:
-        """QueryNode initializer to fetch a transaction by digest id.
-
-        :param digest: The transaction digest to fetch
-        :type digest: str
-        """
-        self.digest = digest
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Builds the GQL GraphQLRequest
-
-        :return: The transaction query GraphQLRequest for specific digest
-        :rtype: GraphQLRequest
-        """
-        std_txn = frag.StandardTransaction().fragment(schema)
-        tx_effects = frag.StandardTxEffects().fragment(schema)
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
-        qres = schema.Query.transaction(digest=self.digest)
-        qres.select(std_txn)
-        return dsl_gql(
-            std_txn,
-            tx_effects,
-            base_object,
-            std_object,
-            gas_cost,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionResultGQL], None]:
-        """Return the serializer to TransactionResultGQL function."""
-        return pgql_type.TransactionResultGQL.from_query  # type: ignore[return-value]
-
-
-class GetMultipleTx(PGQL_QueryNode):
-    """GetTxs returns multiple transaction summaries and is controlled by filters and paging."""
-
-    def __init__(
-        self, *, next_page: Optional[pgql_type.PagingCursor] = None, **qfilter
-    ) -> None:
-        """QueryNode initializer to fetch multiple transactions by filter parameters.
-
-        :param next_page: Pagination curosr, defaults to None
-        :type next_page: Optional[pgql_type.PagingCursor], optional
-        :param qfilter: 0 or more TransactionBlockFilter key/value to apply to criteria
-        :rtype qfilter: dict
-        """
-        self.next_page = next_page
-        self.qfilter = qfilter
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Builds the GQL GraphQLRequest
-
-        :return: The transactions query GraphQLRequest
-        :rtype: GraphQLRequest
-        """
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        qres = schema.Query.transactions(filter=self.qfilter)
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
-
-        pg_cursor = frag.PageCursor().fragment(schema)
-        qres.select(
-            cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
-            tx_blocks=schema.TransactionConnection.nodes.select(
-                schema.Transaction.digest,
-                schema.Transaction.kind.select(
-                    DSLMetaField("__typename").alias("tx_kind")
-                ),
-                schema.Transaction.signatures.select(
-                    schema.UserSignature.signatureBytes
-                ),
-                schema.Transaction.effects.select(
-                    schema.TransactionEffects.status,
-                    schema.TransactionEffects.timestamp,
-                    schema.TransactionEffects.executionError.select(
-                        schema.ExecutionError.abortCode,
-                        schema.ExecutionError.sourceLineNumber,
-                        schema.ExecutionError.instructionOffset,
-                        schema.ExecutionError.identifier,
-                        schema.ExecutionError.constant,
-                        schema.ExecutionError.message,
-                    ),
-                ),
-            ),
-        )
-        return dsl_gql(
-            pg_cursor,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionSummariesGQL], None]:
-        """Return the serializer to TransactionSummariesGQL function."""
-        return pgql_type.TransactionSummariesGQL.from_query
-
-
-class GetFilteredTx(PGQL_QueryNode):
-    """GetTxs returns all transactions with TransactionBlockFilter set and is controlled by paging."""
-
-    def __init__(
-        self, *, tx_filter: dict, next_page: Optional[pgql_type.PagingCursor] = None
-    ) -> None:
-        """QueryNode initializer.
-
-        :param tx_filter: TransactionBlockFilter dict
-        :type tx_filter: dict
-        :param next_page: _description_, defaults to None
-        :type next_page: Optional[pgql_type.PagingCursor], optional
-        """
-        self.next_page = next_page
-        self.filter = tx_filter
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Builds the GQL GraphQLRequest
-
-        :return: The transactions query GraphQLRequest
-        :rtype: GraphQLRequest
-        """
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        qres = schema.Query.transactions(filter=self.filter)
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
-
-        pg_cursor = frag.PageCursor().fragment(schema)
-
-        qres.select(
-            cursor=schema.TransactionConnection.pageInfo.select(pg_cursor),
-            tx_blocks=schema.TransactionConnection.nodes.select(
-                schema.Transaction.digest,
-                schema.Transaction.signatures.select(
-                    schema.UserSignature.signatureBytes
-                ),
-                schema.Transaction.kind.select(tx_kind=DSLMetaField("__typename")),
-                schema.Transaction.effects.select(
-                    schema.TransactionEffects.status,
-                    schema.TransactionEffects.timestamp,
-                    schema.TransactionEffects.executionError.select(
-                        schema.ExecutionError.abortCode,
-                        schema.ExecutionError.sourceLineNumber,
-                        schema.ExecutionError.instructionOffset,
-                        schema.ExecutionError.identifier,
-                        schema.ExecutionError.constant,
-                        schema.ExecutionError.message,
-                    ),
-                ),
-            ),
-        )
-        return dsl_gql(
-            pg_cursor,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionSummariesGQL], None]:
-        """Return the serializer to TransactionSummariesGQL function."""
-        return pgql_type.TransactionSummariesGQL.from_query
-
-
-class GetMultipleTransactions(PGQL_QueryNode):
-    """GetMultipleTransactions returns multiple transactions by digest list."""
-
-    def __init__(self, *, digests: list[str]) -> None:
-        """QueryNode initializer to fetch multiple transactions by digests.
-
-        :param digests: List of transaction digests to fetch
-        :type digests: list[str]
-        """
-        self.digests = digests
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Builds the GQL GraphQLRequest
-
-        :return: The transactions query GraphQLRequest for specific digests
-        :rtype: GraphQLRequest
-        """
-        std_txn = frag.StandardTransaction().fragment(schema)
-        tx_effects = frag.StandardTxEffects().fragment(schema)
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
-        qres = schema.Query.multiGetTransactions(keys=self.digests)
-        qres.select(std_txn)
-        return dsl_gql(
-            std_txn,
-            tx_effects,
-            base_object,
-            std_object,
-            gas_cost,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], pgql_type.TransactionSummariesGQL]:
-        """Return the serializer to TransactionSummariesGQL function."""
-        return pgql_type.TransactionSummariesGQL.from_query
-
-
-class GetTxKind(PGQL_QueryNode):
-    """Gets details of Transaction kind."""
-
-    def __init__(self, digest: str):
-        """QueryNode initializer."""
-        self.digest = digest
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Builds the GQL GraphQLRequest
-
-        :return: The transaction query GraphQLRequest for specific digest
-        :rtype: GraphQLRequest
-        """
-        tx_kind = frag.StandardTransactionKind().fragment(schema)
-        prg_kind = frag.ProgrammableTxKind().fragment(schema)
-        ccp_kind = frag.ConsensusCommitPrologueKind().fragment(schema)
-        qres = schema.Query.transaction(digest=self.digest)
-        qres.select(
-            # qres=schema.Query.transaction(digest=self.digest).select(
-            schema.Transaction.digest,
-            schema.Transaction.effects.select(schema.TransactionEffects.timestamp),
-            tx_kind,
-            # )
-        )
-        return dsl_gql(
-            prg_kind,
-            tx_kind,
-            ccp_kind,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.TransactionKindGQL], None]:
-        """Return the serializer to TransactionKindGQL function."""
-        return pgql_type.TransactionKindGQL.from_query  # type: ignore[return-value]
-
-
-class GetTransactionSC(GetTx):
+class GetTransactionSC(PGQL_QueryNode):
     """SC variant: maps GQL transaction query to ExecutedTransaction proto."""
 
     def __init__(self, *, digest: str) -> None:
         """QueryNode initializer."""
-        super().__init__(digest=digest)
+        self.digest = digest
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build transaction query with metadata + BCS fields. Kind decoded from BCS."""
@@ -1349,9 +396,7 @@ class GetTransactionSC(GetTx):
         qres.select(
             schema.Transaction.digest,
             schema.Transaction.signatures.select(schema.UserSignature.signatureBytes),
-            schema.Transaction.sender.select(
-                submitter_address=schema.Address.address
-            ),
+            schema.Transaction.sender.select(submitter_address=schema.Address.address),
             schema.Transaction.expiration.select(schema.Epoch.epochId),
             schema.Transaction.gasInput.select(
                 transaction_budget=schema.GasInput.gasBudget,
@@ -1390,12 +435,12 @@ class GetTransactionSC(GetTx):
         return _encode
 
 
-class GetTransactionsSC(GetMultipleTransactions):
+class GetTransactionsSC(PGQL_QueryNode):
     """SC variant: maps GQL multi-transaction query to list[ExecutedTransaction | None]."""
 
     def __init__(self, *, digests: list[str]) -> None:
         """QueryNode initializer."""
-        super().__init__(digests=digests)
+        self.digests = digests
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build multi-transaction query with metadata + BCS fields. Kind decoded from BCS."""
@@ -1407,9 +452,7 @@ class GetTransactionsSC(GetMultipleTransactions):
         qres.select(
             schema.Transaction.digest,
             schema.Transaction.signatures.select(schema.UserSignature.signatureBytes),
-            schema.Transaction.sender.select(
-                submitter_address=schema.Address.address
-            ),
+            schema.Transaction.sender.select(submitter_address=schema.Address.address),
             schema.Transaction.expiration.select(schema.Epoch.epochId),
             schema.Transaction.gasInput.select(
                 transaction_budget=schema.GasInput.gasBudget,
@@ -1449,12 +492,12 @@ class GetTransactionsSC(GetMultipleTransactions):
         return _encode
 
 
-class GetTransactionKindSC(GetTxKind):
+class GetTransactionKindSC(PGQL_QueryNode):
     """SC variant: maps GQL transaction kind query to TransactionKind proto."""
 
-    def __init__(self, digest: str) -> None:
+    def __init__(self, *, digest: str) -> None:
         """QueryNode initializer."""
-        super().__init__(digest=digest)
+        self.digest = digest
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Minimal kind query: fetch only __typename to stay under the 300-node limit."""
@@ -1480,222 +523,26 @@ class GetTransactionKindSC(GetTxKind):
         return _encode
 
 
-class GetDelegatedStakes(PGQL_QueryNode):
-    """GetDelegatedStakes return all [StakedSui] coins for owner."""
-
-    def __init__(self, owner: str, next_page_token: bytes | None = None):
-        """QueryNode initializer.
-
-        :param owner: Owner's Sui address
-        :type owner: str
-        :param next_page_token: page cursor bytes to advance query, defaults to None
-        :type next_page_token: bytes | None
-        """
-        self.owner = owner
-        self.next_page_token = next_page_token
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQL DSL request."""
-        if self.next_page_token:
-            qres = schema.Query.objects(
-                after=self.next_page_token.decode(),
-                filter={"owner": self.owner, "type": "0x3::staking_pool::StakedSui"},
-            )
-        else:
-            qres = schema.Query.objects(
-                filter={"owner": self.owner, "type": "0x3::staking_pool::StakedSui"}
-            )
-        # Build fragment
-        pg_cursor = frag.PageCursor().fragment(schema)
-        bs_coin = frag.BaseSuiObjectForCoin().fragment(schema)
-        qres.select(
-            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
-            staked_coin=schema.ObjectConnection.nodes.select(bs_coin),
-        )
-        return dsl_gql(pg_cursor, bs_coin, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.SuiStakedCoinsGQL], None]:
-        """Return the serializer to SuiStakedCoinsGQL function."""
-        return pgql_type.SuiStakedCoinsGQL.from_query  # type: ignore[return-value]
 
 
-class GetBasicCurrentEpochInfo(PGQL_QueryNode):
-    """GetBasicCurrentEpochInfo minimal current Epoch information."""
 
-    def __init__(self):
-        """."""
-
-    def as_document_node(self, schema):
-        """Build GraphQL DSL request."""
-        _QUERY = """
-            {  
-            epoch {
-                epochId
-                referenceGasPrice
-                startTimestamp
-                endTimestamp
-            }
-            }            
-        """
-        return gql(_QUERY)
-
-    @staticmethod
-    def encode_fn() -> (
-        Union[Callable[[dict], pgql_type.BasicCurrentEpochInfoGQL], None]
-    ):
-        """Return the serializer to SuiStakedCoinsGQL function."""
-        return pgql_type.BasicCurrentEpochInfoGQL.from_query  # type: ignore[return-value]
-
-
-@versionadded(version="0.99.0", reason="Full epoch query by ID or current epoch.")
-class GetEpoch(PGQL_QueryNode):
-    """GetEpoch Returns epoch information by epoch ID, or the current epoch if no ID is given."""
-
-    def __init__(self, *, epoch_id: Optional[int] = None) -> None:
-        """__init__ Initialize GetEpoch object.
-
-        :param epoch_id: The epoch sequence number to fetch; omit or pass None for the current epoch
-        :type epoch_id: Optional[int]
-        """
-        self.epoch_id = epoch_id
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        qres = schema.Query.epoch
-        if self.epoch_id is not None:
-            qres(epochId=self.epoch_id)
-        qres.select(
-            schema.Epoch.epochId,
-            schema.Epoch.startTimestamp,
-            schema.Epoch.endTimestamp,
-            schema.Epoch.referenceGasPrice,
-            schema.Epoch.totalCheckpoints,
-            schema.Epoch.totalTransactions,
-            schema.Epoch.totalGasFees,
-            schema.Epoch.totalStakeRewards,
-        )
-        return dsl_gql(DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.EpochGQL], None]:
-        """Return the serialization function for EpochGQL."""
-        return pgql_type.EpochGQL.from_query  # type: ignore[return-value]
-
-
-class GetLatestCheckpointSequence(PGQL_QueryNode):
-    """GetLatestCheckpointSequence return the sequence number of the latest checkpoint that has been executed."""
-
-    def __init__(self):
-        """__init__ QueryNode initializer."""
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQL DSL request."""
-        std_checkpoint = frag.StandardCheckpoint().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        qres = schema.Query.checkpoints(last=1).select(
-            schema.CheckpointConnection.nodes.select(std_checkpoint)
-        )
-        return dsl_gql(pg_cursor, std_checkpoint, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.CheckpointGQL], None]:
-        """Return the serializer to CheckpointGQL function."""
-        return pgql_type.CheckpointGQL.from_last_checkpoint
-
-
-class GetCheckpointBySequence(PGQL_QueryNode):
-    """GetCheckpoint return a checkpoint for cp_id."""
-
-    def __init__(self, *, sequence_number: int):
-        """__init__ QueryNode initializer.
-
-        :param sequence_number: Checkpoint sequence number
-        :type cp_seq: int
-        """
-        self.sequence_number = sequence_number
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQL DSL request."""
-        std_checkpoint = frag.StandardCheckpoint()
-        pg_cursor = frag.PageCursor()
-        qres = schema.Query.checkpoint(sequenceNumber=self.sequence_number).select(
-            std_checkpoint.fragment(schema)
-        )
-        return dsl_gql(
-            pg_cursor.fragment(schema), std_checkpoint.fragment(schema), DSLQuery(qres)
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.CheckpointGQL], None]:
-        """Return the serializer to CheckpointGQL function."""
-        return pgql_type.CheckpointGQL.from_query
-
-
-class GetCheckpoints(PGQL_QueryNode):
-    """GetCheckpoints return paginated list of checkpoints."""
-
-    def __init__(self, *, next_page: Optional[pgql_type.PagingCursor] = None):
-        """QueryNode initializer."""
-        self.next_page = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQL DSL request."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-
-        qres = schema.Query.checkpoints
-        if self.next_page:
-            qres(after=self.next_page.endCursor)
-
-        std_checkpoint = frag.StandardCheckpoint()
-        pg_cursor = frag.PageCursor()
-        qres.select(
-            cursor=schema.CheckpointConnection.pageInfo.select(
-                pg_cursor.fragment(schema)
-            ),
-            checkpoints=schema.CheckpointConnection.nodes.select(
-                std_checkpoint.fragment(schema)
-            ),
-        )
-        return dsl_gql(
-            pg_cursor.fragment(schema), std_checkpoint.fragment(schema), DSLQuery(qres)
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.CheckpointsGQL], None]:
-        """Return the serializer to CheckpointsGQL function."""
-        return pgql_type.CheckpointsGQL.from_query
-
-
-class GetProtocolConfig(PGQL_QueryNode):
-    """Return the protocol config table for the given version number or current."""
+class GetProtocolConfigSC(PGQL_QueryNode):
+    """SC variant: encode_fn maps GQL protocol config response to ProtocolConfig proto."""
 
     def __init__(self, *, version: Optional[int] = None):
-        """QueryNode initializer
-
-        :param version: The protocol version to retreive, defaults to None (current)
-        :type version: Optional[int]
-        """
+        """QueryNode initializer."""
         self.version = version
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQL DSL request."""
         std_prot_cfg = frag.StandardProtocolConfig().fragment(schema)
         if self.version is not None:
-            qres = schema.Query.protocolConfigs(version=self.version).select(std_prot_cfg)
+            qres = schema.Query.protocolConfigs(version=self.version).select(
+                std_prot_cfg
+            )
         else:
             qres = schema.Query.protocolConfigs().select(std_prot_cfg)
         return dsl_gql(std_prot_cfg, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.ProtocolConfigGQL], None]:
-        """Return the serialization function for ProtocolConfig."""
-        return pgql_type.ProtocolConfigGQL.from_query
-
-
-class GetProtocolConfigSC(GetProtocolConfig):
-    """SC variant: encode_fn maps GQL protocol config response to ProtocolConfig proto."""
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ProtocolConfig]:
@@ -1725,513 +572,15 @@ class GetProtocolConfigSC(GetProtocolConfig):
         return _encode
 
 
-class GetReferenceGasPrice(PGQL_QueryNode):
-    """GetReferenceGasPrice return the reference gas price for the network."""
 
-    def __init__(self):
-        """QueryNode initializer."""
 
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQL DSL request."""
-        return dsl_gql(
-            DSLQuery(schema.Query.epoch.select(schema.Epoch.referenceGasPrice))
-        )
 
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.ReferenceGasPriceGQL], None]:
-        """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.ReferenceGasPriceGQL.from_query
 
 
-# TODO: Need object rep
-# Renamed from Builder NameServiceAddress
-class GetNameServiceAddress(PGQL_QueryNode):
-    """Return the resolved name service name for a Sui address."""
 
-    def __init__(self, *, name: str):
-        """__init__ QueryNode initializer."""
-        self.name = name
 
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQL DSL request."""
-        return dsl_gql(
-            DSLQuery(
-                schema.Query.suinsName(address=self.name).select(
-                    schema.Address.defaultSuinsName
-                )
-            )
-        )
 
 
-# TODO: Need object rep
-# Renamed from Builder NameServiceName
-class GetNameServiceNames(PGQL_QueryNode):
-    """Return the default Suins Name given and address."""
-
-    def __init__(
-        self,
-        *,
-        owner: str,
-    ):
-        """QueryNode initializer."""
-        self.owner = owner
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        return dsl_gql(
-            DSLQuery(
-                schema.Query.address(address=self.owner).select(
-                    primary_ns=schema.Address.defaultSuinsName,
-                    additional_ns=schema.Address.suinsRegistrations.select(
-                        schema.SuinsRegistrationConnection.nodes.select(
-                            schema.SuinsRegistration.defaultSuinsName
-                        )
-                    ),
-                )
-            )
-        )
-
-
-class GetCurrentValidators(PGQL_QueryNode):
-    """Return the set of validators from the current Epoch."""
-
-    def __init__(self, next_page: pgql_type.PagingCursor | None = None):
-        """QueryNode initializer."""
-        self.pager = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest using BCS validator content path with paging."""
-        if self.pager and not self.pager.hasNextPage:
-            return PGQL_NoOp
-        pg_cursor = frag.PageCursor().fragment(schema)
-        if self.pager:
-            active_vals = schema.ValidatorSet.activeValidators(after=self.pager.endCursor)
-        else:
-            active_vals = schema.ValidatorSet.activeValidators
-        qres = schema.Query.epoch.select(
-            schema.Epoch.validatorSet.select(
-                active_vals.select(
-                    schema.ValidatorConnection.pageInfo.select(pg_cursor).alias("cursor"),
-                    schema.ValidatorConnection.nodes.select(
-                        schema.Validator.contents.select(
-                            schema.MoveValue.bcs
-                        )
-                    ),
-                )
-            )
-        )
-        return dsl_gql(pg_cursor, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.ValidatorSetsGQL], None]:
-        """Return the serialization function for ValidatorSetsGQL."""
-        return pgql_type.ValidatorSetsGQL.from_query
-
-
-class GetValidatorExchangeRates(PGQL_QueryNode):
-    """Returns the exchange rate dynamic fields by Epoch (base64 BCS u64 encoded)."""
-
-    def __init__(self, *, validator_exchange_address: str, epoch_ids: list[int]):
-        """QueryNode initializer."""
-        self.exchange_address = validator_exchange_address
-        self.epoch_ids = epoch_ids
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        if not self.epoch_ids or not isinstance(self.epoch_ids[0], int):
-            raise ValueError(
-                f"Expected list of ints for epoch_ids found {self.epoch_ids}"
-            )
-        qres = schema.Query.address(address=self.exchange_address)
-        for eint in self.epoch_ids:
-            name = base64.b64encode(SuiU64(eint).to_bytes()).decode()
-            tag = "EPOCH_" + str(eint)
-            qres.select(
-                schema.Address.dynamicField(name={"bcs": name, "type": "u64"})
-                .select(
-                    schema.DynamicField.value.select(
-                        DSLInlineFragment()
-                        .on(schema.MoveValue)
-                        .select(schema.MoveValue.json)
-                    )
-                )
-                .alias(tag)
-            )
-        return dsl_gql(DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> (
-        Union[Callable[[dict], pgql_type.ValidatorExchangeRatesGQL], None]
-    ):
-        """Return the serialization function for ValidatorExchangeRatesGQL."""
-        return pgql_type.ValidatorExchangeRatesGQL.from_query
-
-
-class GetStructure(PGQL_QueryNode):
-    """GetStructure When executed, returns a module's structure representation."""
-
-    def __init__(
-        self,
-        *,
-        package: str,
-        module_name: str,
-        structure_name: str,
-    ) -> None:
-        """QueryNode initializer.
-
-        :param package: object_id of package to query
-        :type package: str
-        :param module_name: Name of module from package containing the structure_name to fetch
-        :type module_name: str
-        :param structure_name: Name of structure to fetch
-        :type structure_name: str
-        """
-        self.package = package
-        self.module = module_name
-        self.struct = structure_name
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        struc = frag.MoveStructure()
-
-        qres = schema.Query.object(address=self.package).select(
-            schema.Object.asMovePackage.select(
-                schema.MovePackage.module(name=self.module).select(
-                    schema.MoveModule.struct(name=self.struct).select(
-                        struc.fragment(schema)
-                    )
-                )
-            )
-        )
-        return dsl_gql(struc.fragment(schema), DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveDataTypeGQL], None]:
-        """Return the serialization function for MoveDataType."""
-        return pgql_type.MoveDataTypeGQL.from_query  # type: ignore[return-value]
-
-
-class GetMoveDataType(PGQL_QueryNode):
-    """GetMoveDataType When executed, returns a module's structure or enum representation."""
-
-    def __init__(
-        self,
-        *,
-        package: str,
-        module_name: str,
-        data_type_name: str,
-    ) -> None:
-        """QueryNode initializer.
-
-        :param package: object_id of package to query
-        :type package: str
-        :param module_name: Name of module from package containing the structure_name to fetch
-        :type module_name: str
-        :param data_type_name: Name of structure or enum to fetch
-        :type data_type_name: str
-        """
-        self.package = package
-        self.module = module_name
-        self.data_type_name = data_type_name
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        struc = frag.MoveStructure().fragment(schema)
-        enum = frag.MoveEnum().fragment(schema)
-
-        qres = schema.Query.object(address=self.package).select(
-            schema.Object.asMovePackage.select(
-                schema.MovePackage.module(name=self.module).select(
-                    schema.MoveModule.datatype(name=self.data_type_name).select(
-                        schema.MoveDatatype.asMoveStruct.select(struc),
-                        schema.MoveDatatype.asMoveEnum.select(enum),
-                    )
-                )
-            )
-        )
-        return dsl_gql(struc, enum, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveDataTypeGQL], None]:
-        """Return the serialization function for MoveDataType."""
-        return pgql_type.MoveDataTypeGQL.from_query  # type: ignore[return-value]
-
-
-class GetStructures(PGQL_QueryNode):
-    """GetStructures When executed, returns all of a module's structures."""
-
-    def __init__(
-        self,
-        *,
-        package: str,
-        module_name: str,
-        next_page: Optional[pgql_type.PagingCursor] = None,
-    ) -> None:
-        """QueryNode initializer.
-
-        :param package: object_id of package to query
-        :type package: str
-        :param module_name: Name of module from package containing structures to fetch
-        :type module_name: str
-        """
-        self.package = package
-        self.module = module_name
-        self.next_page = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-        elif self.next_page:
-            struct_q = schema.MoveModule.structs(after=self.next_page.endCursor)
-        else:
-            struct_q = schema.MoveModule.structs
-
-        struc = frag.MoveStructure().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-
-        qres = schema.Query.object(address=self.package).select(
-            schema.Object.asMovePackage.select(
-                schema.MovePackage.module(name=self.module).select(
-                    struct_q.select(
-                        schema.MoveStructConnection.pageInfo.select(pg_cursor).alias(
-                            "cursor"
-                        ),
-                        schema.MoveStructConnection.nodes.select(struc),
-                    )
-                )
-            )
-        )
-        return dsl_gql(struc, pg_cursor, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveStructuresGQL], None]:
-        """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.MoveStructuresGQL.from_query  # type: ignore[return-value]
-
-
-class GetFunction(PGQL_QueryNode):
-    """GetFunction When executed, returns a module's function information."""
-
-    def __init__(self, *, package: str, module_name: str, function_name: str) -> None:
-        """QueryNode initializer.
-
-        :param package: object_id of package to query
-        :type package: str
-        :param module_name: Name of module from package containing the function to fetch
-        :type module_name: str
-        :param function_name: Name of function in the module to fetch
-        :type module_name: str
-        """
-        self.package = package
-        self.module = module_name
-        self.function = function_name
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        func = frag.MoveFunction().fragment(schema)
-
-        qres = schema.Query.object(address=self.package).select(
-            schema.Object.asMovePackage.select(
-                schema.MovePackage.module(name=self.module).select(
-                    schema.MoveModule.function(name=self.function).select(func)
-                )
-            )
-        )
-        return dsl_gql(func, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveFunctionGQL], None]:
-        """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.MoveFunctionGQL.from_query  # type: ignore[return-value]
-
-
-class GetFunctions(PGQL_QueryNode):
-    """GetFunctions When executed, returns all module's functions information."""
-
-    def __init__(
-        self,
-        *,
-        package: str,
-        module_name: str,
-        next_page: Optional[pgql_type.PagingCursor] = None,
-    ) -> None:
-        """QueryNode initializer.
-
-        :param package: object_id of package to query
-        :type package: str
-        :param module_name: Name of module from package containing the function to fetch
-        :type module_name: str
-        """
-        self.package = package
-        self.module = module_name
-        self.next_page = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-        elif self.next_page:
-            func_q = schema.MoveModule.functions(after=self.next_page.endCursor)
-        else:
-            func_q = schema.MoveModule.functions
-
-        func = frag.MoveFunction().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        qres = schema.Query.object(address=self.package).select(
-            schema.Object.asMovePackage.select(
-                schema.MovePackage.module(name=self.module).select(
-                    func_q.select(
-                        schema.MoveFunctionConnection.pageInfo.select(pg_cursor).alias(
-                            "cursor"
-                        ),
-                        schema.MoveFunctionConnection.nodes.select(func),
-                    )
-                )
-            )
-        )
-        return dsl_gql(func, pg_cursor, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveFunctionsGQL], None]:
-        """Return the serialization function for ReferenceGasPrice."""
-        return pgql_type.MoveFunctionsGQL.from_query  # type: ignore[return-value]
-
-
-class GetModule(PGQL_QueryNode):
-    """GetModule When executed, returns the structural representation of a module.
-
-    Includes general Module informationn as well as structure and function definitions.
-    """
-
-    def __init__(self, *, package: str, module_name: str) -> None:
-        """__init__ Initialize GetModule object.
-
-        :param package: ObjectID of package to query
-        :type package: ObjectID
-        :param module_name: Name of module from package to fetch
-        :type module_name: SuiString
-        """
-        self.package = package
-        self.module = module_name
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        func = frag.MoveFunction().fragment(schema)
-        struc = frag.MoveStructure().fragment(schema)
-        mod = frag.MoveModule().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-
-        qres = schema.Query.object(address=self.package).select(
-            schema.Object.asMovePackage.select(
-                schema.MovePackage.module(name=self.module).select(mod)
-            )
-        )
-        return dsl_gql(
-            pg_cursor,
-            func,
-            struc,
-            mod,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MoveModuleGQL], None]:
-        """Return the serialization MoveModule."""
-        return pgql_type.MoveModuleGQL.from_query  # type: ignore[return-value]
-
-
-class GetPackage(PGQL_QueryNode):
-    """GetPackage When executed, return structured representations of the package."""
-
-    def __init__(
-        self, *, package: str, next_page: Optional[pgql_type.PagingCursor] = None
-    ) -> None:
-        """__init__ Initialize GetPackage object."""
-        self.package = package
-        self.next_page = next_page
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        if self.next_page and not self.next_page.hasNextPage:
-            return PGQL_NoOp
-        elif self.next_page:
-            mod_q = schema.MovePackage.modules(after=self.next_page.endCursor)
-        else:
-            mod_q = schema.MovePackage.modules
-        pg_cursor = frag.PageCursor().fragment(schema)
-        func = frag.MoveFunction().fragment(schema)
-        struc = frag.MoveStructure().fragment(schema)
-        mod = frag.MoveModule().fragment(schema)
-
-        qres = schema.Query.object(address=self.package).select(
-            schema.Object.asMovePackage.select(
-                schema.MovePackage.address.alias("package_id"),
-                schema.MovePackage.version.alias("package_version"),
-                mod_q.select(
-                    schema.MoveModuleConnection.pageInfo.select(pg_cursor).alias(
-                        "cursor"
-                    ),
-                    schema.MoveModuleConnection.nodes.select(mod),
-                ),
-            )
-        )
-        return dsl_gql(
-            pg_cursor,
-            func,
-            struc,
-            mod,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.MovePackageGQL], None]:
-        """Return the serialization MovePackage."""
-        return pgql_type.MovePackageGQL.from_query  # type: ignore[return-value]
-
-
-@versionadded(version="0.99.0", reason="List all versions of a Move package by address.")
-class GetPackageVersions(PGQL_QueryNode):
-    """GetPackageVersions Returns all versions of a Move package sharing the same original ID."""
-
-    def __init__(
-        self,
-        *,
-        package_address: str,
-        next_page_token: bytes | None = None,
-    ) -> None:
-        """__init__ Initialize GetPackageVersions object.
-
-        :param package_address: The storage address of any version of the package
-        :type package_address: str
-        :param next_page_token: page cursor bytes to advance query, defaults to None
-        :type next_page_token: bytes | None
-        """
-        self.package_address = package_address
-        self.next_page_token = next_page_token
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        pg_cursor = frag.PageCursor()
-        qres = schema.Query.packageVersions(address=self.package_address)
-        if self.next_page_token:
-            qres(after=self.next_page_token.decode())
-        qres.select(
-            cursor=schema.MovePackageConnection.pageInfo.select(
-                pg_cursor.fragment(schema)
-            ),
-            versions=schema.MovePackageConnection.nodes.select(
-                schema.MovePackage.address,
-                schema.MovePackage.version,
-                schema.MovePackage.digest,
-            ),
-        )
-        return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.PackageVersionsGQL], None]:
-        """Return the serialization function for PackageVersionsGQL."""
-        return pgql_type.PackageVersionsGQL.from_query  # type: ignore[return-value]
 
 
 @versionchanged(
@@ -2239,313 +588,9 @@ class GetPackageVersions(PGQL_QueryNode):
 )
 @versionchanged(version="0.92.0", reason="Sui GraphQL requires sender set in tx_meta.")
 @versionchanged(version="0.93.0", reason="tx_bytestr arg changed to tx_kind.")
-@versionchanged(version="0.95.0", reason="Enabled ``skip_checks`` and ``do_gas_selection``")
-class DryRunTransactionKind(PGQL_QueryNode):
-    """DryRunTransactionKind query node."""
-
-    def __init__(
-        self,
-        *,
-        tx_kind: TransactionKind,
-        tx_meta: dict,
-        skip_checks: Optional[bool] = True,
-        do_gas_selection: Optional[bool] = False,
-    ) -> None:
-        """__init__ Initialize DryRunTransactionKind object.
-
-        BREAKING CHANGE: ``tx_meta`` expects a dictionary with one or more of the following keys::
-
-            {
-                "sender": str,            # Sui address of the sender (REQUIRED)
-                "epoch_expiration": int,  # Epoch after which the tx won't be signed
-                # NOT IMPLEMENTED YET (ignored):
-                "gasPrice": int,          # Gas price (defaults to reference gas price)
-                "gasObjects": [{"address": str, "version": int, "digest": str}],
-                "gasBudget": int,         # Defaults to max gas budget
-                "gasSponsor": str,        # Sponsor address, defaults to sender
-            }
-
-        """
-        warnings.warn(
-            "DryRunTransactionKind is deprecated; use SimulateTransactionKind instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        assert isinstance(tx_kind, TransactionKind)
-        self.tx_data: TransactionKind = tx_kind
-        self.transaction: sui_prot.Transaction = None
-        self.tx_meta = tx_meta
-        self.tx_skipchecks = skip_checks
-        self.tx_do_gas_selection = do_gas_selection
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-
-        prgrm_txn = self.tx_data.value
-        inputs: list[sui_prot.Input] = []
-        cmds: list[sui_prot.Command] = []
-        trx_exp = None
-        for input in prgrm_txn.Inputs:
-            if input.enum_name == "Pure":
-                inputs.append(
-                    sui_prot.Input(
-                        kind=sui_prot.InputInputKind.PURE, pure=bytes(input.value)
-                    )
-                )
-            elif input.enum_name == "Object":
-                oarg = input.value
-                inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
-            elif input.enum_name == "FundsWithdrawal":
-                inputs.append(input.value.to_grpc_input())
-
-        for cmd in prgrm_txn.Command:
-            cmds.append(cmd.value.to_grpc_command())
-        self.transaction = sui_prot.Transaction(
-            kind=sui_prot.TransactionKind(
-                programmable_transaction=sui_prot.ProgrammableTransaction(
-                    inputs=inputs, commands=cmds
-                )
-            ),
-            expiration=trx_exp,
-        )
-        if self.tx_meta and (is_sender := self.tx_meta.get("sender")):
-            self.transaction.sender = is_sender
-            if txn_expires_after := self.tx_meta.get("epoch_expiration"):
-                trx_exp = sui_prot.TransactionExpiration(
-                    kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
-                    epoch=txn_expires_after,
-                )
-                self.transaction.expiration = txn_expires_after
-        else:
-            raise ValueError("Requires 'sender' set in tx_meta dict")
-
-        base_obj = frag.BaseObject().fragment(schema)
-        standard_obj = frag.StandardObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
-        tx_effects = frag.StandardTxEffects().fragment(schema)
-
-        qres = (
-            schema.Query.simulateTransaction(
-                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
-                checksEnabled=self.tx_skipchecks,
-                doGasSelection=self.tx_do_gas_selection,
-            )
-            .alias("dryRun")
-            .select(
-                # schema.SimulationResult.error,
-                results=schema.SimulationResult.outputs.select(
-                    schema.CommandResult.returnValues.select(
-                        schema.CommandOutput.value.select(
-                            schema.MoveValue.type.select(schema.MoveType.repr),
-                            schema.MoveValue.bcs,
-                        ),
-                    )
-                ),
-                transactionBlock=schema.SimulationResult.effects.select(tx_effects),
-            )
-        )
-        return dsl_gql(
-            base_obj,
-            standard_obj,
-            gas_cost,
-            tx_effects,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
-        """Return the serialization MovePackage."""
-        return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
-
-
-@versionchanged(version="0.95.0", reason="Enabled ``skip_checks`` and ``do_gas_selection``")
-class DryRunTransaction(PGQL_QueryNode):
-    """DryRunTransaction query node."""
-
-    def __init__(
-        self,
-        *,
-        tx_bytestr: bytes | str,
-        skip_checks: Optional[bool] = True,
-        do_gas_selection: Optional[bool] = False,
-    ) -> None:
-        """__init__ Initialize the dry run query.
-
-        :param tx_bytestr: Either the serialized bytes of a bcs TransactionData or base64 string of same
-        :type tx_bytestr: bytes | str
-        """
-        warnings.warn(
-            "DryRunTransaction is deprecated; use SimulateTransaction instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        self.tx_data = tx_bytestr
-        transaction = (
-            tx_bytestr
-            if isinstance(tx_bytestr, bytes)
-            else base64.b64decode(tx_bytestr)
-        )
-        self.transaction = sui_prot.Transaction(
-            bcs=(sui_prot.Bcs(value=transaction, name="Transaction"))
-        )
-        self.tx_skipchecks = skip_checks
-        self.tx_do_gas_selection = do_gas_selection
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        base_obj = frag.BaseObject().fragment(schema)
-        standard_obj = frag.StandardObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
-        tx_effects = frag.StandardTxEffects().fragment(schema)
-
-        qres = (
-            schema.Query.simulateTransaction(
-                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
-                checksEnabled=self.tx_skipchecks,
-                doGasSelection=self.tx_do_gas_selection,
-            )
-            .alias("dryRun")
-            .select(
-                # schema.SimulationResult.error,
-                results=schema.SimulationResult.outputs.select(
-                    schema.CommandResult.returnValues.select(
-                        schema.CommandOutput.value.select(
-                            schema.MoveValue.type.select(schema.MoveType.repr),
-                            schema.MoveValue.bcs,
-                        ),
-                    )
-                ),
-                transactionBlock=schema.SimulationResult.effects.select(tx_effects),
-            )
-        )
-        return dsl_gql(
-            base_obj,
-            standard_obj,
-            gas_cost,
-            tx_effects,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
-        """Return the serialization MovePackage."""
-        return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
-
-
-@versionadded(version="0.99.0", reason="Replaces deprecated DryRunTransactionKind.")
-class SimulateTransactionKind(PGQL_QueryNode):
-    """SimulateTransactionKind query node.
-
-    Simulates a transaction using a TransactionKind (programmable transaction), returning
-    execution effects without committing to the chain.
-    """
-
-    def __init__(
-        self,
-        *,
-        tx_kind: TransactionKind,
-        tx_meta: dict,
-        skip_checks: Optional[bool] = True,
-        do_gas_selection: Optional[bool] = False,
-    ) -> None:
-        """__init__ Initialize SimulateTransactionKind object.
-
-        :param tx_kind: The programmable TransactionKind BCS object
-        :type tx_kind: TransactionKind
-        :param tx_meta: Dict with at minimum ``sender`` (str Sui address). Optional keys:
-            ``epoch_expiration`` (int), ``gasPrice``, ``gasObjects``, ``gasBudget``, ``gasSponsor``
-        :type tx_meta: dict
-        :param skip_checks: Whether to skip transaction checks, defaults to True
-        :type skip_checks: Optional[bool]
-        :param do_gas_selection: Whether to perform gas selection, defaults to False
-        :type do_gas_selection: Optional[bool]
-        """
-        assert isinstance(tx_kind, TransactionKind)
-        self.tx_data: TransactionKind = tx_kind
-        self.transaction: sui_prot.Transaction = None
-        self.tx_meta = tx_meta
-        self.tx_skipchecks = skip_checks
-        self.tx_do_gas_selection = do_gas_selection
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-
-        prgrm_txn = self.tx_data.value
-        inputs: list[sui_prot.Input] = []
-        cmds: list[sui_prot.Command] = []
-        trx_exp = None
-        for input in prgrm_txn.Inputs:
-            if input.enum_name == "Pure":
-                inputs.append(
-                    sui_prot.Input(
-                        kind=sui_prot.InputInputKind.PURE, pure=bytes(input.value)
-                    )
-                )
-            elif input.enum_name == "Object":
-                oarg = input.value
-                inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
-            elif input.enum_name == "FundsWithdrawal":
-                inputs.append(input.value.to_grpc_input())
-
-        for cmd in prgrm_txn.Command:
-            cmds.append(cmd.value.to_grpc_command())
-        self.transaction = sui_prot.Transaction(
-            kind=sui_prot.TransactionKind(
-                programmable_transaction=sui_prot.ProgrammableTransaction(
-                    inputs=inputs, commands=cmds
-                )
-            ),
-            expiration=trx_exp,
-        )
-        if self.tx_meta and (is_sender := self.tx_meta.get("sender")):
-            self.transaction.sender = is_sender
-            if txn_expires_after := self.tx_meta.get("epoch_expiration"):
-                trx_exp = sui_prot.TransactionExpiration(
-                    kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
-                    epoch=txn_expires_after,
-                )
-                self.transaction.expiration = txn_expires_after
-        else:
-            raise ValueError("Requires 'sender' set in tx_meta dict")
-
-        base_obj = frag.BaseObject().fragment(schema)
-        standard_obj = frag.StandardObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
-        tx_effects = frag.StandardTxEffects().fragment(schema)
-
-        qres = (
-            schema.Query.simulateTransaction(
-                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
-                checksEnabled=self.tx_skipchecks,
-                doGasSelection=self.tx_do_gas_selection,
-            )
-            .alias("dryRun")
-            .select(
-                results=schema.SimulationResult.outputs.select(
-                    schema.CommandResult.returnValues.select(
-                        schema.CommandOutput.value.select(
-                            schema.MoveValue.type.select(schema.MoveType.repr),
-                            schema.MoveValue.bcs,
-                        ),
-                    )
-                ),
-                transactionBlock=schema.SimulationResult.effects.select(tx_effects),
-            )
-        )
-        return dsl_gql(
-            base_obj,
-            standard_obj,
-            gas_cost,
-            tx_effects,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
-        """Return the serialization function."""
-        return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
-
-
+@versionchanged(
+    version="0.95.0", reason="Enabled ``skip_checks`` and ``do_gas_selection``"
+)
 class SimulateTransactionKindSC(PGQL_QueryNode):
     """SC variant: standalone query node with rich GQL query; encode_fn maps to SimulateTransactionResponse proto."""
 
@@ -2601,7 +646,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                 kind=sui_prot.TransactionKindKind.PROGRAMMABLE_TRANSACTION,
                 programmable_transaction=sui_prot.ProgrammableTransaction(
                     inputs=inputs, commands=cmds
-                )
+                ),
             ),
             expiration=trx_exp,
         )
@@ -2688,8 +733,12 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                             address=schema.ObjectChange.address,
                             deleted=schema.ObjectChange.idDeleted,
                             created=schema.ObjectChange.idCreated,
-                            input_state=schema.ObjectChange.inputState.select(std_object),
-                            output_state=schema.ObjectChange.outputState.select(std_object),
+                            input_state=schema.ObjectChange.inputState.select(
+                                std_object
+                            ),
+                            output_state=schema.ObjectChange.outputState.select(
+                                std_object
+                            ),
                         )
                     ),
                 ),
@@ -2729,12 +778,18 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
             txn_bcs_b64 = txn_node.get("transactionBcs")
             txn_json = txn_node.get("transactionJson")
             if txn_json:
-                self.transaction = sui_prot.Transaction.from_dict(txn_json, ignore_unknown_fields=True)
+                self.transaction = sui_prot.Transaction.from_dict(
+                    txn_json, ignore_unknown_fields=True
+                )
                 if txn_bcs_b64:
-                    self.transaction.bcs = sui_prot.Bcs(name="TransactionData", value=base64.b64decode(txn_bcs_b64))
+                    self.transaction.bcs = sui_prot.Bcs(
+                        name="TransactionData", value=base64.b64decode(txn_bcs_b64)
+                    )
             elif txn_bcs_b64:
                 txn_bcs_bytes = base64.b64decode(txn_bcs_b64)
-                self.transaction.bcs = sui_prot.Bcs(name="TransactionData", value=txn_bcs_bytes)
+                self.transaction.bcs = sui_prot.Bcs(
+                    name="TransactionData", value=txn_bcs_bytes
+                )
                 self.transaction.version = 1
                 txdata = TransactionData.deserialize(txn_bcs_bytes)
                 gas_data = txdata.value.GasData
@@ -2760,7 +815,9 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
             )
             effects_bcs_b64 = eff.get("effectsBcs")
             if effects_bcs_b64:
-                effects_proto.bcs = sui_prot.Bcs(name="TransactionEffects", value=base64.b64decode(effects_bcs_b64))
+                effects_proto.bcs = sui_prot.Bcs(
+                    name="TransactionEffects", value=base64.b64decode(effects_bcs_b64)
+                )
 
             # --- objectChanges typed nodes: object_type_map + ObjectSet ---
             objects, object_type_map = _encode_simulate_object_changes(eff)
@@ -2780,7 +837,9 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
             checkpoint_seq = (eff.get("checkpoint") or {}).get("sequenceNumber")
 
             # --- Events (typed — no eventsJson in GQL) ---
-            events = _encode_simulate_events(((eff.get("events") or {}).get("nodes") or []))
+            events = _encode_simulate_events(
+                ((eff.get("events") or {}).get("nodes") or [])
+            )
 
             # --- CommandResult outputs ---
             cmd_outputs = _encode_simulate_outputs(raw.get("outputs") or [])
@@ -2802,81 +861,6 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
 
 
 @versionadded(version="0.99.0", reason="Replaces deprecated DryRunTransaction.")
-class SimulateTransaction(PGQL_QueryNode):
-    """SimulateTransaction query node.
-
-    Simulates a fully serialized transaction (BCS bytes or base64 string), returning
-    execution effects without committing to the chain.
-    """
-
-    def __init__(
-        self,
-        *,
-        tx_bytestr: bytes | str,
-        skip_checks: Optional[bool] = True,
-        do_gas_selection: Optional[bool] = False,
-    ) -> None:
-        """__init__ Initialize the SimulateTransaction query.
-
-        :param tx_bytestr: Serialized BCS bytes of a TransactionData, or base64 string of same
-        :type tx_bytestr: bytes | str
-        :param skip_checks: Whether to skip transaction checks, defaults to True
-        :type skip_checks: Optional[bool]
-        :param do_gas_selection: Whether to perform gas selection, defaults to False
-        :type do_gas_selection: Optional[bool]
-        """
-        self.tx_data = tx_bytestr
-        transaction = (
-            tx_bytestr
-            if isinstance(tx_bytestr, bytes)
-            else base64.b64decode(tx_bytestr)
-        )
-        self.transaction = sui_prot.Transaction(
-            bcs=(sui_prot.Bcs(value=transaction, name="Transaction"))
-        )
-        self.tx_skipchecks = skip_checks
-        self.tx_do_gas_selection = do_gas_selection
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-        base_obj = frag.BaseObject().fragment(schema)
-        standard_obj = frag.StandardObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
-        tx_effects = frag.StandardTxEffects().fragment(schema)
-
-        qres = (
-            schema.Query.simulateTransaction(
-                transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
-                checksEnabled=self.tx_skipchecks,
-                doGasSelection=self.tx_do_gas_selection,
-            )
-            .alias("dryRun")
-            .select(
-                results=schema.SimulationResult.outputs.select(
-                    schema.CommandResult.returnValues.select(
-                        schema.CommandOutput.value.select(
-                            schema.MoveValue.type.select(schema.MoveType.repr),
-                            schema.MoveValue.bcs,
-                        ),
-                    )
-                ),
-                transactionBlock=schema.SimulationResult.effects.select(tx_effects),
-            )
-        )
-        return dsl_gql(
-            base_obj,
-            standard_obj,
-            gas_cost,
-            tx_effects,
-            DSLQuery(qres),
-        )
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.DryRunResultGQL], None]:
-        """Return the serialization function."""
-        return pgql_type.DryRunResultGQL.from_query  # type: ignore[return-value]
-
-
 class SimulateTransactionSC(SimulateTransactionKindSC):
     """SC variant: simulates a fully serialized transaction (BCS bytes or base64 string).
 
@@ -2903,7 +887,9 @@ class SimulateTransactionSC(SimulateTransactionKindSC):
         :type do_gas_selection: Optional[bool]
         """
         transaction = (
-            tx_bytestr if isinstance(tx_bytestr, bytes) else base64.b64decode(tx_bytestr)
+            tx_bytestr
+            if isinstance(tx_bytestr, bytes)
+            else base64.b64decode(tx_bytestr)
         )
         self.transaction = sui_prot.Transaction(
             bcs=sui_prot.Bcs(value=transaction, name="TransactionData")
@@ -2985,8 +971,12 @@ class SimulateTransactionSC(SimulateTransactionKindSC):
                             address=schema.ObjectChange.address,
                             deleted=schema.ObjectChange.idDeleted,
                             created=schema.ObjectChange.idCreated,
-                            input_state=schema.ObjectChange.inputState.select(std_object),
-                            output_state=schema.ObjectChange.outputState.select(std_object),
+                            input_state=schema.ObjectChange.inputState.select(
+                                std_object
+                            ),
+                            output_state=schema.ObjectChange.outputState.select(
+                                std_object
+                            ),
                         )
                     ),
                 ),
@@ -3017,49 +1007,14 @@ class SimulateTransactionSC(SimulateTransactionKindSC):
     # encode_fn() inherited from SimulateTransactionKindSC unchanged.
 
 
-class ExecuteTransaction(PGQL_QueryNode):
-    """."""
+
+class ExecuteTransactionSC(PGQL_QueryNode):
+    """SC variant: executes a transaction and returns an ExecutedTransaction proto."""
 
     def __init__(self, *, tx_bytestr: str, sig_array: list[str]) -> None:
-        """__init__ Initialize ExecuteTransaction object."""
+        """__init__ Initialize ExecuteTransactionSC object."""
         self.tx_data: str = tx_bytestr
         self.sigs: list[str] = sig_array
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """."""
-
-        qres = schema.Mutation.executeTransaction(
-            transactionDataBcs=self.tx_data, signatures=self.sigs
-        ).select(
-            # schema.ExecutionResult.errors,
-            schema.ExecutionResult.effects.select(
-                schema.TransactionEffects.status,
-                schema.TransactionEffects.lamportVersion,
-                schema.TransactionEffects.digest,
-                schema.TransactionEffects.transaction.select(
-                    bcs=schema.Transaction.transactionBcs
-                ),
-                effects_bcs=schema.TransactionEffects.effectsBcs,
-                execution_errors=schema.TransactionEffects.executionError.select(
-                    schema.ExecutionError.abortCode,
-                    schema.ExecutionError.sourceLineNumber,
-                    schema.ExecutionError.instructionOffset,
-                    schema.ExecutionError.identifier,
-                    schema.ExecutionError.constant,
-                    schema.ExecutionError.message,
-                ),
-            ),
-        )
-        return dsl_gql(DSLMutation(qres))
-
-    @staticmethod
-    def encode_fn() -> Union[Callable[[dict], pgql_type.ExecutionResultGQL], None]:
-        """Return the serialization Execution result function."""
-        return pgql_type.ExecutionResultGQL.from_query  # type: ignore[return-value]
-
-
-class ExecuteTransactionSC(ExecuteTransaction):
-    """SC variant: executes a transaction and returns an ExecutedTransaction proto."""
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Execute transaction; fetch fields that mirror GetTransactionSC via effects.transaction."""
@@ -3084,14 +1039,18 @@ class ExecuteTransactionSC(ExecuteTransaction):
                 ),
             )
         )
-        return dsl_gql(tx_effects, exec_object, base_object, gas_cost, DSLMutation(qres))
+        return dsl_gql(
+            tx_effects, exec_object, base_object, gas_cost, DSLMutation(qres)
+        )
 
     @staticmethod
     def encode_fn() -> Callable[[dict], "sui_prot.ExecutedTransaction | None"]:
         """Return encoder mapping executeTransaction response to ExecutedTransaction proto."""
 
         def _encode(in_data: dict) -> "sui_prot.ExecutedTransaction | None":
-            effects_dict = (in_data.get("executeTransaction") or {}).get("effects") or {}
+            effects_dict = (in_data.get("executeTransaction") or {}).get(
+                "effects"
+            ) or {}
             txn_inner = effects_dict.get("transaction") or {}
             tx_dict = {**txn_inner, "effects": effects_dict}
             return _encode_executed_tx(tx_dict)
@@ -3106,8 +1065,25 @@ class ExecuteTransactionSC(ExecuteTransaction):
 # ---------------------------------------------------------------------------
 
 
-class GetCoinMetaDataSC(GetCoinMetaData):
+class GetCoinMetaDataSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL coinMetadata response to GetCoinInfoResponse proto."""
+
+    def __init__(self, *, coin_type: Optional[str] = "0x2::sui::SUI") -> None:
+        """QueryNode initializer."""
+        self.coin_type = coin_type
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build the GraphQLRequest."""
+        qres = schema.Query.coinMetadata(coinType=self.coin_type).select(
+            schema.CoinMetadata.decimals,
+            schema.CoinMetadata.name,
+            schema.CoinMetadata.symbol,
+            schema.CoinMetadata.description,
+            schema.CoinMetadata.iconUrl,
+            schema.CoinMetadata.supply,
+            schema.CoinMetadata.address,
+        )
+        return dsl_gql(DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.GetCoinInfoResponse]:
@@ -3130,8 +1106,32 @@ class GetCoinMetaDataSC(GetCoinMetaData):
         return _encode
 
 
-class GetAddressCoinBalanceSC(GetAddressCoinBalance):
+class GetAddressCoinBalanceSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL address.balance response to GetBalanceResponse proto."""
+
+    def __init__(self, *, owner: str, coin_type: Optional[str] = "0x2::sui::SUI"):
+        self.owner = owner
+        self.coin_type = coin_type
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        _QUERY = """
+              {
+              address(address:"OWNER") {
+                  balance(coinType: "COIN_TYPE") {
+                              coinType {
+                                  coinType:repr
+                              }
+                              addressBalance
+                              coinBalance
+                              totalBalance
+                          }
+                      }
+              }
+          """
+        _QUERY = _QUERY.replace("OWNER", self.owner).replace(
+            "COIN_TYPE", self.coin_type or ""
+        )
+        return gql(_QUERY)
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.GetBalanceResponse]:
@@ -3152,8 +1152,41 @@ class GetAddressCoinBalanceSC(GetAddressCoinBalance):
         return _encode
 
 
-class GetAddressCoinBalancesSC(GetAddressCoinBalances):
+class GetAddressCoinBalancesSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL address.balances response to ListBalancesResponse proto."""
+
+    def __init__(self, *, owner: str, next_page_token: bytes | None = None):
+        """QueryNode initializer.
+
+        :param owner: the owner's Sui address
+        :type owner: str
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
+        """
+        self.owner = owner
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+        qres = schema.Query.address(address=self.owner).alias("qres")
+        balance_connection = schema.Address.balances
+        if self.next_page_token:
+            balance_connection(after=self.next_page_token.decode())
+
+        pg_cursor = frag.PageCursor()
+
+        balance_connection.select(
+            cursor=schema.BalanceConnection.pageInfo.select(pg_cursor.fragment(schema)),
+            type_balances=schema.BalanceConnection.nodes.select(
+                schema.Balance.addressBalance,
+                schema.Balance.coinBalance,
+                schema.Balance.totalBalance,
+                schema.Balance.coinType.select(coin_type=schema.MoveType.repr),
+            ),
+        )
+        qres.select(owner_address=schema.Address.address, balances=balance_connection)
+
+        return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListBalancesResponse]:
@@ -3188,8 +1221,29 @@ class GetAddressCoinBalancesSC(GetAddressCoinBalances):
         return _encode
 
 
-class GetEpochSC(GetEpoch):
+class GetEpochSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL epoch response to GetEpochResponse proto."""
+
+    def __init__(self, *, epoch_id: Optional[int] = None) -> None:
+        """QueryNode initializer."""
+        self.epoch_id = epoch_id
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        qres = schema.Query.epoch
+        if self.epoch_id is not None:
+            qres(epochId=self.epoch_id)
+        qres.select(
+            schema.Epoch.epochId,
+            schema.Epoch.startTimestamp,
+            schema.Epoch.endTimestamp,
+            schema.Epoch.referenceGasPrice,
+            schema.Epoch.totalCheckpoints,
+            schema.Epoch.totalTransactions,
+            schema.Epoch.totalGasFees,
+            schema.Epoch.totalStakeRewards,
+        )
+        return dsl_gql(DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.GetEpochResponse]:
@@ -3212,8 +1266,25 @@ class GetEpochSC(GetEpoch):
         return _encode
 
 
-class GetBasicCurrentEpochInfoSC(GetBasicCurrentEpochInfo):
+class GetBasicCurrentEpochInfoSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL basic epoch response to Epoch proto."""
+
+    def __init__(self):
+        """."""
+
+    def as_document_node(self, schema):
+        """Build GraphQL DSL request."""
+        _QUERY = """
+            {
+            epoch {
+                epochId
+                referenceGasPrice
+                startTimestamp
+                endTimestamp
+            }
+            }
+        """
+        return gql(_QUERY)
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.Epoch]:
@@ -3234,8 +1305,36 @@ class GetBasicCurrentEpochInfoSC(GetBasicCurrentEpochInfo):
         return _encode
 
 
-class GetPackageVersionsSC(GetPackageVersions):
+class GetPackageVersionsSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL packageVersions response to ListPackageVersionsResponse proto."""
+
+    def __init__(
+        self,
+        *,
+        package_address: str,
+        next_page_token: bytes | None = None,
+    ) -> None:
+        """QueryNode initializer."""
+        self.package_address = package_address
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        pg_cursor = frag.PageCursor()
+        qres = schema.Query.packageVersions(address=self.package_address)
+        if self.next_page_token:
+            qres(after=self.next_page_token.decode())
+        qres.select(
+            cursor=schema.MovePackageConnection.pageInfo.select(
+                pg_cursor.fragment(schema)
+            ),
+            versions=schema.MovePackageConnection.nodes.select(
+                schema.MovePackage.address,
+                schema.MovePackage.version,
+                schema.MovePackage.digest,
+            ),
+        )
+        return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListPackageVersionsResponse]:
@@ -3261,12 +1360,16 @@ class GetPackageVersionsSC(GetPackageVersions):
         return _encode
 
 
-class GetNameServiceAddressSC(GetNameServiceAddress):
+class GetNameServiceAddressSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL suinsName response to LookupNameResponse proto.
 
     Overrides as_document_node to also select Address.address (parent only selects
     defaultSuinsName, which is insufficient to populate NameRecord.target_address).
     """
+
+    def __init__(self, *, name: str):
+        """__init__ QueryNode initializer."""
+        self.name = name
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQL DSL request selecting both address and name fields."""
@@ -3297,13 +1400,17 @@ class GetNameServiceAddressSC(GetNameServiceAddress):
         return _encode
 
 
-class GetNameServiceNamesSC(GetNameServiceNames):
+class GetNameServiceNamesSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL address response to ReverseLookupNameResponse proto.
 
     Overrides as_document_node to use clean field selection without aliases and
     to also select Address.address for populating NameRecord.target_address.
     Returns empty response when the address has no SuiNS name registered.
     """
+
+    def __init__(self, *, owner: str):
+        """QueryNode initializer."""
+        self.owner = owner
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQL DSL request selecting address and default SuiNS name."""
@@ -3406,7 +1513,9 @@ def _gql_sig_body_to_proto(body: Any) -> sui_prot.OpenSignatureBody:
     if isinstance(body, str):
         body_type = _GQL_SCALAR_MAP.get(body)
         if body_type is None:
-            raise ValueError(f"_gql_sig_body_to_proto: unrecognized scalar type '{body}'")
+            raise ValueError(
+                f"_gql_sig_body_to_proto: unrecognized scalar type '{body}'"
+            )
         return sui_prot.OpenSignatureBody(type=body_type)
     if isinstance(body, dict):
         if "vector" in body:
@@ -3417,7 +1526,9 @@ def _gql_sig_body_to_proto(body: Any) -> sui_prot.OpenSignatureBody:
         if "datatype" in body:
             dt = body["datatype"]
             type_name = f"{dt['package']}::{dt['module']}::{dt['type']}"
-            type_params = [_gql_sig_body_to_proto(p) for p in dt.get("typeParameters", [])]
+            type_params = [
+                _gql_sig_body_to_proto(p) for p in dt.get("typeParameters", [])
+            ]
             return sui_prot.OpenSignatureBody(
                 type=sui_prot.OpenSignatureBodyType.DATATYPE,
                 type_name=type_name,
@@ -3435,7 +1546,9 @@ def _gql_sig_to_proto_open_sig(sig_dict: dict) -> sui_prot.OpenSignature:
     """Map a GQL OpenMoveType.signature dict to an OpenSignature proto."""
     ref = sig_dict.get("ref")
     if ref == "&":
-        reference: Optional[sui_prot.OpenSignatureReference] = sui_prot.OpenSignatureReference.IMMUTABLE
+        reference: Optional[sui_prot.OpenSignatureReference] = (
+            sui_prot.OpenSignatureReference.IMMUTABLE
+        )
     elif ref == "&mut":
         reference = sui_prot.OpenSignatureReference.MUTABLE
     else:
@@ -3487,10 +1600,18 @@ def _encode_object_from_raw(obj_dict: dict) -> sui_prot.Object:
     if not obj_dict:
         return sui_prot.Object()
     bcs_str: Optional[str] = obj_dict.get("bcs")
-    object_bcs = sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_str)) if bcs_str else None
+    object_bcs = (
+        sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_str))
+        if bcs_str
+        else None
+    )
     owner = _owner_from_inline_frag(obj_dict.get("owner"))
     prior_tx = obj_dict.get("prior_transaction") or {}
-    prev_tx: Optional[str] = prior_tx.get("previous_transaction_digest") if isinstance(prior_tx, dict) else None
+    prev_tx: Optional[str] = (
+        prior_tx.get("previous_transaction_digest")
+        if isinstance(prior_tx, dict)
+        else None
+    )
     object_type: Optional[str] = None
     has_public_transfer: Optional[bool] = None
     contents_bcs: Optional[sui_prot.Bcs] = None
@@ -3506,7 +1627,9 @@ def _encode_object_from_raw(obj_dict: dict) -> sui_prot.Object:
                 object_type = obj_type_repr.get("object_type")
             cbcs = as_object.get("contents_bcs")
             if cbcs and object_type:
-                contents_bcs = sui_prot.Bcs(name=object_type, value=base64.b64decode(cbcs))
+                contents_bcs = sui_prot.Bcs(
+                    name=object_type, value=base64.b64decode(cbcs)
+                )
             # content (MoveValue.json) arrives as a parsed dict from the GQL scalar.
             # Wrapped as google.protobuf.Value for Object.json; balance extracted for Coin<T>.
             content = as_object.get("content")
@@ -3541,7 +1664,11 @@ def _encode_coin_from_move_obj(mo_dict: dict) -> sui_prot.Object:
         return sui_prot.Object()
     owner = _owner_from_inline_frag(mo_dict.get("owner"))
     prev_tx_info = mo_dict.get("previousTransaction") or {}
-    prev_tx: Optional[str] = prev_tx_info.get("previous_transaction") if isinstance(prev_tx_info, dict) else None
+    prev_tx: Optional[str] = (
+        prev_tx_info.get("previous_transaction")
+        if isinstance(prev_tx_info, dict)
+        else None
+    )
     contents = mo_dict.get("contents") or {}
     coin_type: Optional[str] = None
     balance_raw = None
@@ -3569,20 +1696,26 @@ def _encode_coins_list(in_data) -> sui_prot.ListOwnedObjectsResponse:
     dicts (SC auto-paging path where all pages are pre-accumulated by the client).
     """
     if isinstance(in_data, list):
-        objects: list[sui_prot.Object] = [_encode_coin_from_move_obj(c) for c in in_data]
+        objects: list[sui_prot.Object] = [
+            _encode_coin_from_move_obj(c) for c in in_data
+        ]
         return sui_prot.ListOwnedObjectsResponse(objects=objects, next_page_token=None)
     qres = in_data.get("qres", in_data)
     coins = qres.get("coins", {}) if isinstance(qres, dict) else {}
     cursor = coins.get("cursor", {}) if isinstance(coins, dict) else {}
     coin_objects = coins.get("coin_objects", []) if isinstance(coins, dict) else []
     objects = [_encode_coin_from_move_obj(c) for c in coin_objects]
-    end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
+    end_cursor: Optional[str] = (
+        cursor.get("endCursor") if isinstance(cursor, dict) else None
+    )
     next_page_token: Optional[bytes] = (
         end_cursor.encode()
         if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
         else None
     )
-    return sui_prot.ListOwnedObjectsResponse(objects=objects, next_page_token=next_page_token)
+    return sui_prot.ListOwnedObjectsResponse(
+        objects=objects, next_page_token=next_page_token
+    )
 
 
 def _encode_checkpoint_from_raw(cp_dict: dict) -> sui_prot.GetCheckpointResponse:
@@ -3605,7 +1738,9 @@ def _encode_checkpoint_from_raw(cp_dict: dict) -> sui_prot.GetCheckpointResponse
             summary=sui_prot.CheckpointSummary(
                 sequence_number=int(seq) if seq is not None else None,
                 digest=cp_dict.get("digest"),
-                total_network_transactions=int(net_txns) if net_txns is not None else None,
+                total_network_transactions=(
+                    int(net_txns) if net_txns is not None else None
+                ),
                 previous_digest=cp_dict.get("previousCheckpointDigest"),
                 timestamp=ts,
             ),
@@ -3618,14 +1753,20 @@ def _fields_to_descriptors(fields_list: list) -> list:
     result = []
     for i, f in enumerate(fields_list):
         sig_container = f.get("field_type") or {}
-        sig_dict = sig_container.get("signature") or {} if isinstance(sig_container, dict) else {}
+        sig_dict = (
+            sig_container.get("signature") or {}
+            if isinstance(sig_container, dict)
+            else {}
+        )
         body = sig_dict.get("body") if isinstance(sig_dict, dict) else None
         field_type = _gql_sig_body_to_proto(body) if body is not None else None
-        result.append(sui_prot.FieldDescriptor(
-            name=f.get("field_name"),
-            position=i,
-            type=field_type,
-        ))
+        result.append(
+            sui_prot.FieldDescriptor(
+                name=f.get("field_name"),
+                position=i,
+                type=field_type,
+            )
+        )
     return result
 
 
@@ -3636,10 +1777,18 @@ def _struct_to_datatype(
 ) -> sui_prot.DatatypeDescriptor:
     """Map a MoveStruct raw dict to a DatatypeDescriptor proto."""
     name = struct_dict.get("struct_name", "")
-    abilities = [_GQL_ABILITY_MAP[a] for a in struct_dict.get("abilities", []) if a in _GQL_ABILITY_MAP]
+    abilities = [
+        _GQL_ABILITY_MAP[a]
+        for a in struct_dict.get("abilities", [])
+        if a in _GQL_ABILITY_MAP
+    ]
     type_params = [
         sui_prot.TypeParameter(
-            constraints=[_GQL_ABILITY_MAP[c] for c in tp.get("constraints", []) if c in _GQL_ABILITY_MAP],
+            constraints=[
+                _GQL_ABILITY_MAP[c]
+                for c in tp.get("constraints", [])
+                if c in _GQL_ABILITY_MAP
+            ],
             is_phantom=bool(tp.get("isPhantom", False)),
         )
         for tp in struct_dict.get("typeParameters", [])
@@ -3665,10 +1814,18 @@ def _enum_to_datatype(
 ) -> sui_prot.DatatypeDescriptor:
     """Map a MoveEnum raw dict to a DatatypeDescriptor proto."""
     name = enum_dict.get("enum_name", "")
-    abilities = [_GQL_ABILITY_MAP[a] for a in enum_dict.get("abilities", []) if a in _GQL_ABILITY_MAP]
+    abilities = [
+        _GQL_ABILITY_MAP[a]
+        for a in enum_dict.get("abilities", [])
+        if a in _GQL_ABILITY_MAP
+    ]
     type_params = [
         sui_prot.TypeParameter(
-            constraints=[_GQL_ABILITY_MAP[c] for c in tp.get("constraints", []) if c in _GQL_ABILITY_MAP],
+            constraints=[
+                _GQL_ABILITY_MAP[c]
+                for c in tp.get("constraints", [])
+                if c in _GQL_ABILITY_MAP
+            ],
             is_phantom=bool(tp.get("isPhantom", False)),
         )
         for tp in enum_dict.get("typeParameters", [])
@@ -3699,11 +1856,17 @@ def _func_to_descriptor(func_dict: dict) -> sui_prot.FunctionDescriptor:
     """Map a MoveFunction raw dict to a FunctionDescriptor proto."""
     name = func_dict.get("function_name", "")
     vis_str = func_dict.get("visibility", "Private")
-    visibility = _GQL_VIS_MAP.get(vis_str, sui_prot.FunctionDescriptorVisibility.PRIVATE)
+    visibility = _GQL_VIS_MAP.get(
+        vis_str, sui_prot.FunctionDescriptorVisibility.PRIVATE
+    )
     is_entry = bool(func_dict.get("isEntry", False))
     type_params = [
         sui_prot.TypeParameter(
-            constraints=[_GQL_ABILITY_MAP[c] for c in tp.get("constraints", []) if c in _GQL_ABILITY_MAP],
+            constraints=[
+                _GQL_ABILITY_MAP[c]
+                for c in tp.get("constraints", [])
+                if c in _GQL_ABILITY_MAP
+            ],
             is_phantom=False,
         )
         for tp in func_dict.get("typeParameters", [])
@@ -3713,7 +1876,9 @@ def _func_to_descriptor(func_dict: dict) -> sui_prot.FunctionDescriptor:
     parameters = [
         _gql_sig_to_proto_open_sig(p["signature"])
         for p in raw_params
-        if isinstance(p, dict) and "signature" in p and not _is_tx_context_sig(p["signature"])
+        if isinstance(p, dict)
+        and "signature" in p
+        and not _is_tx_context_sig(p["signature"])
     ]
     returns = [
         _gql_sig_to_proto_open_sig(r["signature"])
@@ -3735,10 +1900,24 @@ def _module_raw_to_proto(mod_dict: dict, package_id: str) -> sui_prot.Module:
     module_name = mod_dict.get("module_name", "")
     struct_list_data = mod_dict.get("structure_list") or {}
     func_list_data = mod_dict.get("function_list") or {}
-    module_structures = struct_list_data.get("module_structures", []) if isinstance(struct_list_data, dict) else []
-    module_functions = func_list_data.get("module_functions", []) if isinstance(func_list_data, dict) else []
-    datatypes = [_struct_to_datatype(s, package_id, module_name) for s in module_structures if isinstance(s, dict)]
-    functions = [_func_to_descriptor(f) for f in module_functions if isinstance(f, dict)]
+    module_structures = (
+        struct_list_data.get("module_structures", [])
+        if isinstance(struct_list_data, dict)
+        else []
+    )
+    module_functions = (
+        func_list_data.get("module_functions", [])
+        if isinstance(func_list_data, dict)
+        else []
+    )
+    datatypes = [
+        _struct_to_datatype(s, package_id, module_name)
+        for s in module_structures
+        if isinstance(s, dict)
+    ]
+    functions = [
+        _func_to_descriptor(f) for f in module_functions if isinstance(f, dict)
+    ]
     return sui_prot.Module(
         name=module_name,
         datatypes=datatypes,
@@ -3751,9 +1930,31 @@ def _module_raw_to_proto(mod_dict: dict, package_id: str) -> sui_prot.Module:
 # ---------------------------------------------------------------------------
 
 
-class GetObjectSC(GetObject):
+class GetObjectSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL object response to Object proto."""
 
+    def __init__(self, *, object_id: str):
+        """QueryNode initializer.
+
+        :param object_id: The object id hex string with 0x prefix
+        :type object_id: str
+        """
+        self.object_id = TypeValidator.check_object_id(object_id)
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest"""
+        std_object = frag.StandardObject()
+        base_object = frag.BaseObject()
+        return dsl_gql(
+            std_object.fragment(schema),
+            base_object.fragment(schema),
+            DSLQuery(
+                object=schema.Query.object(address=self.object_id).select(
+                    std_object.fragment(schema),
+                )
+            ),
+        )
+
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.Object]:
         """Return deserializer producing Object from GQL object dict."""
@@ -3765,9 +1966,37 @@ class GetObjectSC(GetObject):
         return _encode
 
 
-class GetPastObjectSC(GetPastObject):
+class GetPastObjectSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL past object response to Object proto."""
 
+    def __init__(self, *, object_id: str, version: int):
+        """QueryNode initializer
+
+        :param object_id: The Sui object_id hex string with 0x prefix
+        :type object_id: str
+        :param version: The version of the object to fetch.
+        :type version: int
+        """
+        self.object_id = TypeValidator.check_object_id(object_id)
+        self.version = version
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+
+        return dsl_gql(
+            std_object,
+            base_object,
+            DSLQuery(
+                object=schema.Query.object(
+                    address=self.object_id, version=self.version
+                ).select(
+                    std_object,
+                )
+            ),
+        )
+
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.Object]:
         """Return deserializer producing Object from GQL object dict."""
@@ -3779,8 +2008,20 @@ class GetPastObjectSC(GetPastObject):
         return _encode
 
 
-class GetMoveDataTypeSC(GetMoveDataType):
+class GetMoveDataTypeSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL datatype response to GetDatatypeResponse proto."""
+
+    def __init__(
+        self,
+        *,
+        package: str,
+        module_name: str,
+        data_type_name: str,
+    ) -> None:
+        """QueryNode initializer."""
+        self.package = package
+        self.module = module_name
+        self.data_type_name = data_type_name
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Use MoveStructureSC/MoveEnumSC fragments to include typeParameters and isPhantom."""
@@ -3820,8 +2061,35 @@ class GetMoveDataTypeSC(GetMoveDataType):
         return _encode
 
 
-class GetStructureSC(GetStructure):
+class GetStructureSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL struct response to GetDatatypeResponse proto."""
+
+    def __init__(
+        self,
+        *,
+        package: str,
+        module_name: str,
+        structure_name: str,
+    ) -> None:
+        """QueryNode initializer."""
+        self.package = package
+        self.module = module_name
+        self.struct = structure_name
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        struc = frag.MoveStructure()
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.struct(name=self.struct).select(
+                        struc.fragment(schema)
+                    )
+                )
+            )
+        )
+        return dsl_gql(struc.fragment(schema), DSLQuery(qres))
 
     def encode_fn(self) -> Callable[[dict], sui_prot.GetDatatypeResponse]:
         """Return deserializer producing GetDatatypeResponse from GQL struct dict."""
@@ -3845,8 +2113,27 @@ class GetStructureSC(GetStructure):
 # ---------------------------------------------------------------------------
 
 
-class GetFunctionSC(GetFunction):
+class GetFunctionSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL function response to GetFunctionResponse proto."""
+
+    def __init__(self, *, package: str, module_name: str, function_name: str) -> None:
+        """QueryNode initializer."""
+        self.package = package
+        self.module = module_name
+        self.function = function_name
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        func = frag.MoveFunction().fragment(schema)
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(
+                    schema.MoveModule.function(name=self.function).select(func)
+                )
+            )
+        )
+        return dsl_gql(func, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.GetFunctionResponse]:
@@ -3867,8 +2154,48 @@ class GetFunctionSC(GetFunction):
 # ---------------------------------------------------------------------------
 
 
-class GetCoinsSC(GetCoins):
+class GetCoinsSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL coins response to ListOwnedObjectsResponse proto."""
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        coin_type: Optional[str] = "0x2::coin::Coin<0x2::sui::SUI>",
+        next_page_token: bytes | None = None,
+    ):
+        """QueryNode initializer.
+
+        :param owner: Owner's Sui address
+        :type owner: str
+        :param coin_type: The fully qualified coin type to use in filtering, defaults to "0x2::coin::Coin<0x2::sui::SUI>"
+        :type coin_type: str, optional
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
+        """
+        self.owner = owner
+        self.coin_type = coin_type
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+        qres = schema.Query.address(address=self.owner).alias("qres")
+        coin_connection = schema.Address.objects(filter={"type": self.coin_type}).alias(
+            "coins"
+        )
+        if self.next_page_token:
+            coin_connection(after=self.next_page_token.decode())
+
+        std_coin = frag.StandardCoin()
+        pg_cursor = frag.PageCursor()
+
+        coin_connection.select(std_coin.fragment(schema))
+        qres.select(coin_connection)
+        return dsl_gql(
+            std_coin.fragment(schema),
+            pg_cursor.fragment(schema),
+            DSLQuery(qres),
+        )
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
@@ -3876,18 +2203,20 @@ class GetCoinsSC(GetCoins):
         return _encode_coins_list
 
 
-class GetGasSC(GetGas):
+class GetGasSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL SUI gas coins response to ListOwnedObjectsResponse proto."""
 
     def __init__(self, *, owner: str, next_page_token: bytes | None = None, **kwargs):
-        super().__init__(owner=owner, next_page_token=next_page_token)
+        self.owner = owner
+        self.coin_type = "0x2::coin::Coin<0x2::sui::SUI>"
+        self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest with optional paging cursor."""
         qres = schema.Query.address(address=self.owner).alias("qres")
-        coin_connection = schema.Address.objects(
-            filter={"type": self.coin_type}
-        ).alias("coins")
+        coin_connection = schema.Address.objects(filter={"type": self.coin_type}).alias(
+            "coins"
+        )
         if self.next_page_token:
             coin_connection(after=self.next_page_token.decode())
 
@@ -3908,8 +2237,39 @@ class GetGasSC(GetGas):
         return _encode_coins_list
 
 
-class GetDelegatedStakesSC(GetDelegatedStakes):
+class GetDelegatedStakesSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL staked coins response to ListOwnedObjectsResponse proto."""
+
+    def __init__(self, owner: str, next_page_token: bytes | None = None):
+        """QueryNode initializer.
+
+        :param owner: Owner's Sui address
+        :type owner: str
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
+        """
+        self.owner = owner
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
+        if self.next_page_token:
+            qres = schema.Query.objects(
+                after=self.next_page_token.decode(),
+                filter={"owner": self.owner, "type": "0x3::staking_pool::StakedSui"},
+            )
+        else:
+            qres = schema.Query.objects(
+                filter={"owner": self.owner, "type": "0x3::staking_pool::StakedSui"}
+            )
+        # Build fragment
+        pg_cursor = frag.PageCursor().fragment(schema)
+        bs_coin = frag.BaseSuiObjectForCoin().fragment(schema)
+        qres.select(
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            staked_coin=schema.ObjectConnection.nodes.select(bs_coin),
+        )
+        return dsl_gql(pg_cursor, bs_coin, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
@@ -3924,7 +2284,9 @@ class GetDelegatedStakesSC(GetDelegatedStakes):
                 for sc in staked_coins
                 if isinstance(sc, dict)
             ]
-            end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
+            end_cursor: Optional[str] = (
+                cursor.get("endCursor") if isinstance(cursor, dict) else None
+            )
             next_page_token: Optional[bytes] = (
                 end_cursor.encode()
                 if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
@@ -3938,8 +2300,40 @@ class GetDelegatedStakesSC(GetDelegatedStakes):
         return _encode
 
 
-class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
+class GetObjectsOwnedByAddressSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL owned objects response to ListOwnedObjectsResponse proto."""
+
+    def __init__(self, *, owner: str, next_page_token: bytes | None = None):
+        """QueryNode initializer.
+
+        :param owner: Owner's Sui address
+        :type owner: str
+        :param next_page_token: page cursor bytes to advance query, defaults to None
+        :type next_page_token: bytes | None
+        """
+        self.owner = owner
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+        qres = schema.Query.objects(filter={"owner": self.owner})
+        if self.next_page_token:
+            qres(after=self.next_page_token.decode())
+
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        qres.select(
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(std_object),
+        )
+
+        return dsl_gql(
+            pg_cursor,
+            std_object,
+            base_object,
+            DSLQuery(qres),
+        )
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
@@ -3950,11 +2344,11 @@ class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
             cursor = objects_data.get("cursor") or {}
             obj_list = objects_data.get("objects_data", [])
             objects: list[sui_prot.Object] = [
-                _encode_object_from_raw(o)
-                for o in obj_list
-                if isinstance(o, dict)
+                _encode_object_from_raw(o) for o in obj_list if isinstance(o, dict)
             ]
-            end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
+            end_cursor: Optional[str] = (
+                cursor.get("endCursor") if isinstance(cursor, dict) else None
+            )
             next_page_token: Optional[bytes] = (
                 end_cursor.encode()
                 if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
@@ -3973,8 +2367,37 @@ class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
 # ---------------------------------------------------------------------------
 
 
-class GetMultipleObjectsSC(GetMultipleObjects):
+class GetMultipleObjectsSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL multi-object response to BatchGetObjectsResponse proto."""
+
+    def __init__(
+        self,
+        *,
+        object_ids: list[str],
+    ):
+        """QueryNode initializer.
+
+        :param object_ids: List of Sui object_ids hex string prefixed with 0x
+        :type object_ids: list[str]
+        :param next_page: pgql_type.PagingCursor to advance query, defaults to None
+        :type next_page: pgql_type.PagingCursor
+        """
+        self.object_ids = TypeValidator.check_object_ids(object_ids)
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest."""
+        obj_ids = [{"address": cid} for cid in self.object_ids]
+        qres = schema.Query.multiGetObjects(keys=obj_ids)
+
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        qres.select(std_object)
+
+        return dsl_gql(
+            std_object,
+            base_object,
+            DSLQuery(qres),
+        )
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.BatchGetObjectsResponse]:
@@ -3982,17 +2405,56 @@ class GetMultipleObjectsSC(GetMultipleObjects):
 
         def _encode(in_data: dict) -> sui_prot.BatchGetObjectsResponse:
             obj_list = in_data.get("multiGetObjects", [])
-            return sui_prot.BatchGetObjectsResponse(objects=[
-                sui_prot.GetObjectResult(object=_encode_object_from_raw(o))
-                for o in obj_list
-                if isinstance(o, dict)
-            ])
+            return sui_prot.BatchGetObjectsResponse(
+                objects=[
+                    sui_prot.GetObjectResult(object=_encode_object_from_raw(o))
+                    for o in obj_list
+                    if isinstance(o, dict)
+                ]
+            )
 
         return _encode
 
 
-class GetMultipleVersionedObjectsSC(GetMultipleVersionedObjects):
-    """SC variant: encode_fn maps GQL multi-versioned response to BatchGetObjectsResponse proto."""
+class GetMultipleVersionedObjectsSC(PGQL_QueryNode):
+    """GetMultipleVersionedObjectsSC When executed, return the object information for a specified version.
+
+    Note there is no software-level guarantee/SLA that objects with past versions can be retrieved by this API,
+    even if the object and version exists/existed. The result may vary across nodes depending on their pruning
+    policies.
+    """
+
+    def __init__(self, *, for_versions: list[dict[str, int]]):
+        """QueryNode initializer to fetch past object information for a list of object keys.
+
+        Where each ``dict`` entry must have the following keys::
+
+            {
+                "address": str,  # Object id
+                "version": int   # Version to fetch
+            }
+
+        :param for_versions: The list of object and version dictionaries
+        :type for_versions: list[dict]
+        """
+
+        self.version_list = for_versions
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+
+        return dsl_gql(
+            std_object,
+            base_object,
+            # pg_cursor,
+            DSLQuery(
+                schema.Query.multiGetObjects(keys=self.version_list).select(
+                    std_object,
+                )
+            ),
+        )
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.BatchGetObjectsResponse]:
@@ -4000,11 +2462,13 @@ class GetMultipleVersionedObjectsSC(GetMultipleVersionedObjects):
 
         def _encode(in_data: dict) -> sui_prot.BatchGetObjectsResponse:
             obj_list = in_data.get("multiGetObjects", [])
-            return sui_prot.BatchGetObjectsResponse(objects=[
-                sui_prot.GetObjectResult(object=_encode_object_from_raw(o))
-                for o in obj_list
-                if isinstance(o, dict)
-            ])
+            return sui_prot.BatchGetObjectsResponse(
+                objects=[
+                    sui_prot.GetObjectResult(object=_encode_object_from_raw(o))
+                    for o in obj_list
+                    if isinstance(o, dict)
+                ]
+            )
 
         return _encode
 
@@ -4014,8 +2478,20 @@ class GetMultipleVersionedObjectsSC(GetMultipleVersionedObjects):
 # ---------------------------------------------------------------------------
 
 
-class GetLatestCheckpointSequenceSC(GetLatestCheckpointSequence):
+class GetLatestCheckpointSequenceSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL checkpoints response to GetCheckpointResponse proto."""
+
+    def __init__(self):
+        """__init__ QueryNode initializer."""
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
+        std_checkpoint = frag.StandardCheckpoint().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        qres = schema.Query.checkpoints(last=1).select(
+            schema.CheckpointConnection.nodes.select(std_checkpoint)
+        )
+        return dsl_gql(pg_cursor, std_checkpoint, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.GetCheckpointResponse]:
@@ -4031,8 +2507,27 @@ class GetLatestCheckpointSequenceSC(GetLatestCheckpointSequence):
         return _encode
 
 
-class GetCheckpointBySequenceSC(GetCheckpointBySequence):
+class GetCheckpointBySequenceSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL checkpoint response to GetCheckpointResponse proto."""
+
+    def __init__(self, *, sequence_number: int):
+        """__init__ QueryNode initializer.
+
+        :param sequence_number: Checkpoint sequence number
+        :type cp_seq: int
+        """
+        self.sequence_number = sequence_number
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQL DSL request."""
+        std_checkpoint = frag.StandardCheckpoint()
+        pg_cursor = frag.PageCursor()
+        qres = schema.Query.checkpoint(sequenceNumber=self.sequence_number).select(
+            std_checkpoint.fragment(schema)
+        )
+        return dsl_gql(
+            pg_cursor.fragment(schema), std_checkpoint.fragment(schema), DSLQuery(qres)
+        )
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.GetCheckpointResponse]:
@@ -4050,8 +2545,33 @@ class GetCheckpointBySequenceSC(GetCheckpointBySequence):
 # ---------------------------------------------------------------------------
 
 
-class GetModuleSC(GetModule):
+class GetModuleSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL module response to Module proto."""
+
+    def __init__(self, *, package: str, module_name: str) -> None:
+        """QueryNode initializer."""
+        self.package = package
+        self.module = module_name
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """."""
+        func = frag.MoveFunction().fragment(schema)
+        struc = frag.MoveStructure().fragment(schema)
+        mod = frag.MoveModule().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+
+        qres = schema.Query.object(address=self.package).select(
+            schema.Object.asMovePackage.select(
+                schema.MovePackage.module(name=self.module).select(mod)
+            )
+        )
+        return dsl_gql(
+            pg_cursor,
+            func,
+            struc,
+            mod,
+            DSLQuery(qres),
+        )
 
     def encode_fn(self) -> Callable[[dict], sui_prot.Module]:
         """Return deserializer producing Module from GQL module dict."""
@@ -4067,12 +2587,12 @@ class GetModuleSC(GetModule):
         return _encode
 
 
-class GetPackageSC(GetPackage):
+class GetPackageSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL package response to PackageModulesResult proto."""
 
     def __init__(self, *, package: str, next_page_token: bytes | None = None, **kwargs):
         """Init with bytes-based cursor."""
-        super().__init__(package=package)
+        self.package = package
         self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
@@ -4091,7 +2611,9 @@ class GetPackageSC(GetPackage):
                 schema.MovePackage.address.alias("package_id"),
                 schema.MovePackage.version.alias("package_version"),
                 mod_q.select(
-                    schema.MoveModuleConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                    schema.MoveModuleConnection.pageInfo.select(pg_cursor).alias(
+                        "cursor"
+                    ),
                     schema.MoveModuleConnection.nodes.select(mod),
                 ),
             )
@@ -4116,11 +2638,17 @@ class GetPackageSC(GetPackage):
             end_cursor = cursor.get("endCursor")
             has_next = cursor.get("hasNextPage", False)
             next_token = end_cursor.encode() if has_next and end_cursor else None
-            modules = [_module_raw_to_proto(m, package_id) for m in nodes if isinstance(m, dict)]
+            modules = [
+                _module_raw_to_proto(m, package_id)
+                for m in nodes
+                if isinstance(m, dict)
+            ]
             return _rn.PackageModulesResult(
                 package=sui_prot.Package(
                     storage_id=package_id,
-                    version=int(package_version) if package_version is not None else None,
+                    version=(
+                        int(package_version) if package_version is not None else None
+                    ),
                 ),
                 modules=modules,
                 next_page_token=next_token,
@@ -4134,12 +2662,15 @@ class GetPackageSC(GetPackage):
 # ---------------------------------------------------------------------------
 
 
-class GetStructuresSC(GetStructures):
+class GetStructuresSC(PGQL_QueryNode):
     """SC variant: encode_fn maps one GQL page to MoveStructuresGRPC with next_page_token."""
 
-    def __init__(self, *, package: str, module_name: str, next_page_token: bytes | None = None):
+    def __init__(
+        self, *, package: str, module_name: str, next_page_token: bytes | None = None
+    ):
         """Init with bytes-based cursor."""
-        super().__init__(package=package, module_name=module_name)
+        self.package = package
+        self.module = module_name
         self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
@@ -4154,7 +2685,9 @@ class GetStructuresSC(GetStructures):
             schema.Object.asMovePackage.select(
                 schema.MovePackage.module(name=self.module).select(
                     struct_q.select(
-                        schema.MoveStructConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                        schema.MoveStructConnection.pageInfo.select(pg_cursor).alias(
+                            "cursor"
+                        ),
                         schema.MoveStructConnection.nodes.select(struc),
                     )
                 )
@@ -4168,7 +2701,9 @@ class GetStructuresSC(GetStructures):
         module_name = self.module
 
         def _encode(in_data: dict) -> "_rn.MoveStructuresGRPC":
-            mod = ((in_data.get("object") or {}).get("asMovePackage") or {}).get("module") or {}
+            mod = ((in_data.get("object") or {}).get("asMovePackage") or {}).get(
+                "module"
+            ) or {}
             structs_conn = mod.get("structs") or {}
             cursor = structs_conn.get("cursor") or {}
             nodes = structs_conn.get("nodes") or []
@@ -4187,12 +2722,15 @@ class GetStructuresSC(GetStructures):
         return _encode
 
 
-class GetFunctionsSC(GetFunctions):
+class GetFunctionsSC(PGQL_QueryNode):
     """SC variant: encode_fn maps one GQL page to MoveFunctionsGRPC with next_page_token."""
 
-    def __init__(self, *, package: str, module_name: str, next_page_token: bytes | None = None):
+    def __init__(
+        self, *, package: str, module_name: str, next_page_token: bytes | None = None
+    ):
         """Init with bytes-based cursor."""
-        super().__init__(package=package, module_name=module_name)
+        self.package = package
+        self.module = module_name
         self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
@@ -4207,7 +2745,9 @@ class GetFunctionsSC(GetFunctions):
             schema.Object.asMovePackage.select(
                 schema.MovePackage.module(name=self.module).select(
                     func_q.select(
-                        schema.MoveFunctionConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                        schema.MoveFunctionConnection.pageInfo.select(pg_cursor).alias(
+                            "cursor"
+                        ),
                         schema.MoveFunctionConnection.nodes.select(func),
                     )
                 )
@@ -4220,7 +2760,9 @@ class GetFunctionsSC(GetFunctions):
         """Return deserializer producing MoveFunctionsGRPC from one GQL page dict."""
 
         def _encode(in_data: dict) -> "_rn.MoveFunctionsGRPC":
-            mod = ((in_data.get("object") or {}).get("asMovePackage") or {}).get("module") or {}
+            mod = ((in_data.get("object") or {}).get("asMovePackage") or {}).get(
+                "module"
+            ) or {}
             funcs_conn = mod.get("functions") or {}
             cursor = funcs_conn.get("cursor") or {}
             nodes = funcs_conn.get("nodes") or []
@@ -4229,9 +2771,7 @@ class GetFunctionsSC(GetFunctions):
             next_token = end_cursor.encode() if has_next and end_cursor else None
             return _rn.MoveFunctionsGRPC(
                 functions=[
-                    _func_to_descriptor(n)
-                    for n in nodes
-                    if isinstance(n, dict)
+                    _func_to_descriptor(n) for n in nodes if isinstance(n, dict)
                 ],
                 next_page_token=next_token,
             )
@@ -4244,8 +2784,64 @@ class GetFunctionsSC(GetFunctions):
 # ---------------------------------------------------------------------------
 
 
-class GetDynamicFieldsSC(GetDynamicFields):
+class GetDynamicFieldsSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL dynamic fields response to ListDynamicFieldsResponse proto."""
+
+    def __init__(
+        self,
+        *,
+        object_id: str,
+        next_page_token: bytes | None = None,
+    ) -> None:
+        """QueryNode initializer."""
+        self.object_id = object_id
+        self.next_page_token = next_page_token
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Return a query for dynamic fields."""
+        qres = schema.Query.object(address=self.object_id)
+        qres = qres.select(
+            schema.Object.address.alias("parent_object_id"), schema.Object.version
+        )
+        dfield_connection = schema.Object.dynamicFields
+        if self.next_page_token:
+            dfield_connection(after=self.next_page_token.decode())
+
+        pg_cursor = frag.PageCursor().fragment(schema)
+        dfield_connection.select(
+            cursor=schema.DynamicFieldConnection.pageInfo.select(pg_cursor),
+            dynamic_fields=schema.DynamicFieldConnection.nodes.select(
+                schema.DynamicField.name.select(
+                    name_type=schema.MoveValue.type.select(
+                        name_layout=schema.MoveType.layout,
+                    ),
+                    name_data=schema.MoveValue.json,
+                ),
+                field_kind=DSLMetaField("__typename"),
+                field_data=schema.DynamicField.value.select(
+                    DSLInlineFragment()
+                    .on(schema.MoveObject)
+                    .select(
+                        schema.MoveObject.address,
+                        schema.MoveObject.version,
+                        schema.MoveObject.digest,
+                        data_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.MoveValue)
+                    .select(
+                        object_type=schema.MoveValue.type.select(
+                            schema.MoveType.layout
+                        ),
+                        data_kind=DSLMetaField("__typename"),
+                    ),
+                ),
+            ),
+        )
+        return dsl_gql(
+            pg_cursor,
+            DSLQuery(qres.select(dfield_connection)),
+        )
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListDynamicFieldsResponse]:
@@ -4271,20 +2867,26 @@ class GetDynamicFieldsSC(GetDynamicFields):
                 field_data = node.get("field_data") or {}
                 data_kind = field_data.get("data_kind", "")
                 if data_kind == "MoveObject":
-                    fields.append(sui_prot.DynamicField(
-                        kind=kind,
-                        parent=parent_id,
-                        child_id=field_data.get("address"),
-                    ))
+                    fields.append(
+                        sui_prot.DynamicField(
+                            kind=kind,
+                            parent=parent_id,
+                            child_id=field_data.get("address"),
+                        )
+                    )
                 else:
                     obj_type = field_data.get("object_type") or {}
-                    fields.append(sui_prot.DynamicField(
-                        kind=kind,
-                        parent=parent_id,
-                        value_type=(obj_type.get("layout")),
-                    ))
+                    fields.append(
+                        sui_prot.DynamicField(
+                            kind=kind,
+                            parent=parent_id,
+                            value_type=(obj_type.get("layout")),
+                        )
+                    )
 
-            end_cursor: Optional[str] = cursor.get("endCursor") if isinstance(cursor, dict) else None
+            end_cursor: Optional[str] = (
+                cursor.get("endCursor") if isinstance(cursor, dict) else None
+            )
             next_page_token: Optional[bytes] = (
                 end_cursor.encode()
                 if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
@@ -4298,8 +2900,9 @@ class GetDynamicFieldsSC(GetDynamicFields):
         return _encode
 
 
-class GetChainIdentifier(PGQL_QueryNode):
-    """Query the chain identifier (network genesis checkpoint digest)."""
+
+class GetChainIdentifierSC(PGQL_QueryNode):
+    """SC variant: encode_fn returns chain identifier as plain str."""
 
     def __init__(self) -> None:
         """."""
@@ -4307,19 +2910,6 @@ class GetChainIdentifier(PGQL_QueryNode):
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQL DSL request."""
         return gql("{ chainIdentifier }")
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], str]:
-        """Return deserializer extracting chain identifier string."""
-
-        def _encode(in_data: dict) -> str:
-            return in_data.get("chainIdentifier", "")
-
-        return _encode
-
-
-class GetChainIdentifierSC(GetChainIdentifier):
-    """SC variant: encode_fn returns chain identifier as plain str."""
 
     @staticmethod
     def encode_fn() -> Callable[[dict], str]:
@@ -4361,7 +2951,9 @@ def _bcs_validator_to_proto(bcs_v: "sui_system_bcs.Validator") -> sui_prot.Valid
     )
 
 
-def _bcs_system_state_to_proto(bcs_ss: "sui_system_bcs.SuiSystemStateInnerV2") -> sui_prot.SystemState:
+def _bcs_system_state_to_proto(
+    bcs_ss: "sui_system_bcs.SuiSystemStateInnerV2",
+) -> sui_prot.SystemState:
     """Build sui_prot.SystemState from a deserialized sui_system_bcs.SuiSystemStateInnerV2."""
     params = bcs_ss.parameters
     system_parameters = sui_prot.SystemParameters(
@@ -4405,8 +2997,11 @@ def _bcs_system_state_to_proto(bcs_ss: "sui_system_bcs.SuiSystemStateInnerV2") -
     )
 
 
-def _encode_validator_from_gql(v: dict, *, name_key: str = "validator_name", address_key: str = "validator_address") -> sui_prot.Validator:
+def _encode_validator_from_gql(
+    v: dict, *, name_key: str = "validator_name", address_key: str = "validator_address"
+) -> sui_prot.Validator:
     """Build a sui_prot.Validator from a GQL validator dict."""
+
     def _int(val):
         return int(val) if val is not None else None
 
@@ -4436,8 +3031,18 @@ def _encode_validator_from_gql(v: dict, *, name_key: str = "validator_name", add
     )
 
 
-class GetLatestSuiSystemStateSC(GetLatestSuiSystemState):
+class GetLatestSuiSystemStateSC(PGQL_QueryNode):
     """SC variant: inherits BCS query from base; decodes systemState.bcs to SystemState proto."""
+
+    def __init__(self) -> None:
+        """QueryNode initializer."""
+
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        """Build GraphQLRequest using BCS system-state path."""
+        qres = schema.Query.epoch.select(
+            schema.Epoch.systemState.select(schema.MoveValue.bcs)
+        )
+        return dsl_gql(DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.SystemState]:
@@ -4454,25 +3059,28 @@ class GetLatestSuiSystemStateSC(GetLatestSuiSystemState):
         return _encode
 
 
-class GetCurrentValidatorsSC(GetCurrentValidators):
+class GetCurrentValidatorsSC(PGQL_QueryNode):
     """SC variant: encode_fn maps one GQL page to ValidatorsResult with next_page_token."""
 
     def __init__(self, next_page_token: bytes | None = None):
         """QueryNode initializer."""
-        super().__init__()
         self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build request using bytes cursor for validators paging."""
         pg_cursor = frag.PageCursor().fragment(schema)
         if self.next_page_token:
-            active_vals = schema.ValidatorSet.activeValidators(after=self.next_page_token.decode())
+            active_vals = schema.ValidatorSet.activeValidators(
+                after=self.next_page_token.decode()
+            )
         else:
             active_vals = schema.ValidatorSet.activeValidators
         qres = schema.Query.epoch.select(
             schema.Epoch.validatorSet.select(
                 active_vals.select(
-                    schema.ValidatorConnection.pageInfo.select(pg_cursor).alias("cursor"),
+                    schema.ValidatorConnection.pageInfo.select(pg_cursor).alias(
+                        "cursor"
+                    ),
                     schema.ValidatorConnection.nodes.select(
                         schema.Validator.contents.select(schema.MoveValue.bcs)
                     ),
@@ -4486,9 +3094,9 @@ class GetCurrentValidatorsSC(GetCurrentValidators):
         """Decode one GQL page of BCS validator blobs to ValidatorsResult."""
 
         def _encode(in_data: dict) -> "_rn.ValidatorsResult":
-            active_conn = (
-                (in_data.get("epoch") or {}).get("validatorSet") or {}
-            ).get("activeValidators") or {}
+            active_conn = ((in_data.get("epoch") or {}).get("validatorSet") or {}).get(
+                "activeValidators"
+            ) or {}
             cursor = active_conn.get("cursor") or {}
             nodes = active_conn.get("nodes") or []
             end_cursor = cursor.get("endCursor")
@@ -4544,17 +3152,25 @@ class VerifySignatureSC(PGQL_QueryNode):
         if not author:
             raise ValueError("VerifySignatureSC: author is required (GQL constraint)")
         if not message:
-            raise ValueError("VerifySignatureSC: message must be a non-empty base64 string")
+            raise ValueError(
+                "VerifySignatureSC: message must be a non-empty base64 string"
+            )
         if not signature:
-            raise ValueError("VerifySignatureSC: signature must be a non-empty base64 string")
+            raise ValueError(
+                "VerifySignatureSC: signature must be a non-empty base64 string"
+            )
         try:
             base64.b64decode(message, validate=True)
         except Exception as exc:
-            raise ValueError(f"VerifySignatureSC: message is not valid base64: {exc}") from exc
+            raise ValueError(
+                f"VerifySignatureSC: message is not valid base64: {exc}"
+            ) from exc
         try:
             base64.b64decode(signature, validate=True)
         except Exception as exc:
-            raise ValueError(f"VerifySignatureSC: signature is not valid base64: {exc}") from exc
+            raise ValueError(
+                f"VerifySignatureSC: signature is not valid base64: {exc}"
+            ) from exc
         self.intent = intent
         self.message = message
         self.signature = signature
@@ -4576,7 +3192,7 @@ class VerifySignatureSC(PGQL_QueryNode):
 
         def _encode(data: dict) -> sui_prot.VerifySignatureResponse:
             errors = data.get("errors") or []
-            verify = (data.get("verifySignature") or {})
+            verify = data.get("verifySignature") or {}
             success = verify.get("success")
             reason: str | None = None
             if errors:
@@ -4593,17 +3209,25 @@ class VerifySignatureSC(PGQL_QueryNode):
 def _owner_from_flat(f: dict) -> "sui_prot.Owner | None":
     kind = f.get("obj_owner_kind")
     if kind == "AddressOwner":
-        return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address=f.get("address"))
+        return sui_prot.Owner(
+            kind=sui_prot.OwnerOwnerKind.ADDRESS, address=f.get("address")
+        )
     if kind == "Shared":
-        return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=f.get("initial_version"))
+        return sui_prot.Owner(
+            kind=sui_prot.OwnerOwnerKind.SHARED, version=f.get("initial_version")
+        )
     if kind == "Immutable":
         return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.IMMUTABLE)
     if kind == "ObjectOwner":
-        return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.OBJECT, address=f.get("address"))
+        return sui_prot.Owner(
+            kind=sui_prot.OwnerOwnerKind.OBJECT, address=f.get("address")
+        )
     return None
 
 
-def _encode_simulate_object_changes(eff: dict) -> "tuple[list[sui_prot.Object], dict[str, str]]":
+def _encode_simulate_object_changes(
+    eff: dict,
+) -> "tuple[list[sui_prot.Object], dict[str, str]]":
     object_type_map: dict[str, str] = {}
     objects: list[sui_prot.Object] = []
     for node in (eff.get("object_changes") or {}).get("nodes") or []:
@@ -4613,7 +3237,9 @@ def _encode_simulate_object_changes(eff: dict) -> "tuple[list[sui_prot.Object], 
             if isinstance(obj_node, dict) and addr and addr not in object_type_map:
                 flat: dict = {}
                 pgql_type._fast_flat(obj_node, flat)
-                obj_type = flat.get("object_type") or ("package" if obj_node.get("as_move_package") else None)
+                obj_type = flat.get("object_type") or (
+                    "package" if obj_node.get("as_move_package") else None
+                )
                 if obj_type:
                     object_type_map[addr] = obj_type
 
@@ -4621,11 +3247,19 @@ def _encode_simulate_object_changes(eff: dict) -> "tuple[list[sui_prot.Object], 
         if out:
             flat_out: dict = {}
             pgql_type._fast_flat(out, flat_out)
-            out_type = flat_out.get("object_type") or ("package" if out.get("as_move_package") else None)
+            out_type = flat_out.get("object_type") or (
+                "package" if out.get("as_move_package") else None
+            )
             bcs_b64 = flat_out.get("bcs")
             contents_bcs_b64 = flat_out.get("contents_bcs")
-            obj_json = ((out.get("as_move_content") or {}).get("as_object") or {}).get("content")
-            obj_balance = int(obj_json["balance"]) if isinstance(obj_json, dict) and "balance" in obj_json else None
+            obj_json = ((out.get("as_move_content") or {}).get("as_object") or {}).get(
+                "content"
+            )
+            obj_balance = (
+                int(obj_json["balance"])
+                if isinstance(obj_json, dict) and "balance" in obj_json
+                else None
+            )
             objects.append(
                 sui_prot.Object(
                     object_id=flat_out.get("object_id"),
@@ -4633,13 +3267,31 @@ def _encode_simulate_object_changes(eff: dict) -> "tuple[list[sui_prot.Object], 
                     digest=flat_out.get("object_digest"),
                     object_type=out_type,
                     owner=_owner_from_flat(flat_out),
-                    bcs=sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_b64)) if bcs_b64 else None,
+                    bcs=(
+                        sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_b64))
+                        if bcs_b64
+                        else None
+                    ),
                     previous_transaction=flat_out.get("previous_transaction_digest"),
                     has_public_transfer=flat_out.get("has_public_transfer"),
-                    storage_rebate=int(flat_out.get("storage_rebate")) if flat_out.get("storage_rebate") is not None else None,
-                    json=_google_protobuf.Value.from_dict(obj_json) if obj_json is not None else None,
+                    storage_rebate=(
+                        int(flat_out.get("storage_rebate"))
+                        if flat_out.get("storage_rebate") is not None
+                        else None
+                    ),
+                    json=(
+                        _google_protobuf.Value.from_dict(obj_json)
+                        if obj_json is not None
+                        else None
+                    ),
                     balance=obj_balance,
-                    contents=sui_prot.Bcs(name=out_type, value=base64.b64decode(contents_bcs_b64)) if contents_bcs_b64 else None,
+                    contents=(
+                        sui_prot.Bcs(
+                            name=out_type, value=base64.b64decode(contents_bcs_b64)
+                        )
+                        if contents_bcs_b64
+                        else None
+                    ),
                 )
             )
     return objects, object_type_map
@@ -4661,7 +3313,8 @@ def _encode_simulate_events(nodes: list) -> "list[sui_prot.Event]":
                 event_type=type_dict.get("event_type"),
                 contents=(
                     sui_prot.Bcs(value=base64.b64decode(ev_bcs_b64))
-                    if ev_bcs_b64 else None
+                    if ev_bcs_b64
+                    else None
                 ),
             )
         )
@@ -4679,11 +3332,13 @@ def _decode_command_output_list(items: list) -> "list[sui_prot.CommandOutput]":
             sui_prot.CommandOutput(
                 value=(
                     sui_prot.Bcs(name=item_type, value=base64.b64decode(bcs_b64))
-                    if bcs_b64 else None
+                    if bcs_b64
+                    else None
                 ),
                 json=(
                     _google_protobuf.Value.from_dict(item_json)
-                    if item_json is not None else None
+                    if item_json is not None
+                    else None
                 ),
             )
         )
@@ -4695,8 +3350,12 @@ def _encode_simulate_outputs(outputs: list) -> "list[sui_prot.CommandResult]":
     for cmd in outputs:
         cmd_outputs.append(
             sui_prot.CommandResult(
-                return_values=_decode_command_output_list(cmd.get("returnValues") or []),
-                mutated_by_ref=_decode_command_output_list(cmd.get("mutatedReferences") or []),
+                return_values=_decode_command_output_list(
+                    cmd.get("returnValues") or []
+                ),
+                mutated_by_ref=_decode_command_output_list(
+                    cmd.get("mutatedReferences") or []
+                ),
             )
         )
     return cmd_outputs
@@ -4921,9 +3580,11 @@ def _encode_ccp_kind(kind_dict: dict) -> "sui_prot.ConsensusCommitPrologue":
     )
 
 
-def _encode_auth_state_update_kind(kind_dict: dict) -> "sui_prot.AuthenticatorStateUpdate":
+def _encode_auth_state_update_kind(
+    kind_dict: dict,
+) -> "sui_prot.AuthenticatorStateUpdate":
     jwks = []
-    for node in ((kind_dict.get("newActiveJwks") or {}).get("nodes") or []):
+    for node in (kind_dict.get("newActiveJwks") or {}).get("nodes") or []:
         jwk_id = sui_prot.JwkId(iss=node.get("iss"), kid=node.get("kid"))
         jwk = sui_prot.Jwk(
             kty=node.get("kty"), e=node.get("e"), n=node.get("n"), alg=node.get("alg")
@@ -4955,7 +3616,9 @@ def _encode_randomness_update_kind(kind_dict: dict) -> "sui_prot.RandomnessState
 def _encode_change_epoch_kind(kind_dict: dict) -> "sui_prot.ChangeEpoch":
     return sui_prot.ChangeEpoch(
         epoch=(kind_dict.get("epoch") or {}).get("epochId"),
-        protocol_version=(kind_dict.get("protocolConfigs") or {}).get("protocolVersion"),
+        protocol_version=(kind_dict.get("protocolConfigs") or {}).get(
+            "protocolVersion"
+        ),
         storage_charge=int(kind_dict.get("storageCharge") or 0),
         computation_charge=int(kind_dict.get("computationCharge") or 0),
         storage_rebate=int(kind_dict.get("storageRebate") or 0),
@@ -4966,7 +3629,7 @@ def _encode_change_epoch_kind(kind_dict: dict) -> "sui_prot.ChangeEpoch":
 
 def _encode_end_of_epoch_kind(kind_dict: dict) -> "sui_prot.EndOfEpochTransaction":
     transactions = []
-    for node in ((kind_dict.get("transactions") or {}).get("nodes") or []):
+    for node in (kind_dict.get("transactions") or {}).get("nodes") or []:
         tx_kind = node.get("tx_kind")
         if tx_kind == "ChangeEpochTransaction":
             transactions.append(
@@ -4993,7 +3656,7 @@ def _encode_end_of_epoch_kind(kind_dict: dict) -> "sui_prot.EndOfEpochTransactio
 
 def _encode_genesis_kind(kind_dict: dict) -> "sui_prot.GenesisTransaction":
     objs = []
-    for node in ((kind_dict.get("objects") or {}).get("nodes") or []):
+    for node in (kind_dict.get("objects") or {}).get("nodes") or []:
         objs.append(
             sui_prot.Object(
                 object_id=node.get("address"),
@@ -5011,7 +3674,9 @@ def _encode_tx_kind(kind_dict: dict) -> "sui_prot.TransactionKind":
             programmable_transaction=_encode_programmable_tx(kind_dict)
         )
     if tn == "ChangeEpochTransaction":
-        return sui_prot.TransactionKind(change_epoch=_encode_change_epoch_kind(kind_dict))
+        return sui_prot.TransactionKind(
+            change_epoch=_encode_change_epoch_kind(kind_dict)
+        )
     if tn == "GenesisTransaction":
         return sui_prot.TransactionKind(genesis=_encode_genesis_kind(kind_dict))
     if tn == "ConsensusCommitPrologueTransaction":
@@ -5023,7 +3688,9 @@ def _encode_tx_kind(kind_dict: dict) -> "sui_prot.TransactionKind":
             authenticator_state_update=_encode_auth_state_update_kind(kind_dict)
         )
     if tn == "EndOfEpochTransaction":
-        return sui_prot.TransactionKind(end_of_epoch=_encode_end_of_epoch_kind(kind_dict))
+        return sui_prot.TransactionKind(
+            end_of_epoch=_encode_end_of_epoch_kind(kind_dict)
+        )
     if tn == "RandomnessStateUpdateTransaction":
         return sui_prot.TransactionKind(
             randomness_state_update=_encode_randomness_update_kind(kind_dict)
@@ -5147,21 +3814,25 @@ def _parse_user_signature(sig_b64: str) -> "sui_prot.UserSignature":
             sig_raw = bytes(cs.Sig)
             cs_scheme = _SIG_SCHEME_MAP.get(sig_raw[0])
             if cs_scheme is not None:
-                ms_sigs.append(sui_prot.MultisigMemberSignature(
-                    scheme=cs_scheme,
-                    signature=sig_raw[1:],
-                ))
+                ms_sigs.append(
+                    sui_prot.MultisigMemberSignature(
+                        scheme=cs_scheme,
+                        signature=sig_raw[1:],
+                    )
+                )
         members = []
         for pk in payload.PkMap:
             pk_scheme = _SIG_SCHEME_MAP.get(pk.index)
             if pk_scheme is not None:
-                members.append(sui_prot.MultisigMember(
-                    public_key=sui_prot.MultisigMemberPublicKey(
-                        scheme=pk_scheme,
-                        public_key=bytes(pk.value.PublicKey),
-                    ),
-                    weight=pk.value.Weight,
-                ))
+                members.append(
+                    sui_prot.MultisigMember(
+                        public_key=sui_prot.MultisigMemberPublicKey(
+                            scheme=pk_scheme,
+                            public_key=bytes(pk.value.PublicKey),
+                        ),
+                        weight=pk.value.Weight,
+                    )
+                )
         return sui_prot.UserSignature(
             bcs=sig_bcs,
             scheme=scheme,
@@ -5180,13 +3851,28 @@ def _parse_user_signature(sig_b64: str) -> "sui_prot.UserSignature":
         pp = payload.Inputs.ProofPoints
         b = pp.B
         proof = sui_prot.ZkLoginProof(
-            a=sui_prot.CircomG1(e0=pp.A[0], e1=pp.A[1], e2=pp.A[2]) if len(pp.A) >= 3 else None,
-            b=sui_prot.CircomG2(
-                e00=b[0].Items[0], e01=b[0].Items[1],
-                e10=b[1].Items[0], e11=b[1].Items[1],
-                e20=b[2].Items[0], e21=b[2].Items[1],
-            ) if len(b) >= 3 else None,
-            c=sui_prot.CircomG1(e0=pp.C[0], e1=pp.C[1], e2=pp.C[2]) if len(pp.C) >= 3 else None,
+            a=(
+                sui_prot.CircomG1(e0=pp.A[0], e1=pp.A[1], e2=pp.A[2])
+                if len(pp.A) >= 3
+                else None
+            ),
+            b=(
+                sui_prot.CircomG2(
+                    e00=b[0].Items[0],
+                    e01=b[0].Items[1],
+                    e10=b[1].Items[0],
+                    e11=b[1].Items[1],
+                    e20=b[2].Items[0],
+                    e21=b[2].Items[1],
+                )
+                if len(b) >= 3
+                else None
+            ),
+            c=(
+                sui_prot.CircomG1(e0=pp.C[0], e1=pp.C[1], e2=pp.C[2])
+                if len(pp.C) >= 3
+                else None
+            ),
         )
         try:
             iss_fragment = base64.urlsafe_b64decode(
@@ -5286,7 +3972,9 @@ def _encode_executed_tx(
     transaction = sui_prot.Transaction.from_dict(tx_json, ignore_unknown_fields=True)
     tx_bcs_b64 = tx_dict.get("transactionBcs")
     if tx_bcs_b64:
-        transaction.bcs = sui_prot.Bcs(name="TransactionData", value=base64.b64decode(tx_bcs_b64))
+        transaction.bcs = sui_prot.Bcs(
+            name="TransactionData", value=base64.b64decode(tx_bcs_b64)
+        )
 
     # signatures are under effects.transaction.signatures in GQL (not top-level)
     sigs = [
@@ -5303,10 +3991,14 @@ def _encode_executed_tx(
         _aw = _co.get("accumulatorWrite")
         if _aw and "integerValue" in _aw:
             _aw["value"] = int(_aw["integerValue"])
-    effects = sui_prot.TransactionEffects.from_dict(effects_json, ignore_unknown_fields=True)
+    effects = sui_prot.TransactionEffects.from_dict(
+        effects_json, ignore_unknown_fields=True
+    )
     effects_bcs_b64 = eff_dict.get("effectsBcs")
     if effects_bcs_b64:
-        effects.bcs = sui_prot.Bcs(name="TransactionEffects", value=base64.b64decode(effects_bcs_b64))
+        effects.bcs = sui_prot.Bcs(
+            name="TransactionEffects", value=base64.b64decode(effects_bcs_b64)
+        )
 
     # balanceChangesJson is on TransactionEffects (not Transaction) in GQL schema
     balance_changes = [

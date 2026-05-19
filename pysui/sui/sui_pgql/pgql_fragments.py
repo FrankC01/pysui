@@ -8,7 +8,6 @@
 from functools import cache
 from deprecated.sphinx import versionchanged
 from pysui.sui.sui_pgql.pgql_clients import PGQL_Fragment
-import pysui.sui.sui_pgql.pgql_types as pgql_type
 from gql.dsl import DSLFragment, DSLInlineFragment, DSLMetaField, DSLSchema
 
 
@@ -943,7 +942,8 @@ class ChangeEpochTransactionKind(PGQL_Fragment):
 
 class EndOfEpochTransactionKind(PGQL_Fragment):
     """Details of EndOfEpochTransaction. Maps only the 3 gRPC-backed variants.
-    StoreExecutionTimeObservationsTransaction is an empty GQL placeholder — no fields to map."""
+    StoreExecutionTimeObservationsTransaction is an empty GQL placeholder — no fields to map.
+    """
 
     @cache
     def fragment(self, schema: DSLSchema) -> DSLFragment:

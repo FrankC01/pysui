@@ -62,7 +62,9 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
         if isinstance(arg, bcs.ObjectArg):
             return arg
         if isinstance(arg, bcs.ObjectReference):
-            return bcs.ObjectArg("Receiving" if is_receiving else "ImmOrOwnedObject", arg)
+            return bcs.ObjectArg(
+                "Receiving" if is_receiving else "ImmOrOwnedObject", arg
+            )
         if isinstance(arg, bcs.SharedObjectReference):
             return bcs.ObjectArg("SharedObject", arg)
 
@@ -95,7 +97,9 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
                     int(entry.version),
                     bcs.Digest.from_str(entry.digest),
                 )
-                return bcs.ObjectArg("Receiving" if is_receiving else "ImmOrOwnedObject", obj_ref)
+                return bcs.ObjectArg(
+                    "Receiving" if is_receiving else "ImmOrOwnedObject", obj_ref
+                )
 
         ref_type = pgql_type.RefType.MUT_REF if is_mutable else pgql_type.RefType.NO_REF
         type_str = (
@@ -131,7 +135,9 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
                 if object_def is None:
                     raise ValueError(f"{arg} object not found")
             else:
-                raise ValueError(f"Failed to fetch object {arg}: {result.result_string}")
+                raise ValueError(
+                    f"Failed to fetch object {arg}: {result.result_string}"
+                )
         else:
             raise ValueError(f"Unsupported argument type: {type(arg)}")
 
@@ -140,7 +146,9 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
 
         if owner_type in ("ADDRESS", "IMMUTABLE", "OBJECT"):
             obj_ref = bcs.ObjectReference.from_grpc_ref(object_def)
-            return bcs.ObjectArg("Receiving" if is_receiving else "ImmOrOwnedObject", obj_ref)
+            return bcs.ObjectArg(
+                "Receiving" if is_receiving else "ImmOrOwnedObject", obj_ref
+            )
         if owner_type == "SHARED":
             shared_ref = bcs.SharedObjectReference.from_grpc_ref(object_def, is_mutable)
             return bcs.ObjectArg("SharedObject", shared_ref)
@@ -188,7 +196,7 @@ class TxnArgParse:
     ) -> list[Any]:
         """Encode user-supplied args against OpenMoveTypeGQL parameter list.
 
-        TxContext is already filtered from func_params by MoveFunctionGQL.from_query.
+        TxContext is already filtered from func_params by OpenMoveTypeGQL.
         bcs.Argument values are passed through without encoding.
         Raises ValueError on arg count mismatch.
         """

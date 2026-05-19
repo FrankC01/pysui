@@ -424,6 +424,7 @@ class _SuiTransactionBase(_TransactionBase):
 
         # Check arguments
         total_args = 0
+        pub_upg_count = 0
         for prog_txn in self.builder.commands:
             args_one = 0
             type_args_one = 0
@@ -441,6 +442,7 @@ class _SuiTransactionBase(_TransactionBase):
                     args_one = len(prog_txn.value.Vector)
                 case "Publish" | "Upgrade":
                     args_one = len(prog_txn.value.Modules)
+                    pub_upg_count += 1
                 case _:
                     pass
             if args_one > self.constraints.max_arguments:  # type: ignore[operator]
@@ -456,6 +458,10 @@ class _SuiTransactionBase(_TransactionBase):
         # Check max_programmable_tx_commands
         if len(self.builder.commands) > self.constraints.max_programmable_tx_commands:  # type: ignore[operator]
             result_err.max_programmable_tx_commands = len(self.builder.commands)
+
+        # Check max_publish_or_upgrade_per_ptb
+        if self.constraints.max_publish_or_upgrade_per_ptb and pub_upg_count > self.constraints.max_publish_or_upgrade_per_ptb:  # type: ignore[operator]
+            result_err.max_publish_or_upgrade_per_ptb = pub_upg_count
 
         # Check size of transaction bytes
         # Build faux gas as needed
@@ -490,7 +496,6 @@ class _SuiTransactionBase(_TransactionBase):
 
         var_map = vars(result_err)
         err_dict: dict = {x: y for (x, y) in var_map.items() if y != 0}
-        err_dict.pop("feature_dict")
         return self.constraints, err_dict if err_dict else None
 
     def _compile_source(

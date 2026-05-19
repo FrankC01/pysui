@@ -278,58 +278,6 @@ class TestOpenMoveTypeGQL:
         assert len(opt.signature.body.type_parameters) == 1
 
 
-# ── MoveFieldGQL.from_query tests ───────────────────────────────────────────
-
-
-class TestMoveFieldGQL:
-    """Test MoveField deserialization."""
-
-    def test_field_with_name_and_type(self):
-        """Field with both name and type."""
-        field = gql.MoveFieldGQL.from_query({
-            "name": "balance",
-            "type": {
-                "signature": {"body": "u64"},
-                "repr": "u64"
-            }
-        })
-        assert field.name == "balance"
-        assert field.type_ is not None
-        assert isinstance(field.type_, gql.OpenMoveTypeGQL)
-
-    def test_field_with_only_name(self):
-        """Field with only name (no type)."""
-        field = gql.MoveFieldGQL.from_query({
-            "name": "index"
-        })
-        assert field.name == "index"
-        assert field.type_ is None
-
-    def test_field_with_complex_type(self):
-        """Field with complex nested type."""
-        field = gql.MoveFieldGQL.from_query({
-            "name": "items",
-            "type": {
-                "signature": {
-                    "body": {
-                        "vector": {
-                            "datatype": {
-                                "package": "0x1",
-                                "module": "string",
-                                "type": "String",
-                                "typeParameters": []
-                            }
-                        }
-                    }
-                },
-                "repr": "vector<String>"
-            }
-        })
-        assert field.name == "items"
-        assert field.type_.signature.ref is None
-        assert isinstance(field.type_.signature.body, gql.OpenMoveVectorBodyGQL)
-
-
 # ── MoveFunctionGQL.from_query tests ────────────────────────────────────────
 
 

@@ -128,7 +128,7 @@ class BaseSuiGQLClient(PysuiClient):
 
     def protocol(
         self, for_version: Optional[str] = None
-    ) -> pgql_type.TransactionConstraints:
+    ) -> pgql_type.ProtocolConfigGQL:
         """Fetch the protocol constraint block."""
         return self._schema.rpc_config.protocolConfigs
 

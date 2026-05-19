@@ -234,24 +234,6 @@ async def do_past_object(client: AsyncClientBase):
     )
 
 
-async def do_multiple_object_versions(client: GqlProtocolClient):
-    """Fetchs object details by version.
-    protocol-level access: GetMultipleVersionedObjects has no SuiCommand equivalent.
-    To run, change the objectID str and version int.
-    """
-    object_versions = [
-        {
-            "address": "0x0c11bba3ea02576c30c9e627683277264a6c775bb65dbc9a6f818d91f93c6d82",
-            "version": 43,
-        }
-    ]
-    handle_result(
-        await client.execute_query_node(
-            with_node=qn.GetMultipleVersionedObjects(for_versions=object_versions)
-        )
-    )
-
-
 async def do_multiple_object_content(client: AsyncClientBase):
     """Fetch BCS content for multiple objects."""
     handle_result(
@@ -930,7 +912,6 @@ async def main():
         # await do_object_content(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)
-        # await do_multiple_object_versions(client_init)
         # await do_multiple_object_content(client_init)
         # await do_objects_for(client_init)
         # await do_dynamics(client_init)

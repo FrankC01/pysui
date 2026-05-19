@@ -10,12 +10,10 @@ Tests cover:
   - Service type assignment (LEDGER, STATE, TRANSACTION, MOVEPACKAGE, SUBSCRIPTION, SIGNATURE, NAMESERVICE)
   - Subclass/alias relationships
   - RESULT_TYPE declarations
-  - Deprecation warnings (GetBalance, GetAllCoinBalances, GetDataType, NameLookup, ReverseNameLookup, SimulateTransactionLKind)
   - Input validation (GetMultipleObjects >50 limit)
   - Default coin types for GetCoins and GetGas
 """
 
-import warnings
 import pytest
 
 import pysui.sui.sui_grpc.pgrpc_requests as gr
@@ -123,14 +121,6 @@ class TestObjectRequests:
         assert obj.version == 5
         assert obj.service == absreq.Service.LEDGER
 
-    def test_get_object_content_is_get_object(self):
-        assert issubclass(gr.GetObjectContent, gr.GetObject)
-
-    def test_get_object_content_constructs(self):
-        obj = gr.GetObjectContent(object_id=self._OID)
-        assert obj.object_id == self._OID
-        assert obj.service == absreq.Service.LEDGER
-
     def test_get_multiple_objects_stores_ids(self):
         obj = gr.GetMultipleObjects(object_ids=[self._OID, self._OID2])
         assert len(obj.objects) == 2
@@ -139,9 +129,6 @@ class TestObjectRequests:
     def test_get_multiple_objects_over_50_raises(self):
         with pytest.raises(ValueError, match="Max object ids 50"):
             gr.GetMultipleObjects(object_ids=[f"0x{i:04x}" for i in range(51)])
-
-    def test_get_multiple_object_content_is_get_multiple_objects(self):
-        assert issubclass(gr.GetMultipleObjectContent, gr.GetMultipleObjects)
 
     def test_get_multiple_past_objects_over_50_raises(self):
         entries = [{"objectId": f"0x{i:04x}", "version": i} for i in range(51)]
@@ -169,26 +156,6 @@ class TestOwnedObjectRequests:
     def test_get_objects_owned_optional_type(self):
         obj = gr.GetObjectsOwnedByAddress(owner=self._ADDR, object_type="0x2::token::T")
         assert obj.object_type == "0x2::token::T"
-
-    def test_get_coins_is_owned_objects(self):
-        assert issubclass(gr.GetCoins, gr.GetObjectsOwnedByAddress)
-
-    def test_get_coins_default_coin_type(self):
-        obj = gr.GetCoins(owner=self._ADDR)
-        assert obj.object_type == self._SUI_COIN
-        assert obj.service == absreq.Service.STATE
-
-    def test_get_coins_custom_coin_type(self):
-        obj = gr.GetCoins(owner=self._ADDR, coin_type="0xdead::token::T")
-        assert obj.object_type == "0xdead::token::T"
-
-    def test_get_gas_is_owned_objects(self):
-        assert issubclass(gr.GetGas, gr.GetObjectsOwnedByAddress)
-
-    def test_get_gas_always_sui_type(self):
-        obj = gr.GetGas(owner=self._ADDR)
-        assert obj.object_type == self._SUI_COIN
-        assert obj.service == absreq.Service.STATE
 
     def test_get_staked_is_owned_objects(self):
         assert issubclass(gr.GetStaked, gr.GetObjectsOwnedByAddress)
@@ -237,18 +204,6 @@ class TestCoinBalanceRequests:
         assert obj.page_size == 10
         assert obj.page_token == b"tok"
 
-    def test_get_balance_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.GetBalance(owner=self._ADDR, coin_type="0x2::sui::SUI")
-
-    def test_get_balance_warns_use_replacement(self):
-        with pytest.warns(DeprecationWarning, match="GetAddressCoinBalance"):
-            gr.GetBalance(owner=self._ADDR, coin_type="0x2::sui::SUI")
-
-    def test_get_all_coin_balances_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.GetAllCoinBalances(owner=self._ADDR)
-
 
 # ---------------------------------------------------------------------------
 # TestTransactionRequests
@@ -264,27 +219,10 @@ class TestTransactionRequests:
         obj = gr.GetTransaction(digest="txdigest")
         assert obj.field_mask is not None
 
-    def test_get_tx_is_get_transaction(self):
-        assert issubclass(gr.GetTx, gr.GetTransaction)
-
-    def test_get_tx_stores_digest(self):
-        obj = gr.GetTx(digest="abc")
-        assert obj.digest == "abc"
-
     def test_get_transactions_stores_list(self):
         obj = gr.GetTransactions(transactions=["d1", "d2", "d3"])
         assert obj.transactions == ["d1", "d2", "d3"]
         assert obj.service == absreq.Service.LEDGER
-
-    def test_get_multiple_tx_is_get_transactions(self):
-        assert issubclass(gr.GetMultipleTx, gr.GetTransactions)
-
-    def test_get_tx_kind_is_get_transaction(self):
-        assert issubclass(gr.GetTxKind, gr.GetTransaction)
-
-    def test_get_tx_kind_field_mask(self):
-        obj = gr.GetTxKind(digest="abc")
-        assert obj.field_mask is not None
 
     def test_get_transaction_sc_is_get_transaction(self):
         assert issubclass(gr.GetTransactionSC, gr.GetTransaction)
@@ -408,19 +346,6 @@ class TestPackageRequests:
         assert obj.type_name == "Coin"
         assert obj.service == absreq.Service.MOVEPACKAGE
 
-    def test_get_data_type_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.GetDataType(package="0x2", module_name="coin", type_name="Coin")
-
-    def test_get_data_type_warns_use_replacement(self):
-        with pytest.warns(DeprecationWarning, match="GetMoveDataType"):
-            gr.GetDataType(package="0x2", module_name="coin", type_name="Coin")
-
-    def test_get_data_type_is_get_move_data_type(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            assert issubclass(gr.GetDataType, gr.GetMoveDataType)
-
     def test_get_structure_is_get_move_data_type(self):
         assert issubclass(gr.GetStructure, gr.GetMoveDataType)
 
@@ -464,28 +389,6 @@ class TestNameServiceRequests:
         assert obj.address == "0xabc"
         assert obj.service == absreq.Service.NAMESERVICE
 
-    def test_name_lookup_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.NameLookup(name="test.sui")
-
-    def test_name_lookup_warns_use_replacement(self):
-        with pytest.warns(DeprecationWarning, match="GetNameServiceAddress"):
-            gr.NameLookup(name="test.sui")
-
-    def test_name_lookup_is_get_name_service_address(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            assert issubclass(gr.NameLookup, gr.GetNameServiceAddress)
-
-    def test_reverse_name_lookup_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.ReverseNameLookup(address="0xabc")
-
-    def test_reverse_name_lookup_is_get_name_service_names(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            assert issubclass(gr.ReverseNameLookup, gr.GetNameServiceNames)
-
 
 # ---------------------------------------------------------------------------
 # TestMiscRequests
@@ -524,9 +427,3 @@ class TestMiscRequests:
             address="0xsender",
         )
         assert obj.address == "0xsender"
-
-    def test_simulate_transaction_lkind_warns(self):
-        """SimulateTransactionLKind requires a real TransactionKind — just check class-level deprecation."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            assert issubclass(gr.SimulateTransactionLKind, gr.SimulateTransactionKind)

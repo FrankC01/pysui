@@ -171,32 +171,6 @@ class ObjectReference(canoser.Struct):
         )
 
     @classmethod
-    @versionadded(version="0.54.0", reason="Support argument inferencing")
-    def from_gql_ref(cls, indata: pgql_type.ObjectReadGQL) -> "ObjectReference":
-        """from_generic_ref init construct with GenericRef from ObjectRead structure.
-
-        :param indata: The reference information for an Object from ObjectRead
-        :type indata: GenericRef
-        :return: The instantiated BCS object
-        :rtype: ObjectReference
-        """
-        if isinstance(
-            indata,
-            (
-                pgql_type.ObjectReadGQL,
-                pgql_type.SuiCoinObjectGQL,
-                pgql_type.SuiStakedCoinGQL,
-                pgql_type.SuiCoinObjectSummaryGQL,
-            ),
-        ):
-            return cls(
-                Address.from_str(indata.object_id),
-                indata.version,
-                Digest.from_str(indata.object_digest),
-            )
-        raise ValueError(f"{indata} is not valid")
-
-    @classmethod
     @versionadded(version="0.87.0", reason="Support grpc argument inferencing")
     def from_grpc_ref(cls, indata: sui_prot.Object) -> "ObjectReference":
         """from_grpc_ref init construct with gRPC Object
@@ -246,25 +220,6 @@ class SharedObjectReference(canoser.Struct):
             object_id=self.ObjectID.to_address_str(),  # type: ignore
             mutable=self.Mutable,  # type: ignore
             version=self.SequenceNumber,  # type: ignore
-        )
-
-    @classmethod
-    @versionadded(version="0.54.0", reason="Support argument inferencing")
-    def from_gql_ref(
-        cls, indata: pgql_type.ObjectReadGQL, is_mutable: bool = False
-    ) -> "SharedObjectReference":
-        """from_gql_ref init construct with ObjectReadGQL.
-
-        :param indata: The reference information for an Object from ObjectReadGQL
-        :type indata: ObjectReadGQL
-        :return: The instantiated BCS object
-        :rtype: SharedObjectReference
-        """
-        mutable = is_mutable if indata.object_id not in cls._IMMUTABLES else False
-        return cls(
-            Address.from_str(indata.object_id),
-            indata.object_owner.initial_version,  # type: ignore
-            mutable,
         )
 
     @classmethod

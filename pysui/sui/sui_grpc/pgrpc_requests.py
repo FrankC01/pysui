@@ -8,7 +8,7 @@
 import base64
 import dataclasses
 from typing import Callable, Optional
-from deprecated.sphinx import versionadded, versionchanged, deprecated
+from deprecated.sphinx import versionadded
 import dataclasses_json
 import betterproto2
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
@@ -233,39 +233,6 @@ class GetObject(absreq.PGRPC_Request):
 
 
 
-# TODO: Move to gRPC types
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class ObjectContentBCS:
-    """Raw object content BCS string."""
-
-    object_id: str  # Yes
-    bcs: str | bytes
-    version: int
-
-    def as_bytes(self) -> bytes:
-        """Convert BCS to bytes"""
-        return self.bcs if isinstance(self.bcs, bytes) else base64.b64decode(self.bcs)
-
-
-class GetObjectContent(GetObject):
-    """Returns a specific object's content BCS string."""
-
-    def __init__(self, *, object_id, as_bytes: Optional[bool] = True):
-        """Initializer."""
-        super().__init__(
-            object_id=object_id, field_mask=["object_id", "bcs", "version"]
-        )
-        self.as_bytes = as_bytes
-
-    def render(self, obj: sui_prot.GetObjectResponse) -> ObjectContentBCS:
-        """Render the response payload into ObjectContentBCS."""
-        bcs_res = (
-            obj.object.bcs.value
-            if self.as_bytes
-            else base64.b64encode(obj.object.bcs.value).decode()
-        )
-        return ObjectContentBCS(obj.object.object_id, bcs_res, obj.object.version)
 
 
 class GetPastObject(absreq.PGRPC_Request):
@@ -469,37 +436,6 @@ class GetDynamicFields(absreq.PGRPC_Request):
         )
 
 
-# TODO: Move to gRPC types
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
-class ObjectsContentBCS:
-    """Raw object content BCS string."""
-
-    objects_data: list[ObjectContentBCS]
-
-
-class GetMultipleObjectContent(GetMultipleObjects):
-    """Returns multiple object's content BCS string."""
-
-    def __init__(self, *, objects: list[str], as_bytes: Optional[bool] = True):
-        """Initializer."""
-        super().__init__(object_ids=objects, field_mask=["object_id", "bcs"])
-        self.as_bytes = as_bytes
-
-    def render(self, objs: sui_prot.BatchGetObjectsResponse) -> "ObjectsContentBCS":
-        """Render the response payload into ObjectsContentBCS."""
-        obj_content: list[ObjectContentBCS] = []
-        for obj in objs.objects:
-            bcs_res = (
-                obj.object.bcs.value
-                if self.as_bytes
-                else base64.b64encode(obj.object.bcs.value).decode()
-            )
-            obj_content.append(
-                ObjectContentBCS(obj.object.object_id, bcs_res, obj.object.version)
-            )
-
-        return ObjectsContentBCS(obj_content)
 
 
 class GetMultiplePastObjects(absreq.PGRPC_Request):
@@ -725,32 +661,6 @@ class GetAddressCoinBalance(absreq.PGRPC_Request):
         )
 
 
-@deprecated(version="0.97.0", reason="Use GetAddressCoinBalance. Parity with GraphQL.")
-class GetBalance(absreq.PGRPC_Request):
-    """Query to retrieve the total balance by coin type for owner."""
-
-    RESULT_TYPE: betterproto2.Message = sui_prot.GetBalanceResponse
-
-    def __init__(
-        self,
-        *,
-        owner: str,
-        coin_type: str,
-    ) -> None:
-        """Initializer."""
-        super().__init__(absreq.Service.STATE)
-        self.owner = owner
-        self.coin_type = coin_type
-
-    def to_request(
-        self, *, stub: sui_prot.StateServiceStub
-    ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
-    ]:
-        """."""
-        return stub.get_balance, sui_prot.GetBalanceRequest(
-            owner=self.owner, coin_type=self.coin_type
-        )
 
 
 @versionadded(version="0.97.0", reason="Parity with GraphQL.")
@@ -785,36 +695,6 @@ class GetAddressCoinBalances(absreq.PGRPC_Request):
         )
 
 
-@deprecated(version="0.97.0", reason="Use GetAddressCoinBalances. Parity with GraphQL.")
-class GetAllCoinBalances(absreq.PGRPC_Request):
-    """Query to retrieve the total balance for all types for owner."""
-
-    RESULT_TYPE: betterproto2.Message = sui_prot.ListBalancesResponse
-
-    def __init__(
-        self,
-        *,
-        owner: str,
-        page_size: Optional[int] = None,
-        page_token: Optional[bytes] = None,
-    ) -> None:
-        """Initializer."""
-        super().__init__(absreq.Service.STATE)
-        self.owner = owner
-        self.page_size = page_size
-        self.page_token = page_token
-
-    def to_request(
-        self, *, stub: sui_prot.StateServiceStub
-    ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
-    ]:
-        """."""
-        return stub.list_balances, sui_prot.ListBalancesRequest(
-            owner=self.owner,
-            page_size=self.page_size,
-            page_token=self.page_token,
-        )
 
 
 class GetTransaction(absreq.PGRPC_Request):
@@ -848,12 +728,6 @@ class GetTransaction(absreq.PGRPC_Request):
         )
 
 
-class GetTx(GetTransaction):
-    """Alias for GetTransaction."""
-
-    def __init__(self, *, digest, field_mask=None):
-        """Initializer."""
-        super().__init__(digest=digest, field_mask=field_mask)
 
 
 class GetTransactions(absreq.PGRPC_Request):
@@ -883,20 +757,8 @@ class GetTransactions(absreq.PGRPC_Request):
         )
 
 
-class GetMultipleTx(GetTransactions):
-    """Alias for GetTransactions."""
-
-    def __init__(self, *, transactions, field_mask=None):
-        """Initializer."""
-        super().__init__(transactions=transactions, field_mask=field_mask)
 
 
-class GetTxKind(GetTransaction):
-    """Convenience subclass of GetTransaction that fetches only transaction kind."""
-
-    def __init__(self, *, digest):
-        """Initializer."""
-        super().__init__(digest=digest, field_mask=["transaction.kind"])
 
 
 class GetTransactionSC(GetTransaction):
@@ -1134,9 +996,6 @@ class SimulateTransactionKind(absreq.PGRPC_Request):
         return stub.simulate_transaction, req
 
 
-@deprecated(version="0.99.0", reason="Use SimulateTransactionKind instead.")
-class SimulateTransactionLKind(SimulateTransactionKind):
-    """Deprecated: use SimulateTransactionKind."""
 
 
 # TODO: Test with Devnet
@@ -1228,9 +1087,6 @@ class GetMoveDataType(absreq.PGRPC_Request):
         )
 
 
-@deprecated(version="0.99.0", reason="Use GetMoveDataType instead.")
-class GetDataType(GetMoveDataType):
-    """Deprecated: use GetMoveDataType."""
 
 
 class GetStructure(GetMoveDataType):
@@ -1486,9 +1342,6 @@ class GetNameServiceAddress(absreq.PGRPC_Request):
         return stub.lookup_name, sui_prot.LookupNameRequest(name=self.name)
 
 
-@deprecated(version="0.99.0", reason="Use GetNameServiceAddress instead.")
-class NameLookup(GetNameServiceAddress):
-    """Deprecated: use GetNameServiceAddress."""
 
 
 @versionadded(version="0.99.0", reason="Replaces deprecated ReverseNameLookup.")
@@ -1517,6 +1370,3 @@ class GetNameServiceNames(absreq.PGRPC_Request):
         )
 
 
-@deprecated(version="0.99.0", reason="Use GetNameServiceNames instead.")
-class ReverseNameLookup(GetNameServiceNames):
-    """Deprecated: use GetNameServiceNames."""

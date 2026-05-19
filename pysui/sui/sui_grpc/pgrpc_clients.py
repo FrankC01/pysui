@@ -104,8 +104,8 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             return result.result_data.epoch.reference_gas_price
         raise ValueError(f"Error accessing gRPC {result.result_string}")
 
-    async def protocol(self, epoch_number: Optional[int] = None) -> ProtocolConfig:
-        """Fetch the protocol constraints."""
+    async def _init_protocol(self, epoch_number: Optional[int] = None) -> None:
+        """Fetch and cache protocol constraints at init time."""
         result = await self.execute_grpc_request(
             request=GetEpoch(
                 epoch_number=epoch_number,
@@ -116,8 +116,12 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             self._protocol_config = _map_pconstraints(
                 result.result_data.epoch.protocol_config
             )
-            return self._protocol_config
+            return
         raise ValueError(f"protocol fetch returned {result.result_string}")
+
+    def protocol(self, epoch_number: Optional[int] = None) -> ProtocolConfig:
+        """Return cached protocol constraints."""
+        return self._protocol_config
 
     async def close(self):
         """Close the base gRPC channel"""
@@ -127,6 +131,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
 
     async def __aenter__(self) -> "GrpcProtocolClient":
         """Enter async context manager."""
+        await self._init_protocol()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
