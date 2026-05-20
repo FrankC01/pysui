@@ -413,6 +413,7 @@ class GetTransactionSC(PGQL_QueryNode):
                 schema.TransactionEffects.effectsBcs,
                 schema.TransactionEffects.effectsJson,
                 schema.TransactionEffects.balanceChangesJson,
+                schema.TransactionEffects.version,
             ),
             schema.Transaction.transactionBcs,
             schema.Transaction.transactionJson,
@@ -469,6 +470,7 @@ class GetTransactionsSC(PGQL_QueryNode):
                 schema.TransactionEffects.effectsBcs,
                 schema.TransactionEffects.effectsJson,
                 schema.TransactionEffects.balanceChangesJson,
+                schema.TransactionEffects.version,
             ),
             schema.Transaction.transactionBcs,
             schema.Transaction.transactionJson,
@@ -698,6 +700,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                         schema.Checkpoint.sequenceNumber,
                     ),
                     schema.TransactionEffects.balanceChangesJson,
+                    schema.TransactionEffects.version,
                     schema.TransactionEffects.events.select(
                         schema.EventConnection.nodes.select(
                             schema.Event.sequenceNumber,
@@ -813,6 +816,8 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
             effects_proto = sui_prot.TransactionEffects.from_dict(
                 effects_json_dict, ignore_unknown_fields=True
             )
+            if (v := eff.get("version")) is not None:
+                effects_proto.version = v
             effects_bcs_b64 = eff.get("effectsBcs")
             if effects_bcs_b64:
                 effects_proto.bcs = sui_prot.Bcs(
@@ -936,6 +941,7 @@ class SimulateTransactionSC(SimulateTransactionKindSC):
                         schema.Checkpoint.sequenceNumber,
                     ),
                     schema.TransactionEffects.balanceChangesJson,
+                    schema.TransactionEffects.version,
                     schema.TransactionEffects.events.select(
                         schema.EventConnection.nodes.select(
                             schema.Event.sequenceNumber,
@@ -1030,6 +1036,7 @@ class ExecuteTransactionSC(PGQL_QueryNode):
                 schema.TransactionEffects.effectsBcs,
                 schema.TransactionEffects.effectsJson,
                 schema.TransactionEffects.balanceChangesJson,
+                schema.TransactionEffects.version,
                 schema.TransactionEffects.transaction.select(
                     schema.Transaction.signatures.select(
                         schema.UserSignature.signatureBytes
@@ -3957,7 +3964,7 @@ def _encode_executed_tx(
 
     Protocol gaps (no GQL equivalent — will always be empty):
       TransactionEffects.events_digest, .auxiliary_data_digest,
-      .unchanged_loaded_runtime_objects, .version; Transaction.version.
+      .unchanged_loaded_runtime_objects; Transaction.version.
     """
     if not tx_dict:
         return None
@@ -3994,6 +4001,8 @@ def _encode_executed_tx(
     effects = sui_prot.TransactionEffects.from_dict(
         effects_json, ignore_unknown_fields=True
     )
+    if (v := eff_dict.get("version")) is not None:
+        effects.version = v
     effects_bcs_b64 = eff_dict.get("effectsBcs")
     if effects_bcs_b64:
         effects.bcs = sui_prot.Bcs(
