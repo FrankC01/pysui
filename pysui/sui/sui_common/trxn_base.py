@@ -40,7 +40,27 @@ class _TransactionBase:
     _STANDARD_UPGRADE_CAP_TYPE: str = "0x2::package::UpgradeCap"
     _UPGRADE_CAP_SUFFIX: str = "UpgradeCap"
     _SPLIT_AND_KEEP: str = "0x2::pay::divide_and_keep"
+    _SEND_FUNDS_TARGET: str = "0x2::coin::send_funds"
     _STD_FRAMEWORK: bcs.Address = bcs.Address.from_str("0x1")
+
+    _FUND_ADDRESS_ACCUMULATOR = [
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveDatatypeBodyGQL(
+                    package="0x2", module="coin", type_name="Coin", type_parameters=[]
+                ),
+            ),
+            repr="",
+        ),
+        pgql_type.OpenMoveTypeGQL(
+            signature=pgql_type.OpenMoveTypeSignatureGQL(
+                ref=None,
+                body=pgql_type.OpenMoveScalarBodyGQL(scalar_type="address"),
+            ),
+            repr="",
+        ),
+    ]
     _PUBLIC_TRANSFER: str = "0x2::transfer::public_transfer"
     _PAY_GAS: int = 4000000
     _BUILD_BYTE_STR: str = "tx_bytestr"

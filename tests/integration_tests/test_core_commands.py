@@ -17,6 +17,7 @@ Test order (use pytest-order markers for explicit sequencing):
   9-10:  merge_coins
   17-18: merge_coins negative tests
   19-20: move_call negative tests (insufficient gas)
+  21-22: fund_address_accumulator
 """
 
 import asyncio
@@ -384,7 +385,62 @@ async def test_merge_coins_grpc_same_object_rejected(
 
 
 # ---------------------------------------------------------------------------
-# Negative tests — execution-failure layer (node accepts, on-chain fails)
+# 5. fund_address_accumulator
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.order(21)
+async def test_fund_address_accumulator_gql_executes(
+    gql_client: AsyncClientBase,
+    central_bank: CentralBank,
+) -> None:
+    """fund_address_accumulator (GQL): split from gas coin and deposit to accumulator."""
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="split_gas_500k_fund_accumulator",
+        gas_source=GasBank.COIN,
+        gas_fee=1_000_000,
+        sui_coins=[],
+        sui_draw=500_000,
+    )
+    addr = str(gql_client.config.active_address)
+    txer = await gql_client.transaction()
+    split_res = await txer.split_coin(coin=txer.gas, amounts=[500_000])
+    await txer.fund_address_accumulator(funds=split_res, recipient=addr)
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+    )
+    _assert_gql_success(result, "GQL fund_address_accumulator")
+
+
+@pytest.mark.order(22)
+async def test_fund_address_accumulator_grpc_executes(
+    grpc_client: AsyncClientBase,
+    central_bank: CentralBank,
+) -> None:
+    """fund_address_accumulator (gRPC): split from non-gas coin, deposit via account gas."""
+    await asyncio.sleep(SETTLE_SECS)
+    _, coins = await central_bank.withdraw(
+        pattern_id="split_nongascoin_500k_fund_accumulator_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=1_988_000,
+        sui_coins=[500_000],
+        sui_draw=0,
+    )
+    addr = str(grpc_client.config.active_address)
+    txer = await grpc_client.transaction()
+    split_res = await txer.split_coin(coin=coins[0], amounts=[500_000])
+    await txer.fund_address_accumulator(funds=split_res, recipient=addr)
+    result = await grpc_client.execute(
+        command=cmd.ExecuteTransaction(
+            **await txer.build_and_sign(use_account_for_gas=True)
+        )
+    )
+    _assert_grpc_success(result, "gRPC fund_address_accumulator")
+
+
+# ---------------------------------------------------------------------------
+# Negative tests — transport-rejection layer (node rejects before execution)
 # ---------------------------------------------------------------------------
 
 

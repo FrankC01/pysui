@@ -48,6 +48,8 @@ transaction builders.
 +--------------------------+
 | balance_from             |
 +--------------------------+
+| fund_address_accumulator |
++--------------------------+
 
 Executing Transactions
 ----------------------

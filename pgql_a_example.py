@@ -808,11 +808,9 @@ async def do_sui_coin_to_account(client: AsyncClientBase):
     await do_address_balance(client)
     txer: AsyncSuiTransaction = await client.transaction()
     # Pull amount from transaction Gas
-    scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
-    await txer.move_call(
-        target="0x2::coin::send_funds",
-        type_arguments=["0x2::sui::SUI"],
-        arguments=[scres, client.config.active_address],
+    scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
+    await txer.fund_address_accumulator(
+        funds=scres, recipient=client.config.active_address
     )
     # Uncomment to simulate (dry run)
     handle_result(
@@ -900,7 +898,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_all_gas_alt(client_init)
         # await do_gas_ids(client_init)
@@ -948,7 +946,7 @@ async def main():
         # await do_verify_pm_sig(client_init)
         # await do_stake(client_init)
         # await do_unstake(client_init)
-        # await do_sui_coin_to_account(client_init)
+        await do_sui_coin_to_account(client_init)
         # await do_account_to_sui_coin(client_init)
         ## Config
         # await do_chain_id(client_init)

@@ -721,6 +721,75 @@ class AsyncSuiTransaction(txbase):
             type_arguments=[type_tag],
         )
 
+    async def fund_address_accumulator(
+        self,
+        *,
+        funds: Union[
+            str,
+            sui_prot.Object,
+            bcs.Argument,
+            list[Union[str, sui_prot.Object, bcs.Argument]],
+        ],
+        recipient: str,
+        funds_type: Optional[str] = "0x2::sui::SUI",
+    ) -> bcs.Argument:
+        """Send one or more coins to a recipient's address account balance (accumulator).
+
+        :param funds: A single coin or homogeneous list of coins to deposit
+        :type funds: Union[str, sui_prot.Object, bcs.Argument, list[...]]
+        :param recipient: The recipient address
+        :type recipient: str
+        :param funds_type: The coin type, defaults to "0x2::sui::SUI"
+        :type funds_type: Optional[str], optional
+        :return: The command result. Can NOT be used as input in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        if isinstance(funds, list):
+            if not funds:
+                raise ValueError("fund_address_accumulator: funds list is empty")
+            fund_types = {type(f) for f in funds}
+            if len(fund_types) > 1:
+                raise ValueError(
+                    "fund_address_accumulator: funds list must be homogeneous"
+                )
+            if all(isinstance(f, sui_prot.Object) for f in funds):
+                obj_types = {f.object_type for f in funds}
+                if len(obj_types) > 1:
+                    raise ValueError(
+                        "fund_address_accumulator: funds list contains mixed coin types"
+                    )
+                if funds_type not in obj_types.pop():
+                    raise ValueError(
+                        f"fund_address_accumulator: funds object type does not match funds_type={funds_type}"
+                    )
+            items = funds
+        else:
+            items = [funds]
+
+        package, package_module, package_function = (
+            tv.TypeValidator.check_target_triplet(txbase._SEND_FUNDS_TARGET)
+        )
+        package = bcs.Address.from_str(package)
+        type_arguments = [bcs.TypeTag.type_tag_from(funds_type)]
+
+        result = None
+        for fund_item in items:
+            parms = await self._argparse.build_args(
+                [fund_item, recipient],
+                txbase._FUND_ADDRESS_ACCUMULATOR,
+                mode=self._mode,
+                object_cache=self._object_cache,
+            )
+            result = self.builder.move_call(
+                target=package,
+                arguments=parms,
+                type_arguments=type_arguments,
+                module=package_module,
+                function=package_function,
+                res_count=0,
+            )
+        return result
+
     async def optional_object(
         self,
         *,
