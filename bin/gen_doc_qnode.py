@@ -27,7 +27,7 @@ class PrintNodeVisitor(ast.NodeVisitor):
         self.double_bar: str = ""
 
     def visit(self, node: ast.AST) -> ast.AST:
-        if isinstance(node, ast.ClassDef) and not node.name.endswith("SC"):
+        if isinstance(node, ast.ClassDef) and not node.name.endswith("SC") and not node.name.startswith("_"):
             self.qnodes.append(self.qpath + "." + node.name)
         return super().visit(node)
 
@@ -108,8 +108,9 @@ if __name__ == "__main__":
         tree = target.read_text()
         pnv = PrintNodeVisitor("pysui.sui.sui_pgql.pgql_query")
         pnv.visit(ast.parse(tree))
-        table = pnv.format_table()
-        print(table)
+        table = pnv.format_table() if pnv.qnodes else ""
+        if table:
+            print(table)
         generate_qnode_doc(
             Path("./doc/source/_qnode_base.rst"),
             Path("./doc/source/graphql_queries.rst"),

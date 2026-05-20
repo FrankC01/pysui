@@ -201,6 +201,9 @@ Checkpoints
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCheckpointBySequence`
      - Fetch a checkpoint by sequence number
 
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCheckpointByDigest`
+     - Fetch a checkpoint by digest
+
 
 Move / Packages
 ---------------

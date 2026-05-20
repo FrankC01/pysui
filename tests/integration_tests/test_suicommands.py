@@ -35,6 +35,7 @@ from tests.integration_tests.conftest import SETTLE_SECS, CentralBank, GasBank
 from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC, PackageModulesResult, ValidatorsResult
 from pysui.sui.sui_common.sui_commands import (
     ExecuteTransaction,
+    GetCheckpointByDigest,
     GetCheckpointBySequence,
     GetCoins,
     GetCurrentValidators,
@@ -127,6 +128,39 @@ async def test_get_checkpoint_by_sequence_grpc(
     )
     assert result.is_ok(), f"GetCheckpointBySequence gRPC: {result.result_string}"
     assert isinstance(result.result_data, sui_prot.GetCheckpointResponse)
+
+
+@pytest.mark.order(5)
+async def test_get_checkpoint_by_digest_gql(
+    gql_session_client: AsyncClientBase,
+) -> None:
+    """GetCheckpointByDigest via GQL SC sibling returns GetCheckpointResponse."""
+    latest = await gql_session_client.execute(command=GetLatestCheckpoint())
+    assert latest.is_ok(), f"GetLatestCheckpoint GQL: {latest.result_string}"
+    digest = latest.result_data.checkpoint.digest
+    result = await gql_session_client.execute(
+        command=GetCheckpointByDigest(digest=digest)
+    )
+    assert result.is_ok(), f"GetCheckpointByDigest GQL: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetCheckpointResponse)
+    assert result.result_data.checkpoint is not None
+    assert result.result_data.checkpoint.digest == digest
+
+
+@pytest.mark.order(6)
+async def test_get_checkpoint_by_digest_grpc(
+    grpc_session_client: AsyncClientBase,
+) -> None:
+    """GetCheckpointByDigest via gRPC returns GetCheckpointResponse."""
+    latest = await grpc_session_client.execute(command=GetLatestCheckpoint())
+    assert latest.is_ok(), f"GetLatestCheckpoint gRPC: {latest.result_string}"
+    digest = latest.result_data.checkpoint.digest
+    result = await grpc_session_client.execute(
+        command=GetCheckpointByDigest(digest=digest)
+    )
+    assert result.is_ok(), f"GetCheckpointByDigest gRPC: {result.result_string}"
+    assert isinstance(result.result_data, sui_prot.GetCheckpointResponse)
+    assert result.result_data.checkpoint is not None
 
 
 # ---------------------------------------------------------------------------

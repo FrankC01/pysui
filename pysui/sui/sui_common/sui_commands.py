@@ -567,6 +567,24 @@ class GetCheckpointBySequence(SuiCommand):
 
 
 @dataclass(kw_only=True)
+class GetCheckpointByDigest(SuiCommand):
+    """Fetch a checkpoint by digest."""
+
+    gql_class: ClassVar[type] = pgql_query.GetCheckpointByDigestSC
+    grpc_class: ClassVar[type] = rn.GetCheckpointByDigest
+
+    digest: str
+
+    def gql_node(self) -> pgql_query.GetCheckpointByDigestSC:
+        """Return GQL checkpoint-by-digest query node."""
+        return self.gql_class(digest=self.digest)
+
+    def grpc_request(self) -> rn.GetCheckpointByDigest:
+        """Return gRPC get-checkpoint-by-digest request."""
+        return rn.GetCheckpointByDigest(digest=self.digest)
+
+
+@dataclass(kw_only=True)
 class GetMultipleObjectContent(SuiCommand):
     """Fetch BCS content for multiple objects."""
 

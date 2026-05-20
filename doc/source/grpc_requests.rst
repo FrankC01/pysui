@@ -51,19 +51,11 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetObject`                  |
 +--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.ObjectContentBCS`           |
-+--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetObjectContent`           |
-+--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetPastObject`              |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjects`         |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetDynamicFields`           |
-+--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.ObjectsContentBCS`          |
-+--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjectContent`   |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetMultiplePastObjects`     |
 +--------------------------------------------------------------------------+
@@ -81,21 +73,11 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalance`      |
 +--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetBalance`                 |
-+--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalances`     |
-+--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetAllCoinBalances`         |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetTransaction`             |
 +--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetTx`                      |
-+--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetTransactions`            |
-+--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetMultipleTx`              |
-+--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetTxKind`                  |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.ExecuteTransaction`         |
 +--------------------------------------------------------------------------+
@@ -103,15 +85,11 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.SimulateTransactionKind`    |
 +--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.SimulateTransactionLKind`   |
-+--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetPackageVersions`         |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetPackage`                 |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetMoveDataType`            |
-+--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetDataType`                |
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetStructure`               |
 +--------------------------------------------------------------------------+
@@ -137,9 +115,5 @@ Request Classes
 +--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceAddress`      |
 +--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.NameLookup`                 |
-+--------------------------------------------------------------------------+
 | :py:class:`pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceNames`        |
-+--------------------------------------------------------------------------+
-| :py:class:`pysui.sui.sui_grpc.pgrpc_requests.ReverseNameLookup`          |
 +--------------------------------------------------------------------------+

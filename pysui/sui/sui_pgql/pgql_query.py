@@ -2485,53 +2485,35 @@ class GetMultipleVersionedObjectsSC(PGQL_QueryNode):
 # ---------------------------------------------------------------------------
 
 
-class GetLatestCheckpointSequenceSC(PGQL_QueryNode):
-    """SC variant: encode_fn maps GQL checkpoints response to GetCheckpointResponse proto."""
+class _GetCheckpoint(PGQL_QueryNode):
+    """Private base: unified GQL checkpoint query for latest, by-sequence, or by-digest."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        *,
+        sequence_number: int | None = None,
+        digest: str | None = None,
+    ):
         """__init__ QueryNode initializer."""
-
-    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQL DSL request."""
-        std_checkpoint = frag.StandardCheckpoint().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        qres = schema.Query.checkpoints(last=1).select(
-            schema.CheckpointConnection.nodes.select(std_checkpoint)
-        )
-        return dsl_gql(pg_cursor, std_checkpoint, DSLQuery(qres))
-
-    @staticmethod
-    def encode_fn() -> Callable[[dict], sui_prot.GetCheckpointResponse]:
-        """Return deserializer producing GetCheckpointResponse from GQL checkpoints dict."""
-
-        def _encode(in_data: dict) -> sui_prot.GetCheckpointResponse:
-            checkpoints = in_data.get("checkpoints") or {}
-            nodes = checkpoints.get("nodes", [])
-            if not nodes:
-                return sui_prot.GetCheckpointResponse()
-            return _encode_checkpoint_from_raw(nodes[0])
-
-        return _encode
-
-
-class GetCheckpointBySequenceSC(PGQL_QueryNode):
-    """SC variant: encode_fn maps GQL checkpoint response to GetCheckpointResponse proto."""
-
-    def __init__(self, *, sequence_number: int):
-        """__init__ QueryNode initializer.
-
-        :param sequence_number: Checkpoint sequence number
-        :type cp_seq: int
-        """
         self.sequence_number = sequence_number
+        self.digest = digest
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQL DSL request."""
         std_checkpoint = frag.StandardCheckpoint()
         pg_cursor = frag.PageCursor()
-        qres = schema.Query.checkpoint(sequenceNumber=self.sequence_number).select(
-            std_checkpoint.fragment(schema)
-        )
+        if self.digest is not None:
+            qres = schema.Query.checkpoint(digest=self.digest).select(
+                std_checkpoint.fragment(schema)
+            )
+        elif self.sequence_number is not None:
+            qres = schema.Query.checkpoint(sequenceNumber=self.sequence_number).select(
+                std_checkpoint.fragment(schema)
+            )
+        else:
+            qres = schema.Query.checkpoint().select(
+                std_checkpoint.fragment(schema)
+            )
         return dsl_gql(
             pg_cursor.fragment(schema), std_checkpoint.fragment(schema), DSLQuery(qres)
         )
@@ -2545,6 +2527,30 @@ class GetCheckpointBySequenceSC(PGQL_QueryNode):
             return _encode_checkpoint_from_raw(cp_dict)
 
         return _encode
+
+
+class GetLatestCheckpointSequenceSC(_GetCheckpoint):
+    """SC variant: fetch latest checkpoint."""
+
+    def __init__(self):
+        """__init__ QueryNode initializer."""
+        super().__init__()
+
+
+class GetCheckpointBySequenceSC(_GetCheckpoint):
+    """SC variant: fetch checkpoint by sequence number."""
+
+    def __init__(self, *, sequence_number: int):
+        """__init__ QueryNode initializer."""
+        super().__init__(sequence_number=sequence_number)
+
+
+class GetCheckpointByDigestSC(_GetCheckpoint):
+    """SC variant: fetch checkpoint by digest."""
+
+    def __init__(self, *, digest: str):
+        """__init__ QueryNode initializer."""
+        super().__init__(digest=digest)
 
 
 # ---------------------------------------------------------------------------
