@@ -805,14 +805,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                     self.transaction.digest = txn_node["digest"]
 
             # --- Effects via effectsJson ---
-            # betterproto2.from_dict() maps camelCase→snake_case, so "integerValue"
-            # becomes "integer_value" — but the proto field is named "value". Rename
-            # before deserializing so AccumulatorWrite.value is populated correctly.
             effects_json_dict = eff.get("effectsJson") or {}
-            for _co in effects_json_dict.get("changedObjects") or []:
-                _aw = _co.get("accumulatorWrite")
-                if _aw and "integerValue" in _aw:
-                    _aw["value"] = int(_aw["integerValue"])
             effects_proto = sui_prot.TransactionEffects.from_dict(
                 effects_json_dict, ignore_unknown_fields=True
             )
@@ -4000,10 +3993,6 @@ def _encode_executed_tx(
 
     # effectsJson matches proto format; from_dict() populates all TransactionEffects fields except bcs
     effects_json = eff_dict.get("effectsJson") or {}
-    for _co in effects_json.get("changedObjects") or []:
-        _aw = _co.get("accumulatorWrite")
-        if _aw and "integerValue" in _aw:
-            _aw["value"] = int(_aw["integerValue"])
     effects = sui_prot.TransactionEffects.from_dict(
         effects_json, ignore_unknown_fields=True
     )

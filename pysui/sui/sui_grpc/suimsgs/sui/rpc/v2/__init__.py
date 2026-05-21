@@ -7,6 +7,7 @@ __all__ = (
     "Ability",
     "AccumulatorWrite",
     "AccumulatorWriteAccumulatorOperation",
+    "AccumulatorWriteAccumulatorValue",
     "ActiveJwk",
     "AddressAliasesVersion",
     "Argument",
@@ -60,6 +61,7 @@ __all__ = (
     "Epoch",
     "ErrorReason",
     "Event",
+    "EventDigestEntry",
     "ExecuteTransactionRequest",
     "ExecuteTransactionResponse",
     "ExecutedTransaction",
@@ -259,6 +261,16 @@ class AccumulatorWriteAccumulatorOperation(betterproto2.Enum):
     MERGE = 1
 
     SPLIT = 2
+
+
+class AccumulatorWriteAccumulatorValue(betterproto2.Enum):
+    ACCUMULATOR_VALUE_UNKNOWN = 0
+
+    INTEGER = 1
+
+    INTEGER_TUPLE = 2
+
+    EVENT_DIGEST = 3
 
 
 class ArgumentArgumentKind(betterproto2.Enum):
@@ -1243,7 +1255,33 @@ class AccumulatorWrite(betterproto2.Message):
         3, betterproto2.TYPE_ENUM, optional=True
     )
 
-    value: "int | None" = betterproto2.field(5, betterproto2.TYPE_UINT64, optional=True)
+    value_kind: "AccumulatorWriteAccumulatorValue | None" = betterproto2.field(
+        4, betterproto2.TYPE_ENUM, optional=True
+    )
+
+    integer_value: "int | None" = betterproto2.field(
+        5, betterproto2.TYPE_UINT64, optional=True
+    )
+    """
+    Set when the accumulator value is an integer (value_kind = INTEGER).
+    """
+
+    integer_tuple: "list[int]" = betterproto2.field(
+        6, betterproto2.TYPE_UINT64, repeated=True
+    )
+    """
+    Set, with len 2, when the accumulator value is an integer tuple
+    (value_kind = INTEGER_TUPLE).
+    """
+
+    event_digest_value: "list[EventDigestEntry]" = betterproto2.field(
+        7, betterproto2.TYPE_MESSAGE, repeated=True
+    )
+    """
+    Set when the accumulator value is an event digest list (value_kind = EVENT_DIGEST).
+    Contains a non-empty list of (event_index, digest) pairs representing
+    authenticated event stream entries within a transaction.
+    """
 
 
 default_message_pool.register_message(
@@ -2897,6 +2935,32 @@ class Event(betterproto2.Message):
 
 
 default_message_pool.register_message("sui.rpc.v2", "Event", Event)
+
+
+@dataclass(eq=False, repr=False)
+class EventDigestEntry(betterproto2.Message):
+    """
+    An entry in an event digest accumulator value.
+    """
+
+    event_index: "int | None" = betterproto2.field(
+        1, betterproto2.TYPE_UINT64, optional=True
+    )
+    """
+    Index of the event within its transaction.
+    """
+
+    digest: "str | None" = betterproto2.field(
+        2, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    Digest of the event.
+    """
+
+
+default_message_pool.register_message(
+    "sui.rpc.v2", "EventDigestEntry", EventDigestEntry
+)
 
 
 @dataclass(eq=False, repr=False)
