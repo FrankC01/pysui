@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - Unpublished
+
+### Added
+
+- Added new SuiCommand: `GetCheckpointByDigest` for fetching checkpoints by their digest value
+- Added new PTB command: `fund_address_accumulator`
+
+### Fixed
+
+### Changed
+
+- Added `TransactionEffects.version` to SuiCommand Simulate, Execute and Fetching transactions
+- Updated documentation
+- **BREAKING CHANGE**: renamed `balance_from` PTB command to `coin_from_address_accumulator`
+
+### Removed
+
+- Removed legacy JSON-RPC and synchronous GraphQL code and related artifacts
+
 ## [0.99.1] - 2026-05-21
 
 ### Added
