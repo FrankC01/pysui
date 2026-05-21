@@ -61,8 +61,7 @@ The UCI is built on four pillars:
    ``await client.parallel_executor(options=...)``.
 
 4. **Protocol-Level Access**: When you need capabilities beyond ``SuiCommand``:
-   Use :doc:`GraphQL QueryNodes <graphql_queries>` via ``execute_query_node``
-   for custom queries, or :doc:`gRPC Requests <grpc_requests>` via
+   use ``execute_query_node`` for custom GraphQL queries, or
    ``execute_grpc_request`` for direct gRPC interactions.
 
 Together, these four pillars fully encapsulate all protocol details: developers

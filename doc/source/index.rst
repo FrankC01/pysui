@@ -28,17 +28,10 @@ Welcome to pysui's documentation!
 
 .. toctree::
    :maxdepth: 1
-   :caption: GraphQL
+   :caption: Protocol Clients
 
    graphql
-   graphql_queries
-
-.. toctree::
-   :maxdepth: 1
-   :caption: gRPC
-
    grpc
-   grpc_requests
 
 .. toctree::
    :maxdepth: 1

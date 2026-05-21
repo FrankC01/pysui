@@ -85,12 +85,6 @@ Mysten Labs exposes the following gRPC services:
    Mysten Labs imposes rate limits on gRPC subscription endpoints (see
    :doc:`subscriptions`).
 
-Pre-built Requests
-------------------
-
-See :doc:`grpc_requests` for the full list of pre-built
-:py:mod:`pysui.sui.sui_grpc.pgrpc_requests` request classes.
-
 Transaction Building
 ---------------------
 

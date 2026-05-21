@@ -162,7 +162,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         kwargs["client"] = self
         return AsyncSuiTransaction(**kwargs)
 
-    async def serial_executor(self, *, options: "ExecutorOptions") -> "SerialExecutor":
+    async def serial_executor(self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions") -> "pysui.sui.sui_common.executors.serial_executor.SerialExecutor":
         """Async factory: create and initialize a SerialExecutor.
 
         Performs coin selection, merging, and gas state seeding before returning
@@ -177,7 +177,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         await se._initialize()
         return se
 
-    async def parallel_executor(self, *, options: "ExecutorOptions") -> "ParallelExecutor":
+    async def parallel_executor(self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions") -> "pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor":
         """Async factory: create and initialize a ParallelExecutor.
 
         Performs coin selection and gas state seeding before returning

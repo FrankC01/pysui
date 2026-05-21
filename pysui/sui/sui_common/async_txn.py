@@ -102,7 +102,7 @@ class AsyncSuiTransaction(txbase):
         :param mode: Argument parsing mode, defaults to TxnArgMode.EAGER
         :type mode: TxnArgMode, optional
         :param object_cache: Optional object cache for argument resolution, defaults to None
-        :type object_cache: Optional[AsyncObjectCache], optional
+        :type object_cache: Optional[pysui.sui.sui_common.executors.cache.AsyncObjectCache], optional
         """
         mode: TxnArgMode = kwargs.pop("mode", TxnArgMode.EAGER)
         object_cache: Optional[AsyncObjectCache] = kwargs.pop("object_cache", None)
