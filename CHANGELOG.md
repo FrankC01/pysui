@@ -5,11 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.99.1] - Unpublished
+## [0.99.1] - 2026-05-21
 
 ### Added
-
-### Deprecated
 
 ### Changed
 
@@ -17,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [bug](https://github.com/FrankC01/pysui/issues/383) GQL SimulateTransaction/SimulateTransactionKind objects missing `json` and `balance` fields
 - [bug](https://github.com/FrankC01/pysui/issues/382) splay.py distribution amounts ignored transaction gas costs
+
+### Removed
 
 ## [0.99.0] - 2026-05-16
 

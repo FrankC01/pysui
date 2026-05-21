@@ -30,7 +30,7 @@ Python Client SDK for Sui blockchain
 
 ## PyPi current
 
-**Release-0.99.0 - Released 2026-05-16**
+**Release-0.99.1 - Released 2026-05-21**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
