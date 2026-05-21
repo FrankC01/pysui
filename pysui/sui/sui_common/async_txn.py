@@ -721,6 +721,37 @@ class AsyncSuiTransaction(txbase):
             type_arguments=[type_tag],
         )
 
+    async def withdrawal(
+        self,
+        *,
+        amount: int,
+        coin_type: Optional[str] = "0x2::sui::SUI",
+        source: FundsSource = FundsSource.SENDER,
+    ) -> bcs.Argument:
+        """Return a raw Withdrawal<T> argument for use in move_call arguments.
+
+        Unlike coin_from_address_accumulator(), this does not inject a redeem_funds
+        command — the caller controls how to consume the Withdrawal<T> (e.g. via
+        balance::redeem_funds, coin::redeem_funds, or any Move function accepting
+        Withdrawal<T>). Restricted to move_call argument slots only.
+
+        :param amount: The amount of `coin_type` to withdraw from `source`
+        :type amount: int
+        :param coin_type: The package::module::type of coin; defaults to "0x2::sui::SUI"
+        :type coin_type: Optional[str], optional
+        :param source: Source of funds, defaults to FundsSource.SENDER
+        :type source: FundsSource, optional
+        :return: The Withdrawal<T> argument — usable in move_call arguments only
+        :rtype: bcs.Argument
+        """
+        type_tag = bcs.TypeTag.type_tag_from(coin_type)
+        wdt = bcs.FundsWithdrawal(
+            bcs.Reservation("Amount", amount),
+            bcs.WithdrawalType("Balance", type_tag),
+            bcs.WithdrawFrom(source.name),
+        )
+        return self.builder.input_obj_from_withdrawal(wdt)
+
     async def fund_address_accumulator(
         self,
         *,

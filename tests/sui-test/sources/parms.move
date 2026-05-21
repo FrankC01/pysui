@@ -5,6 +5,7 @@ use std::string::{String,utf8};
 use sui::coin::{Coin,from_balance};
 use sui::sui::SUI;
 use sui::balance;
+use sui::funds_accumulator::Withdrawal;
 use sui::vec_map;
 use sui::event;
 use sui::dynamic_field as df;
@@ -210,6 +211,17 @@ public fun check_phoney(phny:&mut Option<Phoney>,_ctx:&mut TxContext) :bool {
 public fun burn_phoney(phny:Phoney,_ctx:&mut TxContext) {
     let Phoney {id} = phny;
     id.delete();
+}
+
+/// Pay service using a Withdrawal<Balance<SUI>> redeemed from the sender's address accumulator.
+public fun pay_service_from_withdrawal(
+    self: &mut ParmObject,
+    withdrawal: Withdrawal<balance::Balance<SUI>>,
+    _ctx: &mut TxContext,
+) {
+    set_object_version(self);
+    let bal = balance::redeem_funds(withdrawal);
+    self.service.join(bal);
 }
 
 public fun pay_service(self:&mut ParmObject,payfrom:&mut Coin<SUI>,_ctx:&mut TxContext) {

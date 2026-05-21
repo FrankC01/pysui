@@ -188,7 +188,7 @@ class ProgrammableTransactionBuilder:
     ) -> bcs.Argument:
         """."""
         out_index = len(self.inputs)
-        self.inputs[f"Poof_{out_index}"] = bcs.CallArg("FundsWithdrawal", with_drawal)
+        self.inputs[bcs.BuilderArg("Withdrawal", with_drawal)] = bcs.CallArg("FundsWithdrawal", with_drawal)
         return bcs.Argument("Input", out_index)
 
     def command(
