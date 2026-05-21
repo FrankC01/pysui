@@ -685,7 +685,7 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
-    async def balance_from(
+    async def coin_from_address_accumulator(
         self,
         *,
         amount: int,
@@ -908,7 +908,7 @@ class AsyncSuiTransaction(txbase):
     async def publish(
         self, *, project_path: str, args_list: Optional[list[str]] = None
     ) -> bcs.Argument:
-        """Create a publish command.
+        """Publish a Move package.
 
         :param project_path: Path to project folder
         :type project_path: str

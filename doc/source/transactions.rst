@@ -15,41 +15,44 @@ Transaction Commands
 All commands listed below are available on both the GraphQL and gRPC
 transaction builders.
 
-+--------------------------+
-|  Command                 |
-+==========================+
-| split_coin               |
-+--------------------------+
-| split_coin_equal         |
-+--------------------------+
-| merge_coin               |
-+--------------------------+
-| transfer_objects         |
-+--------------------------+
-| transfer_sui             |
-+--------------------------+
-| public_transfer_object   |
-+--------------------------+
-| make_move_vector         |
-+--------------------------+
-| move_call                |
-+--------------------------+
-| stake_coin               |
-+--------------------------+
-| unstake_coin             |
-+--------------------------+
-| publish                  |
-+--------------------------+
-| publish_upgrade          |
-+--------------------------+
-| custom_upgrade           |
-+--------------------------+
-| optional_object          |
-+--------------------------+
-| balance_from             |
-+--------------------------+
-| fund_address_accumulator |
-+--------------------------+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Command
+     - Description
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.split_coin`
+     - Create a new coin(s) with the defined amount(s), split from the provided coin.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.split_coin_equal`
+     - Split one coin into equal parts and transfer all to transaction signer.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.merge_coins`
+     - Merge one or more coins to a primary coin.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.transfer_objects`
+     - Transfer one or more objects to a recipient.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.transfer_sui`
+     - Transfer a Sui coin object to a recipient.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.public_transfer_object`
+     - Public transfer of any object with KEY and STORE attributes.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.make_move_vector`
+     - Convert a list of objects to a Sui Move vector of item_type.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.move_call`
+     - Invoke a Move contract call.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.stake_coin`
+     - Stake one or more coins to a specific validator.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.unstake_coin`
+     - Unstake a Staked Sui Coin.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.publish`
+     - Publish a Move package.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.publish_upgrade`
+     - Authorize, publish, and commit an upgrade of a package.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.custom_upgrade`
+     - Support for custom authorization and upgrade commitments.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.optional_object`
+     - Wrap an object as a Move Option.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.coin_from_address_accumulator`
+     - Withdraw Coin<T> from transaction source Sender or Sponsor account.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.fund_address_accumulator`
+     - Send one or more coins to a recipient's address account balance (accumulator).
 
 Executing Transactions
 ----------------------
