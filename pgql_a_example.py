@@ -851,7 +851,9 @@ async def do_account_to_sui_coin(client: AsyncClientBase):
                 )
         # Enable the transaction to use account for gas payments.
         txer: AsyncSuiTransaction = await client.transaction()
-        coin = await txer.coin_from_address_accumulator(source=FundsSource.SENDER, amount=set_balance)
+        coin = await txer.coin_from_address_accumulator(
+            source=FundsSource.SENDER, amount=set_balance
+        )
         await txer.transfer_objects(
             transfers=[coin], recipient=client.config.active_address
         )
