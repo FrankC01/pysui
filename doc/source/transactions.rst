@@ -69,7 +69,7 @@ All three methods share the same gas and expiry arguments (see
        custom serialisation.
    * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.build_and_sign`
      - Finalises the transaction, simulates gas (unless ``gas_budget`` is
-       provided), signs, and returns a ``dict`` containing ``tx_bytes``
+       provided), signs, and returns a ``dict`` containing ``tx_bytestr``
        (base64-encoded) and ``sig_array``. The dict unpacks directly into
        :py:class:`~pysui.sui.sui_common.sui_commands.ExecuteTransaction`.
 
