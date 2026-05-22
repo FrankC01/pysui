@@ -5,6 +5,7 @@
 
 """pysui gRPC Requests"""
 
+import base58
 import base64
 import dataclasses
 from typing import Callable, Optional
@@ -485,6 +486,16 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
         )
 
 
+def _is_coin_reservation(obj: sui_prot.Object) -> bool:
+    """Return True if obj is a synthetic coin reservation rather than a real Sui object."""
+    if obj.version == 0:
+        return True
+    if obj.digest:
+        digest_bytes = base58.b58decode(obj.digest)
+        return len(digest_bytes) >= 32 and digest_bytes[12:32] == b'\xac' * 20
+    return False
+
+
 class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
     """Query to retrieve owned object by type."""
 
@@ -522,6 +533,11 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
             page_size=self.page_size,
             page_token=self.page_token,
         )
+
+    def render(self, resp: sui_prot.ListOwnedObjectsResponse) -> sui_prot.ListOwnedObjectsResponse:
+        """Filter out synthetic coin reservation objects."""
+        resp.objects = [o for o in resp.objects if not _is_coin_reservation(o)]
+        return resp
 
 
 class GetCoins(GetObjectsOwnedByAddress):

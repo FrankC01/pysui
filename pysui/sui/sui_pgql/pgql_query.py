@@ -6,6 +6,7 @@
 """QueryNode generators."""
 
 from typing import Any, Optional, Callable, Union
+import base58
 import base64
 import datetime
 import re
@@ -1689,6 +1690,16 @@ def _encode_coin_from_move_obj(mo_dict: dict) -> sui_prot.Object:
     )
 
 
+def _is_coin_reservation(obj: sui_prot.Object) -> bool:
+    """Return True if obj is a synthetic coin reservation rather than a real Sui object."""
+    if obj.version == 0:
+        return True
+    if obj.digest:
+        digest_bytes = base58.b58decode(obj.digest)
+        return len(digest_bytes) >= 32 and digest_bytes[12:32] == b'\xac' * 20
+    return False
+
+
 def _encode_coins_list(in_data) -> sui_prot.ListOwnedObjectsResponse:
     """Shared encoder for GetCoinsSC and GetGasSC.
 
@@ -1699,12 +1710,14 @@ def _encode_coins_list(in_data) -> sui_prot.ListOwnedObjectsResponse:
         objects: list[sui_prot.Object] = [
             _encode_coin_from_move_obj(c) for c in in_data
         ]
+        objects = [o for o in objects if not _is_coin_reservation(o)]
         return sui_prot.ListOwnedObjectsResponse(objects=objects, next_page_token=None)
     qres = in_data.get("qres", in_data)
     coins = qres.get("coins", {}) if isinstance(qres, dict) else {}
     cursor = coins.get("cursor", {}) if isinstance(coins, dict) else {}
     coin_objects = coins.get("coin_objects", []) if isinstance(coins, dict) else []
     objects = [_encode_coin_from_move_obj(c) for c in coin_objects]
+    objects = [o for o in objects if not _is_coin_reservation(o)]
     end_cursor: Optional[str] = (
         cursor.get("endCursor") if isinstance(cursor, dict) else None
     )
@@ -2346,6 +2359,7 @@ class GetObjectsOwnedByAddressSC(PGQL_QueryNode):
             objects: list[sui_prot.Object] = [
                 _encode_object_from_raw(o) for o in obj_list if isinstance(o, dict)
             ]
+            objects = [o for o in objects if not _is_coin_reservation(o)]
             end_cursor: Optional[str] = (
                 cursor.get("endCursor") if isinstance(cursor, dict) else None
             )
