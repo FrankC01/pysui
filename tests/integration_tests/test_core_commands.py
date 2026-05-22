@@ -18,6 +18,7 @@ Test order (use pytest-order markers for explicit sequencing):
   17-18: merge_coins negative tests
   19-20: move_call negative tests (insufficient gas)
   21-22: fund_address_accumulator
+  23:    auto_gas (AB at build time, hybrid coin-reservation path)
 """
 
 import asyncio
@@ -506,3 +507,21 @@ async def test_move_call_grpc_insufficient_gas_fails(
         assert not result.result_data.effects.status.success, (
             "Expected on-chain failure with gas_budget=1, got success"
         )
+
+
+@pytest.mark.order(23)
+async def test_auto_gas_gql_split_gas_transfer_self_executes(
+    gql_client: AsyncClientBase,
+    central_bank: CentralBank,
+) -> None:
+    """auto_gas (GQL): auto_gas=True queries AB at build; AB>0 routes to AB path.
+    Uses txer.gas as PTB input (hybrid: coin-reservation ref + AB payment)."""
+    await asyncio.sleep(SETTLE_SECS)
+    addr = str(gql_client.config.active_address)
+    txer = await gql_client.transaction()
+    split_res = await txer.split_coin(coin=txer.gas, amounts=[1_000])
+    await txer.transfer_objects(transfers=[split_res], recipient=addr)
+    result = await gql_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(auto_gas=True))
+    )
+    _assert_gql_success(result, "GQL auto_gas split_coin txer.gas")

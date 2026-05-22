@@ -259,6 +259,7 @@ class AsyncSuiTransaction(txbase):
         use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
         use_account_for_gas: bool = False,
+        auto_gas: bool = False,
     ) -> bcs.TransactionData:
         """Generate the TransactionData structure.
 
@@ -272,6 +273,18 @@ class AsyncSuiTransaction(txbase):
             raise ValueError("Empty Transaction.")
 
         uses_gas_coin, gas_source_draw = self._inspect_ptb_for_gas_coin()
+
+        if auto_gas:
+            _bal_res = await self.client.execute(
+                command=cmd.GetAddressCoinBalance(owner=self.signer_block.payer_address),
+                timeout=30.0,
+            )
+            if _bal_res.is_ok():
+                use_account_for_gas = (
+                    _bal_res.result_data.balance.address_balance or 0
+                ) > 0
+            else:
+                raise ValueError(_bal_res.result_string)
 
         if use_account_for_gas:
             return await self._build_txn_data_address_balance(
@@ -321,6 +334,7 @@ class AsyncSuiTransaction(txbase):
         use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
         use_account_for_gas: bool = False,
+        auto_gas: bool = False,
     ) -> bcs.TransactionData:
         """Construct a BCS TransactionData object.
 
@@ -335,11 +349,13 @@ class AsyncSuiTransaction(txbase):
         :type txn_expires_after: Optional[int], optional
         :param use_account_for_gas: Pay gas from address account balance, defaults to False
         :type use_account_for_gas: bool, optional
+        :param auto_gas: Let pysui decide gas source based on available balances, defaults to False
+        :type auto_gas: bool, optional
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
         return await self._build_txn_data(
-            gas_budget, use_gas_objects, txn_expires_after, use_account_for_gas
+            gas_budget, use_gas_objects, txn_expires_after, use_account_for_gas, auto_gas
         )
 
     async def build(
@@ -349,6 +365,7 @@ class AsyncSuiTransaction(txbase):
         use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
         use_account_for_gas: bool = False,
+        auto_gas: bool = False,
     ) -> str:
         """Serialize the BCS TransactionData to a base64 string.
 
@@ -360,6 +377,8 @@ class AsyncSuiTransaction(txbase):
         :type txn_expires_after: Optional[int], optional
         :param use_account_for_gas: Pay gas from address account balance, defaults to False
         :type use_account_for_gas: bool, optional
+        :param auto_gas: Let pysui decide gas source based on available balances, defaults to False
+        :type auto_gas: bool, optional
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
@@ -368,6 +387,7 @@ class AsyncSuiTransaction(txbase):
             use_gas_objects=use_gas_objects,
             txn_expires_after=txn_expires_after,
             use_account_for_gas=use_account_for_gas,
+            auto_gas=auto_gas,
         )
         return base64.b64encode(txn_data.serialize()).decode()
 
@@ -379,6 +399,7 @@ class AsyncSuiTransaction(txbase):
         use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
         use_account_for_gas: bool = False,
+        auto_gas: bool = False,
     ) -> dict:
         """Serialize the BCS TransactionData to base64, sign, and return both.
 
@@ -390,6 +411,8 @@ class AsyncSuiTransaction(txbase):
         :type txn_expires_after: Optional[int], optional
         :param use_account_for_gas: Pay gas from address account balance, defaults to False
         :type use_account_for_gas: bool, optional
+        :param auto_gas: Let pysui decide gas source based on available balances, defaults to False
+        :type auto_gas: bool, optional
         :return: Dict with ``tx_bytestr`` (base64 transaction bytes) and ``sig_array`` (list of base64 signature bytes)
         :rtype: dict[str, str]
         """
@@ -398,6 +421,7 @@ class AsyncSuiTransaction(txbase):
             use_gas_objects=use_gas_objects,
             txn_expires_after=txn_expires_after,
             use_account_for_gas=use_account_for_gas,
+            auto_gas=auto_gas,
         )
         tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
         sigs = self.signer_block.get_signatures(
