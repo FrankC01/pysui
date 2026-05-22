@@ -38,6 +38,7 @@ Welcome to pysui's documentation!
    :caption: Transactions & Executors
 
    transactions
+   transactions_ptb
    executors
 
 .. toctree::
