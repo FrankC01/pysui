@@ -152,8 +152,6 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         :type initial_sponsor: Union[str, SigningMultiSig], optional
         :param builder: Move call parameter builder, defaults to None
         :type builder: Optional[Any], optional
-        :param merge_gas_budget: Global gas budget for each transaction, defaults to False
-        :type merge_gas_budget: Optional[bool], optional
         :return: Unified async transaction builder
         :rtype: AsyncSuiTransaction
         """

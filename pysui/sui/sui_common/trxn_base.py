@@ -323,7 +323,6 @@ class _SuiTransactionBase(_TransactionBase):
         initial_sponsor: Optional[Union[str, SigningMultiSig]] = None,
         builder: Optional[Any] = None,
         arg_parser: Optional[Any] = None,
-        merge_gas_budget: Optional[bool] = False,
         txn_constraints: Optional[TransactionConstraints] = None,
         gas_price: Optional[int] = None,
     ) -> None:
@@ -341,8 +340,6 @@ class _SuiTransactionBase(_TransactionBase):
         :type builder: Optional[Any], optional
         :param arg_parser: transaction command argument parser validator, defaults to None
         :type arg_parser: Optional[Any], optional
-        :param merge_gas_budget: global gas budget for each transaction, defaults to False
-        :type merge_gas_budget: Optional[bool], optional
         :param txn_constraints: set transaction constraints, defaults to None
         :type txn_constraints: Optional[TransactionConstraints], optional
         :param gas_price: set gas price, defaults to None
@@ -361,7 +358,6 @@ class _SuiTransactionBase(_TransactionBase):
             sender=initial_sender or client.config.active_address,
             sponsor=initial_sponsor,
         )
-        self._merge_gas = merge_gas_budget
         self._executed = False
 
     @property

@@ -50,7 +50,6 @@ def coins_for_budget(
     budget: int,
     balance_fn: Callable[[T], int],
     ref_fn: Callable[[T], bcs.ObjectReference],
-    merge: bool = False,
 ) -> list[bcs.ObjectReference]:
     """Select gas coins sufficient to cover the given budget.
 
@@ -58,8 +57,7 @@ def coins_for_budget(
     before selection begins. Callers must filter out coins already present in
     the transaction's objects_in_use before calling this function.
 
-    If a single coin covers the budget it is returned alone. If no single coin
-    suffices and merge=False, raises ValueError. If merge=True, coins are
+    If a single coin covers the budget it is returned alone. Otherwise coins are
     accumulated in descending balance order until the budget is covered.
 
     :param coins: Available candidate gas coins (pre-filtered for conflicts)
@@ -70,9 +68,6 @@ def coins_for_budget(
     :type balance_fn: Callable[[T], int]
     :param ref_fn: Returns the bcs.ObjectReference for a coin
     :type ref_fn: Callable[[T], bcs.ObjectReference]
-    :param merge: Allow multi-coin gas payment (gas smashing), defaults to False
-    :type merge: bool
-    :raises ValueError: If no single coin covers the budget and merge=False
     :raises ValueError: If total available balance is insufficient for the budget
     :return: List of ObjectReferences to use as gas payment
     :rtype: list[bcs.ObjectReference]
@@ -83,12 +78,6 @@ def coins_for_budget(
     single_fit = [c for c in coins if balance_fn(c) >= budget]
     if single_fit:
         return [ref_fn(single_fit[0])]
-
-    if not merge:
-        raise ValueError(
-            f"No single gas coin covers budget of {budget}. "
-            "Set merge_gas_budget=True to allow multi-coin gas payment."
-        )
 
     accum, selected = 0, []
     for coin in coins:
@@ -105,12 +94,6 @@ def coins_for_budget(
     return [ref_fn(c) for c in selected]
 
 
-def _coin_obj_ref(coin) -> bcs.ObjectReference:
-    """Build ObjectReference from either a GQL or gRPC coin object."""
-    try:
-        return bcs.ObjectReference.from_grpc_ref(coin)
-    except (ValueError, TypeError):
-        return bcs.ObjectReference.from_gql_ref(coin)
 
 
 async def async_get_gas_data(
@@ -122,7 +105,6 @@ async def async_get_gas_data(
     objects_in_use: set,
     active_gas_price: int,
     tx_kind: bcs.TransactionKind,
-    merge_gas: bool = False,
     gas_source_draw: int = 0,
 ) -> bcs.GasData:
     """Protocol-agnostic gas selection and budget computation.
@@ -142,8 +124,6 @@ async def async_get_gas_data(
     :type active_gas_price: int
     :param tx_kind: The TransactionKind BCS
     :type tx_kind: bcs.TransactionKind
-    :param merge_gas: Allow multi-coin gas payment (gas smashing), defaults to False
-    :type merge_gas: bool, optional
     :param gas_source_draw: Extra MIST drawn from gas source by PTB commands, defaults to 0
     :type gas_source_draw: int, optional
     :raises ValueError: If gas coin fetch or simulation fails
@@ -206,8 +186,7 @@ async def async_get_gas_data(
             use_coins,
             _reserved,
             balance_fn=lambda x: int(x.balance or 0),
-            ref_fn=_coin_obj_ref,
-            merge=merge_gas,
+            ref_fn=bcs.ObjectReference.from_grpc_ref,
         ),
         bcs.Address.from_str(signing.payer_address),
         active_gas_price,

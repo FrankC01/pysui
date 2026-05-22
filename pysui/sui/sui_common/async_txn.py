@@ -97,8 +97,6 @@ class AsyncSuiTransaction(txbase):
         :type initial_sponsor: Union[str, SigningMultiSig], optional
         :param compress_inputs: Reuse identical inputs, defaults to True
         :type compress_inputs: Optional[bool], optional
-        :param merge_gas_budget: Use all available gas not in use for paying, defaults to False
-        :type merge_gas_budget: Optional[bool], optional
         :param mode: Argument parsing mode, defaults to TxnArgMode.EAGER
         :type mode: TxnArgMode, optional
         :param object_cache: Optional object cache for argument resolution, defaults to None
@@ -108,7 +106,6 @@ class AsyncSuiTransaction(txbase):
         object_cache: Optional[AsyncObjectCache] = kwargs.pop("object_cache", None)
         initial_sender = kwargs.pop("initial_sender", None)
         initial_sponsor = kwargs.pop("initial_sponsor", None)
-        merge_gas_budget = kwargs.pop("merge_gas_budget", False)
         # Consumed but not used: fetched async at build time
         kwargs.pop("txn_constraints", None)
         kwargs.pop("gas_price", None)
@@ -130,7 +127,6 @@ class AsyncSuiTransaction(txbase):
             sender=initial_sender or client.config.active_address,
             sponsor=initial_sponsor,
         )
-        self._merge_gas = merge_gas_budget
         self._executed = False
         self._mode = mode
         self._object_cache = object_cache
@@ -302,7 +298,6 @@ class AsyncSuiTransaction(txbase):
             objects_in_use=obj_in_use,
             active_gas_price=self.gas_price,
             tx_kind=tx_kind,
-            merge_gas=self._merge_gas,
             gas_source_draw=gas_source_draw,
         )
         return bcs.TransactionData(

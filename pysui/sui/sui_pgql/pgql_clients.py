@@ -244,8 +244,6 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         :type initial_sender: Union[str, SigningMultiSig], optional
         :param compress_inputs: Reuse identical inputs, defaults to False
         :type compress_inputs: bool,optional
-        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
-        :type merge_gas_budget: bool, optional
         """
         from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 

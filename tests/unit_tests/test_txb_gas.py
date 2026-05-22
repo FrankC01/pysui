@@ -144,17 +144,11 @@ class TestCoinsForBudget:
         assert len(result) == 1
         assert result[0].balance == 600_000_000
 
-    def test_no_single_fit_merge_false_raises(self):
-        """No single coin covers the budget and merge=False → ValueError mentioning merge_gas_budget."""
-        coins = [_make_coin(100_000), _make_coin(200_000)]
-        with pytest.raises(ValueError, match="merge_gas_budget=True"):
-            coins_for_budget(coins, 500_000, _balance, _ref, merge=False)
-
     def test_merge_true_accumulates_descending(self):
         """merge=True accumulates coins descending by balance until budget is covered."""
         coins = [_make_coin(300_000), _make_coin(200_000), _make_coin(100_000)]
         # 300k + 200k = 500k >= 450k; third coin is not needed
-        result = coins_for_budget(coins, 450_000, _balance, _ref, merge=True)
+        result = coins_for_budget(coins, 450_000, _balance, _ref)
         assert len(result) == 2
         assert {c.balance for c in result} == {300_000, 200_000}
 
@@ -162,7 +156,7 @@ class TestCoinsForBudget:
         """merge=True but total balance of all coins < budget → ValueError."""
         coins = [_make_coin(100_000), _make_coin(100_000)]
         with pytest.raises(ValueError, match="transaction requires"):
-            coins_for_budget(coins, 500_000, _balance, _ref, merge=True)
+            coins_for_budget(coins, 500_000, _balance, _ref)
 
     def test_256_coin_cap_applied_before_selection(self):
         """Coins beyond the 256 protocol limit are discarded before selection.
@@ -173,14 +167,14 @@ class TestCoinsForBudget:
         """
         coins = [_make_coin(1) for _ in range(300)]
         with pytest.raises(ValueError, match="transaction requires"):
-            coins_for_budget(coins, 270, _balance, _ref, merge=True)
+            coins_for_budget(coins, 270, _balance, _ref)
 
     def test_256_cap_keeps_highest_balance_coins(self):
         """When more than 256 coins are provided, the 256 with the highest balance are kept."""
         high = [_make_coin(1_000_000) for _ in range(10)]
         low = [_make_coin(1) for _ in range(290)]
         # Deliberately pass them unsorted to verify sorting is done internally.
-        result = coins_for_budget(low + high, 5_000_000, _balance, _ref, merge=True)
+        result = coins_for_budget(low + high, 5_000_000, _balance, _ref)
         assert all(c.balance == 1_000_000 for c in result)
 
     def test_budget_zero_is_satisfied_by_any_positive_coin(self):
