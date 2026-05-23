@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added new SuiCommand: `GetCheckpointByDigest` for fetching checkpoints by their digest value
 - Added new PTB command: `fund_address_accumulator`
 - [enhancement](https://github.com/FrankC01/pysui/issues/384) Enable address accumulator withdrawal as a PTB input
+- [enhancement](https://github.com/FrankC01/pysui/issues/385) Enable address accumulator balance as a PTB input
 
 ### Fixed
 

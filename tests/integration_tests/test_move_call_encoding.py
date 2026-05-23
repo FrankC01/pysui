@@ -1436,6 +1436,36 @@ async def test_withdrawal_ptb_gql_executes(
 
 
 @pytest.mark.order(145)
+async def test_create_balance_ptb_gql_executes(
+    gql_session_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """create_balance (GQL): Balance<SUI> deposited into ParmObject.service via move_call."""
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="create_balance_ptb_gql",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+        addr_draw=1_000_000,
+    )
+    pkg_addr = published_gql.pkg_addr
+    parm_obj_id = published_gql.parm_obj_id
+    txer = await gql_session_client.transaction()
+    balance_arg = await txer.create_balance(amount=1_000_000, coin_type="0x2::sui::SUI")
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::pay_service_from_balance",
+        arguments=[parm_obj_id, balance_arg],
+    )
+    result = await gql_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+    )
+    _assert_gql_success(result, "GQL create_balance PTB")
+
+
+@pytest.mark.order(146)
 async def test_withdrawal_ptb_grpc_executes(
     grpc_session_client: AsyncClientBase,
     published_grpc: PublishedPackage,

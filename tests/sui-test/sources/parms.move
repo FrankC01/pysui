@@ -224,6 +224,16 @@ public fun pay_service_from_withdrawal(
     self.service.join(bal);
 }
 
+    /// Pay service using a Balance<SUI> redeemed from the sender's address accumulator.
+    public fun pay_service_from_balance(
+        self: &mut ParmObject,
+        bal: balance::Balance<SUI>,
+        _ctx: &mut TxContext,
+    ) {
+        set_object_version(self);
+        self.service.join(bal);
+    }
+
 public fun pay_service(self:&mut ParmObject,payfrom:&mut Coin<SUI>,_ctx:&mut TxContext) {
     set_object_version(self);
     let pbal = payfrom.balance_mut();

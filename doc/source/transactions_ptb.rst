@@ -52,7 +52,9 @@ transaction builders.
    * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.coin_from_address_accumulator`
      - Withdraw Coin<T> from transaction source Sender or Sponsor account.
    * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.withdrawal`
-     - Produce a raw ``Withdrawal<T>`` PTB input from the Sender's address accumulator for use as a ``move_call`` argument.
+     - Produce a raw ``Withdrawal<T>`` PTB input from the Sender or Sponsor address accumulator for use as a ``move_call`` argument.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.create_balance`
+     - Produce a ``Balance<T>`` PTB input from the Sender or Sponsor address accumulator for use as a ``move_call`` argument.
    * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.fund_address_accumulator`
      - Send one or more coins to a recipient's address account balance (accumulator).
 

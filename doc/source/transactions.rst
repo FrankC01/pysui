@@ -108,6 +108,12 @@ All three build methods accept:
      - ``False``
      - Draw gas from the sender's address balance (accumulator) rather
        than coin objects. When set, ``use_gas_objects`` is ignored.
+   * - ``auto_gas``
+     - ``False``
+     - Automatically select the gas path based on sender balance at build
+       time. When set to ``True``, queries the sender's address balance and
+       routes to the address balance gas path if balance is positive,
+       otherwise falls back to standard coin gas selection.
 
 .. note::
 
