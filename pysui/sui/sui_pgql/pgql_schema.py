@@ -100,7 +100,7 @@ class Schema:
         """."""
         if not self._async_session and self._async_client:
             self._async_session = await self._async_client.connect_async(
-                reconnecting=True
+                reconnecting=False
             )
         return self._async_session
 
