@@ -11,6 +11,8 @@ from typing import ClassVar, Optional
 
 from pysui.sui.sui_bcs.bcs import TransactionKind
 from pysui.sui.sui_common.sui_command import SuiCommand
+
+
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_pgql.pgql_query as pgql_query
 
@@ -117,7 +119,7 @@ class SimulateTransactionKind(SuiCommand):
     grpc_class: ClassVar[type] = rn.SimulateTransactionKind
 
     tx_kind: TransactionKind
-    tx_meta: dict  # Must contain "sender": str; optionally "epoch_expiration": int
+    tx_meta: dict[str, str | int]  # Must contain "sender": str; optionally "epoch_expiration": int
     checks_enabled: Optional[bool] = True
     gas_selection: Optional[bool] = True
 
@@ -421,7 +423,7 @@ class GetMultiplePastObjects(SuiCommand):
     gql_class: ClassVar[type] = pgql_query.GetMultipleVersionedObjectsSC
     grpc_class: ClassVar[type] = rn.GetMultiplePastObjects
 
-    for_versions: list[dict]
+    for_versions: list[dict[str, str | int]]
 
     def gql_node(self) -> pgql_query.GetMultipleVersionedObjectsSC:
         """Return GQL multi-versioned-objects query node."""

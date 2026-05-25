@@ -447,7 +447,7 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
     def __init__(
         self,
         *,
-        for_versions: list[dict[str, int]],
+        for_versions: list[dict[str, str | int]],
         field_mask: Optional[list[str]] = None,
     ) -> None:
         """QueryNode initializer to fetch past object information for a list of object keys.

@@ -601,7 +601,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
         self,
         *,
         tx_kind: TransactionKind,
-        tx_meta: dict,
+        tx_meta: dict[str, Any],
         skip_checks: Optional[bool] = True,
         do_gas_selection: Optional[bool] = False,
     ) -> None:
