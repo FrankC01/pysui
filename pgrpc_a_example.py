@@ -167,7 +167,25 @@ async def do_address_balances(client: AsyncClientBase):
 
 async def do_object(client: AsyncClientBase):
     """Fetch specific object data."""
-    handle_result(await client.execute(command=cmd.GetObject(object_id="0x6")))
+    handle_result(
+        await client.execute(
+            command=cmd.GetObject(
+                object_id="0x3aab253af15cc6e116a4058f6caf0d87dc3df8fdf29c0704a4a86649237094a3"
+            )
+        )
+    )
+
+
+async def do_objects_for_type(client: AsyncClientBase):
+    """Fetch objects of specific type owned by an address."""
+    handle_result(
+        await client.execute(
+            command=cmd.GetObjectsForType(
+                owner=client.config.active_address,
+                object_type="0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0x0588cff9a50e0eaf4cd50d337c1a36570bc1517793fd3303e1513e8ad4d2aa96::usdt::USDT>",
+            )
+        )
+    )
 
 
 async def do_object_content(client: AsyncClientBase):
@@ -837,6 +855,7 @@ async def main():
         # await do_address_balance(client_init)
         # await do_address_balances(client_init)
         # await do_object(client_init)
+        # await do_objects_for_type(client_init)
         # await do_object_content(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)

@@ -139,8 +139,7 @@ async def async_get_gas_data(
         if not result.is_ok():
             raise ValueError(f"Failed to fetch gas coins: {result.result_string}")
         response = result.result_data
-        # GQL: SuiCoinObjectsGQL (.data), gRPC: ListOwnedObjectsResponse (.objects)
-        return list(getattr(response, "objects", None) or getattr(response, "data", []))
+        return list(response.objects)
 
     async def _simulate_budget() -> int:
         """Simulate the transaction to determine gas budget."""

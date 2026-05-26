@@ -132,20 +132,10 @@ class GetObjectsForTypeSC(PGQL_QueryNode):
 
         def _encode(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
             qres = in_data.get("qres", in_data)
-            cursor = qres.get("pageInfo", {})
-            objects_data = qres.get("objects_data", [])
-            objects: list[sui_prot.Object] = []
-            for obj in objects_data:
-                flat: dict = {}
-                pgql_type._fast_flat(obj, flat)
-                objects.append(
-                    sui_prot.Object(
-                        object_id=flat.get("address"),
-                        version=int(flat.get("version", 0)),
-                        digest=flat.get("digest"),
-                        object_type=flat.get("objectType"),
-                    )
-                )
+            objects_conn = qres.get("objects", qres)
+            cursor = objects_conn.get("cursor", {})
+            objects_data = objects_conn.get("objects_data", [])
+            objects = [_encode_object_from_raw(obj) for obj in objects_data]
             end_cursor: str | None = cursor.get("endCursor")
             next_page_token: bytes | None = (
                 end_cursor.encode()
@@ -2205,29 +2195,48 @@ class GetCoinsSC(PGQL_QueryNode):
         self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest."""
-        qres = schema.Query.address(address=self.owner).alias("qres")
-        coin_connection = schema.Address.objects(filter={"type": self.coin_type}).alias(
-            "coins"
-        )
+        """Build GraphQLRequest with owner and type filters."""
+        std_object = frag.StandardObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+
         if self.next_page_token:
-            coin_connection(after=self.next_page_token.decode())
-
-        std_coin = frag.StandardCoin()
-        pg_cursor = frag.PageCursor()
-
-        coin_connection.select(std_coin.fragment(schema))
-        qres.select(coin_connection)
-        return dsl_gql(
-            std_coin.fragment(schema),
-            pg_cursor.fragment(schema),
-            DSLQuery(qres),
+            obj_connection = schema.Query.objects(
+                filter={"owner": self.owner, "type": self.coin_type},
+                after=self.next_page_token.decode(),
+            )
+        else:
+            obj_connection = schema.Query.objects(
+                filter={"owner": self.owner, "type": self.coin_type}
+            )
+        obj_connection.select(
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(std_object),
         )
+
+        return dsl_gql(pg_cursor, std_object, base_object, DSLQuery(obj_connection))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
-        """Return deserializer producing ListOwnedObjectsResponse from GQL coins dict."""
-        return _encode_coins_list
+        """Return deserializer producing ListOwnedObjectsResponse from GQL objects dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
+            qres = in_data.get("qres", in_data)
+            objects_conn = qres.get("objects", qres)
+            cursor = objects_conn.get("cursor", {})
+            objects_data = objects_conn.get("objects_data", [])
+            objects = [_encode_object_from_raw(obj) for obj in objects_data]
+            end_cursor: str | None = cursor.get("endCursor")
+            next_page_token: bytes | None = (
+                end_cursor.encode()
+                if cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListOwnedObjectsResponse(
+                objects=objects, next_page_token=next_page_token
+            )
+
+        return _encode
 
 
 class GetGasSC(PGQL_QueryNode):
@@ -2239,29 +2248,48 @@ class GetGasSC(PGQL_QueryNode):
         self.next_page_token = next_page_token
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build GraphQLRequest with optional paging cursor."""
-        qres = schema.Query.address(address=self.owner).alias("qres")
-        coin_connection = schema.Address.objects(filter={"type": self.coin_type}).alias(
-            "coins"
-        )
+        """Build GraphQLRequest with owner and SUI coin type filter."""
+        std_object = frag.StandardObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+
         if self.next_page_token:
-            coin_connection(after=self.next_page_token.decode())
-
-        std_coin = frag.StandardCoin()
-        pg_cursor = frag.PageCursor()
-
-        coin_connection.select(std_coin.fragment(schema))
-        qres.select(coin_connection)
-        return dsl_gql(
-            std_coin.fragment(schema),
-            pg_cursor.fragment(schema),
-            DSLQuery(qres),
+            obj_connection = schema.Query.objects(
+                filter={"owner": self.owner, "type": self.coin_type},
+                after=self.next_page_token.decode(),
+            )
+        else:
+            obj_connection = schema.Query.objects(
+                filter={"owner": self.owner, "type": self.coin_type}
+            )
+        obj_connection.select(
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(std_object),
         )
+
+        return dsl_gql(pg_cursor, std_object, base_object, DSLQuery(obj_connection))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
-        """Return deserializer producing ListOwnedObjectsResponse from GQL gas dict."""
-        return _encode_coins_list
+        """Return deserializer producing ListOwnedObjectsResponse from GQL objects dict."""
+
+        def _encode(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
+            qres = in_data.get("qres", in_data)
+            objects_conn = qres.get("objects", qres)
+            cursor = objects_conn.get("cursor", {})
+            objects_data = objects_conn.get("objects_data", [])
+            objects = [_encode_object_from_raw(obj) for obj in objects_data]
+            end_cursor: str | None = cursor.get("endCursor")
+            next_page_token: bytes | None = (
+                end_cursor.encode()
+                if cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListOwnedObjectsResponse(
+                objects=objects, next_page_token=next_page_token
+            )
+
+        return _encode
 
 
 class GetDelegatedStakesSC(PGQL_QueryNode):

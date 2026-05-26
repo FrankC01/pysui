@@ -222,7 +222,7 @@ class GetCoins(SuiCommand):
     """Fetch all coin objects of a specific type owned by an address."""
 
     gql_class: ClassVar[type] = pgql_query.GetCoinsSC
-    grpc_class: ClassVar[type] = rn.GetCoins
+    grpc_class: ClassVar[type] = rn.GetCoinsSC
     is_pageable_gql: ClassVar[bool] = True
     paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
     is_pageable_grpc: ClassVar[bool] = True
@@ -240,9 +240,9 @@ class GetCoins(SuiCommand):
             next_page_token=self.next_page_token,
         )
 
-    def grpc_request(self) -> rn.GetCoins:
+    def grpc_request(self) -> rn.GetCoinsSC:
         """Return gRPC get-owned-objects request filtered to coin type."""
-        return rn.GetCoins(
+        return rn.GetCoinsSC(
             owner=self.owner, coin_type=self.coin_type, page_token=self.next_page_token
         )
 
@@ -252,7 +252,7 @@ class GetGas(SuiCommand):
     """Fetch all SUI gas coin objects owned by an address."""
 
     gql_class: ClassVar[type] = pgql_query.GetGasSC
-    grpc_class: ClassVar[type] = rn.GetGas
+    grpc_class: ClassVar[type] = rn.GetGasSC
     is_pageable_gql: ClassVar[bool] = True
     paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
     is_pageable_grpc: ClassVar[bool] = True
@@ -265,9 +265,9 @@ class GetGas(SuiCommand):
         """Return GQL gas-coins query node."""
         return self.gql_class(owner=self.owner, next_page_token=self.next_page_token)
 
-    def grpc_request(self) -> rn.GetGas:
+    def grpc_request(self) -> rn.GetGasSC:
         """Return gRPC get-gas request."""
-        return self.grpc_class(owner=self.owner, page_token=self.next_page_token)
+        return rn.GetGasSC(owner=self.owner, page_token=self.next_page_token)
 
 
 @dataclass(kw_only=True)
@@ -363,7 +363,7 @@ class GetMultipleObjects(SuiCommand):
     """Fetch the current state of multiple objects by ID list."""
 
     gql_class: ClassVar[type] = pgql_query.GetMultipleObjectsSC
-    grpc_class: ClassVar[type] = rn.GetMultipleObjects
+    grpc_class: ClassVar[type] = rn.GetMultipleObjectsSC
 
     object_ids: list[str]
 
@@ -371,9 +371,9 @@ class GetMultipleObjects(SuiCommand):
         """Return GQL multi-object query node."""
         return self.gql_class(object_ids=self.object_ids)
 
-    def grpc_request(self) -> rn.GetMultipleObjects:
+    def grpc_request(self) -> rn.GetMultipleObjectsSC:
         """Return gRPC batch-get-objects request."""
-        return rn.GetMultipleObjects(object_ids=self.object_ids)
+        return rn.GetMultipleObjectsSC(object_ids=self.object_ids)
 
 
 @dataclass(kw_only=True)
@@ -421,7 +421,7 @@ class GetMultiplePastObjects(SuiCommand):
     """
 
     gql_class: ClassVar[type] = pgql_query.GetMultipleVersionedObjectsSC
-    grpc_class: ClassVar[type] = rn.GetMultiplePastObjects
+    grpc_class: ClassVar[type] = rn.GetMultiplePastObjectsSC
 
     for_versions: list[dict[str, str | int]]
 
@@ -433,9 +433,13 @@ class GetMultiplePastObjects(SuiCommand):
         ]
         return self.gql_class(for_versions=gql_versions)
 
-    def grpc_request(self) -> rn.GetMultiplePastObjects:
+    def grpc_request(self) -> rn.GetMultiplePastObjectsSC:
         """Return gRPC batch-get-past-objects request."""
-        return rn.GetMultiplePastObjects(for_versions=self.for_versions)
+        object_versions = [
+            (d["objectId"], d["version"])
+            for d in self.for_versions
+        ]
+        return rn.GetMultiplePastObjectsSC(object_versions=object_versions)
 
 
 @dataclass(kw_only=True)
@@ -443,7 +447,7 @@ class GetObjectsOwnedByAddress(SuiCommand):
     """Fetch all objects owned by an address."""
 
     gql_class: ClassVar[type] = pgql_query.GetObjectsOwnedByAddressSC
-    grpc_class: ClassVar[type] = rn.GetObjectsOwnedByAddress
+    grpc_class: ClassVar[type] = rn.GetObjectsOwnedByAddressSC
     is_pageable_gql: ClassVar[bool] = True
     paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
     is_pageable_grpc: ClassVar[bool] = True
@@ -456,9 +460,9 @@ class GetObjectsOwnedByAddress(SuiCommand):
         """Return GQL owned-objects query node."""
         return self.gql_class(owner=self.owner, next_page_token=self.next_page_token)
 
-    def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
+    def grpc_request(self) -> rn.GetObjectsOwnedByAddressSC:
         """Return gRPC list-owned-objects request."""
-        return rn.GetObjectsOwnedByAddress(
+        return rn.GetObjectsOwnedByAddressSC(
             owner=self.owner, page_token=self.next_page_token
         )
 
@@ -647,7 +651,7 @@ class GetObjectsForType(SuiCommand):
     """Fetch all objects of a specific type owned by an address."""
 
     gql_class: ClassVar[type] = pgql_query.GetObjectsForTypeSC
-    grpc_class: ClassVar[type] = rn.GetObjectsOwnedByAddress
+    grpc_class: ClassVar[type] = rn.GetObjectsForTypeSC
     is_pageable_gql: ClassVar[bool] = True
     paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
     is_pageable_grpc: ClassVar[bool] = True
@@ -665,9 +669,9 @@ class GetObjectsForType(SuiCommand):
             next_page_token=self.next_page_token,
         )
 
-    def grpc_request(self) -> rn.GetObjectsOwnedByAddress:
+    def grpc_request(self) -> rn.GetObjectsForTypeSC:
         """Return gRPC list-owned-objects request with type filter."""
-        return rn.GetObjectsOwnedByAddress(
+        return rn.GetObjectsForTypeSC(
             owner=self.owner,
             object_type=self.object_type,
             page_token=self.next_page_token,

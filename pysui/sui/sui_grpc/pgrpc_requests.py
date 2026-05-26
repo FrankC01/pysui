@@ -270,6 +270,10 @@ class GetPastObject(absreq.PGRPC_Request):
 class GetObjectSC(GetObject):
     """SC variant: unwraps GetObjectResponse → Object (canonical shape)."""
 
+    def __init__(self, *, object_id: str, field_mask: Optional[list[str]] = None) -> None:
+        """Initializer with full field mask."""
+        super().__init__(object_id=object_id, field_mask=field_mask if field_mask else ["*"])
+
     def render(self, obj: sui_prot.GetObjectResponse) -> sui_prot.Object:
         """Extract the inner Object from the gRPC wrapper."""
         return obj.object
@@ -277,6 +281,10 @@ class GetObjectSC(GetObject):
 
 class GetPastObjectSC(GetPastObject):
     """SC variant: unwraps GetObjectResponse → Object (canonical shape)."""
+
+    def __init__(self, *, object_id: str, version: int, field_mask: Optional[list[str]] = None) -> None:
+        """Initializer with full field mask."""
+        super().__init__(object_id=object_id, version=version, field_mask=field_mask if field_mask else ["*"])
 
     def render(self, obj: sui_prot.GetObjectResponse) -> sui_prot.Object:
         """Extract the inner Object from the gRPC wrapper."""
@@ -311,6 +319,22 @@ class GetMultipleObjects(absreq.PGRPC_Request):
         """."""
         return stub.batch_get_objects, sui_prot.BatchGetObjectsRequest(
             requests=self.objects, read_mask=self.field_mask
+        )
+
+
+class GetMultipleObjectsSC(GetMultipleObjects):
+    """SC variant for GetMultipleObjects SuiCommand: returns all object fields."""
+
+    def __init__(
+        self,
+        *,
+        object_ids: list[str],
+        field_mask: Optional[list[str]] = None,
+    ) -> None:
+        """Initializer with full field mask."""
+        super().__init__(
+            object_ids=object_ids,
+            field_mask=field_mask if field_mask else ["*"],
         )
 
 
@@ -486,6 +510,26 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
         )
 
 
+class GetMultiplePastObjectsSC(GetMultiplePastObjects):
+    """SC variant for GetMultiplePastObjects SuiCommand: returns all object fields."""
+
+    def __init__(
+        self,
+        *,
+        object_versions: list[tuple[str, int]],
+        field_mask: Optional[list[str]] = None,
+    ) -> None:
+        """Initializer with full field mask."""
+        for_versions = [
+            {"objectId": obj_id, "version": version}
+            for obj_id, version in object_versions
+        ]
+        super().__init__(
+            for_versions=for_versions,
+            field_mask=field_mask if field_mask else ["*"],
+        )
+
+
 def _is_coin_reservation(obj: sui_prot.Object) -> bool:
     """Return True if obj is a synthetic coin reservation rather than a real Sui object."""
     if obj.version == 0:
@@ -540,6 +584,48 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
         return resp
 
 
+class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
+    """SC variant for GetObjectsOwnedByAddress SuiCommand: returns all object fields."""
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        object_type: Optional[str] = None,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+    ) -> None:
+        """Initializer with full field mask."""
+        super().__init__(
+            owner=owner,
+            object_type=object_type,
+            field_mask=["*"],
+            page_size=page_size,
+            page_token=page_token,
+        )
+
+
+class GetObjectsForTypeSC(GetObjectsOwnedByAddress):
+    """SC variant for GetObjectsForType SuiCommand: returns all object fields."""
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        object_type: Optional[str] = None,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+    ) -> None:
+        """Initializer with full field mask."""
+        super().__init__(
+            owner=owner,
+            object_type=object_type,
+            field_mask=["*"],
+            page_size=page_size,
+            page_token=page_token,
+        )
+
+
 class GetCoins(GetObjectsOwnedByAddress):
     """Query Sui coin objects by type owned by address using GetOwnedObjects."""
 
@@ -562,6 +648,27 @@ class GetCoins(GetObjectsOwnedByAddress):
         )
 
 
+class GetCoinsSC(GetCoins):
+    """SC variant for GetCoins SuiCommand: returns all object fields."""
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        coin_type: Optional[str] = None,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+    ) -> None:
+        """Initializer with full field mask."""
+        super().__init__(
+            owner=owner,
+            coin_type=coin_type,
+            field_mask=["*"],
+            page_size=page_size,
+            page_token=page_token,
+        )
+
+
 class GetGas(GetObjectsOwnedByAddress):
     """Query Sui gas objects owned by address using GetCoins."""
 
@@ -578,6 +685,25 @@ class GetGas(GetObjectsOwnedByAddress):
             owner=owner,
             object_type="0x2::coin::Coin<0x2::sui::SUI>",
             field_mask=field_mask,
+            page_size=page_size,
+            page_token=page_token,
+        )
+
+
+class GetGasSC(GetGas):
+    """SC variant for GetGas SuiCommand: returns all object fields."""
+
+    def __init__(
+        self,
+        *,
+        owner: str,
+        page_size: Optional[int] = None,
+        page_token: Optional[bytes] = None,
+    ) -> None:
+        """Initializer with full field mask."""
+        super().__init__(
+            owner=owner,
+            field_mask=["*"],
             page_size=page_size,
             page_token=page_token,
         )
