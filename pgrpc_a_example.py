@@ -170,6 +170,20 @@ async def do_object(client: AsyncClientBase):
     handle_result(await client.execute(command=cmd.GetObject(object_id="0x6")))
 
 
+async def do_object_content(client: AsyncClientBase):
+    """Fetch BCS content for a single object.
+
+    Set 'object_id' to object address of choice.
+    """
+    handle_result(
+        await client.execute(
+            command=cmd.GetObjectContent(
+                object_id="0x47f04c2327b45dfa6cb64d792ef53a5b7df8b0bf7ba3ef809a3de30f6fe26165"
+            )
+        )
+    )
+
+
 async def do_objects(client: AsyncClientBase):
     """Fetch all objects held by owner using execute_for_all()."""
     result = handle_result(
@@ -823,6 +837,7 @@ async def main():
         # await do_address_balance(client_init)
         # await do_address_balances(client_init)
         # await do_object(client_init)
+        # await do_object_content(client_init)
         # await do_objects(client_init)
         # await do_past_object(client_init)
         # await do_multiple_object_versions(client_init)

@@ -173,9 +173,13 @@ class GetObjectContentSC(PGQL_QueryNode):
             DSLQuery(
                 object=schema.Query.object(address=self.object_id).select(
                     schema.Object.address,
+                    schema.Object.version,
                     schema.Object.asMoveObject.select(
                         schema.MoveObject.contents.select(
                             schema.MoveValue.bcs,
+                            object_type_repr=schema.MoveValue.type.select(
+                                object_type=schema.MoveType.repr
+                            ),
                         )
                     ),
                     prior_transaction=schema.Object.previousTransaction.select(
@@ -195,9 +199,12 @@ class GetObjectContentSC(PGQL_QueryNode):
             pgql_type._fast_flat(obj, flat)
             bcs_content = None
             if "asMoveObject" in obj and "contents" in obj["asMoveObject"]:
-                bcs_bytes = obj["asMoveObject"]["contents"].get("bcs")
+                contents = obj["asMoveObject"]["contents"]
+                bcs_bytes = contents.get("bcs")
+                type_repr = contents.get("object_type_repr") or {}
+                object_type = type_repr.get("object_type") if isinstance(type_repr, dict) else None
                 if bcs_bytes:
-                    bcs_content = sui_prot.Bcs(value=bytes.fromhex(bcs_bytes[2:]))
+                    bcs_content = sui_prot.Bcs(name=object_type, value=base64.b64decode(bcs_bytes))
             return sui_prot.GetObjectResponse(
                 object=sui_prot.Object(
                     object_id=flat.get("address"),
@@ -228,9 +235,13 @@ class GetMultipleObjectContentSC(PGQL_QueryNode):
         obj_ids = [{"address": cid} for cid in self.object_ids]
         object_content = schema.Query.multiGetObjects(keys=obj_ids).select(
             schema.Object.address,
+            schema.Object.version,
             schema.Object.asMoveObject.select(
                 schema.MoveObject.contents.select(
                     schema.MoveValue.bcs,
+                    object_type_repr=schema.MoveValue.type.select(
+                        object_type=schema.MoveType.repr
+                    ),
                 )
             ),
             prior_transaction=schema.Object.previousTransaction.select(
@@ -253,9 +264,12 @@ class GetMultipleObjectContentSC(PGQL_QueryNode):
                 pgql_type._fast_flat(obj, flat)
                 bcs_content = None
                 if "asMoveObject" in obj and "contents" in obj["asMoveObject"]:
-                    bcs_bytes = obj["asMoveObject"]["contents"].get("bcs")
+                    contents = obj["asMoveObject"]["contents"]
+                    bcs_bytes = contents.get("bcs")
+                    type_repr = contents.get("object_type_repr") or {}
+                    object_type = type_repr.get("object_type") if isinstance(type_repr, dict) else None
                     if bcs_bytes:
-                        bcs_content = sui_prot.Bcs(value=bytes.fromhex(bcs_bytes[2:]))
+                        bcs_content = sui_prot.Bcs(name=object_type, value=base64.b64decode(bcs_bytes))
                 objects.append(
                     sui_prot.Object(
                         object_id=flat.get("address"),
@@ -2941,19 +2955,27 @@ class GetChainIdentifierSC(PGQL_QueryNode):
         return _encode
 
 
+def _bcs_to_move_table(t) -> sui_prot.MoveTable:
+    """Convert a BCS Table/Bag/TableVec stub to a MoveTable proto."""
+    return sui_prot.MoveTable(id=t.id.to_address_str(), size=t.size)
+
+
 def _bcs_validator_to_proto(bcs_v: "sui_system_bcs.Validator") -> sui_prot.Validator:
     """Build sui_prot.Validator from a deserialized sui_system_bcs.Validator."""
     md = bcs_v.metadata
     sp = bcs_v.staking_pool
     staking_pool = sui_prot.StakingPool(
         id=sp.id.to_address_str() if sp.id else None,
-        activation_epoch=sp.activation_epoch,
+        activation_epoch=sp.activation_epoch.value,
+        deactivation_epoch=sp.deactivation_epoch.value,
         sui_balance=sp.sui_balance,
         rewards_pool=sp.rewards_pool,
         pool_token_balance=sp.pool_token_balance,
+        exchange_rates=_bcs_to_move_table(sp.exchange_rates),
         pending_stake=sp.pending_stake,
         pending_total_sui_withdraw=sp.pending_total_sui_withdraw,
         pending_pool_token_withdraw=sp.pending_pool_token_withdraw,
+        extra_fields=_bcs_to_move_table(sp.extra_fields),
     )
     return sui_prot.Validator(
         name=md.name,
@@ -2961,13 +2983,32 @@ def _bcs_validator_to_proto(bcs_v: "sui_system_bcs.Validator") -> sui_prot.Valid
         description=md.description,
         image_url=md.image_url.url if md.image_url else None,
         project_url=md.project_url.url if md.project_url else None,
+        protocol_public_key=bytes(md.protocol_pubkey_bytes) if md.protocol_pubkey_bytes else None,
+        proof_of_possession=bytes(md.proof_of_possession) if md.proof_of_possession else None,
+        network_public_key=bytes(md.network_pubkey_bytes) if md.network_pubkey_bytes else None,
+        worker_public_key=bytes(md.worker_pubkey_bytes) if md.worker_pubkey_bytes else None,
+        network_address=md.net_address,
+        p2p_address=md.p2p_address,
+        primary_address=md.primary_address,
+        worker_address=md.worker_address,
+        next_epoch_protocol_public_key=bytes(md.next_epoch_protocol_pubkey_bytes.value) if md.next_epoch_protocol_pubkey_bytes.value is not None else None,
+        next_epoch_proof_of_possession=bytes(md.next_epoch_proof_of_possession.value) if md.next_epoch_proof_of_possession.value is not None else None,
+        next_epoch_network_public_key=bytes(md.next_epoch_network_pubkey_bytes.value) if md.next_epoch_network_pubkey_bytes.value is not None else None,
+        next_epoch_worker_public_key=bytes(md.next_epoch_worker_pubkey_bytes.value) if md.next_epoch_worker_pubkey_bytes.value is not None else None,
+        next_epoch_network_address=md.next_epoch_net_address.value,
+        next_epoch_p2p_address=md.next_epoch_p2p_address.value,
+        next_epoch_primary_address=md.next_epoch_primary_address.value,
+        next_epoch_worker_address=md.next_epoch_worker_address.value,
+        metadata_extra_fields=_bcs_to_move_table(md.extra_fields),
         voting_power=bcs_v.voting_power,
+        operation_cap_id=bcs_v.operation_cap_id.bytes.to_address_str() if bcs_v.operation_cap_id else None,
         gas_price=bcs_v.gas_price,
+        staking_pool=staking_pool,
         commission_rate=bcs_v.commission_rate,
         next_epoch_stake=bcs_v.next_epoch_stake,
         next_epoch_gas_price=bcs_v.next_epoch_gas_price,
         next_epoch_commission_rate=bcs_v.next_epoch_commission_rate,
-        staking_pool=staking_pool,
+        extra_fields=_bcs_to_move_table(bcs_v.extra_fields),
     )
 
 
@@ -2984,6 +3025,8 @@ def _bcs_system_state_to_proto(
         min_validator_joining_stake=params.min_validator_joining_stake,
         validator_low_stake_threshold=params.validator_low_stake_threshold,
         validator_very_low_stake_threshold=params.validator_very_low_stake_threshold,
+        validator_low_stake_grace_period=params.validator_low_stake_grace_period,
+        extra_fields=_bcs_to_move_table(params.extra_fields),
     )
     subsidy = bcs_ss.stake_subsidy
     stake_subsidy = sui_prot.StakeSubsidy(
@@ -2992,6 +3035,7 @@ def _bcs_system_state_to_proto(
         current_distribution_amount=subsidy.current_distribution_amount,
         stake_subsidy_period_length=subsidy.stake_subsidy_period_length,
         stake_subsidy_decrease_rate=subsidy.stake_subsidy_decrease_rate,
+        extra_fields=_bcs_to_move_table(subsidy.extra_fields),
     )
     sf = bcs_ss.storage_fund
     storage_fund = sui_prot.StorageFund(
@@ -3002,18 +3046,30 @@ def _bcs_system_state_to_proto(
     validator_set = sui_prot.ValidatorSet(
         total_stake=vs.total_stake,
         active_validators=[_bcs_validator_to_proto(v) for v in vs.active_validators],
+        pending_active_validators=_bcs_to_move_table(vs.pending_active_validators),
         pending_removals=list(vs.pending_removals),
+        staking_pool_mappings=_bcs_to_move_table(vs.staking_pool_mappings),
+        inactive_validators=_bcs_to_move_table(vs.inactive_validators),
+        validator_candidates=_bcs_to_move_table(vs.validator_candidates),
+        at_risk_validators={e.key.to_address_str(): e.value for e in vs.at_risk_validators.contents},
+        extra_fields=_bcs_to_move_table(vs.extra_fields),
     )
     return sui_prot.SystemState(
         version=bcs_ss.system_state_version,
         epoch=bcs_ss.epoch,
+        protocol_version=bcs_ss.protocol_version,
         reference_gas_price=bcs_ss.reference_gas_price,
         parameters=system_parameters,
         stake_subsidy=stake_subsidy,
         storage_fund=storage_fund,
         validators=validator_set,
         safe_mode=bcs_ss.safe_mode,
+        safe_mode_storage_rewards=bcs_ss.safe_mode_storage_rewards,
+        safe_mode_computation_rewards=bcs_ss.safe_mode_computation_rewards,
+        safe_mode_storage_rebates=bcs_ss.safe_mode_storage_rebates,
+        safe_mode_non_refundable_storage_fee=bcs_ss.safe_mode_non_refundable_storage_fee,
         epoch_start_timestamp_ms=bcs_ss.epoch_start_timestamp_ms,
+        extra_fields=_bcs_to_move_table(bcs_ss.extra_fields),
     )
 
 

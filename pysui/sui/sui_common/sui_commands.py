@@ -602,7 +602,7 @@ class GetMultipleObjectContent(SuiCommand):
     def grpc_request(self) -> rn.GetMultipleObjects:
         """Return gRPC batch-get-objects request with contents field mask."""
         return rn.GetMultipleObjects(
-            object_ids=self.object_ids, field_mask=["contents"]
+            object_ids=self.object_ids, field_mask=["object_id", "contents", "version"]
         )
 
 
@@ -639,7 +639,7 @@ class GetObjectContent(SuiCommand):
 
     def grpc_request(self) -> rn.GetObject:
         """Return gRPC get-object request with contents field mask."""
-        return rn.GetObject(object_id=self.object_id, field_mask=["contents"])
+        return rn.GetObject(object_id=self.object_id, field_mask=["object_id", "contents", "version"])
 
 
 @dataclass(kw_only=True)
