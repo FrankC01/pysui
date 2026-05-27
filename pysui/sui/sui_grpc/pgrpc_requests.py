@@ -17,7 +17,7 @@ from pysui.sui.sui_bcs.bcs import TransactionKind
 from pysui.sui.sui_bcs import bcs
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_common.shared_types import ObjectSummary
+from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
@@ -342,14 +342,14 @@ _SUMMARY_FIELD_MASK = ["owner", "version", "object_id", "digest"]
 
 
 class GetMultipleObjectsSummarySC(GetMultipleObjects):
-    """SC variant: normalizes BatchGetObjectsResponse → list[ObjectSummary]."""
+    """SC variant: normalizes BatchGetObjectsResponse → ObjectSummaryList."""
 
     def __init__(self, *, object_ids: list[str]) -> None:
         """Initializer."""
         super().__init__(object_ids=object_ids, field_mask=_SUMMARY_FIELD_MASK)
 
-    def render(self, resp: sui_prot.BatchGetObjectsResponse) -> list[ObjectSummary]:
-        """Convert gRPC batch response to list[ObjectSummary]."""
+    def render(self, resp: sui_prot.BatchGetObjectsResponse) -> ObjectSummaryList:
+        """Convert gRPC batch response to ObjectSummaryList."""
         entries: list[ObjectSummary] = []
         for obj_result in resp.objects:
             obj = obj_result.object
@@ -384,7 +384,7 @@ class GetMultipleObjectsSummarySC(GetMultipleObjects):
                     digest=digest_str,
                     owner=None,
                 ))
-        return entries
+        return ObjectSummaryList(objects=entries)
 
 
 class GetObjectSummarySC(GetObject):

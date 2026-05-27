@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from pysui import PysuiConfiguration, client_factory, AsyncClientBase
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
 
 SUI_COIN_TYPE = (
     "0x0000000000000000000000000000000000000000000000000000000000000002"
@@ -258,6 +259,47 @@ async def _compare_batch(
         print(f"  gRPC error: {e}")
 
 
+async def _compare_summary_batch(
+    name: str,
+    gql_client: AsyncClientBase,
+    grpc_client: AsyncClientBase,
+    sc_cmd,
+) -> None:
+    """Run a GetMultipleObjectSummary command on both protocols, match by objectId, compare."""
+    gql_res = await gql_client.execute(command=sc_cmd)
+    grpc_res = await grpc_client.execute(command=sc_cmd)
+
+    if not gql_res.is_ok():
+        print(f"\n{name}: GQL FAILED — {gql_res.result_string}")
+        return
+    if not grpc_res.is_ok():
+        print(f"\n{name}: gRPC FAILED — {grpc_res.result_string}")
+        return
+
+    gql_items: ObjectSummaryList = gql_res.result_data
+    grpc_items: ObjectSummaryList = grpc_res.result_data
+    gql_by_id = {s.objectId: s for s in (gql_items.objects if gql_items else [])}
+    grpc_by_id = {s.objectId: s for s in (grpc_items.objects if grpc_items else [])}
+
+    common = set(gql_by_id) & set(grpc_by_id)
+    all_diffs: list[str] = []
+    for oid in sorted(common):
+        gs, grs = gql_by_id[oid], grpc_by_id[oid]
+        for field in ("objectId", "version", "digest", "owner", "initialSharedVersion"):
+            gv, grv = getattr(gs, field), getattr(grs, field)
+            if gv != grv:
+                all_diffs.append(f"  object {oid}:")
+                all_diffs.append(f"    {field}: gql={gv!r}  grpc={grv!r}")
+
+    _report(name, all_diffs, len(common))
+    gql_only = set(gql_by_id) - set(grpc_by_id)
+    grpc_only = set(grpc_by_id) - set(gql_by_id)
+    if gql_only:
+        print(f"  GQL-only ({len(gql_only)}): {sorted(gql_only)[:3]}")
+    if grpc_only:
+        print(f"  gRPC-only ({len(grpc_only)}): {sorted(grpc_only)[:3]}")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -342,7 +384,11 @@ async def main(profile: str, past_object_id: Optional[str] = None, past_version_
     await _compare_batch("GetMultipleObjects", gql_client, grpc_client,
                          cmd.GetMultipleObjects(object_ids=coin_ids))
 
-    # 8. GetMultiplePastObjects
+    # 8. GetMultipleObjectSummary
+    await _compare_summary_batch("GetMultipleObjectSummary", gql_client, grpc_client,
+                                 cmd.GetMultipleObjectSummary(object_ids=coin_ids))
+
+    # 9. GetMultiplePastObjects
     if past_version:
         batch_versions = [{"objectId": past_id, "version": past_version}]
         if past_version_extra is not None:

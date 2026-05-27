@@ -30,7 +30,7 @@ from pysui.sui.sui_bcs.bcs import TransactionKind, TransactionData, SuiSignature
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_grpc.suimsgs.google import protobuf as _google_protobuf
 import pysui.sui.sui_grpc.pgrpc_requests as _rn
-from pysui.sui.sui_common.shared_types import ObjectSummary
+from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
 import pysui.sui.sui_bcs.sui_system_bcs as sui_system_bcs
 
 
@@ -300,10 +300,10 @@ class GetMultipleObjectsSummarySC(PGQL_QueryNode):
         return dsl_gql(summary_frag, DSLQuery(qres))
 
     @staticmethod
-    def encode_fn() -> Callable[[dict], list]:
-        """Return deserializer producing list[ObjectSummary] from multiGetObjects response."""
+    def encode_fn() -> Callable[[dict], ObjectSummaryList]:
+        """Return deserializer producing ObjectSummaryList from multiGetObjects response."""
 
-        def _encode(in_data: dict) -> list:
+        def _encode(in_data: dict) -> ObjectSummaryList:
             entries: list[ObjectSummary] = []
             for raw in in_data.get("multiGetObjects", []):
                 if raw is None:
@@ -313,11 +313,13 @@ class GetMultipleObjectsSummarySC(PGQL_QueryNode):
                 ow = raw.get("owner") or {}
                 kind = ow.get("obj_owner_kind", "")
                 if kind == "AddressOwner":
-                    owner_str = ow.get("address_id")
+                    addr_id = ow.get("address_id") or {}
+                    owner_str = addr_id.get("address") if isinstance(addr_id, dict) else addr_id
                 elif kind == "Shared":
                     shared_v = str(ow.get("initial_version", 0))
                 elif kind == "ObjectOwner":
-                    owner_str = ow.get("parent_id")
+                    parent_id = ow.get("parent_id") or {}
+                    owner_str = parent_id.get("address") if isinstance(parent_id, dict) else parent_id
                 entries.append(
                     ObjectSummary(
                         objectId=raw.get("object_id", ""),
@@ -327,7 +329,7 @@ class GetMultipleObjectsSummarySC(PGQL_QueryNode):
                         initialSharedVersion=shared_v,
                     )
                 )
-            return entries
+            return ObjectSummaryList(objects=entries)
 
         return _encode
 
