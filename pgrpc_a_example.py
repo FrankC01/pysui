@@ -536,6 +536,11 @@ async def do_package(client: AsyncClientBase):
         print(result.result_data.to_json(indent=2))
 
 
+async def do_epoch(client: AsyncClientBase):
+    """Fetch current epoch info (omit epoch_id for current, or pass an int for a specific epoch)."""
+    handle_result(await client.execute(command=cmd.GetEpoch()))
+
+
 async def do_dry_run(client: AsyncClientBase):
     """Execute a dry run."""
 
@@ -872,6 +877,7 @@ async def main():
         # await do_sequence_cp(client_init)
         # await do_digest_cp(client_init)
         # await do_checkpoints(client_init)
+        # await do_epoch(client_init)
         # await do_owned_nameservice(client_init)
         # await do_validators(client_init)
         # await do_all_validators(client_init)

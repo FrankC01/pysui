@@ -85,6 +85,8 @@ class TestNoopShortCircuit:
 
 import datetime
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+import pysui.sui.sui_grpc.pgrpc_requests as _pgrpc_rn
+import pysui.sui.sui_common.shared_types as shared_types
 
 
 class TestSCSiblings:
@@ -189,8 +191,9 @@ class TestSCSiblings:
                 "startTimestamp": "2024-01-15T00:00:00+00:00",
                 "endTimestamp": "2024-01-16T00:00:00+00:00",
                 "referenceGasPrice": "750",
-                "totalCheckpoints": "1000",
-                "totalTransactions": "5000",
+                "protocolConfigs": {"protocolVersion": 99},
+                "first_checkpoint": {"nodes": [{"sequenceNumber": "1000"}]},
+                "last_checkpoint": {"nodes": [{"sequenceNumber": "1999"}]},
             }
         }
         result = qn.GetEpochSC.encode_fn()(raw)
@@ -201,6 +204,11 @@ class TestSCSiblings:
         assert ep.reference_gas_price == 750
         assert ep.start == datetime.datetime.fromisoformat("2024-01-15T00:00:00+00:00")
         assert ep.end == datetime.datetime.fromisoformat("2024-01-16T00:00:00+00:00")
+        assert ep.protocol_config is not None
+        assert ep.protocol_config.protocol_version == 99
+        assert ep.first_checkpoint == 1000
+        assert ep.last_checkpoint == 1999
+        assert ep.committee is not None
 
     def test_get_epoch_sc_no_end_timestamp(self):
         raw = {
@@ -213,6 +221,10 @@ class TestSCSiblings:
         }
         result = qn.GetEpochSC.encode_fn()(raw)
         assert result.epoch.end is None
+        assert result.epoch.system_state is None
+        assert result.epoch.protocol_config is None
+        assert result.epoch.first_checkpoint is None
+        assert result.epoch.last_checkpoint is None
 
     def test_get_package_versions_sc_encode_maps_fields(self):
         raw = {
@@ -608,3 +620,255 @@ class TestTransactionSCEncode:
         assert isinstance(result, sui_prot.TransactionKind)
         assert result.change_epoch is not None
         assert result.change_epoch.epoch == 5
+
+
+# ---------------------------------------------------------------------------
+# TestObjectSCSiblings — encode_fn() shapes for object-oriented SC classes
+# ---------------------------------------------------------------------------
+
+
+def _min_obj(object_id: str = _ADDR, version: int = 5, digest: str = "SomeDigest") -> dict:
+    """Minimal GQL object dict consumable by _encode_object_from_raw."""
+    return {"object_id": object_id, "version": version, "object_digest": digest}
+
+
+class TestObjectSCSiblings:
+    """encode_fn output shapes for GetObjectSC, GetCoinsSC, GetGasSC, etc."""
+
+    # --- GetObjectSC ---
+
+    def test_get_object_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetObjectSC.encode_fn())
+
+    def test_get_object_sc_encode_returns_object_with_fields(self):
+        raw = {"object": _min_obj()}
+        result = qn.GetObjectSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.Object)
+        assert result.object_id == _ADDR
+        assert result.version == 5
+        assert result.digest == "SomeDigest"
+
+    def test_get_object_sc_encode_empty_object_returns_empty(self):
+        result = qn.GetObjectSC.encode_fn()({"object": {}})
+        assert isinstance(result, sui_prot.Object)
+
+    def test_get_object_sc_encode_missing_key_returns_empty(self):
+        result = qn.GetObjectSC.encode_fn()({})
+        assert isinstance(result, sui_prot.Object)
+
+    # --- GetPastObjectSC ---
+
+    def test_get_past_object_sc_encode_returns_object_with_fields(self):
+        raw = {"object": _min_obj(_ADDR2, version=3, digest="PastDigest")}
+        result = qn.GetPastObjectSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.Object)
+        assert result.object_id == _ADDR2
+        assert result.version == 3
+        assert result.digest == "PastDigest"
+
+    # --- GetCoinsSC ---
+
+    def test_get_coins_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetCoinsSC.encode_fn())
+
+    def test_get_coins_sc_encode_empty_list_no_next_page(self):
+        raw = {"objects": {"cursor": {"hasNextPage": False, "endCursor": None}, "objects_data": []}}
+        result = qn.GetCoinsSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.ListOwnedObjectsResponse)
+        assert result.objects == []
+        assert result.next_page_token is None
+
+    def test_get_coins_sc_encode_with_objects_and_next_page(self):
+        raw = {
+            "objects": {
+                "cursor": {"hasNextPage": True, "endCursor": "cursorABC"},
+                "objects_data": [_min_obj()],
+            }
+        }
+        result = qn.GetCoinsSC.encode_fn()(raw)
+        assert len(result.objects) == 1
+        assert result.next_page_token == b"cursorABC"
+
+    # --- GetGasSC ---
+
+    def test_get_gas_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetGasSC.encode_fn())
+
+    def test_get_gas_sc_encode_empty_list_no_next_page(self):
+        raw = {"objects": {"cursor": {"hasNextPage": False, "endCursor": None}, "objects_data": []}}
+        result = qn.GetGasSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.ListOwnedObjectsResponse)
+        assert result.objects == []
+        assert result.next_page_token is None
+
+    def test_get_gas_sc_encode_with_paging(self):
+        raw = {
+            "objects": {
+                "cursor": {"hasNextPage": True, "endCursor": "gasPage2"},
+                "objects_data": [_min_obj(_ADDR2, version=7, digest="GasDig")],
+            }
+        }
+        result = qn.GetGasSC.encode_fn()(raw)
+        assert len(result.objects) == 1
+        assert result.next_page_token == b"gasPage2"
+
+    # --- GetObjectsOwnedByAddressSC ---
+
+    def test_get_objects_owned_by_address_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetObjectsOwnedByAddressSC.encode_fn())
+
+    def test_get_objects_owned_by_address_sc_filters_coin_reservation(self):
+        raw = {
+            "objects": {
+                "cursor": {"hasNextPage": False, "endCursor": None},
+                "objects_data": [
+                    _min_obj(_ADDR, version=1, digest=None),
+                    _min_obj(_ADDR2, version=0, digest=None),  # version==0 → coin reservation
+                ],
+            }
+        }
+        result = qn.GetObjectsOwnedByAddressSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.ListOwnedObjectsResponse)
+        assert len(result.objects) == 1
+        assert result.objects[0].object_id == _ADDR
+
+    def test_get_objects_owned_by_address_sc_no_next_page(self):
+        raw = {"objects": {"cursor": {"hasNextPage": False, "endCursor": None}, "objects_data": []}}
+        result = qn.GetObjectsOwnedByAddressSC.encode_fn()(raw)
+        assert result.next_page_token is None
+
+    def test_get_objects_owned_by_address_sc_with_next_page(self):
+        raw = {"objects": {"cursor": {"hasNextPage": True, "endCursor": "ownPage"}, "objects_data": []}}
+        result = qn.GetObjectsOwnedByAddressSC.encode_fn()(raw)
+        assert result.next_page_token == b"ownPage"
+
+    # --- GetMultipleObjectsSC ---
+
+    def test_get_multiple_objects_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetMultipleObjectsSC.encode_fn())
+
+    def test_get_multiple_objects_sc_encode_returns_batch_response(self):
+        raw = {
+            "multiGetObjects": [
+                _min_obj(_ADDR, version=1, digest="d1"),
+                _min_obj(_ADDR2, version=2, digest="d2"),
+            ]
+        }
+        result = qn.GetMultipleObjectsSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.BatchGetObjectsResponse)
+        assert len(result.objects) == 2
+        assert result.objects[0].object.object_id == _ADDR
+        assert result.objects[1].object.object_id == _ADDR2
+
+    def test_get_multiple_objects_sc_encode_empty_list(self):
+        result = qn.GetMultipleObjectsSC.encode_fn()({"multiGetObjects": []})
+        assert isinstance(result, sui_prot.BatchGetObjectsResponse)
+        assert result.objects == []
+
+    # --- GetMultipleVersionedObjectsSC ---
+
+    def test_get_multiple_versioned_objects_sc_encode_returns_batch_response(self):
+        raw = {"multiGetObjects": [_min_obj(_ADDR, version=3, digest="v3dig")]}
+        result = qn.GetMultipleVersionedObjectsSC.encode_fn()(raw)
+        assert isinstance(result, sui_prot.BatchGetObjectsResponse)
+        assert len(result.objects) == 1
+        assert result.objects[0].object.version == 3
+
+    # --- GetMultipleObjectsSummarySC ---
+
+    def test_get_multiple_objects_summary_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetMultipleObjectsSummarySC.encode_fn())
+
+    def test_get_multiple_objects_summary_sc_address_owner(self):
+        raw = {
+            "multiGetObjects": [
+                {
+                    "object_id": _ADDR,
+                    "version": 10,
+                    "object_digest": "dg1",
+                    "owner": {"obj_owner_kind": "AddressOwner", "address_id": {"address": _ADDR2}},
+                }
+            ]
+        }
+        result = qn.GetMultipleObjectsSummarySC.encode_fn()(raw)
+        assert isinstance(result, shared_types.ObjectSummaryList)
+        assert len(result.objects) == 1
+        obj = result.objects[0]
+        assert obj.objectId == _ADDR
+        assert obj.version == "10"
+        assert obj.owner == _ADDR2
+        assert obj.initialSharedVersion is None
+
+    def test_get_multiple_objects_summary_sc_shared_owner(self):
+        raw = {
+            "multiGetObjects": [
+                {
+                    "object_id": _ADDR2,
+                    "version": 5,
+                    "object_digest": "dg2",
+                    "owner": {"obj_owner_kind": "Shared", "initial_version": 42},
+                }
+            ]
+        }
+        result = qn.GetMultipleObjectsSummarySC.encode_fn()(raw)
+        assert len(result.objects) == 1
+        obj = result.objects[0]
+        assert obj.owner is None
+        assert obj.initialSharedVersion == "42"
+
+    def test_get_multiple_objects_summary_sc_skips_none_entries(self):
+        raw = {"multiGetObjects": [None]}
+        result = qn.GetMultipleObjectsSummarySC.encode_fn()(raw)
+        assert result.objects == []
+
+    # --- GetLatestSuiSystemStateSC ---
+
+    def test_get_latest_sui_system_state_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetLatestSuiSystemStateSC.encode_fn())
+
+    def test_get_latest_sui_system_state_sc_missing_epoch_returns_empty(self):
+        result = qn.GetLatestSuiSystemStateSC.encode_fn()({})
+        assert isinstance(result, sui_prot.SystemState)
+
+    def test_get_latest_sui_system_state_sc_no_bcs_returns_empty(self):
+        result = qn.GetLatestSuiSystemStateSC.encode_fn()({"epoch": {"systemState": {}}})
+        assert isinstance(result, sui_prot.SystemState)
+
+    # --- GetCurrentValidatorsSC ---
+
+    def test_get_current_validators_sc_encode_fn_is_callable(self):
+        assert callable(qn.GetCurrentValidatorsSC.encode_fn())
+
+    def test_get_current_validators_sc_empty_nodes_returns_empty_list(self):
+        raw = {
+            "epoch": {
+                "validatorSet": {
+                    "activeValidators": {
+                        "cursor": {"hasNextPage": False, "endCursor": None},
+                        "nodes": [],
+                    }
+                }
+            }
+        }
+        result = qn.GetCurrentValidatorsSC.encode_fn()(raw)
+        assert result.validators == []
+        assert result.next_page_token is None
+
+    def test_get_current_validators_sc_sets_next_page_token(self):
+        raw = {
+            "epoch": {
+                "validatorSet": {
+                    "activeValidators": {
+                        "cursor": {"hasNextPage": True, "endCursor": "validPage2"},
+                        "nodes": [],
+                    }
+                }
+            }
+        }
+        result = qn.GetCurrentValidatorsSC.encode_fn()(raw)
+        assert result.next_page_token == b"validPage2"
+
+    def test_get_current_validators_sc_missing_epoch_returns_empty(self):
+        result = qn.GetCurrentValidatorsSC.encode_fn()({})
+        assert result.validators == []
+        assert result.next_page_token is None

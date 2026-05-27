@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `TransactionEffects.version` to SuiCommand Simulate, Execute and Fetching transactions
 - Updated gRPC protos
 - Updated documentation
+- Updated SuiCommands to update parity across protocols
+- Update unit test to support updated parity across protocols
 - **BREAKING CHANGE**: renamed `balance_from` PTB command to `coin_from_address_accumulator`
 
 ### Removed

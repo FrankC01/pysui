@@ -301,6 +301,83 @@ async def _compare_summary_batch(
 
 
 # ---------------------------------------------------------------------------
+# Epoch compare helpers
+# ---------------------------------------------------------------------------
+
+
+def epoch_summary(ep: "sui_prot.Epoch") -> dict:
+    """Normalize Epoch proto to a flat comparable dict (committee excluded — known GQL gap)."""
+    pc = ep.protocol_config
+    ss = ep.system_state
+    return {
+        "epoch": ep.epoch,
+        "reference_gas_price": ep.reference_gas_price,
+        "start": ep.start,
+        "end": ep.end,
+        "first_checkpoint": ep.first_checkpoint,
+        "last_checkpoint": ep.last_checkpoint,
+        "protocol_version": pc.protocol_version if pc else None,
+        "system_state_present": ss is not None,
+        "system_state_epoch": ss.epoch if ss else None,
+        "system_state_safe_mode": ss.safe_mode if ss else None,
+    }
+
+
+def _extract_epoch(result_data) -> "Optional[sui_prot.Epoch]":
+    """Extract Epoch from GetEpochResponse or bare Epoch proto."""
+    if isinstance(result_data, sui_prot.Epoch):
+        return result_data
+    if isinstance(result_data, sui_prot.GetEpochResponse):
+        return result_data.epoch
+    if hasattr(result_data, "epoch") and isinstance(
+        getattr(result_data, "epoch"), sui_prot.Epoch
+    ):
+        return result_data.epoch
+    return None
+
+
+async def _compare_epoch(
+    name: str,
+    gql_client: "AsyncClientBase",
+    grpc_client: "AsyncClientBase",
+    epoch_id: Optional[int] = None,
+) -> None:
+    """Run GetEpoch on both protocols and compare Epoch scalar + system_state fields."""
+    sc_cmd = cmd.GetEpoch(epoch_id=epoch_id)
+    gql_res = await gql_client.execute(command=sc_cmd)
+    grpc_res = await grpc_client.execute(command=sc_cmd)
+
+    if not gql_res.is_ok():
+        print(f"\n{name}: GQL FAILED — {gql_res.result_string}")
+        return
+    if not grpc_res.is_ok():
+        print(f"\n{name}: gRPC FAILED — {grpc_res.result_string}")
+        return
+
+    gql_ep = _extract_epoch(gql_res.result_data)
+    grpc_ep = _extract_epoch(grpc_res.result_data)
+
+    if gql_ep is None or grpc_ep is None:
+        print(
+            f"\n{name}: could not extract Epoch — "
+            f"gql={type(gql_res.result_data).__name__}  "
+            f"grpc={type(grpc_res.result_data).__name__}"
+        )
+        return
+
+    gd = epoch_summary(gql_ep)
+    grd = epoch_summary(grpc_ep)
+    diffs = []
+    for k in gd:
+        gv, grv = gd[k], grd[k]
+        if gv != grv:
+            diffs.append(f"    {k}: gql={gv!r}  grpc={grv!r}")
+
+    _report(name, diffs, 1)
+    print("  note: committee not compared — GQL returns empty ValidatorCommittee (known gap)")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -403,6 +480,9 @@ async def main(profile: str, past_object_id: Optional[str] = None, past_version_
         cmd.GetMultiplePastObjects(for_versions=batch_versions) if batch_versions else None,
         skip_reason=past_skip,
     )
+
+    # 10. GetEpoch (current epoch)
+    await _compare_epoch("GetEpoch(current)", gql_client, grpc_client)
 
     print("\n" + "=" * 70)
     print("Done.")

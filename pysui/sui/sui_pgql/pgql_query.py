@@ -1245,10 +1245,20 @@ class GetEpochSC(PGQL_QueryNode):
             schema.Epoch.startTimestamp,
             schema.Epoch.endTimestamp,
             schema.Epoch.referenceGasPrice,
-            schema.Epoch.totalCheckpoints,
-            schema.Epoch.totalTransactions,
-            schema.Epoch.totalGasFees,
-            schema.Epoch.totalStakeRewards,
+            schema.Epoch.protocolConfigs.select(
+                schema.ProtocolConfigs.protocolVersion
+            ),
+            schema.Epoch.systemState.select(schema.MoveValue.bcs),
+            schema.Epoch.checkpoints(first=1).select(
+                schema.CheckpointConnection.nodes.select(
+                    schema.Checkpoint.sequenceNumber
+                )
+            ).alias("first_checkpoint"),
+            schema.Epoch.checkpoints(last=1).select(
+                schema.CheckpointConnection.nodes.select(
+                    schema.Checkpoint.sequenceNumber
+                )
+            ).alias("last_checkpoint"),
         )
         return dsl_gql(DSLQuery(qres))
 
@@ -1261,12 +1271,35 @@ class GetEpochSC(PGQL_QueryNode):
             start_ts: str | None = epoch_data.get("startTimestamp")
             end_ts: str | None = epoch_data.get("endTimestamp")
             rgp: str | None = epoch_data.get("referenceGasPrice")
+
+            proto_cfg = epoch_data.get("protocolConfigs") or {}
+            pv = proto_cfg.get("protocolVersion")
+            protocol_config = sui_prot.ProtocolConfig(protocol_version=int(pv)) if pv else None
+
+            bcs_b64 = (epoch_data.get("systemState") or {}).get("bcs")
+            system_state = None
+            if bcs_b64:
+                bcs_bytes = base64.b64decode(bcs_b64)
+                bcs_ss = sui_system_bcs.SuiSystemStateInnerV2.deserialize(bcs_bytes)
+                system_state = _bcs_system_state_to_proto(bcs_ss)
+
+            first_nodes = (epoch_data.get("first_checkpoint") or {}).get("nodes") or []
+            first_checkpoint = int(first_nodes[0]["sequenceNumber"]) if first_nodes else None
+
+            last_nodes = (epoch_data.get("last_checkpoint") or {}).get("nodes") or []
+            last_checkpoint = int(last_nodes[0]["sequenceNumber"]) if last_nodes else None
+
             return sui_prot.GetEpochResponse(
                 epoch=sui_prot.Epoch(
                     epoch=epoch_data.get("epochId"),
                     reference_gas_price=int(rgp) if rgp else None,
                     start=_parse_gql_datetime(start_ts),
                     end=_parse_gql_datetime(end_ts),
+                    protocol_config=protocol_config,
+                    system_state=system_state,
+                    first_checkpoint=first_checkpoint,
+                    last_checkpoint=last_checkpoint,
+                    committee=sui_prot.ValidatorCommittee(),
                 )
             )
 

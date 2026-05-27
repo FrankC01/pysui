@@ -514,7 +514,7 @@ class GetEpoch(SuiCommand):
 
     def grpc_request(self) -> rn.GetEpoch:
         """Return gRPC get-epoch request."""
-        return rn.GetEpoch(epoch_number=self.epoch_id)
+        return rn.GetEpoch(epoch_number=self.epoch_id, field_mask=["*"])
 
 
 @dataclass(kw_only=True)

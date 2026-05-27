@@ -19,6 +19,7 @@ import pytest
 import pysui.sui.sui_grpc.pgrpc_requests as gr
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+import pysui.sui.sui_common.shared_types as shared_types
 
 
 # ---------------------------------------------------------------------------
@@ -427,3 +428,164 @@ class TestMiscRequests:
             address="0xsender",
         )
         assert obj.address == "0xsender"
+
+
+# ---------------------------------------------------------------------------
+# TestRenderMethods — render() output for gRPC SC variants (epoch, object, misc)
+# ---------------------------------------------------------------------------
+
+class TestRenderMethods:
+    """Verify render() transformations for gRPC SC subclasses."""
+
+    # --- GetChainIdentifierSC ---
+
+    def test_get_chain_identifier_sc_render_returns_chain_id(self):
+        response = sui_prot.GetServiceInfoResponse(chain_id="mainnet-abc")
+        obj = gr.GetChainIdentifierSC()
+        assert obj.render(response) == "mainnet-abc"
+
+    def test_get_chain_identifier_sc_render_empty_chain_id(self):
+        response = sui_prot.GetServiceInfoResponse()
+        obj = gr.GetChainIdentifierSC()
+        assert obj.render(response) == ""
+
+    # --- GetLatestSuiSystemState ---
+
+    def test_get_latest_sui_system_state_render_returns_system_state(self):
+        ss = sui_prot.SystemState()
+        epoch = sui_prot.Epoch(system_state=ss)
+        response = sui_prot.GetEpochResponse(epoch=epoch)
+        obj = gr.GetLatestSuiSystemState()
+        result = obj.render(response)
+        assert result is ss
+
+    # --- GetCurrentValidatorsSC ---
+
+    def test_get_current_validators_sc_render_returns_active_validators(self):
+        v1 = sui_prot.Validator()
+        v2 = sui_prot.Validator()
+        vs = sui_prot.ValidatorSet(active_validators=[v1, v2])
+        ss = sui_prot.SystemState(validators=vs)
+        epoch = sui_prot.Epoch(system_state=ss)
+        response = sui_prot.GetEpochResponse(epoch=epoch)
+        obj = gr.GetCurrentValidatorsSC()
+        result = obj.render(response)
+        assert result == [v1, v2]
+
+    # --- GetBasicCurrentEpochInfo ---
+
+    def test_get_basic_current_epoch_info_render_returns_epoch(self):
+        epoch = sui_prot.Epoch(epoch=7, reference_gas_price=1000)
+        response = sui_prot.GetEpochResponse(epoch=epoch)
+        obj = gr.GetBasicCurrentEpochInfo()
+        result = obj.render(response)
+        assert result is epoch
+        assert result.epoch == 7
+        assert result.reference_gas_price == 1000
+
+    # --- GetProtocolConfig ---
+
+    def test_get_protocol_config_render_returns_protocol_config(self):
+        pc = sui_prot.ProtocolConfig(protocol_version=42)
+        epoch = sui_prot.Epoch(protocol_config=pc)
+        response = sui_prot.GetEpochResponse(epoch=epoch)
+        obj = gr.GetProtocolConfig()
+        result = obj.render(response)
+        assert result is pc
+        assert result.protocol_version == 42
+
+    # --- GetObjectSC ---
+
+    def test_get_object_sc_render_returns_inner_object(self):
+        inner = sui_prot.Object(object_id="0xabc", version=3)
+        response = sui_prot.GetObjectResponse(object=inner)
+        obj = gr.GetObjectSC(object_id="0xabc")
+        assert obj.render(response) is inner
+
+    def test_get_object_sc_render_none_when_missing(self):
+        response = sui_prot.GetObjectResponse()
+        obj = gr.GetObjectSC(object_id="0xabc")
+        assert obj.render(response) is None
+
+    # --- GetPastObjectSC ---
+
+    def test_get_past_object_sc_render_returns_inner_object(self):
+        inner = sui_prot.Object(object_id="0xdef", version=7)
+        response = sui_prot.GetObjectResponse(object=inner)
+        obj = gr.GetPastObjectSC(object_id="0xdef", version=7)
+        assert obj.render(response) is inner
+
+    # --- GetObjectSummarySC ---
+
+    def test_get_object_summary_sc_render_address_owner(self):
+        owner = sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address="0xowner")
+        inner = sui_prot.Object(object_id="0x1", version=5, digest="dg1", owner=owner)
+        response = sui_prot.GetObjectResponse(object=inner)
+        obj = gr.GetObjectSummarySC(object_id="0x1")
+        result = obj.render(response)
+        assert isinstance(result, shared_types.ObjectSummary)
+        assert result.objectId == "0x1"
+        assert result.version == "5"
+        assert result.digest == "dg1"
+        assert result.owner == "0xowner"
+        assert result.initialSharedVersion is None
+
+    def test_get_object_summary_sc_render_shared_owner(self):
+        owner = sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=100)
+        inner = sui_prot.Object(object_id="0x2", version=2, digest="dg2", owner=owner)
+        response = sui_prot.GetObjectResponse(object=inner)
+        obj = gr.GetObjectSummarySC(object_id="0x2")
+        result = obj.render(response)
+        assert result.owner is None
+        assert result.initialSharedVersion == "100"
+
+    # --- GetMultipleObjectsSummarySC ---
+
+    def test_get_multiple_objects_summary_sc_render_address_owner(self):
+        owner = sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address="0xaddr")
+        obj1 = sui_prot.Object(object_id="0x1", version=1, digest="d1", owner=owner)
+        response = sui_prot.BatchGetObjectsResponse(
+            objects=[sui_prot.GetObjectResult(object=obj1)]
+        )
+        sc = gr.GetMultipleObjectsSummarySC(object_ids=["0x1"])
+        result = sc.render(response)
+        assert isinstance(result, shared_types.ObjectSummaryList)
+        assert len(result.objects) == 1
+        assert result.objects[0].owner == "0xaddr"
+
+    def test_get_multiple_objects_summary_sc_render_shared_owner(self):
+        owner = sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=55)
+        obj1 = sui_prot.Object(object_id="0x2", version=3, digest="d2", owner=owner)
+        response = sui_prot.BatchGetObjectsResponse(
+            objects=[sui_prot.GetObjectResult(object=obj1)]
+        )
+        sc = gr.GetMultipleObjectsSummarySC(object_ids=["0x2"])
+        result = sc.render(response)
+        assert result.objects[0].initialSharedVersion == "55"
+        assert result.objects[0].owner is None
+
+    def test_get_multiple_objects_summary_sc_render_empty(self):
+        response = sui_prot.BatchGetObjectsResponse(objects=[])
+        sc = gr.GetMultipleObjectsSummarySC(object_ids=[])
+        result = sc.render(response)
+        assert isinstance(result, shared_types.ObjectSummaryList)
+        assert result.objects == []
+
+    # --- GetObjectsOwnedByAddress (base class render filters coin reservations) ---
+
+    def test_get_objects_owned_by_address_render_filters_version_zero(self):
+        real_obj = sui_prot.Object(object_id="0x1", version=3, digest=None)
+        coin_res = sui_prot.Object(object_id="0x2", version=0)  # version==0 → coin reservation
+        response = sui_prot.ListOwnedObjectsResponse(objects=[real_obj, coin_res])
+        obj = gr.GetObjectsOwnedByAddress(owner="0xowner")
+        result = obj.render(response)
+        assert len(result.objects) == 1
+        assert result.objects[0].object_id == "0x1"
+
+    def test_get_objects_owned_by_address_render_preserves_real_objects(self):
+        obj1 = sui_prot.Object(object_id="0x1", version=1, digest="d1")
+        obj2 = sui_prot.Object(object_id="0x2", version=2, digest="d2")
+        response = sui_prot.ListOwnedObjectsResponse(objects=[obj1, obj2])
+        sc = gr.GetObjectsOwnedByAddress(owner="0xowner")
+        result = sc.render(response)
+        assert len(result.objects) == 2
