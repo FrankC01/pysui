@@ -57,8 +57,12 @@ def obj_summary(obj: sui_prot.Object) -> dict:
         "has_public_transfer": obj.has_public_transfer,
         "previous_transaction": obj.previous_transaction,
         "storage_rebate": obj.storage_rebate,
+        # bcs and contents — full name+value comparison
+        "bcs_name": obj.bcs.name if obj.bcs else None,
+        "bcs_value": obj.bcs.value if obj.bcs else None,
+        "contents_name": obj.contents.name if obj.contents else None,
+        "contents_value": obj.contents.value if obj.contents else None,
         # presence-only fields
-        "bcs_set": bool(obj.bcs),
         "json_set": obj.json is not None,
         "display_set": bool(obj.display),
         "owner_kind": str(obj.owner.kind) if obj.owner else None,
@@ -84,16 +88,24 @@ def _unwrap_obj(item) -> Optional[sui_prot.Object]:
     return None
 
 
-def _extract_list(result_data) -> list[sui_prot.Object]:
-    """Extract list of Objects from ListOwnedObjectsResponse or BatchGetObjectsResponse."""
+def _extract_list(result_data) -> tuple[list[sui_prot.Object], list[str]]:
+    """Extract Objects and error messages from ListOwnedObjectsResponse or BatchGetObjectsResponse."""
     raw: list
     if hasattr(result_data, "objects"):
         raw = list(result_data.objects or [])
     elif isinstance(result_data, list):
         raw = result_data
     else:
-        return []
-    return [o for item in raw if (o := _unwrap_obj(item)) is not None]
+        return [], []
+    objects = []
+    errors = []
+    for item in raw:
+        obj = _unwrap_obj(item)
+        if obj is not None:
+            objects.append(obj)
+        elif hasattr(item, "error") and item.error:
+            errors.append(f"code={item.error.code} message={item.error.message!r}")
+    return objects, errors
 
 
 def _compare_objects(gql_obj: sui_prot.Object, grpc_obj: sui_prot.Object) -> list[str]:
@@ -139,8 +151,10 @@ async def _compare_list(
         print(f"\n{name}: gRPC FAILED — {grpc_res.result_string}")
         return
 
-    gql_by_id = {o.object_id: o for o in _extract_list(gql_res.result_data)}
-    grpc_by_id = {o.object_id: o for o in _extract_list(grpc_res.result_data)}
+    gql_objs, gql_errors = _extract_list(gql_res.result_data)
+    grpc_objs, grpc_errors = _extract_list(grpc_res.result_data)
+    gql_by_id = {o.object_id: o for o in gql_objs}
+    grpc_by_id = {o.object_id: o for o in grpc_objs}
 
     common = set(gql_by_id) & set(grpc_by_id)
     gql_only = set(gql_by_id) - set(grpc_by_id)
@@ -158,6 +172,10 @@ async def _compare_list(
         print(f"  GQL-only ({len(gql_only)}): {sorted(gql_only)[:3]}")
     if grpc_only:
         print(f"  gRPC-only ({len(grpc_only)}): {sorted(grpc_only)[:3]}")
+    for e in gql_errors:
+        print(f"  GQL error: {e}")
+    for e in grpc_errors:
+        print(f"  gRPC error: {e}")
 
 
 async def _compare_single(
@@ -220,25 +238,31 @@ async def _compare_batch(
         print(f"\n{name}: gRPC FAILED — {grpc_res.result_string}")
         return
 
-    gql_by_id = {o.object_id: o for o in _extract_list(gql_res.result_data)}
-    grpc_by_id = {o.object_id: o for o in _extract_list(grpc_res.result_data)}
+    gql_objs, gql_errors = _extract_list(gql_res.result_data)
+    grpc_objs, grpc_errors = _extract_list(grpc_res.result_data)
+    gql_by_id = {(o.object_id, o.version): o for o in gql_objs}
+    grpc_by_id = {(o.object_id, o.version): o for o in grpc_objs}
 
     common = set(gql_by_id) & set(grpc_by_id)
     all_diffs: list[str] = []
-    for oid in sorted(common):
-        diffs = _compare_objects(gql_by_id[oid], grpc_by_id[oid])
+    for key in sorted(common):
+        diffs = _compare_objects(gql_by_id[key], grpc_by_id[key])
         if diffs:
-            all_diffs.append(f"  object {oid}:")
+            all_diffs.append(f"  object {key[0]} v{key[1]}:")
             all_diffs.extend(diffs)
 
     _report(name, all_diffs, len(common))
+    for e in gql_errors:
+        print(f"  GQL error: {e}")
+    for e in grpc_errors:
+        print(f"  gRPC error: {e}")
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-async def main(profile: str) -> None:
+async def main(profile: str, past_object_id: Optional[str] = None, past_version_arg: Optional[int] = None, past_version_extra: Optional[int] = None) -> None:
     gql_cfg = PysuiConfiguration(
         group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
         profile_name=profile,
@@ -273,8 +297,16 @@ async def main(profile: str) -> None:
     print(f"Seed    : {len(coin_objs)} coin(s)  first_id={first_id}  version={first_version}")
 
     # Past version for GetPastObject / GetMultiplePastObjects
-    past_version = first_version - 1 if first_version and first_version > 1 else None
-    past_skip = "" if past_version else f"coin version={first_version} — no prior version available"
+    # CLI args override the seed-derived values when supplied
+    if past_object_id and past_version_arg is not None:
+        past_id = past_object_id
+        past_version = past_version_arg
+        past_skip = ""
+        print(f"Past    : object_id={past_id}  version={past_version}  (from CLI)")
+    else:
+        past_id = first_id
+        past_version = first_version - 1 if first_version and first_version > 1 else None
+        past_skip = "" if past_version else f"coin version={first_version} — no prior version available"
 
     print("\n" + "=" * 70)
 
@@ -302,7 +334,7 @@ async def main(profile: str) -> None:
     await _compare_single(
         f"GetPastObject(v{past_version})",
         gql_client, grpc_client,
-        cmd.GetPastObject(object_id=first_id, version=past_version) if past_version else None,
+        cmd.GetPastObject(object_id=past_id, version=past_version) if past_version else None,
         skip_reason=past_skip,
     )
 
@@ -311,12 +343,18 @@ async def main(profile: str) -> None:
                          cmd.GetMultipleObjects(object_ids=coin_ids))
 
     # 8. GetMultiplePastObjects
+    if past_version:
+        batch_versions = [{"objectId": past_id, "version": past_version}]
+        if past_version_extra is not None:
+            batch_versions.append({"objectId": past_id, "version": past_version_extra})
+        batch_label = f"GetMultiplePastObjects(v{past_version}" + (f",v{past_version_extra})" if past_version_extra else ")")
+    else:
+        batch_versions = None
+        batch_label = f"GetMultiplePastObjects(v{past_version})"
     await _compare_batch(
-        f"GetMultiplePastObjects(v{past_version})",
+        batch_label,
         gql_client, grpc_client,
-        cmd.GetMultiplePastObjects(
-            for_versions=[{"objectId": first_id, "version": past_version}]
-        ) if past_version else None,
+        cmd.GetMultiplePastObjects(for_versions=batch_versions) if batch_versions else None,
         skip_reason=past_skip,
     )
 
@@ -327,5 +365,8 @@ async def main(profile: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compare SuiCommand shape parity across GQL and gRPC")
     parser.add_argument("--profile", default="devnet", help="Sui profile name (default: devnet)")
+    parser.add_argument("--past-object-id", default=None, help="Object ID for GetPastObject tests")
+    parser.add_argument("--past-version", type=int, default=None, help="Version for GetPastObject tests")
+    parser.add_argument("--past-version-extra", type=int, default=None, help="Second version for GetMultiplePastObjects batch test")
     args = parser.parse_args()
-    asyncio.run(main(args.profile))
+    asyncio.run(main(args.profile, args.past_object_id, args.past_version, args.past_version_extra))
