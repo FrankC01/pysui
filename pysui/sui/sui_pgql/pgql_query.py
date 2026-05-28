@@ -1237,6 +1237,7 @@ class GetEpochSC(PGQL_QueryNode):
 
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
+        std_prot_cfg = frag.StandardProtocolConfig().fragment(schema)
         qres = schema.Query.epoch
         if self.epoch_id is not None:
             qres(epochId=self.epoch_id)
@@ -1245,9 +1246,7 @@ class GetEpochSC(PGQL_QueryNode):
             schema.Epoch.startTimestamp,
             schema.Epoch.endTimestamp,
             schema.Epoch.referenceGasPrice,
-            schema.Epoch.protocolConfigs.select(
-                schema.ProtocolConfigs.protocolVersion
-            ),
+            schema.Epoch.protocolConfigs.select(std_prot_cfg),
             schema.Epoch.systemState.select(schema.MoveValue.bcs),
             schema.Epoch.checkpoints(first=1).select(
                 schema.CheckpointConnection.nodes.select(
@@ -1260,7 +1259,7 @@ class GetEpochSC(PGQL_QueryNode):
                 )
             ).alias("last_checkpoint"),
         )
-        return dsl_gql(DSLQuery(qres))
+        return dsl_gql(std_prot_cfg, DSLQuery(qres))
 
     @staticmethod
     def encode_fn() -> Callable[[dict], sui_prot.GetEpochResponse]:
@@ -1274,7 +1273,24 @@ class GetEpochSC(PGQL_QueryNode):
 
             proto_cfg = epoch_data.get("protocolConfigs") or {}
             pv = proto_cfg.get("protocolVersion")
-            protocol_config = sui_prot.ProtocolConfig(protocol_version=int(pv)) if pv else None
+            if pv:
+                feature_flags: dict[str, bool] = {}
+                attributes: dict[str, str] = {}
+                if "featureFlags" in proto_cfg:
+                    for flag in proto_cfg["featureFlags"]:
+                        if isinstance(flag, dict) and "key" in flag and "value" in flag:
+                            feature_flags[flag["key"]] = flag["value"]
+                if "configs" in proto_cfg:
+                    for cfg in proto_cfg["configs"]:
+                        if isinstance(cfg, dict) and "key" in cfg and "value" in cfg:
+                            attributes[cfg["key"]] = str(cfg["value"])
+                protocol_config = sui_prot.ProtocolConfig(
+                    protocol_version=int(pv),
+                    feature_flags=feature_flags,
+                    attributes=attributes,
+                )
+            else:
+                protocol_config = None
 
             bcs_b64 = (epoch_data.get("systemState") or {}).get("bcs")
             system_state = None
@@ -1289,6 +1305,18 @@ class GetEpochSC(PGQL_QueryNode):
             last_nodes = (epoch_data.get("last_checkpoint") or {}).get("nodes") or []
             last_checkpoint = int(last_nodes[0]["sequenceNumber"]) if last_nodes else None
 
+            committee = None
+            if system_state and system_state.validators:
+                committee = sui_prot.ValidatorCommittee(
+                    epoch=epoch_data.get("epochId"),
+                    members=[
+                        sui_prot.ValidatorCommitteeMember(
+                            public_key=v.protocol_public_key,
+                            weight=v.voting_power,
+                        )
+                        for v in system_state.validators.active_validators
+                    ],
+                )
             return sui_prot.GetEpochResponse(
                 epoch=sui_prot.Epoch(
                     epoch=epoch_data.get("epochId"),
@@ -1299,7 +1327,7 @@ class GetEpochSC(PGQL_QueryNode):
                     system_state=system_state,
                     first_checkpoint=first_checkpoint,
                     last_checkpoint=last_checkpoint,
-                    committee=sui_prot.ValidatorCommittee(),
+                    committee=committee,
                 )
             )
 
