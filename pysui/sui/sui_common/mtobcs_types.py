@@ -6,6 +6,7 @@
 
 """Data classes for mtobcs directives."""
 from typing import Union
+import os
 import dataclasses
 import dataclasses_json
 
@@ -24,6 +25,9 @@ class GenericStructure:
     out_file: str
     properties: dataclasses_json.CatchAll
 
+    def __post_init__(self):
+        self.out_file = os.path.expanduser(self.out_file)
+
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
@@ -37,6 +41,9 @@ class Structure:
         metadata=dataclasses_json.config(field_name="value")
     )
     out_file: str
+
+    def __post_init__(self):
+        self.out_file = os.path.expanduser(self.out_file)
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
