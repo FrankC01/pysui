@@ -18,6 +18,7 @@ from pysui.sui.sui_bcs import bcs
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
+from pysui.sui.sui_common.instrumentation import sync_measure
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
@@ -1019,21 +1020,22 @@ class SimulateTransaction(absreq.PGRPC_Request):
     ):
         """."""
         super().__init__(absreq.Service.TRANSACTION)
-        transaction = (
-            transaction
-            if isinstance(transaction, bytes)
-            else base64.b64decode(transaction)
-        )
-        self.transaction = sui_prot.Transaction(
-            bcs=(sui_prot.Bcs(value=transaction, name="Transaction"))
-        )
-        self.checks_enables = (
-            sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
-            if checks_enabled
-            else sui_prot.SimulateTransactionRequestTransactionChecks.DISABLED
-        )
-        self.gas_selection = gas_selection
-        self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
+        with sync_measure("grpc.SimulateTransaction.init"):
+            transaction = (
+                transaction
+                if isinstance(transaction, bytes)
+                else base64.b64decode(transaction)
+            )
+            self.transaction = sui_prot.Transaction(
+                bcs=(sui_prot.Bcs(value=transaction, name="Transaction"))
+            )
+            self.checks_enables = (
+                sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
+                if checks_enabled
+                else sui_prot.SimulateTransactionRequestTransactionChecks.DISABLED
+            )
+            self.gas_selection = gas_selection
+            self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
@@ -1082,46 +1084,47 @@ class SimulateTransactionKind(absreq.PGRPC_Request):
         :type field_mask: Optional[list[str]]
         """
         super().__init__(absreq.Service.TRANSACTION)
-        prgrm_txn = transaction.value
-        inputs: list[sui_prot.Input] = []
-        cmds: list[sui_prot.Command] = []
-        trx_exp = None
-        for input in prgrm_txn.Inputs:
-            if input.enum_name == "Pure":
-                inputs.append(
-                    sui_prot.Input(
-                        kind=sui_prot.InputInputKind.PURE, pure=bytes(input.value)
+        with sync_measure("grpc.SimulateTransactionKind.init"):
+            prgrm_txn = transaction.value
+            inputs: list[sui_prot.Input] = []
+            cmds: list[sui_prot.Command] = []
+            trx_exp = None
+            for input in prgrm_txn.Inputs:
+                if input.enum_name == "Pure":
+                    inputs.append(
+                        sui_prot.Input(
+                            kind=sui_prot.InputInputKind.PURE, pure=bytes(input.value)
+                        )
                     )
+                elif input.enum_name == "Object":
+                    oarg = input.value
+                    inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
+                elif input.enum_name == "FundsWithdrawal":
+                    fwid: bcs.FundsWithdrawl = input.value
+                    inputs.append(fwid.to_grpc_input())
+            for cmd in prgrm_txn.Command:
+                cmds.append(cmd.value.to_grpc_command())
+            if txn_expires_after:
+                trx_exp = sui_prot.TransactionExpiration(
+                    kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
+                    epoch=txn_expires_after,
                 )
-            elif input.enum_name == "Object":
-                oarg = input.value
-                inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
-            elif input.enum_name == "FundsWithdrawal":
-                fwid: bcs.FundsWithdrawl = input.value
-                inputs.append(fwid.to_grpc_input())
-        for cmd in prgrm_txn.Command:
-            cmds.append(cmd.value.to_grpc_command())
-        if txn_expires_after:
-            trx_exp = sui_prot.TransactionExpiration(
-                kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
-                epoch=txn_expires_after,
+            self.transaction = sui_prot.Transaction(
+                kind=sui_prot.TransactionKind(
+                    programmable_transaction=sui_prot.ProgrammableTransaction(
+                        inputs=inputs, commands=cmds
+                    )
+                ),
+                expiration=trx_exp,
+                sender=sender,
             )
-        self.transaction = sui_prot.Transaction(
-            kind=sui_prot.TransactionKind(
-                programmable_transaction=sui_prot.ProgrammableTransaction(
-                    inputs=inputs, commands=cmds
-                )
-            ),
-            expiration=trx_exp,
-            sender=sender,
-        )
-        self.checks_enables = (
-            sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
-            if checks_enabled
-            else sui_prot.SimulateTransactionRequestTransactionChecks.DISABLED
-        )
-        self.gas_selection = gas_selection
-        self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
+            self.checks_enables = (
+                sui_prot.SimulateTransactionRequestTransactionChecks.ENABLED
+                if checks_enabled
+                else sui_prot.SimulateTransactionRequestTransactionChecks.DISABLED
+            )
+            self.gas_selection = gas_selection
+            self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
     def to_request(
         self, *, stub: sui_prot.StateServiceStub

@@ -6,10 +6,10 @@
 """pysui performance instrumentation — collector interface and ContextVar plumbing."""
 
 from __future__ import annotations
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from functools import wraps
-from typing import Optional, AsyncIterator, Callable, Any
+from typing import Optional, AsyncIterator, Iterator, Callable, Any
 
 _collector_var: ContextVar = ContextVar("_pysui_collector", default=None)
 
@@ -24,6 +24,11 @@ class InstrumentationCollector:
     @asynccontextmanager
     async def measure(self, label: str) -> AsyncIterator[None]:
         """No-op by default. Override to time the wrapped block."""
+        yield
+
+    @contextmanager
+    def sync_measure(self, label: str) -> Iterator[None]:
+        """No-op by default. Override to time the wrapped sync block."""
         yield
 
 
@@ -57,6 +62,17 @@ async def measure(label: str) -> AsyncIterator[None]:
     col: Optional[InstrumentationCollector] = _collector_var.get()
     if col is not None:
         async with col.measure(label):
+            yield
+    else:
+        yield
+
+
+@contextmanager
+def sync_measure(label: str) -> Iterator[None]:
+    """Hook point: time label synchronously if a collector is active; no-op otherwise."""
+    col: Optional[InstrumentationCollector] = _collector_var.get()
+    if col is not None:
+        with col.sync_measure(label):
             yield
     else:
         yield

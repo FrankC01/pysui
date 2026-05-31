@@ -8,7 +8,7 @@
 Usage::
 
     import asyncio
-    from scratch.dict_collector import DictCollector
+    from benchmarks.dict_collector import DictCollector
     from pysui.sui.sui_common.instrumentation import active_collector
 
     async def main():

@@ -75,3 +75,6 @@ doc/source/pysui.sui.rst
 !reqrtd.txt
 PysuiConfig.json
 mtobcs_samp.json
+
+# benchmark cruft
+bench_results/

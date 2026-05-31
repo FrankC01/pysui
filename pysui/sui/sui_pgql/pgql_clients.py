@@ -41,7 +41,7 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
 import pysui.sui.sui_pgql.pgql_schema as scm
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_common.instrumentation import measure, instrumented
+from pysui.sui.sui_common.instrumentation import measure, instrumented, sync_measure
 
 # Standard library logging setup
 logger = logging.getLogger("pgql_client")
@@ -182,7 +182,8 @@ class BaseSuiGQLClient(PysuiClient):
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
             self._qnode_owner(qnode)
-            dnode = qnode.as_document_node(self.schema())
+            with sync_measure(f"gql.{type(qnode).__name__}.as_document_node"):
+                dnode = qnode.as_document_node(self.schema())
             if isinstance(dnode, GraphQLRequest):
                 return dnode
             else:

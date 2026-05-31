@@ -31,6 +31,7 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_grpc.suimsgs.google import protobuf as _google_protobuf
 import pysui.sui.sui_grpc.pgrpc_requests as _rn
 from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
+from pysui.sui.sui_common.instrumentation import sync_measure
 import pysui.sui.sui_bcs.sui_system_bcs as sui_system_bcs
 
 
@@ -825,7 +826,8 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                 )
 
             # --- objectChanges typed nodes: object_type_map + ObjectSet ---
-            objects, object_type_map = _encode_simulate_object_changes(eff)
+            with sync_measure("gql.simulate.object_changes"):
+                objects, object_type_map = _encode_simulate_object_changes(eff)
 
             # Back-fill object_type from typed nodes (effectsJson omits objectType)
             for co in effects_proto.changed_objects:
@@ -838,16 +840,19 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                 for bc in (eff.get("balanceChangesJson") or [])
             ]
 
-            timestamp = _parse_gql_datetime(eff.get("timestamp"))
+            with sync_measure("gql.simulate.datetime"):
+                timestamp = _parse_gql_datetime(eff.get("timestamp"))
             checkpoint_seq = (eff.get("checkpoint") or {}).get("sequenceNumber")
 
             # --- Events (typed — no eventsJson in GQL) ---
-            events = _encode_simulate_events(
-                ((eff.get("events") or {}).get("nodes") or [])
-            )
+            with sync_measure("gql.simulate.events"):
+                events = _encode_simulate_events(
+                    ((eff.get("events") or {}).get("nodes") or [])
+                )
 
             # --- CommandResult outputs ---
-            cmd_outputs = _encode_simulate_outputs(raw.get("outputs") or [])
+            with sync_measure("gql.simulate.outputs"):
+                cmd_outputs = _encode_simulate_outputs(raw.get("outputs") or [])
 
             return sui_prot.SimulateTransactionResponse(
                 transaction=sui_prot.ExecutedTransaction(
