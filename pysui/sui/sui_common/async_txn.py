@@ -30,6 +30,7 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.txb_tx_argparse import TxnArgParse, TxnArgMode
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache
 from pysui.sui.sui_common.async_funcs import AsyncLRU
+from pysui.sui.sui_common.instrumentation import measure, instrumented
 
 # Coin reservation constants — used when addressBalance gas mode + GasCoin (txn.gas) is used
 _ACCUMULATOR_ROOT_ID_BYTES = bytes(30) + b'\x0a\xcc'
@@ -175,6 +176,7 @@ class AsyncSuiTransaction(txbase):
         """Return the argument summary of a target Sui Move function."""
         return await self._function_meta_args(target)
 
+    @instrumented("ptb._build_txn_data_address_balance")
     async def _build_txn_data_address_balance(
         self,
         gas_budget: Optional[int] = None,
@@ -253,6 +255,7 @@ class AsyncSuiTransaction(txbase):
             )
         raise ValueError(_res.result_string)
 
+    @instrumented("ptb._build_txn_data")
     async def _build_txn_data(
         self,
         gas_budget: Optional[int] = None,
@@ -303,16 +306,17 @@ class AsyncSuiTransaction(txbase):
 
         obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
-        gas_data: bcs.GasData = await _async_get_gas_data(
-            signing=self.signer_block,
-            client=self.client,
-            budget=gas_budget,
-            use_coins=use_gas_objects,
-            objects_in_use=obj_in_use,
-            active_gas_price=self.gas_price,
-            tx_kind=tx_kind,
-            gas_source_draw=gas_source_draw,
-        )
+        async with measure("ptb.gas.resolve"):
+            gas_data: bcs.GasData = await _async_get_gas_data(
+                signing=self.signer_block,
+                client=self.client,
+                budget=gas_budget,
+                use_coins=use_gas_objects,
+                objects_in_use=obj_in_use,
+                active_gas_price=self.gas_price,
+                tx_kind=tx_kind,
+                gas_source_draw=gas_source_draw,
+            )
         return bcs.TransactionData(
             "V1",
             bcs.TransactionDataV1(
@@ -327,6 +331,7 @@ class AsyncSuiTransaction(txbase):
             ),
         )
 
+    @instrumented("ptb.transaction_data")
     async def transaction_data(
         self,
         *,
@@ -358,6 +363,7 @@ class AsyncSuiTransaction(txbase):
             gas_budget, use_gas_objects, txn_expires_after, use_account_for_gas, auto_gas
         )
 
+    @instrumented("ptb.build")
     async def build(
         self,
         *,
@@ -391,6 +397,7 @@ class AsyncSuiTransaction(txbase):
         )
         return base64.b64encode(txn_data.serialize()).decode()
 
+    @instrumented("ptb.build_and_sign")
     @versionchanged(version="0.64.0", reason="Return dict instead of tuple")
     async def build_and_sign(
         self,
@@ -423,12 +430,15 @@ class AsyncSuiTransaction(txbase):
             use_account_for_gas=use_account_for_gas,
             auto_gas=auto_gas,
         )
-        tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
-        sigs = self.signer_block.get_signatures(
-            config=self.client.config, tx_bytes=tx_bytes
-        )
+        async with measure("ptb.serialize"):
+            tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
+        async with measure("ptb.sign"):
+            sigs = self.signer_block.get_signatures(
+                config=self.client.config, tx_bytes=tx_bytes
+            )
         return {self._BUILD_BYTE_STR: tx_bytes, self._SIG_ARRAY: sigs}
 
+    @instrumented("ptb.cmd.split_coin")
     async def split_coin(
         self,
         *,
@@ -456,6 +466,7 @@ class AsyncSuiTransaction(txbase):
         ]
         return self.builder.split_coin(parms[0], encoded_amounts)
 
+    @instrumented("ptb.cmd.merge_coins")
     async def merge_coins(
         self,
         *,
@@ -493,6 +504,7 @@ class AsyncSuiTransaction(txbase):
         ]
         return self.builder.merge_coins(parms[0], resolved)
 
+    @instrumented("ptb.cmd.split_coin_equal")
     async def split_coin_equal(
         self,
         *,
@@ -530,6 +542,7 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    @instrumented("ptb.cmd.transfer_objects")
     @versionchanged(version="0.72.0", reason="Support recipient passed as Argument")
     async def transfer_objects(
         self,
@@ -568,6 +581,7 @@ class AsyncSuiTransaction(txbase):
         ]
         return self.builder.transfer_objects(parms[0], resolved)
 
+    @instrumented("ptb.cmd.transfer_sui")
     async def transfer_sui(
         self,
         *,
@@ -594,6 +608,7 @@ class AsyncSuiTransaction(txbase):
         )
         return self.builder.transfer_sui(*parms)
 
+    @instrumented("ptb.cmd.public_transfer_object")
     async def public_transfer_object(
         self,
         *,
@@ -630,6 +645,7 @@ class AsyncSuiTransaction(txbase):
             res_count=0,
         )
 
+    @instrumented("ptb.cmd.make_move_vector")
     async def make_move_vector(
         self,
         *,
@@ -666,6 +682,7 @@ class AsyncSuiTransaction(txbase):
         )
         return self.builder.make_move_vector(type_tag, resolved)
 
+    @instrumented("ptb.cmd.move_call")
     async def move_call(
         self,
         *,
@@ -704,6 +721,7 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    @instrumented("ptb.cmd.coin_from_address_accumulator")
     async def coin_from_address_accumulator(
         self,
         *,
@@ -740,6 +758,7 @@ class AsyncSuiTransaction(txbase):
             type_arguments=[type_tag],
         )
 
+    @instrumented("ptb.cmd.create_balance")
     async def create_balance(
         self,
         *,
@@ -782,6 +801,7 @@ class AsyncSuiTransaction(txbase):
             type_arguments=[type_tag],
         )
 
+    @instrumented("ptb.cmd.withdrawal")
     async def withdrawal(
         self,
         *,
@@ -813,6 +833,7 @@ class AsyncSuiTransaction(txbase):
         )
         return self.builder.input_obj_from_withdrawal(wdt)
 
+    @instrumented("ptb.cmd.fund_address_accumulator")
     async def fund_address_accumulator(
         self,
         *,
@@ -882,6 +903,7 @@ class AsyncSuiTransaction(txbase):
             )
         return result
 
+    @instrumented("ptb.cmd.optional_object")
     async def optional_object(
         self,
         *,
@@ -930,6 +952,7 @@ class AsyncSuiTransaction(txbase):
             res_count=1,
         )
 
+    @instrumented("ptb.cmd.stake_coin")
     async def stake_coin(
         self,
         *,
@@ -969,6 +992,7 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    @instrumented("ptb.cmd.unstake_coin")
     async def unstake_coin(
         self, *, staked_coin: Union[str, sui_prot.Object]
     ) -> bcs.Argument:
@@ -997,6 +1021,7 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    @instrumented("ptb.cmd.publish")
     async def publish(
         self, *, project_path: str, args_list: Optional[list[str]] = None
     ) -> bcs.Argument:
@@ -1012,6 +1037,7 @@ class AsyncSuiTransaction(txbase):
         modules, dependencies, _digest = self._compile_source(project_path, args_list)
         return self.builder.publish(modules, dependencies)
 
+    @instrumented("ptb.cmd.publish_upgrade")
     async def publish_upgrade(
         self,
         *,
@@ -1077,6 +1103,7 @@ class AsyncSuiTransaction(txbase):
         else:
             raise ValueError("Not a valid upgrade cap.")
 
+    @instrumented("ptb.cmd.custom_upgrade")
     async def custom_upgrade(
         self,
         *,

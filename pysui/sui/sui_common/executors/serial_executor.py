@@ -37,6 +37,7 @@ from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
+from pysui.sui.sui_common.instrumentation import measure, instrumented
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +155,7 @@ class SerialQueueProcessor:
         )
         self._update_tracked_balance_from_accumulator(executed_tx)
 
+    @instrumented("executor.serial.process")
     async def process(self, txn) -> tuple:
         """Full execution lifecycle. Returns (GasStatus, result).
 
@@ -172,9 +174,10 @@ class SerialQueueProcessor:
             ]
 
         try:
-            signed_tx = await self._cache.build_transaction(
-                txn, self._signing_block, gas_objects_override
-            )
+            async with measure("executor.serial.object_resolve"):
+                signed_tx = await self._cache.build_transaction(
+                    txn, self._signing_block, gas_objects_override
+                )
         except Exception as exc:
             logger.warning("SerialQueueProcessor: build_transaction failed: %s", exc)
             return GasStatus.TXN_ERROR, (ExecutorError.BUILDING_ERROR, exc)

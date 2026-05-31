@@ -41,6 +41,7 @@ from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
+from pysui.sui.sui_common.instrumentation import measure, instrumented
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +191,7 @@ class _BaseParallelExecutor:
         self._build_queue.put_nowait(_QueueItem(txn=txn, future=future))
         return future
 
+    @instrumented("executor.parallel._build_worker")
     async def _build_worker(self) -> None:
         """Serial background coroutine: acquire conflict + gas, dispatch execute tasks."""
         while True:
@@ -210,11 +212,12 @@ class _BaseParallelExecutor:
 
             # Conflict acquisition — blocks until all object IDs are free
             try:
-                unresolved = item.txn.builder.get_unresolved_inputs()
-                conflict_ids: set[str] = {
-                    u.ObjectStr for u in unresolved.values()
-                    if hasattr(u, "ObjectStr")
-                }
+                async with measure("executor.parallel.object_resolve"):
+                    unresolved = item.txn.builder.get_unresolved_inputs()
+                    conflict_ids: set[str] = {
+                        u.ObjectStr for u in unresolved.values()
+                        if hasattr(u, "ObjectStr")
+                    }
             except (AttributeError, TypeError):
                 conflict_ids = set()
             reservation = await self._conflict_tracker.acquire(conflict_ids)
@@ -244,6 +247,7 @@ class _BaseParallelExecutor:
 
             self._build_queue.task_done()
 
+    @instrumented("executor.parallel._execute_item")
     async def _execute_item(
         self,
         item: _QueueItem,
@@ -272,9 +276,10 @@ class _BaseParallelExecutor:
                         ]
 
                     try:
-                        signed_tx = await caching_exec.build_transaction(
-                            item.txn, self._signing_block, gas_objects_override
-                        )
+                        async with measure("executor.parallel.build_transaction"):
+                            signed_tx = await caching_exec.build_transaction(
+                                item.txn, self._signing_block, gas_objects_override
+                            )
                     except Exception as exc:
                         logger.warning("_BaseParallelExecutor: build failed: %s", exc)
                         if gas_coin is not None:

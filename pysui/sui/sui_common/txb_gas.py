@@ -9,6 +9,7 @@ import asyncio
 from typing import Callable, Optional, TypeVar, Union
 
 from pysui.sui.sui_bcs import bcs
+from pysui.sui.sui_common.instrumentation import instrumented
 
 # Per Mysten TS SDK: GAS_SAFE_OVERHEAD applied to every budget estimate.
 _GAS_SAFE_OVERHEAD: int = 1000  # gas units (not MIST)
@@ -95,7 +96,7 @@ def coins_for_budget(
 
 
 
-
+@instrumented("gas.async_get_gas_data")
 async def async_get_gas_data(
     *,
     signing,

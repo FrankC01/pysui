@@ -37,6 +37,8 @@ from pysui.sui.sui_common.config.confgroup import SUI_GQL_RPC_GROUP, SUI_GRPC_GR
 from pysui.sui.sui_constants import DEVNET_FAUCET_URLV1, TESTNET_FAUCET_URLV1
 from pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 import ChangedObjectInputObjectState
 import pysui.sui.sui_common.sui_commands as cmd
+from pysui.sui.sui_common.instrumentation import active_collector
+from scratch.dict_collector import DictCollector
 
 
 _FAUCET_BY_PROFILE: dict[str, str] = {
@@ -753,3 +755,25 @@ async def txn_digests(
     await asyncio.sleep(SETTLE_SECS)
 
     return TxnDigests(digest1=digest1, digest2=digest2)
+
+
+# ---------------------------------------------------------------------------
+# Performance benchmarking fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def bench_collector():
+    """Opt-in performance collector. Request this fixture to time pysui internals.
+
+    Usage::
+
+        async def test_something(bench_collector):
+            async with client.transaction() as txn:
+                ...
+            print(bench_collector.heat_map())
+    """
+    collector = DictCollector()
+    async with active_collector(collector):
+        yield collector
+    print(f"\n--- bench heat map ---\n{collector.heat_map()}")

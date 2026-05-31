@@ -32,6 +32,7 @@ from pysui.sui.sui_common.sui_command import SuiCommand
 
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
+from pysui.sui.sui_common.instrumentation import measure, instrumented
 
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
@@ -104,6 +105,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             return result.result_data.epoch.reference_gas_price
         raise ValueError(f"Error accessing gRPC {result.result_string}")
 
+    @instrumented("grpc._init_protocol")
     async def _init_protocol(self, epoch_number: Optional[int] = None) -> None:
         """Fetch and cache protocol constraints at init time."""
         result = await self.execute_grpc_request(
@@ -123,21 +125,25 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         """Return cached protocol constraints."""
         return self._protocol_config
 
+    @instrumented("grpc.close")
     async def close(self):
         """Close the base gRPC channel"""
         for channel in self._channels:
             channel.close()
         self._channel.close()
 
+    @instrumented("grpc.__aenter__")
     async def __aenter__(self) -> "GrpcProtocolClient":
         """Enter async context manager."""
         await self._init_protocol()
         return self
 
+    @instrumented("grpc.__aexit__")
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit async context manager and close channel."""
         await self.close()
 
+    @instrumented("grpc.transaction")
     async def transaction(
         self,
         **kwargs,
@@ -160,6 +166,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         kwargs["client"] = self
         return AsyncSuiTransaction(**kwargs)
 
+    @instrumented("grpc.serial_executor")
     async def serial_executor(self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions") -> "pysui.sui.sui_common.executors.serial_executor.SerialExecutor":
         """Async factory: create and initialize a SerialExecutor.
 
@@ -175,6 +182,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         await se._initialize()
         return se
 
+    @instrumented("grpc.parallel_executor")
     async def parallel_executor(self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions") -> "pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor":
         """Async factory: create and initialize a ParallelExecutor.
 
@@ -190,6 +198,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         await pe._initialize()
         return pe
 
+    @instrumented("grpc._dispatch_grpc_request")
     async def _dispatch_grpc_request(
         self, request: absreq.PGRPC_Request, **kwargs
     ) -> SuiRpcResult:
@@ -253,7 +262,8 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             result = await srv_fn(srv_req, **kwargs)
             logger.info("Success")
             if hasattr(request, "render"):
-                result = request.render(result)
+                async with measure(f"grpc.{type(request).__name__}.render"):
+                    result = request.render(result)
             return SuiRpcResult(True, None, result)
         except GRPCError as e:
             if e.status == GRPCStatus.NOT_FOUND and getattr(request, "not_found_as_none", False):
@@ -266,6 +276,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             logger.error(traceback_str)
             return SuiRpcResult(False, e.args)
 
+    @instrumented("grpc.execute_grpc_request")
     @deprecated(
         version="0.99.0",
         reason=(
@@ -290,6 +301,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         """
         return await self._dispatch_grpc_request(request, **kwargs)
 
+    @instrumented("grpc.execute")
     async def execute(
         self,
         *,

@@ -41,6 +41,7 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
 import pysui.sui.sui_pgql.pgql_schema as scm
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+from pysui.sui.sui_common.instrumentation import measure, instrumented
 
 # Standard library logging setup
 logger = logging.getLogger("pgql_client")
@@ -236,6 +237,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         )
         self._slock = asyncio.Semaphore()
 
+    @instrumented("gql.transaction")
     @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
     async def transaction(self, **kwargs) -> Any:
         """Return an asynchronous SuiTransaction.
@@ -250,6 +252,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         kwargs["client"] = self
         return AsyncSuiTransaction(**kwargs)
 
+    @instrumented("gql.serial_executor")
     async def serial_executor(self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions") -> "pysui.sui.sui_common.executors.serial_executor.SerialExecutor":
         """Async factory: create and initialize a SerialExecutor.
 
@@ -265,6 +268,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         await se._initialize()
         return se
 
+    @instrumented("gql.parallel_executor")
     async def parallel_executor(self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions") -> "pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor":
         """Async factory: create and initialize a ParallelExecutor.
 
@@ -285,6 +289,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         """Return the underlying GraphQL transport session."""
         return self._session
 
+    @instrumented("gql.close")
     async def close(self) -> None:
         """Close the connection."""
         if self._schema._async_client:
@@ -293,14 +298,17 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
             except AttributeError:
                 pass
 
+    @instrumented("gql.__aenter__")
     async def __aenter__(self) -> "GqlProtocolClient":
         """Enter async context manager."""
         return self
 
+    @instrumented("gql.__aexit__")
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit async context manager and close connection."""
         await self.close()
 
+    @instrumented("gql._execute")
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
     )
@@ -335,7 +343,12 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 extra_args = dict(with_headers) if with_headers is not None else dict(self._default_header or {})
                 extra_args["timeout"] = timeout or self._schema.timeout
                 sres = await _session.execute(node, extra_args=extra_args)
-            return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
+            if encode_fn:
+                async with measure(f"gql.{encode_fn.__qualname__}"):
+                    result_data = encode_fn(sres)
+            else:
+                result_data = sres
+            return SuiRpcResult(True, None, result_data)
 
         except texc.TransportQueryError as gte:
             if capture_errors and isinstance(gte.data, dict) and gte.errors and encode_fn is not None:
@@ -345,7 +358,9 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                         {"message": e.get("message", str(e)) if isinstance(e, dict) else str(e)}
                         for e in (gte.errors or [])
                     ]
-                    return SuiRpcResult(True, None, encode_fn(payload))
+                    async with measure(f"gql.{encode_fn.__qualname__}"):
+                        result_data = encode_fn(payload)
+                    return SuiRpcResult(True, None, result_data)
                 except Exception:
                     pass
             return SuiRpcResult(
@@ -379,6 +394,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
 
+    @instrumented("gql.execute_query_string")
     @versionadded(version="0.56.0", reason="Unique function for string processing")
     @versionchanged(version="0.89.0", reason="Added timeout argument")
     async def execute_query_string(
@@ -407,6 +423,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         else:
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
+    @instrumented("gql.execute_document_node")
     @versionadded(
         version="0.56.0", reason="Unique function for GraphQLRequest processing"
     )
@@ -437,6 +454,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         else:
             return SuiRpcResult(False, "Not a valid gql GraphQLRequest", with_node)
 
+    @instrumented("gql.execute_query_node")
     @versionadded(
         version="0.56.0", reason="Unique function for PGQL_QueryNode processing"
     )
@@ -481,6 +499,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
 
+    @instrumented("gql.execute")
     async def execute(
         self,
         *,
@@ -512,6 +531,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
             capture_errors=command.capture_errors,
         )
 
+    @instrumented("gql._execute_gql_node")
     async def _execute_gql_node(
         self,
         node: PGQL_QueryNode,
@@ -531,6 +551,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
 
+    @instrumented("gql.wait_for_transaction")
     @versionadded(version="0.73.0", reason="Execution of transaction changes.")
     async def wait_for_transaction(
         self, *, digest: str, timeout: int = 60, poll_interval: int = 2
