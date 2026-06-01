@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 import argparse
+import asyncio
 import json
 import os
 from contextlib import asynccontextmanager, contextmanager
@@ -27,7 +28,12 @@ import pysui.sui.sui_common.sui_commands as cmd
 
 BUDGET = 4_000_000
 SPLIT_AMOUNT = 1_000
-RECIPIENT = "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28"
+def get_recipient(cfg: PysuiConfiguration) -> str:
+    """Return a non-active address from cfg, or the active address if only one exists."""
+    addresses = cfg.addresses
+    active = cfg.active_address
+    others = [a for a in addresses if a != active]
+    return others[0] if others else active
 
 class TimingCollector(InstrumentationCollector):
     """Accumulates (label, elapsed_ns) events; resets between iterations."""
@@ -127,11 +133,15 @@ async def run_protocol_bench(
     gas_options: list[GasOption],
     iterations: int,
     bench_fn: Callable[[AsyncClientBase, AsyncSuiTransaction, dict], Awaitable[None]],
+    *,
+    refetch: bool = False,
 ) -> dict[str, dict[str, list[int]]]:
     """Run N iterations for each gas option.
 
     bench_fn: coroutine called once per iteration with (client, txer, gas_kwargs);
     responsible for the full operation — PTB setup plus build_and_sign, simulate, or execute.
+    When refetch=True, gas coins are re-fetched before each iteration so object versions
+    stay current after on-chain execution.
     Returns {option_label: {phase_label: [elapsed_ns, ...]}}
     """
     results: dict[str, dict[str, list[int]]] = {}
@@ -143,11 +153,20 @@ async def run_protocol_bench(
 
         for _ in range(iterations):
             collector.reset()
+            if refetch:
+                gas_coins = await fetch_gas_coins(client)
+                fresh_options = make_gas_options(gas_coins)
+                fresh = next((o for o in fresh_options if o.label == gas_opt.label), gas_opt)
+                current_kwargs = fresh.kwargs
+            else:
+                current_kwargs = gas_opt.kwargs
             txer: AsyncSuiTransaction = await client.transaction()
             async with active_collector(collector):
-                await bench_fn(client, txer, gas_opt.kwargs)
+                await bench_fn(client, txer, current_kwargs)
             for label, elapsed in collector.summary().items():
                 opt_results.setdefault(label, []).append(elapsed)
+            if refetch:
+                await asyncio.sleep(1)
 
         results[gas_opt.label] = opt_results
 

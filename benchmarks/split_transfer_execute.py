@@ -16,6 +16,8 @@ WARNING: Mode C submits real transactions — gas is consumed each iteration.
 from __future__ import annotations
 import asyncio
 
+import pysui.sui.sui_common.sui_commands as cmd
+
 from benchmarks.bench_common import (
     build_arg_parser,
     setup_clients,
@@ -23,10 +25,10 @@ from benchmarks.bench_common import (
     make_gas_options,
     run_protocol_bench,
     save_chart,
+    get_recipient,
     AsyncClientBase,
     AsyncSuiTransaction,
     SPLIT_AMOUNT,
-    RECIPIENT,
 )
 
 
@@ -42,13 +44,6 @@ GAS_OPTION_LABELS: dict[str, str] = {
 }
 
 
-async def _bench_fn(client: AsyncClientBase, txer: AsyncSuiTransaction, gas_kwargs: dict) -> None:
-    scres = await txer.split_coin(coin=txer.gas, amounts=[SPLIT_AMOUNT])
-    await txer.transfer_objects(transfers=[scres], recipient=RECIPIENT)
-    # TODO: replace build_and_sign with transaction_data + ExecuteTransaction once SuiCommand API confirmed
-    await txer.build_and_sign(**gas_kwargs)
-
-
 async def main() -> None:
     """."""
     args = build_arg_parser(
@@ -59,6 +54,12 @@ async def main() -> None:
     try:
         print("Setting up clients...")
         clients = await setup_clients()
+        recipient = get_recipient(next(iter(clients.values())).config)
+
+        async def _bench_fn(client: AsyncClientBase, txer: AsyncSuiTransaction, gas_kwargs: dict) -> None:
+            scres = await txer.split_coin(coin=txer.gas, amounts=[SPLIT_AMOUNT])
+            await txer.transfer_objects(transfers=[scres], recipient=recipient)
+            await client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign(**gas_kwargs)))
 
         all_results: dict = {}
         for proto, client in clients.items():
@@ -66,7 +67,7 @@ async def main() -> None:
             gas_coins = await fetch_gas_coins(client)
             gas_options = make_gas_options(gas_coins)
             all_results[proto] = await run_protocol_bench(
-                client, gas_options, args.iterations, bench_fn=_bench_fn
+                client, gas_options, args.iterations, bench_fn=_bench_fn, refetch=True
             )
 
         save_chart(

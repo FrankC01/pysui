@@ -20,10 +20,10 @@ from benchmarks.bench_common import (
     make_gas_options,
     run_protocol_bench,
     save_chart,
+    get_recipient,
     AsyncClientBase,
     AsyncSuiTransaction,
     SPLIT_AMOUNT,
-    RECIPIENT,
 )
 
 
@@ -39,12 +39,6 @@ GAS_OPTION_LABELS: dict[str, str] = {
 }
 
 
-async def _bench_fn(client: AsyncClientBase, txer: AsyncSuiTransaction, gas_kwargs: dict) -> None:
-    scres = await txer.split_coin(coin=txer.gas, amounts=[SPLIT_AMOUNT])
-    await txer.transfer_objects(transfers=[scres], recipient=RECIPIENT)
-    await txer.build_and_sign(**gas_kwargs)
-
-
 async def main() -> None:
     """."""
     args = build_arg_parser(
@@ -55,6 +49,12 @@ async def main() -> None:
     try:
         print("Setting up clients...")
         clients = await setup_clients()
+        recipient = get_recipient(next(iter(clients.values())).config)
+
+        async def _bench_fn(client: AsyncClientBase, txer: AsyncSuiTransaction, gas_kwargs: dict) -> None:
+            scres = await txer.split_coin(coin=txer.gas, amounts=[SPLIT_AMOUNT])
+            await txer.transfer_objects(transfers=[scres], recipient=recipient)
+            await txer.build_and_sign(**gas_kwargs)
 
         all_results: dict = {}
         for proto, client in clients.items():

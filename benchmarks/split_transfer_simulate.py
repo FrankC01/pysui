@@ -27,11 +27,11 @@ from benchmarks.bench_common import (
     GasOption,
     run_protocol_bench,
     save_simulate_chart,
+    get_recipient,
     AsyncClientBase,
     AsyncSuiTransaction,
     BUDGET,
     SPLIT_AMOUNT,
-    RECIPIENT,
 )
 
 # Instrumentation label emitted per variant for each metric
@@ -61,30 +61,6 @@ _DECODE_LABEL: dict[str, str | None] = {
 }
 
 
-async def _bench_simulate_txn(
-    client: AsyncClientBase, txer: AsyncSuiTransaction, gas_kwargs: dict
-) -> None:
-    """SimulateTransaction: PTB → transaction_data → simulate."""
-    scres = await txer.split_coin(coin=txer.gas, amounts=[SPLIT_AMOUNT])
-    await txer.transfer_objects(transfers=[scres], recipient=RECIPIENT)
-    tx_data = await txer.transaction_data(**gas_kwargs)
-    await client.execute(command=cmd.SimulateTransaction(tx_bytestr=tx_data.serialize()))
-
-
-async def _bench_simulate_kind(
-    client: AsyncClientBase, txer: AsyncSuiTransaction, gas_kwargs: dict
-) -> None:
-    """SimulateTransactionKind: PTB → raw_kind → simulate (no gas resolution)."""
-    scres = await txer.split_coin(coin=txer.gas, amounts=[SPLIT_AMOUNT])
-    await txer.transfer_objects(transfers=[scres], recipient=RECIPIENT)
-    await client.execute(
-        command=cmd.SimulateTransactionKind(
-            tx_kind=txer.raw_kind(),
-            tx_meta={"sender": client.config.active_address},
-        )
-    )
-
-
 async def main() -> None:
     """."""
     args = build_arg_parser(
@@ -95,8 +71,31 @@ async def main() -> None:
     try:
         print("Setting up clients...")
         clients = await setup_clients()
+        recipient = get_recipient(next(iter(clients.values())).config)
         gql_client = clients["gql"]
         grpc_client = clients["grpc"]
+
+        async def _bench_simulate_txn(
+            client: AsyncClientBase, txer: AsyncSuiTransaction, gas_kwargs: dict
+        ) -> None:
+            """SimulateTransaction: PTB → transaction_data → simulate."""
+            scres = await txer.split_coin(coin=txer.gas, amounts=[SPLIT_AMOUNT])
+            await txer.transfer_objects(transfers=[scres], recipient=recipient)
+            tx_data = await txer.transaction_data(**gas_kwargs)
+            await client.execute(command=cmd.SimulateTransaction(tx_bytestr=tx_data.serialize()))
+
+        async def _bench_simulate_kind(
+            client: AsyncClientBase, txer: AsyncSuiTransaction, gas_kwargs: dict
+        ) -> None:
+            """SimulateTransactionKind: PTB → raw_kind → simulate (no gas resolution)."""
+            scres = await txer.split_coin(coin=txer.gas, amounts=[SPLIT_AMOUNT])
+            await txer.transfer_objects(transfers=[scres], recipient=recipient)
+            await client.execute(
+                command=cmd.SimulateTransactionKind(
+                    tx_kind=txer.raw_kind(),
+                    tx_meta={"sender": client.config.active_address},
+                )
+            )
 
         # Fetch one gas coin for the faux gas option used by SimulateTransaction
         gas_coins = await fetch_gas_coins(gql_client)
