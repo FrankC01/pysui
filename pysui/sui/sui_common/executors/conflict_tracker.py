@@ -8,6 +8,7 @@
 import asyncio
 import logging
 from collections import defaultdict, deque
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 logger = logging.getLogger(__name__)
 
@@ -15,17 +16,21 @@ logger = logging.getLogger(__name__)
 class ConflictReservation:
     """Holds an active conflict claim; release via async context manager or release()."""
 
+    @sync_instrumented("pysui.sui.sui_common.executors.conflict_tracker.ConflictReservation.__init__")
     def __init__(self, tracker: "ConflictTracker", claimed: list[tuple[str, asyncio.Event]]) -> None:
         self._tracker = tracker
         self._claimed = claimed
 
+    @instrumented("pysui.sui.sui_common.executors.conflict_tracker.ConflictReservation.release")
     async def release(self) -> None:
         """Release the claimed conflict reservations."""
         await self._tracker._release(self._claimed)
 
+    @instrumented("pysui.sui.sui_common.executors.conflict_tracker.ConflictReservation.__aenter__")
     async def __aenter__(self) -> "ConflictReservation":
         return self
 
+    @instrumented("pysui.sui.sui_common.executors.conflict_tracker.ConflictReservation.__aexit__")
     async def __aexit__(self, *exc) -> None:
         await self.release()
 
@@ -37,10 +42,12 @@ class ConflictTracker:
     order to prevent deadlock when a transaction needs multiple objects.
     """
 
+    @sync_instrumented("pysui.sui.sui_common.executors.conflict_tracker.ConflictTracker.__init__")
     def __init__(self) -> None:
         self._waiters: dict[str, deque[asyncio.Event]] = defaultdict(deque)
         self._lock = asyncio.Lock()
 
+    @instrumented("pysui.sui.sui_common.executors.conflict_tracker.ConflictTracker.acquire")
     async def acquire(self, conflict_ids: set[str]) -> ConflictReservation:
         """Block until all object IDs are free, then mark them in-use.
 
@@ -63,6 +70,7 @@ class ConflictTracker:
 
         return ConflictReservation(self, claimed)
 
+    @instrumented("pysui.sui.sui_common.executors.conflict_tracker.ConflictTracker._release")
     async def _release(self, claimed: list[tuple[str, asyncio.Event]]) -> None:
         async with self._lock:
             for oid, ev in claimed:
@@ -81,6 +89,7 @@ class ConflictTracker:
                     except ValueError:
                         pass
 
+    @sync_instrumented("pysui.sui.sui_common.executors.conflict_tracker.ConflictTracker.in_flight_ids")
     def in_flight_ids(self) -> set[str]:
         """Return the set of object IDs currently claimed by at least one transaction."""
         return set(self._waiters.keys())

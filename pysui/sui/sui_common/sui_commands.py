@@ -15,6 +15,7 @@ from pysui.sui.sui_common.sui_command import SuiCommand
 
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 import pysui.sui.sui_pgql.pgql_query as pgql_query
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 # ---------------------------------------------------------------------------
 # Transaction execution
@@ -31,6 +32,7 @@ class ExecuteTransaction(SuiCommand):
     tx_bytestr: str | bytes
     sig_array: list[str | bytes]
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.ExecuteTransaction.gql_node")
     def gql_node(self) -> pgql_query.ExecuteTransactionSC:
         """Return GQL execute-transaction mutation node."""
         tx_b64 = (
@@ -44,6 +46,7 @@ class ExecuteTransaction(SuiCommand):
         ]
         return pgql_query.ExecuteTransactionSC(tx_bytestr=tx_b64, sig_array=sigs_b64)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.ExecuteTransaction.grpc_request")
     def grpc_request(self) -> rn.ExecuteTransaction:
         """Return gRPC execute-transaction request."""
         return rn.ExecuteTransaction(
@@ -78,6 +81,7 @@ class SimulateTransaction(SuiCommand):
     checks_enabled: Optional[bool] = True
     gas_selection: Optional[bool] = True
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.SimulateTransaction.gql_node")
     def gql_node(self) -> pgql_query.SimulateTransactionSC:
         """Return GQL simulate-transaction query node."""
         return pgql_query.SimulateTransactionSC(
@@ -86,6 +90,7 @@ class SimulateTransaction(SuiCommand):
             do_gas_selection=self.gas_selection,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.SimulateTransaction.grpc_request")
     def grpc_request(self) -> rn.SimulateTransaction:
         """Return gRPC simulate-transaction request."""
         return rn.SimulateTransaction(
@@ -123,6 +128,7 @@ class SimulateTransactionKind(SuiCommand):
     checks_enabled: Optional[bool] = True
     gas_selection: Optional[bool] = True
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.SimulateTransactionKind.gql_node")
     def gql_node(self) -> pgql_query.SimulateTransactionKindSC:
         """Return GQL simulate-transaction-kind query node."""
         return pgql_query.SimulateTransactionKindSC(
@@ -132,6 +138,7 @@ class SimulateTransactionKind(SuiCommand):
             do_gas_selection=self.gas_selection,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.SimulateTransactionKind.grpc_request")
     def grpc_request(self) -> rn.SimulateTransactionKind:
         """Return gRPC simulate-transaction-kind request."""
         sender = self.tx_meta.get("sender")
@@ -160,10 +167,12 @@ class GetCoinMetaData(SuiCommand):
 
     coin_type: Optional[str] = "0x2::sui::SUI"
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCoinMetaData.gql_node")
     def gql_node(self) -> pgql_query.GetCoinMetaDataSC:
         """Return GQL coin-metadata query node."""
         return pgql_query.GetCoinMetaDataSC(coin_type=self.coin_type)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCoinMetaData.grpc_request")
     def grpc_request(self) -> rn.GetCoinMetaData:
         """Return gRPC coin-info request."""
         return rn.GetCoinMetaData(coin_type=self.coin_type)
@@ -179,12 +188,14 @@ class GetAddressCoinBalance(SuiCommand):
     owner: str
     coin_type: Optional[str] = "0x2::sui::SUI"
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetAddressCoinBalance.gql_node")
     def gql_node(self) -> pgql_query.GetAddressCoinBalanceSC:
         """Return GQL address-coin-balance query node."""
         return pgql_query.GetAddressCoinBalanceSC(
             owner=self.owner, coin_type=self.coin_type
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetAddressCoinBalance.grpc_request")
     def grpc_request(self) -> rn.GetAddressCoinBalance:
         """Return gRPC get-balance request."""
         return rn.GetAddressCoinBalance(owner=self.owner, coin_type=self.coin_type)
@@ -204,12 +215,14 @@ class GetAddressCoinBalances(SuiCommand):
     owner: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetAddressCoinBalances.gql_node")
     def gql_node(self) -> pgql_query.GetAddressCoinBalancesSC:
         """Return GQL address-coin-balances query node."""
         return pgql_query.GetAddressCoinBalancesSC(
             owner=self.owner, next_page_token=self.next_page_token
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetAddressCoinBalances.grpc_request")
     def grpc_request(self) -> rn.GetAddressCoinBalances:
         """Return gRPC list-balances request."""
         return rn.GetAddressCoinBalances(
@@ -232,6 +245,7 @@ class GetCoins(SuiCommand):
     coin_type: Optional[str] = "0x2::coin::Coin<0x2::sui::SUI>"
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCoins.gql_node")
     def gql_node(self) -> pgql_query.GetCoinsSC:
         """Return GQL coins query node."""
         return self.gql_class(
@@ -240,6 +254,7 @@ class GetCoins(SuiCommand):
             next_page_token=self.next_page_token,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCoins.grpc_request")
     def grpc_request(self) -> rn.GetCoinsSC:
         """Return gRPC get-owned-objects request filtered to coin type."""
         return rn.GetCoinsSC(
@@ -261,10 +276,12 @@ class GetGas(SuiCommand):
     owner: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetGas.gql_node")
     def gql_node(self) -> pgql_query.GetGasSC:
         """Return GQL gas-coins query node."""
         return self.gql_class(owner=self.owner, next_page_token=self.next_page_token)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetGas.grpc_request")
     def grpc_request(self) -> rn.GetGasSC:
         """Return gRPC get-gas request."""
         return rn.GetGasSC(owner=self.owner, page_token=self.next_page_token)
@@ -284,10 +301,12 @@ class GetStaked(SuiCommand):
     owner: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetStaked.gql_node")
     def gql_node(self) -> pgql_query.GetDelegatedStakesSC:
         """Return GQL staked-coins query node."""
         return self.gql_class(self.owner, next_page_token=self.next_page_token)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetStaked.grpc_request")
     def grpc_request(self) -> rn.GetStaked:
         """Return gRPC get-staked request."""
         return rn.GetStaked(owner=self.owner, page_token=self.next_page_token)
@@ -307,10 +326,12 @@ class GetDelegatedStakes(SuiCommand):
     owner: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetDelegatedStakes.gql_node")
     def gql_node(self) -> pgql_query.GetDelegatedStakesSC:
         """Return GQL delegated-stakes query node."""
         return self.gql_class(self.owner, next_page_token=self.next_page_token)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetDelegatedStakes.grpc_request")
     def grpc_request(self) -> rn.GetDelegatedStakes:
         """Return gRPC get-delegated-stakes request."""
         return rn.GetDelegatedStakes(owner=self.owner, page_token=self.next_page_token)
@@ -330,10 +351,12 @@ class GetObject(SuiCommand):
 
     object_id: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObject.gql_node")
     def gql_node(self) -> pgql_query.GetObjectSC:
         """Return GQL object query node."""
         return self.gql_class(object_id=self.object_id)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObject.grpc_request")
     def grpc_request(self) -> rn.GetObjectSC:
         """Return gRPC get-object request."""
         return self.grpc_class(object_id=self.object_id)
@@ -349,10 +372,12 @@ class GetPastObject(SuiCommand):
     object_id: str
     version: int
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPastObject.gql_node")
     def gql_node(self) -> pgql_query.GetPastObjectSC:
         """Return GQL past-object query node."""
         return self.gql_class(object_id=self.object_id, version=self.version)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPastObject.grpc_request")
     def grpc_request(self) -> rn.GetPastObjectSC:
         """Return gRPC get-past-object request."""
         return self.grpc_class(object_id=self.object_id, version=self.version)
@@ -367,10 +392,12 @@ class GetMultipleObjects(SuiCommand):
 
     object_ids: list[str]
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMultipleObjects.gql_node")
     def gql_node(self) -> pgql_query.GetMultipleObjectsSC:
         """Return GQL multi-object query node."""
         return self.gql_class(object_ids=self.object_ids)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMultipleObjects.grpc_request")
     def grpc_request(self) -> rn.GetMultipleObjectsSC:
         """Return gRPC batch-get-objects request."""
         return rn.GetMultipleObjectsSC(object_ids=self.object_ids)
@@ -385,10 +412,12 @@ class GetObjectSummary(SuiCommand):
 
     object_id: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObjectSummary.gql_node")
     def gql_node(self) -> pgql_query.GetObjectSummarySC:
         """Return GQL object-summary query node."""
         return self.gql_class(object_id=self.object_id)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObjectSummary.grpc_request")
     def grpc_request(self) -> rn.GetObjectSummarySC:
         """Return gRPC get-object-summary request."""
         return self.grpc_class(object_id=self.object_id)
@@ -403,10 +432,12 @@ class GetMultipleObjectSummary(SuiCommand):
 
     object_ids: list[str]
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMultipleObjectSummary.gql_node")
     def gql_node(self) -> pgql_query.GetMultipleObjectsSummarySC:
         """Return GQL multi-object-summary query node."""
         return self.gql_class(object_ids=self.object_ids)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMultipleObjectSummary.grpc_request")
     def grpc_request(self) -> rn.GetMultipleObjectsSummarySC:
         """Return gRPC batch-get-objects-summary request."""
         return self.grpc_class(object_ids=self.object_ids)
@@ -425,6 +456,7 @@ class GetMultiplePastObjects(SuiCommand):
 
     for_versions: list[dict[str, str | int]]
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMultiplePastObjects.gql_node")
     def gql_node(self) -> pgql_query.GetMultipleVersionedObjectsSC:
         """Return GQL multi-versioned-objects query node."""
         gql_versions = [
@@ -433,6 +465,7 @@ class GetMultiplePastObjects(SuiCommand):
         ]
         return self.gql_class(for_versions=gql_versions)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMultiplePastObjects.grpc_request")
     def grpc_request(self) -> rn.GetMultiplePastObjectsSC:
         """Return gRPC batch-get-past-objects request."""
         object_versions = [
@@ -456,10 +489,12 @@ class GetObjectsOwnedByAddress(SuiCommand):
     owner: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObjectsOwnedByAddress.gql_node")
     def gql_node(self) -> pgql_query.GetObjectsOwnedByAddressSC:
         """Return GQL owned-objects query node."""
         return self.gql_class(owner=self.owner, next_page_token=self.next_page_token)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObjectsOwnedByAddress.grpc_request")
     def grpc_request(self) -> rn.GetObjectsOwnedByAddressSC:
         """Return gRPC list-owned-objects request."""
         return rn.GetObjectsOwnedByAddressSC(
@@ -481,12 +516,14 @@ class GetDynamicFields(SuiCommand):
     object_id: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetDynamicFields.gql_node")
     def gql_node(self) -> pgql_query.GetDynamicFieldsSC:
         """Return GQL dynamic-fields query node."""
         return self.gql_class(
             object_id=self.object_id, next_page_token=self.next_page_token
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetDynamicFields.grpc_request")
     def grpc_request(self) -> rn.GetDynamicFields:
         """Return gRPC list-dynamic-fields request."""
         return rn.GetDynamicFields(
@@ -508,10 +545,12 @@ class GetEpoch(SuiCommand):
 
     epoch_id: Optional[int] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetEpoch.gql_node")
     def gql_node(self) -> pgql_query.GetEpochSC:
         """Return GQL epoch query node."""
         return pgql_query.GetEpochSC(epoch_id=self.epoch_id)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetEpoch.grpc_request")
     def grpc_request(self) -> rn.GetEpoch:
         """Return gRPC get-epoch request."""
         return rn.GetEpoch(epoch_number=self.epoch_id, field_mask=["*"])
@@ -524,10 +563,12 @@ class GetBasicCurrentEpochInfo(SuiCommand):
     gql_class: ClassVar[type] = pgql_query.GetBasicCurrentEpochInfoSC
     grpc_class: ClassVar[type] = rn.GetBasicCurrentEpochInfo
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetBasicCurrentEpochInfo.gql_node")
     def gql_node(self) -> pgql_query.GetBasicCurrentEpochInfoSC:
         """Return GQL basic-epoch-info SC query node."""
         return pgql_query.GetBasicCurrentEpochInfoSC()
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetBasicCurrentEpochInfo.grpc_request")
     def grpc_request(self) -> rn.GetBasicCurrentEpochInfo:
         """Return gRPC basic-epoch-info request."""
         return rn.GetBasicCurrentEpochInfo()
@@ -545,10 +586,12 @@ class GetLatestCheckpoint(SuiCommand):
     gql_class: ClassVar[type] = pgql_query.GetLatestCheckpointSequenceSC
     grpc_class: ClassVar[type] = rn.GetLatestCheckpoint
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetLatestCheckpoint.gql_node")
     def gql_node(self) -> pgql_query.GetLatestCheckpointSequenceSC:
         """Return GQL latest-checkpoint-sequence query node."""
         return self.gql_class()
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetLatestCheckpoint.grpc_request")
     def grpc_request(self) -> rn.GetLatestCheckpoint:
         """Return gRPC get-latest-checkpoint request."""
         return rn.GetLatestCheckpoint()
@@ -563,10 +606,12 @@ class GetCheckpointBySequence(SuiCommand):
 
     sequence_number: int
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCheckpointBySequence.gql_node")
     def gql_node(self) -> pgql_query.GetCheckpointBySequenceSC:
         """Return GQL checkpoint-by-sequence query node."""
         return self.gql_class(sequence_number=self.sequence_number)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCheckpointBySequence.grpc_request")
     def grpc_request(self) -> rn.GetCheckpointBySequence:
         """Return gRPC get-checkpoint-by-sequence request."""
         return rn.GetCheckpointBySequence(sequence_number=self.sequence_number)
@@ -581,10 +626,12 @@ class GetCheckpointByDigest(SuiCommand):
 
     digest: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCheckpointByDigest.gql_node")
     def gql_node(self) -> pgql_query.GetCheckpointByDigestSC:
         """Return GQL checkpoint-by-digest query node."""
         return self.gql_class(digest=self.digest)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCheckpointByDigest.grpc_request")
     def grpc_request(self) -> rn.GetCheckpointByDigest:
         """Return gRPC get-checkpoint-by-digest request."""
         return rn.GetCheckpointByDigest(digest=self.digest)
@@ -599,10 +646,12 @@ class GetMultipleObjectContent(SuiCommand):
 
     object_ids: list[str]
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMultipleObjectContent.gql_node")
     def gql_node(self) -> pgql_query.GetMultipleObjectContentSC:
         """Return GraphQL query node."""
         return self.gql_class(object_ids=self.object_ids)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMultipleObjectContent.grpc_request")
     def grpc_request(self) -> rn.GetMultipleObjects:
         """Return gRPC batch-get-objects request with contents field mask."""
         return rn.GetMultipleObjects(
@@ -619,10 +668,12 @@ class GetProtocolConfig(SuiCommand):
 
     version: Optional[int] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetProtocolConfig.gql_node")
     def gql_node(self) -> pgql_query.GetProtocolConfigSC:
         """Return GraphQL query node."""
         return self.gql_class(version=self.version)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetProtocolConfig.grpc_request")
     def grpc_request(self) -> rn.GetProtocolConfig:
         """Return gRPC get-protocol-config request."""
         return rn.GetProtocolConfig(version=self.version)
@@ -637,10 +688,12 @@ class GetObjectContent(SuiCommand):
 
     object_id: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObjectContent.gql_node")
     def gql_node(self) -> pgql_query.GetObjectContentSC:
         """Return GraphQL query node."""
         return self.gql_class(object_id=self.object_id)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObjectContent.grpc_request")
     def grpc_request(self) -> rn.GetObject:
         """Return gRPC get-object request with contents field mask."""
         return rn.GetObject(object_id=self.object_id, field_mask=["object_id", "contents", "version"])
@@ -661,6 +714,7 @@ class GetObjectsForType(SuiCommand):
     object_type: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObjectsForType.gql_node")
     def gql_node(self) -> pgql_query.GetObjectsForTypeSC:
         """Return GraphQL query node."""
         return self.gql_class(
@@ -669,6 +723,7 @@ class GetObjectsForType(SuiCommand):
             next_page_token=self.next_page_token,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetObjectsForType.grpc_request")
     def grpc_request(self) -> rn.GetObjectsForTypeSC:
         """Return gRPC list-owned-objects request with type filter."""
         return rn.GetObjectsForTypeSC(
@@ -687,10 +742,12 @@ class GetCoinSummary(SuiCommand):
 
     coin_id: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCoinSummary.gql_node")
     def gql_node(self) -> pgql_query.GetCoinSummarySC:
         """Return GraphQL query node."""
         return self.gql_class(coin_id=self.coin_id)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCoinSummary.grpc_request")
     def grpc_request(self) -> rn.GetObject:
         """Return gRPC get-object request with balance and metadata field masks."""
         return rn.GetObject(
@@ -716,12 +773,14 @@ class GetPackage(SuiCommand):
     package: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPackage.gql_node")
     def gql_node(self) -> pgql_query.GetPackageSC:
         """Return GQL package query node."""
         return self.gql_class(
             package=self.package, next_page_token=self.next_page_token
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPackage.grpc_request")
     def grpc_request(self) -> rn.GetPackage:
         """Return gRPC get-package request."""
         return rn.GetPackage(package=self.package)
@@ -741,12 +800,14 @@ class GetPackageVersions(SuiCommand):
     package_address: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPackageVersions.gql_node")
     def gql_node(self) -> pgql_query.GetPackageVersionsSC:
         """Return GQL package-versions query node."""
         return pgql_query.GetPackageVersionsSC(
             package_address=self.package_address, next_page_token=self.next_page_token
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPackageVersions.grpc_request")
     def grpc_request(self) -> rn.GetPackageVersions:
         """Return gRPC list-package-versions request."""
         return rn.GetPackageVersions(
@@ -764,10 +825,12 @@ class GetModule(SuiCommand):
     package: str
     module_name: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetModule.gql_node")
     def gql_node(self) -> pgql_query.GetModuleSC:
         """Return GQL module query node."""
         return self.gql_class(package=self.package, module_name=self.module_name)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetModule.grpc_request")
     def grpc_request(self) -> rn.GetModule:
         """Return gRPC get-module request."""
         return rn.GetModule(package=self.package, module_name=self.module_name)
@@ -784,6 +847,7 @@ class GetMoveDataType(SuiCommand):
     module_name: str
     type_name: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMoveDataType.gql_node")
     def gql_node(self) -> pgql_query.GetMoveDataTypeSC:
         """Return GQL move-datatype query node."""
         return self.gql_class(
@@ -792,6 +856,7 @@ class GetMoveDataType(SuiCommand):
             data_type_name=self.type_name,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetMoveDataType.grpc_request")
     def grpc_request(self) -> rn.GetMoveDataType:
         """Return gRPC get-datatype request."""
         return rn.GetMoveDataType(
@@ -812,6 +877,7 @@ class GetStructure(SuiCommand):
     module_name: str
     structure_name: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetStructure.gql_node")
     def gql_node(self) -> pgql_query.GetStructureSC:
         """Return GQL structure query node."""
         return self.gql_class(
@@ -820,6 +886,7 @@ class GetStructure(SuiCommand):
             structure_name=self.structure_name,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetStructure.grpc_request")
     def grpc_request(self) -> rn.GetStructure:
         """Return gRPC get-structure request."""
         return rn.GetStructure(
@@ -842,6 +909,7 @@ class GetStructures(SuiCommand):
     module_name: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetStructures.gql_node")
     def gql_node(self) -> pgql_query.GetStructuresSC:
         """Return GQL structures query node."""
         return self.gql_class(
@@ -850,6 +918,7 @@ class GetStructures(SuiCommand):
             next_page_token=self.next_page_token,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetStructures.grpc_request")
     def grpc_request(self) -> rn.GetStructures:
         """Return gRPC get-structures request (flat, no paging)."""
         return rn.GetStructures(package=self.package, module_name=self.module_name)
@@ -866,6 +935,7 @@ class GetFunction(SuiCommand):
     module_name: str
     function_name: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetFunction.gql_node")
     def gql_node(self) -> pgql_query.GetFunctionSC:
         """Return GQL function query node."""
         return self.gql_class(
@@ -874,6 +944,7 @@ class GetFunction(SuiCommand):
             function_name=self.function_name,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetFunction.grpc_request")
     def grpc_request(self) -> rn.GetFunction:
         """Return gRPC get-function request."""
         return rn.GetFunction(
@@ -896,6 +967,7 @@ class GetFunctions(SuiCommand):
     module_name: str
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetFunctions.gql_node")
     def gql_node(self) -> pgql_query.GetFunctionsSC:
         """Return GQL functions query node."""
         return self.gql_class(
@@ -904,6 +976,7 @@ class GetFunctions(SuiCommand):
             next_page_token=self.next_page_token,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetFunctions.grpc_request")
     def grpc_request(self) -> rn.GetFunctions:
         """Return gRPC get-functions request (flat, no paging)."""
         return rn.GetFunctions(package=self.package, module_name=self.module_name)
@@ -923,10 +996,12 @@ class GetNameServiceAddress(SuiCommand):
 
     name: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetNameServiceAddress.gql_node")
     def gql_node(self) -> pgql_query.GetNameServiceAddressSC:
         """Return GQL name-service-address query node."""
         return pgql_query.GetNameServiceAddressSC(name=self.name)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetNameServiceAddress.grpc_request")
     def grpc_request(self) -> rn.GetNameServiceAddress:
         """Return gRPC lookup-name request."""
         return rn.GetNameServiceAddress(name=self.name)
@@ -941,10 +1016,12 @@ class GetNameServiceNames(SuiCommand):
 
     owner: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetNameServiceNames.gql_node")
     def gql_node(self) -> pgql_query.GetNameServiceNamesSC:
         """Return GQL name-service-names query node."""
         return pgql_query.GetNameServiceNamesSC(owner=self.owner)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetNameServiceNames.grpc_request")
     def grpc_request(self) -> rn.GetNameServiceNames:
         """Return gRPC reverse-lookup-name request."""
         return rn.GetNameServiceNames(address=self.owner)
@@ -962,10 +1039,12 @@ class GetChainIdentifier(SuiCommand):
     gql_class: ClassVar[type] = pgql_query.GetChainIdentifierSC
     grpc_class: ClassVar[type] = rn.GetChainIdentifierSC
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetChainIdentifier.gql_node")
     def gql_node(self) -> pgql_query.GetChainIdentifierSC:
         """Return GQL chain identifier query node."""
         return pgql_query.GetChainIdentifierSC()
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetChainIdentifier.grpc_request")
     def grpc_request(self) -> rn.GetChainIdentifierSC:
         """Return gRPC chain identifier request."""
         return rn.GetChainIdentifierSC()
@@ -983,10 +1062,12 @@ class GetLatestSuiSystemState(SuiCommand):
     gql_class: ClassVar[type] = pgql_query.GetLatestSuiSystemStateSC
     grpc_class: ClassVar[type] = rn.GetLatestSuiSystemStateSC
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetLatestSuiSystemState.gql_node")
     def gql_node(self) -> pgql_query.GetLatestSuiSystemStateSC:
         """Return GQL system-state query node."""
         return pgql_query.GetLatestSuiSystemStateSC()
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetLatestSuiSystemState.grpc_request")
     def grpc_request(self) -> rn.GetLatestSuiSystemStateSC:
         """Return gRPC system-state request."""
         return rn.GetLatestSuiSystemStateSC()
@@ -1003,10 +1084,12 @@ class GetCurrentValidators(SuiCommand):
 
     next_page_token: Optional[bytes] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCurrentValidators.gql_node")
     def gql_node(self) -> pgql_query.GetCurrentValidatorsSC:
         """Return GQL current-validators query node."""
         return pgql_query.GetCurrentValidatorsSC(next_page_token=self.next_page_token)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetCurrentValidators.grpc_request")
     def grpc_request(self) -> rn.GetCurrentValidatorsSC:
         """Return gRPC current-validators request."""
         return rn.GetCurrentValidatorsSC()
@@ -1028,10 +1111,12 @@ class GetTransaction(SuiCommand):
 
     digest: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetTransaction.gql_node")
     def gql_node(self) -> pgql_query.GetTransactionSC:
         """Return GQL transaction query node."""
         return self.gql_class(digest=self.digest)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetTransaction.grpc_request")
     def grpc_request(self) -> rn.GetTransactionSC:
         """Return gRPC get-transaction request."""
         return self.grpc_class(digest=self.digest)
@@ -1055,6 +1140,7 @@ class GetTransactions(SuiCommand):
 
     digests: list[str]
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetTransactions.__post_init__")
     def __post_init__(self) -> None:
         """Validate that at least one digest is provided and none are None."""
         if not self.digests:
@@ -1064,10 +1150,12 @@ class GetTransactions(SuiCommand):
                 "GetTransactions does not accept None values in digest list"
             )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetTransactions.gql_node")
     def gql_node(self) -> pgql_query.GetTransactionsSC:
         """Return GQL multi-transaction query node."""
         return self.gql_class(digests=self.digests)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetTransactions.grpc_request")
     def grpc_request(self) -> rn.GetTransactionsSC:
         """Return gRPC batch-get-transactions request."""
         return self.grpc_class(transactions=self.digests)
@@ -1089,10 +1177,12 @@ class GetTransactionKind(SuiCommand):
 
     digest: str
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetTransactionKind.gql_node")
     def gql_node(self) -> pgql_query.GetTransactionKindSC:
         """Return GQL transaction-kind query node."""
         return self.gql_class(digest=self.digest)
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetTransactionKind.grpc_request")
     def grpc_request(self) -> rn.GetTransactionKindSC:
         """Return gRPC get-transaction-kind request."""
         return self.grpc_class(digest=self.digest)
@@ -1123,6 +1213,7 @@ class VerifyTransactionSignature(SuiCommand):
     signature: str
     author: Optional[str] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.VerifyTransactionSignature.gql_node")
     def gql_node(self) -> pgql_query.VerifySignatureSC:
         """Return GQL verify-transaction-signature query node."""
         if self.author is None:
@@ -1136,6 +1227,7 @@ class VerifyTransactionSignature(SuiCommand):
             author=self.author,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.VerifyTransactionSignature.grpc_request")
     def grpc_request(self) -> rn.VerifySignature:
         """Return gRPC verify-transaction-signature request."""
         return self.grpc_class(
@@ -1166,6 +1258,7 @@ class VerifyPersonalMessageSignature(SuiCommand):
     signature: str
     author: Optional[str] = None
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.VerifyPersonalMessageSignature.gql_node")
     def gql_node(self) -> pgql_query.VerifySignatureSC:
         """Return GQL verify-personal-message-signature query node."""
         if self.author is None:
@@ -1179,6 +1272,7 @@ class VerifyPersonalMessageSignature(SuiCommand):
             author=self.author,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.VerifyPersonalMessageSignature.grpc_request")
     def grpc_request(self) -> rn.VerifySignature:
         """Return gRPC verify-personal-message-signature request."""
         return self.grpc_class(

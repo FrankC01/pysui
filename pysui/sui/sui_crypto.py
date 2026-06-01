@@ -47,6 +47,7 @@ from pysui.sui.sui_bcs.bcs import (
     MsSecp256r1PublicKey,
     MultiSignature,
 )
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class IntentScope(IntEnum):
@@ -73,6 +74,7 @@ class SuiPublicKey(PublicKey):
 
     @versionadded(version="0.78.0", reason="Support standalone public key.")
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPublicKey.from_serialized")
     def from_serialized(cls, indata: str) -> PublicKey:
         """Convert base64 string to public key."""
         key_list = list(base64.b64decode(indata))
@@ -80,11 +82,13 @@ class SuiPublicKey(PublicKey):
         return SuiPublicKey(sig, bytes(key_list[1::]))
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPublicKey.pub_key")
     def pub_key(self) -> str:
         """Return self as base64 encoded string."""
         return self.to_b64()
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPublicKey.scheme")
     def scheme(self) -> SignatureScheme:
         """Get the keys scheme."""
         return self._scheme
@@ -93,6 +97,7 @@ class SuiPublicKey(PublicKey):
         version="0.78.0",
         reason="Support standalone public key serialization to base64.",
     )
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPublicKey.serialize")
     def serialize(self) -> str:
         """Serialize public key to base64 keystring."""
         return base64.b64encode(self.scheme_and_key()).decode()
@@ -103,6 +108,7 @@ class SuiPublicKey(PublicKey):
 class SuiPrivateKey(PrivateKey):
     """SuiPrivateKey Sui Basic private/signing key."""
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPrivateKey.sign_secure")
     def sign_secure(self, tx_data: str) -> list:
         """sign_secure Sign transaction intent.
 
@@ -121,6 +127,7 @@ class SuiPrivateKey(PrivateKey):
         )
 
     @versionadded(version="0.71.0", reason="Signing personal messages")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPrivateKey.sign_secure_personal_message")
     def sign_secure_personal_message(self, message: str) -> list:
         """sign_secure_personal_message for exchange.
 
@@ -131,7 +138,7 @@ class SuiPrivateKey(PrivateKey):
         :return: Signed message as list of u8 bytes
         :rtype: list
         """
-        from pysui.sui.sui_common.txb_pure import PureInput
+        from pysui.sui.sui_common.txn_pure import PureInput
 
         tx_data = base64.b64encode(
             bytes(PureInput.pure(list(base64.b64decode(message))))
@@ -144,6 +151,7 @@ class SuiPrivateKey(PrivateKey):
         )
 
     @versionadded(version="0.33.0", reason="Hide private key")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPrivateKey.__repr__")
     def __repr__(self) -> str:
         """To string."""
         return "Private Key"
@@ -153,6 +161,7 @@ class SuiPrivateKey(PrivateKey):
 class SuiKeyPair(KeyPair):
     """SuiKeyPair Sui Basic keypair."""
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.__init__")
     def __init__(self) -> None:
         """__init__ Default keypair initializer."""
         self._scheme: SignatureScheme = SignatureScheme.ED25519
@@ -160,21 +169,25 @@ class SuiKeyPair(KeyPair):
         self._public_key: Union[SuiPublicKey, None] = None
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.private_key")
     def private_key(self) -> Union[SuiPrivateKey, None]:
         """Return the Private Key."""
         return self._private_key
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.public_key")
     def public_key(self) -> Union[SuiPublicKey, None]:
         """Return the Public Key."""
         return self._public_key
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.scheme")
     def scheme(self) -> SignatureScheme:
         """Get the keys scheme."""
         return self._scheme
 
     @versionchanged(version="0.33.0", reason="Changes to SuiPrivateKey")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.new_sign_secure")
     def new_sign_secure(self, tx_data: str) -> str:
         """New secure sign with intent."""
         assert self.private_key, "Can not sign with invalid private key"
@@ -182,6 +195,7 @@ class SuiKeyPair(KeyPair):
         return base64.b64encode(sig).decode()
 
     @versionadded(version="0.71.0", reason="Personal message with intent.")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.sign_personal_message")
     def sign_personal_message(self, message: str) -> str:
         """."""
         assert self.private_key, "Can not sign with invalid private key"
@@ -190,6 +204,7 @@ class SuiKeyPair(KeyPair):
 
 
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.serialize_to_bytes")
     def serialize_to_bytes(self) -> bytes:
         """serialize_to_bytes Returns a SUI conforming keystring as bytes.
 
@@ -199,6 +214,7 @@ class SuiKeyPair(KeyPair):
         assert self.private_key, "Can not serialize_to_bytes with invalid private key"
         return self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.serialize")
     def serialize(self) -> str:
         """serialize Returns a SUI conforming keystring.
 
@@ -208,6 +224,7 @@ class SuiKeyPair(KeyPair):
         return base64.b64encode(self.serialize_to_bytes()).decode()
 
     @versionadded(version="0.76.0", reason="Export bech32 private key.")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.to_bech32")
     def to_bech32(self) -> str:
         """Convert private key to bech32 format
 
@@ -216,6 +233,7 @@ class SuiKeyPair(KeyPair):
         """
         return pfc.encode_bech32(self.serialize_to_bytes(), SUI_BECH32_HRP)
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.to_bytes")
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
         assert self.private_key, "Can not convert to bytes with invalid private key"
@@ -228,12 +246,14 @@ class SuiKeyPair(KeyPair):
         return all_bytes
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.from_bytes")
     def from_bytes(cls, indata: bytes) -> KeyPair:
         """Convert bytes to keypair."""
         raise ValueError("from_bytes is legacy.")
 
     @versionadded(version="0.33.0", reason="Converted to use pysui-fastcrypto")
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.from_pfc_bytes")
     def from_pfc_bytes(
         cls, scheme: SignatureScheme, pub_bytes: bytes, prv_bytes: bytes
     ) -> "SuiKeyPair":
@@ -260,6 +280,7 @@ class SuiKeyPair(KeyPair):
 
     @versionchanged(version="0.33.0", reason="Converted to use pysui-fastcrypto")
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.from_b64")
     def from_b64(cls, indata: str) -> "SuiKeyPair":
         """Generate KeyPair from base64 keystring."""
         try:
@@ -274,6 +295,7 @@ class SuiKeyPair(KeyPair):
 
     @versionadded(version="0.57.0", reason="Support bech32 private key encoding")
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.from_bech32")
     def from_bech32(cls, indata: str) -> "KeyPair":
         """Convert bech32 encoded string to keypair."""
         try:
@@ -289,6 +311,7 @@ class SuiKeyPair(KeyPair):
         )
 
     @versionchanged(version="0.33.0", reason="Hide private key")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.__repr__")
     def __repr__(self) -> str:
         """To string."""
         return f"PubKey {self._public_key}, PrivKey `Private`"
@@ -303,6 +326,7 @@ class BaseMultiSig:
     _MAX_THRESHOLD: int = 2549
     _COMPRESSED_SIG_LEN: int = 65
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.__init__")
     def __init__(
         self,
         sui_pub_keys: list[SuiPublicKey],
@@ -325,6 +349,7 @@ class BaseMultiSig:
         else:
             raise ValueError("Invalid arguments provided to constructor")
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig._multi_sig_address")
     def _multi_sig_address(self) -> str:
         """multi_sig_address Generates the unique address derived from the keys in the MultiSig.
 
@@ -339,26 +364,31 @@ class BaseMultiSig:
         return "0x" + hashlib.blake2b(digest, digest_size=32).hexdigest()
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.scheme")
     def scheme(self) -> SignatureScheme:
         """Return the MultiSig signature scheme."""
         return SignatureScheme.MULTISIG
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.address")
     def address(self) -> str:
         """Return the address string generated from the initial keys."""
         return self._address
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.public_keys")
     def public_keys(self) -> list[SuiPublicKey]:
         """Return a copy of the list of SuiPublicKeys used in this MultiSig."""
         return self._public_keys.copy()
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.weights")
     def weights(self) -> list[int]:
         """Return a copy of the list of weights used in this MultiSig."""
         return self._weights.copy()
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.threshold")
     def threshold(self) -> int:
         """Return the threshold amount used in this MultiSig."""
         return self._threshold
@@ -366,6 +396,7 @@ class BaseMultiSig:
     @versionchanged(
         version="0.21.1", reason="Exposed as public for use by SuiTransaction"
     )
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.validate_signers")
     def validate_signers(
         self, pub_keys: list[SuiPublicKey]
     ) -> Union[list[int], ValueError]:
@@ -379,6 +410,7 @@ class BaseMultiSig:
                     return hit_indexes
         raise ValueError("Keys and weights for signing do not meet thresholds")
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig._new_publickey")
     def _new_publickey(self) -> list[MsNewPublicKey]:
         """Generate MultiSig BCS representation of PublicKey."""
         # Generate new BCS PublicKeys from the FULL compliment of original public keys
@@ -403,6 +435,7 @@ class BaseMultiSig:
             pks.append(npk)
         return pks
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig._signature")
     def _signature(
         self,
         pub_keys: list[SuiPublicKey],
@@ -426,6 +459,7 @@ class BaseMultiSig:
         )
         return base64.b64encode(msig_signature.serialize()).decode()
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.signature_from")
     def signature_from(
         self, pub_keys: list[SuiPublicKey], signatures: list[str]
     ) -> str:
@@ -452,6 +486,7 @@ class BaseMultiSig:
 class MultiSig(BaseMultiSig):
     """Multi signature support."""
 
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.__init__")
     def __init__(self, suikeys: list[SuiKeyPair], weights: list[int], threshold: int):
         """__init__ Initiate a MultiSig object.
 
@@ -468,11 +503,13 @@ class MultiSig(BaseMultiSig):
         self._keys = suikeys
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.full_keys")
     def full_keys(self) -> list[SuiKeyPair]:
         """."""
         return self._keys.copy()
 
     @versionadded(version="0.21.1", reason="Support for inline multisig signing")
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig._compressed_signatures")
     def _compressed_signatures(
         self, tx_bytes: str, key_indices: list[int]
     ) -> list[MsCompressedSig]:
@@ -493,6 +530,7 @@ class MultiSig(BaseMultiSig):
         version="0.31.0",
         reason="Roaring bitmap no longer required in Sui 1.4.x and above.",
     )
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.sign")
     def sign(
         self, tx_bytes: str, pub_keys: list[SuiPublicKey]
     ) -> str:
@@ -505,6 +543,7 @@ class MultiSig(BaseMultiSig):
         )
         return self._signature(pub_keys, compressed_sigs)
 
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.serialize")
     def serialize(self) -> str:
         """serialize Serializes the MultiSig object to base64 string.
 
@@ -523,6 +562,7 @@ class MultiSig(BaseMultiSig):
         return base64.b64encode(all_bytes).decode()
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.deserialize")
     def deserialize(cls, ser_str: str) -> Union[ValueError, "MultiSig"]:
         """deserialize Deserializes a MultSig base64 string to object instance.
 
@@ -563,6 +603,7 @@ class MultiSig(BaseMultiSig):
             raise ValueError(f"{berr.args}") from berr
 
 
+@sync_instrumented("pysui.sui.sui_crypto.gen_mnemonic_phrase")
 def gen_mnemonic_phrase(word_counts: int) -> str:
     """gen_mnemonic_phrase Generates a unique string of words of count word_counts.
 
@@ -582,6 +623,7 @@ def gen_mnemonic_phrase(word_counts: int) -> str:
     version="0.33.0",
     reason="Requires word count, no longer allows phrase.",
 )
+@sync_instrumented("pysui.sui.sui_crypto.create_new_keypair")
 def create_new_keypair(
     scheme: Optional[SignatureScheme] = SignatureScheme.ED25519,
     word_counts: Optional[int] = 12,
@@ -634,6 +676,7 @@ def create_new_keypair(
     reason="Using pysui-fastcrypto.",
 )
 @versionchanged(version="0.57.0", reason="Support bech32 keystring encoding")
+@sync_instrumented("pysui.sui.sui_crypto.keypair_from_keystring")
 def keypair_from_keystring(keystring: str) -> SuiKeyPair:
     """keypair_from_keystring Parse keystring to keypair.
 

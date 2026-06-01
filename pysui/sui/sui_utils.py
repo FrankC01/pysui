@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Iterable, Union
 from deprecated.sphinx import versionchanged, versionadded
 import base58
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 _SUI_BUILD2: list[str] = ["move", "build", "--dump", "-e"]
@@ -43,6 +44,7 @@ class CompiledPackage:
 
 
 @versionadded(version="0.96.0", reason="New package manager approach.")
+@sync_instrumented("pysui.sui.sui_utils._compile_projectg2")
 def _compile_projectg2(
     sui_bin_str: str, path_to_package: Path, args_list: list[str], build_env: str
 ) -> CompiledPackage:
@@ -71,6 +73,7 @@ def _compile_projectg2(
 
 
 @versionadded(version="0.96.0", reason="New package manager approach.")
+@sync_instrumented("pysui.sui.sui_utils.publish_buildg2")
 def publish_buildg2(
     sui_bin_path_str: str, path_to_package: Path, args_list: list[str], build_env: str
 ) -> Union[CompiledPackage, Exception]:
@@ -88,6 +91,7 @@ def publish_buildg2(
 
 
 # Serialize helper
+@sync_instrumented("pysui.sui.sui_utils.serialize_uint32_as_uleb128")
 def serialize_uint32_as_uleb128(value: int) -> bytes:
     """."""
     ret = bytearray()
@@ -105,6 +109,7 @@ def serialize_uint32_as_uleb128(value: int) -> bytes:
 # Iteration helpers - lists
 
 
+@sync_instrumented("pysui.sui.sui_utils.partition")
 def partition(ilist: Iterable, chunk_size: int):
     """Partition a list with max paritiion size.
 
@@ -125,6 +130,7 @@ def partition(ilist: Iterable, chunk_size: int):
 # Conversion utilities
 
 
+@sync_instrumented("pysui.sui.sui_utils.hexstring_to_sui_id")
 def hexstring_to_sui_id(indata: str, default_fill_length: int = 64) -> str:
     """Convert hexstring to valid full length sui address/object id."""
 
@@ -136,6 +142,7 @@ def hexstring_to_sui_id(indata: str, default_fill_length: int = 64) -> str:
 
 
 @versionchanged(version="0.19.0", reason="Account for > 3 and < 66 size hex string")
+@sync_instrumented("pysui.sui.sui_utils.hexstring_to_list")
 def hexstring_to_list(indata: str, default_fill_length: int = 64) -> list[int]:
     """hexstring_to_list convert a hexstr (e.g. 0x...) into a list of ints.
 
@@ -148,11 +155,13 @@ def hexstring_to_list(indata: str, default_fill_length: int = 64) -> list[int]:
 
 
 
+@sync_instrumented("pysui.sui.sui_utils.from_list_to_b58str")
 def from_list_to_b58str(indata: list) -> str:
     """From list to b58 string."""
     return base58.b58encode(bytearray(indata)).decode("utf-8")
 
 
+@sync_instrumented("pysui.sui.sui_utils.b58str_to_list")
 def b58str_to_list(indata: str) -> list[int]:
     """b58str_to_list convert a base58 string into a list of ints.
 

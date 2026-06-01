@@ -93,3 +93,20 @@ def instrumented(label: str) -> Callable:
         return wrapper
 
     return decorator
+
+
+def sync_instrumented(label: str) -> Callable:
+    """Decorator: wrap a sync method with a sync_measure(label) hook."""
+
+    def decorator(fn: Callable) -> Callable:
+        @wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            col: Optional[InstrumentationCollector] = _collector_var.get()
+            if col is not None:
+                with col.sync_measure(label):
+                    return fn(*args, **kwargs)
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_utils import serialize_uint32_as_uleb128
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class PureInput:
@@ -22,12 +23,14 @@ class PureInput:
 
     @singledispatchmethod
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput.pure")
     def pure(cls, arg):
         """Template dispatch method."""
         return f"I'm converting {arg} pure."
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bool) -> list:
         """."""
         logger.debug(f"bool->pure {arg}")
@@ -35,6 +38,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: int) -> list:
         """Convert int to minimal list of bytes."""
         logger.debug(f"int->pure {arg}")
@@ -43,6 +47,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.Optional) -> list:
         """Convert OptionalU8 to list of bytes."""
         logger.debug(f"Optional {arg}")
@@ -50,6 +55,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.SuiU8) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u8->pure {arg.value}")
@@ -57,6 +63,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.OptionalU8) -> list:
         """Convert OptionalU8 to list of bytes."""
         logger.debug(f"Optional<u8> {arg}")
@@ -64,6 +71,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.SuiU16) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u16->pure {arg.value}")
@@ -71,6 +79,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.OptionalU16) -> list:
         """Convert OptionalU16 to list of bytes."""
         logger.debug(f"Optional<u16> {arg}")
@@ -78,6 +87,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.SuiU32) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u32->pure {arg.value}")
@@ -85,6 +95,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.OptionalU32) -> list:
         """Convert OptionalU32 to list of bytes."""
         logger.debug(f"Optional<u32> {arg}")
@@ -92,6 +103,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.SuiU64) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u64->pure {arg.value}")
@@ -99,6 +111,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.OptionalU64) -> list:
         """Convert OptionalU64 to list of bytes."""
         logger.debug(f"Optional<u64> {arg}")
@@ -106,6 +119,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.SuiU128) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u128->pure {arg.value}")
@@ -113,6 +127,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.OptionalU128) -> list:
         """Convert OptionalU128 to list of bytes."""
         logger.debug(f"Optional<u128> {arg}")
@@ -120,6 +135,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.SuiU256) -> list:
         """Convert unsigned int to bytes."""
         logger.debug(f"u256->pure {arg.value}")
@@ -127,6 +143,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.OptionalU256) -> list:
         """Convert OptionalU256 to list of bytes."""
         logger.debug(f"Optional<u256> {arg}")
@@ -134,6 +151,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: str) -> list:
         """Convert str to list of bytes."""
         logger.debug(f"str->pure {arg}")
@@ -143,6 +161,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bytes) -> list:
         """Bytes to list."""
         logger.debug(f"bytes->pure {arg}")
@@ -151,6 +170,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.Address) -> list:
         """Convert bcs.Address to list of bytes."""
         logger.debug(f"bcs.Address->pure {arg.to_json()}")
@@ -158,6 +178,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.Digest) -> list:
         """Convert bcs,Digest to list of bytes."""
         logger.debug(f"bcs.Digest->pure {arg.to_json()}")
@@ -165,6 +186,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: bcs.Variable) -> list:
         """Convert bcs,Variable to list of bytes."""
         logger.debug(f"bcs.Variable->pure {arg.to_json()}")
@@ -172,6 +194,7 @@ class PureInput:
 
     @pure.register
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput._")
     def _(cls, arg: list) -> list:
         """uleb128 length encoded pure vector."""
         logger.debug(f"list->pure {arg}")
@@ -182,6 +205,7 @@ class PureInput:
         return res_list
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_pure.PureInput.as_input")
     def as_input(cls, args) -> bcs.BuilderArg:
         """Convert python and pysui types to a Pure BuilderArg type."""
         return bcs.BuilderArg("Pure", cls.pure(args))

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from enum import Enum, IntEnum
 from typing import Any, Awaitable, Callable, Literal
 from pysui.sui.sui_common.shared_types import ObjectSummary
-from pysui.sui.sui_common.txb_signing import SigningMultiSig
+from pysui.sui.sui_common.txn_signing import SigningMultiSig
 
 
 class GasMode(Enum):

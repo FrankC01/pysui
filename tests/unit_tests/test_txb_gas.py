@@ -6,8 +6,8 @@
 """Unit tests for the gas selection redesign — all offline, no network required.
 
 Covers:
-    - compute_gas_budget  (pysui.sui.sui_common.txb_gas)
-    - coins_for_budget    (pysui.sui.sui_common.txb_gas)
+    - compute_gas_budget  (pysui.sui.sui_common.txn_gas)
+    - coins_for_budget    (pysui.sui.sui_common.txn_gas)
     - No DeprecationWarning emitted by gas modules at import time
     - budget=0 regression guard (coins_for_budget treats 0 as a real budget)
     - _SuiTransactionBase._inspect_ptb_for_gas_coin (trxn_base)
@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 # Suppress import-time deprecations from transitively imported legacy modules.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from pysui.sui.sui_common.txb_gas import (
+from pysui.sui.sui_common.txn_gas import (
     _GAS_SAFE_OVERHEAD,
     _MAX_GAS_PAYMENT_OBJECTS,
     coins_for_budget,
@@ -65,7 +65,7 @@ def _make_pure_u64(value: int) -> bcs.CallArg:
 # without constructing a live client.
 # ---------------------------------------------------------------------------
 
-from pysui.sui.sui_common.trxn_base import _SuiTransactionBase  # noqa: E402
+from pysui.sui.sui_common.txn_base import _SuiTransactionBase  # noqa: E402
 
 
 class _FakeTxn:
@@ -213,8 +213,8 @@ class TestNoDeprecationWarning:
     """
 
     def test_txb_gas_async_get_gas_data_importable(self):
-        """async_get_gas_data must be importable from sui_common.txb_gas (unified path)."""
-        from pysui.sui.sui_common.txb_gas import async_get_gas_data  # noqa: F401
+        """async_get_gas_data must be importable from sui_common.txn_gas (unified path)."""
+        from pysui.sui.sui_common.txn_gas import async_get_gas_data  # noqa: F401
 
         assert callable(async_get_gas_data)
 
@@ -306,7 +306,7 @@ class TestInspectPtbForGasCoin:
         )
         txn = _FakeTxn(commands=[cmd], inputs={})
         with patch.object(
-            logging.getLogger("pysui.sui.sui_common.trxn_base"), "warning"
+            logging.getLogger("pysui.sui.sui_common.txn_base"), "warning"
         ) as mock_warn:
             uses, draw = txn._inspect_ptb_for_gas_coin()
         assert uses is True

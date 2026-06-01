@@ -11,6 +11,7 @@ from pysui.sui.sui_common.executors.exec_types import ExecutorContext
 from pysui.sui.sui_common.validators import valid_sui_address
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ _SUI_COIN_TYPE = "0x000000000000000000000000000000000000000000000000000000000000
 _SEND_FUNDS_GAS_OVERHEAD = 3_000_000
 
 
+@instrumented("pysui.sui.sui_common.executors.gas_utils.acquire_coins")
 async def acquire_coins(client, sender: str, initial_coins: list, threshold: int) -> list:
     """Fetch, filter (SUI only), sort descending, and select coins meeting threshold.
 
@@ -57,6 +59,7 @@ async def acquire_coins(client, sender: str, initial_coins: list, threshold: int
     return selected
 
 
+@instrumented("pysui.sui.sui_common.executors.gas_utils._build_and_sign_with_gas")
 async def _build_and_sign_with_gas(send_tx, gas_coin_obj) -> dict:
     """Build and sign send_tx using gas_coin_obj as the gas object."""
     gas_obj = sui_prot.Object(
@@ -68,6 +71,7 @@ async def _build_and_sign_with_gas(send_tx, gas_coin_obj) -> dict:
     return await send_tx.build_and_sign(use_gas_objects=[gas_obj])
 
 
+@instrumented("pysui.sui.sui_common.executors.gas_utils.send_funds_to_account")
 async def send_funds_to_account(
     client,
     sender: str,
@@ -131,6 +135,7 @@ async def send_funds_to_account(
     return result.result_data
 
 
+@sync_instrumented("pysui.sui.sui_common.executors.gas_utils.update_tracked_balance")
 def update_tracked_balance(effects, tracked_balance: int) -> int:
     """Deduct net gas cost from tracked_balance. Returns updated balance."""
     gas = effects.gas_used
@@ -140,6 +145,7 @@ def update_tracked_balance(effects, tracked_balance: int) -> int:
     return max(0, tracked_balance - net_gas)
 
 
+@sync_instrumented("pysui.sui.sui_common.executors.gas_utils.update_tracked_balance_from_accumulator")
 def update_tracked_balance_from_accumulator(executed_tx, tracked_balance: int) -> int:
     """ADDRESS_BALANCE mode: apply MERGE/SPLIT accumulator write. Returns updated balance."""
     if executed_tx is None or executed_tx.effects is None:
@@ -157,6 +163,7 @@ def update_tracked_balance_from_accumulator(executed_tx, tracked_balance: int) -
     return tracked_balance
 
 
+@instrumented("pysui.sui.sui_common.executors.gas_utils.run_replenishment")
 async def run_replenishment(
     on_balance_low,
     sender: str,

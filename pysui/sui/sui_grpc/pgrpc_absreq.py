@@ -18,6 +18,7 @@ from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 import pysui.sui.sui_grpc.suimsgs.google.protobuf as goog_prot
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class Service(enum.IntEnum):
@@ -40,16 +41,19 @@ class PGRPC_Request(abc.ABC):
     _GOOGMODLIST = getmembers(goog_prot)
     _MODLIST += _GOOGMODLIST
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.PGRPC_Request.__init__")
     def __init__(self, service: Service):
         """Initializer."""
         self._service: Service = service
 
     @property
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.PGRPC_Request.service")
     def service(self) -> Service:
         """Return request service type."""
         return self._service
 
     @abc.abstractmethod
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.PGRPC_Request.to_request")
     def to_request(
         self,
         *,
@@ -62,6 +66,7 @@ class PGRPC_Request(abc.ABC):
         pass
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.PGRPC_Request._field_mask")
     def _field_mask(field_mask: list[str]) -> FieldMask | None:
         """Convert list of strings to FieldMask"""
         if field_mask:
@@ -70,6 +75,7 @@ class PGRPC_Request(abc.ABC):
             return None
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.PGRPC_Request.result_fields")
     def result_fields(cls) -> dict:
         """Return the field dictionary defined in the result so as to support FieldMasks."""
         mb: MessageBuilder = MessageBuilder()
@@ -81,6 +87,7 @@ class Visited:
 
     _VISITED: dict[str, dict] = {}
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.Visited.__init__")
     def __init__(self):
         if hit := list(filter(lambda e: e[0] == "Value", PGRPC_Request._MODLIST)):
             vdict = hit[0][1].__dataclass_fields__
@@ -90,6 +97,7 @@ class Visited:
             self.put("Value", {"of_types": vnames})
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.Visited.register_enum")
     def register_enum(cls, enum_name: str, enum_cls: betterproto2.Enum) -> None:
         """Register the name,value dict of an enum type
 
@@ -107,11 +115,13 @@ class Visited:
             cls.put(enum_name, sorted_by_values)
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.Visited.get")
     def get(cls, type_name: str):
         """Return the cached definition for a visited type, if any."""
         return cls._VISITED.get(type_name)
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.Visited.put")
     def put(cls, type_name: str, defn: dict):
         """Cache a type definition under the given type name."""
         cls._VISITED[type_name] = defn
@@ -120,6 +130,7 @@ class Visited:
 class FieldFetch:
     """Descriptor for a single proto field to be resolved."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.FieldFetch.__init__")
     def __init__(
         self,
         fname: str,
@@ -132,6 +143,7 @@ class FieldFetch:
         self.message_class: betterproto2.Message | None = message_class
         self.stack = stack
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.FieldFetch.resolve")
     def resolve(self) -> tuple[str, dict | str]:
         """."""
         if not self.message_class:
@@ -154,9 +166,11 @@ class FieldFetch:
 class MessageBuilder:
     """."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.MessageBuilder.__init__")
     def __init__(self):
         _ = Visited()
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.MessageBuilder.build_result")
     def build_result(self, ptype: betterproto2.Message) -> dict:
         """."""
         main_plan: list[FieldFetch] = MessageBuilder.evaluate(ptype)
@@ -168,6 +182,7 @@ class MessageBuilder:
         return res_dict
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.MessageBuilder.evaluate")
     def evaluate(cls, ptype: betterproto2.Message) -> list[FieldFetch]:
         """."""
 

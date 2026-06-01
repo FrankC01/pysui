@@ -25,6 +25,7 @@ from pysui.sui.sui_common.txn_arg_encoder import (
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectSummary
 from pysui.sui.sui_common.executors.object_id_extract import extract_object_id
 from pysui.sui.sui_pgql.pgql_types import OpenMoveTypeGQL
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class TxnArgMode(Enum):
@@ -41,6 +42,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
     carries no per-mode mutable state.
     """
 
+    @sync_instrumented("pysui.sui.sui_common.txn_tx_argparse._ModeContext.__init__")
     def __init__(
         self,
         client: Any,
@@ -51,6 +53,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
         self._mode = mode
         self._object_cache = object_cache
 
+    @instrumented("pysui.sui.sui_common.txn_tx_argparse._ModeContext.fetch_or_transpose_object")
     async def fetch_or_transpose_object(
         self,
         arg: Any,
@@ -72,6 +75,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
             return await self._deferred(arg, is_receiving, is_mutable, expected_type)
         return await self._eager(arg, is_receiving, is_mutable, expected_type)
 
+    @instrumented("pysui.sui.sui_common.txn_tx_argparse._ModeContext._deferred")
     async def _deferred(
         self,
         arg: Any,
@@ -115,6 +119,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
             type_str=type_str,
         )
 
+    @instrumented("pysui.sui.sui_common.txn_tx_argparse._ModeContext._eager")
     async def _eager(
         self,
         arg: Any,
@@ -164,9 +169,11 @@ class TxnArgParse:
     per-call parameters; the parser instance is reusable across all modes.
     """
 
+    @sync_instrumented("pysui.sui.sui_common.txn_tx_argparse.TxnArgParse.__init__")
     def __init__(self, client: Any) -> None:
         self._client = client
 
+    @instrumented("pysui.sui.sui_common.txn_tx_argparse.TxnArgParse.parse")
     async def parse(  # pylint: disable=too-many-arguments
         self,
         argument: Any,
@@ -186,6 +193,7 @@ class TxnArgParse:
             argument, is_receiving, is_mutable, expected_type
         )
 
+    @instrumented("pysui.sui.sui_common.txn_tx_argparse.TxnArgParse.build_args")
     async def build_args(
         self,
         in_args: list[Any],

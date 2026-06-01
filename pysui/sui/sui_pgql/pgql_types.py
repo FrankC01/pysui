@@ -13,8 +13,10 @@ from enum import IntEnum
 from typing import Any, Optional, Union, Callable
 import dataclasses_json
 import json
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
+@sync_instrumented("pysui.sui.sui_pgql.pgql_types._fast_flat")
 def _fast_flat(in_dict: dict, out_dict: dict):
     """Flattens a nested dictionary."""
 
@@ -30,6 +32,7 @@ class PGQL_Type(ABC):
 
     @classmethod
     @abstractmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.PGQL_Type.from_query")
     def from_query(cls, in_data: Any = None) -> "PGQL_Type":
         """Converts raw GraphQL result to dataclass type.
 
@@ -56,6 +59,7 @@ class NoopGQL(PGQL_Type):
     data: list
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.NoopGQL.from_query")
     def from_query(self) -> "NoopGQL":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
         return NoopGQL(PagingCursor(), [])
@@ -71,6 +75,7 @@ class ErrorGQL(PGQL_Type):
     errors: Any
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ErrorGQL.from_query")
     def from_query(self, errors: Any) -> "ErrorGQL":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
         return ErrorGQL(PagingCursor(), [], errors)
@@ -100,6 +105,7 @@ class ProtocolConfigGQL:
         default_factory=TransactionConstraints
     )
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ProtocolConfigGQL._value_to_type")
     def _value_to_type(self, v: Any) -> Any:
         """."""
         if v:
@@ -113,6 +119,7 @@ class ProtocolConfigGQL:
                 return int(v, base=0)
         return None
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ProtocolConfigGQL.__post_init__")
     def __post_init__(self):
         """."""
         # Convert configs key/val to dict of key/int
@@ -141,6 +148,7 @@ class ProtocolConfigGQL:
         )
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ProtocolConfigGQL.from_query")
     def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
         return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfigs"))  # type: ignore[attr-defined]
@@ -196,6 +204,7 @@ class OpenMoveTypeParamBodyGQL:
     index: int
 
 
+@sync_instrumented("pysui.sui.sui_pgql.pgql_types._body_from_dict")
 def _body_from_dict(
     raw: Any,
 ) -> Union[
@@ -236,6 +245,7 @@ class OpenMoveTypeSignatureGQL:
     ]
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.OpenMoveTypeSignatureGQL.from_query")
     def from_query(cls, raw: dict) -> "OpenMoveTypeSignatureGQL":
         """Deserialize an OpenMoveTypeSignature scalar dict.
 
@@ -258,6 +268,7 @@ class OpenMoveTypeGQL:
     repr: str
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.OpenMoveTypeGQL.from_query")
     def from_query(cls, raw: dict) -> "OpenMoveTypeGQL":
         """Deserialize an OpenMoveType wire dict.
 
@@ -281,6 +292,7 @@ class RefType(IntEnum):
     MUT_REF = 2
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.RefType.from_ref")
     def from_ref(cls, rstr: str) -> "RefType":
         """."""
         reftype = RefType.NO_REF
@@ -302,6 +314,7 @@ class MoveScalarArg:
     optional: Optional[bool] = False
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.MoveScalarArg.from_str")
     def from_str(cls, in_ref: str, in_type: str) -> "MoveScalarArg":
         """ "."""
         return cls(RefType.from_ref(in_ref), in_type)
@@ -330,6 +343,7 @@ class MoveObjectRefArg:
     has_type: bool
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.MoveObjectRefArg.from_body")
     def from_body(
         cls, in_ref: Union[str, "RefType", None], in_type: dict
     ) -> "MoveObjectRefArg":
@@ -384,6 +398,7 @@ class MoveVectorArg:
     vec_arg: Union["MoveVectorArg", MoveScalarArg, MoveObjectRefArg, MoveAnyArg]
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.MoveVectorArg.from_body")
     def from_body(
         cls, in_ref: Union[str, "RefType", None], in_type: dict
     ) -> "MoveVectorArg":
@@ -438,6 +453,7 @@ class MoveFunctionGQL:
     returns: list[OpenMoveTypeGQL] = dataclasses.field(default_factory=list)
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.MoveFunctionGQL.from_query")
     def from_query(clz, in_data: dict) -> "Union[MoveFunctionGQL, NoopGQL]":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
         if (
@@ -470,6 +486,7 @@ class MoveFunctionGQL:
             )
         return NoopGQL.from_query()
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.MoveFunctionGQL.arg_summary")
     def arg_summary(self) -> list["OpenMoveTypeGQL"]:
         """Deprecated — use parameters directly."""
         import warnings

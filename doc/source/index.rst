@@ -48,6 +48,7 @@ Welcome to pysui's documentation!
    multi_sig
    logging
    utilities
+   benchmark
 
 .. toctree::
    :maxdepth: 1

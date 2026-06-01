@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
-from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
+from pysui.sui.sui_common.txn_signing import SignerBlock, SigningMultiSig
 from pysui.sui.sui_common.executors.exec_types import (
     ExecutionSkipped,
     ExecutorError,
@@ -34,10 +34,10 @@ from pysui.sui.sui_common.executors.gas_utils import (
 )
 from pysui.sui.sui_common.executors._queue_types import _SENTINEL, _QueueItem
 from pysui.sui.sui_common.validators import valid_sui_address
-from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode
+from pysui.sui.sui_common.txn_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
-from pysui.sui.sui_common.instrumentation import measure, instrumented
+from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ class SerialQueueProcessor:
     Never calls on_balance_low — that is the coroutine's responsibility.
     """
 
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor.__init__")
     def __init__(
         self,
         *,
@@ -70,6 +71,7 @@ class SerialQueueProcessor:
             use_account_gas=(gas_mode == GasMode.ADDRESS_BALANCE),
         )
 
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor.seed_funds")
     def seed_funds(
         self,
         *,
@@ -86,13 +88,16 @@ class SerialQueueProcessor:
         self._tracked_balance = tracked_balance if gas_summary is None else gas_summary.balance
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor.sender_str")
     def sender_str(self) -> str:
         return self._signing_block.sender_str
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor.tracked_balance")
     def tracked_balance(self) -> int:
         return self._tracked_balance
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor.add_funds")
     async def add_funds(self, coins: list) -> None:
         """Merge new coins into gas state after on_balance_low returns candidates.
 
@@ -128,6 +133,7 @@ class SerialQueueProcessor:
         else:
             await self._send_funds_to_account(candidates, self._tracked_balance)
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor._merge_into_gas_coin")
     async def _merge_into_gas_coin(self, candidates: list) -> None:
         """COINS mode: merge candidates into master gas coin, update _gas_summary."""
         merge_tx = await self._new_transaction()
@@ -144,6 +150,7 @@ class SerialQueueProcessor:
             raise ValueError(f"add_funds: merge failed: {result.result_string}")
         await self._refresh_coins_balance(result.result_data)
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor._send_funds_to_account")
     async def _send_funds_to_account(self, candidates: list, existing_balance: int = 0) -> None:
         executed_tx = await send_funds_to_account(
             client=self._client,
@@ -218,6 +225,7 @@ class SerialQueueProcessor:
 
         return GasStatus.OK, executed_tx
 
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor._update_gas_summary")
     def _update_gas_summary(self, executed_tx: "sui_prot.ExecutedTransaction") -> None:
         """Update _gas_summary version/digest/balance from ExecutedTransaction."""
         if self._gas_summary is None or executed_tx is None:
@@ -238,20 +246,24 @@ class SerialQueueProcessor:
                             self._gas_summary.balance = obj.balance
                         break
 
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor._update_tracked_balance")
     def _update_tracked_balance(self, effects: "sui_prot.TransactionEffects") -> None:
         self._tracked_balance = update_tracked_balance(effects, self._tracked_balance)
 
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor._update_tracked_balance_from_accumulator")
     def _update_tracked_balance_from_accumulator(
         self, executed_tx: "sui_prot.ExecutedTransaction"
     ) -> None:
         self._tracked_balance = update_tracked_balance_from_accumulator(executed_tx, self._tracked_balance)
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor._refresh_coins_balance")
     async def _refresh_coins_balance(self, executed_tx) -> None:
         """COINS mode: update _gas_summary from tx result, then set _tracked_balance."""
         self._update_gas_summary(executed_tx)
         if self._gas_summary:
             self._tracked_balance = self._gas_summary.balance
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor._new_transaction")
     async def _new_transaction(self, **kwargs):
         """Create a new DEFERRED transaction using this processor's cache."""
         kwargs["mode"] = TxnArgMode.DEFERRED
@@ -272,6 +284,7 @@ class SerialExecutor:
     - ExecutionSkipped: not attempted due to hard stop
     """
 
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor.__init__")
     def __init__(self, *, client, options: ExecutorOptions) -> None:
         self._client = client
         self._options = options
@@ -287,6 +300,7 @@ class SerialExecutor:
             min_threshold_balance=options.min_threshold_balance,
         )
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor._initialize")
     async def _initialize(self) -> None:
         """Async initialization: fetch/validate coins, seed gas management, start processor."""
         sender = self._qp.sender_str
@@ -348,6 +362,7 @@ class SerialExecutor:
 
         self._task = asyncio.create_task(self._processor_loop())
 
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor.submit")
     def submit(self, txn) -> "asyncio.Future | list[asyncio.Future]":
         """Submit one or more transactions for serial execution.
 
@@ -358,6 +373,7 @@ class SerialExecutor:
             return [self._submit_one(t) for t in txn]
         return self._submit_one(txn)
 
+    @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor._submit_one")
     def _submit_one(self, txn) -> asyncio.Future:
         loop = asyncio.get_running_loop()
         future = loop.create_future()
@@ -369,6 +385,7 @@ class SerialExecutor:
         self._queue.put_nowait(_QueueItem(txn=txn, future=future))
         return future
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor.close")
     async def close(self) -> None:
         """Signal shutdown and wait for the processor coroutine to finish."""
         if not self._closing:
@@ -380,10 +397,12 @@ class SerialExecutor:
             except asyncio.CancelledError:
                 pass
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor.new_transaction")
     async def new_transaction(self, **kwargs):
         """Create a new DEFERRED transaction using this executor's object cache."""
         return await self._qp._new_transaction(**kwargs)
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor._processor_loop")
     async def _processor_loop(self) -> None:
         """Background coroutine: dequeues and processes transactions one at a time."""
         while True:
@@ -394,6 +413,7 @@ class SerialExecutor:
             await self._process_item(item)
             self._queue.task_done()
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor._process_item")
     async def _process_item(self, item: _QueueItem) -> None:
         """Process one queue item through its full lifecycle including retry."""
         status, result = await self._qp.process(item.txn)
@@ -438,6 +458,7 @@ class SerialExecutor:
             case _:
                 item.future.set_result(result)
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor._replenish")
     async def _replenish(self) -> bool:
         """Call on_balance_low; pass returned coins to QP.add_funds(). Returns False on hard stop."""
         return await run_replenishment(
@@ -450,6 +471,7 @@ class SerialExecutor:
             label="SerialExecutor",
         )
 
+    @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor._hard_stop")
     async def _hard_stop(self, reason: str) -> None:
         """Mark executor dead and drain remaining queued items to ExecutionSkipped."""
         if self._dead:

@@ -8,8 +8,10 @@
 from typing import Any
 
 import pysui.sui.sui_bcs.bcs as bcs
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
+@sync_instrumented("pysui.sui.sui_common.executors.object_id_extract.extract_object_id")
 def extract_object_id(arg: Any) -> str:
     """Return the canonical object ID string from any supported input type.
 

@@ -9,7 +9,7 @@ import asyncio
 from typing import Callable, Optional, TypeVar, Union
 
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_common.instrumentation import instrumented
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 # Per Mysten TS SDK: GAS_SAFE_OVERHEAD applied to every budget estimate.
 _GAS_SAFE_OVERHEAD: int = 1000  # gas units (not MIST)
@@ -20,6 +20,7 @@ _MAX_GAS_PAYMENT_OBJECTS: int = 256
 T = TypeVar("T")
 
 
+@sync_instrumented("pysui.sui.sui_common.txn_gas.compute_gas_budget")
 def compute_gas_budget(
     computation_cost: int,
     storage_cost: int,
@@ -46,6 +47,7 @@ def compute_gas_budget(
     )
 
 
+@sync_instrumented("pysui.sui.sui_common.txn_gas.coins_for_budget")
 def coins_for_budget(
     coins: list[T],
     budget: int,
@@ -134,6 +136,7 @@ async def async_get_gas_data(
     """
     from pysui.sui.sui_common import sui_commands as cmd
 
+    @instrumented("pysui.sui.sui_common.txn_gas._fetch_gas")
     async def _fetch_gas() -> list:
         """Fetch all gas coins across all pages for both GQL and gRPC."""
         result = await client.execute_for_all(command=cmd.GetGas(owner=signing.payer_address))
@@ -142,6 +145,7 @@ async def async_get_gas_data(
         response = result.result_data
         return list(response.objects)
 
+    @instrumented("pysui.sui.sui_common.txn_gas._simulate_budget")
     async def _simulate_budget() -> int:
         """Simulate the transaction to determine gas budget."""
         tx_meta: dict = {"sender": signing.sender_str, "gasPrice": active_gas_price}

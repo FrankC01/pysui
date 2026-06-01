@@ -9,6 +9,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from typing import TypeVar
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 T = TypeVar("T")
 logger = logging.getLogger(__name__)
@@ -18,9 +19,11 @@ logger = logging.getLogger(__name__)
 class SerialQueue:
     """Queue for serial (sequential) task execution."""
 
+    @sync_instrumented("pysui.sui.sui_common.executors.queue.SerialQueue.__init__")
     def __init__(self):
         self._lock = asyncio.Lock()
 
+    @instrumented("pysui.sui.sui_common.executors.queue.SerialQueue.run_task")
     async def run_task(self, task: Callable[[], T]) -> T:
         """Run a task serially under the queue lock.
 
@@ -51,6 +54,7 @@ class SerialQueue:
 class ParallelQueue:
     """Queue for parallel task execution with max concurrency."""
 
+    @sync_instrumented("pysui.sui.sui_common.executors.queue.ParallelQueue.__init__")
     def __init__(self, max_tasks: int = 4):
         """Initialize parallel queue.
 
@@ -58,6 +62,7 @@ class ParallelQueue:
         """
         self._semaphore = asyncio.Semaphore(max_tasks)
 
+    @instrumented("pysui.sui.sui_common.executors.queue.ParallelQueue.run_task")
     async def run_task(self, task: Callable[[], T]) -> T:
         """Run a task with concurrency control.
 
@@ -85,9 +90,11 @@ class ParallelQueue:
 
 if __name__ == "__main__":
 
+    @instrumented("pysui.sui.sui_common.executors.queue.test")
     async def test():
         ser = SerialQueue()
 
+        @instrumented("pysui.sui.sui_common.executors.queue.sample_task")
         async def sample_task(n):
             await asyncio.sleep(0.01)
             return n * 2

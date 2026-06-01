@@ -3,7 +3,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Unit tests for pysui.sui.sui_common.txb_pure.PureInput — all offline.
+"""Unit tests for pysui.sui.sui_common.txn_pure.PureInput — all offline.
 
 Tests cover every singledispatch branch of PureInput.pure() plus as_input().
 Each test asserts the exact byte list produced, making regressions immediately
@@ -16,7 +16,7 @@ import pytest
 # Suppress deprecated scalar-type warnings that fire at import-time
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from pysui.sui.sui_common.txb_pure import PureInput
+from pysui.sui.sui_common.txn_pure import PureInput
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_bcs.bcs import (
     SuiU8,

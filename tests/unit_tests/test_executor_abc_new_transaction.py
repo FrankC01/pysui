@@ -13,7 +13,7 @@ No network access; all clients are MagicMock.
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode
+from pysui.sui.sui_common.txn_tx_argparse import TxnArgMode
 
 
 # ---------------------------------------------------------------------------

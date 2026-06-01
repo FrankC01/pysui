@@ -9,6 +9,7 @@ from typing import Union
 import os
 import dataclasses
 import dataclasses_json
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 @dataclasses_json.dataclass_json(
@@ -25,6 +26,7 @@ class GenericStructure:
     out_file: str
     properties: dataclasses_json.CatchAll
 
+    @sync_instrumented("pysui.sui.sui_common.mtobcs_types.GenericStructure.__post_init__")
     def __post_init__(self):
         self.out_file = os.path.expanduser(self.out_file)
 
@@ -42,6 +44,7 @@ class Structure:
     )
     out_file: str
 
+    @sync_instrumented("pysui.sui.sui_common.mtobcs_types.Structure.__post_init__")
     def __post_init__(self):
         self.out_file = os.path.expanduser(self.out_file)
 
@@ -54,6 +57,7 @@ class Targets:
     targets: list[Structure | GenericStructure]
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.mtobcs_types.Targets.load_declarations")
     def load_declarations(cls, in_data):
         """."""
         targlist: list = []

@@ -17,7 +17,7 @@ from pysui import (
 )
 from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
-from pysui.sui.sui_common.trxn_base import FundsSource
+from pysui.sui.sui_common.txn_base import FundsSource
 
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.pgrpc_requests as rn

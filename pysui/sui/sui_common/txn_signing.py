@@ -10,11 +10,13 @@ from pysui import PysuiConfiguration
 from pysui.sui.sui_crypto import MultiSig, BaseMultiSig, SuiPublicKey
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class SigningMultiSig:
     """Wraps the mutli-sig along with pubkeys to use in SuiTransaction."""
 
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SigningMultiSig.__init__")
     def __init__(self, msig: BaseMultiSig, pub_keys: list[SuiPublicKey]):
         """."""
         self.multi_sig = msig
@@ -24,6 +26,7 @@ class SigningMultiSig:
         self._can_sign_msg = isinstance(msig, MultiSig)
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SigningMultiSig.signing_address")
     def signing_address(self) -> str:
         """."""
         return self._address
@@ -32,6 +35,7 @@ class SigningMultiSig:
 class SignerBlock:
     """."""
 
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.__init__")
     def __init__(
         self,
         *,
@@ -50,11 +54,13 @@ class SignerBlock:
         self._merge_to_gas: bool = False
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.sender")
     def sender(self) -> Union[str, SigningMultiSig]:
         """Return the current sender used in signing."""
         return self._sender
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.sender_str")
     def sender_str(self) -> str:
         """Return the current sender used in signing."""
         return (
@@ -64,17 +70,20 @@ class SignerBlock:
         )
 
     @sender.setter
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.sender")
     def sender(self, new_sender: Union[str, SigningMultiSig]):
         """Set the sender to use in signing the transaction."""
         assert isinstance(new_sender, (str, SigningMultiSig))
         self._sender = new_sender
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.sponsor")
     def sponsor(self) -> Union[None, Union[str, SigningMultiSig]]:
         """Get who, if any, may be acting as payer of transaction."""
         return self._sponsor
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.sponsor_str")
     def sponsor_str(self) -> Union[str, None]:
         """Return the current sender used in signing."""
         if not self._sponsor:
@@ -86,11 +95,13 @@ class SignerBlock:
         )
 
     @sponsor.setter
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.sponsor")
     def sponsor(self, new_sponsor: Union[str, SigningMultiSig]):
         """Set the sponsor to used to pay for transaction. This also signs the transaction."""
         assert isinstance(new_sponsor, (str, SigningMultiSig))
         self._sponsor = new_sponsor
 
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock._get_payer")
     def _get_payer(self) -> Union[str, ValueError]:
         """Get the payer for the transaction."""
         # Either a sponsor (priority) or sender will pay for this
@@ -108,10 +119,12 @@ class SignerBlock:
         return who_pays
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.payer_address")
     def payer_address(self) -> str:
         """Fetch payer address."""
         return self._get_payer()
 
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock._get_potential_signatures")
     def _get_potential_signatures(
         self,
     ) -> list[Union[str, SigningMultiSig]]:
@@ -123,6 +136,7 @@ class SignerBlock:
             result_list.append(self._sponsor)
         return result_list
 
+    @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.get_signatures")
     def get_signatures(self, *, config: PysuiConfiguration, tx_bytes: str) -> list[str]:
         """Get all the signatures needed for the transaction."""
         sig_list: list[str] = []

@@ -11,26 +11,26 @@ import struct as _struct
 from typing import Any, Callable, Optional, Union
 from deprecated.sphinx import versionchanged
 
-from pysui.sui.sui_common.trxn_base import (
+from pysui.sui.sui_common.txn_base import (
     _TransactionBase,
     _SuiTransactionBase as txbase,
     FundsSource,
 )
-from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
+from pysui.sui.sui_common.txn_signing import SignerBlock, SigningMultiSig
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_common.txb_pure import PureInput
+from pysui.sui.sui_common.txn_pure import PureInput
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-from pysui.sui.sui_common.txb_gas import (
+from pysui.sui.sui_common.txn_gas import (
     compute_gas_budget,
     async_get_gas_data as _async_get_gas_data,
 )
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_common.txb_tx_argparse import TxnArgParse, TxnArgMode
+from pysui.sui.sui_common.txn_tx_argparse import TxnArgParse, TxnArgMode
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache
 from pysui.sui.sui_common.async_funcs import AsyncLRU
-from pysui.sui.sui_common.instrumentation import measure, instrumented
+from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented
 
 # Coin reservation constants — used when addressBalance gas mode + GasCoin (txn.gas) is used
 _ACCUMULATOR_ROOT_ID_BYTES = bytes(30) + b'\x0a\xcc'
@@ -51,6 +51,7 @@ _ACCUMULATOR_KEY_TYPE_TAG_BCS = (
 )
 
 
+@sync_instrumented("pysui.sui.sui_common.async_txn._build_coin_reservation_ref")
 def _build_coin_reservation_ref(
     reserved_balance: int, epoch: int, owner_str: str, chain_id: str
 ) -> "bcs.ObjectReference":
@@ -87,6 +88,7 @@ class AsyncSuiTransaction(txbase):
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
 
+    @sync_instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction.__init__")
     def __init__(self, **kwargs) -> None:
         """Initialize the asynchronous SuiTransaction.
 
@@ -134,6 +136,7 @@ class AsyncSuiTransaction(txbase):
         self._argparse = TxnArgParse(client)
 
     @AsyncLRU(maxsize=256)
+    @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction._function_meta_args")
     async def _function_meta_args(
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
@@ -170,6 +173,7 @@ class AsyncSuiTransaction(txbase):
             raise ValueError(f"{target} {ve.args}")
         raise ValueError(f"Unresolvable target {target}")
 
+    @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction.target_function_summary")
     async def target_function_summary(
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:

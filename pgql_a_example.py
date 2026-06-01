@@ -15,7 +15,7 @@ import base64
 from pysui import PysuiConfiguration, SuiRpcResult, client_factory, AsyncClientBase
 from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_pgql.pgql_clients import GqlProtocolClient
-from pysui.sui.sui_common.trxn_base import FundsSource
+from pysui.sui.sui_common.txn_base import FundsSource
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
 import pysui.sui.sui_pgql.pgql_query as qn  # protocol-level access: queries without a SuiCommand

@@ -10,8 +10,10 @@ from typing import Optional
 from pysui.abstracts.async_client import AsyncClientBase
 from pysui.sui.sui_common.config import PysuiConfiguration
 from pysui.sui.sui_common.config.confgroup import GroupProtocol
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
+@sync_instrumented("pysui.sui.sui_common.factory.client_factory")
 def client_factory(
     pysui_config: PysuiConfiguration,
     *,

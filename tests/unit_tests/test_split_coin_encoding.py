@@ -8,7 +8,7 @@
 import pytest
 from unittest.mock import MagicMock, patch, call
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_common.txb_pure import PureInput
+from pysui.sui.sui_common.txn_pure import PureInput
 from pysui.sui.sui_bcs.bcs import SuiU64
 
 
@@ -19,7 +19,7 @@ class TestSplitCoinAmountEncoding:
         """Raw int amounts should be encoded as SuiU64."""
         amounts = [1000000000, 2000000000]
 
-        with patch('pysui.sui.sui_common.txb_pure.PureInput.as_input') as mock_as_input:
+        with patch('pysui.sui.sui_common.txn_pure.PureInput.as_input') as mock_as_input:
             mock_as_input.return_value = MagicMock(spec=bcs.BuilderArg)
 
             encoded_amounts = [
@@ -44,7 +44,7 @@ class TestSplitCoinAmountEncoding:
         arg2 = MagicMock(spec=bcs.Argument)
         amounts = [arg1, arg2]
 
-        with patch('pysui.sui.sui_common.txb_pure.PureInput.as_input') as mock_as_input:
+        with patch('pysui.sui.sui_common.txn_pure.PureInput.as_input') as mock_as_input:
             encoded_amounts = [
                 a if isinstance(a, bcs.Argument)
                 else PureInput.as_input(SuiU64(a))
@@ -59,7 +59,7 @@ class TestSplitCoinAmountEncoding:
         arg = MagicMock(spec=bcs.Argument)
         amounts = [1000000000, arg, 2000000000]
 
-        with patch('pysui.sui.sui_common.txb_pure.PureInput.as_input') as mock_as_input:
+        with patch('pysui.sui.sui_common.txn_pure.PureInput.as_input') as mock_as_input:
             mock_return = MagicMock(spec=bcs.BuilderArg)
             mock_as_input.return_value = mock_return
 
@@ -86,7 +86,7 @@ class TestSplitCoinAmountEncoding:
         """Single amount should be encoded the same as multiple amounts."""
         amounts = [1000000000]
 
-        with patch('pysui.sui.sui_common.txb_pure.PureInput.as_input') as mock_as_input:
+        with patch('pysui.sui.sui_common.txn_pure.PureInput.as_input') as mock_as_input:
             mock_as_input.return_value = MagicMock(spec=bcs.BuilderArg)
 
             encoded_amounts = [
@@ -118,7 +118,7 @@ class TestSplitCoinAmountEncoding:
             1,                    # min non-zero
         ]
 
-        with patch('pysui.sui.sui_common.txb_pure.PureInput.as_input') as mock_as_input:
+        with patch('pysui.sui.sui_common.txn_pure.PureInput.as_input') as mock_as_input:
             mock_as_input.return_value = MagicMock(spec=bcs.BuilderArg)
 
             encoded_amounts = [

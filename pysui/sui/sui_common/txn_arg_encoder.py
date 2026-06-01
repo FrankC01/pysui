@@ -17,7 +17,7 @@ from functools import singledispatch
 from typing import Any, Optional
 
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_common.txb_pure import PureInput
+from pysui.sui.sui_common.txn_pure import PureInput
 from pysui.sui.sui_utils import serialize_uint32_as_uleb128
 logger = logging.getLogger(__name__)
 

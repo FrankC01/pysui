@@ -20,11 +20,12 @@ from pysui.sui.sui_common.types import TransactionConstraints
 
 from .client import PysuiClient
 
-from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
-import pysui.sui.sui_common.txb_transaction_builder as tx_builder
+from pysui.sui.sui_common.txn_signing import SignerBlock, SigningMultiSig
+import pysui.sui.sui_common.txn_transaction_builder as tx_builder
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_utils import publish_buildg2
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 # Standard library logging setup
 logger = logging.getLogger(__name__)
@@ -209,6 +210,7 @@ class _TransactionBase:
         ),
     ]
 
+    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase.__init__")
     def __init__(
         self,
         *,
@@ -229,24 +231,29 @@ class _TransactionBase:
         self._current_gas_price = gas_price
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase.gas")
     def gas(self) -> bcs.Argument:
         """Enables use of gas reference as parameters in commands."""
         return self._TRANSACTION_GAS_ARGUMENT
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase.gas_price")
     def gas_price(self) -> Optional[int]:
         """Returns the current gas price for the chain."""
         return self._current_gas_price
 
     @gas_price.setter
+    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase.gas_price")
     def gas_price(self, new_price: int):
         """Set the gas price."""
         self._current_gas_price = new_price
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._any_arg_is_gas_coin")
     def _any_arg_is_gas_coin(args) -> bool:
         return any(a.enum_name == "GasCoin" for a in args)
 
+    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._accumulate_split_coin_draw")
     def _accumulate_split_coin_draw(self, cmd_val, inputs_list: list) -> tuple[bool, int]:
         """Process SplitCoin command for GasCoin usage and gas draw amount."""
         if cmd_val.FromCoin.enum_name != "GasCoin":
@@ -273,6 +280,7 @@ class _TransactionBase:
             draw += int.from_bytes(bytes(call_arg.value), "little")
         return True, draw
 
+    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._inspect_ptb_for_gas_coin")
     def _inspect_ptb_for_gas_coin(self) -> tuple[bool, int]:
         """Inspect builder commands for GasCoin usage and accumulate gas-source draw.
 
@@ -314,6 +322,7 @@ class FundsSource(IntEnum):
 class _SuiTransactionBase(_TransactionBase):
     """SuiTransaction GQL base object."""
 
+    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.__init__")
     def __init__(
         self,
         *,
@@ -361,11 +370,13 @@ class _SuiTransactionBase(_TransactionBase):
         self._executed = False
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.signer_block")
     def signer_block(self) -> SignerBlock:
         """Returns the signers block."""
         return self._sig_block
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.digest_from_bytes")
     def digest_from_bytes(cls, transaction_data_bytes: bytes) -> str:
         """Return the base58 encoded digest from transaction byte string.
 
@@ -382,6 +393,7 @@ class _SuiTransactionBase(_TransactionBase):
         ).decode()
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.digest_from_b64str")
     def digest_from_b64str(cls, transaction_data_bytes_str: str) -> str:
         """Return the base58 encoded digest from transaction base64 encoded string.
 
@@ -392,6 +404,7 @@ class _SuiTransactionBase(_TransactionBase):
         """
         return cls.digest_from_bytes(base64.b64decode(transaction_data_bytes_str))
 
+    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.raw_kind")
     def raw_kind(self) -> bcs.TransactionKind:
         """Returns the TransactionKind object hierarchy of inputs, returns and commands.
 
@@ -399,6 +412,7 @@ class _SuiTransactionBase(_TransactionBase):
         """
         return self.builder.finish_for_inspect()
 
+    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.build_for_dryrun")
     def build_for_dryrun(self) -> str:
         """Returns a base64 string that can be used in dry running transaction.
 
@@ -407,6 +421,7 @@ class _SuiTransactionBase(_TransactionBase):
         """
         return base64.b64encode(self.raw_kind().serialize()).decode()
 
+    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.verify_transaction")
     def verify_transaction(
         self, ser_kind: Optional[bytes] = None
     ) -> tuple[TransactionConstraints, Union[dict, None]]:
@@ -514,6 +529,7 @@ class _SuiTransactionBase(_TransactionBase):
         err_dict: dict = {x: y for (x, y) in var_map.items() if y != 0}
         return self.constraints, err_dict if err_dict else None
 
+    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase._compile_source")
     def _compile_source(
         self,
         project_path: str,

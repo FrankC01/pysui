@@ -12,6 +12,7 @@ import dataclasses_json
 
 
 import pysui.sui.sui_common.config.confgroup as prfgrp
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 _GQL_DEFAULTS: dict = {
     "devnet": "https://sui-devnet.mystenlabs.com/graphql",
@@ -32,6 +33,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
     group_active: str = dataclasses.field(default="")
     groups: list[prfgrp.ProfileGroup] = dataclasses.field(default_factory=list)
 
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel._group_exists")
     def _group_exists(
         self, *, group_name: str
     ) -> Optional[prfgrp.ProfileGroup]:
@@ -40,10 +42,12 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
             (grp for grp in self.groups if grp.group_name == group_name), None
         )
 
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.has_group")
     def has_group(self, *, group_name: str) -> bool:
         """Test for group existence."""
         return bool(self._group_exists(group_name=group_name))
 
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.get_group")
     def get_group(self, *, group_name: str) -> prfgrp.ProfileGroup:
         """Get a group or throw exception if doesn't exist."""
         _res = self._group_exists(group_name=group_name)
@@ -51,6 +55,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
             raise ValueError(f"{group_name} does not exist.")
         return _res
 
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.update_model")
     def update_model(self, gql_well_known: str, grpc_well_known: str) -> bool:
         """Update the model."""
         # If prior was 1.0.0, 1.1.0 brings protocol indicator
@@ -68,6 +73,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         return change_made
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.active_group")
     def active_group(self) -> prfgrp.ProfileGroup:
         """Returns the active group."""
         _res = self._group_exists(group_name=self.group_active)
@@ -76,6 +82,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         raise ValueError("No active group set")
 
     @active_group.setter
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.active_group")
     def active_group(self, group_str: str) -> None:
         """Sets the active group."""
         _res = self._group_exists(group_name=group_str)
@@ -85,10 +92,12 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         raise ValueError(f"{group_str} does not exist")
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.active_address")
     def active_address(self) -> str:
         """Returns the active address from the active group."""
         return self.active_group.using_address
 
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.gql_version_fixup")
     def gql_version_fixup(
         self,
         *,
@@ -104,6 +113,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
             pass
         self.version = _CURRENT_CONFIG_VERSION
 
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.add_group")
     def add_group(
         self, *, group: prfgrp.ProfileGroup, make_active: bool, overwrite: bool = False
     ) -> bool:
@@ -123,6 +133,7 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
         return _updated
 
     @versionchanged(version="0.86.0", reason="Return new active replacing removed.")
+    @sync_instrumented("pysui.sui.sui_common.config.confmodel.PysuiConfigModel.remove_group")
     def remove_group(self, *, group_name: str) -> str:
         """Remove group from model, reassign active and return name."""
         _res = self._group_exists(group_name=group_name)

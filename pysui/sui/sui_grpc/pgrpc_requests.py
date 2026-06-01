@@ -18,7 +18,7 @@ from pysui.sui.sui_bcs import bcs
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
-from pysui.sui.sui_common.instrumentation import sync_measure
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented, sync_measure
 
 
 class GetServiceInfo(absreq.PGRPC_Request):
@@ -26,10 +26,12 @@ class GetServiceInfo(absreq.PGRPC_Request):
 
     RESULT_TYPE = sui_prot.GetServiceInfoResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetServiceInfo.__init__")
     def __init__(self) -> None:
         """Initializer."""
         super().__init__(absreq.Service.LEDGER)
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetServiceInfo.to_request")
     def to_request(
         self,
         *,
@@ -44,6 +46,7 @@ class GetServiceInfo(absreq.PGRPC_Request):
 class GetChainIdentifierSC(GetServiceInfo):
     """SC variant: extract chain_id from GetServiceInfoResponse."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetChainIdentifierSC.render")
     def render(self, obj: sui_prot.GetServiceInfoResponse) -> str:
         """Extract chain identifier from service info response."""
         return obj.chain_id or ""
@@ -54,6 +57,7 @@ class GetCheckpoint(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetCheckpointResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCheckpoint.__init__")
     def __init__(
         self,
         *,
@@ -67,6 +71,7 @@ class GetCheckpoint(absreq.PGRPC_Request):
         self.digest = digest
         self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCheckpoint.to_request")
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
@@ -81,6 +86,7 @@ class GetCheckpoint(absreq.PGRPC_Request):
 class GetLatestCheckpoint(GetCheckpoint):
     """Alias for GetCheckpoint."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetLatestCheckpoint.__init__")
     def __init__(self, *, field_mask=None):
         """Initializer."""
         super().__init__(sequence=None, digest=None, field_mask=field_mask)
@@ -89,6 +95,7 @@ class GetLatestCheckpoint(GetCheckpoint):
 class GetCheckpointBySequence(GetCheckpoint):
     """Alias for GetCheckpoint"""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCheckpointBySequence.__init__")
     def __init__(self, *, sequence_number: int, field_mask=None):
         """Initializer."""
         super().__init__(sequence=sequence_number, digest=None, field_mask=field_mask)
@@ -97,6 +104,7 @@ class GetCheckpointBySequence(GetCheckpoint):
 class GetCheckpointByDigest(GetCheckpoint):
     """Alias for GetCheckpoint"""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCheckpointByDigest.__init__")
     def __init__(self, *, digest: str, field_mask=None):
         """Initializer."""
         super().__init__(sequence=None, digest=digest, field_mask=field_mask)
@@ -107,6 +115,7 @@ class GetEpoch(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.Epoch
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetEpoch.__init__")
     def __init__(
         self,
         *,
@@ -118,6 +127,7 @@ class GetEpoch(absreq.PGRPC_Request):
         self.epoch_number = epoch_number
         self.field_mask = self._field_mask(field_mask)
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetEpoch.to_request")
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
@@ -132,10 +142,12 @@ class GetEpoch(absreq.PGRPC_Request):
 class GetLatestSuiSystemState(GetEpoch):
     """GetLatestSuiSystemState return the current Sui system state."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetLatestSuiSystemState.__init__")
     def __init__(self):
         """Initializer."""
         super().__init__(field_mask=["system_state"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetLatestSuiSystemState.render")
     def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.SystemState:
         """Render the response payload into a SystemState message."""
         return gepoch.epoch.system_state
@@ -148,6 +160,7 @@ class GetLatestSuiSystemStateSC(GetLatestSuiSystemState):
 class GetCurrentValidators(GetEpoch):
     """Return all the currently active validators"""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCurrentValidators.__init__")
     def __init__(self):
         """Initializer."""
         super().__init__(field_mask=["system_state.validators.active_validators"])
@@ -156,6 +169,7 @@ class GetCurrentValidators(GetEpoch):
 class GetCurrentValidatorsSC(GetCurrentValidators):
     """SC variant: render extracts active_validators list from Epoch response."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCurrentValidatorsSC.render")
     def render(self, gepoch: sui_prot.GetEpochResponse) -> list[sui_prot.Validator]:
         """Extract active validators from epoch system state."""
         return gepoch.epoch.system_state.validators.active_validators
@@ -164,10 +178,12 @@ class GetCurrentValidatorsSC(GetCurrentValidators):
 class GetBasicCurrentEpochInfo(GetEpoch):
     """GetEpoch narrowed to the four fields needed for gas and expiry building."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetBasicCurrentEpochInfo.__init__")
     def __init__(self):
         """Initializer."""
         super().__init__(field_mask=["epoch", "reference_gas_price", "start", "end"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetBasicCurrentEpochInfo.render")
     def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.Epoch:
         """Return the Epoch message directly."""
         return gepoch.epoch
@@ -178,6 +194,7 @@ class GetProtocolConfig(GetEpoch):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ProtocolConfig
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetProtocolConfig.__init__")
     def __init__(self, *, version: Optional[int] = None):
         """Initializer.
 
@@ -186,6 +203,7 @@ class GetProtocolConfig(GetEpoch):
         """
         super().__init__(epoch_number=version, field_mask=["protocol_config"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetProtocolConfig.render")
     def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.ProtocolConfig:
         """Return the ProtocolConfig message from the response."""
         return gepoch.epoch.protocol_config
@@ -209,6 +227,7 @@ class GetObject(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.Object
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObject.__init__")
     def __init__(
         self,
         *,
@@ -222,6 +241,7 @@ class GetObject(absreq.PGRPC_Request):
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObject.to_request")
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
@@ -242,6 +262,7 @@ class GetPastObject(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.Object
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPastObject.__init__")
     def __init__(
         self,
         *,
@@ -257,6 +278,7 @@ class GetPastObject(absreq.PGRPC_Request):
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPastObject.to_request")
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
@@ -271,10 +293,12 @@ class GetPastObject(absreq.PGRPC_Request):
 class GetObjectSC(GetObject):
     """SC variant: unwraps GetObjectResponse → Object (canonical shape)."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectSC.__init__")
     def __init__(self, *, object_id: str, field_mask: Optional[list[str]] = None) -> None:
         """Initializer with full field mask."""
         super().__init__(object_id=object_id, field_mask=field_mask if field_mask else ["*"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectSC.render")
     def render(self, obj: sui_prot.GetObjectResponse) -> sui_prot.Object:
         """Extract the inner Object from the gRPC wrapper."""
         return obj.object
@@ -283,10 +307,12 @@ class GetObjectSC(GetObject):
 class GetPastObjectSC(GetPastObject):
     """SC variant: unwraps GetObjectResponse → Object (canonical shape)."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPastObjectSC.__init__")
     def __init__(self, *, object_id: str, version: int, field_mask: Optional[list[str]] = None) -> None:
         """Initializer with full field mask."""
         super().__init__(object_id=object_id, version=version, field_mask=field_mask if field_mask else ["*"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPastObjectSC.render")
     def render(self, obj: sui_prot.GetObjectResponse) -> sui_prot.Object:
         """Extract the inner Object from the gRPC wrapper."""
         return obj.object
@@ -297,6 +323,7 @@ class GetMultipleObjects(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetObjectsResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjects.__init__")
     def __init__(
         self,
         *,
@@ -312,6 +339,7 @@ class GetMultipleObjects(absreq.PGRPC_Request):
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjects.to_request")
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
@@ -326,6 +354,7 @@ class GetMultipleObjects(absreq.PGRPC_Request):
 class GetMultipleObjectsSC(GetMultipleObjects):
     """SC variant for GetMultipleObjects SuiCommand: returns all object fields."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjectsSC.__init__")
     def __init__(
         self,
         *,
@@ -345,10 +374,12 @@ _SUMMARY_FIELD_MASK = ["owner", "version", "object_id", "digest"]
 class GetMultipleObjectsSummarySC(GetMultipleObjects):
     """SC variant: normalizes BatchGetObjectsResponse → ObjectSummaryList."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjectsSummarySC.__init__")
     def __init__(self, *, object_ids: list[str]) -> None:
         """Initializer."""
         super().__init__(object_ids=object_ids, field_mask=_SUMMARY_FIELD_MASK)
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjectsSummarySC.render")
     def render(self, resp: sui_prot.BatchGetObjectsResponse) -> ObjectSummaryList:
         """Convert gRPC batch response to ObjectSummaryList."""
         entries: list[ObjectSummary] = []
@@ -391,10 +422,12 @@ class GetMultipleObjectsSummarySC(GetMultipleObjects):
 class GetObjectSummarySC(GetObject):
     """SC variant: resolves a single object to ObjectSummary."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectSummarySC.__init__")
     def __init__(self, *, object_id: str) -> None:
         """Initializer."""
         super().__init__(object_id=object_id, field_mask=_SUMMARY_FIELD_MASK)
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectSummarySC.render")
     def render(self, resp: sui_prot.GetObjectResponse) -> ObjectSummary:
         """Convert gRPC GetObjectResponse to ObjectSummary."""
         obj = resp.object
@@ -434,6 +467,7 @@ class GetDynamicFields(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ListDynamicFieldsResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetDynamicFields.__init__")
     def __init__(
         self,
         object_id: str,
@@ -448,6 +482,7 @@ class GetDynamicFields(absreq.PGRPC_Request):
         self.page_token = page_token
         self.field_mask = self._field_mask(field_mask)
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetDynamicFields.to_request")
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
@@ -469,6 +504,7 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetObjectsResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultiplePastObjects.__init__")
     def __init__(
         self,
         *,
@@ -500,6 +536,7 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultiplePastObjects.to_request")
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
@@ -514,6 +551,7 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
 class GetMultiplePastObjectsSC(GetMultiplePastObjects):
     """SC variant for GetMultiplePastObjects SuiCommand: returns all object fields."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultiplePastObjectsSC.__init__")
     def __init__(
         self,
         *,
@@ -531,6 +569,7 @@ class GetMultiplePastObjectsSC(GetMultiplePastObjects):
         )
 
 
+@sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests._is_coin_reservation")
 def _is_coin_reservation(obj: sui_prot.Object) -> bool:
     """Return True if obj is a synthetic coin reservation rather than a real Sui object."""
     if obj.version == 0:
@@ -546,6 +585,7 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ListOwnedObjectsResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectsOwnedByAddress.__init__")
     def __init__(
         self,
         *,
@@ -565,6 +605,7 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectsOwnedByAddress.to_request")
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
@@ -579,6 +620,7 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
             page_token=self.page_token,
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectsOwnedByAddress.render")
     def render(self, resp: sui_prot.ListOwnedObjectsResponse) -> sui_prot.ListOwnedObjectsResponse:
         """Filter out synthetic coin reservation objects."""
         resp.objects = [o for o in resp.objects if not _is_coin_reservation(o)]
@@ -588,6 +630,7 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
 class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
     """SC variant for GetObjectsOwnedByAddress SuiCommand: returns all object fields."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectsOwnedByAddressSC.__init__")
     def __init__(
         self,
         *,
@@ -609,6 +652,7 @@ class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
 class GetObjectsForTypeSC(GetObjectsOwnedByAddress):
     """SC variant for GetObjectsForType SuiCommand: returns all object fields."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectsForTypeSC.__init__")
     def __init__(
         self,
         *,
@@ -630,6 +674,7 @@ class GetObjectsForTypeSC(GetObjectsOwnedByAddress):
 class GetCoins(GetObjectsOwnedByAddress):
     """Query Sui coin objects by type owned by address using GetOwnedObjects."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCoins.__init__")
     def __init__(
         self,
         *,
@@ -652,6 +697,7 @@ class GetCoins(GetObjectsOwnedByAddress):
 class GetCoinsSC(GetCoins):
     """SC variant for GetCoins SuiCommand: returns all object fields."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCoinsSC.__init__")
     def __init__(
         self,
         *,
@@ -673,6 +719,7 @@ class GetCoinsSC(GetCoins):
 class GetGas(GetObjectsOwnedByAddress):
     """Query Sui gas objects owned by address using GetCoins."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetGas.__init__")
     def __init__(
         self,
         *,
@@ -694,6 +741,7 @@ class GetGas(GetObjectsOwnedByAddress):
 class GetGasSC(GetGas):
     """SC variant for GetGas SuiCommand: returns all object fields."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetGasSC.__init__")
     def __init__(
         self,
         *,
@@ -713,6 +761,7 @@ class GetGasSC(GetGas):
 class GetStaked(GetObjectsOwnedByAddress):
     """Query staked coin objects owned by address using GetOwnedObjects."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetStaked.__init__")
     def __init__(
         self,
         *,
@@ -734,6 +783,7 @@ class GetStaked(GetObjectsOwnedByAddress):
 class GetDelegatedStakes(GetStaked):
     """Alias for GetStaked."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetDelegatedStakes.__init__")
     def __init__(
         self,
         *,
@@ -756,6 +806,7 @@ class GetCoinMetaData(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetCoinInfoResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCoinMetaData.__init__")
     def __init__(
         self,
         *,
@@ -765,6 +816,7 @@ class GetCoinMetaData(absreq.PGRPC_Request):
         super().__init__(absreq.Service.STATE)
         self.coin_type = coin_type
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCoinMetaData.to_request")
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
@@ -782,6 +834,7 @@ class GetAddressCoinBalance(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetBalanceResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalance.__init__")
     def __init__(
         self,
         *,
@@ -793,6 +846,7 @@ class GetAddressCoinBalance(absreq.PGRPC_Request):
         self.owner = owner
         self.coin_type = coin_type
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalance.to_request")
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
@@ -812,6 +866,7 @@ class GetAddressCoinBalances(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ListBalancesResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalances.__init__")
     def __init__(
         self,
         *,
@@ -825,6 +880,7 @@ class GetAddressCoinBalances(absreq.PGRPC_Request):
         self.page_size = page_size
         self.page_token = page_token
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalances.to_request")
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
@@ -845,6 +901,7 @@ class GetTransaction(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ExecutedTransaction
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransaction.__init__")
     def __init__(
         self,
         *,
@@ -860,6 +917,7 @@ class GetTransaction(absreq.PGRPC_Request):
             else self._field_mask(["transaction", "effects"])
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransaction.to_request")
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
@@ -878,6 +936,7 @@ class GetTransactions(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetTransactionsResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactions.__init__")
     def __init__(
         self,
         *,
@@ -889,6 +948,7 @@ class GetTransactions(absreq.PGRPC_Request):
         self.transactions = transactions
         self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactions.to_request")
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
@@ -909,6 +969,7 @@ class GetTransactionSC(GetTransaction):
 
     not_found_as_none: bool = True
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactionSC.render")
     def render(
         self, obj: sui_prot.GetTransactionResponse
     ) -> sui_prot.ExecutedTransaction | None:
@@ -921,6 +982,7 @@ class GetTransactionsSC(GetTransactions):
 
     not_found_as_none: bool = True
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactionsSC.render")
     def render(
         self, obj: sui_prot.BatchGetTransactionsResponse
     ) -> list[sui_prot.ExecutedTransaction | None]:
@@ -933,10 +995,12 @@ class GetTransactionKindSC(GetTransaction):
 
     not_found_as_none: bool = True
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactionKindSC.__init__")
     def __init__(self, *, digest: str) -> None:
         """Initializer."""
         super().__init__(digest=digest, field_mask=["transaction.kind"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactionKindSC.render")
     def render(
         self, obj: sui_prot.GetTransactionResponse
     ) -> sui_prot.TransactionKind | None:
@@ -951,6 +1015,7 @@ class ExecuteTransaction(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ExecuteTransactionResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ExecuteTransaction.__init__")
     def __init__(
         self,
         *,
@@ -986,6 +1051,7 @@ class ExecuteTransaction(absreq.PGRPC_Request):
                 )
         self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ExecuteTransaction.to_request")
     def to_request(
         self, *, stub: sui_prot.TransactionExecutionServiceStub
     ) -> tuple[
@@ -998,6 +1064,7 @@ class ExecuteTransaction(absreq.PGRPC_Request):
             read_mask=self.field_mask,
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ExecuteTransaction.render")
     def render(
         self, response: sui_prot.ExecuteTransactionResponse
     ) -> sui_prot.ExecutedTransaction | None:
@@ -1010,6 +1077,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.SimulateTransactionResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SimulateTransaction.__init__")
     def __init__(
         self,
         *,
@@ -1037,6 +1105,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
             self.gas_selection = gas_selection
             self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SimulateTransaction.to_request")
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
@@ -1058,6 +1127,7 @@ class SimulateTransactionKind(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.SimulateTransactionResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SimulateTransactionKind.__init__")
     def __init__(
         self,
         *,
@@ -1126,6 +1196,7 @@ class SimulateTransactionKind(absreq.PGRPC_Request):
             self.gas_selection = gas_selection
             self.field_mask = self._field_mask(field_mask) or self._field_mask(["*"])
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SimulateTransactionKind.to_request")
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
@@ -1149,6 +1220,7 @@ class GetPackageVersions(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ListPackageVersionsResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPackageVersions.__init__")
     def __init__(
         self,
         *,
@@ -1162,6 +1234,7 @@ class GetPackageVersions(absreq.PGRPC_Request):
         self.page_size = page_size
         self.page_token = page_token
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPackageVersions.to_request")
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
@@ -1180,6 +1253,7 @@ class GetPackage(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetPackageResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPackage.__init__")
     def __init__(
         self,
         *,
@@ -1189,6 +1263,7 @@ class GetPackage(absreq.PGRPC_Request):
         super().__init__(absreq.Service.MOVEPACKAGE)
         self.package_id = package
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPackage.to_request")
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
@@ -1204,6 +1279,7 @@ class GetMoveDataType(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetDatatypeResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMoveDataType.__init__")
     def __init__(self, *, package: str, module_name: str, type_name: str) -> None:
         """__init__ Initialize GetMoveDataType request.
 
@@ -1219,6 +1295,7 @@ class GetMoveDataType(absreq.PGRPC_Request):
         self.module_name = module_name
         self.type_name = type_name
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMoveDataType.to_request")
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
@@ -1237,6 +1314,7 @@ class GetMoveDataType(absreq.PGRPC_Request):
 class GetStructure(GetMoveDataType):
     """Convenience subclass of GetMoveDataType using structure_name parameter."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetStructure.__init__")
     def __init__(self, *, package: str, module_name: str, structure_name: str):
         """Initializer."""
         super().__init__(
@@ -1285,11 +1363,13 @@ class ValidatorsResult:
 class GetStructures(GetPackage):
     """Alias for GetDataType."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetStructures.__init__")
     def __init__(self, *, package, module_name: str):
         """Initializer."""
         super().__init__(package=package)
         self.module_name = module_name
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetStructures.render")
     def render(self, package: sui_prot.GetPackageResponse) -> MoveStructuresGRPC:
         """Render the response payload into MoveStructuresGRPC."""
         result = list(
@@ -1308,6 +1388,7 @@ class GetFunction(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.GetFunctionResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetFunction.__init__")
     def __init__(self, *, package: str, module_name: str, function_name: str) -> None:
         """Initializer."""
         super().__init__(absreq.Service.MOVEPACKAGE)
@@ -1315,6 +1396,7 @@ class GetFunction(absreq.PGRPC_Request):
         self.module_name = module_name
         self.function_name = function_name
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetFunction.to_request")
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
@@ -1331,11 +1413,13 @@ class GetFunction(absreq.PGRPC_Request):
 class GetFunctions(GetPackage):
     """Alias for GetDataType."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetFunctions.__init__")
     def __init__(self, *, package, module_name: str):
         """Initializer."""
         super().__init__(package=package)
         self.module_name = module_name
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetFunctions.render")
     def render(self, package: sui_prot.GetPackageResponse) -> "MoveFunctionsGRPC":
         """Render the response payload into MoveFunctionsGRPC."""
         result = list(
@@ -1352,11 +1436,13 @@ class GetFunctions(GetPackage):
 class GetModule(GetPackage):
     """Alias for GetDataType."""
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetModule.__init__")
     def __init__(self, *, package, module_name: str):
         """Initializer."""
         super().__init__(package=package)
         self.module_name = module_name
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetModule.render")
     def render(self, package: sui_prot.GetPackageResponse) -> sui_prot.Module:
         """Render the response payload to the matching Module entry."""
         result = list(
@@ -1375,6 +1461,7 @@ class SubscribeCheckpoint(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeCheckpointsResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint.__init__")
     def __init__(
         self,
         *,
@@ -1384,6 +1471,7 @@ class SubscribeCheckpoint(absreq.PGRPC_Request):
         super().__init__(absreq.Service.SUBSCRIPTION)
         self.field_mask = self._field_mask(field_mask)
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint.to_request")
     def to_request(
         self, *, stub: sui_prot.SubscriptionServiceStub
     ) -> tuple[
@@ -1400,6 +1488,7 @@ class VerifySignature(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.VerifySignatureResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.VerifySignature.__init__")
     def __init__(
         self,
         *,
@@ -1452,6 +1541,7 @@ class VerifySignature(absreq.PGRPC_Request):
             bcs=sui_prot.Bcs(name="UserSignature", value=sig_bytes)
         )
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.VerifySignature.to_request")
     def to_request(
         self, *, stub: sui_prot.SignatureVerificationServiceStub
     ) -> tuple[
@@ -1469,6 +1559,7 @@ class GetNameServiceAddress(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.LookupNameResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceAddress.__init__")
     def __init__(self, *, name: str | None = None):
         """GetNameServiceAddress constructor.
 
@@ -1478,6 +1569,7 @@ class GetNameServiceAddress(absreq.PGRPC_Request):
         super().__init__(absreq.Service.NAMESERVICE)
         self.name = name
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceAddress.to_request")
     def to_request(
         self, *, stub: sui_prot.NameServiceStub
     ) -> tuple[
@@ -1495,6 +1587,7 @@ class GetNameServiceNames(absreq.PGRPC_Request):
 
     RESULT_TYPE: betterproto2.Message = sui_prot.ReverseLookupNameResponse
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceNames.__init__")
     def __init__(self, *, address: str | None = None):
         """GetNameServiceNames constructor.
 
@@ -1504,6 +1597,7 @@ class GetNameServiceNames(absreq.PGRPC_Request):
         super().__init__(absreq.Service.NAMESERVICE)
         self.address = address
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceNames.to_request")
     def to_request(
         self, *, stub: sui_prot.NameServiceStub
     ) -> tuple[

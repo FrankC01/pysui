@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
 from pysui.sui.sui_common.executors.exec_types import ExecutorOptions
 from pysui.sui.sui_common.executors._queue_types import _SENTINEL
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
@@ -24,6 +25,7 @@ class ParallelExecutor(_BaseParallelExecutor):
     Do not instantiate directly.
     """
 
+    @sync_instrumented("pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor.submit")
     def submit(self, txn: AsyncSuiTransaction | list[AsyncSuiTransaction]) -> asyncio.Future | list[asyncio.Future]:
         """Submit one or more transactions for parallel execution.
 
@@ -34,6 +36,7 @@ class ParallelExecutor(_BaseParallelExecutor):
             return [self._submit_one(t) for t in txn]
         return self._submit_one(txn)
 
+    @instrumented("pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor.close")
     async def close(self) -> None:
         """Signal shutdown and wait for all in-flight work to complete."""
         if not self._dead and not self._closing:
@@ -48,10 +51,12 @@ class ParallelExecutor(_BaseParallelExecutor):
         if self._in_flight:
             await asyncio.gather(*list(self._in_flight), return_exceptions=True)
 
+    @instrumented("pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor.new_transaction")
     async def new_transaction(self, **kwargs):
         """Create a new DEFERRED transaction for submission to this executor."""
         return await self._new_transaction(**kwargs)
 
+    @instrumented("pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor.add_funds")
     async def add_funds(self, coins: list) -> None:
         """Add coins to the executor's gas state (on_balance_low response handler)."""
         await self._add_funds(coins)

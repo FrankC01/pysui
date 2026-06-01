@@ -15,6 +15,7 @@ from pysui.abstracts.client_keypair import SignatureScheme
 import pysui.sui.sui_crypto as crypto
 import pysui.sui.sui_utils as utils
 from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class GroupProtocol(IntEnum):
@@ -69,6 +70,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
     profiles: list[Profile] = dataclasses.field(default_factory=list)
     protocol: GroupProtocol = GroupProtocol.OTHER
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.__post_init__")
     def __post_init__(self):
         if self.protocol == GroupProtocol.OTHER:
             if self.group_name == SUI_GQL_RPC_GROUP:
@@ -76,22 +78,26 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             elif self.group_name == SUI_GRPC_GROUP:
                 self.protocol = GroupProtocol.GRPC
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup._profile_exists")
     def _profile_exists(self, *, profile_name: str) -> Optional[Profile]:
         """Check if a profile, by name, exists."""
         return next(
             (prf for prf in self.profiles if prf.profile_name == profile_name), None
         )
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup._alias_exists")
     def _alias_exists(self, *, alias_name: str) -> Optional[ProfileAlias]:
         """Check if an alias, by name, exists."""
         return next(
             (ally for ally in self.alias_list if ally.alias == alias_name), None
         )
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup._address_exists")
     def _address_exists(self, *, address: str) -> Optional[str]:
         """Check if address is valid."""
         return next((addy for addy in self.address_list if addy == address), None)
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup._key_exists")
     def _key_exists(self, *, key_string: str) -> Optional[ProfileKey]:
         """Check if key string exists."""
         return next(
@@ -104,23 +110,27 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         )
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.active_address")
     def active_address(self) -> str:
         """Return the active address."""
         return self.using_address
 
     @active_address.setter
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.active_address")
     def active_address(self, change_to: str) -> None:
         """Set the using address to change_to."""
         _ = self.address_list.index(change_to)
         self.using_address = change_to
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.active_alias")
     def active_alias(self) -> str:
         """Return the alias associated to the using (active) address."""
         adex = self.address_list.index(self.using_address)
         return self.alias_list[adex].alias
 
     @active_alias.setter
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.active_alias")
     def active_alias(self, change_to: str) -> None:
         """Change the alias that is active."""
         _res = self._alias_exists(alias_name=change_to)
@@ -131,15 +141,18 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         raise ValueError(f"Alias {change_to} not found in group")
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.group_protocol")
     def group_protocol(self) -> GroupProtocol:
         """Fetch the group protocol."""
         return self.protocol
 
     @group_protocol.setter
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.group_protocol")
     def group_protocol(self, new_protocol: GroupProtocol) -> None:
         """Change the group protocol."""
         self.protocol = new_protocol
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.address_for_alias")
     def address_for_alias(self, *, alias: str) -> str:
         """Get address associated with alias."""
         _res = self._alias_exists(alias_name=alias)
@@ -148,6 +161,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return self.address_list[aliindx]
         raise ValueError(f"Alias {alias} not found in group")
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.alias_for_address")
     def alias_for_address(self, *, address: str) -> ProfileAlias:
         """Get alias associated with address."""
         _res = self._address_exists(address=address)
@@ -156,6 +170,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return self.alias_list[adindex]
         raise ValueError(f"Address {address} not found in group")
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.alias_name_for_address")
     def alias_name_for_address(self, *, address: str) -> str:
         """Get alias associated with address."""
         _res = self._address_exists(address=address)
@@ -164,6 +179,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return self.alias_list[adindex].alias
         raise ValueError(f"Address {address} not found in group")
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.replace_alias_name")
     def replace_alias_name(self, *, from_alias: str, to_alias: str) -> str:
         """Replace alias name and return associated address."""
         _res = self._alias_exists(alias_name=from_alias)
@@ -177,6 +193,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         raise ValueError(f"Alias {from_alias} not found in group")
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.active_profile")
     def active_profile(self) -> Profile:
         """Gets the active profile."""
         _res = self._profile_exists(profile_name=self.using_profile)
@@ -185,6 +202,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         raise ValueError(f"Profile {self.using_profile} not found in group")
 
     @active_profile.setter
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.active_profile")
     def active_profile(self, change_to: str) -> None:
         """Set the using Profile to change_to."""
         _res = self._profile_exists(profile_name=change_to)
@@ -194,10 +212,12 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         raise ValueError(f"{change_to} profile does not exist")
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.profile_names")
     def profile_names(self) -> list[str]:
         """Fetch the names of the profiles in group."""
         return [x.profile_name for x in self.profiles]
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.get_profile")
     def get_profile(self, profile_name: str) -> Profile:
         """Attempt to fetch a profile considered available."""
         _res = self._profile_exists(profile_name=profile_name)
@@ -205,6 +225,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return _res
         raise ValueError(f"{profile_name} profile does not exist")
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.keypair_for_address")
     def keypair_for_address(self, *, address: str) -> crypto.SuiKeyPair:
         """Fetch an addresses KeyPair."""
         _res = self._address_exists(address=address)
@@ -215,6 +236,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         raise ValueError(f"Keypair for address: {address} does not exist.")
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup._alias_check_or_gen")
     def _alias_check_or_gen(
         *,
         aliases: Optional[list[str]] = None,
@@ -274,6 +296,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         return alias
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.new_keypair_parts")
     def new_keypair_parts(
         *,
         of_keytype: Optional[SignatureScheme] = SignatureScheme.ED25519,
@@ -322,6 +345,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         _new_addy = format(f"0x{hashlib.blake2b(_digest, digest_size=32).hexdigest()}")
         return mnem, _new_addy, _new_prf_key, _new_alias
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.add_keypair_and_parts")
     def add_keypair_and_parts(
         self,
         *,
@@ -350,6 +374,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             f"Private keystring {new_key.private_key_base64} already exists attempting new key and address.."
         )
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.add_keys")
     def add_keys(self, *, keys: list[dict[str, str]]) -> list[str]:
         """Add in a block of keys w/alias (or generate).
 
@@ -394,6 +419,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         self.alias_list.extend(_pfalias)
         return addies
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.add_profile")
     def add_profile(self, *, new_prf: Profile, make_active: bool = False):
         """Add profile to list after validating name."""
         _res = self._profile_exists(profile_name=new_prf.profile_name)
@@ -403,6 +429,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
         if make_active:
             self.active_profile = new_prf.profile_name
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.remove_profile")
     def remove_profile(self, *, profile_name: str) -> str:
         """Remove a profile after validating name."""
         prf_names = self.profile_names
@@ -415,6 +442,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             return self.using_profile
         raise ValueError(f"{profile_name} does not exist.")
 
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.remove_alias")
     def remove_alias(self, *, alias_name: str) -> str:
         """Remove the identity associated to alias."""
         al_names = [x.alias for x in self.alias_list]

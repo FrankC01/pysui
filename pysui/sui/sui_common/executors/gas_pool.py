@@ -9,6 +9,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Optional
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class GasCoinPool:
     checkout() blocks if the pool is empty, providing natural back-pressure.
     """
 
+    @sync_instrumented("pysui.sui.sui_common.executors.gas_pool.GasCoinPool.__init__")
     def __init__(
         self,
         *,
@@ -41,12 +43,14 @@ class GasCoinPool:
         self._low_water_mark = low_water_mark
         self._min_balance_per_coin = min_balance_per_coin
 
+    @instrumented("pysui.sui.sui_common.executors.gas_pool.GasCoinPool.checkout")
     async def checkout(self) -> GasCoin:
         """Remove and return a coin from the pool, blocking if empty."""
         coin = await self._queue.get()
         logger.debug("gas_pool: checked out %s (balance=%d)", coin.object_id, coin.balance)
         return coin
 
+    @instrumented("pysui.sui.sui_common.executors.gas_pool.GasCoinPool.checkin")
     async def checkin(self, coin: GasCoin, *, retire: bool = False) -> None:
         """Return a coin to the pool after use.
 
@@ -63,20 +67,24 @@ class GasCoinPool:
         await self._queue.put(coin)
         logger.debug("gas_pool: checked in %s", coin.object_id)
 
+    @instrumented("pysui.sui.sui_common.executors.gas_pool.GasCoinPool.replenish")
     async def replenish(self, coins: list[GasCoin]) -> None:
         """Add a batch of freshly-minted coins to the pool."""
         for coin in coins:
             await self._queue.put(coin)
         logger.debug("gas_pool: replenished with %d coins (total=%d)", len(coins), self._queue.qsize())
 
+    @sync_instrumented("pysui.sui.sui_common.executors.gas_pool.GasCoinPool.size")
     def size(self) -> int:
         """Current number of available coins."""
         return self._queue.qsize()
 
+    @sync_instrumented("pysui.sui.sui_common.executors.gas_pool.GasCoinPool.is_low")
     def is_low(self) -> bool:
         """True when available coins are at or below the low-water mark."""
         return self._queue.qsize() <= self._low_water_mark
 
+    @instrumented("pysui.sui.sui_common.executors.gas_pool.GasCoinPool.reset")
     async def reset(self) -> None:
         """Drain the pool, discarding all coins."""
         while not self._queue.empty():
