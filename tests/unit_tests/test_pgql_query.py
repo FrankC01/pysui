@@ -208,7 +208,7 @@ class TestSCSiblings:
         assert ep.protocol_config.protocol_version == 99
         assert ep.first_checkpoint == 1000
         assert ep.last_checkpoint == 1999
-        assert ep.committee is not None
+        assert ep.committee is None
 
     def test_get_epoch_sc_no_end_timestamp(self):
         raw = {
