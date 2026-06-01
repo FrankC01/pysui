@@ -554,7 +554,8 @@ class _SuiTransactionBase(_TransactionBase):
             self.client.config.active_profile,
         )
         if isinstance(compiled_package, Exception):
-            raise compiled_package
+            err: BaseException = compiled_package
+            raise err
         dependencies = [
             bcs.Address.from_str(x if isinstance(x, str) else x.value)
             for x in compiled_package.dependencies

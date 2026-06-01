@@ -38,7 +38,7 @@ from pysui.sui.sui_constants import DEVNET_FAUCET_URLV1, TESTNET_FAUCET_URLV1
 from pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 import ChangedObjectInputObjectState
 import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_common.instrumentation import active_collector
-from scratch.dict_collector import DictCollector
+from benchmarks.dict_collector import DictCollector
 
 
 _FAUCET_BY_PROFILE: dict[str, str] = {

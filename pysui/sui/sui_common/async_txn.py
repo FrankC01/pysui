@@ -931,6 +931,7 @@ class AsyncSuiTransaction(txbase):
         """
         type_arguments = type_arguments if type_arguments else []
         function = "some"
+        parms: list = []
         if isinstance(optional_object, bcs.Argument):
             parms = [optional_object]
         elif isinstance(optional_object, (str, sui_prot.Object)):

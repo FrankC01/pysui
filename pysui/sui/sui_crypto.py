@@ -432,6 +432,8 @@ class BaseMultiSig:
                     "Secp256r1",
                     MsSecp256r1PublicKey(list(pkb), self._weights[index]),
                 )
+            else:
+                raise ValueError(f"Unsupported key scheme: {kkeys.scheme}")
             pks.append(npk)
         return pks
 

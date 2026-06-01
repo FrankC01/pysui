@@ -1170,7 +1170,7 @@ class SimulateTransactionKind(absreq.PGRPC_Request):
                     oarg = input.value
                     inputs.append(oarg.value.to_grpc_input(oarg.enum_name))
                 elif input.enum_name == "FundsWithdrawal":
-                    fwid: bcs.FundsWithdrawl = input.value
+                    fwid: bcs.FundsWithdrawal = input.value
                     inputs.append(fwid.to_grpc_input())
             for cmd in prgrm_txn.Command:
                 cmds.append(cmd.value.to_grpc_command())
