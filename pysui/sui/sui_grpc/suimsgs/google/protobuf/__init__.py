@@ -21,10 +21,11 @@ from dataclasses import dataclass
 
 import betterproto2
 import dateutil.parser
+from typing_extensions import Self
 
 from ...message_pool import default_message_pool
 
-_COMPILER_VERSION = "0.9.0"
+_COMPILER_VERSION = "0.10.1"
 betterproto2.check_compiler_version(_COMPILER_VERSION)
 
 
@@ -226,7 +227,7 @@ class Any(betterproto2.Message):
         return output
 
     @classmethod
-    def from_dict(cls, value, *, ignore_unknown_fields: bool = False):
+    def from_dict(cls, value, *, ignore_unknown_fields: bool = False) -> Self:
         value = dict(value)  # Make a copy
 
         type_url = value.pop("@type", None)
@@ -353,15 +354,13 @@ class Duration(betterproto2.Message):
         return f"{'.'.join(parts)}s"
 
     @classmethod
-    def from_dict(cls, value, *, ignore_unknown_fields: bool = False):
+    def from_dict(cls, value, *, ignore_unknown_fields: bool = False) -> Self:
         if isinstance(value, str):
             if not re.match(r"^\d+(\.\d+)?s$", value):
                 raise ValueError(f"Invalid duration string: {value}")
 
             seconds = float(value[:-1])
-            return Duration(
-                seconds=int(seconds), nanos=int((seconds - int(seconds)) * 1e9)
-            )
+            return cls(seconds=int(seconds), nanos=int((seconds - int(seconds)) * 1e9))
 
         return super().from_dict(value, ignore_unknown_fields=ignore_unknown_fields)
 
@@ -625,7 +624,7 @@ class ListValue(betterproto2.Message):
     """
 
     @classmethod
-    def from_dict(cls, value, *, ignore_unknown_fields: bool = False):
+    def from_dict(cls, value, *, ignore_unknown_fields: bool = False) -> Self:
         return cls(values=[Value.from_dict(v) for v in value])
 
     def to_dict(
@@ -669,7 +668,7 @@ class Struct(betterproto2.Message):
     """
 
     @classmethod
-    def from_dict(cls, value, *, ignore_unknown_fields: bool = False):
+    def from_dict(cls, value, *, ignore_unknown_fields: bool = False) -> Self:
         assert isinstance(value, dict)
 
         fields: dict[str, Value] = {}
@@ -809,7 +808,7 @@ class Timestamp(betterproto2.Message):
     """
 
     @classmethod
-    def from_datetime(cls, dt: datetime.datetime) -> "Timestamp":
+    def from_datetime(cls, dt: datetime.datetime) -> Self:
         if not dt.tzinfo:
             raise ValueError("datetime must be timezone aware")
 
@@ -858,11 +857,11 @@ class Timestamp(betterproto2.Message):
         return f"{result}.{nanos:09d}"
 
     @classmethod
-    def from_dict(cls, value, *, ignore_unknown_fields: bool = False):
+    def from_dict(cls, value, *, ignore_unknown_fields: bool = False) -> Self:
         if isinstance(value, str):
             dt = dateutil.parser.isoparse(value)
             dt = dt.astimezone(datetime.timezone.utc)
-            return Timestamp.from_datetime(dt)
+            return cls.from_datetime(dt)
 
         return super().from_dict(value, ignore_unknown_fields=ignore_unknown_fields)
 
@@ -946,7 +945,7 @@ class Value(betterproto2.Message):
     """
 
     @classmethod
-    def from_dict(cls, value, *, ignore_unknown_fields: bool = False):
+    def from_dict(cls, value, *, ignore_unknown_fields: bool = False) -> Self:
         match value:
             case bool() as b:
                 return cls(bool_value=b)

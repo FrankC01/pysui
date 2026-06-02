@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated `pysui-fastcrypto` dependency to 0.7.3
 - Added `TransactionEffects.version` to SuiCommand Simulate, Execute and Fetching transactions
-- Updated gRPC protos
+- Updated gRPC protos and bumped betterproto2 dependency
 - Updated documentation
 - Updated SuiCommands to update parity across protocols
 - Update unit test to support updated parity across protocols
