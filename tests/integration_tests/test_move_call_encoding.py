@@ -1493,3 +1493,225 @@ async def test_withdrawal_ptb_grpc_executes(
         command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
     )
     _assert_grpc_success(result, "gRPC withdrawal PTB")
+
+
+@pytest.mark.order(147)
+async def test_receive_and_extract_phoney_gql(
+    gql_session_client: AsyncClientBase,
+    published_gql: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """receive_phoney + extract_phoney (GQL): create Phoney, send to ParmObject,
+    receive into DOF, extract and burn in a single PTB."""
+    pkg_addr = published_gql.pkg_addr
+    parm_obj_id = published_gql.parm_obj_id
+    addr = str(gql_session_client.config.active_address)
+
+    # Tx 1: create_phoney
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await gql_session_client.transaction()
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::create_phoney",
+        arguments=[],
+    )
+    txdict = await txer.build_and_sign()
+    result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
+    _assert_gql_success(result, "GQL create_phoney for receive test")
+
+    await asyncio.sleep(SETTLE_SECS)
+
+    # Query: find the Phoney owned by the active address
+    qresult = await gql_session_client.execute(
+        command=cmd.GetObjectsForType(
+            owner=addr,
+            object_type=f"{pkg_addr}::parms::Phoney",
+        )
+    )
+    assert qresult.is_ok(), f"GetObjectsForType error: {qresult.result_string}"
+    assert qresult.result_data.objects, "No Phoney object found after create_phoney"
+    phoney_obj = qresult.result_data.objects[0]
+    phoney_id = phoney_obj.object_id
+
+    # Tx 2: transfer Phoney to ParmObject
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await gql_session_client.transaction()
+    await txer.transfer_objects(transfers=[phoney_obj], recipient=parm_obj_id)
+    txdict = await txer.build_and_sign()
+    result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
+    _assert_gql_success(result, "GQL transfer Phoney to ParmObject")
+
+    await asyncio.sleep(SETTLE_SECS)
+
+    # Tx 3: receive_phoney — stores Phoney as DOF on ParmObject
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await gql_session_client.transaction()
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::receive_phoney",
+        arguments=[parm_obj_id, phoney_id],
+    )
+    txdict = await txer.build_and_sign()
+    result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
+    _assert_gql_success(result, "GQL receive_phoney")
+
+    await asyncio.sleep(SETTLE_SECS)
+
+    # Tx 4: extract_phoney → burn_phoney (chained in single PTB)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_auto_gas",
+        gas_source=GasBank.COIN,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await gql_session_client.transaction()
+    extracted = await txer.move_call(
+        target=f"{pkg_addr}::parms::extract_phoney",
+        arguments=[parm_obj_id, phoney_id],
+    )
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::burn_phoney",
+        arguments=[extracted],
+    )
+    txdict = await txer.build_and_sign()
+    result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
+    _assert_gql_success(result, "GQL extract_phoney + burn_phoney")
+
+
+@pytest.mark.order(148)
+async def test_receive_and_extract_phoney_grpc(
+    grpc_session_client: AsyncClientBase,
+    published_grpc: PublishedPackage,
+    central_bank: CentralBank,
+) -> None:
+    """receive_phoney + extract_phoney_to_sender (gRPC): create Phoney, send to ParmObject,
+    receive into DOF, extract to sender, burn using saved object ID."""
+    pkg_addr = published_grpc.pkg_addr
+    parm_obj_id = published_grpc.parm_obj_id
+    addr = str(grpc_session_client.config.active_address)
+
+    # Tx 1: create_phoney
+    await asyncio.sleep(SETTLE_SECS)
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await grpc_session_client.transaction()
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::create_phoney",
+        arguments=[],
+    )
+    result = await grpc_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+    )
+    _assert_grpc_success(result, "gRPC create_phoney for receive test")
+
+    await asyncio.sleep(SETTLE_SECS)
+
+    # Query: find the Phoney — save ID for later burn (object ID is stable across transfers)
+    qresult = await grpc_session_client.execute(
+        command=cmd.GetObjectsForType(
+            owner=addr,
+            object_type=f"{pkg_addr}::parms::Phoney",
+        )
+    )
+    assert qresult.is_ok(), f"GetObjectsForType error: {qresult.result_string}"
+    assert qresult.result_data.objects, "No Phoney object found after create_phoney"
+    phoney_obj = qresult.result_data.objects[0]
+    phoney_id = phoney_obj.object_id
+
+    # Tx 2: transfer Phoney to ParmObject
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await grpc_session_client.transaction()
+    await txer.transfer_objects(transfers=[phoney_obj], recipient=parm_obj_id)
+    result = await grpc_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+    )
+    _assert_grpc_success(result, "gRPC transfer Phoney to ParmObject")
+
+    await asyncio.sleep(SETTLE_SECS)
+
+    # Tx 3: receive_phoney — stores Phoney as DOF on ParmObject
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await grpc_session_client.transaction()
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::receive_phoney",
+        arguments=[parm_obj_id, phoney_id],
+    )
+    result = await grpc_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+    )
+    _assert_grpc_success(result, "gRPC receive_phoney")
+
+    await asyncio.sleep(SETTLE_SECS)
+
+    # Tx 4: extract_phoney_to_sender — returns Phoney to active address
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await grpc_session_client.transaction()
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::extract_phoney_to_sender",
+        arguments=[parm_obj_id, phoney_id],
+    )
+    result = await grpc_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+    )
+    _assert_grpc_success(result, "gRPC extract_phoney_to_sender")
+
+    await asyncio.sleep(SETTLE_SECS)
+
+    # Tx 5: burn_phoney — phoney_id stable across all transfers, no second query needed
+    await central_bank.withdraw(
+        pattern_id="move_call_parms_accum",
+        gas_source=GasBank.ACCOUNT,
+        gas_fee=2_000_000,
+        sui_coins=[],
+        sui_draw=0,
+    )
+    txer = await grpc_session_client.transaction()
+    await txer.move_call(
+        target=f"{pkg_addr}::parms::burn_phoney",
+        arguments=[phoney_id],
+    )
+    result = await grpc_session_client.execute(
+        command=cmd.ExecuteTransaction(**await txer.build_and_sign(use_account_for_gas=True))
+    )
+    _assert_grpc_success(result, "gRPC burn_phoney after extract_to_sender")

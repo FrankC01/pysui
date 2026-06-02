@@ -9,6 +9,7 @@ use sui::funds_accumulator::Withdrawal;
 use sui::vec_map;
 use sui::event;
 use sui::dynamic_field as df;
+use sui::dynamic_object_field as dof;
 
 const EServiceFee:u64 = 1000000;
 const Version:u8 = 1;
@@ -252,4 +253,33 @@ public fun get_service(self:&mut ParmObject, amount:&mut Option<u64>,ctx:&mut Tx
     };
     // Create and return a new Sui coin from balance
     from_balance<SUI>(pbal,ctx)
+}
+
+    // Receive a Phoney object sent to this ParmObject; stored as a DOF keyed by the Phoney's object ID.
+    public fun receive_phoney(
+        parm: &mut ParmObject,
+        to_receive: transfer::Receiving<Phoney>,
+    ) {
+        let phoney = transfer::public_receive(&mut parm.id, to_receive);
+        let key = object::id_address(&phoney);
+        dof::add(&mut parm.id, key, phoney);
+    }
+
+    // Remove a Phoney from this ParmObject's DOF and return it to the PTB caller.
+    public fun extract_phoney(
+        parm: &mut ParmObject,
+        key: address,
+    ): Phoney {
+        dof::remove(&mut parm.id, key)
+    }
+
+    // Remove a Phoney from this ParmObject's DOF and transfer it to the transaction sender.
+    public fun extract_phoney_to_sender(
+        parm: &mut ParmObject,
+        key: address,
+        ctx: &mut TxContext,
+    ) {
+        let phoney: Phoney = dof::remove(&mut parm.id, key);
+        transfer::public_transfer(phoney, ctx.sender());
+    }
 }
