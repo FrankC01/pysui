@@ -75,7 +75,10 @@ async def merge_for_gas(
             raise ValueError(effects)
         res = await client.execute(command=cmd.GetCoinSummary(coin_id=master_coin_id))
         if res.is_ok():
-            return res.result_data
+            data = res.result_data
+            if isinstance(data, sui_prot.Object):
+                return data
+            return data.object
         raise ValueError(res.result_string)
     raise task_result[0]
 
