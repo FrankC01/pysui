@@ -470,7 +470,7 @@ class TestRenderMethods:
         response = sui_prot.GetEpochResponse(epoch=epoch)
         obj = gr.GetCurrentValidatorsSC()
         result = obj.render(response)
-        assert result == [v1, v2]
+        assert result.validators == [v1, v2]
 
     # --- GetBasicCurrentEpochInfo ---
 

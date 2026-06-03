@@ -769,6 +769,7 @@ class GetPackage(SuiCommand):
     grpc_class: ClassVar[type] = rn.GetPackage
     is_pageable_gql: ClassVar[bool] = True
     paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("package", "modules")
+    compound_items_gql: ClassVar[list[tuple]] = []
 
     package: str
     next_page_token: Optional[bytes] = None
@@ -821,6 +822,7 @@ class GetModule(SuiCommand):
 
     gql_class: ClassVar[type] = pgql_query.GetModuleSC
     grpc_class: ClassVar[type] = rn.GetModule
+    compound_sub_collections_gql: ClassVar[list[tuple]] = []
 
     package: str
     module_name: str
@@ -981,6 +983,15 @@ class GetFunctions(SuiCommand):
         """Return gRPC get-functions request (flat, no paging)."""
         return rn.GetFunctions(package=self.package, module_name=self.module_name)
 
+
+GetModule.compound_sub_collections_gql = [
+    ("functions_has_next", GetFunctions, "functions", "functions"),
+    ("datatypes_has_next", GetStructures, "structures", "datatypes"),
+]
+
+GetPackage.compound_items_gql = [
+    (("package", "modules"), GetModule, "name", "module_name", ["functions_has_next", "datatypes_has_next"]),
+]
 
 # ---------------------------------------------------------------------------
 # Name service

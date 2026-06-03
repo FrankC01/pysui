@@ -97,7 +97,7 @@ class TestSCSiblings:
         assert obj.coin_type == "0x2::sui::SUI"
 
     def test_get_coin_metadata_sc_encode_fn_returns_callable(self):
-        fn = qn.GetCoinMetaDataSC.encode_fn()
+        fn = qn.GetCoinMetaDataSC().encode_fn()
         assert callable(fn)
 
     def test_get_coin_metadata_sc_encode_maps_fields(self):
@@ -112,7 +112,7 @@ class TestSCSiblings:
                 "address": _ADDR,
             }
         }
-        result = qn.GetCoinMetaDataSC.encode_fn()(raw)
+        result = qn.GetCoinMetaDataSC().encode_fn()(raw)
         assert isinstance(result, sui_prot.GetCoinInfoResponse)
         meta = result.metadata
         assert isinstance(meta, sui_prot.CoinMetadata)

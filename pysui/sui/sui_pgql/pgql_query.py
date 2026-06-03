@@ -2349,6 +2349,8 @@ def _module_raw_to_proto(mod_dict: dict, package_id: str) -> sui_prot.Module:
     module_name = mod_dict.get("module_name", "")
     datatype_list_data = mod_dict.get("datatype_list") or {}
     func_list_data = mod_dict.get("function_list") or {}
+    func_cursor = func_list_data.get("cursor") or {} if isinstance(func_list_data, dict) else {}
+    dt_cursor = datatype_list_data.get("cursor") or {} if isinstance(datatype_list_data, dict) else {}
     module_datatypes = (
         datatype_list_data.get("module_datatypes", [])
         if isinstance(datatype_list_data, dict)
@@ -2372,11 +2374,14 @@ def _module_raw_to_proto(mod_dict: dict, package_id: str) -> sui_prot.Module:
     functions = [
         _func_to_descriptor(f) for f in module_functions if isinstance(f, dict)
     ]
-    return sui_prot.Module(
+    module = sui_prot.Module(
         name=module_name,
         datatypes=datatypes,
         functions=functions,
     )
+    module.functions_has_next = func_cursor.get("hasNextPage", False)
+    module.datatypes_has_next = dt_cursor.get("hasNextPage", False)
+    return module
 
 
 # ---------------------------------------------------------------------------

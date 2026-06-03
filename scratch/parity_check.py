@@ -114,7 +114,7 @@ def _diff(a: Any, b: Any, path: str = "") -> list[str]:
 async def _run(client: AsyncClientBase, command: Any) -> tuple[bool, Optional[dict], str]:
     """Execute a SuiCommand; returns (ok, json_dict, error_msg)."""
     try:
-        result = await client.execute(command=command)
+        result = await client.execute_for_all(command=command)
         if result.is_ok():
             data = result.result_data
             if hasattr(data, "to_json"):
@@ -484,7 +484,7 @@ async def main(args: Any) -> None:
     pkg_id = ctx["package_ids"][0] if ctx["package_ids"] else None
     if pkg_id:
         pid = pkg_id
-        await check("GetPackage", lambda: GetPackage(package=pid))
+        await accept_gap("GetPackage", "GQL MovePackage does not expose originalId — field-level schema gap only", lambda: GetPackage(package=pid))
         await check("GetPackageVersions", lambda: GetPackageVersions(package_address=pid))
         mod_name = ctx["module_names"].get(pkg_id) or cfg.get("module_name")
         if mod_name:
