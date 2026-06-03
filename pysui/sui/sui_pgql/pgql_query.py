@@ -3077,6 +3077,51 @@ class GetFunctionsSC(PGQL_QueryNode):
 # ---------------------------------------------------------------------------
 
 
+@sync_instrumented("pysui.sui.sui_pgql.pgql_query._build_dynfield_object")
+def _build_dynfield_object(
+    *,
+    obj_id: Optional[str],
+    version,
+    digest: Optional[str],
+    bcs_b64: Optional[str],
+    has_public_transfer: Optional[bool],
+    storage_rebate,
+    owner_dict: Optional[dict],
+    prev_tx_digest: Optional[str],
+    object_type: Optional[str],
+    contents_bcs_b64: Optional[str],
+    contents_json,
+) -> sui_prot.Object:
+    """Build an Object proto from DynamicField or MoveObject GQL dict fields."""
+    object_bcs = (
+        sui_prot.Bcs(name="Object", value=base64.b64decode(bcs_b64)) if bcs_b64 else None
+    )
+    contents_bcs = (
+        sui_prot.Bcs(name=object_type, value=base64.b64decode(contents_bcs_b64))
+        if contents_bcs_b64 and object_type
+        else None
+    )
+    json_val = (
+        _google_protobuf.Value.from_dict(contents_json)
+        if isinstance(contents_json, dict)
+        else None
+    )
+    sr = int(storage_rebate) if storage_rebate is not None else None
+    return sui_prot.Object(
+        object_id=obj_id,
+        version=int(version or 0),
+        digest=digest,
+        owner=_owner_from_inline_frag(owner_dict),
+        object_type=object_type,
+        has_public_transfer=has_public_transfer,
+        bcs=object_bcs,
+        previous_transaction=prev_tx_digest,
+        storage_rebate=sr,
+        contents=contents_bcs,
+        json=json_val,
+    )
+
+
 class GetDynamicFieldsSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL dynamic fields response to ListDynamicFieldsResponse proto."""
 
@@ -3103,32 +3148,82 @@ class GetDynamicFieldsSC(PGQL_QueryNode):
             dfield_connection(after=self.next_page_token.decode())
 
         pg_cursor = frag.PageCursor().fragment(schema)
+
+        def _owner_inline(owner_field):
+            return owner_field.select(
+                DSLInlineFragment().on(schema.AddressOwner).select(
+                    address_id=schema.AddressOwner.address.select(schema.Address.address),
+                    obj_owner_kind=DSLMetaField("__typename"),
+                ),
+                DSLInlineFragment().on(schema.Shared).select(
+                    initial_version=schema.Shared.initialSharedVersion,
+                    obj_owner_kind=DSLMetaField("__typename"),
+                ),
+                DSLInlineFragment().on(schema.Immutable).select(
+                    obj_owner_kind=DSLMetaField("__typename"),
+                ),
+                DSLInlineFragment().on(schema.ObjectOwner).select(
+                    parent_id=schema.ObjectOwner.address.select(schema.Address.address),
+                    obj_owner_kind=DSLMetaField("__typename"),
+                ),
+            )
+
         dfield_connection.select(
             cursor=schema.DynamicFieldConnection.pageInfo.select(pg_cursor),
             dynamic_fields=schema.DynamicFieldConnection.nodes.select(
-                schema.DynamicField.name.select(
-                    name_type=schema.MoveValue.type.select(
-                        name_layout=schema.MoveType.layout,
-                    ),
-                    name_data=schema.MoveValue.json,
+                # Field wrapper object fields (→ field_object for FIELD kind)
+                field_address=schema.DynamicField.address,
+                field_version=schema.DynamicField.version,
+                field_digest=schema.DynamicField.digest,
+                field_bcs=schema.DynamicField.objectBcs,
+                field_has_public_transfer=schema.DynamicField.hasPublicTransfer,
+                field_storage_rebate=schema.DynamicField.storageRebate,
+                field_owner=_owner_inline(schema.DynamicField.owner),
+                field_prev_tx=schema.DynamicField.previousTransaction.select(
+                    field_prev_tx_digest=schema.Transaction.digest,
                 ),
-                field_kind=DSLMetaField("__typename"),
-                field_data=schema.DynamicField.value.select(
-                    DSLInlineFragment()
-                    .on(schema.MoveObject)
-                    .select(
-                        schema.MoveObject.address,
-                        schema.MoveObject.version,
-                        schema.MoveObject.digest,
-                        data_kind=DSLMetaField("__typename"),
+                field_contents=schema.DynamicField.contents.select(
+                    field_contents_layout=schema.MoveValue.type.select(
+                        field_type_layout=schema.MoveType.repr,
                     ),
-                    DSLInlineFragment()
-                    .on(schema.MoveValue)
-                    .select(
-                        object_type=schema.MoveValue.type.select(
-                            schema.MoveType.layout
+                    field_contents_bcs=schema.MoveValue.bcs,
+                    field_contents_json=schema.MoveValue.json,
+                ),
+                # Name of the field
+                field_name=schema.DynamicField.name.select(
+                    name_layout=schema.MoveValue.type.select(
+                        name_type_layout=schema.MoveType.repr,
+                    ),
+                    name_bcs=schema.MoveValue.bcs,
+                ),
+                # Value — MoveValue (FIELD kind) or MoveObject (OBJECT kind)
+                field_value=schema.DynamicField.value.select(
+                    DSLInlineFragment().on(schema.MoveValue).select(
+                        value_layout=schema.MoveValue.type.select(
+                            value_type_layout=schema.MoveType.repr,
                         ),
-                        data_kind=DSLMetaField("__typename"),
+                        value_bcs=schema.MoveValue.bcs,
+                        value_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment().on(schema.MoveObject).select(
+                        child_address=schema.MoveObject.address,
+                        child_version=schema.MoveObject.version,
+                        child_digest=schema.MoveObject.digest,
+                        child_bcs=schema.MoveObject.objectBcs,
+                        child_has_public_transfer=schema.MoveObject.hasPublicTransfer,
+                        child_storage_rebate=schema.MoveObject.storageRebate,
+                        child_owner=_owner_inline(schema.MoveObject.owner),
+                        child_prev_tx=schema.MoveObject.previousTransaction.select(
+                            child_prev_tx_digest=schema.Transaction.digest,
+                        ),
+                        child_contents=schema.MoveObject.contents.select(
+                            child_contents_layout=schema.MoveValue.type.select(
+                                child_type_layout=schema.MoveType.repr,
+                            ),
+                            child_contents_bcs=schema.MoveValue.bcs,
+                            child_contents_json=schema.MoveValue.json,
+                        ),
+                        value_kind=DSLMetaField("__typename"),
                     ),
                 ),
             ),
@@ -3155,29 +3250,90 @@ class GetDynamicFieldsSC(PGQL_QueryNode):
             for node in nodes:
                 if not isinstance(node, dict):
                     continue
-                field_kind_str = node.get("field_kind", "")
+
+                field_value = node.get("field_value") or {}
+                value_kind_str = field_value.get("value_kind", "")
                 kind = (
-                    sui_prot.DynamicFieldDynamicFieldKind.FIELD
-                    if field_kind_str == "DynamicField"
-                    else sui_prot.DynamicFieldDynamicFieldKind.OBJECT
+                    sui_prot.DynamicFieldDynamicFieldKind.OBJECT
+                    if value_kind_str == "MoveObject"
+                    else sui_prot.DynamicFieldDynamicFieldKind.FIELD
                 )
-                field_data = node.get("field_data") or {}
-                data_kind = field_data.get("data_kind", "")
-                if data_kind == "MoveObject":
+
+                name_data = node.get("field_name") or {}
+                name_type_str = (name_data.get("name_layout") or {}).get("name_type_layout")
+                name_bcs_b64 = name_data.get("name_bcs")
+                name_bcs = (
+                    sui_prot.Bcs(
+                        name=name_type_str,
+                        value=base64.b64decode(name_bcs_b64) if name_bcs_b64 else None,
+                    )
+                    if name_type_str or name_bcs_b64
+                    else None
+                )
+
+                if kind == sui_prot.DynamicFieldDynamicFieldKind.FIELD:
+                    val_type_str = (field_value.get("value_layout") or {}).get("value_type_layout")
+                    val_bcs_b64 = field_value.get("value_bcs")
+                    value_bcs = (
+                        sui_prot.Bcs(
+                            name=val_type_str,
+                            value=base64.b64decode(val_bcs_b64) if val_bcs_b64 else None,
+                        )
+                        if val_type_str or val_bcs_b64
+                        else None
+                    )
+                    contents = node.get("field_contents") or {}
+                    object_type = (contents.get("field_contents_layout") or {}).get("field_type_layout")
+                    prev_tx = node.get("field_prev_tx") or {}
+                    field_obj = _build_dynfield_object(
+                        obj_id=node.get("field_address"),
+                        version=node.get("field_version"),
+                        digest=node.get("field_digest"),
+                        bcs_b64=node.get("field_bcs"),
+                        has_public_transfer=node.get("field_has_public_transfer"),
+                        storage_rebate=node.get("field_storage_rebate"),
+                        owner_dict=node.get("field_owner"),
+                        prev_tx_digest=prev_tx.get("field_prev_tx_digest"),
+                        object_type=object_type,
+                        contents_bcs_b64=contents.get("field_contents_bcs"),
+                        contents_json=contents.get("field_contents_json"),
+                    )
                     fields.append(
                         sui_prot.DynamicField(
                             kind=kind,
                             parent=parent_id,
-                            child_id=field_data.get("address"),
+                            field_id=node.get("field_address"),
+                            field_object=field_obj,
+                            name=name_bcs,
+                            value=value_bcs,
+                            value_type=val_type_str,
                         )
                     )
                 else:
-                    obj_type = field_data.get("object_type") or {}
+                    child_contents = field_value.get("child_contents") or {}
+                    child_obj_type = (child_contents.get("child_contents_layout") or {}).get("child_type_layout")
+                    child_prev_tx = field_value.get("child_prev_tx") or {}
+                    child_obj = _build_dynfield_object(
+                        obj_id=field_value.get("child_address"),
+                        version=field_value.get("child_version"),
+                        digest=field_value.get("child_digest"),
+                        bcs_b64=field_value.get("child_bcs"),
+                        has_public_transfer=field_value.get("child_has_public_transfer"),
+                        storage_rebate=field_value.get("child_storage_rebate"),
+                        owner_dict=field_value.get("child_owner"),
+                        prev_tx_digest=child_prev_tx.get("child_prev_tx_digest"),
+                        object_type=child_obj_type,
+                        contents_bcs_b64=child_contents.get("child_contents_bcs"),
+                        contents_json=child_contents.get("child_contents_json"),
+                    )
                     fields.append(
                         sui_prot.DynamicField(
                             kind=kind,
                             parent=parent_id,
-                            value_type=(obj_type.get("layout")),
+                            child_id=field_value.get("child_address"),
+                            child_object=child_obj,
+                            name=name_bcs,
+                            value_type=child_obj_type,
                         )
                     )
 
