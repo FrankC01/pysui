@@ -768,7 +768,7 @@ class GetPackage(SuiCommand):
     gql_class: ClassVar[type] = pgql_query.GetPackageSC
     grpc_class: ClassVar[type] = rn.GetPackage
     is_pageable_gql: ClassVar[bool] = True
-    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("modules",)
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("package", "modules")
 
     package: str
     next_page_token: Optional[bytes] = None

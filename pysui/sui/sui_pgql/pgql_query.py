@@ -1795,14 +1795,6 @@ _GQL_SCALAR_MAP: dict[str, "sui_prot.OpenSignatureBodyType"] = {
 }
 
 
-@sync_instrumented("pysui.sui.sui_pgql.pgql_query._is_tx_context_sig")
-def _is_tx_context_sig(sig_dict: dict) -> bool:
-    """Return True if sig_dict represents a TxContext parameter."""
-    body = sig_dict.get("body", {})
-    if isinstance(body, dict) and "datatype" in body:
-        return body["datatype"].get("type") == "TxContext"
-    return False
-
 
 @sync_instrumented("pysui.sui.sui_pgql.pgql_query._owner_from_inline_frag")
 def _owner_from_inline_frag(owner_dict: Optional[dict]) -> Optional[sui_prot.Owner]:
@@ -2324,7 +2316,7 @@ def _func_to_descriptor(func_dict: dict) -> sui_prot.FunctionDescriptor:
                 for c in tp.get("constraints", [])
                 if c in _GQL_ABILITY_MAP
             ],
-            is_phantom=False,
+            is_phantom=None,
         )
         for tp in func_dict.get("typeParameters", [])
         if isinstance(tp, dict)
@@ -2335,7 +2327,6 @@ def _func_to_descriptor(func_dict: dict) -> sui_prot.FunctionDescriptor:
         for p in raw_params
         if isinstance(p, dict)
         and "signature" in p
-        and not _is_tx_context_sig(p["signature"])
     ]
     returns = [
         _gql_sig_to_proto_open_sig(r["signature"])
@@ -3153,7 +3144,7 @@ class GetModuleSC(PGQL_QueryNode):
 
 
 class GetPackageSC(PGQL_QueryNode):
-    """SC variant: encode_fn maps GQL package response to PackageModulesResult proto."""
+    """SC variant: encode_fn maps GQL package response to GetPackageResponse proto."""
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPackageSC.__init__")
     def __init__(self, *, package: str, next_page_token: bytes | None = None, **kwargs):
@@ -3190,16 +3181,14 @@ class GetPackageSC(PGQL_QueryNode):
 
     @staticmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPackageSC.encode_fn")
-    def encode_fn() -> Callable[[dict], "_rn.PackageModulesResult"]:
-        """Return deserializer producing PackageModulesResult from GQL package dict."""
+    def encode_fn() -> Callable[[dict], sui_prot.GetPackageResponse]:
+        """Return deserializer producing GetPackageResponse from GQL package dict."""
 
         @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPackageSC._encode")
-        def _encode(in_data: dict) -> "_rn.PackageModulesResult":
+        def _encode(in_data: dict) -> sui_prot.GetPackageResponse:
             pkg_raw = (in_data.get("object") or {}).get("asMovePackage") or {}
             if not pkg_raw:
-                return _rn.PackageModulesResult(
-                    package=sui_prot.Package(), modules=[], next_page_token=None
-                )
+                return sui_prot.GetPackageResponse(package=sui_prot.Package())
             package_id: str = pkg_raw.get("package_id") or ""
             package_version = pkg_raw.get("package_version")
             modules_conn = pkg_raw.get("modules") or {}
@@ -3213,16 +3202,13 @@ class GetPackageSC(PGQL_QueryNode):
                 for m in nodes
                 if isinstance(m, dict)
             ]
-            return _rn.PackageModulesResult(
-                package=sui_prot.Package(
-                    storage_id=package_id,
-                    version=(
-                        int(package_version) if package_version is not None else None
-                    ),
-                ),
+            pkg = sui_prot.Package(
+                storage_id=package_id,
+                version=int(package_version) if package_version is not None else None,
                 modules=modules,
-                next_page_token=next_token,
             )
+            pkg.next_page_token = next_token
+            return sui_prot.GetPackageResponse(package=pkg)
 
         return _encode
 

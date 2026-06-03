@@ -1453,16 +1453,6 @@ class MoveFunctionsGRPC:
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
-class PackageModulesResult:
-    """GQL GetPackage paging result: package metadata + one page of modules."""
-
-    package: sui_prot.Package
-    modules: list[sui_prot.Module]
-    next_page_token: Optional[bytes] = None
-
-
-@dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
-@dataclasses.dataclass
 class ValidatorsResult:
     """GQL GetCurrentValidators paging result: one page of active validators."""
 
