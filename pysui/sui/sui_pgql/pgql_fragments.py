@@ -1062,6 +1062,25 @@ class StandardCheckpoint(PGQL_Fragment):
                 schema.Checkpoint.timestamp,
                 schema.Checkpoint.previousCheckpointDigest,
                 schema.Checkpoint.networkTotalTransactions,
+                schema.Checkpoint.contentDigest,
+                schema.Checkpoint.summaryBcs,
+                schema.Checkpoint.contentBcs,
+                epoch_info=schema.Checkpoint.epoch.select(
+                    epoch_id=schema.Epoch.epochId
+                ),
+                rolling_gas=schema.Checkpoint.rollingGasSummary.select(
+                    schema.GasCostSummary.computationCost,
+                    schema.GasCostSummary.storageCost,
+                    schema.GasCostSummary.storageRebate,
+                    schema.GasCostSummary.nonRefundableStorageFee,
+                ),
+                validator_sigs=schema.Checkpoint.validatorSignatures.select(
+                    schema.ValidatorAggregatedSignature.signature,
+                    schema.ValidatorAggregatedSignature.signersMap,
+                    val_epoch=schema.ValidatorAggregatedSignature.epoch.select(
+                        epoch_id=schema.Epoch.epochId
+                    ),
+                ),
                 transaction_blocks=schema.Checkpoint.transactions.select(
                     cursor=schema.TransactionConnection.pageInfo.select(
                         pg_cursor.fragment(schema)
@@ -1243,18 +1262,22 @@ class MoveModule(PGQL_Fragment):
     def fragment(self, schema: DSLSchema) -> DSLFragment:
         """."""
         pg_cursor = PageCursor().fragment(schema)
-        struc = MoveStructure().fragment(schema)
+        struc = MoveStructureSC().fragment(schema)
+        enum_frag = MoveEnumSC().fragment(schema)
         func = MoveFunction().fragment(schema)
         return (
             DSLFragment("MoveModule")
             .on(schema.MoveModule)
             .select(
                 schema.MoveModule.name.alias("module_name"),
-                schema.MoveModule.structs.alias("structure_list").select(
-                    schema.MoveStructConnection.pageInfo.select(pg_cursor).alias(
+                schema.MoveModule.datatypes.alias("datatype_list").select(
+                    schema.MoveDatatypeConnection.pageInfo.select(pg_cursor).alias(
                         "cursor"
                     ),
-                    module_structures=schema.MoveStructConnection.nodes.select(struc),
+                    module_datatypes=schema.MoveDatatypeConnection.nodes.select(
+                        schema.MoveDatatype.asMoveStruct.select(struc),
+                        schema.MoveDatatype.asMoveEnum.select(enum_frag),
+                    ),
                 ),
                 schema.MoveModule.functions.alias("function_list").select(
                     schema.MoveFunctionConnection.pageInfo.select(pg_cursor).alias(

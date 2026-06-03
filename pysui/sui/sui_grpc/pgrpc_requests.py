@@ -186,9 +186,12 @@ class GetCurrentValidatorsSC(GetCurrentValidators):
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetCurrentValidatorsSC.render"
     )
-    def render(self, gepoch: sui_prot.GetEpochResponse) -> list[sui_prot.Validator]:
+    def render(self, gepoch: sui_prot.GetEpochResponse) -> "ValidatorsResult":
         """Extract active validators from epoch system state."""
-        return gepoch.epoch.system_state.validators.active_validators
+        return ValidatorsResult(
+            validators=gepoch.epoch.system_state.validators.active_validators,
+            next_page_token=None,
+        )
 
 
 class GetBasicCurrentEpochInfo(GetEpoch):
@@ -1025,6 +1028,25 @@ class GetTransactionSC(GetTransaction):
 
     not_found_as_none: bool = True
 
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactionSC.__init__")
+    def __init__(self, *, digest: str, field_mask: Optional[list[str]] = None) -> None:
+        """Initializer — fetches all ExecutedTransaction fields by default."""
+        super().__init__(
+            digest=digest,
+            field_mask=field_mask
+            or [
+                "digest",
+                "transaction",
+                "signatures",
+                "effects",
+                "events",
+                "checkpoint",
+                "timestamp",
+                "balance_changes",
+                "objects.objects.bcs",
+            ],
+        )
+
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactionSC.render")
     def render(
         self, obj: sui_prot.GetTransactionResponse
@@ -1037,6 +1059,30 @@ class GetTransactionsSC(GetTransactions):
     """SC sibling: unwraps BatchGetTransactionsResponse → list[ExecutedTransaction | None]."""
 
     not_found_as_none: bool = True
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactionsSC.__init__")
+    def __init__(
+        self,
+        *,
+        transactions: list[str],
+        field_mask: Optional[list[str]] = None,
+    ) -> None:
+        """Initializer — fetches all ExecutedTransaction fields by default."""
+        super().__init__(
+            transactions=transactions,
+            field_mask=field_mask
+            or [
+                "digest",
+                "transaction",
+                "signatures",
+                "effects",
+                "events",
+                "checkpoint",
+                "timestamp",
+                "balance_changes",
+                "objects.objects.bcs",
+            ],
+        )
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactionsSC.render")
     def render(

@@ -303,7 +303,7 @@ async def do_tx(client: AsyncClientBase):
     handle_result(
         await client.execute(
             command=cmd.GetTransaction(
-                digest="Du3fukucFwku6mKJfR3oor464w62LdSLG55Rf7HWpc2Q"
+                digest="8mP8YpKYPoS84sB4JGg5mrfahq55qwpMxa5KbaBF6nFT"
             )
         )
     )
@@ -842,6 +842,7 @@ async def main():
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP,
                 profile_name="devnet",
                 # profile_name="testnet",
+                # profile_name="testnet-arch",
                 # profile_name="mainnet",
             )
         )
@@ -852,7 +853,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_all_gas_alt(client_init)
         # await do_gas_ids(client_init)
@@ -891,7 +892,7 @@ async def main():
         # await do_package(client_init)
         # await do_dry_run(client_init)
         # await do_merge_to_one(client_init)
-        # await do_split_any_half(client_init)
+        await do_split_any_half(client_init)
         # await do_execute(client_init)
         # await do_verify_tx_sig(client_init)
         # await do_verify_pm_sig(client_init)

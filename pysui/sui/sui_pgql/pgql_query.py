@@ -33,6 +33,7 @@ import pysui.sui.sui_grpc.pgrpc_requests as _rn
 from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
 from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented, sync_measure
 import pysui.sui.sui_bcs.sui_system_bcs as sui_system_bcs
+import pysui.sui.sui_bcs.sui_checkpoint_bcs as sui_checkpoint_bcs
 
 
 
@@ -68,19 +69,21 @@ class GetCoinSummarySC(PGQL_QueryNode):
 
     @staticmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetCoinSummarySC.encode_fn")
-    def encode_fn() -> Callable[[dict], sui_prot.Object]:
-        """Return deserializer producing sui_prot.Object from GQL object dict."""
+    def encode_fn() -> Callable[[dict], sui_prot.GetObjectResponse]:
+        """Return deserializer producing sui_prot.GetObjectResponse from GQL object dict."""
 
         @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetCoinSummarySC._encode")
-        def _encode(in_data: dict) -> sui_prot.Object:
+        def _encode(in_data: dict) -> sui_prot.GetObjectResponse:
             obj = in_data.get("object", {})
             flat: dict = {}
             pgql_type._fast_flat(obj, flat)
-            return sui_prot.Object(
-                object_id=flat.get("coin_object_id"),
-                version=flat.get("version", 0),
-                digest=flat.get("object_digest"),
-                balance=int(flat.get("balance", 0)) if flat.get("balance") else None,
+            return sui_prot.GetObjectResponse(
+                object=sui_prot.Object(
+                    object_id=flat.get("coin_object_id"),
+                    version=flat.get("version", 0),
+                    digest=flat.get("object_digest"),
+                    balance=int(flat.get("balance", 0)) if flat.get("balance") else None,
+                )
             )
 
         return _encode
@@ -264,8 +267,8 @@ class GetMultipleObjectContentSC(PGQL_QueryNode):
 
         @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetMultipleObjectContentSC._encode")
         def _encode(in_data: dict) -> sui_prot.BatchGetObjectsResponse:
-            objects_data = in_data if isinstance(in_data, list) else [in_data]
-            objects: list[sui_prot.Object] = []
+            objects_data = in_data.get("multiGetObjects", []) if isinstance(in_data, dict) else in_data
+            objects: list[sui_prot.GetObjectResponse] = []
             for obj in objects_data:
                 flat: dict = {}
                 pgql_type._fast_flat(obj, flat)
@@ -278,12 +281,14 @@ class GetMultipleObjectContentSC(PGQL_QueryNode):
                     if bcs_bytes:
                         bcs_content = sui_prot.Bcs(name=object_type, value=base64.b64decode(bcs_bytes))
                 objects.append(
-                    sui_prot.Object(
-                        object_id=flat.get("address"),
-                        version=int(flat.get("version", 0)),
-                        digest=flat.get("digest"),
-                        previous_transaction=flat.get("previousTransaction"),
-                        contents=bcs_content,
+                    sui_prot.GetObjectResponse(
+                        object=sui_prot.Object(
+                            object_id=flat.get("address"),
+                            version=int(flat.get("version", 0)),
+                            digest=flat.get("digest"),
+                            previous_transaction=flat.get("previousTransaction"),
+                            contents=bcs_content,
+                        )
                     )
                 )
             return sui_prot.BatchGetObjectsResponse(objects=objects)
@@ -391,11 +396,13 @@ class GetObjectSummarySC(PGQL_QueryNode):
             ow = raw.get("owner") or {}
             kind = ow.get("obj_owner_kind", "")
             if kind == "AddressOwner":
-                owner_str = ow.get("address_id")
+                addr_data = ow.get("address_id")
+                owner_str = addr_data.get("address") if isinstance(addr_data, dict) else addr_data
             elif kind == "Shared":
                 shared_v = str(ow.get("initial_version", 0))
             elif kind == "ObjectOwner":
-                owner_str = ow.get("parent_id")
+                parent_data = ow.get("parent_id")
+                owner_str = parent_data.get("address") if isinstance(parent_data, dict) else parent_data
             return ObjectSummary(
                 objectId=raw.get("object_id", ""),
                 version=str(raw.get("version", 0)),
@@ -448,6 +455,26 @@ class GetTransactionSC(PGQL_QueryNode):
                 schema.TransactionEffects.effectsJson,
                 schema.TransactionEffects.balanceChangesJson,
                 schema.TransactionEffects.version,
+                schema.TransactionEffects.events.select(
+                    schema.EventConnection.nodes.select(
+                        schema.Event.sequenceNumber,
+                        schema.Event.eventBcs,
+                        schema.Event.sender.select(
+                            sender_address=schema.Address.address
+                        ),
+                        schema.Event.contents.select(
+                            schema.MoveValue.type.select(
+                                event_type=schema.MoveType.repr
+                            ),
+                        ),
+                        schema.Event.transactionModule.select(
+                            schema.MoveModule.package.select(
+                                package_id=schema.MovePackage.address,
+                            ),
+                            module_name=schema.MoveModule.name,
+                        ),
+                    )
+                ),
             ),
             schema.Transaction.transactionBcs,
             schema.Transaction.transactionJson,
@@ -544,10 +571,98 @@ class GetTransactionKindSC(PGQL_QueryNode):
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetTransactionKindSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Minimal kind query: fetch only __typename to stay under the 300-node limit."""
+        """Build transaction kind query with full PTB inputs and commands."""
+        arg_frags = [
+            DSLMetaField("__typename"),
+            DSLInlineFragment().on(schema.Input).select(
+                input_index=schema.Input.ix,
+            ),
+            DSLInlineFragment().on(schema.TxResult).select(
+                result_index=schema.TxResult.ix,
+                cmd=schema.TxResult.cmd,
+            ),
+        ]
+        obj_sel = [schema.Object.address, schema.Object.version, schema.Object.digest]
+        input_frags = [
+            DSLInlineFragment().on(schema.MoveValue).select(
+                base64_bytes=schema.MoveValue.bcs,
+                input_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.OwnedOrImmutable).select(
+                schema.OwnedOrImmutable.object.select(*obj_sel),
+                input_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.SharedInput).select(
+                schema.SharedInput.address,
+                schema.SharedInput.initialSharedVersion,
+                schema.SharedInput.mutable,
+                input_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.Receiving).select(
+                schema.Receiving.object.select(*obj_sel),
+                input_typename=DSLMetaField("__typename"),
+            ),
+        ]
+        cmd_frags = [
+            DSLInlineFragment().on(schema.MoveCallCommand).select(
+                schema.MoveCallCommand.function.select(
+                    schema.MoveFunction.name,
+                    schema.MoveFunction.module.select(
+                        schema.MoveModule.name,
+                        schema.MoveModule.package.select(
+                            schema.MovePackage.address,
+                        ),
+                    ),
+                ),
+                schema.MoveCallCommand.arguments.select(*arg_frags),
+                tx_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.TransferObjectsCommand).select(
+                schema.TransferObjectsCommand.inputs.select(*arg_frags),
+                schema.TransferObjectsCommand.address.select(*arg_frags),
+                tx_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.SplitCoinsCommand).select(
+                schema.SplitCoinsCommand.coin.select(*arg_frags),
+                schema.SplitCoinsCommand.amounts.select(*arg_frags),
+                tx_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.MergeCoinsCommand).select(
+                schema.MergeCoinsCommand.coin.select(*arg_frags),
+                schema.MergeCoinsCommand.coins.select(*arg_frags),
+                tx_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.PublishCommand).select(
+                schema.PublishCommand.modules,
+                schema.PublishCommand.dependencies,
+                tx_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.UpgradeCommand).select(
+                schema.UpgradeCommand.modules,
+                schema.UpgradeCommand.dependencies,
+                schema.UpgradeCommand.currentPackage,
+                schema.UpgradeCommand.upgradeTicket.select(*arg_frags),
+                tx_typename=DSLMetaField("__typename"),
+            ),
+            DSLInlineFragment().on(schema.MakeMoveVecCommand).select(
+                schema.MakeMoveVecCommand.elements.select(*arg_frags),
+                tx_typename=DSLMetaField("__typename"),
+                vector_type=schema.MakeMoveVecCommand.type.select(
+                    schema.MoveType.repr,
+                ),
+            ),
+        ]
         qres = schema.Query.transaction(digest=self.digest).alias("transaction")
         qres.select(
             schema.Transaction.kind.select(
+                DSLInlineFragment().on(schema.ProgrammableTransaction).select(
+                    inputs=schema.ProgrammableTransaction.inputs.select(
+                        nodes=schema.TransactionInputConnection.nodes.select(*input_frags),
+                    ),
+                    commands=schema.ProgrammableTransaction.commands.select(
+                        nodes=schema.CommandConnection.nodes.select(*cmd_frags),
+                    ),
+                ),
                 tx_kind=DSLMetaField("__typename"),
             )
         )
@@ -557,6 +672,16 @@ class GetTransactionKindSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetTransactionKindSC.encode_fn")
     def encode_fn() -> Callable[[dict], "sui_prot.TransactionKind | None"]:
         """Return encoder mapping GQL transaction kind dict to TransactionKind proto."""
+        _TX_KIND_MAP = {
+            "ProgrammableTransaction": sui_prot.TransactionKindKind.PROGRAMMABLE_TRANSACTION,
+            "ChangeEpochTransaction": sui_prot.TransactionKindKind.CHANGE_EPOCH,
+            "GenesisTransaction": sui_prot.TransactionKindKind.GENESIS,
+            "ConsensusCommitPrologueTransaction": sui_prot.TransactionKindKind.CONSENSUS_COMMIT_PROLOGUE_V1,
+            "AuthenticatorStateUpdateTransaction": sui_prot.TransactionKindKind.AUTHENTICATOR_STATE_UPDATE,
+            "EndOfEpochTransaction": sui_prot.TransactionKindKind.END_OF_EPOCH,
+            "RandomnessStateUpdateTransaction": sui_prot.TransactionKindKind.RANDOMNESS_STATE_UPDATE,
+            "ProgrammableSystemTransaction": sui_prot.TransactionKindKind.PROGRAMMABLE_TRANSACTION,
+        }
 
         @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetTransactionKindSC._encode")
         def _encode(in_data: dict) -> "sui_prot.TransactionKind | None":
@@ -564,7 +689,11 @@ class GetTransactionKindSC(PGQL_QueryNode):
             if not tx_block:
                 return None
             kind_dict = tx_block.get("kind") or {}
-            return _encode_tx_kind(kind_dict)
+            result = _encode_tx_kind(kind_dict)
+            result.kind = _TX_KIND_MAP.get(
+                kind_dict.get("tx_kind"), sui_prot.TransactionKindKind.KIND_UNKNOWN
+            )
+            return result
 
         return _encode
 
@@ -1146,19 +1275,55 @@ class GetCoinMetaDataSC(PGQL_QueryNode):
             schema.CoinMetadata.iconUrl,
             schema.CoinMetadata.supply,
             schema.CoinMetadata.address,
+            schema.CoinMetadata.regulatedState,
+            schema.CoinMetadata.supplyState,
         )
         return dsl_gql(DSLQuery(qres))
 
-    @staticmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetCoinMetaDataSC.encode_fn")
-    def encode_fn() -> Callable[[dict], sui_prot.GetCoinInfoResponse]:
+    def encode_fn(self) -> Callable[[dict], sui_prot.GetCoinInfoResponse]:
         """Return deserializer producing GetCoinInfoResponse from GQL coinMetadata dict."""
+        coin_type = self.coin_type
+
+        def _normalize_coin_type(ct: str) -> str:
+            parts = ct.split("::", 1)
+            if len(parts) == 2 and parts[0].lower().startswith("0x"):
+                hex_part = parts[0][2:]
+                return f"0x{hex_part.zfill(64)}::{parts[1]}"
+            return ct
 
         @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetCoinMetaDataSC._encode")
         def _encode(in_data: dict) -> sui_prot.GetCoinInfoResponse:
             flat: dict = {}
             pgql_type._fast_flat(in_data, flat)
+            reg_state_str = flat.get("regulatedState")
+            reg_meta = (
+                sui_prot.RegulatedCoinMetadata(
+                    coin_regulated_state=getattr(
+                        sui_prot.RegulatedCoinMetadataCoinRegulatedState,
+                        reg_state_str,
+                        sui_prot.RegulatedCoinMetadataCoinRegulatedState.COIN_REGULATED_STATE_UNKNOWN,
+                    )
+                )
+                if reg_state_str
+                else None
+            )
+            supply_state_str = flat.get("supplyState")
+            supply_raw = flat.get("supply")
+            treasury = (
+                sui_prot.CoinTreasury(
+                    total_supply=str(supply_raw) if supply_raw is not None else "",
+                    supply_state=getattr(
+                        sui_prot.CoinTreasurySupplyState,
+                        supply_state_str or "",
+                        sui_prot.CoinTreasurySupplyState.SUPPLY_STATE_UNKNOWN,
+                    ),
+                )
+                if (supply_raw is not None or supply_state_str)
+                else None
+            )
             return sui_prot.GetCoinInfoResponse(
+                coin_type=_normalize_coin_type(coin_type),
                 metadata=sui_prot.CoinMetadata(
                     id=flat.get("address"),
                     decimals=flat.get("decimals"),
@@ -1166,7 +1331,9 @@ class GetCoinMetaDataSC(PGQL_QueryNode):
                     symbol=flat.get("symbol"),
                     description=flat.get("description"),
                     icon_url=flat.get("iconUrl"),
-                )
+                ),
+                regulated_metadata=reg_meta,
+                treasury=treasury,
             )
 
         return _encode
@@ -1611,9 +1778,9 @@ _GQL_ABILITY_MAP: dict[str, "sui_prot.Ability"] = {
 }
 
 _GQL_VIS_MAP: dict[str, "sui_prot.FunctionDescriptorVisibility"] = {
-    "Private": sui_prot.FunctionDescriptorVisibility.PRIVATE,
-    "Public": sui_prot.FunctionDescriptorVisibility.PUBLIC,
-    "Friend": sui_prot.FunctionDescriptorVisibility.FRIEND,
+    "PRIVATE": sui_prot.FunctionDescriptorVisibility.PRIVATE,
+    "PUBLIC": sui_prot.FunctionDescriptorVisibility.PUBLIC,
+    "FRIEND": sui_prot.FunctionDescriptorVisibility.FRIEND,
 }
 
 _GQL_SCALAR_MAP: dict[str, "sui_prot.OpenSignatureBodyType"] = {
@@ -1907,6 +2074,108 @@ def _encode_checkpoint_from_raw(cp_dict: dict) -> sui_prot.GetCheckpointResponse
             pass
     seq = cp_dict.get("sequenceNumber")
     net_txns = cp_dict.get("networkTotalTransactions")
+    content_digest = cp_dict.get("contentDigest")
+    # Epoch
+    epoch_info = cp_dict.get("epoch_info") or {}
+    epoch_id_raw = epoch_info.get("epoch_id")
+    epoch_id: Optional[int] = int(epoch_id_raw) if epoch_id_raw is not None else None
+    # Rolling gas summary
+    rolling_gas = cp_dict.get("rolling_gas") or {}
+    gas_summary: Optional[sui_prot.GasCostSummary] = None
+    if rolling_gas:
+        cc = rolling_gas.get("computationCost")
+        sc = rolling_gas.get("storageCost")
+        sr = rolling_gas.get("storageRebate")
+        nrsf = rolling_gas.get("nonRefundableStorageFee")
+        gas_summary = sui_prot.GasCostSummary(
+            computation_cost=int(cc) if cc is not None else None,
+            storage_cost=int(sc) if sc is not None else None,
+            storage_rebate=int(sr) if sr is not None else None,
+            non_refundable_storage_fee=int(nrsf) if nrsf is not None else None,
+        )
+    # Summary BCS
+    summary_bcs_b64 = cp_dict.get("summaryBcs")
+    summary_bcs: Optional[sui_prot.Bcs] = None
+    summary_commitments: list = []
+    summary_version_specific_data: Optional[bytes] = None
+    if summary_bcs_b64:
+        _summary_bytes = base64.b64decode(summary_bcs_b64)
+        summary_bcs = sui_prot.Bcs(name="CheckpointSummary", value=_summary_bytes)
+        try:
+            _decoded_summary = sui_checkpoint_bcs.CheckpointSummaryBCS.deserialize(_summary_bytes)
+            for _c in _decoded_summary.checkpoint_commitments:
+                summary_commitments.append(
+                    sui_prot.CheckpointCommitment(
+                        kind=_c.index + 1,
+                        digest=base58.b58encode(bytes(_c.value.digest)).decode(),
+                    )
+                )
+            _vsd = bytes(_decoded_summary.version_specific_data)
+            if _vsd:
+                summary_version_specific_data = _vsd
+        except Exception:
+            pass
+    # Validator signature
+    val_sigs_dict = cp_dict.get("validator_sigs") or {}
+    validator_signature: Optional[sui_prot.ValidatorAggregatedSignature] = None
+    if val_sigs_dict:
+        sig_b64 = val_sigs_dict.get("signature")
+        sig_bytes = base64.b64decode(sig_b64) if sig_b64 else None
+        signers_map_ints = val_sigs_dict.get("signersMap") or []
+        bitmap = bytes(int(x) for x in signers_map_ints) if signers_map_ints else None
+        val_epoch_info = val_sigs_dict.get("val_epoch") or {}
+        val_epoch_id_raw = val_epoch_info.get("epoch_id")
+        val_epoch_id = int(val_epoch_id_raw) if val_epoch_id_raw is not None else None
+        validator_signature = sui_prot.ValidatorAggregatedSignature(
+            epoch=val_epoch_id,
+            signature=sig_bytes,
+            bitmap=bitmap,
+        )
+    # Contents
+    content_bcs_b64 = cp_dict.get("contentBcs")
+    checkpoint_contents: Optional[sui_prot.CheckpointContents] = None
+    if content_bcs_b64 or content_digest:
+        content_bcs: Optional[sui_prot.Bcs] = None
+        contents_version: Optional[int] = None
+        contents_transactions: list = []
+        if content_bcs_b64:
+            _content_bytes = base64.b64decode(content_bcs_b64)
+            content_bcs = sui_prot.Bcs(name="CheckpointContents", value=_content_bytes)
+            try:
+                _variant_byte = _content_bytes[0]
+                contents_version = _variant_byte + 1
+                if _variant_byte == 0:
+                    _decoded_contents = sui_checkpoint_bcs.CheckpointContentsBCS.deserialize(_content_bytes)
+                    for _ed in _decoded_contents.value.transactions:
+                        contents_transactions.append(
+                            sui_prot.CheckpointedTransactionInfo(
+                                transaction=base58.b58encode(bytes(_ed.transaction)).decode(),
+                                effects=base58.b58encode(bytes(_ed.effects)).decode(),
+                            )
+                        )
+                else:
+                    for _tx_d, _eff_d, _sigs, _aliases in sui_checkpoint_bcs.decode_checkpoint_contents_v2(_content_bytes[1:]):
+                        _user_sigs = [_parse_user_signature(base64.b64encode(s).decode()) for s in _sigs]
+                        _alias_vers = [
+                            sui_prot.AddressAliasesVersion(version=v) if v is not None else sui_prot.AddressAliasesVersion()
+                            for v in _aliases
+                        ]
+                        contents_transactions.append(
+                            sui_prot.CheckpointedTransactionInfo(
+                                transaction=base58.b58encode(_tx_d).decode(),
+                                effects=base58.b58encode(_eff_d).decode(),
+                                signatures=_user_sigs,
+                                address_aliases_versions=_alias_vers,
+                            )
+                        )
+            except Exception:
+                pass
+        checkpoint_contents = sui_prot.CheckpointContents(
+            bcs=content_bcs,
+            digest=content_digest,
+            version=contents_version,
+            transactions=contents_transactions,
+        )
     return sui_prot.GetCheckpointResponse(
         checkpoint=sui_prot.Checkpoint(
             sequence_number=int(seq) if seq is not None else None,
@@ -1919,7 +2188,15 @@ def _encode_checkpoint_from_raw(cp_dict: dict) -> sui_prot.GetCheckpointResponse
                 ),
                 previous_digest=cp_dict.get("previousCheckpointDigest"),
                 timestamp=ts,
+                bcs=summary_bcs,
+                content_digest=content_digest,
+                epoch=epoch_id,
+                epoch_rolling_gas_cost_summary=gas_summary,
+                commitments=summary_commitments,
+                version_specific_data=summary_version_specific_data,
             ),
+            signature=validator_signature,
+            contents=checkpoint_contents,
         )
     )
 
@@ -2079,11 +2356,11 @@ def _func_to_descriptor(func_dict: dict) -> sui_prot.FunctionDescriptor:
 def _module_raw_to_proto(mod_dict: dict, package_id: str) -> sui_prot.Module:
     """Map a MoveModule raw GQL dict to a Module proto."""
     module_name = mod_dict.get("module_name", "")
-    struct_list_data = mod_dict.get("structure_list") or {}
+    datatype_list_data = mod_dict.get("datatype_list") or {}
     func_list_data = mod_dict.get("function_list") or {}
-    module_structures = (
-        struct_list_data.get("module_structures", [])
-        if isinstance(struct_list_data, dict)
+    module_datatypes = (
+        datatype_list_data.get("module_datatypes", [])
+        if isinstance(datatype_list_data, dict)
         else []
     )
     module_functions = (
@@ -2091,11 +2368,16 @@ def _module_raw_to_proto(mod_dict: dict, package_id: str) -> sui_prot.Module:
         if isinstance(func_list_data, dict)
         else []
     )
-    datatypes = [
-        _struct_to_datatype(s, package_id, module_name)
-        for s in module_structures
-        if isinstance(s, dict)
-    ]
+    datatypes = []
+    for d in module_datatypes:
+        if not isinstance(d, dict):
+            continue
+        struct_raw = d.get("asMoveStruct")
+        enum_raw = d.get("asMoveEnum")
+        if struct_raw:
+            datatypes.append(_struct_to_datatype(struct_raw, package_id, module_name))
+        elif enum_raw:
+            datatypes.append(_enum_to_datatype(enum_raw, package_id, module_name))
     functions = [
         _func_to_descriptor(f) for f in module_functions if isinstance(f, dict)
     ]
@@ -2835,7 +3117,8 @@ class GetModuleSC(PGQL_QueryNode):
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
         func = frag.MoveFunction().fragment(schema)
-        struc = frag.MoveStructure().fragment(schema)
+        struc = frag.MoveStructureSC().fragment(schema)
+        enum_frag = frag.MoveEnumSC().fragment(schema)
         mod = frag.MoveModule().fragment(schema)
         pg_cursor = frag.PageCursor().fragment(schema)
 
@@ -2848,6 +3131,7 @@ class GetModuleSC(PGQL_QueryNode):
             pg_cursor,
             func,
             struc,
+            enum_frag,
             mod,
             DSLQuery(qres),
         )
@@ -2886,7 +3170,8 @@ class GetPackageSC(PGQL_QueryNode):
             mod_q = schema.MovePackage.modules
         pg_cursor = frag.PageCursor().fragment(schema)
         func = frag.MoveFunction().fragment(schema)
-        struc = frag.MoveStructure().fragment(schema)
+        struc = frag.MoveStructureSC().fragment(schema)
+        enum_frag = frag.MoveEnumSC().fragment(schema)
         mod = frag.MoveModule().fragment(schema)
 
         qres = schema.Query.object(address=self.package).select(
@@ -2901,7 +3186,7 @@ class GetPackageSC(PGQL_QueryNode):
                 ),
             )
         )
-        return dsl_gql(pg_cursor, func, struc, mod, DSLQuery(qres))
+        return dsl_gql(pg_cursor, func, struc, enum_frag, mod, DSLQuery(qres))
 
     @staticmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPackageSC.encode_fn")
@@ -2961,26 +3246,30 @@ class GetStructuresSC(PGQL_QueryNode):
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetStructuresSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
-        """Build request using bytes cursor for structs paging."""
+        """Build request using bytes cursor for all datatypes (structs + enums) paging."""
         if self.next_page_token:
-            struct_q = schema.MoveModule.structs(after=self.next_page_token.decode())
+            dt_q = schema.MoveModule.datatypes(after=self.next_page_token.decode())
         else:
-            struct_q = schema.MoveModule.structs
-        struc = frag.MoveStructure().fragment(schema)
+            dt_q = schema.MoveModule.datatypes
+        struc = frag.MoveStructureSC().fragment(schema)
+        enum_frag = frag.MoveEnumSC().fragment(schema)
         pg_cursor = frag.PageCursor().fragment(schema)
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
                 schema.MovePackage.module(name=self.module).select(
-                    struct_q.select(
-                        schema.MoveStructConnection.pageInfo.select(pg_cursor).alias(
+                    dt_q.select(
+                        schema.MoveDatatypeConnection.pageInfo.select(pg_cursor).alias(
                             "cursor"
                         ),
-                        schema.MoveStructConnection.nodes.select(struc),
+                        schema.MoveDatatypeConnection.nodes.select(
+                            schema.MoveDatatype.asMoveStruct.select(struc),
+                            schema.MoveDatatype.asMoveEnum.select(enum_frag),
+                        ),
                     )
                 )
             )
         )
-        return dsl_gql(struc, pg_cursor, DSLQuery(qres))
+        return dsl_gql(struc, enum_frag, pg_cursor, DSLQuery(qres))
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetStructuresSC.encode_fn")
     def encode_fn(self) -> Callable[[dict], "_rn.MoveStructuresGRPC"]:
@@ -2993,18 +3282,24 @@ class GetStructuresSC(PGQL_QueryNode):
             mod = ((in_data.get("object") or {}).get("asMovePackage") or {}).get(
                 "module"
             ) or {}
-            structs_conn = mod.get("structs") or {}
-            cursor = structs_conn.get("cursor") or {}
-            nodes = structs_conn.get("nodes") or []
+            datatypes_conn = mod.get("datatypes") or {}
+            cursor = datatypes_conn.get("cursor") or {}
+            nodes = datatypes_conn.get("nodes") or []
             end_cursor = cursor.get("endCursor")
             has_next = cursor.get("hasNextPage", False)
             next_token = end_cursor.encode() if has_next and end_cursor else None
+            structures = []
+            for n in nodes:
+                if not isinstance(n, dict):
+                    continue
+                struct_raw = n.get("asMoveStruct")
+                enum_raw = n.get("asMoveEnum")
+                if struct_raw:
+                    structures.append(_struct_to_datatype(struct_raw, defining_id, module_name))
+                elif enum_raw:
+                    structures.append(_enum_to_datatype(enum_raw, defining_id, module_name))
             return _rn.MoveStructuresGRPC(
-                structures=[
-                    _struct_to_datatype(n, defining_id, module_name)
-                    for n in nodes
-                    if isinstance(n, dict)
-                ],
+                structures=structures,
                 next_page_token=next_token,
             )
 
@@ -3961,7 +4256,7 @@ def _encode_ptb_inputs(inputs_conn: "dict | None") -> "list[sui_prot.Input]":
                 version=obj.get("version"),
                 digest=obj.get("digest"),
             )
-        elif tn == "Pure":
+        elif tn == "MoveValue":
             b64 = node.get("base64_bytes")
             inp = sui_prot.Input(
                 kind=sui_prot.InputInputKind.PURE,
@@ -4560,11 +4855,16 @@ def _encode_executed_tx(
     # effectsJson omits objectType (confirmed GQL indexer behaviour, 2026-05-06).
     objects = _encode_execute_object_changes(eff_dict, effects)
 
+    event_nodes = (eff_dict.get("events") or {}).get("nodes") or []
+    event_list = _encode_simulate_events(event_nodes) if event_nodes else []
+    events = sui_prot.TransactionEvents(events=event_list) if event_list else None
+
     return sui_prot.ExecutedTransaction(
         digest=digest,
         transaction=transaction,
         signatures=sigs,
         effects=effects,
+        events=events,
         balance_changes=balance_changes,
         checkpoint=checkpoint_seq,
         timestamp=timestamp,
