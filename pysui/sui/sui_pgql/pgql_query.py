@@ -1540,8 +1540,11 @@ class GetEpochSC(PGQL_QueryNode):
             first_nodes = (epoch_data.get("first_checkpoint") or {}).get("nodes") or []
             first_checkpoint = int(first_nodes[0]["sequenceNumber"]) if first_nodes else None
 
-            last_nodes = (epoch_data.get("last_checkpoint") or {}).get("nodes") or []
-            last_checkpoint = int(last_nodes[0]["sequenceNumber"]) if last_nodes else None
+            if end_ts:
+                last_nodes = (epoch_data.get("last_checkpoint") or {}).get("nodes") or []
+                last_checkpoint = int(last_nodes[0]["sequenceNumber"]) if last_nodes else None
+            else:
+                last_checkpoint = None
 
             committee = None
             if system_state and system_state.validators:

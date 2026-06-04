@@ -314,8 +314,6 @@ Known field-level gaps are listed below by command.
 
 **GetEpoch**
 
-- ``lastCheckpoint``: GQL and gRPC expose different checkpoint boundary semantics for
-  this field.
 - Several protocol-config sub-keys differ between transports.
 
 **GetProtocolConfig**
