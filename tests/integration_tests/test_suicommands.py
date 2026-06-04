@@ -32,7 +32,7 @@ import pytest
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui import client_factory, GroupProtocol, PysuiConfiguration, AsyncClientBase
 from tests.integration_tests.conftest import SETTLE_SECS, CentralBank, GasBank
-from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC, PackageModulesResult, ValidatorsResult
+from pysui.sui.sui_grpc.pgrpc_requests import MoveStructuresGRPC, MoveFunctionsGRPC, ValidatorsResult
 from pysui.sui.sui_common.sui_commands import (
     ExecuteTransaction,
     GetCheckpointByDigest,
@@ -173,7 +173,7 @@ async def test_get_package_gql(gql_session_client: AsyncClientBase) -> None:
     """GetPackage(0x2) via GQL SC sibling returns GetPackageResponse."""
     result = await gql_session_client.execute(command=GetPackage(package=_FRAMEWORK))
     assert result.is_ok(), f"GetPackage GQL: {result.result_string}"
-    assert isinstance(result.result_data, PackageModulesResult)
+    assert isinstance(result.result_data, sui_prot.GetPackageResponse)
     assert result.result_data.package is not None
 
 
@@ -504,9 +504,9 @@ async def test_get_current_validators_grpc(grpc_session_client: AsyncClientBase)
     """GetCurrentValidators via gRPC SC sibling returns list[Validator] (devnet)."""
     result = await grpc_session_client.execute(command=GetCurrentValidators())
     assert result.is_ok(), f"GetCurrentValidators gRPC: {result.result_string}"
-    assert isinstance(result.result_data, list)
-    assert len(result.result_data) > 0
-    assert isinstance(result.result_data[0], sui_prot.Validator)
+    assert isinstance(result.result_data, ValidatorsResult)
+    assert len(result.result_data.validators) > 0
+    assert isinstance(result.result_data.validators[0], sui_prot.Validator)
 
 
 # ---------------------------------------------------------------------------
@@ -550,11 +550,11 @@ async def test_get_current_validators_grpc_testnet() -> None:
     try:
         result = await client.execute_for_all(command=GetCurrentValidators())
         assert result.is_ok(), f"GetCurrentValidators gRPC testnet: {result.result_string}"
-        assert isinstance(result.result_data, list)
-        assert isinstance(result.result_data[0], sui_prot.Validator)
-        assert len(result.result_data) > _TESTNET_PAGE_SIZE, (
+        assert isinstance(result.result_data, ValidatorsResult)
+        assert isinstance(result.result_data.validators[0], sui_prot.Validator)
+        assert len(result.result_data.validators) > _TESTNET_PAGE_SIZE, (
             f"Expected > {_TESTNET_PAGE_SIZE} validators on testnet, "
-            f"got {len(result.result_data)}"
+            f"got {len(result.result_data.validators)}"
         )
     finally:
         await client.close()
