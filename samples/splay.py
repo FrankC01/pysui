@@ -18,7 +18,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_splay_version = "1.1.0"
+_splay_version = "2.0.0"
 
 import logging
 
@@ -133,7 +133,11 @@ async def splay_n_to_self(
     if isinstance(task_result, sui_prot.Object):
         r_balance = int(task_result.balance)
         gas_reserve = explicit_count * 1_988_000
-        distro = amount_per if amount_per else int((r_balance - gas_reserve) / explicit_count)
+        distro = (
+            amount_per
+            if amount_per
+            else int((r_balance - gas_reserve) / explicit_count)
+        )
         total_distro = distro * explicit_count
         if r_balance >= total_distro + gas_reserve:
             txn: AsyncSuiTransaction = await client.transaction()

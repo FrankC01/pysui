@@ -25,7 +25,7 @@ from pysui.sui.sui_common.move_to_bcs import MoveDataType
 import pysui.sui.sui_common.mtobcs_types as mtypes
 from samples.cmd_argsg import pre_config_pull, build_mtobcs_parser
 
-_mtobcs_version = "0.1.3-beta"
+_mtobcs_version = "2.0.0"
 
 import logging
 

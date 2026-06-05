@@ -20,7 +20,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_async_gas_version = "2.0.0"
+_async_gas_version = "2.1.0"
 
 from samples.cmd_argsg import build_async_gas_parser, pre_config_pull
 from pysui import PysuiClient, client_factory, __version__
@@ -53,7 +53,9 @@ def print_gas(gasses: list) -> int:
 async def get_all_gas(client: PysuiClient) -> dict:
     """Get all SUI gas for each address in the active group."""
     addys = client.config.active_group.address_list
-    results = await asyncio.gather(*[_get_gas(client, a) for a in addys], return_exceptions=True)
+    results = await asyncio.gather(
+        *[_get_gas(client, a) for a in addys], return_exceptions=True
+    )
     return dict(zip(addys, results))
 
 
@@ -68,7 +70,9 @@ async def main_run(client: PysuiClient) -> None:
             continue
         grand_total += print_gas(objects)
         print()
-    print(f"Grand Total gas {grand_total:12} -> {grand_total / SUI_COIN_DENOMINATOR:.8f}\n")
+    print(
+        f"Grand Total gas {grand_total:12} -> {grand_total / SUI_COIN_DENOMINATOR:.8f}\n"
+    )
     print("Exiting async pysui")
     await client.close()
 
