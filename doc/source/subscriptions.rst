@@ -37,7 +37,7 @@ client receives checkpoint events as an async iterator.
     if __name__ == "__main__":
         asyncio.run(stream_checkpoints())
 
-See ``pgrpc_a_example.py`` in the project root for a runnable version.
+See ``ucs_example.py`` in the project root for a runnable version.
 
 GraphQL Checkpoint Polling
 --------------------------
@@ -72,9 +72,5 @@ latest checkpoint batch.
     if __name__ == "__main__":
         asyncio.run(poll_checkpoints())
 
-See ``pgql_a_example.py`` in the project root for a runnable version.
+See ``ucs_example.py`` in the project root for a runnable version.
 
-JSON-RPC
---------
-
-Mysten has deprecated subscriptions for JSON-RPC.

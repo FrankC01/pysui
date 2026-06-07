@@ -73,7 +73,7 @@ You need to sign transactions that change any object owned by the MultiSig addre
 heightened security and governance aspect come into play.
 
 A ``MultiSig`` is passed to transactions by first wrapping it in a
-:py:class:`pysui.sui.sui_common.txb_signing.SigningMultiSig`, which pairs the
+:py:class:`pysui.sui.sui_common.txn_signing.SigningMultiSig`, which pairs the
 ``MultiSig`` object with the specific public keys that will sign. That
 ``SigningMultiSig`` is then passed as the ``initial_sender`` to
 ``client.transaction()`` for standalone transactions, or as the ``sender``
@@ -89,7 +89,7 @@ Standalone Transaction
 
     import asyncio
     from pysui import PysuiConfiguration, SuiRpcResult, client_factory
-    from pysui.sui.sui_common.txb_signing import SigningMultiSig
+    from pysui.sui.sui_common.txn_signing import SigningMultiSig
     from pysui.sui.sui_crypto import MultiSig
     import pysui.sui.sui_common.sui_commands as cmd
 
@@ -133,7 +133,7 @@ string or a ``SigningMultiSig``:
 
     import asyncio
     from pysui import PysuiConfiguration, client_factory, GqlSerialTransactionExecutor
-    from pysui.sui.sui_common.txb_signing import SigningMultiSig
+    from pysui.sui.sui_common.txn_signing import SigningMultiSig
     from pysui.sui.sui_crypto import MultiSig
 
     async def executor_with_ms(msig: MultiSig) -> None:

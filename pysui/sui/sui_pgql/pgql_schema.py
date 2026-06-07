@@ -18,6 +18,7 @@ from gql.dsl import (
     DSLSchema,
 )
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL, pgql_config, SuiConfigGQL
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class Schema:
@@ -29,6 +30,7 @@ class Schema:
         version="0.85.0",
         reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
     )
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_schema.Schema.__init__")
     def __init__(
         self,
         *,
@@ -71,36 +73,42 @@ class Schema:
             self._async_session: ReconnectingAsyncClientSession = None
 
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_schema.Schema.base_version")
     def base_version(self) -> str:
         """."""
         return self._base_version
 
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_schema.Schema.build_version")
     def build_version(self) -> str:
         """."""
         return self._build_version
 
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_schema.Schema.rpc_config")
     def rpc_config(self) -> SuiConfigGQL:
         """."""
         return self._rpc_config
 
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_schema.Schema.dsl_schema")
     def dsl_schema(self) -> DSLSchema:
         """."""
         return self._dsl_schema
 
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_schema.Schema.client")
     def client(self) -> Client:
         """."""
         return self._sync_client
 
     @property
+    @instrumented("pysui.sui.sui_pgql.pgql_schema.Schema.async_session")
     async def async_session(self) -> ReconnectingAsyncClientSession:
         """."""
         if not self._async_session and self._async_client:
             self._async_session = await self._async_client.connect_async(
-                reconnecting=True
+                reconnecting=False
             )
         return self._async_session
 
@@ -108,6 +116,7 @@ class Schema:
         version="0.85.0",
         reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
     )
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_schema.Schema.set_async_client")
     def set_async_client(self, proxies: Optional[dict] = None):
         """."""
         self._async_client = Client(

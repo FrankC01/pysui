@@ -79,11 +79,11 @@ Transactions
 
    * - Command
      - Description
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransaction` :sup:`1,2,3`
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransaction` *(caveats)*
      - Fetch a single executed transaction by digest; ``None`` if not found or pruned
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransactions` :sup:`1,2,3`
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransactions` *(caveats)*
      - Fetch multiple transactions by digest list; result list matches input length with ``None`` in unresolved slots
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransactionKind` :sup:`1,2,3`
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetTransactionKind` *(caveats)*
      - Fetch only the ``TransactionKind`` discriminator for a transaction
 
 
@@ -173,7 +173,7 @@ Epoch / System State
 
    * - Command
      - Description
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetEpoch`
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetEpoch` *(caveats)*
      - Fetch epoch information by ID, or the current epoch
 
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetBasicCurrentEpochInfo`
@@ -195,11 +195,14 @@ Checkpoints
 
    * - Command
      - Description
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetLatestCheckpoint`
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetLatestCheckpoint` *(caveats)*
      - Fetch the latest checkpoint
 
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCheckpointBySequence`
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCheckpointBySequence` *(caveats)*
      - Fetch a checkpoint by sequence number
+
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetCheckpointByDigest` *(caveats)*
+     - Fetch a checkpoint by digest
 
 
 Move / Packages
@@ -211,7 +214,7 @@ Move / Packages
 
    * - Command
      - Description
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPackage`
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPackage` *(caveats)*
      - Fetch a Move package by ID
 
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPackageVersions`
@@ -264,7 +267,7 @@ Network / Chain Info
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetChainIdentifier`
      - Fetch the chain identifier for the current network
 
-   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetProtocolConfig`
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetProtocolConfig` *(caveats)*
      - Fetch the current node's protocol configuration and feature flags
 
 
@@ -289,13 +292,46 @@ Signature Verification
 GQL Caveats
 -----------
 
-Some commands return partial data when executed via the GraphQL transport because
-the GQL schema does not expose every field that the gRPC protocol provides.
-Superscript numbers in the command tables above refer to the caveats below.
+Commands marked *(caveats)* in the tables above return partial data via the GraphQL
+transport because the GQL schema does not expose every field that gRPC provides.
+Known field-level gaps are listed below by command.
 
-1. ``MoveCall.type_arguments`` — not populated via GQL; always an empty list on that transport.
-2. ``ChangeEpochTransaction.system_packages`` — not populated via GQL; always an empty list.
-3. ``EndOfEpochTransactionKind.execution_time_observations`` — not populated via GQL; always an empty list.
+**GetTransaction / GetTransactions**
+
+- ``TransactionEffects.objects.objects``: gRPC returns BCS-encoded object data in this
+  field; it is currently empty pending a Mysten Labs server-side deployment.
+- ``MoveCall.type_arguments``: not populated via GQL; always an empty list.
+- ``ChangeEpochTransaction.system_packages``: not populated via GQL; always an empty list.
+- ``EndOfEpochTransactionKind.execution_time_observations``: not populated via GQL;
+  always an empty list.
+
+**GetTransactionKind**
+
+- ``MoveCall.type_arguments``: not populated via GQL; always an empty list.
+- ``ChangeEpochTransaction.system_packages``: not populated via GQL; always an empty list.
+- ``EndOfEpochTransactionKind.execution_time_observations``: not populated via GQL;
+  always an empty list.
+
+**GetEpoch**
+
+- Several protocol-config sub-keys differ between transports.
+
+**GetProtocolConfig**
+
+- GQL and gRPC expose different subsets of protocol configuration keys; the two
+  responses are not directly comparable field-for-field.
+
+**GetLatestCheckpoint / GetCheckpointBySequence / GetCheckpointByDigest**
+
+- ``bitmap_encoding``: checkpoint transaction bitmap is encoded differently between
+  GQL and gRPC.
+- ``transactions`` / ``objects``: not exposed in the GQL checkpoint query; gRPC returns
+  these via a wildcard field mask.
+
+**GetPackage**
+
+- ``Package.originalId``: not exposed by the GQL ``MovePackage`` type; always an
+  empty string on that transport. ``Package.storageId`` identifies the package address.
 
 ----
 

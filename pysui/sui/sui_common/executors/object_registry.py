@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import logging
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 logger = logging.getLogger(__name__)
 
@@ -34,41 +35,49 @@ class AbstractObjectRegistry(ABC):
     """Interface for a process-wide object version cache."""
 
     @abstractmethod
+    @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.get")
     async def get(self, object_id: str) -> Optional[ObjectVersionEntry]:
         """Return the cached entry for an object id or None if missing."""
         ...
 
     @abstractmethod
+    @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.get_many")
     async def get_many(self, object_ids: list[str]) -> dict[str, ObjectVersionEntry]:
         """Return cached entries for the given object ids keyed by id."""
         ...
 
     @abstractmethod
+    @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.upsert")
     async def upsert(self, entry: ObjectVersionEntry) -> None:
         """Insert or update a single object version entry."""
         ...
 
     @abstractmethod
+    @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.upsert_many")
     async def upsert_many(self, entries: list[ObjectVersionEntry]) -> None:
         """Insert or update multiple object version entries."""
         ...
 
     @abstractmethod
+    @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.tombstone")
     async def tombstone(self, object_id: str, ttl_seconds: float = 30.0) -> None:
         """Mark an object id as deleted for the given TTL window."""
         ...
 
     @abstractmethod
+    @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.evict")
     async def evict(self, object_id: str) -> None:
         """Remove an object id from the registry without tombstoning."""
         ...
 
     @abstractmethod
+    @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.reset")
     async def reset(self) -> None:
         """Clear all entries from the registry."""
         ...
 
     @abstractmethod
+    @sync_instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.size")
     def size(self) -> int:
         """Return the current number of cached entries."""
         ...
@@ -85,17 +94,20 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
     DEFAULT_MAX_ENTRIES: int = 50_000
     DEFAULT_TOMBSTONE_TTL_SECONDS: float = 30.0
 
+    @sync_instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.__init__")
     def __init__(self, *, max_entries: int = DEFAULT_MAX_ENTRIES) -> None:
         """Initialize the in-memory registry with an LRU bound."""
         self._entries: OrderedDict[str, ObjectVersionEntry] = OrderedDict()
         self._max = max_entries
         self._lock = asyncio.Lock()
 
+    @instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.get")
     async def get(self, object_id: str) -> Optional[ObjectVersionEntry]:
         """Return the cached entry for an object id or None if missing."""
         async with self._lock:
             return self._get_unlocked(object_id)
 
+    @instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.get_many")
     async def get_many(self, object_ids: list[str]) -> dict[str, ObjectVersionEntry]:
         """Return cached entries for the given object ids keyed by id."""
         async with self._lock:
@@ -106,17 +118,20 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
                     result[oid] = entry
             return result
 
+    @instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.upsert")
     async def upsert(self, entry: ObjectVersionEntry) -> None:
         """Insert or update a single object version entry."""
         async with self._lock:
             self._upsert_unlocked(entry)
 
+    @instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.upsert_many")
     async def upsert_many(self, entries: list[ObjectVersionEntry]) -> None:
         """Insert or update multiple object version entries."""
         async with self._lock:
             for entry in entries:
                 self._upsert_unlocked(entry)
 
+    @instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.tombstone")
     async def tombstone(self, object_id: str, ttl_seconds: float = DEFAULT_TOMBSTONE_TTL_SECONDS) -> None:
         """Mark an object id as deleted for the given TTL window."""
         async with self._lock:
@@ -130,20 +145,24 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
             )
             self._upsert_unlocked(entry)
 
+    @instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.evict")
     async def evict(self, object_id: str) -> None:
         """Remove an object id from the registry without tombstoning."""
         async with self._lock:
             self._entries.pop(object_id, None)
 
+    @instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.reset")
     async def reset(self) -> None:
         """Clear all entries from the registry."""
         async with self._lock:
             self._entries.clear()
 
+    @sync_instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry.size")
     def size(self) -> int:
         """Return the current number of cached entries."""
         return len(self._entries)
 
+    @sync_instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry._get_unlocked")
     def _get_unlocked(self, object_id: str) -> Optional[ObjectVersionEntry]:
         """Return entry without locking; expires tombstones and updates LRU order."""
         entry = self._entries.get(object_id)
@@ -156,6 +175,7 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
         entry.last_used_ns = time.monotonic_ns()
         return entry
 
+    @sync_instrumented("pysui.sui.sui_common.executors.object_registry.InMemoryObjectRegistry._upsert_unlocked")
     def _upsert_unlocked(self, entry: ObjectVersionEntry) -> None:
         """Insert or update entry without locking; enforces version monotonicity and LRU bound."""
         existing = self._entries.get(entry.object_id)
@@ -175,6 +195,7 @@ _REGISTRY: Optional[AbstractObjectRegistry] = None
 _REGISTRY_INIT_LOCK = threading.Lock()
 
 
+@sync_instrumented("pysui.sui.sui_common.executors.object_registry.get_object_registry")
 def get_object_registry() -> AbstractObjectRegistry:
     """Return the process-wide singleton registry, creating it on first call."""
     global _REGISTRY
@@ -185,6 +206,7 @@ def get_object_registry() -> AbstractObjectRegistry:
     return _REGISTRY
 
 
+@sync_instrumented("pysui.sui.sui_common.executors.object_registry._set_object_registry_for_tests")
 def _set_object_registry_for_tests(registry: Optional[AbstractObjectRegistry]) -> None:
     """Replace or clear the singleton. Call in pytest teardown to restore isolation."""
     global _REGISTRY

@@ -5,9 +5,11 @@ use std::string::{String,utf8};
 use sui::coin::{Coin,from_balance};
 use sui::sui::SUI;
 use sui::balance;
+use sui::funds_accumulator::Withdrawal;
 use sui::vec_map;
 use sui::event;
 use sui::dynamic_field as df;
+use sui::dynamic_object_field as dof;
 
 const EServiceFee:u64 = 1000000;
 const Version:u8 = 1;
@@ -212,6 +214,27 @@ public fun burn_phoney(phny:Phoney,_ctx:&mut TxContext) {
     id.delete();
 }
 
+/// Pay service using a Withdrawal<Balance<SUI>> redeemed from the sender's address accumulator.
+public fun pay_service_from_withdrawal(
+    self: &mut ParmObject,
+    withdrawal: Withdrawal<balance::Balance<SUI>>,
+    _ctx: &mut TxContext,
+) {
+    set_object_version(self);
+    let bal = balance::redeem_funds(withdrawal);
+    self.service.join(bal);
+}
+
+    /// Pay service using a Balance<SUI> redeemed from the sender's address accumulator.
+    public fun pay_service_from_balance(
+        self: &mut ParmObject,
+        bal: balance::Balance<SUI>,
+        _ctx: &mut TxContext,
+    ) {
+        set_object_version(self);
+        self.service.join(bal);
+    }
+
 public fun pay_service(self:&mut ParmObject,payfrom:&mut Coin<SUI>,_ctx:&mut TxContext) {
     set_object_version(self);
     let pbal = payfrom.balance_mut();
@@ -230,4 +253,33 @@ public fun get_service(self:&mut ParmObject, amount:&mut Option<u64>,ctx:&mut Tx
     };
     // Create and return a new Sui coin from balance
     from_balance<SUI>(pbal,ctx)
+}
+
+    // Receive a Phoney object sent to this ParmObject; stored as a DOF keyed by the Phoney's object ID.
+    public fun receive_phoney(
+        parm: &mut ParmObject,
+        to_receive: transfer::Receiving<Phoney>,
+    ) {
+        let phoney = transfer::public_receive(&mut parm.id, to_receive);
+        let key = object::id_address(&phoney);
+        dof::add(&mut parm.id, key, phoney);
+    }
+
+    // Remove a Phoney from this ParmObject's DOF and return it to the PTB caller.
+    public fun extract_phoney(
+        parm: &mut ParmObject,
+        key: address,
+    ): Phoney {
+        dof::remove(&mut parm.id, key)
+    }
+
+    // Remove a Phoney from this ParmObject's DOF and transfer it to the transaction sender.
+    public fun extract_phoney_to_sender(
+        parm: &mut ParmObject,
+        key: address,
+        ctx: &mut TxContext,
+    ) {
+        let phoney: Phoney = dof::remove(&mut parm.id, key);
+        transfer::public_transfer(phoney, ctx.sender());
+    }
 }

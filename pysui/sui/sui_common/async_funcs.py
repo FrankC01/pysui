@@ -16,20 +16,25 @@ logger = logging.getLogger("async_funcs")
 import pysui.sui.sui_bcs.bcs_txne as bcst
 import pysui.sui.sui_common.sui_commands as cmd
 from pysui import SuiRpcResult
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class KEY:
     """Key class management for LRU"""
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.KEY.__init__")
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
         kwargs.pop("use_cache", None)
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.KEY.__eq__")
     def __eq__(self, obj):
         return hash(self) == hash(obj)
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.KEY.__hash__")
     def __hash__(self):
+        @sync_instrumented("pysui.sui.sui_common.async_funcs.KEY._hash")
         def _hash(param: Any):
             if isinstance(param, tuple):
                 return tuple(map(_hash, param))
@@ -46,15 +51,18 @@ class KEY:
 class LRU(OrderedDict):
     """Cache repository management."""
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.LRU.__init__")
     def __init__(self, maxsize, *args, **kwargs):
         self.maxsize = maxsize
         super().__init__(*args, **kwargs)
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.LRU.__getitem__")
     def __getitem__(self, key):
         value = super().__getitem__(key)
         self.move_to_end(key)
         return value
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.LRU.__setitem__")
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
         if self.maxsize and len(self) > self.maxsize:
@@ -65,12 +73,14 @@ class LRU(OrderedDict):
 class AsyncLRU:
     """Decorator."""
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.AsyncLRU.__init__")
     def __init__(self, maxsize=128):
         """
         :param maxsize: Use maxsize as None for unlimited size cache
         """
         self.lru = LRU(maxsize=maxsize)
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.AsyncLRU.cache_clear")
     def cache_clear(self):
         """
         Clears the LRU cache.
@@ -82,7 +92,9 @@ class AsyncLRU:
         """
         self.lru.clear()
 
+    @sync_instrumented("pysui.sui.sui_common.async_funcs.AsyncLRU.__call__")
     def __call__(self, func):
+        @instrumented("pysui.sui.sui_common.async_funcs.AsyncLRU.wrapper")
         async def wrapper(*args, use_cache=True, **kwargs):
             """Async wrapper that returns cached results when available."""
             key = KEY(args, kwargs)
@@ -107,6 +119,7 @@ class OperationStatus(IntEnum):
     MERGE_AND_SPLAY = 3
 
 
+@instrumented("pysui.sui.sui_common.async_funcs.merge_sui")
 async def merge_sui(
     *,
     client: Any,
@@ -206,6 +219,7 @@ async def merge_sui(
     return (OperationStatus.MERGE, tx_effects, use_as_gas_id, None)
 
 
+@instrumented("pysui.sui.sui_common.async_funcs.split_to_distribution")
 async def split_to_distribution(
     *,
     client: Any,

@@ -35,6 +35,7 @@ ser_txn.py
 ser_txn_usdc.py
 *_schema-*.graphql
 pgql_bs_examp.py
+scratch/parity_check_results.json
 
 
 # pytest cruft
@@ -75,3 +76,6 @@ doc/source/pysui.sui.rst
 !reqrtd.txt
 PysuiConfig.json
 mtobcs_samp.json
+
+# benchmark cruft
+bench_results/

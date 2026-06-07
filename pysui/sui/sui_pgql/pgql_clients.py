@@ -14,7 +14,7 @@ from typing import Callable, Any, ClassVar, Optional, Union, Literal, TYPE_CHECK
 from deprecated.sphinx import versionchanged, versionadded, deprecated
 
 if TYPE_CHECKING:
-    from pysui.sui.sui_common.txb_signing import SigningMultiSig
+    from pysui.sui.sui_common.txn_signing import SigningMultiSig
     from pysui.sui.sui_common.executors.serial_executor import SerialExecutor
     from pysui.sui.sui_common.executors.exec_types import ExecutorOptions
     from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
@@ -41,6 +41,7 @@ import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
 import pysui.sui.sui_pgql.pgql_schema as scm
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented, sync_measure
 
 # Standard library logging setup
 logger = logging.getLogger("pgql_client")
@@ -50,6 +51,7 @@ class PGQL_QueryNode(ABC):
     """Base query class."""
 
     @abstractmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.PGQL_QueryNode.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Returns a gql GraphQLRequest ready to execute.
 
@@ -62,6 +64,7 @@ class PGQL_QueryNode(ABC):
         """
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.PGQL_QueryNode.encode_fn")
     def encode_fn() -> Union[Callable[[dict], Union[pgql_type.PGQL_Type, Any]], None]:
         """Return the serialization function in derived class or None.
 
@@ -74,6 +77,7 @@ class PGQL_QueryNode(ABC):
 class PGQL_NoOp(PGQL_QueryNode):
     """Noop query class."""
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.PGQL_NoOp.as_document_node")
     def as_document_node(self) -> GraphQLRequest:
         """Returns a gql GraphQLRequest ready to execute.
 
@@ -93,6 +97,7 @@ class PGQL_Fragment(ABC):
 class BaseSuiGQLClient(PysuiClient):
     """Base GraphQL client."""
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.__init__")
     def __init__(
         self,
         *,
@@ -118,55 +123,67 @@ class BaseSuiGQLClient(PysuiClient):
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.current_gas_price")
     def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
         return self._schema.rpc_config.checkpoint.reference_gas_price
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.rpc_config")
     def rpc_config(self) -> SuiConfigGQL:
         """Fetch the graphql configuration."""
         return self._schema.rpc_config
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.protocol")
     def protocol(
         self, for_version: Optional[str] = None
-    ) -> pgql_type.TransactionConstraints:
+    ) -> pgql_type.ProtocolConfigGQL:
         """Fetch the protocol constraint block."""
         return self._schema.rpc_config.protocolConfigs
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.url")
     def url(self) -> str:
         """Fetch the active GraphQL URL."""
         return self._schema._graph_url
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.client")
     def client(self) -> Client:
         """Fetch the graphql client."""
         return self._schema.client
 
+    @instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.async_client")
     async def async_client(self) -> ReconnectingAsyncClientSession:
         """Fetch the graphql async client."""
         return await self._schema.async_session
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.chain_id")
     def chain_id(self, for_version: Optional[str] = None) -> str:
         """Fetch the chain identifier."""
         return self._schema.rpc_config.chainIdentifier
         # return self.rpc_config(for_version).chainIdentifier
 
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.chain_environment")
     def chain_environment(self) -> str:
         """Fetch which environment (testnet, devenet, etc.) operating with."""
         return self.rpc_config().gqlEnvironment
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.schema_version")
     def schema_version(self, for_version: Optional[str] = None) -> str:
         """Returns Sui GraphQL schema long version."""
         return self._schema.build_version
 
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.base_schema_version")
     def base_schema_version(self) -> str:
         """Returns the default schema version (schema version without patch)"""
         return self._schema.base_version
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.schema")
     def schema(self) -> DSLSchema:
         """Return the specific DSLSchema for configuration"""
         return self._schema.dsl_schema
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient._qnode_owner")
     def _qnode_owner(self, qnode: PGQL_QueryNode):
         """."""
         if hasattr(qnode, "owner"):
@@ -175,13 +192,15 @@ class BaseSuiGQLClient(PysuiClient):
             )
             setattr(qnode, "owner", resolved_owner)
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient._qnode_pre_run")
     def _qnode_pre_run(
         self, qnode: PGQL_QueryNode
     ) -> Union[GraphQLRequest, ValueError]:
         """."""
         if issubclass(type(qnode), PGQL_QueryNode):
             self._qnode_owner(qnode)
-            dnode = qnode.as_document_node(self.schema())
+            with sync_measure(f"gql.{type(qnode).__name__}.as_document_node"):
+                dnode = qnode.as_document_node(self.schema())
             if isinstance(dnode, GraphQLRequest):
                 return dnode
             else:
@@ -190,250 +209,13 @@ class BaseSuiGQLClient(PysuiClient):
             raise ValueError("Not a valid PGQL_QueryNode")
 
     @versionadded(version="0.60.0", reason="Support query inspection")
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.query_node_to_string")
     def query_node_to_string(self, *, query_node: PGQL_QueryNode) -> str:
         """."""
         self._qnode_owner(query_node)
         qres = query_node.as_document_node(self.schema())
         qres_prnt: str = print_ast(qres.document)
         return qres_prnt
-
-
-class SuiGQLClient(BaseSuiGQLClient):
-    """Synchronous pysui GraphQL client."""
-
-    @versionchanged(
-        version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
-    )
-    @versionchanged(
-        version="0.85.0",
-        reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
-    )
-    @versionchanged(version="0.89.0", reason="Added timeout argument")
-    @deprecated(
-        version="0.98.0",
-        reason="SuiGQLClient (synchronous) is deprecated. Use client_factory(PysuiConfiguration()) which returns an async client. SuiGQLClient will be removed in a future release.",
-    )
-    def __init__(
-        self,
-        *,
-        pysui_config: PysuiConfiguration,
-        write_schema: Optional[bool] = False,
-        default_header: Optional[dict] = None,
-        proxies: Optional[dict] = None,
-        timeout: float | None = None,
-    ):
-        """Sui GraphQL Client initializer."""
-        gurl = pysui_config.url
-        genv = pysui_config.active_profile
-        super().__init__(
-            pysui_config=pysui_config,
-            schema=scm.Schema(
-                gql_url=gurl, gql_env=genv, proxies=proxies, timeout=timeout
-            ),
-            write_schema=write_schema,
-            default_header=default_header,
-        )
-
-    @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
-    def transaction(self, **kwargs) -> Any:
-        """Return a synchronous SuiTransaction.
-
-        :param initial_sender: The address of the sender of the transaction, defaults to None
-        :type initial_sender: Union[str, SigningMultiSig], optional
-        :param compress_inputs: Reuse identical inputs, defaults to False
-        :type compress_inputs: bool,optional
-        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
-        :type merge_gas_budget: bool, optional
-        :param use_account_for_gas: Enable using address account balance for gas, defaults to False
-        :type use_account_for_gas: Optional[bool], optional
-        """
-        import pysui.sui.sui_pgql.pgql_sync_txn as synctxn
-
-        kwargs["client"] = self
-        return synctxn.SuiTransaction(**kwargs)
-
-    @versionadded(
-        version="0.56.0", reason="Common node execution with exception handling"
-    )
-    @versionchanged(version="0.89.0", reason="Added timeout argument")
-    def _execute(
-        self,
-        node: GraphQLRequest,
-        with_headers: Optional[dict] = None,
-        encode_fn: Optional[Callable[[dict], Any]] = None,
-        timeout: float | None = None,
-    ) -> SuiRpcResult:
-        """_execute Execute a GQL Document Node
-
-        :param node: GQL GraphQLRequest
-        :type node: GraphQLRequest
-        :param with_headers: Add extra arguments for http client headers, default to None
-        :type with_headers: Optional[dict]
-        :param encode_fn: Encoding function, defaults to None
-        :type encode_fn: Optional[Callable[[dict], Any]], optional
-        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
-        :rtype: SuiRpcResult
-        """
-        try:
-            extra_args = dict(with_headers) if with_headers is not None else dict(self._default_header or {})
-            extra_args["timeout"] = timeout or self._schema.timeout
-            sres = self.client().execute(node, extra_args=extra_args)
-            return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
-
-        except texc.TransportQueryError as gte:
-            return SuiRpcResult(
-                False,
-                f"TransportQueryError {gte.errors}",
-                pgql_type.ErrorGQL.from_query(gte.errors),
-            )
-        except (
-            httpx.HTTPError,
-            httpx.InvalidURL,
-            httpx.CookieConflict,
-        ) as hexc:
-            return SuiRpcResult(
-                False, f"HTTPX error: {hexc.__class__.__name__}", vars(hexc)
-            )
-        except GraphQLSyntaxError as gqe:
-            return SuiRpcResult(
-                False,
-                "GraphQLSyntaxError",
-                pgql_type.ErrorGQL.from_query(gqe.formatted),
-            )
-        except TypeError as te:
-            return SuiRpcResult(
-                False, "TypeError", pgql_type.ErrorGQL.from_query(te.args)
-            )
-        except (Exception, ValueError) as ve:
-            return SuiRpcResult(
-                False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
-            )
-
-    @versionadded(version="0.56.0", reason="Unique function for string processing")
-    @versionchanged(version="0.89.0", reason="Added timeout argument")
-    def execute_query_string(
-        self,
-        *,
-        string: str,
-        with_headers: Optional[dict] = None,
-        encode_fn: Optional[Callable[[dict], Any]] = None,
-        timeout: float | None = None,
-    ) -> SuiRpcResult:
-        """execute_query_string Executes a GraphQL query string.
-
-        :param string: Well formed GraphQL query string
-        :type string: str
-        :param with_headers: Add extra arguments for http client headers, default to None
-        :type with_headers: Optional[dict]
-        :param encode_fn: Encoding function, defaults to None
-        :type encode_fn: Optional[Callable[[dict], Any]], optional
-        :param timeout: Timeout for execution overriding default set for client, defaults to None
-        :type timeout: Optional[float], optional
-        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
-        :rtype: SuiRpcResult
-        """
-        if isinstance(string, str):
-            return self._execute(gql(string), with_headers, encode_fn, timeout)
-        else:
-            return SuiRpcResult(False, "ValueError:Expected string", string)
-
-    @versionadded(
-        version="0.56.0", reason="Unique function for GraphQLRequest processing"
-    )
-    @versionchanged(version="0.89.0", reason="Added timeout argument")
-    def execute_document_node(
-        self,
-        *,
-        with_node: GraphQLRequest,
-        with_headers: Optional[dict] = None,
-        encode_fn: Optional[Callable[[dict], Any]] = None,
-        timeout: float | None = None,
-    ) -> SuiRpcResult:
-        """execute_document_node Executes a gql GraphQLRequest.
-
-        :param with_node: The gql GraphQL GraphQLRequest
-        :type with_node: GraphQLRequest
-        :param with_headers: Add extra arguments for http client headers, default to None
-        :type with_headers: Optional[dict]
-        :param encode_fn: Encoding function, defaults to None
-        :type encode_fn: Optional[Callable[[dict], Any]], optional
-        :param timeout: Timeout for execution overriding default set for client, defaults to None
-        :type timeout: Optional[float], optional
-        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
-        :rtype: SuiRpcResult
-        """
-        if isinstance(with_node, GraphQLRequest):
-            return self._execute(with_node, with_headers, encode_fn, timeout)
-        else:
-            return SuiRpcResult(False, "Not a valid gql GraphQLRequest", with_node)
-
-    @versionadded(
-        version="0.56.0", reason="Unique function for PGQL_QueryNode processing"
-    )
-    @versionchanged(version="0.89.0", reason="Added timeout argument")
-    def execute_query_node(
-        self,
-        *,
-        with_node: PGQL_QueryNode,
-        with_headers: Optional[dict] = None,
-        encode_fn: Optional[Callable[[dict], Any]] = None,
-        timeout: float | None = None,
-    ) -> SuiRpcResult:
-        """execute_query_node Execute a pysui GraphQL QueryNode.
-
-        :param with_node: The QueryNode for execution
-        :type with_node: PGQL_QueryNode
-        :param with_headers: Add extra arguments for http client headers, default to None
-        :type with_headers: Optional[dict]
-        :param encode_fn: Encoding function, defaults to None
-        :type encode_fn: Optional[Callable[[dict], Any]], optional
-        :param timeout: Timeout for execution overriding default set for client, defaults to None
-        :type timeout: Optional[float], optional
-        :return: SuiRpcResult cointaining status and raw result (dict) or that defined by serialization function
-        :rtype: SuiRpcResult
-        """
-        try:
-            qdoc_node = self._qnode_pre_run(with_node)
-            if isinstance(qdoc_node, PGQL_NoOp):
-                return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
-            encode_fn = encode_fn or with_node.encode_fn()
-            return self._execute(qdoc_node, with_headers, encode_fn, timeout)
-        except ValueError as ve:
-            return SuiRpcResult(
-                False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
-            )
-
-    @versionadded(version="0.75.0", reason="Execution of transaction changes.")
-    def wait_for_transaction(
-        self, *, digest: str, timeout: int = 60, poll_interval: int = 2
-    ) -> SuiRpcResult:
-        """wait_for_transaction Wait for a transaction block result to be available over the API.
-
-        :param digest: The digest of the transaction to get effects on
-        :type digest: str
-        :param timeout: timeout interval in seconds, defaults to 60
-        :type timeout: int, optional
-        :param poll_interval: poll interval wait in seconds, defaults to 2
-        :type poll_interval: int, optional
-        :raises Exception: If effects are not retrieved
-        :return: Standard Sui Result
-        :rtype: SuiRpcResult
-        """
-        import pysui.sui.sui_pgql.pgql_query as qn
-
-        total_poll = 0
-        while True:
-            logging.info(f"Polling {digest} for {total_poll} times")
-            res = self.execute_query_node(with_node=qn.GetTransactionSC(digest=digest))
-            if res.is_ok() and res.result_data is not None:
-                return res
-            total_poll += poll_interval
-            if total_poll < timeout:
-                logging.info("Sleeping")
-                sleep(poll_interval)
-            else:
-                raise ValueError("Timeout error while waiting for transaction block.")
-
 
 class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
     """Asynchronous pysui GraphQL client."""
@@ -448,6 +230,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         reason="Proxy support https://github.com/FrankC01/pysui/issues/311",
     )
     @versionchanged(version="0.89.0", reason="Added timeout argument")
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.GqlProtocolClient.__init__")
     def __init__(
         self,
         *,
@@ -474,6 +257,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         )
         self._slock = asyncio.Semaphore()
 
+    @instrumented("gql.transaction")
     @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
     async def transaction(self, **kwargs) -> Any:
         """Return an asynchronous SuiTransaction.
@@ -482,14 +266,13 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         :type initial_sender: Union[str, SigningMultiSig], optional
         :param compress_inputs: Reuse identical inputs, defaults to False
         :type compress_inputs: bool,optional
-        :param merge_gas_budget: If True will take available gas not in use for paying for transaction, defaults to False
-        :type merge_gas_budget: bool, optional
         """
         from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
         kwargs["client"] = self
         return AsyncSuiTransaction(**kwargs)
 
+    @instrumented("gql.serial_executor")
     async def serial_executor(self, *, options: "ExecutorOptions") -> "SerialExecutor":
         """Async factory: create and initialize a SerialExecutor.
 
@@ -505,6 +288,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         await se._initialize()
         return se
 
+    @instrumented("gql.parallel_executor")
     async def parallel_executor(self, *, options: "ExecutorOptions") -> "ParallelExecutor":
         """Async factory: create and initialize a ParallelExecutor.
 
@@ -521,10 +305,12 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         return pe
 
     @property
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.GqlProtocolClient.session")
     def session(self) -> Any:
         """Return the underlying GraphQL transport session."""
         return self._session
 
+    @instrumented("gql.close")
     async def close(self) -> None:
         """Close the connection."""
         if self._schema._async_client:
@@ -533,14 +319,17 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
             except AttributeError:
                 pass
 
+    @instrumented("gql.__aenter__")
     async def __aenter__(self) -> "GqlProtocolClient":
         """Enter async context manager."""
         return self
 
+    @instrumented("gql.__aexit__")
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit async context manager and close connection."""
         await self.close()
 
+    @instrumented("gql._execute")
     @versionadded(
         version="0.56.0", reason="Common node execution with exception handling"
     )
@@ -575,7 +364,12 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 extra_args = dict(with_headers) if with_headers is not None else dict(self._default_header or {})
                 extra_args["timeout"] = timeout or self._schema.timeout
                 sres = await _session.execute(node, extra_args=extra_args)
-            return SuiRpcResult(True, None, sres if not encode_fn else encode_fn(sres))
+            if encode_fn:
+                async with measure(f"gql.{encode_fn.__qualname__}"):
+                    result_data = encode_fn(sres)
+            else:
+                result_data = sres
+            return SuiRpcResult(True, None, result_data)
 
         except texc.TransportQueryError as gte:
             if capture_errors and isinstance(gte.data, dict) and gte.errors and encode_fn is not None:
@@ -585,7 +379,9 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                         {"message": e.get("message", str(e)) if isinstance(e, dict) else str(e)}
                         for e in (gte.errors or [])
                     ]
-                    return SuiRpcResult(True, None, encode_fn(payload))
+                    async with measure(f"gql.{encode_fn.__qualname__}"):
+                        result_data = encode_fn(payload)
+                    return SuiRpcResult(True, None, result_data)
                 except Exception:
                     pass
             return SuiRpcResult(
@@ -619,6 +415,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
 
+    @instrumented("gql.execute_query_string")
     @versionadded(version="0.56.0", reason="Unique function for string processing")
     @versionchanged(version="0.89.0", reason="Added timeout argument")
     async def execute_query_string(
@@ -647,6 +444,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         else:
             return SuiRpcResult(False, "ValueError:Expected string", string)
 
+    @instrumented("gql.execute_document_node")
     @versionadded(
         version="0.56.0", reason="Unique function for GraphQLRequest processing"
     )
@@ -677,6 +475,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         else:
             return SuiRpcResult(False, "Not a valid gql GraphQLRequest", with_node)
 
+    @instrumented("gql.execute_query_node")
     @versionadded(
         version="0.56.0", reason="Unique function for PGQL_QueryNode processing"
     )
@@ -688,6 +487,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
             "No removal timeline set."
         ),
     )
+    @instrumented("pysui.sui.sui_pgql.pgql_clients.GqlProtocolClient.execute_query_node")
     async def execute_query_node(
         self,
         *,
@@ -721,6 +521,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
 
+    @instrumented("gql.execute")
     async def execute(
         self,
         *,
@@ -752,6 +553,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
             capture_errors=command.capture_errors,
         )
 
+    @instrumented("gql._execute_gql_node")
     async def _execute_gql_node(
         self,
         node: PGQL_QueryNode,
@@ -771,6 +573,7 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)
             )
 
+    @instrumented("gql.wait_for_transaction")
     @versionadded(version="0.73.0", reason="Execution of transaction changes.")
     async def wait_for_transaction(
         self, *, digest: str, timeout: int = 60, poll_interval: int = 2

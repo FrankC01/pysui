@@ -15,9 +15,6 @@ import canoser
 from deprecated.sphinx import deprecated, versionadded, versionchanged
 
 from pysui.abstracts.client_keypair import PublicKey, SignatureScheme
-from pysui.sui.sui_txresults.common import GenericRef
-from pysui.sui.sui_txresults.single_tx import ObjectRead
-from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_utils import (
     b58str_to_list,
     hexstring_to_list,
@@ -45,15 +42,6 @@ class Address(canoser.Struct):
     def to_address_str(self) -> str:
         """."""
         return f"0x{self.to_str()}"
-
-    def to_sui_address(self) -> SuiAddress:
-        """."""
-        return SuiAddress(self.to_address_str())
-
-    @classmethod
-    def from_sui_address(cls, indata: SuiAddress) -> "Address":
-        """."""
-        return cls(hexstring_to_list(indata.address))
 
     @classmethod
     def from_str(cls, indata: str) -> "Address":
@@ -183,50 +171,6 @@ class ObjectReference(canoser.Struct):
         )
 
     @classmethod
-    @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
-    def from_generic_ref(cls, indata: GenericRef) -> "ObjectReference":
-        """from_generic_ref init construct with GenericRef from ObjectRead structure.
-
-        :param indata: The reference information for an Object from ObjectRead
-        :type indata: GenericRef
-        :return: The instantiated BCS object
-        :rtype: ObjectReference
-        """
-        if isinstance(indata, GenericRef):
-            return cls(
-                Address.from_str(indata.object_id),
-                int(indata.version),
-                Digest.from_str(indata.digest),
-            )
-        raise ValueError(f"{indata} is not valid")
-
-    @classmethod
-    @versionadded(version="0.54.0", reason="Support argument inferencing")
-    def from_gql_ref(cls, indata: pgql_type.ObjectReadGQL) -> "ObjectReference":
-        """from_generic_ref init construct with GenericRef from ObjectRead structure.
-
-        :param indata: The reference information for an Object from ObjectRead
-        :type indata: GenericRef
-        :return: The instantiated BCS object
-        :rtype: ObjectReference
-        """
-        if isinstance(
-            indata,
-            (
-                pgql_type.ObjectReadGQL,
-                pgql_type.SuiCoinObjectGQL,
-                pgql_type.SuiStakedCoinGQL,
-                pgql_type.SuiCoinObjectSummaryGQL,
-            ),
-        ):
-            return cls(
-                Address.from_str(indata.object_id),
-                indata.version,
-                Digest.from_str(indata.object_digest),
-            )
-        raise ValueError(f"{indata} is not valid")
-
-    @classmethod
     @versionadded(version="0.87.0", reason="Support grpc argument inferencing")
     def from_grpc_ref(cls, indata: sui_prot.Object) -> "ObjectReference":
         """from_grpc_ref init construct with gRPC Object
@@ -276,42 +220,6 @@ class SharedObjectReference(canoser.Struct):
             object_id=self.ObjectID.to_address_str(),  # type: ignore
             mutable=self.Mutable,  # type: ignore
             version=self.SequenceNumber,  # type: ignore
-        )
-
-    @classmethod
-    @deprecated(version="0.54.0", reason="Transitioning to GraphQL")
-    def from_object_read(cls, indata: ObjectRead) -> "SharedObjectReference":
-        """from_generic_ref init construct with GenericRef from ObjectRead structure.
-
-        :param indata: The reference information for an Object from ObjectRead
-        :type indata: GenericRef
-        :return: The instantiated BCS object
-        :rtype: SharedObjectReference
-        """
-        mutable = False if indata.object_id in cls._IMMUTABLES else True
-        return cls(
-            Address.from_str(indata.object_id),
-            int(indata.owner.initial_shared_version),  # type: ignore
-            mutable,
-        )
-
-    @classmethod
-    @versionadded(version="0.54.0", reason="Support argument inferencing")
-    def from_gql_ref(
-        cls, indata: pgql_type.ObjectReadGQL, is_mutable: bool = False
-    ) -> "SharedObjectReference":
-        """from_gql_ref init construct with ObjectReadGQL.
-
-        :param indata: The reference information for an Object from ObjectReadGQL
-        :type indata: ObjectReadGQL
-        :return: The instantiated BCS object
-        :rtype: SharedObjectReference
-        """
-        mutable = is_mutable if indata.object_id not in cls._IMMUTABLES else False
-        return cls(
-            Address.from_str(indata.object_id),
-            indata.object_owner.initial_version,  # type: ignore
-            mutable,
         )
 
     @classmethod
@@ -805,7 +713,6 @@ class Argument(canoser.RustEnum):
     ]
 
 
-@deprecated(version="0.54.0", reason="Transitioning to GraphQL")
 class OptionalTypeTag(canoser.RustOptional):
     """OptionalTypeTag Optional assignment of TypeTag."""
 
@@ -1169,15 +1076,6 @@ class TransactionData(canoser.RustEnum):
         return cls.deserialize(in_data)
 
 
-# Multi-signature legacy
-@versionadded(version="0.20.4", reason="Added to support in-code MultiSig signing.")
-@deprecated(version="0.33.0", reason="Unused, scheduled for removal in 0.35.0")
-class MsPublicKey(canoser.Struct):
-    """Represents signing PublicKeys for serialization."""
-
-    _fields = [("PublicKey", [U8]), ("Weight", U8)]
-
-
 # Multi-signature
 class MsEd25519PublicKey(canoser.Struct):
     """."""
@@ -1451,3 +1349,97 @@ class SuiTransaction(canoser.RustEnum):
     """BCS representation of serialized pysui SuiTransaction (a.k.a. builder)."""
 
     _enums = [("1.0.0", SuiTransactionDataV1)]
+
+
+# pylint:disable=too-few-public-methods
+class SuiIntegerType:
+    """Base class for Move integer type validators with fixed-width BCS encoding."""
+
+    def to_bytes(self) -> bytes:
+        """."""
+        value: int = getattr(self, "value")
+        maxer: int = getattr(self, "_BYTE_COUNT")
+        return value.to_bytes(maxer, "little")
+
+    @property
+    def type_tag_name(self) -> str:
+        """."""
+        return getattr(self, "_TYPE_TAG_NAME")
+
+
+class SuiU8(SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFF
+    _BYTE_COUNT: int = 1
+    _TYPE_TAG_NAME: str = "U8"
+
+    def __init__(self, val: Union[int, str]):
+        """."""
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
+
+
+class SuiU16(SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFF
+    _BYTE_COUNT: int = 2
+    _TYPE_TAG_NAME: str = "U16"
+
+    def __init__(self, val: Union[int, str]):
+        """."""
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
+
+
+class SuiU32(SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFFFFFF
+    _BYTE_COUNT: int = 4
+    _TYPE_TAG_NAME: str = "U32"
+
+    def __init__(self, val: Union[int, str]):
+        """."""
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
+
+
+class SuiU64(SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFFFFFFFFFFFFFF
+    _BYTE_COUNT: int = 8
+    _TYPE_TAG_NAME: str = "U64"
+
+    def __init__(self, val: Union[int, str]):
+        """."""
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
+
+
+class SuiU128(SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    _BYTE_COUNT: int = 16
+    _TYPE_TAG_NAME: str = "U128"
+
+    def __init__(self, val: Union[int, str]):
+        """."""
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)
+
+
+class SuiU256(SuiIntegerType):
+    """."""
+
+    _MAX_VAL: int = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    _BYTE_COUNT: int = 32
+    _TYPE_TAG_NAME: str = "U256"
+
+    def __init__(self, val: Union[int, str]):
+        """."""
+        assert int(val) <= self._MAX_VAL
+        self.value = int(val)

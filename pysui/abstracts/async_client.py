@@ -80,7 +80,8 @@ class AsyncClientBase(ABC):
 
         is_pageable = getattr(command, f"is_pageable_{self._protocol}", False)
         if not is_pageable:
-            return await self.execute(command=command, timeout=timeout, headers=headers)
+            result = await self.execute(command=command, timeout=timeout, headers=headers)
+            return await self._apply_compound(command, result, timeout=timeout, headers=headers)
 
         items_path: tuple[str, ...] = getattr(
             command, f"paginated_field_path_{self._protocol}"
@@ -124,4 +125,52 @@ class AsyncClientBase(ABC):
             command.next_page_token = token
 
         _walk(accumulator, parent_path).next_page_token = None
-        return SuiRpcResult(True, "", accumulator)
+        return await self._apply_compound(
+            command, SuiRpcResult(True, "", accumulator), timeout=timeout, headers=headers
+        )
+
+    async def _apply_compound(
+        self,
+        command: Any,
+        result: "SuiRpcResult",
+        *,
+        timeout: float | None = None,
+        headers: dict | None = None,
+    ) -> "SuiRpcResult":
+        """Drive sub-collection fetches declared in compound_sub_collections_{protocol}."""
+        if not result.is_ok():
+            return result
+        data = result.result_data
+        specs = getattr(command, f"compound_sub_collections_{self._protocol}", None)
+        if specs:
+            for has_next_attr, sub_cmd_class, sub_src_field, parent_field in specs:
+                if not getattr(data, has_next_attr, False):
+                    continue
+                sub_cmd = sub_cmd_class(
+                    package=command.package, module_name=command.module_name
+                )
+                sub_result = await self.execute_for_all(
+                    command=sub_cmd, timeout=timeout, headers=headers
+                )
+                if not sub_result.is_ok():
+                    return sub_result
+                setattr(data, parent_field, getattr(sub_result.result_data, sub_src_field))
+        item_specs = getattr(command, f"compound_items_{self._protocol}", None)
+        if item_specs:
+            for item_path, item_cmd_class, item_key_attr, cmd_kwarg, trunc_attrs in item_specs:
+                *parent_path, items_field = item_path
+                parent = functools.reduce(getattr, parent_path, data)
+                items = getattr(parent, items_field, [])
+                for i, item in enumerate(items):
+                    if not any(getattr(item, attr, False) for attr in trunc_attrs):
+                        continue
+                    key_val = getattr(item, item_key_attr)
+                    sub_cmd = item_cmd_class(
+                        package=command.package, **{cmd_kwarg: key_val}
+                    )
+                    sub_result = await self.execute_for_all(
+                        command=sub_cmd, timeout=timeout, headers=headers
+                    )
+                    if sub_result.is_ok():
+                        items[i] = sub_result.result_data
+        return result

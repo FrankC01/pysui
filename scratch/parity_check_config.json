@@ -1,0 +1,21 @@
+{
+  "_comment": "Populate package_ids and per-command args for commands that cannot be bootstrapped automatically.",
+  "package_ids": ["0x77e850f559f6a789a0fc81bbadc1c73280356cc99aaf73486856265f9bce4a3f"],
+  "module_name": "parms",
+  "GetDynamicFields": {
+    "object_id": "0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed"
+  },
+  "GetNameServiceAddress": {
+    "name": ""
+  },
+  "VerifyTransactionSignature": {
+    "message": "",
+    "signature": "",
+    "author": ""
+  },
+  "VerifyPersonalMessageSignature": {
+    "message": "",
+    "signature": "",
+    "author": ""
+  }
+}

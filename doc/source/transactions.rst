@@ -1,177 +1,122 @@
-================================
-Programmable Transaction Blocks
-================================
+============
+Transactions
+============
 
-``pysui`` supports Programmable Transaction Blocks (PTBs) across all three
-transport protocols. GraphQL and gRPC share the same command set and identical
-calling conventions; both are **async only** for new code. JSON-RPC
-transactions are covered separately — see :doc:`jsonrpc_transactions`.
+``pysui`` uses a single async transaction builder,
+:py:class:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction`, across both
+GraphQL and gRPC. PTB commands available on the builder are documented on
+:doc:`transactions_ptb`.
 
-All transaction builder instances are obtained by calling
-``client.transaction()`` on the active client.
 
-Transaction Commands
---------------------
+Obtaining a Builder
+-------------------
 
-All commands listed below are available on both the GraphQL and gRPC
-transaction builders. ``optional_object`` is not available on JSON-RPC.
-
-+--------------------------+
-|  Command                 |
-+==========================+
-| split_coin               |
-+--------------------------+
-| split_coin_equal         |
-+--------------------------+
-| merge_coin               |
-+--------------------------+
-| transfer_objects         |
-+--------------------------+
-| transfer_sui             |
-+--------------------------+
-| public_transfer_object   |
-+--------------------------+
-| make_move_vector         |
-+--------------------------+
-| move_call                |
-+--------------------------+
-| stake_coin               |
-+--------------------------+
-| unstake_coin             |
-+--------------------------+
-| publish                  |
-+--------------------------+
-| publish_upgrade          |
-+--------------------------+
-| custom_upgrade           |
-+--------------------------+
-| optional_object \*       |
-+--------------------------+
-| balance_from \*          |
-+--------------------------+
-
-\* GraphQL and gRPC only; not available on JSON-RPC.
-
-Executing Transactions
-----------------------
-
-+--------------------------+-----------------------------------------------------------------+
-|  Implementation          | Class                                                           |
-+==========================+=================================================================+
-| GraphQL and gRPC async   | :py:class:`pysui.sui.sui_common.async_txn.AsyncSuiTransaction`  |
-+--------------------------+-----------------------------------------------------------------+
-
-For JSON-RPC transaction classes see :doc:`jsonrpc_transactions`.
-
-Executor classes (serial and parallel) that wrap the transaction lifecycle
-are documented on :doc:`executors`.
-
-Client Parity Example
----------------------
-
-The example below builds and executes the same PTB — a coin split followed by
-a transfer — against the GraphQL and gRPC transports using
-:py:func:`pysui.sui.sui_common.factory.client_factory`.
-
-Copy it to a local script and run with:
-
-.. code-block:: shell
-
-   python client_parity.py
+Transaction builders are obtained through the active client:
 
 .. code-block:: python
-   :linenos:
 
-    #    Copyright Frank V. Castellucci
-    #    SPDX-License-Identifier: Apache-2.0
+   txer: AsyncSuiTransaction = await client.transaction()
 
-    """Client Transaction Parity — GraphQL and gRPC."""
+All keyword arguments are optional. The user-facing parameters are:
 
-    import asyncio
+.. list-table::
+   :header-rows: 1
+   :widths: 25 15 60
 
-    from pysui import PysuiConfiguration, SuiRpcResult, client_factory
-
-    import pysui.sui.sui_common.sui_commands as cmd
-    from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
-
-
-    async def graphql_example():
-        """GraphQL async split and transfer."""
-        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-        client = client_factory(cfg)  # returns GqlProtocolClient
-
-        txer: AsyncSuiTransaction = await client.transaction()
-        scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
-        await txer.transfer_objects(
-            transfers=scres, recipient=client.config.active_address
-        )
-        txdict = await txer.build_and_sign()
-        result: SuiRpcResult = await client.execute(
-            command=cmd.ExecuteTransaction(**txdict)
-        )
-        if result.is_ok():
-            print(result.result_data.to_json(indent=2))
-        else:
-            print(result.result_string)
+   * - Parameter
+     - Default
+     - Description
+   * - ``client``
+     - *(required)*
+     - The active async protocol client (``GqlProtocolClient`` or
+       ``GrpcProtocolClient``). Supplied automatically when obtained via
+       ``client.transaction()``.
+   * - ``initial_sender``
+     - ``None``
+     - Override the transaction sender. Accepts a string address or a
+       ``SigningMultiSig`` instance for multi-sig transactions. Defaults to
+       the active address in the client configuration.
+   * - ``initial_sponsor``
+     - ``None``
+     - Designate a sponsor to pay gas on behalf of the sender. Accepts the
+       same types as ``initial_sender``.
+   * - ``compress_inputs``
+     - ``True``
+     - Collapses duplicate inputs into a single reference, reducing
+       transaction size. Appropriate for almost all use cases.
 
 
-    async def grpc_example():
-        """gRPC async split and transfer."""
-        cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
-        client = client_factory(cfg)  # returns GrpcProtocolClient
+Build Methods
+-------------
 
-        txer: AsyncSuiTransaction = await client.transaction()
-        scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
-        await txer.transfer_objects(
-            transfers=scres, recipient=client.config.active_address
-        )
-        txdict = await txer.build_and_sign()
-        result: SuiRpcResult = await client.execute(
-            command=cmd.ExecuteTransaction(**txdict)
-        )
-        if result.is_ok():
-            print(result.result_data.to_json(indent=2))
-        else:
-            print(result.result_string)
+All three methods share the same gas and expiry arguments (see
+`Gas and Expiry Arguments`_ below).
 
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
 
-    async def main():
-        """Run both protocol examples."""
-        await graphql_example()
-        await grpc_example()
-
-
-    if __name__ == "__main__":
-        asyncio.run(main())
+   * - Method
+     - Description
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.transaction_data`
+     - Returns the raw ``bcs.TransactionData`` BCS object. Use this when
+       you want to inspect the constructed transaction
+       (e.g. ``.to_json(indent=2)``) or to serialise and sign it
+       externally.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.build`
+     - Serialises the transaction to a base64-encoded byte string without
+       signing. Use when you need the raw bytes for external signing or
+       custom serialisation.
+   * - :py:meth:`~pysui.sui.sui_common.async_txn.AsyncSuiTransaction.build_and_sign`
+     - Finalises the transaction, simulates gas (unless ``gas_budget`` is
+       provided), signs, and returns a ``dict`` containing ``tx_bytestr``
+       (base64-encoded) and ``sig_array``. The dict unpacks directly into
+       :py:class:`~pysui.sui.sui_common.sui_commands.ExecuteTransaction`.
 
 
-Argument Passing
-----------------
+Gas and Expiry Arguments
+------------------------
 
-GraphQL and gRPC accept **native Python types** as transaction command
-arguments. Wrapping in pysui scalar objects (``ObjectID``, ``SuiU64``, etc.)
-is not required.
+All three build methods accept:
 
-``move_call`` on GraphQL and gRPC:
+.. list-table::
+   :header-rows: 1
+   :widths: 30 15 55
 
-.. code-block:: python
-   :linenos:
+   * - Parameter
+     - Default
+     - Description
+   * - ``gas_budget``
+     - ``None``
+     - Explicit gas budget in MIST. When provided, the simulation
+       round-trip is skipped and this value is used directly as the
+       transaction fee cap.
+   * - ``use_gas_objects``
+     - ``None``
+     - List of coin object IDs or ``Object`` instances to use for gas
+       payment. When provided, pysui's automatic gas-coin selection is
+       bypassed.
+   * - ``txn_expires_after``
+     - ``None``
+     - Controls the single ``TransactionExpiration`` field, but the
+       variant used depends on the gas path. On the standard coin path
+       this becomes ``Epoch(N)`` — the transaction will not execute
+       after epoch N. When ``use_account_for_gas=True`` this becomes
+       a ``ValidDuring([N, N+1])`` window required by the coin
+       reservation; if omitted, the current epoch is used as N.
+   * - ``use_account_for_gas``
+     - ``False``
+     - Draw gas from the sender's address balance (accumulator) rather
+       than coin objects. When set, ``use_gas_objects`` is ignored.
+   * - ``auto_gas``
+     - ``False``
+     - Automatically select the gas path based on sender balance at build
+       time. When set to ``True``, queries the sender's address balance and
+       routes to the address balance gas path if balance is positive,
+       otherwise falls back to standard coin gas selection.
 
-    txn.move_call(
-        target="0x0cce...e9e::marketplace::buy_and_take",
-        arguments=[
-            "0xb468...9e",   # str — object ID
-            "0xfd54...08",
-            "0x97db...e5",
-            coin_object_id,  # str
-            coin_object_id,
-            1350000000,      # int
-        ],
-        type_arguments=[
-            "0x3dcf...cd::suifrens::SuiFren<...::capy::Capy>",
-            "0x2::sui::SUI",
-        ],
-    )
+.. note::
 
-JSON-RPC ``move_call`` requires pysui wrapper types for every argument — see
-:ref:`jsonrpc-move-call` in :doc:`jsonrpc_transactions`.
+   On the standard coin path (``use_account_for_gas=False``),
+   ``gas_budget`` and ``use_gas_objects`` are independent overrides and
+   may be combined freely.

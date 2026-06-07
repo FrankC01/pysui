@@ -3,8 +3,7 @@ Introducing pysui
 =================
 
 **pysui** is a Python client SDK for the `Sui blockchain <https://sui.io>`_,
-providing idiomatic access to Sui's GraphQL RPC and gRPC transports. A legacy
-JSON-RPC client is included for compatibility but is planned for removal.
+providing idiomatic access to Sui's GraphQL RPC and gRPC transports.
 
 The Role of Sui Binaries
 ------------------------
@@ -18,8 +17,7 @@ The Role of Sui Binaries
 Transport Protocols
 -------------------
 
-pysui supports three transport protocols. For new code, choose between
-**GraphQL** and **gRPC**; JSON-RPC is legacy.
+pysui supports two transport protocols: **GraphQL** and **gRPC**.
 
 +------------+---------------------+------------------+
 | Protocol   | Status              | Planned Sunset   |
@@ -27,8 +25,6 @@ pysui supports three transport protocols. For new code, choose between
 | GraphQL    | Production          | None             |
 +------------+---------------------+------------------+
 | gRPC       | Production          | None             |
-+------------+---------------------+------------------+
-| JSON RPC   | Legacy              | 2026             |
 +------------+---------------------+------------------+
 
 For guidance on choosing between GraphQL and gRPC, see Mysten Labs'
@@ -65,8 +61,7 @@ The UCI is built on four pillars:
    ``await client.parallel_executor(options=...)``.
 
 4. **Protocol-Level Access**: When you need capabilities beyond ``SuiCommand``:
-   Use :doc:`GraphQL QueryNodes <graphql_queries>` via ``execute_query_node``
-   for custom queries, or :doc:`gRPC Requests <grpc_requests>` via
+   use ``execute_query_node`` for custom GraphQL queries, or
    ``execute_grpc_request`` for direct gRPC interactions.
 
 Together, these four pillars fully encapsulate all protocol details: developers

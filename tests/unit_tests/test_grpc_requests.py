@@ -10,17 +10,16 @@ Tests cover:
   - Service type assignment (LEDGER, STATE, TRANSACTION, MOVEPACKAGE, SUBSCRIPTION, SIGNATURE, NAMESERVICE)
   - Subclass/alias relationships
   - RESULT_TYPE declarations
-  - Deprecation warnings (GetBalance, GetAllCoinBalances, GetDataType, NameLookup, ReverseNameLookup, SimulateTransactionLKind)
   - Input validation (GetMultipleObjects >50 limit)
   - Default coin types for GetCoins and GetGas
 """
 
-import warnings
 import pytest
 
 import pysui.sui.sui_grpc.pgrpc_requests as gr
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+import pysui.sui.sui_common.shared_types as shared_types
 
 
 # ---------------------------------------------------------------------------
@@ -123,14 +122,6 @@ class TestObjectRequests:
         assert obj.version == 5
         assert obj.service == absreq.Service.LEDGER
 
-    def test_get_object_content_is_get_object(self):
-        assert issubclass(gr.GetObjectContent, gr.GetObject)
-
-    def test_get_object_content_constructs(self):
-        obj = gr.GetObjectContent(object_id=self._OID)
-        assert obj.object_id == self._OID
-        assert obj.service == absreq.Service.LEDGER
-
     def test_get_multiple_objects_stores_ids(self):
         obj = gr.GetMultipleObjects(object_ids=[self._OID, self._OID2])
         assert len(obj.objects) == 2
@@ -139,9 +130,6 @@ class TestObjectRequests:
     def test_get_multiple_objects_over_50_raises(self):
         with pytest.raises(ValueError, match="Max object ids 50"):
             gr.GetMultipleObjects(object_ids=[f"0x{i:04x}" for i in range(51)])
-
-    def test_get_multiple_object_content_is_get_multiple_objects(self):
-        assert issubclass(gr.GetMultipleObjectContent, gr.GetMultipleObjects)
 
     def test_get_multiple_past_objects_over_50_raises(self):
         entries = [{"objectId": f"0x{i:04x}", "version": i} for i in range(51)]
@@ -169,26 +157,6 @@ class TestOwnedObjectRequests:
     def test_get_objects_owned_optional_type(self):
         obj = gr.GetObjectsOwnedByAddress(owner=self._ADDR, object_type="0x2::token::T")
         assert obj.object_type == "0x2::token::T"
-
-    def test_get_coins_is_owned_objects(self):
-        assert issubclass(gr.GetCoins, gr.GetObjectsOwnedByAddress)
-
-    def test_get_coins_default_coin_type(self):
-        obj = gr.GetCoins(owner=self._ADDR)
-        assert obj.object_type == self._SUI_COIN
-        assert obj.service == absreq.Service.STATE
-
-    def test_get_coins_custom_coin_type(self):
-        obj = gr.GetCoins(owner=self._ADDR, coin_type="0xdead::token::T")
-        assert obj.object_type == "0xdead::token::T"
-
-    def test_get_gas_is_owned_objects(self):
-        assert issubclass(gr.GetGas, gr.GetObjectsOwnedByAddress)
-
-    def test_get_gas_always_sui_type(self):
-        obj = gr.GetGas(owner=self._ADDR)
-        assert obj.object_type == self._SUI_COIN
-        assert obj.service == absreq.Service.STATE
 
     def test_get_staked_is_owned_objects(self):
         assert issubclass(gr.GetStaked, gr.GetObjectsOwnedByAddress)
@@ -237,18 +205,6 @@ class TestCoinBalanceRequests:
         assert obj.page_size == 10
         assert obj.page_token == b"tok"
 
-    def test_get_balance_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.GetBalance(owner=self._ADDR, coin_type="0x2::sui::SUI")
-
-    def test_get_balance_warns_use_replacement(self):
-        with pytest.warns(DeprecationWarning, match="GetAddressCoinBalance"):
-            gr.GetBalance(owner=self._ADDR, coin_type="0x2::sui::SUI")
-
-    def test_get_all_coin_balances_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.GetAllCoinBalances(owner=self._ADDR)
-
 
 # ---------------------------------------------------------------------------
 # TestTransactionRequests
@@ -264,27 +220,10 @@ class TestTransactionRequests:
         obj = gr.GetTransaction(digest="txdigest")
         assert obj.field_mask is not None
 
-    def test_get_tx_is_get_transaction(self):
-        assert issubclass(gr.GetTx, gr.GetTransaction)
-
-    def test_get_tx_stores_digest(self):
-        obj = gr.GetTx(digest="abc")
-        assert obj.digest == "abc"
-
     def test_get_transactions_stores_list(self):
         obj = gr.GetTransactions(transactions=["d1", "d2", "d3"])
         assert obj.transactions == ["d1", "d2", "d3"]
         assert obj.service == absreq.Service.LEDGER
-
-    def test_get_multiple_tx_is_get_transactions(self):
-        assert issubclass(gr.GetMultipleTx, gr.GetTransactions)
-
-    def test_get_tx_kind_is_get_transaction(self):
-        assert issubclass(gr.GetTxKind, gr.GetTransaction)
-
-    def test_get_tx_kind_field_mask(self):
-        obj = gr.GetTxKind(digest="abc")
-        assert obj.field_mask is not None
 
     def test_get_transaction_sc_is_get_transaction(self):
         assert issubclass(gr.GetTransactionSC, gr.GetTransaction)
@@ -408,19 +347,6 @@ class TestPackageRequests:
         assert obj.type_name == "Coin"
         assert obj.service == absreq.Service.MOVEPACKAGE
 
-    def test_get_data_type_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.GetDataType(package="0x2", module_name="coin", type_name="Coin")
-
-    def test_get_data_type_warns_use_replacement(self):
-        with pytest.warns(DeprecationWarning, match="GetMoveDataType"):
-            gr.GetDataType(package="0x2", module_name="coin", type_name="Coin")
-
-    def test_get_data_type_is_get_move_data_type(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            assert issubclass(gr.GetDataType, gr.GetMoveDataType)
-
     def test_get_structure_is_get_move_data_type(self):
         assert issubclass(gr.GetStructure, gr.GetMoveDataType)
 
@@ -464,28 +390,6 @@ class TestNameServiceRequests:
         assert obj.address == "0xabc"
         assert obj.service == absreq.Service.NAMESERVICE
 
-    def test_name_lookup_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.NameLookup(name="test.sui")
-
-    def test_name_lookup_warns_use_replacement(self):
-        with pytest.warns(DeprecationWarning, match="GetNameServiceAddress"):
-            gr.NameLookup(name="test.sui")
-
-    def test_name_lookup_is_get_name_service_address(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            assert issubclass(gr.NameLookup, gr.GetNameServiceAddress)
-
-    def test_reverse_name_lookup_warns(self):
-        with pytest.warns(DeprecationWarning):
-            gr.ReverseNameLookup(address="0xabc")
-
-    def test_reverse_name_lookup_is_get_name_service_names(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            assert issubclass(gr.ReverseNameLookup, gr.GetNameServiceNames)
-
 
 # ---------------------------------------------------------------------------
 # TestMiscRequests
@@ -525,8 +429,163 @@ class TestMiscRequests:
         )
         assert obj.address == "0xsender"
 
-    def test_simulate_transaction_lkind_warns(self):
-        """SimulateTransactionLKind requires a real TransactionKind — just check class-level deprecation."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            assert issubclass(gr.SimulateTransactionLKind, gr.SimulateTransactionKind)
+
+# ---------------------------------------------------------------------------
+# TestRenderMethods — render() output for gRPC SC variants (epoch, object, misc)
+# ---------------------------------------------------------------------------
+
+class TestRenderMethods:
+    """Verify render() transformations for gRPC SC subclasses."""
+
+    # --- GetChainIdentifierSC ---
+
+    def test_get_chain_identifier_sc_render_returns_chain_id(self):
+        response = sui_prot.GetServiceInfoResponse(chain_id="mainnet-abc")
+        obj = gr.GetChainIdentifierSC()
+        assert obj.render(response) == "mainnet-abc"
+
+    def test_get_chain_identifier_sc_render_empty_chain_id(self):
+        response = sui_prot.GetServiceInfoResponse()
+        obj = gr.GetChainIdentifierSC()
+        assert obj.render(response) == ""
+
+    # --- GetLatestSuiSystemState ---
+
+    def test_get_latest_sui_system_state_render_returns_system_state(self):
+        ss = sui_prot.SystemState()
+        epoch = sui_prot.Epoch(system_state=ss)
+        response = sui_prot.GetEpochResponse(epoch=epoch)
+        obj = gr.GetLatestSuiSystemState()
+        result = obj.render(response)
+        assert result is ss
+
+    # --- GetCurrentValidatorsSC ---
+
+    def test_get_current_validators_sc_render_returns_active_validators(self):
+        v1 = sui_prot.Validator()
+        v2 = sui_prot.Validator()
+        vs = sui_prot.ValidatorSet(active_validators=[v1, v2])
+        ss = sui_prot.SystemState(validators=vs)
+        epoch = sui_prot.Epoch(system_state=ss)
+        response = sui_prot.GetEpochResponse(epoch=epoch)
+        obj = gr.GetCurrentValidatorsSC()
+        result = obj.render(response)
+        assert result.validators == [v1, v2]
+
+    # --- GetBasicCurrentEpochInfo ---
+
+    def test_get_basic_current_epoch_info_render_returns_epoch(self):
+        epoch = sui_prot.Epoch(epoch=7, reference_gas_price=1000)
+        response = sui_prot.GetEpochResponse(epoch=epoch)
+        obj = gr.GetBasicCurrentEpochInfo()
+        result = obj.render(response)
+        assert result is epoch
+        assert result.epoch == 7
+        assert result.reference_gas_price == 1000
+
+    # --- GetProtocolConfig ---
+
+    def test_get_protocol_config_render_returns_protocol_config(self):
+        pc = sui_prot.ProtocolConfig(protocol_version=42)
+        epoch = sui_prot.Epoch(protocol_config=pc)
+        response = sui_prot.GetEpochResponse(epoch=epoch)
+        obj = gr.GetProtocolConfig()
+        result = obj.render(response)
+        assert result is pc
+        assert result.protocol_version == 42
+
+    # --- GetObjectSC ---
+
+    def test_get_object_sc_render_returns_inner_object(self):
+        inner = sui_prot.Object(object_id="0xabc", version=3)
+        response = sui_prot.GetObjectResponse(object=inner)
+        obj = gr.GetObjectSC(object_id="0xabc")
+        assert obj.render(response) is inner
+
+    def test_get_object_sc_render_none_when_missing(self):
+        response = sui_prot.GetObjectResponse()
+        obj = gr.GetObjectSC(object_id="0xabc")
+        assert obj.render(response) is None
+
+    # --- GetPastObjectSC ---
+
+    def test_get_past_object_sc_render_returns_inner_object(self):
+        inner = sui_prot.Object(object_id="0xdef", version=7)
+        response = sui_prot.GetObjectResponse(object=inner)
+        obj = gr.GetPastObjectSC(object_id="0xdef", version=7)
+        assert obj.render(response) is inner
+
+    # --- GetObjectSummarySC ---
+
+    def test_get_object_summary_sc_render_address_owner(self):
+        owner = sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address="0xowner")
+        inner = sui_prot.Object(object_id="0x1", version=5, digest="dg1", owner=owner)
+        response = sui_prot.GetObjectResponse(object=inner)
+        obj = gr.GetObjectSummarySC(object_id="0x1")
+        result = obj.render(response)
+        assert isinstance(result, shared_types.ObjectSummary)
+        assert result.objectId == "0x1"
+        assert result.version == "5"
+        assert result.digest == "dg1"
+        assert result.owner == "0xowner"
+        assert result.initialSharedVersion is None
+
+    def test_get_object_summary_sc_render_shared_owner(self):
+        owner = sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=100)
+        inner = sui_prot.Object(object_id="0x2", version=2, digest="dg2", owner=owner)
+        response = sui_prot.GetObjectResponse(object=inner)
+        obj = gr.GetObjectSummarySC(object_id="0x2")
+        result = obj.render(response)
+        assert result.owner is None
+        assert result.initialSharedVersion == "100"
+
+    # --- GetMultipleObjectsSummarySC ---
+
+    def test_get_multiple_objects_summary_sc_render_address_owner(self):
+        owner = sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.ADDRESS, address="0xaddr")
+        obj1 = sui_prot.Object(object_id="0x1", version=1, digest="d1", owner=owner)
+        response = sui_prot.BatchGetObjectsResponse(
+            objects=[sui_prot.GetObjectResult(object=obj1)]
+        )
+        sc = gr.GetMultipleObjectsSummarySC(object_ids=["0x1"])
+        result = sc.render(response)
+        assert isinstance(result, shared_types.ObjectSummaryList)
+        assert len(result.objects) == 1
+        assert result.objects[0].owner == "0xaddr"
+
+    def test_get_multiple_objects_summary_sc_render_shared_owner(self):
+        owner = sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.SHARED, version=55)
+        obj1 = sui_prot.Object(object_id="0x2", version=3, digest="d2", owner=owner)
+        response = sui_prot.BatchGetObjectsResponse(
+            objects=[sui_prot.GetObjectResult(object=obj1)]
+        )
+        sc = gr.GetMultipleObjectsSummarySC(object_ids=["0x2"])
+        result = sc.render(response)
+        assert result.objects[0].initialSharedVersion == "55"
+        assert result.objects[0].owner is None
+
+    def test_get_multiple_objects_summary_sc_render_empty(self):
+        response = sui_prot.BatchGetObjectsResponse(objects=[])
+        sc = gr.GetMultipleObjectsSummarySC(object_ids=[])
+        result = sc.render(response)
+        assert isinstance(result, shared_types.ObjectSummaryList)
+        assert result.objects == []
+
+    # --- GetObjectsOwnedByAddress (base class render filters coin reservations) ---
+
+    def test_get_objects_owned_by_address_render_filters_version_zero(self):
+        real_obj = sui_prot.Object(object_id="0x1", version=3, digest=None)
+        coin_res = sui_prot.Object(object_id="0x2", version=0)  # version==0 → coin reservation
+        response = sui_prot.ListOwnedObjectsResponse(objects=[real_obj, coin_res])
+        obj = gr.GetObjectsOwnedByAddress(owner="0xowner")
+        result = obj.render(response)
+        assert len(result.objects) == 1
+        assert result.objects[0].object_id == "0x1"
+
+    def test_get_objects_owned_by_address_render_preserves_real_objects(self):
+        obj1 = sui_prot.Object(object_id="0x1", version=1, digest="d1")
+        obj2 = sui_prot.Object(object_id="0x2", version=2, digest="d2")
+        response = sui_prot.ListOwnedObjectsResponse(objects=[obj1, obj2])
+        sc = gr.GetObjectsOwnedByAddress(owner="0xowner")
+        result = sc.render(response)
+        assert len(result.objects) == 2

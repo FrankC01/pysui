@@ -17,7 +17,7 @@ Python Client SDK for Sui blockchain
 ### With Rust on machine
 
 `pip install pysui` if first time or
-`pip install -U --upgrade-strategy eager pysui` if upgrading.
+`pip install -U pysui` if upgrading.
 
 ### Without Rust on machine
 
@@ -26,17 +26,17 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK current (github)
 
-**Release-0.99.1**
+**Release-1.0.0**
 
 ## PyPi current
 
-**Release-0.99.1 - Released 2026-05-21**
+**Release-1.0.0 - Released 2026-06-08**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
-> **⚠️ Deprecation Notice:** Release 1.0.0 will **remove** the legacy JSON-RPC client
-> and synchronous GraphQL client. If your code uses either, migrate before upgrading.
-> See the [Migration Guide](https://pysui.readthedocs.io/en/latest/migration_to_pysui_uci.html)
+> **⚠️ Deletion Notice:** Release 1.0.0 has **removed** the legacy JSON-RPC client
+> and synchronous GraphQL client. If your code used either then use the
+> [Migration Guide](https://pysui.readthedocs.io/en/latest/migration_to_pysui_uci.html)
 > on ReadTheDocs.
 
 This is a significant release that redesigns pysui around the **Unified Client Interface (UCI)**.
@@ -72,14 +72,6 @@ The UCI is built on four pillars:
 
 - [ReadTheDocs](https://pysui.readthedocs.io/en/latest/index.html)
 
-### gRPC Support
-
-- Refer to [pysui-grpc](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRPC.md)
-
-### GraphQL Support
-
-- Refer to [pysui-graphql](https://github.com/FrankC01/pysui/blob/main/PYSUI_GRAPHQL.md)
-
 ### Changelog
 
 See [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
@@ -96,14 +88,8 @@ See [Strategies](https://github.com/FrankC01/pysui/blob/main/OP_STRATEGIES.md)
 
 Discord server invitation is [Found here](https://discord.gg/uCGYfY4Ph4):
 
-### Local node support
-
-Note: Only supported for JSON RPC clients, GraphQL not available for suibase at this time.
-
-We leverage [suibase](https://github.com/ChainMovers/suibase) for our testing and SuiConfig includes an option for interacting directly with local nodes created by `suibase`
-
 ## Sample utilities
 
-**Note**: Sample utiities are implemented using GraphQL
+**Note**: Sample utilities are implemented using pysui UCI
 
 See [samples](https://github.com/FrankC01/pysui/blob/main/samples/README.md)

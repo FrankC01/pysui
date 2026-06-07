@@ -17,6 +17,7 @@ from pysui.sui.sui_constants import (
     SUI_MIN_ALIAS_LEN,
     SUI_MAX_ALIAS_LEN,
 )
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 __partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{1,64}")
@@ -26,6 +27,7 @@ __partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{1,64}")
     version="0.76.0",
     reason="Addresses can be between 3 and 66 chars with prefix, 1 and 64 without.",
 )
+@sync_instrumented("pysui.sui.sui_common.validators.valid_sui_address")
 def valid_sui_address(instr: str) -> bool:
     """Verify Sui address string."""
     inlen = len(instr)
@@ -49,6 +51,7 @@ def valid_sui_address(instr: str) -> bool:
 class ValidateSuiTriple(argparse.Action):
     """Validate a::b::c"""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidateSuiTriple.__call__")
     def __call__(
         self,
         parser,
@@ -69,6 +72,7 @@ class ValidateSuiTriple(argparse.Action):
 class ValidateAlias(argparse.Action):
     """Alias string validator."""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidateAlias.__call__")
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -90,6 +94,7 @@ class ValidateAlias(argparse.Action):
 class ValidateAddress(argparse.Action):
     """Address validator."""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidateAddress.__call__")
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -112,6 +117,7 @@ class ValidateAddress(argparse.Action):
 class ValidateObjectID(argparse.Action):
     """ObjectID validator."""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidateObjectID.__call__")
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -134,6 +140,7 @@ class ValidateObjectID(argparse.Action):
 class ValidatePackageDir(argparse.Action):
     """Validate package directory."""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidatePackageDir.__call__")
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -152,6 +159,7 @@ class ValidatePackageDir(argparse.Action):
 class ValidateFile(argparse.Action):
     """Validate package directory."""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidateFile.__call__")
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -172,6 +180,7 @@ class ValidateFile(argparse.Action):
 class ValidateScrOrDir(argparse.Action):
     """Validate package directory."""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidateScrOrDir.__call__")
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -195,6 +204,7 @@ class ValidateScrOrDir(argparse.Action):
 class ValidatePositive(argparse.Action):
     """Validate a positive integer."""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidatePositive.__call__")
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -217,6 +227,7 @@ class ValidatePositive(argparse.Action):
 class ValidateB64(argparse.Action):
     """Validate base64 string."""
 
+    @sync_instrumented("pysui.sui.sui_common.validators.ValidateB64.__call__")
     def __call__(
         self,
         parser: argparse.ArgumentParser,

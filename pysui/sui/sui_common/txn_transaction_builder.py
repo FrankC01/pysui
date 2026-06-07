@@ -1,0 +1,563 @@
+#    Copyright Frank V. Castellucci
+#    SPDX-License-Identifier: Apache-2.0
+
+# -*- coding: utf-8 -*-
+# pylint: disable=too-many-instance-attributes
+
+"""Async Transaction Builder — protocol-agnostic PTB for gRPC and async GQL paths."""
+
+import logging
+import binascii
+from math import ceil
+from typing import Optional, Union
+from functools import singledispatchmethod
+
+from deprecated.sphinx import versionchanged, versionadded
+from pysui.sui.sui_common.types import TransactionConstraints
+
+from pysui.sui.sui_bcs import bcs
+from pysui.sui.sui_common.txn_pure import PureInput
+from pysui.sui.sui_utils import serialize_uint32_as_uleb128, hexstring_to_sui_id
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+
+# Well known aliases
+_SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
+_SUI_PACKAGE_MODULE: str = "package"
+_SUI_PACAKGE_AUTHORIZE_UPGRADE: str = "authorize_upgrade"
+_SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
+
+# Standard library logging setup
+logger = logging.getLogger(__name__)
+
+
+@versionchanged(version="0.31.0", reason="Added command type frequency")
+class ProgrammableTransactionBuilder:
+    """ProgrammableTransactionBuilder core transaction construction.
+
+    Supports both resolved (ObjectArg) and deferred (UnresolvedObjectArg) object inputs.
+    Deferred inputs are registered via ``input_obj_from_unresolved_object`` and resolved
+    in batch by the executor before calling ``build``.
+    """
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.__init__")
+    def __init__(self, *, compress_inputs: bool = False) -> None:
+        """Builder initializer."""
+        self.inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
+        self.commands: list[bcs.Command] = []
+        self.objects_registry: dict[str, str] = {}
+        self.compress_inputs: bool = compress_inputs
+
+        self.command_frequency = {
+            "MoveCall": 0,
+            "TransferObjects": 0,
+            "SplitCoin": 0,
+            "MergeCoins": 0,
+            "Publish": 0,
+            "MakeMoveVec": 0,
+            "Upgrade": 0,
+        }
+        logger.debug("TransactionBuilder initialized")
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder._finish")
+    def _finish(self) -> bcs.ProgrammableTransaction:
+        """finish returns ProgrammableTransaction structure.
+
+        :return: The resulting ProgrammableTransaction structure
+        :rtype: bcs.ProgrammableTransaction
+        """
+        return bcs.ProgrammableTransaction(
+            list(self.inputs.values()), self.commands.copy()
+        )
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.finish_for_inspect")
+    def finish_for_inspect(self) -> bcs.TransactionKind:
+        """finish_for_inspect returns TransactionKind structure.
+
+        For inspection, serializing this return and converting to base64 is enough
+        for sui_devInspectTransaction
+
+        :return: The resulting TransactionKind structure
+        :rtype: bcs.TransactionKind
+        """
+        return bcs.TransactionKind("ProgrammableTransaction", self._finish())
+
+    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
+    @versionchanged(version="0.30.2", reason="Remove reuse of identical pure inputs")
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder._find_duplicate_pure")
+    def _find_duplicate_pure(self, value) -> Optional[int]:
+        """Return the index of an existing pure input matching value, or None."""
+        for e_index, evalue in enumerate(self.inputs.values()):
+            if value == evalue.value:
+                return e_index
+        return None
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.input_pure")
+    def input_pure(self, key: bcs.BuilderArg) -> bcs.Argument:
+        """input_pure registers a pure input argument in the inputs collection.
+
+        :param key: Becomes the 'key' in the inputs dictionary cotaining the input index
+        :type key: bcs.BuilderArg
+        :raises ValueError: If the key arg BuilderArg is not "Pure" variant
+        :return: The input Argument encapsulating it's input index
+        :rtype: bcs.Argument
+        """
+        logger.debug("Adding pure input")
+        out_index = len(self.inputs)
+        if key.enum_name == "Pure":
+            if self.compress_inputs:
+                if (e_index := self._find_duplicate_pure(key.value)) is not None:
+                    logger.debug(f"Duplicate object input found at index {e_index}, reusing")
+                    return bcs.Argument("Input", e_index)
+            self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
+        else:
+            raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
+        logger.debug(f"New pure input created at index {out_index}")
+        return bcs.Argument("Input", out_index)
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder._find_duplicate_obj")
+    def _find_duplicate_obj(self, object_arg) -> Optional[int]:
+        """Return the index of an existing object input matching object_arg, or None."""
+        for e_index, evalue in enumerate(self.inputs.values()):
+            if object_arg == evalue.value:
+                return e_index
+        return None
+
+    @versionchanged(version="0.20.0", reason="Check for duplication. See bug #99")
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.input_obj")
+    def input_obj(
+        self,
+        key: bcs.BuilderArg,
+        object_arg: Union[bcs.ObjectArg, bcs.UnresolvedObjectArg],
+    ) -> bcs.Argument:
+        """."""
+        logger.debug("Adding object input")
+        out_index = len(self.inputs)
+        if key.enum_name == "Object" and isinstance(object_arg, bcs.ObjectArg):
+            if self.compress_inputs:
+                if (e_index := self._find_duplicate_obj(object_arg)) is not None:
+                    logger.debug(f"Duplicate object input found at index {e_index}, reusing")
+                    return bcs.Argument("Input", e_index)
+            self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
+            self.objects_registry[key.value.to_address_str()] = object_arg.enum_name
+        elif key.enum_name == "Unresolved" and isinstance(
+            object_arg, bcs.UnresolvedObjectArg
+        ):
+            self.inputs[key] = bcs.CallArg("UnresolvedObject", object_arg)
+            self.objects_registry[key.value] = object_arg
+        else:
+            raise ValueError(
+                f"Expected Object builder arg and ObjectArg, found {key.enum_name} and {type(object_arg)}"
+            )
+        logger.debug(f"New object input created at index {out_index}")
+        return bcs.Argument("Input", out_index)
+
+    @versionadded(version="0.54.0", reason="Support stand-alone ObjectArg")
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.input_obj_from_objarg")
+    def input_obj_from_objarg(
+        self, object_arg: Union[bcs.ObjectArg, bcs.Optional]
+    ) -> bcs.Argument:
+        """."""
+        if isinstance(object_arg, bcs.Optional):
+            object_arg = object_arg.value
+        oval: bcs.Address = object_arg.value.ObjectID
+        barg = bcs.BuilderArg("Object", oval)
+        return self.input_obj(barg, object_arg)
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.input_obj_from_unresolved_object")
+    def input_obj_from_unresolved_object(
+        self, object_arg: bcs.UnresolvedObjectArg
+    ) -> bcs.Argument:
+        """Register a deferred (unresolved) object arg — resolved before build."""
+        object_arg.ObjectStr = hexstring_to_sui_id(object_arg.ObjectStr)
+        barg = bcs.BuilderArg("Unresolved", object_arg.ObjectStr)
+        return self.input_obj(barg, object_arg)
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.get_unresolved_inputs")
+    def get_unresolved_inputs(self) -> dict[int, bcs.UnresolvedObjectArg]:
+        """Return a mapping of input index → UnresolvedObjectArg for all deferred inputs."""
+        res: dict[int, bcs.UnresolvedObjectArg] = {}
+        for idx, (barg, carg) in enumerate(self.inputs.items()):
+            if barg.enum_name == "Unresolved":
+                res[idx] = carg.value
+        return res
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.resolved_object_inputs")
+    def resolved_object_inputs(
+        self, entries: dict[int, tuple[bcs.BuilderArg, bcs.CallArg]]
+    ) -> None:
+        """Replace unresolved inputs with their resolved BuilderArg/CallArg pairs."""
+        new_inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
+        for idx, (barg, carg) in enumerate(self.inputs.items()):
+            if barg.enum_name == "Unresolved":
+                rbarg, rcarg = entries[idx]
+                new_inputs[rbarg] = rcarg
+            else:
+                new_inputs[barg] = carg
+        self.inputs = new_inputs
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.input_obj_from_withdrawal")
+    def input_obj_from_withdrawal(
+        self, with_drawal: bcs.FundsWithdrawal
+    ) -> bcs.Argument:
+        """."""
+        out_index = len(self.inputs)
+        self.inputs[bcs.BuilderArg("Withdrawal", with_drawal)] = bcs.CallArg("FundsWithdrawal", with_drawal)
+        return bcs.Argument("Input", out_index)
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.command")
+    def command(
+        self, command_obj: bcs.Command, nresults: int = 1
+    ) -> Union[bcs.Argument, list[bcs.Argument]]:
+        """command adds a new command to the list of commands.
+
+        :param command_obj: The Command type
+        :type command_obj: bcs.Command
+        :return: A result argument to be potentially used in other commands
+        :rtype: bcs.Argument
+        """
+        self.command_frequency[command_obj.enum_name] += 1
+        out_index = len(self.commands)
+        logger.debug(f"Adding command {out_index}")
+        self.commands.append(command_obj)
+        if nresults > 1:
+            logger.debug(f"Creating nested result return for {nresults} elements")
+            nreslist: list[bcs.Argument] = []
+            for nrindex in range(nresults):
+                nreslist.append(bcs.Argument("NestedResult", (out_index, nrindex)))
+            return nreslist
+        logger.debug("Creating single result return")
+        return bcs.Argument("Result", out_index)
+
+    @versionchanged(
+        version="0.54.0",
+        reason="Accept bcs.ObjectArg(s) support GraphQL implementation.",
+    )
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.make_move_vector")
+    def make_move_vector(
+        self,
+        vtype: bcs.OptionalTypeTag,
+        items: list[
+            Union[
+                bcs.Argument,
+                bcs.BuilderArg,
+                bcs.ObjectArg,
+                tuple[bcs.BuilderArg, bcs.ObjectArg],
+            ]
+        ],
+    ) -> bcs.Argument:
+        """Create a call to convert a list of items to a Sui 'vector' type."""
+        logger.debug("Creating MakeMoveVec transaction")
+        argrefs: list[bcs.Argument] = []
+        for arg in items:
+            if isinstance(arg, bcs.BuilderArg):
+                argrefs.append(self.input_pure(arg))
+            elif isinstance(arg, bcs.UnresolvedObjectArg):
+                argrefs.append(self.input_obj_from_unresolved_object(arg))
+            elif isinstance(arg, bcs.ObjectArg):
+                argrefs.append(self.input_obj_from_objarg(arg))
+            elif isinstance(arg, tuple):
+                argrefs.append(self.input_obj(*arg))
+            elif isinstance(arg, bcs.Argument):
+                argrefs.append(arg)
+            else:
+                raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
+
+        return self.command(bcs.Command("MakeMoveVec", bcs.MakeMoveVec(vtype, argrefs)))
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder._resolve_arg")
+    def _resolve_arg(self, arg) -> Optional[bcs.Argument]:
+        """Resolve a single move_call argument to a bcs.Argument, or None for skipped types."""
+        if isinstance(arg, bcs.BuilderArg):
+            return self.input_pure(arg)
+        if isinstance(arg, bcs.UnresolvedObjectArg):
+            return self.input_obj_from_unresolved_object(arg)
+        if isinstance(arg, bcs.UnresolvedOptional):
+            return None
+        if isinstance(arg, bcs.ObjectArg):
+            return self.input_obj_from_objarg(arg)
+        if isinstance(arg, bcs.Optional) and isinstance(arg.value, bcs.ObjectArg):
+            return self.input_obj_from_objarg(arg)
+        if isinstance(arg, bcs.Optional) and not isinstance(arg.value, bcs.ObjectArg):
+            return self.input_pure(PureInput.as_input(arg))
+        if isinstance(arg, bcs.FundsWithdrawal):
+            return self.input_obj_from_withdrawal(arg)
+        if isinstance(arg, tuple):
+            return self.input_obj(*arg)
+        if isinstance(arg, bcs.Argument):
+            return arg
+        if isinstance(arg, tuple(bcs.OPTIONAL_SCALARS)):
+            return self.input_pure(PureInput.as_input(arg))
+        if isinstance(arg, list):
+            return self.input_pure(PureInput.as_input(arg))
+        if isinstance(arg, bcs.Variable):
+            return self.input_pure(PureInput.as_input(arg))
+        raise ValueError(f"Unknown arg in movecall {arg.__class__.__name__}")
+
+    @versionchanged(version="0.17.0", reason="Add result count for correct arg return.")
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.move_call")
+    def move_call(  # pylint: disable=too-many-branches
+        self,
+        *,
+        target: bcs.Address,
+        arguments: list[
+            Union[
+                bcs.Argument,
+                bcs.ObjectArg,
+                bcs.Optional,
+                tuple[bcs.BuilderArg, bcs.ObjectArg],
+            ]
+        ],
+        type_arguments: list[bcs.TypeTag],
+        module: str,
+        function: str,
+        res_count: int = 1,
+    ) -> Union[bcs.Argument, list[bcs.Argument]]:
+        """Setup a MoveCall command and return it's result Argument."""
+        logger.debug("Creating MakeCall transaction")
+        argrefs: list[bcs.Argument] = []
+        for arg in arguments:
+            if (resolved := self._resolve_arg(arg)) is not None:
+                argrefs.append(resolved)
+
+        return self.command(
+            bcs.Command(
+                "MoveCall",
+                bcs.ProgrammableMoveCall(
+                    target, module, function, type_arguments, argrefs
+                ),
+            ),
+            res_count,
+        )
+
+    @versionchanged(version="0.17.0", reason="Extend to take list of amounts")
+    @versionchanged(
+        version="0.33.0", reason="Accept bcs.Argument (i.e. Result) as amount"
+    )
+    @versionchanged(
+        version="0.54.0", reason="Accept bcs.ObjectArg support GraphQL implementation."
+    )
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.split_coin")
+    def split_coin(
+        self,
+        from_coin: Union[
+            bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]
+        ],
+        amounts: list[bcs.BuilderArg],
+    ) -> bcs.Argument:
+        """Setup a SplitCoin command and return it's result Argument."""
+        logger.debug("Creating SplitCoin transaction")
+        amounts_arg = []
+        for amount in amounts:
+            if isinstance(amount, bcs.Argument):
+                amounts_arg.append(amount)
+            else:
+                amounts_arg.append(self.input_pure(amount))
+        if isinstance(from_coin, bcs.UnresolvedObjectArg):
+            from_coin = self.input_obj_from_unresolved_object(from_coin)
+        elif isinstance(from_coin, bcs.ObjectArg):
+            from_coin = self.input_obj_from_objarg(from_coin)
+        elif isinstance(from_coin, tuple):
+            from_coin = self.input_obj(*from_coin)
+        return self.command(
+            bcs.Command("SplitCoin", bcs.SplitCoin(from_coin, amounts_arg)),
+            len(amounts_arg),
+        )
+
+    @versionchanged(
+        version="0.54.0",
+        reason="Accept bcs.ObjectArg(s) support GraphQL implementation.",
+    )
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.merge_coins")
+    def merge_coins(
+        self,
+        to_coin: Union[
+            bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]
+        ],
+        from_coins: list[
+            Union[bcs.Argument, bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]]
+        ],
+    ) -> bcs.Argument:
+        """Setup a MergeCoins command and return it's result Argument."""
+        logger.debug("Creating MergeCoins transaction")
+
+        if isinstance(to_coin, bcs.UnresolvedObjectArg):
+            to_coin = self.input_obj_from_unresolved_object(to_coin)
+        elif isinstance(to_coin, bcs.ObjectArg):
+            to_coin = self.input_obj_from_objarg(to_coin)
+        elif isinstance(to_coin, tuple):
+            to_coin = self.input_obj(*to_coin)
+        from_args: list[bcs.Argument] = []
+        for fcoin in from_coins:
+            if isinstance(fcoin, bcs.UnresolvedObjectArg):
+                fcoin = self.input_obj_from_unresolved_object(fcoin)
+            elif isinstance(fcoin, bcs.ObjectArg):
+                fcoin = self.input_obj_from_objarg(fcoin)
+            elif isinstance(fcoin, tuple):
+                fcoin = self.input_obj(*fcoin)
+            from_args.append(fcoin)
+        return self.command(
+            bcs.Command("MergeCoins", bcs.MergeCoins(to_coin, from_args))
+        )
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder._resolve_obj_to_argument")
+    def _resolve_obj_to_argument(self, arg) -> bcs.Argument:
+        """Resolve an ObjectArg, UnresolvedObjectArg, or tuple to a bcs.Argument."""
+        if isinstance(arg, bcs.Argument):
+            return arg
+        if isinstance(arg, bcs.UnresolvedObjectArg):
+            return self.input_obj_from_unresolved_object(arg)
+        if isinstance(arg, bcs.ObjectArg):
+            return self.input_obj_from_objarg(arg)
+        return self.input_obj(*arg)
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.transfer_objects")
+    def transfer_objects(
+        self,
+        recipient: Union[bcs.BuilderArg, bcs.Argument],
+        object_ref: Union[
+            bcs.Argument,
+            list[
+                Union[
+                    bcs.Argument,
+                    bcs.ObjectArg,
+                    tuple[bcs.BuilderArg, bcs.ObjectArg],
+                ]
+            ],
+        ],
+    ) -> bcs.Argument:
+        """Setup a TransferObjects command and return it's result Argument."""
+        logger.debug("Creating TransferObjects transaction")
+        receiver_arg = (
+            recipient
+            if isinstance(recipient, bcs.Argument)
+            else self.input_pure(recipient)
+        )
+        from_args: list[bcs.Argument] = []
+        if isinstance(object_ref, list):
+            for fcoin in object_ref:
+                from_args.append(self._resolve_obj_to_argument(fcoin))
+        else:
+            from_args.append(object_ref)
+        return self.command(
+            bcs.Command("TransferObjects", bcs.TransferObjects(from_args, receiver_arg))
+        )
+
+    @versionchanged(
+        version="0.76.0", reason="https://github.com/FrankC01/pysui/issues/261"
+    )
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.transfer_sui")
+    def transfer_sui(
+        self,
+        recipient: bcs.BuilderArg,
+        from_coin: Union[bcs.Argument, tuple[bcs.BuilderArg, bcs.ObjectArg]],
+        amount: Optional[Union[bcs.BuilderArg, bcs.OptionalU64]] = None,
+    ) -> bcs.Argument:
+        """Setup a TransferObjects for Sui Coins.
+
+        First uses the SplitCoins result, then returns the TransferObjects result Argument.
+        """
+        logger.debug("Creating TransferSui transaction")
+        reciever_arg = self.input_pure(recipient)
+        if amount and isinstance(amount, bcs.BuilderArg):
+            coin_arg = self.split_coin(from_coin=from_coin, amounts=[amount])
+        elif isinstance(amount, bcs.OptionalU64):
+            if amount.value:
+                coin_arg = self.split_coin(
+                    from_coin=from_coin,
+                    amounts=[
+                        PureInput.as_input(bcs.SuiU64(bcs.U64.int_safe(amount.value)))
+                    ],
+                )
+            else:
+                coin_arg = from_coin
+        else:
+            coin_arg = from_coin
+        coin_arg = self._resolve_obj_to_argument(coin_arg)
+        return self.command(
+            bcs.Command(
+                "TransferObjects",
+                bcs.TransferObjects([coin_arg], reciever_arg),
+            )
+        )
+
+    @versionchanged(
+        version="0.20.0",
+        reason="Removed UpgradeCap auto transfer as per Sui best practices.",
+    )
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.publish")
+    def publish(
+        self, modules: list[list[bcs.U8]], dep_ids: list[bcs.Address]
+    ) -> bcs.Argument:
+        """Setup a Publish command and return it's result Argument."""
+        logger.debug("Creating Publish transaction")
+        return self.command(bcs.Command("Publish", bcs.Publish(modules, dep_ids)))
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.authorize_upgrade")
+    def authorize_upgrade(
+        self,
+        upgrade_cap: Union[bcs.ObjectArg, tuple[bcs.BuilderArg, bcs.ObjectArg]],
+        policy: bcs.BuilderArg,
+        digest: bcs.BuilderArg,
+    ) -> bcs.Argument:
+        """Setup a Authorize Upgrade MoveCall and return it's result Argument."""
+        logger.debug("Creating UpgradeAuthorization transaction")
+        if isinstance(upgrade_cap, bcs.ObjectArg):
+            ucap = self.input_obj_from_objarg(upgrade_cap)
+        else:
+            ucap = self.input_obj(*upgrade_cap)
+        return self.command(
+            bcs.Command(
+                "MoveCall",
+                bcs.ProgrammableMoveCall(
+                    _SUI_PACKAGE_ID,
+                    _SUI_PACKAGE_MODULE,
+                    _SUI_PACAKGE_AUTHORIZE_UPGRADE,
+                    [],
+                    [
+                        ucap,
+                        self.input_pure(policy),
+                        self.input_pure(digest),
+                    ],
+                ),
+            )
+        )
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.publish_upgrade")
+    def publish_upgrade(
+        self,
+        modules: list[list[bcs.U8]],
+        dep_ids: list[bcs.Address],
+        package_id: bcs.Address,
+        upgrade_ticket: bcs.Argument,
+    ) -> bcs.Argument:
+        """Setup a Upgrade Command and return it's result Argument."""
+        logger.debug("Creating PublishUpgrade transaction")
+        return self.command(
+            bcs.Command(
+                "Upgrade",
+                bcs.Upgrade(modules, dep_ids, package_id, upgrade_ticket),
+            )
+        )
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.commit_upgrade")
+    def commit_upgrade(
+        self, upgrade_cap: bcs.Argument, receipt: bcs.Argument
+    ) -> bcs.Argument:
+        """Setup a Commit Upgrade MoveCall and return it's result Argument."""
+        logger.debug("Creating UpgradeCommit transaction")
+        return self.command(
+            bcs.Command(
+                "MoveCall",
+                bcs.ProgrammableMoveCall(
+                    _SUI_PACKAGE_ID,
+                    _SUI_PACKAGE_MODULE,
+                    _SUI_PACAKGE_COMMIt_UPGRADE,
+                    [],
+                    [upgrade_cap, receipt],
+                ),
+            )
+        )
+
+
+if __name__ == "__main__":
+    pass

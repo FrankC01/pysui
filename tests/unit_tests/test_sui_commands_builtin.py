@@ -406,7 +406,7 @@ class TestGqlNodes:
             for_versions=[{"objectId": OBJ_ID, "version": 1}]
         ).gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetMultipleVersionedObjects)
+        assert isinstance(node, pgql_query.GetMultipleVersionedObjectsSC)
         # GQL format uses "address" key, not "objectId"
         assert node.version_list[0]["address"] == OBJ_ID
         assert node.version_list[0]["version"] == 1
@@ -428,7 +428,6 @@ class TestGqlNodes:
     def test_get_latest_checkpoint(self):
         node = GetLatestCheckpoint().gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetLatestCheckpointSequence)
 
     def test_get_checkpoint_by_sequence(self):
         node = GetCheckpointBySequence(sequence_number=99).gql_node()
@@ -472,7 +471,7 @@ class TestGqlNodes:
     def test_get_package_versions(self):
         node = GetPackageVersions(package_address=PKG).gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetPackageVersions)
+        assert isinstance(node, pgql_query.GetPackageVersionsSC)
 
     def test_get_module(self):
         node = GetModule(package=PKG, module_name="coin").gql_node()
@@ -484,7 +483,7 @@ class TestGqlNodes:
             package=PKG, module_name="coin", type_name="Coin"
         ).gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetMoveDataType)
+        assert isinstance(node, pgql_query.GetMoveDataTypeSC)
         assert node.data_type_name == "Coin"
 
     def test_get_structure(self):
@@ -492,34 +491,34 @@ class TestGqlNodes:
             package=PKG, module_name="coin", structure_name="Coin"
         ).gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetStructure)
+        assert isinstance(node, pgql_query.GetStructureSC)
 
     def test_get_structures(self):
         node = GetStructures(package=PKG, module_name="coin").gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetStructures)
+        assert isinstance(node, pgql_query.GetStructuresSC)
 
     def test_get_function(self):
         node = GetFunction(
             package=PKG, module_name="coin", function_name="mint"
         ).gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetFunction)
+        assert isinstance(node, pgql_query.GetFunctionSC)
 
     def test_get_functions(self):
         node = GetFunctions(package=PKG, module_name="coin").gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetFunctions)
+        assert isinstance(node, pgql_query.GetFunctionsSC)
 
     def test_get_name_service_address(self):
         node = GetNameServiceAddress(name="alice.sui").gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetNameServiceAddress)
+        assert isinstance(node, pgql_query.GetNameServiceAddressSC)
 
     def test_get_name_service_names(self):
         node = GetNameServiceNames(owner=ADDR).gql_node()
         assert _is_gql(node)
-        assert isinstance(node, pgql_query.GetNameServiceNames)
+        assert isinstance(node, pgql_query.GetNameServiceNamesSC)
 
     def test_simulate_transaction(self):
         node = SimulateTransaction(tx_bytestr=b"txdata").gql_node()
@@ -564,7 +563,7 @@ class TestParameterRouting:
         node = GetMoveDataType(
             package=PKG, module_name="m", type_name="MyStruct"
         ).gql_node()
-        assert isinstance(node, pgql_query.GetMoveDataType)
+        assert isinstance(node, pgql_query.GetMoveDataTypeSC)
         assert node.data_type_name == "MyStruct"
 
     def test_get_move_data_type_grpc_uses_type_name(self):

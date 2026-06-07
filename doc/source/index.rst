@@ -28,23 +28,17 @@ Welcome to pysui's documentation!
 
 .. toctree::
    :maxdepth: 1
-   :caption: GraphQL
+   :caption: Protocol Clients
 
    graphql
-   graphql_queries
-
-.. toctree::
-   :maxdepth: 1
-   :caption: gRPC
-
    grpc
-   grpc_requests
 
 .. toctree::
    :maxdepth: 1
    :caption: Transactions & Executors
 
    transactions
+   transactions_ptb
    executors
 
 .. toctree::
@@ -54,19 +48,13 @@ Welcome to pysui's documentation!
    multi_sig
    logging
    utilities
+   benchmark
 
 .. toctree::
    :maxdepth: 1
    :caption: Events & Streaming
 
    subscriptions
-
-.. toctree::
-   :maxdepth: 1
-   :caption: JSON-RPC (Legacy)
-
-   jsonrpc_builders
-   jsonrpc_transactions
 
 .. toctree::
    :maxdepth: 1

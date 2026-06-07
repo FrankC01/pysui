@@ -254,6 +254,7 @@ class CentralBank:
         gas_fee: int,
         sui_coins: list[int | None],
         sui_draw: int = 0,
+        addr_draw: int = 0,
     ) -> tuple[bool, list | None]:
         """Withdraw gas resources for a single test.
 
@@ -268,6 +269,9 @@ class CentralBank:
         patterns (gas_source=ACCOUNT with non-empty sui_coins), addr_debit here
         accounts only for the test's own future PTB gas — not the bank's PTB.
 
+        addr_draw accounts for additional AB draws from PTB body withdrawal()
+        commands, beyond the gas fee itself.
+
         Raises RuntimeError on coverage failure or on-chain execution failure.
         """
         resolved = [a if a is not None else BANK_SPLIT_AMOUNT for a in sui_coins]
@@ -276,16 +280,21 @@ class CentralBank:
 
         if gas_source == GasBank.COIN:
             coin_debit = gas_fee + sui_draw + bank_overhead + coins_total
-            addr_debit = 0
+            addr_debit = addr_draw
             if self._coin_balance < coin_debit:
                 raise RuntimeError(
                     f"COVERAGE FAIL [{pattern_id}]: "
                     f"need {coin_debit:,} MIST from fat coin, have {self._coin_balance:,}"
                 )
+            if addr_debit and self._addr_balance < addr_debit:
+                raise RuntimeError(
+                    f"COVERAGE FAIL [{pattern_id}]: "
+                    f"need {addr_debit:,} MIST from addr balance, have {self._addr_balance:,}"
+                )
         elif resolved:
             # Form1+Form3 DUAL: fat coin produces coins; addr pays test PTB gas
             coin_debit = bank_overhead + coins_total
-            addr_debit = gas_fee
+            addr_debit = gas_fee + addr_draw
             if self._coin_balance < coin_debit:
                 raise RuntimeError(
                     f"COVERAGE FAIL [{pattern_id}]: "
@@ -299,7 +308,7 @@ class CentralBank:
         else:
             # Form3 only: test gas entirely from addr balance; no bank PTB needed
             coin_debit = 0
-            addr_debit = gas_fee
+            addr_debit = gas_fee + addr_draw
             if self._addr_balance < addr_debit:
                 raise RuntimeError(
                     f"COVERAGE FAIL [{pattern_id}]: "
@@ -627,11 +636,11 @@ async def published_gql(
     txdict = await txer.build_and_sign()
     result = await gql_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     assert result.is_ok(), f"GQL publish failed: {result.result_string}"
-    assert result.result_data.transaction.effects.status.success, (
+    assert result.result_data.effects.status.success, (
         "GQL publish on-chain execution failed"
     )
     await asyncio.sleep(SETTLE_SECS)
-    return _extract_publish_result(result.result_data.transaction.effects.changed_objects)
+    return _extract_publish_result(result.result_data.effects.changed_objects)
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
@@ -673,11 +682,11 @@ async def published_grpc(
     txdict = await txer.build_and_sign(use_account_for_gas=True)
     result = await grpc_session_client.execute(command=cmd.ExecuteTransaction(**txdict))
     assert result.is_ok(), f"gRPC publish failed: {result.result_string}"
-    assert result.result_data.transaction.effects.status.success, (
+    assert result.result_data.effects.status.success, (
         "gRPC publish on-chain execution failed"
     )
     await asyncio.sleep(SETTLE_SECS)
-    return _extract_publish_result(result.result_data.transaction.effects.changed_objects)
+    return _extract_publish_result(result.result_data.effects.changed_objects)
 
 
 # ---------------------------------------------------------------------------
@@ -720,7 +729,7 @@ async def txn_digests(
         command=cmd.ExecuteTransaction(**await gql_txer.build_and_sign())
     )
     assert gql_result.is_ok(), f"GQL ExecuteTransaction failed: {gql_result.result_string}"
-    digest1: str = gql_result.result_data.transaction.digest
+    digest1: str = gql_result.result_data.digest
     await asyncio.sleep(SETTLE_SECS)
 
     # gRPC PTB
@@ -740,7 +749,9 @@ async def txn_digests(
         command=cmd.ExecuteTransaction(**await grpc_txer.build_and_sign())
     )
     assert grpc_result.is_ok(), f"gRPC ExecuteTransaction failed: {grpc_result.result_string}"
-    digest2: str = grpc_result.result_data.transaction.digest
+    digest2: str = grpc_result.result_data.digest
     await asyncio.sleep(SETTLE_SECS)
 
     return TxnDigests(digest1=digest1, digest2=digest2)
+
+

@@ -9,7 +9,6 @@ import binascii
 from typing import Any
 import canoser
 
-from pysui.sui.sui_types.address import SuiAddress
 from pysui.sui.sui_bcs.pysui_bcs import BCS_Struct, BCS_Enum, BCS_Optional
 from pysui.sui.sui_utils import (
     b58str_to_list,
@@ -33,15 +32,6 @@ class Address(BCS_Struct):
     def to_address_str(self) -> str:
         """."""
         return f"0x{self.to_str()}"
-
-    def to_sui_address(self) -> SuiAddress:
-        """."""
-        return SuiAddress(self.to_address_str())
-
-    @classmethod
-    def from_sui_address(cls, indata: SuiAddress) -> "Address":
-        """."""
-        return cls(hexstring_to_list(indata.address))
 
     @classmethod
     def from_str(cls, indata: str) -> "Address":

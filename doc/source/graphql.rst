@@ -9,14 +9,14 @@ devnet, testnet, and mainnet. New code should use the async client obtained via
 Running the Sample
 ------------------
 
-``pgql_a_example.py`` is included in the project repository (not installed via
+``ucs_example.py`` is included in the project repository (not installed via
 PyPI) and covers a variety of patterns — data queries, transaction building,
 execution, and simulation. It serves as a reference for exploring available
 options and may be run optionally from an activated virtual environment:
 
 .. code-block:: shell
 
-    python pgql_a_example.py
+    python ucs_example.py
 
 Client Setup
 ------------
@@ -46,16 +46,6 @@ async GraphQL client bound to the active configuration group. See
 
     if __name__ == "__main__":
         asyncio.run(main())
-
-A synchronous client is also available for scripts that cannot use ``asyncio``:
-
-.. code-block:: python
-
-    from pysui import PysuiConfiguration
-    from pysui.sui.sui_pgql.pgql_clients import SuiGQLClient
-
-    cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP)
-    client = SuiGQLClient(pysui_config=cfg)
 
 Schema
 ------

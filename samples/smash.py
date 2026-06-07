@@ -18,7 +18,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PARENT))
 sys.path.insert(0, str(os.path.join(PARENT, "pysui")))
 
-_smash_version = "1.1.0"
+_smash_version = "2.0.0"
 
 import logging
 

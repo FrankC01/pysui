@@ -9,11 +9,13 @@ from typing import Any
 import json
 import pysui.sui.sui_bcs.bcs_stnd as bcse
 import pysui.sui.sui_bcs.pysui_bcs as pbcsbase
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class _OptionalStub(pbcsbase.BCS_Optional):
     """This is removed during generation."""
 
+    @sync_instrumented("pysui.sui.sui_common.mtobcs_pre._OptionalStub.to_json")
     def to_json(self, sort_keys=False, indent=4):
         """Serialize the optional value to a JSON string."""
         amap = self.to_json_serializable()

@@ -11,6 +11,7 @@ from typing import Any, Optional, Union, Callable
 import dataclasses_json
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 _QUERY_BETA = """
@@ -84,6 +85,7 @@ class CheckpointNodeGQL:
     epoch: Any
     reference_gas_price: Optional[int] = None
 
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_configs.CheckpointNodeGQL.__post_init__")
     def __post_init__(self):
         """."""
         if "referenceGasPrice" in self.epoch:
@@ -110,11 +112,13 @@ class SuiConfigGQL:
     gqlEnvironment: Optional[str] = None
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_configs.SuiConfigGQL.from_query")
     def from_query(clz, in_data: dict) -> "SuiConfigGQL":
         """."""
         return SuiConfigGQL.from_dict(in_data)
 
 
+@sync_instrumented("pysui.sui.sui_pgql.pgql_configs.pgql_config")
 def pgql_config(env: str, sversion: Optional[str] = None) -> tuple[str, Callable]:
     """Get the configuration for Sui GraphQL."""
     return _QUERY_BETA, SuiConfigGQL.from_query

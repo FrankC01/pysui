@@ -9,7 +9,7 @@ mainnet.
 Running the Sample
 ------------------
 
-``pgrpc_a_example.py`` is included in the project repository (not installed via
+``ucs_example.py`` is included in the project repository (not installed via
 PyPI) and covers a variety of patterns — data queries, transaction building,
 execution, and checkpoint subscriptions. It serves as a reference for exploring
 available options and may be run optionally from an activated virtual
@@ -17,7 +17,7 @@ environment:
 
 .. code-block:: shell
 
-    python pgrpc_a_example.py
+    python ucs_example.py
 
 Client Setup
 ------------
@@ -74,7 +74,7 @@ Key Behaviours
 --------------
 
 - All gRPC service calls are **asynchronous** — there is no sync gRPC client.
-- Every call returns a :py:class:`pysui.sui.sui_types.sui_txresult.SuiRpcResult`.
+- Every call returns a :py:class:`pysui.SuiRpcResult`.
 - Successful result data is returned as a typed ``dataclass`` instance.
 
 Mysten Labs exposes the following gRPC services:
@@ -84,12 +84,6 @@ Mysten Labs exposes the following gRPC services:
 
    Mysten Labs imposes rate limits on gRPC subscription endpoints (see
    :doc:`subscriptions`).
-
-Pre-built Requests
-------------------
-
-See :doc:`grpc_requests` for the full list of pre-built
-:py:mod:`pysui.sui.sui_grpc.pgrpc_requests` request classes.
 
 Transaction Building
 ---------------------

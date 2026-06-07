@@ -30,7 +30,6 @@ from pysui.sui.sui_constants import (
     SUI_BECH32_HRP,
     PRIVATE_KEY_BYTE_LEN,
     SCHEME_PRIVATE_KEY_BYTE_LEN,
-    SUI_HEX_ADDRESS_STRING_LEN,
     SUI_KEYPAIR_LEN,
     ED25519_DEFAULT_KEYPATH,
     ED25519_PUBLICKEY_BYTES_LEN,
@@ -39,7 +38,6 @@ from pysui.sui.sui_constants import (
     SECP256R1_DEFAULT_KEYPATH,
 )
 
-from pysui.sui.sui_types import SuiSignature, SuiAddress
 from pysui.sui.sui_bcs.bcs import (
     MsBitmap,
     MsCompressedSig,
@@ -49,7 +47,7 @@ from pysui.sui.sui_bcs.bcs import (
     MsSecp256r1PublicKey,
     MultiSignature,
 )
-from pysui.sui.sui_types.scalars import SuiTxBytes
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class IntentScope(IntEnum):
@@ -76,6 +74,7 @@ class SuiPublicKey(PublicKey):
 
     @versionadded(version="0.78.0", reason="Support standalone public key.")
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPublicKey.from_serialized")
     def from_serialized(cls, indata: str) -> PublicKey:
         """Convert base64 string to public key."""
         key_list = list(base64.b64decode(indata))
@@ -83,11 +82,13 @@ class SuiPublicKey(PublicKey):
         return SuiPublicKey(sig, bytes(key_list[1::]))
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPublicKey.pub_key")
     def pub_key(self) -> str:
         """Return self as base64 encoded string."""
         return self.to_b64()
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPublicKey.scheme")
     def scheme(self) -> SignatureScheme:
         """Get the keys scheme."""
         return self._scheme
@@ -96,38 +97,18 @@ class SuiPublicKey(PublicKey):
         version="0.78.0",
         reason="Support standalone public key serialization to base64.",
     )
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPublicKey.serialize")
     def serialize(self) -> str:
         """Serialize public key to base64 keystring."""
         return base64.b64encode(self.scheme_and_key()).decode()
 
-    @deprecated(
-        version="0.99.0",
-        reason="Use VerifyPersonalMessageSignature SuiCommand with client.execute() instead.",
-    )
-    @versionadded(
-        version="0.78.0", reason="Support signature verification using public key."
-    )
-    def verify_personal_message(self, message: str, signature: str) -> bool:
-        """Verify personal message with signature, returning true/false."""
-        from pysui.sui.sui_txn.transaction_builder import PureInput
-
-        # Hash the message with intent
-        intent_msg = bytearray([IntentScope.PersonalMessage, 0, 0])
-        intent_msg.extend(PureInput.pure(list(base64.b64decode(message))))
-        hd1 = hashlib.blake2b(intent_msg, digest_size=32).digest()
-        sigbytes = bytes(list(base64.b64decode(signature))[1:65])
-        return pfc.verify_pubk(
-            self.scheme,
-            self.key_bytes,
-            base64.b64encode(hd1).decode(),
-            base64.b64encode(sigbytes).decode(),
-        )
 
 
 @versionchanged(version="0.33.0", reason="Converted to use pysui-fastcrypto")
 class SuiPrivateKey(PrivateKey):
     """SuiPrivateKey Sui Basic private/signing key."""
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPrivateKey.sign_secure")
     def sign_secure(self, tx_data: str) -> list:
         """sign_secure Sign transaction intent.
 
@@ -146,6 +127,7 @@ class SuiPrivateKey(PrivateKey):
         )
 
     @versionadded(version="0.71.0", reason="Signing personal messages")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPrivateKey.sign_secure_personal_message")
     def sign_secure_personal_message(self, message: str) -> list:
         """sign_secure_personal_message for exchange.
 
@@ -156,7 +138,7 @@ class SuiPrivateKey(PrivateKey):
         :return: Signed message as list of u8 bytes
         :rtype: list
         """
-        from pysui.sui.sui_txn.transaction_builder import PureInput
+        from pysui.sui.sui_common.txn_pure import PureInput
 
         tx_data = base64.b64encode(
             bytes(PureInput.pure(list(base64.b64decode(message))))
@@ -169,6 +151,7 @@ class SuiPrivateKey(PrivateKey):
         )
 
     @versionadded(version="0.33.0", reason="Hide private key")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiPrivateKey.__repr__")
     def __repr__(self) -> str:
         """To string."""
         return "Private Key"
@@ -178,6 +161,7 @@ class SuiPrivateKey(PrivateKey):
 class SuiKeyPair(KeyPair):
     """SuiKeyPair Sui Basic keypair."""
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.__init__")
     def __init__(self) -> None:
         """__init__ Default keypair initializer."""
         self._scheme: SignatureScheme = SignatureScheme.ED25519
@@ -185,61 +169,42 @@ class SuiKeyPair(KeyPair):
         self._public_key: Union[SuiPublicKey, None] = None
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.private_key")
     def private_key(self) -> Union[SuiPrivateKey, None]:
         """Return the Private Key."""
         return self._private_key
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.public_key")
     def public_key(self) -> Union[SuiPublicKey, None]:
         """Return the Public Key."""
         return self._public_key
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.scheme")
     def scheme(self) -> SignatureScheme:
         """Get the keys scheme."""
         return self._scheme
 
     @versionchanged(version="0.33.0", reason="Changes to SuiPrivateKey")
-    def new_sign_secure(self, tx_data: str) -> SuiSignature:
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.new_sign_secure")
+    def new_sign_secure(self, tx_data: str) -> str:
         """New secure sign with intent."""
         assert self.private_key, "Can not sign with invalid private key"
         sig = bytearray(self.private_key.sign_secure(tx_data))
-        return SuiSignature(base64.b64encode(sig).decode())
+        return base64.b64encode(sig).decode()
 
     @versionadded(version="0.71.0", reason="Personal message with intent.")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.sign_personal_message")
     def sign_personal_message(self, message: str) -> str:
         """."""
         assert self.private_key, "Can not sign with invalid private key"
         sig = bytearray(self.private_key.sign_secure_personal_message(message))
         return base64.b64encode(sig).decode()
 
-    @deprecated(
-        version="0.99.0",
-        reason="Use VerifyPersonalMessageSignature SuiCommand with client.execute() instead.",
-    )
-    @versionadded(version="0.71.0", reason="Verify personal message with intent.")
-    def verify_personal_message(self, message: str, sig: str) -> bool:
-        """Verify the personal message with IntentMessage."""
-        from pysui.sui.sui_txn.transaction_builder import PureInput
 
-        # Hash the message with intent
-        intent_msg = bytearray([IntentScope.PersonalMessage, 0, 0])
-        intent_msg.extend(PureInput.pure(list(base64.b64decode(message))))
-        hd1 = hashlib.blake2b(intent_msg, digest_size=32).digest()
-        sigbytes = bytes(list(base64.b64decode(sig))[1:65])
-        return pfc.verify(
-            self.scheme,
-            self.private_key.key_bytes,
-            base64.b64encode(hd1).decode(),
-            base64.b64encode(sigbytes).decode(),
-        )
 
-    @versionchanged(version="0.34.0", reason="Added to verify signature of message")
-    @deprecated(version="0.71.0", reason="Use verify_personal_message instead")
-    def verify_signature(self, message: str, sig: str) -> bool:
-        """Verify arbitrary message (base64) with signature (base64), returning bool."""
-        return pfc.verify(self.scheme, self.private_key.key_bytes, message, sig)
-
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.serialize_to_bytes")
     def serialize_to_bytes(self) -> bytes:
         """serialize_to_bytes Returns a SUI conforming keystring as bytes.
 
@@ -249,6 +214,7 @@ class SuiKeyPair(KeyPair):
         assert self.private_key, "Can not serialize_to_bytes with invalid private key"
         return self.scheme.to_bytes(1, "little") + self.private_key.key_bytes
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.serialize")
     def serialize(self) -> str:
         """serialize Returns a SUI conforming keystring.
 
@@ -258,6 +224,7 @@ class SuiKeyPair(KeyPair):
         return base64.b64encode(self.serialize_to_bytes()).decode()
 
     @versionadded(version="0.76.0", reason="Export bech32 private key.")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.to_bech32")
     def to_bech32(self) -> str:
         """Convert private key to bech32 format
 
@@ -266,6 +233,7 @@ class SuiKeyPair(KeyPair):
         """
         return pfc.encode_bech32(self.serialize_to_bytes(), SUI_BECH32_HRP)
 
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.to_bytes")
     def to_bytes(self) -> bytes:
         """Convert keypair to bytes."""
         assert self.private_key, "Can not convert to bytes with invalid private key"
@@ -278,12 +246,14 @@ class SuiKeyPair(KeyPair):
         return all_bytes
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.from_bytes")
     def from_bytes(cls, indata: bytes) -> KeyPair:
         """Convert bytes to keypair."""
         raise ValueError("from_bytes is legacy.")
 
     @versionadded(version="0.33.0", reason="Converted to use pysui-fastcrypto")
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.from_pfc_bytes")
     def from_pfc_bytes(
         cls, scheme: SignatureScheme, pub_bytes: bytes, prv_bytes: bytes
     ) -> "SuiKeyPair":
@@ -310,6 +280,7 @@ class SuiKeyPair(KeyPair):
 
     @versionchanged(version="0.33.0", reason="Converted to use pysui-fastcrypto")
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.from_b64")
     def from_b64(cls, indata: str) -> "SuiKeyPair":
         """Generate KeyPair from base64 keystring."""
         try:
@@ -324,6 +295,7 @@ class SuiKeyPair(KeyPair):
 
     @versionadded(version="0.57.0", reason="Support bech32 private key encoding")
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.from_bech32")
     def from_bech32(cls, indata: str) -> "KeyPair":
         """Convert bech32 encoded string to keypair."""
         try:
@@ -339,6 +311,7 @@ class SuiKeyPair(KeyPair):
         )
 
     @versionchanged(version="0.33.0", reason="Hide private key")
+    @sync_instrumented("pysui.sui.sui_crypto.SuiKeyPair.__repr__")
     def __repr__(self) -> str:
         """To string."""
         return f"PubKey {self._public_key}, PrivKey `Private`"
@@ -353,6 +326,7 @@ class BaseMultiSig:
     _MAX_THRESHOLD: int = 2549
     _COMPRESSED_SIG_LEN: int = 65
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.__init__")
     def __init__(
         self,
         sui_pub_keys: list[SuiPublicKey],
@@ -371,58 +345,50 @@ class BaseMultiSig:
             self._weights: list[int] = weights
             self._public_keys = sui_pub_keys
             self._threshold: int = threshold
-            self._address: SuiAddress = self._multi_sig_address()
+            self._address: str = self._multi_sig_address()
         else:
             raise ValueError("Invalid arguments provided to constructor")
 
-    def _multi_sig_address(self) -> SuiAddress:
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig._multi_sig_address")
+    def _multi_sig_address(self) -> str:
         """multi_sig_address Generates the unique address derived from the keys in the MultiSig.
 
         :return: A unique address that can be used to participate as recipeint and sender in transactions.
-        :rtype: SuiAddress
+        :rtype: str
         """
-        # Build the digest to generate a SuiAddress (hash) from
         digest = self._scheme.to_bytes(1, "little")
         digest += self._threshold.to_bytes(2, "little")
         for index, kkeys in enumerate(self._public_keys):
             digest += kkeys.scheme_and_key()  # type: ignore
             digest += self._weights[index].to_bytes(1, "little")
-        return SuiAddress(hashlib.blake2b(digest, digest_size=32).hexdigest())
+        return "0x" + hashlib.blake2b(digest, digest_size=32).hexdigest()
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.scheme")
     def scheme(self) -> SignatureScheme:
         """Return the MultiSig signature scheme."""
         return SignatureScheme.MULTISIG
 
     @property
-    @versionchanged(
-        version="0.16.1",
-        reason="Return add as str to align with non MultiSig SuiAddress behavior",
-    )
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.address")
     def address(self) -> str:
         """Return the address string generated from the initial keys."""
-        return self._address.address
-
-    @property
-    @versionadded(
-        version="0.16.1",
-        reason="Provide ability to get MultiSig as SuiAddress",
-    )
-    def as_sui_address(self) -> SuiAddress:
-        """Return the address as SuiAddress."""
         return self._address
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.public_keys")
     def public_keys(self) -> list[SuiPublicKey]:
         """Return a copy of the list of SuiPublicKeys used in this MultiSig."""
         return self._public_keys.copy()
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.weights")
     def weights(self) -> list[int]:
         """Return a copy of the list of weights used in this MultiSig."""
         return self._weights.copy()
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.threshold")
     def threshold(self) -> int:
         """Return the threshold amount used in this MultiSig."""
         return self._threshold
@@ -430,6 +396,7 @@ class BaseMultiSig:
     @versionchanged(
         version="0.21.1", reason="Exposed as public for use by SuiTransaction"
     )
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.validate_signers")
     def validate_signers(
         self, pub_keys: list[SuiPublicKey]
     ) -> Union[list[int], ValueError]:
@@ -443,6 +410,7 @@ class BaseMultiSig:
                     return hit_indexes
         raise ValueError("Keys and weights for signing do not meet thresholds")
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig._new_publickey")
     def _new_publickey(self) -> list[MsNewPublicKey]:
         """Generate MultiSig BCS representation of PublicKey."""
         # Generate new BCS PublicKeys from the FULL compliment of original public keys
@@ -464,14 +432,17 @@ class BaseMultiSig:
                     "Secp256r1",
                     MsSecp256r1PublicKey(list(pkb), self._weights[index]),
                 )
+            else:
+                raise ValueError(f"Unsupported key scheme: {kkeys.scheme}")
             pks.append(npk)
         return pks
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig._signature")
     def _signature(
         self,
         pub_keys: list[SuiPublicKey],
         compressed_sigs: list[MsCompressedSig],
-    ) -> SuiSignature:
+    ) -> str:
         """."""
         key_indices = self.validate_signers(pub_keys)
         # Generate the public keys used position bitmap
@@ -488,23 +459,24 @@ class BaseMultiSig:
             self._new_publickey(),
             self.threshold,
         )
-        return SuiSignature(base64.b64encode(msig_signature.serialize()).decode())
+        return base64.b64encode(msig_signature.serialize()).decode()
 
+    @sync_instrumented("pysui.sui.sui_crypto.BaseMultiSig.signature_from")
     def signature_from(
-        self, pub_keys: list[SuiPublicKey], signatures: list[SuiSignature]
-    ) -> SuiSignature:
+        self, pub_keys: list[SuiPublicKey], signatures: list[str]
+    ) -> str:
         """signature_from Creates a multisig signature from signed bytes.
 
         :param pub_keys: List of public keys associated to keypairs that created signatures
         :type pub_keys: list[SuiPublicKey]
         :param signatures: Signatures from signed transaction bytes digest
-        :type signatures: list[SuiSignature]
+        :type signatures: list[str]
         :return: A multisig signature
-        :rtype: SuiSignature
+        :rtype: str
         """
         compressed: list[MsCompressedSig] = []
         for index in signatures:
-            sig = str(index.value)
+            sig = index
             compressed.append(
                 MsCompressedSig(
                     list(base64.b64decode(sig)[0 : self._COMPRESSED_SIG_LEN])
@@ -516,6 +488,7 @@ class BaseMultiSig:
 class MultiSig(BaseMultiSig):
     """Multi signature support."""
 
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.__init__")
     def __init__(self, suikeys: list[SuiKeyPair], weights: list[int], threshold: int):
         """__init__ Initiate a MultiSig object.
 
@@ -532,11 +505,13 @@ class MultiSig(BaseMultiSig):
         self._keys = suikeys
 
     @property
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.full_keys")
     def full_keys(self) -> list[SuiKeyPair]:
         """."""
         return self._keys.copy()
 
     @versionadded(version="0.21.1", reason="Support for inline multisig signing")
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig._compressed_signatures")
     def _compressed_signatures(
         self, tx_bytes: str, key_indices: list[int]
     ) -> list[MsCompressedSig]:
@@ -544,7 +519,7 @@ class MultiSig(BaseMultiSig):
         compressed: list[MsCompressedSig] = []
         for index in key_indices:
             sig_t = self._keys[index].new_sign_secure(tx_bytes)
-            sig = str(sig_t.value)
+            sig = sig_t
             compressed.append(
                 MsCompressedSig(
                     list(base64.b64decode(sig)[0 : self._COMPRESSED_SIG_LEN])
@@ -557,19 +532,20 @@ class MultiSig(BaseMultiSig):
         version="0.31.0",
         reason="Roaring bitmap no longer required in Sui 1.4.x and above.",
     )
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.sign")
     def sign(
-        self, tx_bytes: Union[str, SuiTxBytes], pub_keys: list[SuiPublicKey]
-    ) -> SuiSignature:
+        self, tx_bytes: str, pub_keys: list[SuiPublicKey]
+    ) -> str:
         """sign Signs transaction bytes for operation that changes objects owned by MultiSig address."""
         # Validate the pub_keys alignment with self._keys
         # key_indices = self._validate_signers(pub_keys)
         # Generate BCS compressed signatures for the subset of keys
-        tx_bytes = tx_bytes if isinstance(tx_bytes, str) else tx_bytes.value  # type: ignore
         compressed_sigs: list[MsCompressedSig] = self._compressed_signatures(
             str(tx_bytes), self.validate_signers(pub_keys)
         )
         return self._signature(pub_keys, compressed_sigs)
 
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.serialize")
     def serialize(self) -> str:
         """serialize Serializes the MultiSig object to base64 string.
 
@@ -588,6 +564,7 @@ class MultiSig(BaseMultiSig):
         return base64.b64encode(all_bytes).decode()
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_crypto.MultiSig.deserialize")
     def deserialize(cls, ser_str: str) -> Union[ValueError, "MultiSig"]:
         """deserialize Deserializes a MultSig base64 string to object instance.
 
@@ -628,6 +605,7 @@ class MultiSig(BaseMultiSig):
             raise ValueError(f"{berr.args}") from berr
 
 
+@sync_instrumented("pysui.sui.sui_crypto.gen_mnemonic_phrase")
 def gen_mnemonic_phrase(word_counts: int) -> str:
     """gen_mnemonic_phrase Generates a unique string of words of count word_counts.
 
@@ -647,6 +625,7 @@ def gen_mnemonic_phrase(word_counts: int) -> str:
     version="0.33.0",
     reason="Requires word count, no longer allows phrase.",
 )
+@sync_instrumented("pysui.sui.sui_crypto.create_new_keypair")
 def create_new_keypair(
     scheme: Optional[SignatureScheme] = SignatureScheme.ED25519,
     word_counts: Optional[int] = 12,
@@ -690,55 +669,8 @@ def create_new_keypair(
     )
 
 
-@versionchanged(
-    version="0.33.0",
-    reason="Using pysui-fastcrypto.",
-)
-def recover_key_and_address(
-    keytype: SignatureScheme, mnemonics: Union[str, list[str]], derv_path: str
-) -> tuple[str, KeyPair, SuiAddress]:
-    """recover_key_and_address Recover a keypair and address.
-
-    :param keytype: One of ED25519 or SECP256K1 key type for the original key
-    :type keytype: SignatureScheme
-    :param mnemonics: mnemonic words used when creating original keypair
-    :type mnemonics: Union[str, list[str]]
-    :param derv_path: derivation path used when creating original keypair
-    :type derv_path: str
-    :return: mnemonic words, recovered keypair and derived sui address
-    :rtype: tuple[str, KeyPair, SuiAddress]
-    """
-    mnemonics = " ".join(mnemonics) if mnemonics is list else mnemonics
-    try:
-        pub_list, prv_list = pfc.keys_from_mnemonics(keytype, derv_path, mnemonics)
-    except ValueError as exc:
-        raise ValueError(f"Key recovery failed: {exc}") from exc
-    new_kp = SuiKeyPair.from_pfc_bytes(keytype, bytes(pub_list), bytes(prv_list))
-    return mnemonics, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())  # type: ignore
 
 
-@versionchanged(
-    version="0.33.0",
-    reason="Requires word count, no longer allows phrase.",
-)
-def create_new_address(
-    keytype: SignatureScheme,
-    word_counts: Optional[int] = 12,
-    derv_path=None,
-) -> tuple[str, KeyPair, SuiAddress]:
-    """create_new_address Create a new keypair and address for a key type.
-
-    :param keytype: One of ED25519, SECP256K1 or SECP256R1 key type
-    :type keytype: SignatureScheme
-    :param word_counts: count of words to generate mnemonic phrase, defaults to 12
-    :type word_counts: int, optional
-    :param derv_path: derivation path coinciding with key type, defaults to None
-    :type derv_path: str, optional
-    :return: mnemonic words, new keypair and derived sui address
-    :rtype: tuple[str, KeyPair, SuiAddress]
-    """
-    mnem, new_kp = create_new_keypair(keytype, word_counts, derv_path)
-    return mnem, new_kp, SuiAddress.from_bytes(new_kp.to_bytes())
 
 
 @versionchanged(
@@ -746,6 +678,7 @@ def create_new_address(
     reason="Using pysui-fastcrypto.",
 )
 @versionchanged(version="0.57.0", reason="Support bech32 keystring encoding")
+@sync_instrumented("pysui.sui.sui_crypto.keypair_from_keystring")
 def keypair_from_keystring(keystring: str) -> SuiKeyPair:
     """keypair_from_keystring Parse keystring to keypair.
 
@@ -765,116 +698,8 @@ def keypair_from_keystring(keystring: str) -> SuiKeyPair:
     return SuiKeyPair.from_b64(keystring)
 
 
-@versionchanged(
-    version="0.41.0",
-    reason="Replace cross-reference matrix instead of individual dicts on return",
-)
-def load_keys_and_addresses(
-    keystore_file: str,
-) -> Union[
-    list[list[dict]],
-    Exception,
-]:
-    """load_keys_and_addresses Load keys and addresses.
-
-    :param keystore_file: The current in use keystore file path
-    :type keystore_file: str
-    :raises SuiNoKeyPairs: If empty
-    :raises SuiKeystoreFileError: If error reading file
-    :raises SuiKeystoreAddressError: JSON error loading keyfile
-    :raises SuiFileNotFound: If the file does not exists
-    :return: Cross reference matrix [{},{keystring:KeyPair},{publickyestring:keystring},{str:SuiAddress}]
-    :rtype: Union[list[list[dict]], Exception]
-    """
-    if os.path.exists(keystore_file):
-        try:
-            with open(keystore_file, encoding="utf8") as keyfile:
-                _keystrings = json.load(keyfile)
-                _cref_matrix: list[list[dict]] = []
-                if len(_keystrings) > 0:
-                    for keystr in _keystrings:
-                        crm_entry = [{}]
-                        kpair = keypair_from_keystring(keystr)
-                        puks = base64.b64encode(
-                            kpair.public_key.scheme_and_key()
-                        ).decode()
-                        addy = SuiAddress.from_keypair_string(kpair.to_b64())
-                        crm_entry.extend(
-                            [{keystr: kpair}, {puks: keystr}, {addy.address: addy}]
-                        )
-                        _cref_matrix.append(crm_entry)
-                    return _cref_matrix
-                else:
-                    raise ValueError("Empty keystring found")
-        except IOError as exc:
-            raise exc
-        except json.JSONDecodeError as exc:
-            raise exc
-    else:
-        raise ValueError(f"{keystore_file} not found")
 
 
-@versionadded(version="0.33.0", reason="To support wallet exported keys.")
-def as_keystrings(inputs: list[Union[str, dict]]) -> list[str]:
-    """as_keystrings Returns a list of just keystrings from heterogenous list of keystrings or dicts.
-
-    :param inputs: List of Sui keystrings or Wallet dict for conversion to keystring
-    :type inputs: list[Union[str, dict]]
-    :return: List of strings in Sui keystring form
-    :rtype: list[str]
-    """
-    results: list[str] = []
-    for keyinput in inputs:
-        # If dict with specific kv pairs
-        if isinstance(keyinput, dict):
-            wallet_hex = keyinput["wallet_key"]
-            assert (
-                len(wallet_hex) == SUI_HEX_ADDRESS_STRING_LEN
-            ), f"Invalid wallet_key length, found {len(wallet_hex)} expected {SUI_HEX_ADDRESS_STRING_LEN}"
-            assert (
-                wallet_hex[0:2] == "0x" or wallet_hex[0:2] == "0X"
-            ), "Expected wallet_key to have 0x or 0X prefix"
-            scheme = keyinput["key_scheme"]
-            assert (
-                isinstance(scheme, SignatureScheme) and scheme.value < 3
-            ), "Invalid key scheme"
-            keybytes = bytearray(scheme.value.to_bytes(1, "little"))
-            keybytes.extend(binascii.unhexlify(wallet_hex[2:]))
-            keyinput = base64.b64encode(keybytes).decode()
-        results.append(keyinput)
-    return results
-
-
-@versionchanged(
-    version="0.33.0",
-    reason="To support wallet exported keys and/or Sui valid keystrings.",
-)
-@versionchanged(
-    version="0.41.0",
-    reason="Replace cross-reference matrix instead of individual dicts on return",
-)
-def emphemeral_keys_and_addresses(
-    keystrings: list[Union[str, dict]],
-) -> list[list[dict]]:
-    """emphemeral_keys_and_addresses Convert list of keystrings from SuiConfig.user_config().
-
-    :param keystrings: List of Sui keystrings or Wallet dict for conversion to keystring
-    :type keystrings: list[Union[str, dict]]
-    :return: Cross reference matrix [{},{keystring:KeyPair},{publickyestring:keystring},{str:SuiAddress}]
-    :rtype: Union[list[list[dict]], Exception]
-    """
-    _keystrings = as_keystrings(keystrings)
-
-    _cref_matrix: list[list[dict]] = []
-    for keystr in _keystrings:
-        kpair = keypair_from_keystring(keystr)
-        addy = SuiAddress.from_keypair_string(kpair.to_b64())
-        # addy = SuiAddress.from_keypair_string(keystr)
-        crm_entry = [{}]
-        puks = base64.b64encode(kpair.public_key.scheme_and_key()).decode()
-        crm_entry.extend([{keystr: kpair}, {puks: keystr}, {addy.address: addy}])
-        _cref_matrix.append(crm_entry)
-    return _cref_matrix
 
 
 if __name__ == "__main__":

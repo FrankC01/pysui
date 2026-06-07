@@ -3,7 +3,7 @@
 
 # -*- coding: utf-8 -*-
 
-"""Unit tests for pysui.sui.sui_common.txb_pure.PureInput — all offline.
+"""Unit tests for pysui.sui.sui_common.txn_pure.PureInput — all offline.
 
 Tests cover every singledispatch branch of PureInput.pure() plus as_input().
 Each test asserts the exact byte list produced, making regressions immediately
@@ -16,11 +16,9 @@ import pytest
 # Suppress deprecated scalar-type warnings that fire at import-time
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from pysui.sui.sui_common.txb_pure import PureInput
+from pysui.sui.sui_common.txn_pure import PureInput
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_types.scalars import (
-    ObjectID,
-    SuiString,
+from pysui.sui.sui_bcs.bcs import (
     SuiU8,
     SuiU16,
     SuiU32,
@@ -149,39 +147,23 @@ class TestSuiScalarsDispatch:
 
 
 # ---------------------------------------------------------------------------
-# TestSuiStringDispatch
+# TestAddressDispatch (was TestObjectIdDispatch)
 # ---------------------------------------------------------------------------
 
-class TestSuiStringDispatch:
-    def test_sui_string_same_as_plain_str(self):
-        assert PureInput.pure(SuiString("hi")) == PureInput.pure("hi")
+class TestAddressDispatch:
+    def test_address_produces_32_bytes(self):
+        addr = bcs.Address.from_str("0x" + "ab" * 32)
+        assert len(PureInput.pure(addr)) == 32
 
-    def test_sui_string_empty(self):
-        assert PureInput.pure(SuiString("")) == [0]
-
-    def test_sui_string_includes_length_prefix(self):
-        result = PureInput.pure(SuiString("abc"))
-        assert result[0] == 3
-
-
-# ---------------------------------------------------------------------------
-# TestObjectIdDispatch
-# ---------------------------------------------------------------------------
-
-class TestObjectIdDispatch:
-    def test_object_id_produces_32_bytes(self):
-        oid = ObjectID("0x" + "ab" * 32)
-        assert len(PureInput.pure(oid)) == 32
-
-    def test_object_id_hex_decoded_correctly(self):
-        oid = ObjectID("0x" + "00" * 31 + "02")
-        result = PureInput.pure(oid)
+    def test_address_hex_decoded_correctly(self):
+        addr = bcs.Address.from_str("0x" + "00" * 31 + "02")
+        result = PureInput.pure(addr)
         assert result[-1] == 2
         assert result[0] == 0
 
-    def test_object_id_all_zeros(self):
-        oid = ObjectID("0x" + "00" * 32)
-        assert PureInput.pure(oid) == [0] * 32
+    def test_address_all_zeros(self):
+        addr = bcs.Address.from_str("0x" + "00" * 32)
+        assert PureInput.pure(addr) == [0] * 32
 
 
 # ---------------------------------------------------------------------------

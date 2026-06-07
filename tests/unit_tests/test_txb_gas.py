@@ -6,8 +6,8 @@
 """Unit tests for the gas selection redesign — all offline, no network required.
 
 Covers:
-    - compute_gas_budget  (pysui.sui.sui_common.txb_gas)
-    - coins_for_budget    (pysui.sui.sui_common.txb_gas)
+    - compute_gas_budget  (pysui.sui.sui_common.txn_gas)
+    - coins_for_budget    (pysui.sui.sui_common.txn_gas)
     - No DeprecationWarning emitted by gas modules at import time
     - budget=0 regression guard (coins_for_budget treats 0 as a real budget)
     - _SuiTransactionBase._inspect_ptb_for_gas_coin (trxn_base)
@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 # Suppress import-time deprecations from transitively imported legacy modules.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from pysui.sui.sui_common.txb_gas import (
+from pysui.sui.sui_common.txn_gas import (
     _GAS_SAFE_OVERHEAD,
     _MAX_GAS_PAYMENT_OBJECTS,
     coins_for_budget,
@@ -65,7 +65,7 @@ def _make_pure_u64(value: int) -> bcs.CallArg:
 # without constructing a live client.
 # ---------------------------------------------------------------------------
 
-from pysui.sui.sui_common.trxn_base import _SuiTransactionBase  # noqa: E402
+from pysui.sui.sui_common.txn_base import _SuiTransactionBase  # noqa: E402
 
 
 class _FakeTxn:
@@ -144,17 +144,11 @@ class TestCoinsForBudget:
         assert len(result) == 1
         assert result[0].balance == 600_000_000
 
-    def test_no_single_fit_merge_false_raises(self):
-        """No single coin covers the budget and merge=False → ValueError mentioning merge_gas_budget."""
-        coins = [_make_coin(100_000), _make_coin(200_000)]
-        with pytest.raises(ValueError, match="merge_gas_budget=True"):
-            coins_for_budget(coins, 500_000, _balance, _ref, merge=False)
-
     def test_merge_true_accumulates_descending(self):
         """merge=True accumulates coins descending by balance until budget is covered."""
         coins = [_make_coin(300_000), _make_coin(200_000), _make_coin(100_000)]
         # 300k + 200k = 500k >= 450k; third coin is not needed
-        result = coins_for_budget(coins, 450_000, _balance, _ref, merge=True)
+        result = coins_for_budget(coins, 450_000, _balance, _ref)
         assert len(result) == 2
         assert {c.balance for c in result} == {300_000, 200_000}
 
@@ -162,7 +156,7 @@ class TestCoinsForBudget:
         """merge=True but total balance of all coins < budget → ValueError."""
         coins = [_make_coin(100_000), _make_coin(100_000)]
         with pytest.raises(ValueError, match="transaction requires"):
-            coins_for_budget(coins, 500_000, _balance, _ref, merge=True)
+            coins_for_budget(coins, 500_000, _balance, _ref)
 
     def test_256_coin_cap_applied_before_selection(self):
         """Coins beyond the 256 protocol limit are discarded before selection.
@@ -173,14 +167,14 @@ class TestCoinsForBudget:
         """
         coins = [_make_coin(1) for _ in range(300)]
         with pytest.raises(ValueError, match="transaction requires"):
-            coins_for_budget(coins, 270, _balance, _ref, merge=True)
+            coins_for_budget(coins, 270, _balance, _ref)
 
     def test_256_cap_keeps_highest_balance_coins(self):
         """When more than 256 coins are provided, the 256 with the highest balance are kept."""
         high = [_make_coin(1_000_000) for _ in range(10)]
         low = [_make_coin(1) for _ in range(290)]
         # Deliberately pass them unsorted to verify sorting is done internally.
-        result = coins_for_budget(low + high, 5_000_000, _balance, _ref, merge=True)
+        result = coins_for_budget(low + high, 5_000_000, _balance, _ref)
         assert all(c.balance == 1_000_000 for c in result)
 
     def test_budget_zero_is_satisfied_by_any_positive_coin(self):
@@ -218,21 +212,9 @@ class TestNoDeprecationWarning:
     SimulateTransactionKind. These tests guard against regression.
     """
 
-    def test_pgql_txb_gas_no_deprecation_on_import(self):
-        """pgql_txb_gas must not raise DeprecationWarning when imported."""
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always", DeprecationWarning)
-            import pysui.sui.sui_pgql.pgql_txb_gas  # noqa: F401
-
-        deprecations = [w for w in caught if issubclass(w.category, DeprecationWarning)]
-        assert deprecations == [], (
-            "Unexpected DeprecationWarning(s) from pgql_txb_gas: "
-            + str([str(w.message) for w in deprecations])
-        )
-
     def test_txb_gas_async_get_gas_data_importable(self):
-        """async_get_gas_data must be importable from sui_common.txb_gas (unified path)."""
-        from pysui.sui.sui_common.txb_gas import async_get_gas_data  # noqa: F401
+        """async_get_gas_data must be importable from sui_common.txn_gas (unified path)."""
+        from pysui.sui.sui_common.txn_gas import async_get_gas_data  # noqa: F401
 
         assert callable(async_get_gas_data)
 
@@ -324,7 +306,7 @@ class TestInspectPtbForGasCoin:
         )
         txn = _FakeTxn(commands=[cmd], inputs={})
         with patch.object(
-            logging.getLogger("pysui.sui.sui_common.trxn_base"), "warning"
+            logging.getLogger("pysui.sui.sui_common.txn_base"), "warning"
         ) as mock_warn:
             uses, draw = txn._inspect_ptb_for_gas_coin()
         assert uses is True

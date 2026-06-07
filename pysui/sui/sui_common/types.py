@@ -25,8 +25,7 @@ class TransactionConstraints:
     max_type_argument_depth: Optional[int] = 0
     max_type_arguments: Optional[int] = 0
     max_tx_gas: Optional[int] = 0
-    receive_objects: bool = False
-    enable_address_balance_gas_payments: bool = False
+    max_publish_or_upgrade_per_ptb: Optional[int] = 0
 
 
 @dataclasses.dataclass

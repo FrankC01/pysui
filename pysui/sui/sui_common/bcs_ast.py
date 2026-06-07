@@ -9,11 +9,13 @@ import ast
 import copy
 from collections import deque
 from typing import Any, Optional, Union, cast
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class Node:
     """Generic Node."""
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.Node.__init__")
     def __init__(self, ident: str, data: Any, children: list[Any]):
         """Node Initializer."""
         self.ident: str = ident
@@ -24,27 +26,33 @@ class Node:
 class NodeVisitor:
     """A specific visitor for traversing a tree to express python ast."""
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor.__init__")
     def __init__(self, ast_module: ast.Module):
         self.optional_stub = ast_module.body.pop()
         self.ast_module = ast_module
         self.stack: deque[ast.AST] = deque()
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor.get")
     def get(self) -> ast.AST:
         """LIFO pop."""
         return self.stack.pop()
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor.put")
     def put(self, element: ast.AST):
         """LIFO push"""
         self.stack.append(element)
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor.peek_last")
     def peek_last(self) -> ast.AST:
         """LIFO peek last element."""
         return self.stack[0]
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor.peek_first")
     def peek_first(self) -> ast.AST:
         """LIFO peek last element."""
         return self.stack[-1]
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor.first_from_top")
     def first_from_top(self, clz_type: Any) -> Union[ast.AST, None]:
         """Finds first of matching type in stack."""
         for ast_type in reversed(self.stack):
@@ -52,12 +60,14 @@ class NodeVisitor:
                 return ast_type
         return None
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor.visit")
     def visit(self, node: Node):
         """Visit a node."""
         method = "visit_" + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         return visitor(node)
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor.generic_visit")
     def generic_visit(self, node: Node):
         """Called if no explicit visitor function exists for a node."""
         print(f"Skipping {node.__class__.__name__} for '{node.ident}'")
@@ -69,6 +79,7 @@ class NodeVisitor:
             elif isinstance(value, Node):
                 self.visit(value)
 
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.NodeVisitor._iter_fields")
     def _iter_fields(self, node: Node):
         """
         Yield a Node for each child in ``node.children``
@@ -105,6 +116,7 @@ class BcsAst:
     CONSTANT_NONE = ast.Constant(None)
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.structure_base")
     def structure_base(
         clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
     ) -> ast.ClassDef:
@@ -130,6 +142,7 @@ class BcsAst:
         )
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.enum_base")
     def enum_base(
         clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
     ) -> ast.ClassDef:
@@ -155,6 +168,7 @@ class BcsAst:
         )
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.optional_base")
     def optional_base(
         clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
     ) -> ast.ClassDef:
@@ -181,6 +195,7 @@ class BcsAst:
         )
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.optional_type")
     def optional_type(
         clz,
         walker: NodeVisitor,
@@ -207,6 +222,7 @@ class BcsAst:
         return ocopy
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.generate_nested_vector")
     def generate_nested_vector(
         clz, depth: int, walker: NodeVisitor, node: Node
     ) -> ast.List:
@@ -227,11 +243,13 @@ class BcsAst:
         return core_list
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.fully_qualified_reference")
     def fully_qualified_reference(fval: dict) -> str:
         """Conjoins package, module, struct/enum from datatype."""
         return "::".join([fval["package"], fval["module"], fval["type"]])
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.struct_field_type")
     def struct_field_type(field_name: str, type_parms: list) -> tuple[str, list]:
         """Forms a name conjoined with typeparm."""
         new_name: str = field_name
@@ -249,6 +267,7 @@ class BcsAst:
         return new_name, new_tparms
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.struct_field_type_proto")
     def struct_field_type_proto(base_name: str, type_param_names: list[str]) -> str:
         """Forms a type name from base plus concrete type-param names (proto-shape sibling)."""
         if not type_param_names:

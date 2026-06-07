@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-06-08
+
+> **⚠️ Deletion Notice:** Release 1.0.0 has **removed** the legacy JSON-RPC client
+> and synchronous GraphQL client. If your code used either then use the
+> [Migration Guide](https://pysui.readthedocs.io/en/latest/migration_to_pysui_uci.html)
+> on ReadTheDocs.
+
+### Added
+
+- Added new SuiCommand: `GetCheckpointByDigest` for fetching checkpoints by their digest value
+- Added new PTB command: `fund_address_accumulator`
+- Added instrumentation to all pysui concrete methods and functions
+- [enhancement](https://github.com/FrankC01/pysui/issues/384) Enable address accumulator withdrawal as a PTB input
+- [enhancement](https://github.com/FrankC01/pysui/issues/385) Enable address accumulator balance as a PTB input
+
+### Fixed
+
+### Changed
+
+- Updated `pysui-fastcrypto` dependency to 0.7.3
+- Added `TransactionEffects.version` to SuiCommand Simulate, Execute and Fetching transactions
+- Updated gRPC protos and bumped betterproto2 dependency
+- Updated documentation
+- Updated SuiCommands to update parity across protocols
+- Update unit test to support updated parity across protocols
+- **BREAKING CHANGE**: renamed `balance_from` PTB command to `coin_from_address_accumulator`
+
+### Removed
+
+- Removed legacy JSON-RPC and synchronous GraphQL code and related artifacts
+
 ## [0.99.1] - 2026-05-21
 
 ### Added

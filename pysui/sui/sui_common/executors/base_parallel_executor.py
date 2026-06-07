@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
-from pysui.sui.sui_common.txb_signing import SignerBlock
+from pysui.sui.sui_common.txn_signing import SignerBlock
 from pysui.sui.sui_common.executors.exec_types import (
     ExecutionSkipped,
     ExecutorError,
@@ -38,9 +38,10 @@ from pysui.sui.sui_common.executors.gas_utils import (
 )
 from pysui.sui.sui_common.executors._queue_types import _SENTINEL, _QueueItem
 from pysui.sui.sui_common.validators import valid_sui_address
-from pysui.sui.sui_common.txb_tx_argparse import TxnArgMode
+from pysui.sui.sui_common.txn_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
+from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class _BaseParallelExecutor:
     preventing equivocation while allowing concurrent execution of non-conflicting txns.
     """
 
+    @sync_instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor.__init__")
     def __init__(self, *, client, options: ExecutorOptions) -> None:
         self._client = client
         self._options = options
@@ -80,6 +82,7 @@ class _BaseParallelExecutor:
         else:
             self._gas_pool = None
 
+    @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._initialize")
     async def _initialize(self) -> None:
         """Async init: seed gas state, start build worker. Called by client factory."""
         sender = self._signing_block.sender_str
@@ -118,6 +121,7 @@ class _BaseParallelExecutor:
 
         self._build_task = asyncio.create_task(self._build_worker())
 
+    @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._add_funds")
     async def _add_funds(self, coins: list) -> None:
         """Merge new coins into gas state after on_balance_low returns candidates.
 
@@ -163,6 +167,7 @@ class _BaseParallelExecutor:
         else:
             await self._send_funds_to_account(candidates, self._tracked_balance)
 
+    @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._send_funds_to_account")
     async def _send_funds_to_account(self, candidates: list, existing_balance: int = 0) -> None:
         executed_tx = await send_funds_to_account(
             client=self._client,
@@ -174,11 +179,13 @@ class _BaseParallelExecutor:
         )
         self._update_tracked_balance_from_accumulator(executed_tx)
 
+    @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._new_transaction")
     async def _new_transaction(self, **kwargs):
         """Internal: create a DEFERRED transaction without shared cache injection."""
         kwargs["mode"] = TxnArgMode.DEFERRED
         return await self._client.transaction(**kwargs)
 
+    @sync_instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._submit_one")
     def _submit_one(self, txn) -> asyncio.Future:
         loop = asyncio.get_running_loop()
         future = loop.create_future()
@@ -190,6 +197,7 @@ class _BaseParallelExecutor:
         self._build_queue.put_nowait(_QueueItem(txn=txn, future=future))
         return future
 
+    @instrumented("executor.parallel._build_worker")
     async def _build_worker(self) -> None:
         """Serial background coroutine: acquire conflict + gas, dispatch execute tasks."""
         while True:
@@ -210,11 +218,12 @@ class _BaseParallelExecutor:
 
             # Conflict acquisition — blocks until all object IDs are free
             try:
-                unresolved = item.txn.builder.get_unresolved_inputs()
-                conflict_ids: set[str] = {
-                    u.ObjectStr for u in unresolved.values()
-                    if hasattr(u, "ObjectStr")
-                }
+                async with measure("executor.parallel.object_resolve"):
+                    unresolved = item.txn.builder.get_unresolved_inputs()
+                    conflict_ids: set[str] = {
+                        u.ObjectStr for u in unresolved.values()
+                        if hasattr(u, "ObjectStr")
+                    }
             except (AttributeError, TypeError):
                 conflict_ids = set()
             reservation = await self._conflict_tracker.acquire(conflict_ids)
@@ -244,6 +253,7 @@ class _BaseParallelExecutor:
 
             self._build_queue.task_done()
 
+    @instrumented("executor.parallel._execute_item")
     async def _execute_item(
         self,
         item: _QueueItem,
@@ -272,9 +282,10 @@ class _BaseParallelExecutor:
                         ]
 
                     try:
-                        signed_tx = await caching_exec.build_transaction(
-                            item.txn, self._signing_block, gas_objects_override
-                        )
+                        async with measure("executor.parallel.build_transaction"):
+                            signed_tx = await caching_exec.build_transaction(
+                                item.txn, self._signing_block, gas_objects_override
+                            )
                     except Exception as exc:
                         logger.warning("_BaseParallelExecutor: build failed: %s", exc)
                         if gas_coin is not None:
@@ -357,6 +368,7 @@ class _BaseParallelExecutor:
             if semaphore_held:
                 self._semaphore.release()
 
+    @sync_instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._update_gas_coin")
     def _update_gas_coin(
         self, executed_tx: "sui_prot.ExecutedTransaction", gas_coin: GasCoin
     ) -> GasCoin:
@@ -389,14 +401,17 @@ class _BaseParallelExecutor:
             balance=new_balance,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._update_tracked_balance")
     def _update_tracked_balance(self, effects: "sui_prot.TransactionEffects") -> None:
         self._tracked_balance = update_tracked_balance(effects, self._tracked_balance)
 
+    @sync_instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._update_tracked_balance_from_accumulator")
     def _update_tracked_balance_from_accumulator(
         self, executed_tx: "sui_prot.ExecutedTransaction"
     ) -> None:
         self._tracked_balance = update_tracked_balance_from_accumulator(executed_tx, self._tracked_balance)
 
+    @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._replenish")
     async def _replenish(self) -> bool:
         """Call on_balance_low; pass returned coins to _add_funds(). Returns False on hard stop."""
         return await run_replenishment(
@@ -409,6 +424,7 @@ class _BaseParallelExecutor:
             label="_BaseParallelExecutor",
         )
 
+    @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._hard_stop")
     async def _hard_stop(self, reason: str) -> None:
         """Mark executor dead and drain build queue items to ExecutionSkipped."""
         if self._dead:

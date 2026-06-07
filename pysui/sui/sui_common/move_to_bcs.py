@@ -22,8 +22,10 @@ import pysui.sui.sui_common.bcs_ast as bcs_ast
 from pysui.sui.sui_common.bcs_ast import BcsAst
 import pysui.sui.sui_common.mtobcs_types as mtypes
 import pysui.sui.sui_bcs.bcs_stnd as bcse
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
+@sync_instrumented("pysui.sui.sui_common.move_to_bcs._normalize_fq_type")
 def _normalize_fq_type(fq: str) -> str:
     """Pad the package address in a fully-qualified Move type to 32 bytes."""
     parts = fq.split("::")
@@ -59,6 +61,7 @@ logger = logging.getLogger("mtobcs")
 class MoveFieldNode(bcs_ast.Node):
     """Generic Structure Field node"""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveFieldNode.__init__")
     def __init__(self, ident: str, data: Any, children: Optional[list] = None):
         super().__init__(ident, data, children)
 
@@ -66,6 +69,7 @@ class MoveFieldNode(bcs_ast.Node):
 class MoveScalarField(MoveFieldNode):
     """Move scalar type field descriptor."""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveScalarField.__init__")
     def __init__(self, ident: str, data: Any, children: Optional[list] = None):
         super().__init__(ident, data, children)
 
@@ -73,6 +77,7 @@ class MoveScalarField(MoveFieldNode):
 class MoveVectorField(MoveFieldNode):
     """Move vector type field descriptor."""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveVectorField.__init__")
     def __init__(
         self,
         *,
@@ -90,6 +95,7 @@ class MoveVectorField(MoveFieldNode):
 class MoveStandardField(MoveFieldNode):
     """Move standard library type field descriptor."""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveStandardField.__init__")
     def __init__(self, ident: str, data: Any, children: Optional[list] = None):
         super().__init__(ident, data, children)
 
@@ -97,6 +103,7 @@ class MoveStandardField(MoveFieldNode):
 class MoveStructureField(MoveFieldNode):
     """Move structure type field descriptor."""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveStructureField.__init__")
     def __init__(self, ident: str, data: Any, children: Optional[list] = None):
         super().__init__(ident, data, children)
 
@@ -104,6 +111,7 @@ class MoveStructureField(MoveFieldNode):
 class MoveOptionalField(MoveFieldNode):
     """Move optional type field descriptor."""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveOptionalField.__init__")
     def __init__(
         self,
         *,
@@ -117,6 +125,7 @@ class MoveOptionalField(MoveFieldNode):
 class MoveVariantField(MoveFieldNode):
     """Move enum variant field descriptor."""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveVariantField.__init__")
     def __init__(
         self,
         ident: str,
@@ -129,6 +138,7 @@ class MoveVariantField(MoveFieldNode):
 class MoveStructureNode(bcs_ast.Node):
     """Generic Structure node"""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveStructureNode.__init__")
     def __init__(
         self, ident: str, children: list[MoveFieldNode], data: Optional[Any] = None
     ):
@@ -139,6 +149,7 @@ class MoveStructureNode(bcs_ast.Node):
 class MoveEnumNode(bcs_ast.Node):
     """Generic Enum node"""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveEnumNode.__init__")
     def __init__(
         self, ident: str, children: list[MoveVariantField], data: Optional[Any] = None
     ):
@@ -153,6 +164,7 @@ class MoveDataType:
     _DECL_PARMS: str = "decl_paramtypes"
     _DECL_TYPE_NAME: str = "decl_type_name"
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType.__init__")
     def __init__(
         self,
         *,
@@ -176,6 +188,7 @@ class MoveDataType:
         self._generated: Any = None
         self._compiled: Any = None
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._handle_simple")
     def _handle_simple(self, fname: str, fval: Any) -> MoveFieldNode:
         """Convert scalars and simples. Accepts str (legacy root path) or OpenSignatureBody (proto path)."""
         if isinstance(fval, str):
@@ -187,6 +200,7 @@ class MoveDataType:
             return MoveStandardField(fname, ref)
         return MoveScalarField(fname, str(fval.type))
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._type_param_name")
     def _type_param_name(self, body: sui_prot.OpenSignatureBody) -> str:
         """Extract short name from a concrete type param body for name mangling."""
         if body.type in _PROTO_SCALAR_BODY_TYPES:
@@ -196,6 +210,7 @@ class MoveDataType:
             return body.type_name.split("::")[-1]
         return str(body.type)
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._build_parmed_assets")
     def _build_parmed_assets(
         self, s_field: MoveFieldNode, fetch_decl: dict, parm_list: list
     ):
@@ -209,6 +224,7 @@ class MoveDataType:
             fetch_decl[self._DECL_PARMS] = parm_list
             s_field.data = new_name
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._resolve_vector_type_param")
     def _resolve_vector_type_param(
         self, fname: str, idx: int, type_parms: Any
     ) -> tuple:
@@ -222,6 +238,7 @@ class MoveDataType:
             return self._handle_reference(fname, concrete)
         raise NotImplementedError(f"Vector of concrete type {concrete.type} not handled for '{fname}'.")
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._handle_vector")
     def _handle_vector(
         self, fname: str, fbody: sui_prot.OpenSignatureBody, type_parms: Any
     ) -> tuple[MoveFieldNode, list]:
@@ -256,6 +273,7 @@ class MoveDataType:
             s_fetch,
         )
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._process_typeparm_fortype")
     def _process_typeparm_fortype(self, fbody: sui_prot.OpenSignatureBody) -> list[dict]:
         """Return fetch entries for the first DATATYPE type param of an Optional."""
         tparms = fbody.type_parameter_instantiation
@@ -267,6 +285,7 @@ class MoveDataType:
         return []
 
     @staticmethod
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._build_parm_names")
     def _build_parm_names(type_parameter_instantiation) -> list[str]:
         """Build mangled name components from type parameter instantiation."""
         parm_names = []
@@ -278,6 +297,7 @@ class MoveDataType:
                 parm_names.append(tp.type_name.split("::")[-1])
         return parm_names
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._handle_reference")
     def _handle_reference(
         self,
         fname: str,
@@ -309,6 +329,7 @@ class MoveDataType:
             )
         return f_field, f_fetch
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._dispatch_field")
     def _dispatch_field(
         self,
         fname: str,
@@ -336,6 +357,7 @@ class MoveDataType:
         logger.warning(f"Unhandled field type {fbody.type} for '{fname}'")
         return None, []
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._process_structure")
     def _process_structure(
         self,
         type_decl: str,
@@ -357,6 +379,7 @@ class MoveDataType:
                 fetch_fields.extend(s_fetch)
         return MoveStructureNode(struc_name, direct_fields, type_decl), fetch_fields
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._process_enum")
     def _process_enum(
         self,
         type_decl: str,
@@ -379,6 +402,7 @@ class MoveDataType:
             direct_variants.append(MoveVariantField(vname, variant_members))
         return MoveEnumNode(enum_name, direct_variants, type_decl), fetch_fields
 
+    @instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._fetch_type")
     async def _fetch_type(
         self, *, client: AsyncClientBase, move_type_decl: dict
     ) -> tuple[bcs_ast.Node, list]:
@@ -398,6 +422,7 @@ class MoveDataType:
         else:
             raise ValueError(result.result_string)
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._root_process")
     def _root_process(
         self, initial_target: mtypes.GenericStructure | mtypes.Structure
     ) -> tuple[str, list, MoveStructureNode | None]:
@@ -424,8 +449,10 @@ class MoveDataType:
         last_child = MoveStructureNode("_".join(name_list), children)
         return first_field, more_fetch, last_child
 
+    @instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._process_fetch_queue")
     async def _process_fetch_queue(self, more_fetch: list, handled: set) -> None:
         """Process the growing dependency queue, fetching each unresolved type."""
+        @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._growing_len")
         def _growing_len(xs):
             i = 0
             while i < len(xs):
@@ -448,6 +475,7 @@ class MoveDataType:
                 if _more_fetch:
                     more_fetch.extend(_more_fetch)
 
+    @instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType.parse_move_target")
     async def parse_move_target(self) -> str:
         """Parse the move target creating an IR and returning entry point classname.
 
@@ -477,6 +505,7 @@ class MoveDataType:
             self._parsed = True
         return self.children[-1].ident
 
+    @instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType.compile_bcs")
     async def compile_bcs(self, force: Optional[bool] = False) -> dict:
         """Compile the target and return executable ast."""
         if force:
@@ -493,6 +522,7 @@ class MoveDataType:
             exec(comped_module, self._compiled)
         return self._compiled
 
+    @instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType.emit_bcs_source")
     async def emit_bcs_source(self) -> str:
         """Emit BCS python module."""
         if not self._generated:
@@ -509,6 +539,7 @@ class MoveDataType:
 class _BCSGenerator(bcs_ast.NodeVisitor):
     """Generates the BCS associated with Move constructs."""
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.__init__")
     def __init__(
         self,
         *,
@@ -522,6 +553,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         for pre_i in self.pre_includes:
             pass
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator._needs_processing")
     def _needs_processing(
         self, current_cdef: str, depend_cdef: str
     ) -> Union[bcs_ast.Node, None]:
@@ -536,6 +568,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
                     depend_index = idx
         return self.children[depend_index] if depend_index > base_index else None
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator._walk")
     def _walk(self):
         """Walks the primary Move constructs."""
         for child in self.children:
@@ -544,6 +577,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
                 continue
             self.visit(child)
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveStructureNode")
     def visit_MoveStructureNode(self, node: MoveStructureNode):
         """Generate a BCS structue class and it's fields."""
         field_targets: ast.List = ast.List([], ast.Load)
@@ -568,6 +602,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         self.ast_module.body.append(_ctxt)
         node.processed = True
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveEnumNode")
     def visit_MoveEnumNode(self, node: MoveEnumNode):
         """Generate a BCS enum class and it's variants."""
         field_targets: ast.List = ast.List([], ast.Load)
@@ -587,18 +622,21 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         self.ast_module.body.append(_ctxt)
         node.processed = True
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveScalarField")
     def visit_MoveScalarField(self, node: MoveScalarField):
         """Generate a reference to a scalar type."""
         expr = ast.parse(f"{node.data}").body[0].value
         container = self.peek_first()
         container.elts.append(expr)
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveStandardField")
     def visit_MoveStandardField(self, node: MoveStandardField):
         """Generate a reference to a scalar type."""
         expr = ast.parse(f"{node.data}").body[0].value
         container = self.peek_first()
         container.elts.append(expr)
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveStructureField")
     def visit_MoveStructureField(self, node: MoveStructureField):
         """Generate a reference to a struct type."""
         current_cdef = self.first_from_top(ast.ClassDef).name
@@ -611,6 +649,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         container = self.peek_first()
         container.elts.append(expr)
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator._resolve_optional_vector_field")
     def _resolve_optional_vector_field(self, opt_name: str, type_parm) -> ast.expr:
         """Resolve a vector type parameter inside an Optional field to an ast type expression."""
         depth_level = 0
@@ -629,6 +668,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         vec_node = MoveVectorField(ident=opt_name, levels=depth_level, base_data=inner_field)
         return BcsAst.generate_nested_vector(depth_level, self, vec_node)
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveOptionalField")
     def visit_MoveOptionalField(self, node: MoveOptionalField):
         """Generate an unknown ref."""
         # From the immediate class, get the classname
@@ -669,12 +709,14 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         container = self.peek_first()
         container.elts.append(expr)
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveVectorField")
     def visit_MoveVectorField(self, node: MoveVectorField):
         """Generate a vector of n depth."""
         self.peek_first().elts.append(
             BcsAst.generate_nested_vector(node.levels, self, node)
         )
 
+    @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveVariantField")
     def visit_MoveVariantField(self, node: MoveVariantField):
         """Generate the variant field of an enum class."""
         cname = ast.Constant(node.ident, str)

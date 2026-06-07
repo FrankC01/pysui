@@ -19,6 +19,7 @@ from pysui.sui.sui_common.config.confmodel import (
     PysuiConfigModel,
 )
 import pysui.sui.sui_common.config.confgroup as cfg_group
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
 class PysuiConfiguration:
@@ -33,6 +34,7 @@ class PysuiConfiguration:
         version="0.86.0",
         reason="BREAKING: Moved initializing profiles to `PysuiCofiguration.initialize_config`",
     )
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.__init__")
     def __init__(
         self,
         *,
@@ -87,6 +89,7 @@ class PysuiConfiguration:
         )
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration._gen_graphql")
     def _gen_graphql(
         cls, basis: cfg_group.ProfileGroup, name: str
     ) -> cfg_group.ProfileGroup:
@@ -104,6 +107,7 @@ class PysuiConfiguration:
         return group_cfg
 
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration._gen_grpc")
     def _gen_grpc(
         cls, basis: cfg_group.ProfileGroup, name: str
     ) -> cfg_group.ProfileGroup:
@@ -139,6 +143,7 @@ class PysuiConfiguration:
         reason="New group and profile initializations",
     )
     @classmethod
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.initialize_config")
     def initialize_config(
         cls,
         *,
@@ -199,14 +204,17 @@ class PysuiConfiguration:
         # Return configuration
         return instance
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration._write_model")
     def _write_model(self):
         """Writes out the configuration model."""
         self._config_file.write_text(self.to_json(indent=2))
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.save")
     def save(self):
         """External invoked write."""
         self._write_model()
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.save_to")
     def save_to(self, new_folder: Path):
         """External invoked write."""
         _config_root = new_folder.expanduser()
@@ -218,75 +226,90 @@ class PysuiConfiguration:
         self._config_file = _config_file
         self._write_model()
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.to_json")
     def to_json(self, *_cmds, **kwargs) -> str:
         """Return JSON formatted representation of PysuiConfiguration."""
         return self._model.to_json(**kwargs)
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.config")
     def config(self) -> str:
         """Return the configuration folder."""
         return str(self._config_root)
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.model")
     def model(self) -> PysuiConfigModel:
         """Return underlying model."""
         return self._model
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.active_group_name")
     def active_group_name(self) -> str:
         """Return name of active group."""
         return self._model.active_group.group_name
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.active_group")
     def active_group(self) -> cfg_group.ProfileGroup:
         """Return the active group."""
         return self._model.active_group
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.active_address")
     def active_address(self) -> str:
         """Returns the active groups active address."""
         return self.active_group.using_address
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.active_address_alias")
     def active_address_alias(self) -> str:
         """Returns the active groups active address."""
         return self.active_group.active_alias
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.active_profile")
     def active_profile(self) -> str:
         """Returns the active groups active profile name."""
         return self.active_group.active_profile.profile_name
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.url")
     def url(self) -> str:
         """Returns the active groups active profile url."""
         return self.active_group.active_profile.url
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.faucet_url")
     def faucet_url(self) -> Optional[str]:
         """Returns the active groups active profile faucet url."""
         return self.active_group.active_profile.faucet_url
 
     @property
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.faucet_status_url")
     def faucet_status_url(self) -> Optional[str]:
         """Returns the active groups active profile faucet status url."""
         return self.active_group.active_profile.faucet_status_url
 
     @property
     @versionchanged(version="0.86.0", reason="Name change to be semantically correct")
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.config_actives")
     def config_actives(self) -> str:
         """Return configuration breadcrumb path."""
         _group = self.active_group
         return f"{_group.group_name}.{_group.active_profile.profile_name}"
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.address_for_alias")
     def address_for_alias(self, *, alias_name: str) -> str:
         """Return the address for the alias name in current group."""
         return self.active_group.address_for_alias(alias=alias_name)
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.alias_for_address")
     def alias_for_address(self, *, address: str) -> str:
         """Return the alias for the address in current group."""
         return self.active_group.alias_for_address(address=address)
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.keypair_for_address")
     def keypair_for_address(self, *, address: str, in_group: Optional[str] = None):
         """Returnn the SuiKeyPair for an address."""
         _group = (
@@ -296,14 +319,17 @@ class PysuiConfiguration:
         )
         return _group.keypair_for_address(address=address)
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.group_names")
     def group_names(self) -> list[str]:
         """Return the groups in the configuration."""
         return [x.group_name for x in self._model.groups]
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.group_names_for_protocol")
     def group_names_for_protocol(self, *, protocols: list[cfg_group.GroupProtocol]) -> list[str]:
         """Return group names whose protocol matches any of the given GroupProtocol values."""
         return [x.group_name for x in self._model.groups if x.protocol in protocols]
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.profile_names")
     def profile_names(self, *, in_group: Optional[str] = None) -> list[str]:
         """Return the profiles in a group. Default to active group."""
         # If group specified and it's not the active
@@ -318,6 +344,7 @@ class PysuiConfiguration:
 
         return _group.profile_names
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.make_active")
     def make_active(
         self,
         *,
@@ -360,6 +387,7 @@ class PysuiConfiguration:
             self._write_model()
         return self
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.new_group")
     def new_group(
         self,
         *,
@@ -450,6 +478,7 @@ class PysuiConfiguration:
             self._write_model()
         return addies
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.new_keypair")
     def new_keypair(
         self,
         *,
@@ -515,6 +544,7 @@ class PysuiConfiguration:
             return mnem, new_addy
         raise ValueError(f"{of_keytype}: Not recognized as valid keypair scheme.")
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.add_keys")
     def add_keys(
         self,
         *,
@@ -553,6 +583,7 @@ class PysuiConfiguration:
 
         return addies
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.new_profile")
     def new_profile(
         self,
         *,
@@ -593,6 +624,7 @@ class PysuiConfiguration:
         if persist:
             self._write_model()
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.update_profile")
     def update_profile(
         self,
         *,
@@ -632,6 +664,7 @@ class PysuiConfiguration:
         if persist:
             self._write_model()
 
+    @sync_instrumented("pysui.sui.sui_common.config.pysui_config.PysuiConfiguration.rename_alias")
     def rename_alias(
         self,
         *,

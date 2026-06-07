@@ -26,13 +26,43 @@ if sys.version_info < (3, 10):
 
 # Convenience imports
 
-from pysui.sui.sui_types.address import SuiAddress
-from pysui.sui.sui_types.scalars import ObjectID
-from pysui.sui.sui_clients.common import (
-    PreExecutionResult,
-    SuiRpcResult,
-    handle_result,
-)
+from typing import Any
+
+from pysui.abstracts.client_rpc import RpcResult
+
+
+class SuiRpcResult(RpcResult):
+    """Sui RpcResult.
+
+    Captures information returned from simple and complex RPC API calls
+    """
+
+    def __init__(
+        self, result_status: bool, result_string: str, result_data: Any = None
+    ) -> None:
+        """__init__ SuiRpcResult constructor."""
+        super().__init__()
+        self._status: bool = result_status
+        self._result_str: str = result_string
+        self._data: Any = result_data
+
+    def is_ok(self) -> bool:
+        """Ease of use status."""
+        return self._status
+
+    def is_err(self) -> bool:
+        """Ease of use status."""
+        return not self._status
+
+    @property
+    def result_data(self) -> Any:
+        """Get result data."""
+        return self._data
+
+    @property
+    def result_string(self) -> str:
+        """Get result string."""
+        return self._result_str
 
 from .version import __version__
 

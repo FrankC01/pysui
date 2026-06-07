@@ -277,9 +277,10 @@ See :ref:`pageable-commands` for the full table and usage examples.
   - :class:`GetLatestSuiSystemState`
   - :class:`GetCurrentValidators` *(pageable, GQL only)*
 
-**Checkpoint Queries (2):**
+**Checkpoint Queries (3):**
   - :class:`GetLatestCheckpoint`
   - :class:`GetCheckpointBySequence`
+  - :class:`GetCheckpointByDigest`
 
 **Move Package & Type Queries (8):**
   - :class:`GetPackage` *(pageable, GQL only)*

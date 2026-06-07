@@ -11,26 +11,26 @@ import struct as _struct
 from typing import Any, Callable, Optional, Union
 from deprecated.sphinx import versionchanged
 
-from pysui.sui.sui_common.trxn_base import (
+from pysui.sui.sui_common.txn_base import (
     _TransactionBase,
     _SuiTransactionBase as txbase,
     FundsSource,
 )
-from pysui.sui.sui_common.txb_signing import SignerBlock, SigningMultiSig
+from pysui.sui.sui_common.txn_signing import SignerBlock, SigningMultiSig
 from pysui.sui.sui_bcs import bcs
-from pysui.sui.sui_common.txb_pure import PureInput
-from pysui.sui.sui_types.scalars import SuiU64
+from pysui.sui.sui_common.txn_pure import PureInput
 import pysui.sui.sui_pgql.pgql_validators as tv
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-from pysui.sui.sui_common.txb_gas import (
+from pysui.sui.sui_common.txn_gas import (
     compute_gas_budget,
     async_get_gas_data as _async_get_gas_data,
 )
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_common.txb_tx_argparse import TxnArgParse, TxnArgMode
+from pysui.sui.sui_common.txn_tx_argparse import TxnArgParse, TxnArgMode
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache
 from pysui.sui.sui_common.async_funcs import AsyncLRU
+from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented
 
 # Coin reservation constants — used when addressBalance gas mode + GasCoin (txn.gas) is used
 _ACCUMULATOR_ROOT_ID_BYTES = bytes(30) + b'\x0a\xcc'
@@ -51,6 +51,7 @@ _ACCUMULATOR_KEY_TYPE_TAG_BCS = (
 )
 
 
+@sync_instrumented("pysui.sui.sui_common.async_txn._build_coin_reservation_ref")
 def _build_coin_reservation_ref(
     reserved_balance: int, epoch: int, owner_str: str, chain_id: str
 ) -> "bcs.ObjectReference":
@@ -87,6 +88,7 @@ class AsyncSuiTransaction(txbase):
     _BUILD_BYTE_STR: str = "tx_bytestr"
     _SIG_ARRAY: str = "sig_array"
 
+    @sync_instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction.__init__")
     def __init__(self, **kwargs) -> None:
         """Initialize the asynchronous SuiTransaction.
 
@@ -98,18 +100,15 @@ class AsyncSuiTransaction(txbase):
         :type initial_sponsor: Union[str, SigningMultiSig], optional
         :param compress_inputs: Reuse identical inputs, defaults to True
         :type compress_inputs: Optional[bool], optional
-        :param merge_gas_budget: Use all available gas not in use for paying, defaults to False
-        :type merge_gas_budget: Optional[bool], optional
         :param mode: Argument parsing mode, defaults to TxnArgMode.EAGER
         :type mode: TxnArgMode, optional
         :param object_cache: Optional object cache for argument resolution, defaults to None
-        :type object_cache: Optional[AsyncObjectCache], optional
+        :type object_cache: Optional[pysui.sui.sui_common.executors.cache.AsyncObjectCache], optional
         """
         mode: TxnArgMode = kwargs.pop("mode", TxnArgMode.EAGER)
         object_cache: Optional[AsyncObjectCache] = kwargs.pop("object_cache", None)
         initial_sender = kwargs.pop("initial_sender", None)
         initial_sponsor = kwargs.pop("initial_sponsor", None)
-        merge_gas_budget = kwargs.pop("merge_gas_budget", False)
         # Consumed but not used: fetched async at build time
         kwargs.pop("txn_constraints", None)
         kwargs.pop("gas_price", None)
@@ -131,13 +130,13 @@ class AsyncSuiTransaction(txbase):
             sender=initial_sender or client.config.active_address,
             sponsor=initial_sponsor,
         )
-        self._merge_gas = merge_gas_budget
         self._executed = False
         self._mode = mode
         self._object_cache = object_cache
         self._argparse = TxnArgParse(client)
 
     @AsyncLRU(maxsize=256)
+    @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction._function_meta_args")
     async def _function_meta_args(
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
@@ -174,12 +173,14 @@ class AsyncSuiTransaction(txbase):
             raise ValueError(f"{target} {ve.args}")
         raise ValueError(f"Unresolvable target {target}")
 
+    @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction.target_function_summary")
     async def target_function_summary(
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
         """Return the argument summary of a target Sui Move function."""
         return await self._function_meta_args(target)
 
+    @instrumented("ptb._build_txn_data_address_balance")
     async def _build_txn_data_address_balance(
         self,
         gas_budget: Optional[int] = None,
@@ -258,12 +259,14 @@ class AsyncSuiTransaction(txbase):
             )
         raise ValueError(_res.result_string)
 
+    @instrumented("ptb._build_txn_data")
     async def _build_txn_data(
         self,
         gas_budget: Optional[int] = None,
         use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
         use_account_for_gas: bool = False,
+        auto_gas: bool = False,
     ) -> bcs.TransactionData:
         """Generate the TransactionData structure.
 
@@ -277,6 +280,18 @@ class AsyncSuiTransaction(txbase):
             raise ValueError("Empty Transaction.")
 
         uses_gas_coin, gas_source_draw = self._inspect_ptb_for_gas_coin()
+
+        if auto_gas:
+            _bal_res = await self.client.execute(
+                command=cmd.GetAddressCoinBalance(owner=self.signer_block.payer_address),
+                timeout=30.0,
+            )
+            if _bal_res.is_ok():
+                use_account_for_gas = (
+                    _bal_res.result_data.balance.address_balance or 0
+                ) > 0
+            else:
+                raise ValueError(_bal_res.result_string)
 
         if use_account_for_gas:
             return await self._build_txn_data_address_balance(
@@ -295,17 +310,17 @@ class AsyncSuiTransaction(txbase):
 
         obj_in_use: set[str] = set(self.builder.objects_registry.keys())
         tx_kind = self.builder.finish_for_inspect()
-        gas_data: bcs.GasData = await _async_get_gas_data(
-            signing=self.signer_block,
-            client=self.client,
-            budget=gas_budget,
-            use_coins=use_gas_objects,
-            objects_in_use=obj_in_use,
-            active_gas_price=self.gas_price,
-            tx_kind=tx_kind,
-            merge_gas=self._merge_gas,
-            gas_source_draw=gas_source_draw,
-        )
+        async with measure("ptb.gas.resolve"):
+            gas_data: bcs.GasData = await _async_get_gas_data(
+                signing=self.signer_block,
+                client=self.client,
+                budget=gas_budget,
+                use_coins=use_gas_objects,
+                objects_in_use=obj_in_use,
+                active_gas_price=self.gas_price,
+                tx_kind=tx_kind,
+                gas_source_draw=gas_source_draw,
+            )
         return bcs.TransactionData(
             "V1",
             bcs.TransactionDataV1(
@@ -320,6 +335,7 @@ class AsyncSuiTransaction(txbase):
             ),
         )
 
+    @instrumented("ptb.transaction_data")
     async def transaction_data(
         self,
         *,
@@ -327,6 +343,7 @@ class AsyncSuiTransaction(txbase):
         use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
         use_account_for_gas: bool = False,
+        auto_gas: bool = False,
     ) -> bcs.TransactionData:
         """Construct a BCS TransactionData object.
 
@@ -341,13 +358,16 @@ class AsyncSuiTransaction(txbase):
         :type txn_expires_after: Optional[int], optional
         :param use_account_for_gas: Pay gas from address account balance, defaults to False
         :type use_account_for_gas: bool, optional
+        :param auto_gas: Let pysui decide gas source based on available balances, defaults to False
+        :type auto_gas: bool, optional
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
         return await self._build_txn_data(
-            gas_budget, use_gas_objects, txn_expires_after, use_account_for_gas
+            gas_budget, use_gas_objects, txn_expires_after, use_account_for_gas, auto_gas
         )
 
+    @instrumented("ptb.build")
     async def build(
         self,
         *,
@@ -355,6 +375,7 @@ class AsyncSuiTransaction(txbase):
         use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
         use_account_for_gas: bool = False,
+        auto_gas: bool = False,
     ) -> str:
         """Serialize the BCS TransactionData to a base64 string.
 
@@ -366,6 +387,8 @@ class AsyncSuiTransaction(txbase):
         :type txn_expires_after: Optional[int], optional
         :param use_account_for_gas: Pay gas from address account balance, defaults to False
         :type use_account_for_gas: bool, optional
+        :param auto_gas: Let pysui decide gas source based on available balances, defaults to False
+        :type auto_gas: bool, optional
         :return: Base64 encoded transaction bytes
         :rtype: str
         """
@@ -374,9 +397,11 @@ class AsyncSuiTransaction(txbase):
             use_gas_objects=use_gas_objects,
             txn_expires_after=txn_expires_after,
             use_account_for_gas=use_account_for_gas,
+            auto_gas=auto_gas,
         )
         return base64.b64encode(txn_data.serialize()).decode()
 
+    @instrumented("ptb.build_and_sign")
     @versionchanged(version="0.64.0", reason="Return dict instead of tuple")
     async def build_and_sign(
         self,
@@ -385,6 +410,7 @@ class AsyncSuiTransaction(txbase):
         use_gas_objects: Optional[list[Union[str, sui_prot.Object]]] = None,
         txn_expires_after: Optional[int] = None,
         use_account_for_gas: bool = False,
+        auto_gas: bool = False,
     ) -> dict:
         """Serialize the BCS TransactionData to base64, sign, and return both.
 
@@ -396,6 +422,8 @@ class AsyncSuiTransaction(txbase):
         :type txn_expires_after: Optional[int], optional
         :param use_account_for_gas: Pay gas from address account balance, defaults to False
         :type use_account_for_gas: bool, optional
+        :param auto_gas: Let pysui decide gas source based on available balances, defaults to False
+        :type auto_gas: bool, optional
         :return: Dict with ``tx_bytestr`` (base64 transaction bytes) and ``sig_array`` (list of base64 signature bytes)
         :rtype: dict[str, str]
         """
@@ -404,13 +432,17 @@ class AsyncSuiTransaction(txbase):
             use_gas_objects=use_gas_objects,
             txn_expires_after=txn_expires_after,
             use_account_for_gas=use_account_for_gas,
+            auto_gas=auto_gas,
         )
-        tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
-        sigs = self.signer_block.get_signatures(
-            config=self.client.config, tx_bytes=tx_bytes
-        )
+        async with measure("ptb.serialize"):
+            tx_bytes = base64.b64encode(txn_kind.serialize()).decode()
+        async with measure("ptb.sign"):
+            sigs = self.signer_block.get_signatures(
+                config=self.client.config, tx_bytes=tx_bytes
+            )
         return {self._BUILD_BYTE_STR: tx_bytes, self._SIG_ARRAY: sigs}
 
+    @instrumented("ptb.cmd.split_coin")
     async def split_coin(
         self,
         *,
@@ -433,11 +465,12 @@ class AsyncSuiTransaction(txbase):
             object_cache=self._object_cache,
         )
         encoded_amounts = [
-            a if isinstance(a, bcs.Argument) else PureInput.as_input(SuiU64(a))
+            a if isinstance(a, bcs.Argument) else PureInput.as_input(bcs.SuiU64(a))
             for a in amounts
         ]
         return self.builder.split_coin(parms[0], encoded_amounts)
 
+    @instrumented("ptb.cmd.merge_coins")
     async def merge_coins(
         self,
         *,
@@ -475,6 +508,7 @@ class AsyncSuiTransaction(txbase):
         ]
         return self.builder.merge_coins(parms[0], resolved)
 
+    @instrumented("ptb.cmd.split_coin_equal")
     async def split_coin_equal(
         self,
         *,
@@ -512,6 +546,7 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    @instrumented("ptb.cmd.transfer_objects")
     @versionchanged(version="0.72.0", reason="Support recipient passed as Argument")
     async def transfer_objects(
         self,
@@ -550,6 +585,7 @@ class AsyncSuiTransaction(txbase):
         ]
         return self.builder.transfer_objects(parms[0], resolved)
 
+    @instrumented("ptb.cmd.transfer_sui")
     async def transfer_sui(
         self,
         *,
@@ -576,6 +612,7 @@ class AsyncSuiTransaction(txbase):
         )
         return self.builder.transfer_sui(*parms)
 
+    @instrumented("ptb.cmd.public_transfer_object")
     async def public_transfer_object(
         self,
         *,
@@ -612,6 +649,7 @@ class AsyncSuiTransaction(txbase):
             res_count=0,
         )
 
+    @instrumented("ptb.cmd.make_move_vector")
     async def make_move_vector(
         self,
         *,
@@ -648,6 +686,7 @@ class AsyncSuiTransaction(txbase):
         )
         return self.builder.make_move_vector(type_tag, resolved)
 
+    @instrumented("ptb.cmd.move_call")
     async def move_call(
         self,
         *,
@@ -686,7 +725,8 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
-    async def balance_from(
+    @instrumented("ptb.cmd.coin_from_address_accumulator")
+    async def coin_from_address_accumulator(
         self,
         *,
         amount: int,
@@ -722,6 +762,152 @@ class AsyncSuiTransaction(txbase):
             type_arguments=[type_tag],
         )
 
+    @instrumented("ptb.cmd.create_balance")
+    async def create_balance(
+        self,
+        *,
+        amount: int,
+        source: FundsSource = FundsSource.SENDER,
+        coin_type: Optional[str] = None,
+    ) -> bcs.Argument:
+        """Withdraw Balance<T> from transaction source Sender or Sponsor account.
+
+        Unlike withdrawal(), this injects a balance::redeem_funds command and returns
+        the resulting Balance<T> argument directly — usable in move_call arguments
+        that expect Balance<T>. Unlike coin_from_address_accumulator() which returns
+        Coin<T>, this returns Balance<T> (a hot potato that must be consumed by a
+        Move function).
+
+        :param amount: The amount of `coin_type` to withdraw from `source`
+        :type amount: int
+        :param source: Source of funds, defaults to FundsSource.SENDER
+        :type source: FundsSource, optional
+        :param coin_type: The package::module::type of coin; defaults to "0x2::sui::SUI"
+        :type coin_type: Optional[str], optional
+        :return: The Balance<T> argument — usable in move_call arguments only
+        :rtype: bcs.Argument
+        """
+        type_tag = (
+            bcs.TypeTag.type_tag_from(coin_type)
+            if coin_type
+            else bcs.StructTag.sui_coin()
+        )
+        wdt = bcs.FundsWithdrawal(
+            bcs.Reservation("Amount", amount),
+            bcs.WithdrawalType("Balance", type_tag),
+            bcs.WithdrawFrom(source.name),
+        )
+        return self.builder.move_call(
+            target=bcs.Address.from_str("0x2"),
+            module="balance",
+            function="redeem_funds",
+            arguments=[wdt],
+            type_arguments=[type_tag],
+        )
+
+    @instrumented("ptb.cmd.withdrawal")
+    async def withdrawal(
+        self,
+        *,
+        amount: int,
+        coin_type: Optional[str] = "0x2::sui::SUI",
+        source: FundsSource = FundsSource.SENDER,
+    ) -> bcs.Argument:
+        """Return a raw Withdrawal<T> argument for use in move_call arguments.
+
+        Unlike coin_from_address_accumulator(), this does not inject a redeem_funds
+        command — the caller controls how to consume the Withdrawal<T> (e.g. via
+        balance::redeem_funds, coin::redeem_funds, or any Move function accepting
+        Withdrawal<T>). Restricted to move_call argument slots only.
+
+        :param amount: The amount of `coin_type` to withdraw from `source`
+        :type amount: int
+        :param coin_type: The package::module::type of coin; defaults to "0x2::sui::SUI"
+        :type coin_type: Optional[str], optional
+        :param source: Source of funds, defaults to FundsSource.SENDER
+        :type source: FundsSource, optional
+        :return: The Withdrawal<T> argument — usable in move_call arguments only
+        :rtype: bcs.Argument
+        """
+        type_tag = bcs.TypeTag.type_tag_from(coin_type)
+        wdt = bcs.FundsWithdrawal(
+            bcs.Reservation("Amount", amount),
+            bcs.WithdrawalType("Balance", type_tag),
+            bcs.WithdrawFrom(source.name),
+        )
+        return self.builder.input_obj_from_withdrawal(wdt)
+
+    @instrumented("ptb.cmd.fund_address_accumulator")
+    async def fund_address_accumulator(
+        self,
+        *,
+        funds: Union[
+            str,
+            sui_prot.Object,
+            bcs.Argument,
+            list[Union[str, sui_prot.Object, bcs.Argument]],
+        ],
+        recipient: str,
+        funds_type: Optional[str] = "0x2::sui::SUI",
+    ) -> bcs.Argument:
+        """Send one or more coins to a recipient's address account balance (accumulator).
+
+        :param funds: A single coin or homogeneous list of coins to deposit
+        :type funds: Union[str, sui_prot.Object, bcs.Argument, list[...]]
+        :param recipient: The recipient address
+        :type recipient: str
+        :param funds_type: The coin type, defaults to "0x2::sui::SUI"
+        :type funds_type: Optional[str], optional
+        :return: The command result. Can NOT be used as input in subsequent commands.
+        :rtype: bcs.Argument
+        """
+        if isinstance(funds, list):
+            if not funds:
+                raise ValueError("fund_address_accumulator: funds list is empty")
+            fund_types = {type(f) for f in funds}
+            if len(fund_types) > 1:
+                raise ValueError(
+                    "fund_address_accumulator: funds list must be homogeneous"
+                )
+            if all(isinstance(f, sui_prot.Object) for f in funds):
+                obj_types = {f.object_type for f in funds}
+                if len(obj_types) > 1:
+                    raise ValueError(
+                        "fund_address_accumulator: funds list contains mixed coin types"
+                    )
+                if funds_type not in obj_types.pop():
+                    raise ValueError(
+                        f"fund_address_accumulator: funds object type does not match funds_type={funds_type}"
+                    )
+            items = funds
+        else:
+            items = [funds]
+
+        package, package_module, package_function = (
+            tv.TypeValidator.check_target_triplet(txbase._SEND_FUNDS_TARGET)
+        )
+        package = bcs.Address.from_str(package)
+        type_arguments = [bcs.TypeTag.type_tag_from(funds_type)]
+
+        result = None
+        for fund_item in items:
+            parms = await self._argparse.build_args(
+                [fund_item, recipient],
+                txbase._FUND_ADDRESS_ACCUMULATOR,
+                mode=self._mode,
+                object_cache=self._object_cache,
+            )
+            result = self.builder.move_call(
+                target=package,
+                arguments=parms,
+                type_arguments=type_arguments,
+                module=package_module,
+                function=package_function,
+                res_count=0,
+            )
+        return result
+
+    @instrumented("ptb.cmd.optional_object")
     async def optional_object(
         self,
         *,
@@ -745,6 +931,7 @@ class AsyncSuiTransaction(txbase):
         """
         type_arguments = type_arguments if type_arguments else []
         function = "some"
+        parms: list = []
         if isinstance(optional_object, bcs.Argument):
             parms = [optional_object]
         elif isinstance(optional_object, (str, sui_prot.Object)):
@@ -770,6 +957,7 @@ class AsyncSuiTransaction(txbase):
             res_count=1,
         )
 
+    @instrumented("ptb.cmd.stake_coin")
     async def stake_coin(
         self,
         *,
@@ -792,7 +980,7 @@ class AsyncSuiTransaction(txbase):
             await self._function_meta_args(self._STAKE_REQUEST_TARGET)
         )
         parms = await self._argparse.build_args(
-            [self._SYSTEMSTATE_OBJECT.value, coins, amount, validator_address],
+            [self._SYSTEMSTATE_OBJECT, coins, amount, validator_address],
             ars,
             mode=self._mode,
             object_cache=self._object_cache,
@@ -809,6 +997,7 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    @instrumented("ptb.cmd.unstake_coin")
     async def unstake_coin(
         self, *, staked_coin: Union[str, sui_prot.Object]
     ) -> bcs.Argument:
@@ -823,7 +1012,7 @@ class AsyncSuiTransaction(txbase):
             await self._function_meta_args(self._UNSTAKE_REQUEST_TARGET)
         )
         parms = await self._argparse.build_args(
-            [self._SYSTEMSTATE_OBJECT.value, staked_coin],
+            [self._SYSTEMSTATE_OBJECT, staked_coin],
             ars,
             mode=self._mode,
             object_cache=self._object_cache,
@@ -837,10 +1026,11 @@ class AsyncSuiTransaction(txbase):
             res_count=retcount,
         )
 
+    @instrumented("ptb.cmd.publish")
     async def publish(
         self, *, project_path: str, args_list: Optional[list[str]] = None
     ) -> bcs.Argument:
-        """Create a publish command.
+        """Publish a Move package.
 
         :param project_path: Path to project folder
         :type project_path: str
@@ -852,6 +1042,7 @@ class AsyncSuiTransaction(txbase):
         modules, dependencies, _digest = self._compile_source(project_path, args_list)
         return self.builder.publish(modules, dependencies)
 
+    @instrumented("ptb.cmd.publish_upgrade")
     async def publish_upgrade(
         self,
         *,
@@ -917,6 +1108,7 @@ class AsyncSuiTransaction(txbase):
         else:
             raise ValueError("Not a valid upgrade cap.")
 
+    @instrumented("ptb.cmd.custom_upgrade")
     async def custom_upgrade(
         self,
         *,

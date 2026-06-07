@@ -22,6 +22,7 @@ from pysui.sui.sui_common.config.confgroup import (
 )
 from pysui.sui.sui_crypto import keypair_from_keystring
 import pysui.sui.sui_constants as sui_constant
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 _DEVNET_SUI_URL: str = sui_constant.DEVNET_SUI_URL
 _DEVNET_FAUCET_URL: str = sui_constant.DEVNET_FAUCET_URLV1
@@ -61,6 +62,7 @@ class ConfigSui(dataclasses_json.DataClassJsonMixin):
     envs: list[ConfigEnv]
 
 
+@sync_instrumented("pysui.sui.sui_common.config.conflegacy.address_and_alias_from_keystring")
 def address_and_alias_from_keystring(
     indata: str, calias: list[ProfileAlias]
 ) -> tuple[str, ProfileAlias]:
@@ -75,6 +77,7 @@ def address_and_alias_from_keystring(
     raise ValueError(f"{pubkey} not found in alias list")
 
 
+@sync_instrumented("pysui.sui.sui_common.config.conflegacy.load_client_yaml")
 def load_client_yaml(client_file: Path, json_rpc_group: str) -> ProfileGroup:
     """Return a ProfileGroup built from sui client.yaml."""
     _client_yaml = client_file / "client.yaml"
