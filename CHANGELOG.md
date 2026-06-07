@@ -5,7 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - Unpublished
+## [1.0.0] - 2026-06-08
+
+> **⚠️ Deletion Notice:** Release 1.0.0 has **removed** the legacy JSON-RPC client
+> and synchronous GraphQL client. If your code used either then use the
+> [Migration Guide](https://pysui.readthedocs.io/en/latest/migration_to_pysui_uci.html)
+> on ReadTheDocs.
 
 ### Added
 

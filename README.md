@@ -17,7 +17,7 @@ Python Client SDK for Sui blockchain
 ### With Rust on machine
 
 `pip install pysui` if first time or
-`pip install -U --upgrade-strategy eager pysui` if upgrading.
+`pip install -U pysui` if upgrading.
 
 ### Without Rust on machine
 
@@ -30,13 +30,13 @@ Python Client SDK for Sui blockchain
 
 ## PyPi current
 
-**Release-0.99.1 - Released 2026-05-21**
+**Release-1.0.0 - Released 2026-06-08**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
-> **⚠️ Deprecation Notice:** Release 1.0.0 will **remove** the legacy JSON-RPC client
-> and synchronous GraphQL client. If your code uses either, migrate before upgrading.
-> See the [Migration Guide](https://pysui.readthedocs.io/en/latest/migration_to_pysui_uci.html)
+> **⚠️ Deletion Notice:** Release 1.0.0 has **removed** the legacy JSON-RPC client
+> and synchronous GraphQL client. If your code used either then use the
+> [Migration Guide](https://pysui.readthedocs.io/en/latest/migration_to_pysui_uci.html)
 > on ReadTheDocs.
 
 This is a significant release that redesigns pysui around the **Unified Client Interface (UCI)**.
@@ -90,6 +90,6 @@ Discord server invitation is [Found here](https://discord.gg/uCGYfY4Ph4):
 
 ## Sample utilities
 
-**Note**: Sample utiities are implemented using GraphQL
+**Note**: Sample utilities are implemented using pysui UCI
 
 See [samples](https://github.com/FrankC01/pysui/blob/main/samples/README.md)
