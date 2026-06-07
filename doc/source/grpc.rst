@@ -9,7 +9,7 @@ mainnet.
 Running the Sample
 ------------------
 
-``pgrpc_a_example.py`` is included in the project repository (not installed via
+``ucs_example.py`` is included in the project repository (not installed via
 PyPI) and covers a variety of patterns — data queries, transaction building,
 execution, and checkpoint subscriptions. It serves as a reference for exploring
 available options and may be run optionally from an activated virtual
@@ -17,7 +17,7 @@ environment:
 
 .. code-block:: shell
 
-    python pgrpc_a_example.py
+    python ucs_example.py
 
 Client Setup
 ------------
