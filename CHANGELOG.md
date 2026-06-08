@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Removed
+
 ## [1.0.0] - 2026-06-08
 
 > **⚠️ Deletion Notice:** Release 1.0.0 has **removed** the legacy JSON-RPC client
