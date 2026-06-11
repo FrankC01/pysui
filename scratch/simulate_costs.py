@@ -38,7 +38,7 @@ async def _sim(client, txer):
     """Simulate txer and return (fee_mist, error_str)."""
     result = await client.execute(
         command=cmd.SimulateTransactionKind(
-            tx_kind=txer.raw_kind(),
+            tx_kind=await txer.raw_kind(),
             tx_meta={"sender": client.config.active_address},
             gas_selection=True,
         )

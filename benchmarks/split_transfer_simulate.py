@@ -92,7 +92,7 @@ async def main() -> None:
             await txer.transfer_objects(transfers=[scres], recipient=recipient)
             await client.execute(
                 command=cmd.SimulateTransactionKind(
-                    tx_kind=txer.raw_kind(),
+                    tx_kind=await txer.raw_kind(),
                     tx_meta={"sender": client.config.active_address},
                 )
             )

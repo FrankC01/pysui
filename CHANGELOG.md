@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Added gas mode options to benchmarks
+- [change](https://github.com/FrankC01/pysui/issues/387) Deferred object resolutions until build
+- [BREAKING change](https://github.com/FrankC01/pysui/issues/388) transaction.raw_kind() should be asynchronuos
 
 ### Removed
 

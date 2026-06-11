@@ -9,7 +9,7 @@
 import logging
 import binascii
 from math import ceil
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from functools import singledispatchmethod
 
 from deprecated.sphinx import versionchanged, versionadded
@@ -44,7 +44,7 @@ class ProgrammableTransactionBuilder:
         """Builder initializer."""
         self.inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
         self.commands: list[bcs.Command] = []
-        self.objects_registry: dict[str, str] = {}
+        self.objects_registry: dict[str, Any] = {}
         self.compress_inputs: bool = compress_inputs
 
         self.command_frequency = {
@@ -142,6 +142,10 @@ class ProgrammableTransactionBuilder:
         elif key.enum_name == "Unresolved" and isinstance(
             object_arg, bcs.UnresolvedObjectArg
         ):
+            if self.compress_inputs and key.value in self.objects_registry:
+                for e_idx, e_barg in enumerate(self.inputs):
+                    if e_barg.enum_name == "Unresolved" and e_barg.value == key.value:
+                        return bcs.Argument("Input", e_idx)
             self.inputs[key] = bcs.CallArg("UnresolvedObject", object_arg)
             self.objects_registry[key.value] = object_arg
         else:
@@ -191,9 +195,20 @@ class ProgrammableTransactionBuilder:
             if barg.enum_name == "Unresolved":
                 rbarg, rcarg = entries[idx]
                 new_inputs[rbarg] = rcarg
+                self.objects_registry[barg.value] = rcarg.value.enum_name
             else:
                 new_inputs[barg] = carg
         self.inputs = new_inputs
+
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.shallow_clone")
+    def shallow_clone(self) -> "ProgrammableTransactionBuilder":
+        """Return a shallow clone of this builder for inspection without mutating the original."""
+        clone = ProgrammableTransactionBuilder(compress_inputs=self.compress_inputs)
+        clone.inputs = dict(self.inputs)
+        clone.commands = list(self.commands)
+        clone.objects_registry = dict(self.objects_registry)
+        clone.command_frequency = dict(self.command_frequency)
+        return clone
 
     @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.input_obj_from_withdrawal")
     def input_obj_from_withdrawal(

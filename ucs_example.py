@@ -547,7 +547,7 @@ async def do_dry_run_txkind(txer: AsyncSuiTransaction):
     handle_result(
         await txer.client.execute(
             command=cmd.SimulateTransactionKind(
-                tx_kind=txer.raw_kind(),
+                tx_kind=await txer.raw_kind(),
                 tx_meta={"sender": txer.client.config.active_address},
             )
         )
@@ -715,7 +715,7 @@ async def do_stake(client: AsyncClientBase):
     handle_result(
         await client.execute(
             command=cmd.SimulateTransactionKind(
-                tx_kind=txer.raw_kind(),
+                tx_kind=await txer.raw_kind(),
                 tx_meta={"sender": client.config.active_address},
             )
         )
@@ -741,7 +741,7 @@ async def do_unstake(client: AsyncClientBase):
         handle_result(
             await client.execute(
                 command=cmd.SimulateTransactionKind(
-                    tx_kind=txer.raw_kind(),
+                    tx_kind=await txer.raw_kind(),
                     tx_meta={"sender": client.config.active_address},
                 )
             )
@@ -771,7 +771,7 @@ async def do_sui_coin_to_account(client: AsyncClientBase):
     handle_result(
         await client.execute(
             command=cmd.SimulateTransactionKind(
-                tx_kind=txer.raw_kind(),
+                tx_kind=await txer.raw_kind(),
                 tx_meta={"sender": client.config.active_address},
                 gas_selection=True,
             )
@@ -816,7 +816,7 @@ async def do_account_to_sui_coin(client: AsyncClientBase):
         handle_result(
             await client.execute(
                 command=cmd.SimulateTransactionKind(
-                    tx_kind=txer.raw_kind(),
+                    tx_kind=await txer.raw_kind(),
                     tx_meta={"sender": client.config.active_address},
                     gas_selection=True,
                 )

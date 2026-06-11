@@ -29,7 +29,7 @@ from pysui.sui.sui_common.txn_gas import (
 import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.txn_tx_argparse import TxnArgParse, TxnArgMode
-from pysui.sui.sui_common.executors.cache import AsyncObjectCache
+from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectSummary
 from pysui.sui.sui_common.async_funcs import AsyncLRU
 from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented
 
@@ -83,6 +83,39 @@ def _build_coin_reservation_ref(
     )
 
 
+def _unresolved_to_builder_arg(
+    unres: bcs.UnresolvedObjectArg, summary: ObjectSummary
+) -> tuple[bcs.BuilderArg, bcs.CallArg]:
+    """Convert an UnresolvedObjectArg + ObjectSummary to a resolved (BuilderArg, CallArg)."""
+    co_addy = bcs.Address.from_str(unres.ObjectStr)
+    barg = bcs.BuilderArg("Object", co_addy)
+    if summary.initialSharedVersion is not None:
+        carg = bcs.CallArg(
+            "Object",
+            bcs.ObjectArg(
+                "SharedObject",
+                bcs.SharedObjectReference(
+                    co_addy,
+                    int(summary.initialSharedVersion),
+                    unres.RefType == pgql_type.RefType.MUT_REF,
+                ),
+            ),
+        )
+    else:
+        carg = bcs.CallArg(
+            "Object",
+            bcs.ObjectArg(
+                "Recieving" if unres.IsReceiving else "ImmOrOwnedObject",
+                bcs.ObjectReference(
+                    co_addy,
+                    int(summary.version),
+                    bcs.Digest.from_str(summary.digest),
+                ),
+            ),
+        )
+    return (barg, carg)
+
+
 class AsyncSuiTransaction(txbase):
     """Protocol-agnostic async transaction builder for Sui (GQL and gRPC)."""
 
@@ -101,12 +134,9 @@ class AsyncSuiTransaction(txbase):
         :type initial_sponsor: Union[str, SigningMultiSig], optional
         :param compress_inputs: Reuse identical inputs, defaults to True
         :type compress_inputs: Optional[bool], optional
-        :param mode: Argument parsing mode, defaults to TxnArgMode.EAGER
-        :type mode: TxnArgMode, optional
         :param object_cache: Optional object cache for argument resolution, defaults to None
         :type object_cache: Optional[pysui.sui.sui_common.executors.cache.AsyncObjectCache], optional
         """
-        mode: TxnArgMode = kwargs.pop("mode", TxnArgMode.EAGER)
         object_cache: Optional[AsyncObjectCache] = kwargs.pop("object_cache", None)
         initial_sender = kwargs.pop("initial_sender", None)
         initial_sponsor = kwargs.pop("initial_sponsor", None)
@@ -132,9 +162,12 @@ class AsyncSuiTransaction(txbase):
             sponsor=initial_sponsor,
         )
         self._executed = False
-        self._mode = mode
         self._object_cache = object_cache
         self._argparse = TxnArgParse(client)
+
+    def inject_cache(self, cache: AsyncObjectCache) -> None:
+        """Inject an external object cache for use during deferred input resolution."""
+        self._object_cache = cache
 
     @AsyncLRU(maxsize=256)
     @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction._function_meta_args")
@@ -180,6 +213,67 @@ class AsyncSuiTransaction(txbase):
     ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
         """Return the argument summary of a target Sui Move function."""
         return await self._function_meta_args(target)
+
+    @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction._resolve_deferred_inputs")
+    async def _resolve_deferred_inputs(self, builder=None) -> None:
+        """Batch-resolve all UnresolvedObjectArg inputs; mutates builder in place.
+
+        Pass a cloned builder to resolve without mutating the original (used by raw_kind()).
+        When builder is None, resolves self.builder directly.
+        """
+        from pysui.sui.sui_common.sui_commands import GetMultipleObjectSummary
+
+        target = builder if builder is not None else self.builder
+        unresolved = target.get_unresolved_inputs()
+        if not unresolved:  # Idempotent: returns early if all inputs are already resolved.
+            return
+
+        cache = self._object_cache
+        fetch_ids: dict[int, str] = {}
+        resolved: dict[int, tuple[bcs.BuilderArg, bcs.CallArg]] = {}
+
+        for idx, unobj in unresolved.items():
+            if cache:
+                cached = await cache.get_object(unobj.ObjectStr)
+                if cached:
+                    resolved[idx] = _unresolved_to_builder_arg(unobj, cached)
+                    continue
+            fetch_ids[idx] = unobj.ObjectStr
+
+        if fetch_ids:
+            result = await self.client.execute(
+                command=GetMultipleObjectSummary(object_ids=list(fetch_ids.values()))
+            )
+            if not result.is_ok():
+                raise ValueError(f"Object resolution failed: {result.result_string}")
+
+            id_to_indices: dict[str, list[int]] = {}
+            for k, v in fetch_ids.items():
+                id_to_indices.setdefault(v.lower(), []).append(k)
+            for entry in result.result_data.objects:
+                indices = id_to_indices.get(entry.objectId.lower())
+                if not indices:
+                    continue
+                if cache:
+                    await cache.add_object(entry)
+                for idx in indices:
+                    resolved[idx] = _unresolved_to_builder_arg(unresolved[idx], entry)
+
+            missing = [fetch_ids[idx] for idx in fetch_ids if idx not in resolved]
+            if missing:
+                raise ValueError(f"Objects not found or inaccessible: {missing}")
+
+        target.resolved_object_inputs(resolved)
+
+    async def raw_kind(self) -> bcs.TransactionKind:
+        """Return the resolved TransactionKind; resolves a shallow clone to keep the original pristine."""
+        clone = self.builder.shallow_clone()
+        await self._resolve_deferred_inputs(clone)
+        return clone.finish_for_inspect()
+
+    async def build_for_dryrun(self) -> str:
+        """Return a base64 string for dry-running the transaction."""
+        return base64.b64encode((await self.raw_kind()).serialize()).decode()
 
     @instrumented("ptb._build_txn_data_address_balance")
     async def _build_txn_data_address_balance(
@@ -277,6 +371,7 @@ class AsyncSuiTransaction(txbase):
         if not self.builder.commands and not self.builder.inputs:
             raise ValueError("Empty Transaction.")
 
+        await self._resolve_deferred_inputs()
         uses_gas_coin, gas_source_draw = self._inspect_ptb_for_gas_coin()
 
         if auto_gas:
@@ -459,7 +554,7 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             [coin],
             txbase._SPLIT_COIN[:1],
-            mode=self._mode,
+            mode=TxnArgMode.DEFERRED,
             object_cache=self._object_cache,
         )
         encoded_amounts = [
@@ -487,7 +582,7 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             [merge_to],
             txbase._MERGE_COINS[:1],
-            mode=self._mode,
+            mode=TxnArgMode.DEFERRED,
             object_cache=self._object_cache,
         )
         resolved = [
@@ -496,7 +591,7 @@ class AsyncSuiTransaction(txbase):
                 if isinstance(c, bcs.Argument)
                 else await self._argparse.parse(
                     c,
-                    mode=self._mode,
+                    mode=TxnArgMode.DEFERRED,
                     object_cache=self._object_cache,
                     is_receiving=False,
                     is_mutable=False,
@@ -531,7 +626,7 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             [coin, split_count],
             ars,
-            mode=self._mode,
+            mode=TxnArgMode.DEFERRED,
             object_cache=self._object_cache,
         )
         type_arguments = [bcs.TypeTag.type_tag_from(coin_type)]
@@ -564,7 +659,7 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             [recipient],
             txbase._TRANSFER_OBJECTS[:1],
-            mode=self._mode,
+            mode=TxnArgMode.DEFERRED,
             object_cache=self._object_cache,
         )
         resolved = [
@@ -573,7 +668,7 @@ class AsyncSuiTransaction(txbase):
                 if isinstance(t, bcs.Argument)
                 else await self._argparse.parse(
                     t,
-                    mode=self._mode,
+                    mode=TxnArgMode.DEFERRED,
                     object_cache=self._object_cache,
                     is_receiving=False,
                     is_mutable=False,
@@ -605,7 +700,7 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             [recipient, from_coin, amount],
             txbase._TRANSFER_SUI,
-            mode=self._mode,
+            mode=TxnArgMode.DEFERRED,
             object_cache=self._object_cache,
         )
         return self.builder.transfer_sui(*parms)
@@ -638,7 +733,7 @@ class AsyncSuiTransaction(txbase):
             arguments=await self._argparse.build_args(
                 [object_to_send, recipient],
                 txbase._PUBLIC_TRANSFER_OBJECTS,
-                mode=self._mode,
+                mode=TxnArgMode.DEFERRED,
                 object_cache=self._object_cache,
             ),
             type_arguments=[bcs.TypeTag.type_tag_from(object_type)],
@@ -669,7 +764,7 @@ class AsyncSuiTransaction(txbase):
                 if isinstance(item, bcs.Argument)
                 else await self._argparse.parse(
                     item,
-                    mode=self._mode,
+                    mode=TxnArgMode.DEFERRED,
                     object_cache=self._object_cache,
                     is_receiving=False,
                     is_mutable=False,
@@ -711,7 +806,7 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             arguments,
             ars,
-            mode=self._mode,
+            mode=TxnArgMode.DEFERRED,
             object_cache=self._object_cache,
         )
         return self.builder.move_call(
@@ -892,7 +987,7 @@ class AsyncSuiTransaction(txbase):
             parms = await self._argparse.build_args(
                 [fund_item, recipient],
                 txbase._FUND_ADDRESS_ACCUMULATOR,
-                mode=self._mode,
+                mode=TxnArgMode.DEFERRED,
                 object_cache=self._object_cache,
             )
             result = self.builder.move_call(
@@ -936,7 +1031,7 @@ class AsyncSuiTransaction(txbase):
             parms = [
                 await self._argparse.parse(
                     optional_object,
-                    mode=self._mode,
+                    mode=TxnArgMode.DEFERRED,
                     object_cache=self._object_cache,
                     is_receiving=is_receiving,
                     is_mutable=is_shared_mutable,
@@ -980,7 +1075,7 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             [self._SYSTEMSTATE_OBJECT, coins, amount, validator_address],
             ars,
-            mode=self._mode,
+            mode=TxnArgMode.DEFERRED,
             object_cache=self._object_cache,
         )
         parms[1] = await self.make_move_vector(
@@ -1012,7 +1107,7 @@ class AsyncSuiTransaction(txbase):
         parms = await self._argparse.build_args(
             [self._SYSTEMSTATE_OBJECT, staked_coin],
             ars,
-            mode=self._mode,
+            mode=TxnArgMode.DEFERRED,
             object_cache=self._object_cache,
         )
         return self.builder.move_call(
@@ -1087,7 +1182,7 @@ class AsyncSuiTransaction(txbase):
             cap_obj_arg, policy_arg = await self._argparse.build_args(
                 [upgrade_cap, jdict["policy"]],
                 txbase._PUBLISH_UPGRADE,
-                mode=self._mode,
+                mode=TxnArgMode.DEFERRED,
                 object_cache=self._object_cache,
             )
             cap_arg = len(self.builder.inputs)

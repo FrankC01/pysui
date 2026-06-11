@@ -36,87 +36,6 @@ class _BaseCachingExecutor:
         self._use_account_gas = use_account_gas
         self.cache: AsyncObjectCache = AsyncObjectCache()
 
-    @sync_instrumented("pysui.sui.sui_common.executors.base_caching_executor._BaseCachingExecutor._from_cache_to_builder")
-    def _from_cache_to_builder(
-        self,
-        unres: bcs.UnresolvedObjectArg,
-        cachm: ObjectSummary,
-    ) -> tuple[bcs.BuilderArg, bcs.CallArg]:
-        """Convert a cache entry + unresolved arg to resolved (BuilderArg, CallArg)."""
-        co_addy: bcs.Address = bcs.Address.from_str(unres.ObjectStr)
-        barg: bcs.BuilderArg = bcs.BuilderArg("Object", co_addy)
-        if cachm.initialSharedVersion is not None:
-            carg = bcs.CallArg(
-                "Object",
-                bcs.ObjectArg(
-                    "SharedObject",
-                    bcs.SharedObjectReference(
-                        co_addy,
-                        int(cachm.initialSharedVersion),
-                        unres.RefType == 2,
-                    ),
-                ),
-            )
-        else:
-            carg = bcs.CallArg(
-                "Object",
-                bcs.ObjectArg(
-                    "Recieving" if unres.IsReceiving else "ImmOrOwnedObject",
-                    bcs.ObjectReference(
-                        co_addy,
-                        int(cachm.version),
-                        bcs.Digest.from_str(cachm.digest),
-                    ),
-                ),
-            )
-        return (barg, carg)
-
-    @instrumented("pysui.sui.sui_common.executors.base_caching_executor._BaseCachingExecutor._resolve_object_inputs")
-    async def _resolve_object_inputs(self, txn) -> None:
-        """Resolve all UnresolvedObjectArg inputs via the SuiCommand object-fetch path.
-
-        Cache hits are resolved without a network round-trip. Cache misses are
-        batch-fetched via ``GetMultipleObjectSummary`` whose result is ``list[ObjectSummary]``.
-        All fetched entries are written back to the per-executor cache so subsequent
-        transactions in the same batch avoid redundant fetches.
-        """
-        from pysui.sui.sui_common.sui_commands import GetMultipleObjectSummary
-
-        unresolved: dict[int, bcs.UnresolvedObjectArg] = txn.builder.get_unresolved_inputs()
-        if not unresolved:
-            return
-
-        fetch_ids: dict[int, str] = {}
-        resolved: dict[int, tuple[bcs.BuilderArg, bcs.CallArg]] = {}
-
-        for idx, unobj in unresolved.items():
-            cached = await self.cache.get_object(unobj.ObjectStr)
-            if cached:
-                logger.debug("cache hit: %s", unobj.ObjectStr)
-                resolved[idx] = self._from_cache_to_builder(unobj, cached)
-            else:
-                logger.debug("cache miss: %s — will fetch", unobj.ObjectStr)
-                fetch_ids[idx] = unobj.ObjectStr
-
-        if fetch_ids:
-            result = await self._client.execute(
-                command=GetMultipleObjectSummary(object_ids=list(fetch_ids.values()))
-            )
-            if not result.is_ok():
-                raise ValueError(f"Failed to fetch objects for resolution: {result.result_string}")
-
-            entries: list[ObjectSummary] = result.result_data
-            inv_fetch: dict[str, int] = {v: k for k, v in fetch_ids.items()}
-
-            for entry in entries:
-                idx = inv_fetch.get(entry.objectId)
-                if idx is None:
-                    continue
-                await self.cache.add_object(entry)
-                resolved[idx] = self._from_cache_to_builder(unresolved[idx], entry)
-
-        txn.builder.resolved_object_inputs(resolved)
-
     @instrumented("pysui.sui.sui_common.executors.base_caching_executor._BaseCachingExecutor.build_transaction")
     async def build_transaction(
         self,
@@ -125,7 +44,7 @@ class _BaseCachingExecutor:
         gas_objects_override: Optional[list] = None,
     ) -> dict:
         """Resolve deferred object inputs then build and sign, injecting gas from cache."""
-        await self._resolve_object_inputs(txn)
+        txn.inject_cache(self.cache)
         if gas_objects_override is not None:
             use_gas = gas_objects_override
         else:
