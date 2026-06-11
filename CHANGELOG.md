@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/386) - Added try/finally to close client connection
+
 ### Changed
 
 - Added gas mode options to benchmarks

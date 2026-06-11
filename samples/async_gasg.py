@@ -74,7 +74,6 @@ async def main_run(client: PysuiClient) -> None:
         f"Grand Total gas {grand_total:12} -> {grand_total / SUI_COIN_DENOMINATOR:.8f}\n"
     )
     print("Exiting async pysui")
-    await client.close()
 
 
 def sdk_version() -> None:
@@ -105,6 +104,8 @@ def main() -> None:
         loop.run_until_complete(main_run(arpc))
     except KeyboardInterrupt:
         pass
+    finally:
+        loop.run_until_complete(arpc.close())
 
 
 if __name__ == "__main__":

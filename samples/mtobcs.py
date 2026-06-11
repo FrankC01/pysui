@@ -62,24 +62,27 @@ async def _execute():
         )
         output_folder = parsed.target_output_folder
         client = client_factory(cfg)
-        # Emit python modules for each identified move program structure
-        for package in package_targets.targets:
-            fname = package.out_file
-            # Instantiate the MoveDataType with the target from json
-            mst: MoveDataType = MoveDataType(client=client, target=package)
-            # Fetch and parse Move struct target to IR and return entry point class name
-            _ = await mst.parse_move_target()
-            # Compile the BCS from IR and return the namespace
-            namespace = await mst.compile_bcs()
-            # bcs_entry_class = namespace[entry_point_classname]
-            # Execute the deserialization returning the BCS object
-            # desered = bcs_entry_class.deserialize(b"0")
-            bcs_py = await mst.emit_bcs_source()
-            if output_folder == "con":
-                print(bcs_py)
-            else:
-                fpath = Path(output_folder) / fname
-                fpath.write_text(bcs_py, encoding="utf8")
+        try:
+            # Emit python modules for each identified move program structure
+            for package in package_targets.targets:
+                fname = package.out_file
+                # Instantiate the MoveDataType with the target from json
+                mst: MoveDataType = MoveDataType(client=client, target=package)
+                # Fetch and parse Move struct target to IR and return entry point class name
+                _ = await mst.parse_move_target()
+                # Compile the BCS from IR and return the namespace
+                namespace = await mst.compile_bcs()
+                # bcs_entry_class = namespace[entry_point_classname]
+                # Execute the deserialization returning the BCS object
+                # desered = bcs_entry_class.deserialize(b"0")
+                bcs_py = await mst.emit_bcs_source()
+                if output_folder == "con":
+                    print(bcs_py)
+                else:
+                    fpath = Path(output_folder) / fname
+                    fpath.write_text(bcs_py, encoding="utf8")
+        finally:
+            await client.close()
 
     else:
         print(f"mtobcs {_mtobcs_version}")

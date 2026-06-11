@@ -33,13 +33,17 @@ async def _run():
     cfg.make_active(
         group_name=parsed.group_name, profile_name=parsed.profile_name, persist=False
     )
-    if cmd_call:
-        var_args = vars(parsed)
-        var_args.pop("subcommand")
-        parsed = argparse.Namespace(**var_args)
-        await cmd_call(client_factory(cfg), parsed)
-    else:
-        print(f"Unable to resolve function for {parsed.subcommand}")
+    client = client_factory(cfg)
+    try:
+        if cmd_call:
+            var_args = vars(parsed)
+            var_args.pop("subcommand")
+            parsed = argparse.Namespace(**var_args)
+            await cmd_call(client, parsed)
+        else:
+            print(f"Unable to resolve function for {parsed.subcommand}")
+    finally:
+        await client.close()
 
 
 def main():
