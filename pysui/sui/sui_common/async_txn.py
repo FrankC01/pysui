@@ -5,6 +5,7 @@
 
 """Unified async Sui Transaction builder — protocol-agnostic (GQL and gRPC)."""
 
+import asyncio
 import base64
 import hashlib
 import struct as _struct
@@ -197,67 +198,64 @@ class AsyncSuiTransaction(txbase):
         :return: TransactionData with empty payment and ValidDuring expiration
         :rtype: bcs.TransactionData
         """
-        _res = await self.client.execute(
-            command=cmd.GetBasicCurrentEpochInfo(), timeout=30.0
+        tx_kind = self.builder.finish_for_inspect()
+        _epoch_res, _chain_res = await asyncio.gather(
+            self.client.execute(command=cmd.GetBasicCurrentEpochInfo(), timeout=30.0),
+            self.client.execute(command=cmd.GetChainIdentifier(), timeout=30.0),
         )
-        if _res.is_ok():
-            _cei: sui_prot.Epoch = _res.result_data
-            min_epoch = txn_expires_after or _cei.epoch
-            tx_kind = self.builder.finish_for_inspect()
-            result = await self.client.execute(
-                command=cmd.GetChainIdentifier(), timeout=30.0
-            )
-            if result.is_ok():
-                chain_id = result.result_data
-            else:
-                raise ValueError("Error getting chain id")
-            pay_addy = self.signer_block.payer_address
-            if gas_budget is None:
-                _res = await self.client.execute(
-                    command=cmd.SimulateTransactionKind(
-                        tx_kind=tx_kind,
-                        tx_meta={"sender": pay_addy},
-                        gas_selection=True,
-                    ),
-                    timeout=60.0,
-                )
-                if _res.is_ok():
-                    gas_used = (
-                        _res.result_data.transaction.effects.gas_used
-                        or sui_prot.GasCostSummary()
-                    )
-                    gas_budget = compute_gas_budget(
-                        gas_used.computation_cost or 0,
-                        gas_used.storage_cost or 0,
-                        _cei.reference_gas_price,
-                    )
-                else:
-                    raise ValueError(_res.result_string)
-            payment = (
-                [_build_coin_reservation_ref(
-                    gas_budget + gas_source_draw, _cei.epoch, pay_addy, chain_id
-                )]
-                if uses_gas_coin
-                else []
-            )
-            gas_data = bcs.GasData(
-                payment,
-                bcs.Address.from_str(pay_addy),
-                _cei.reference_gas_price,
-                gas_budget,
-            )
-            return bcs.TransactionData(
-                "V1",
-                bcs.TransactionDataV1(
-                    tx_kind,
-                    bcs.Address.from_str(self.signer_block.sender_str),
-                    gas_data,
-                    bcs.TransactionExpiration.gen_valid_during_expiration(
-                        min_epoch, min_epoch + 1, chain_id
-                    ),
+        if not _epoch_res.is_ok():
+            raise ValueError(_epoch_res.result_string)
+        if not _chain_res.is_ok():
+            raise ValueError("Error getting chain id")
+        _cei: sui_prot.Epoch = _epoch_res.result_data
+        chain_id = _chain_res.result_data
+        min_epoch = txn_expires_after or _cei.epoch
+        pay_addy = self.signer_block.payer_address
+        if gas_budget is None:
+            _res = await self.client.execute(
+                command=cmd.SimulateTransactionKind(
+                    tx_kind=tx_kind,
+                    tx_meta={"sender": pay_addy},
+                    gas_selection=True,
                 ),
+                timeout=60.0,
             )
-        raise ValueError(_res.result_string)
+            if _res.is_ok():
+                gas_used = (
+                    _res.result_data.transaction.effects.gas_used
+                    or sui_prot.GasCostSummary()
+                )
+                gas_budget = compute_gas_budget(
+                    gas_used.computation_cost or 0,
+                    gas_used.storage_cost or 0,
+                    _cei.reference_gas_price,
+                )
+            else:
+                raise ValueError(_res.result_string)
+        payment = (
+            [_build_coin_reservation_ref(
+                gas_budget + gas_source_draw, _cei.epoch, pay_addy, chain_id
+            )]
+            if uses_gas_coin
+            else []
+        )
+        gas_data = bcs.GasData(
+            payment,
+            bcs.Address.from_str(pay_addy),
+            _cei.reference_gas_price,
+            gas_budget,
+        )
+        return bcs.TransactionData(
+            "V1",
+            bcs.TransactionDataV1(
+                tx_kind,
+                bcs.Address.from_str(self.signer_block.sender_str),
+                gas_data,
+                bcs.TransactionExpiration.gen_valid_during_expiration(
+                    min_epoch, min_epoch + 1, chain_id
+                ),
+            ),
+        )
 
     @instrumented("ptb._build_txn_data")
     async def _build_txn_data(

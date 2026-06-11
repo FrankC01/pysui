@@ -30,7 +30,7 @@ BUDGET = 4_000_000
 SPLIT_AMOUNT = 1_000
 def get_recipient(cfg: PysuiConfiguration) -> str:
     """Return a non-active address from cfg, or the active address if only one exists."""
-    addresses = cfg.addresses
+    addresses = cfg.active_group.address_list
     active = cfg.active_address
     others = [a for a in addresses if a != active]
     return others[0] if others else active
@@ -78,6 +78,11 @@ def build_arg_parser(description: str) -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-dir", "-o", type=str, default="bench_results",
         help="Directory for PNG and JSON output files (default: bench_results/)",
+    )
+    parser.add_argument(
+        "--gas-mode", type=str, default="coins",
+        choices=["coins", "account", "auto"],
+        help="Gas payment mode: coins (Sui coins, default), account (address balance), auto (pysui decides)",
     )
     return parser
 

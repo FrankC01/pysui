@@ -999,7 +999,7 @@ class ValidDuring(canoser.Struct):
     ) -> "ValidDuring":
         """Generate for gas usage"""
         nonce = int.from_bytes(secrets.token_bytes(4), "little")
-        assert (isinstance(chain_id, str), len(chain_id)) == (True, 44)
+        assert (isinstance(chain_id, str), len(chain_id) in (43, 44)) == (True, True)
         assert (isinstance(min_epoch, int), U64.check_value(min_epoch)) == (True, None)
         assert (isinstance(max_epoch, int), U64.check_value(max_epoch)) == (True, None)
         return cls(

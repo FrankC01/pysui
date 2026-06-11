@@ -97,9 +97,14 @@ async def main() -> None:
                 )
             )
 
-        # Fetch one gas coin for the faux gas option used by SimulateTransaction
-        gas_coins = await fetch_gas_coins(gql_client)
-        faux_gas = GasOption("faux", {"use_gas_objects": [gas_coins[0]], "gas_budget": BUDGET})
+        # Gas option for SimulateTransaction variants — controlled by --gas-mode
+        if args.gas_mode == "coins":
+            gas_coins = await fetch_gas_coins(gql_client)
+            faux_gas = GasOption("faux", {"use_gas_objects": [gas_coins[0]], "gas_budget": BUDGET})
+        elif args.gas_mode == "account":
+            faux_gas = GasOption("faux", {"use_account_for_gas": True})
+        else:  # auto
+            faux_gas = GasOption("faux", {"auto_gas": True})
         no_gas = GasOption("faux", {})
 
         RUNS = [
@@ -116,8 +121,14 @@ async def main() -> None:
                 client, [gas_opt], args.iterations, bench_fn=bench_fn
             )
 
+        basename = (
+            "split_transfer_simulate"
+            if args.gas_mode == "coins"
+            else f"split_transfer_simulate_{args.gas_mode}"
+        )
+
         os.makedirs(args.output_dir, exist_ok=True)
-        json_path = os.path.join(args.output_dir, "split_transfer_simulate.json")
+        json_path = os.path.join(args.output_dir, f"{basename}.json")
         with open(json_path, "w") as f:
             json.dump(raw_results, f, indent=2)
         print(f"Saved: {json_path}")
@@ -140,8 +151,8 @@ async def main() -> None:
         save_simulate_chart(
             variant_avgs,
             args.output_dir,
-            "split_transfer_simulate",
-            f"Simulate Variants ({args.iterations} iterations)",
+            basename,
+            f"Simulate Variants — {args.gas_mode} ({args.iterations} iterations)",
             bar_labels=["overall", "pre-exec", "network", "decode"],
         )
     finally:
