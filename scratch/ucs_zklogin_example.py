@@ -30,7 +30,12 @@ import webbrowser
 
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.zklogin_seal.config import ZkSealConfig
-from pysui.zklogin_seal.zklogin_client import ZkClient, ZkSession, generate_user_salt
+from pysui.zklogin_seal.zklogin_client import (
+    ZkClient,
+    ZkSession,
+    ZkClaimKey,
+    generate_user_salt,
+)
 
 from pysui import (
     client_factory,
@@ -44,7 +49,21 @@ OAUTH_PORT = 8085
 
 
 def get_id_token(credentials_path: str, nonce: str) -> str:
-    """Perform Google OAuth flow and return the id_token with nonce embedded."""
+    """Perform Google OAuth flow and return the id_token with nonce embedded.
+
+    NOTE: This function is provided as a convenience example only. In practice,
+    the developer is free to obtain a JWT id_token from any supported OIDC
+    provider (Google, Facebook, Twitch, etc.) using whatever flow suits their
+    application — browser redirect, mobile SDK, backend exchange, etc. The only
+    requirement is that the nonce computed by ZkSession is embedded in the JWT
+    before it is signed by the provider.
+
+    Once the JWT is in hand, pass it directly to::
+
+        address = session.process_jwt(jwt=<id_token>, key_claim_name=ZkClaimKey.SUBJECT)
+
+    This function and the local OAuth callback server are not required by pysui.
+    """
     with open(credentials_path, encoding="utf-8") as f:
         creds = json.load(f)
 
@@ -105,11 +124,12 @@ def get_id_token(credentials_path: str, nonce: str) -> str:
 
 
 async def run(
-    pysui_client: AsyncClientBase,
+    pysui_config: PysuiConfiguration,
     credentials_path: str,
     salt: str,
     max_epoch: int,
 ) -> None:
+    pysui_client: AsyncClientBase = client_factory(pysui_config)
     # Step 1: Load config and create ZkClient
     print("\n--- Step 1: Load config and create ZkClient ---")
     cfg = ZkSealConfig()
@@ -140,12 +160,12 @@ async def run(
 
     # Step 4: Extract claims, verify nonce, derive zkLogin address
     print("\n--- Step 4: process_jwt() ---")
-    address = session.process_jwt(jwt=jwt)
+    address = session.process_jwt(jwt=jwt, key_claim_name=ZkClaimKey.SUBJECT)
     print(f"  address      : {address}")
 
     # Step 5: Fetch ZK proof from prover service (async)
     print("\n--- Step 5: get_proof() ---")
-    result = await session.get_proof()
+    result = await session.get_proof(pysui_config=pysui_config)
     if not result.is_ok():
         print(f"  ERROR: {result.result_string}")
         return
@@ -157,19 +177,39 @@ async def run(
     print(f"  ephemeral scheme : {kp.ephemeral_scheme}")
     print(f"  sui address      : {session.address}")
     print()
-    print("Done.")
 
-    # Step 7: Create a transaction with the emphemeral address
+    # Step 6.a: Send some coinage (1 SUI) to the new zkLogin emphemaral address
+    # the active_address of pysuiconfiguration is the sender/signer
+    txer: AsyncSuiTransaction = await pysui_client.transaction()
+    scoin = await txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
+    await txer.transfer_objects(transfers=[scoin], recipient=session.address)
+    tx_dict: dict = await txer.build_and_sign()
+    result = await pysui_client.execute(command=ExecuteTransaction(**tx_dict))
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+    else:
+        print(f"  ERROR: {result.result_string}")
+
+    # Step 7: Create a transaction with the emphemeral address that
+    # takes a small portion of it's address owned coin back to static user address
+    # the emphemeral address is the sender/signer
     txer: AsyncSuiTransaction = await pysui_client.transaction(
         initial_sender=session.address
     )
-    scoin = await txer.split_coin(txer.gas, amounts=[1_000_000])
-    await txer.transfer_objects([scoin], pysui_client.config.active_address)
+    scoin = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
+    await txer.transfer_objects(
+        transfers=[scoin], recipient=pysui_client.config.active_address
+    )
 
     # Step 8: Sign and execute transaction
-    # COMMENTED OUT DUE TO LACK OF SUPPORT IN PYSUI SIGNING
-    # tx_dict: dict = await txer.build_and_sign()
-    # result = await pysui_client.execute(command=ExecuteTransaction(**tx_dict))
+    print("\n--- Step 8: Sign and execute ---")
+    tx_dict: dict = await txer.build_and_sign()
+    result = await pysui_client.execute(command=ExecuteTransaction(**tx_dict))
+    if result.is_ok():
+        print(result.result_data.to_json(indent=2))
+        print("DONE!")
+    else:
+        print(f"  ERROR: {result.result_string}")
 
 
 def main() -> None:
@@ -204,14 +244,12 @@ def main() -> None:
             "       Store this value — same salt produces the same zkLogin address.\n"
         )
 
-    client_init: AsyncClientBase = client_factory(
-        PysuiConfiguration(
-            group_name=PysuiConfiguration.SUI_GRPC_GROUP,
-            profile_name="devnet",
-        )
+    config = PysuiConfiguration(
+        group_name=PysuiConfiguration.SUI_GRPC_GROUP,
+        profile_name="devnet",
     )
 
-    asyncio.run(run(client_init, args.credentials, salt, args.max_epoch))
+    asyncio.run(run(config, args.credentials, salt, args.max_epoch))
 
 
 if __name__ == "__main__":

@@ -763,7 +763,7 @@ async def do_sui_coin_to_account(client: AsyncClientBase):
     await do_address_balance(client)
     txer: AsyncSuiTransaction = await client.transaction()
     # Pull amount from transaction Gas
-    scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
+    scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
     await txer.fund_address_accumulator(
         funds=scres, recipient=client.config.active_address
     )

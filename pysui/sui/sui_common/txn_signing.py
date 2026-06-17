@@ -142,12 +142,13 @@ class SignerBlock:
         sig_list: list[str] = []
         for signer in self._get_potential_signatures():
             if isinstance(signer, str):
-
-                sig_list.append(
-                    config.active_group.keypair_for_address(
-                        address=signer
-                    ).new_sign_secure(tx_bytes)
+                keypair = config.active_group.get_transient_keypair(
+                    profile_name=config.active_group.using_profile,
+                    address=signer,
                 )
+                if keypair is None:
+                    keypair = config.active_group.keypair_for_address(address=signer)
+                sig_list.append(keypair.new_sign_secure(tx_bytes))
             else:
                 if signer._can_sign_msg:
                     sig_list.append(signer.multi_sig.sign(tx_bytes, signer.pub_keys))

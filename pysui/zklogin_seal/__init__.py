@@ -8,7 +8,7 @@ from pysui.zklogin_seal.seal_client import SealClient
 from pysui.zklogin_seal.config import ZkSealConfig, SealKeyServer
 from pysui.zklogin_seal.types import SealDemType, SealEncryptedObject
 from pysui.zklogin_seal.crypto import SealCredentials
-from pysui.zklogin_seal.zklogin_client import ZkClient
+from pysui.zklogin_seal.zklogin_client import ZkClient, ZkSession, ZkClaimKey
 
 __all__ = [
     "SealClient",
@@ -18,4 +18,6 @@ __all__ = [
     "SealEncryptedObject",
     "SealCredentials",
     "ZkClient",
+    "ZkSession",
+    "ZkClaimKey",
 ]

@@ -11,7 +11,7 @@ import hashlib
 import dataclasses
 from typing import Optional, Union
 import dataclasses_json
-from pysui.abstracts.client_keypair import SignatureScheme
+from pysui.abstracts.client_keypair import SignatureScheme, KeyPair
 import pysui.sui.sui_crypto as crypto
 import pysui.sui.sui_utils as utils
 from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
@@ -77,6 +77,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
                 self.protocol = GroupProtocol.GRAPHQL
             elif self.group_name == SUI_GRPC_GROUP:
                 self.protocol = GroupProtocol.GRPC
+        self._transient: dict[str, dict] = {}
 
     @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup._profile_exists")
     def _profile_exists(self, *, profile_name: str) -> Optional[Profile]:
@@ -460,3 +461,13 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             else:
                 return self.using_address
         raise ValueError(f"{alias_name} does not exist.")
+
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.add_transient_keypair")
+    def add_transient_keypair(self, *, profile_name: str, address: str, keypair: KeyPair) -> None:
+        """Store a transient keypair for a zkLogin session."""
+        self._transient.setdefault(profile_name, {})[address] = keypair
+
+    @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.get_transient_keypair")
+    def get_transient_keypair(self, *, profile_name: str, address: str) -> KeyPair | None:
+        """Retrieve a transient keypair for a zkLogin session address."""
+        return self._transient.get(profile_name, {}).get(address)

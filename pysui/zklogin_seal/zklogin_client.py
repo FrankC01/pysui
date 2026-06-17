@@ -7,15 +7,17 @@
 
 import base64
 import secrets
+from enum import Enum
 from typing import Optional
 
 import httpx
 
-from pysui import SuiRpcResult
+from pysui import SuiRpcResult, PysuiConfiguration
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.zklogin_seal._ext import _CRYPTO_AVAILABLE, INSTALL_HINT
 from pysui.zklogin_seal.config import ZkSealConfig
 from pysui.zklogin_seal.crypto import ZkLoginKeyPair
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 if _CRYPTO_AVAILABLE:
     from pysui.zklogin_seal._ext import (  # type: ignore[assignment]
@@ -27,6 +29,16 @@ if _CRYPTO_AVAILABLE:
     )
 
 
+_SESSION_TOKEN = object()
+
+
+class ZkClaimKey(str, Enum):
+    """Selects which JWT claim anchors the zkLogin address derivation."""
+    SUBJECT = "sub"
+    AUDIENCE = "aud"
+
+
+@sync_instrumented("pysui.zklogin_seal.zklogin_client.generate_user_salt")
 def generate_user_salt() -> str:
     """Return a random 128-bit decimal string suitable for use as a zkLogin user salt."""
     return str(int.from_bytes(secrets.token_bytes(16), "big"))
@@ -35,9 +47,11 @@ def generate_user_salt() -> str:
 class ZkSession:
     """Per-login zkLogin flow. Created via ZkClient.session()."""
 
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.__init__")
     def __init__(
         self,
         *,
+        _token: object = None,
         client: "ZkClient",
         provider: str,
         epk_bytes: bytes,
@@ -47,6 +61,31 @@ class ZkSession:
         randomness: str,
         as_secp256r1: bool,
     ) -> None:
+        """Initialise a ZkLogin proof session.
+
+        .. note::
+            Do not instantiate directly — use :meth:`ZkClient.session` instead.
+
+        :param client: ZkClient that owns this session and provides config and salt.
+        :type client: ZkClient
+        :param provider: OAuth provider name (e.g. ``"google"``); must match a configured provider.
+        :type provider: str
+        :param epk_bytes: Ephemeral public key bytes derived from the generated keypair.
+        :type epk_bytes: bytes
+        :param prv_bytes: Ephemeral private key bytes; used to construct ZkLoginKeyPair after proof.
+        :type prv_bytes: bytes
+        :param nonce: Nonce embedded in the OAuth JWT; must match the value returned by ``session.nonce``.
+        :type nonce: str
+        :param max_epoch: Maximum Sui epoch at which the ephemeral keypair remains valid.
+        :type max_epoch: int
+        :param randomness: Random string used in nonce computation.
+        :type randomness: str
+        :param as_secp256r1: Use SECP256R1 ephemeral key scheme; defaults to ED25519 when False.
+        :type as_secp256r1: bool
+        :raises TypeError: If not instantiated via ZkClient.session().
+        """
+        if _token is not _SESSION_TOKEN:
+            raise TypeError("ZkSession must be created via ZkClient.session()")
         self._client = client
         self._provider = provider
         self._epk_bytes = epk_bytes
@@ -62,34 +101,44 @@ class ZkSession:
         self._key_claim_name: str = "sub"
 
     @property
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.nonce")
     def nonce(self) -> str:
         return self._nonce
 
     @property
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.address")
     def address(self) -> Optional[str]:
         return self._address
 
     @property
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.salt")
     def salt(self) -> str:
         return self._client.salt
 
     @property
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.keypair")
     def keypair(self) -> ZkLoginKeyPair:
         if self._keypair is None:
             raise RuntimeError("keypair unavailable until get_proof() succeeds")
         return self._keypair
 
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.process_jwt")
     def process_jwt(
         self,
         *,
         jwt: str,
-        key_claim_name: str = "sub",
+        key_claim_name: ZkClaimKey = ZkClaimKey.SUBJECT,
         legacy: bool = False,
     ) -> str:
         """Extract claims from JWT and derive zkLogin address. Synchronous, no network I/O."""
         try:
             iss, sub, aud, jwt_nonce = extract_jwt_claims(jwt)
-            claim_value = sub if key_claim_name == "sub" else aud
+            if key_claim_name == ZkClaimKey.SUBJECT:
+                claim_value = sub
+            elif key_claim_name == ZkClaimKey.AUDIENCE:
+                claim_value = aud
+            else:
+                raise ValueError(f"key_claim_name must be ZkClaimKey.SUBJECT or ZkClaimKey.AUDIENCE, got '{key_claim_name}'")
             address_seed = compute_address_seed(key_claim_name, claim_value, aud, self._client.salt)
             address = compute_zklogin_address(iss, address_seed, legacy)
         except Exception as exc:
@@ -104,15 +153,15 @@ class ZkSession:
         self._jwt = jwt
         return address
 
-    async def get_proof(self) -> SuiRpcResult:
+    @instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.get_proof")
+    async def get_proof(self, *, pysui_config: PysuiConfiguration) -> SuiRpcResult:
         """POST to the ZK proving service and cache ZkLoginKeyPair. Asynchronous."""
         if self._address_seed is None or self._jwt is None:
             raise RuntimeError("process_jwt() must be called before get_proof()")
         jwt = self._jwt
 
-        active_group = self._client.config.active_group
         provider_entry = next(
-            (p for p in active_group.zklogin_providers if p.name == self._provider),
+            (p for p in self._client.config.active_group.zklogin_providers if p.name == self._provider),
             None,
         )
         if provider_entry is None:
@@ -149,26 +198,43 @@ class ZkSession:
             address_seed=self._address_seed,
             max_epoch=self._max_epoch,
         )
+        pysui_config.active_group.add_transient_keypair(
+            profile_name=pysui_config.active_group.using_profile,
+            address=self._address,
+            keypair=self._keypair,
+        )
         return SuiRpcResult(True, None, proof_json)
 
 
 class ZkClient:
     """Long-lived zkLogin client. Holds persistent state across sessions."""
 
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkClient.__init__")
     def __init__(self, *, config: ZkSealConfig, salt: Optional[str] = None) -> None:
+        """Initialise the zkLogin client.
+
+        :param config: ZkSeal configuration providing provider endpoints and network group.
+        :type config: ZkSealConfig
+        :param salt: 128-bit decimal user salt; generated randomly if omitted. Store for address stability.
+        :type salt: Optional[str], optional
+        :raises ImportError: If pysui-crypto is not installed.
+        """
         if not _CRYPTO_AVAILABLE:
             raise ImportError(INSTALL_HINT)
         self._config = config
         self._salt = salt if salt is not None else generate_user_salt()
 
     @property
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkClient.salt")
     def salt(self) -> str:
         return self._salt
 
     @property
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkClient.config")
     def config(self) -> ZkSealConfig:
         return self._config
 
+    @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkClient.session")
     def session(
         self,
         *,
@@ -188,6 +254,7 @@ class ZkClient:
 
         kp = generate_ephemeral_keypair(as_secp256r1=as_secp256r1)
         return ZkSession(
+            _token=_SESSION_TOKEN,
             client=self,
             provider=provider,
             epk_bytes=kp["public_key"],
