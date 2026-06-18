@@ -875,7 +875,7 @@ async def main():
         # await do_multiple_object_content(client_init)
         # await do_multiple_object_versions(client_init)
         # await do_objects_for(client_init)
-        await do_dynamics(client_init)
+        # await do_dynamics(client_init)
         # await do_tx(client_init)
         # await do_txs(client_init)
         # await do_tx_kind(client_init)
