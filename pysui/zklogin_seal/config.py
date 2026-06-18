@@ -98,6 +98,7 @@ class _ZkSealConfigModel:
     """
 
     version: int = 1
+    active_group_name: Optional[str] = None
     groups: list[ZkSealNetworkGroup] = dataclasses.field(default_factory=list)
 
 
@@ -119,7 +120,7 @@ class ZkSealConfig:
 
         :param from_cfg_path: Path to directory containing ZkSealConfig.json; defaults to ~/.pysui
         :type from_cfg_path: Optional[str], optional
-        :param group_name: Network group to activate on load, defaults to first group
+        :param group_name: Network group to activate on load; defaults to the persisted active group name, then the first group
         :type group_name: Optional[str], optional
         :param persist: Save the configuration after activation, defaults to False
         :type persist: bool, optional
@@ -159,6 +160,7 @@ class ZkSealConfig:
         if config_file.exists():
             raise ValueError(f"ZkSealConfig already exists at {config_file}")
         model = _ZkSealConfigModel(
+            active_group_name="testnet",
             groups=[
                 ZkSealNetworkGroup(
                     group_name="devnet",
@@ -250,8 +252,19 @@ class ZkSealConfig:
             if group is None:
                 raise ValueError(f"Network group '{group_name}' not found")
             self._active_group = group
-        elif self._active_group is None and self._model.groups:
-            self._active_group = self._model.groups[0]
+            self._model.active_group_name = group_name
+        elif self._active_group is None:
+            resolved = self._model.active_group_name
+            if resolved:
+                group = next((g for g in self._model.groups if g.group_name == resolved), None)
+                if group is None:
+                    raise ValueError(
+                        f"Persisted active group '{resolved}' no longer exists; "
+                        "call make_active(group_name=...) to set a valid group"
+                    )
+                self._active_group = group
+            elif self._model.groups:
+                self._active_group = self._model.groups[0]
         if persist:
             self.save()
         return self
@@ -589,6 +602,8 @@ class ZkSealConfig:
         """
         for group in self._model.groups:
             for server_set in group.key_server_sets:
+                if server_set.is_committee:
+                    continue
                 for server in server_set.servers:
                     server.url = await self._fetch_server_url(
                         object_id=server.object_id, client=client

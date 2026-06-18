@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import base64
-from typing import Optional
 
 import httpx
 
@@ -43,11 +42,11 @@ class SealClient:
     """SEAL key server client for IBE-based encryption and threshold decryption."""
 
     def __init__(self, *, client: AsyncClientBase, config: ZkSealConfig) -> None:
-        if client.config.active_group.network == "devnet":
+        if config.active_group.group_name == "devnet":
             raise ValueError("SEAL is not supported on devnet")
         if not config.active_group.key_server_sets:
             raise ValueError(
-                f"No SEAL key servers configured for group '{config.active_group.network}'. "
+                f"No SEAL key servers configured for group '{config.active_group.group_name}'. "
                 "Add key servers via ZkSealConfig.add_key_server_set()"
             )
         self._client = client
@@ -57,10 +56,14 @@ class SealClient:
     def pysui_client(self) -> AsyncClientBase:
         return self._client
 
+    @property
+    def config(self) -> ZkSealConfig:
+        return self._config
+
     def credentials(self, *, session_minutes: int = 30) -> SealCredentials:
         """Create a fresh SEAL credential bundle for the active address."""
         cfg = self._client.config
-        keypair = cfg.active_group.keypair_for_address(cfg.active_address)
+        keypair = cfg.active_group.keypair_for_address(address=cfg.active_address)
         sui_address = str(cfg.active_address)
         server_urls = [
             s.url
@@ -74,7 +77,7 @@ class SealClient:
             sui_address=sui_address,
         )
 
-    def _find_server(self, object_id_hex: str) -> Optional[SealKeyServer]:
+    def _find_server(self, object_id_hex: str) -> SealKeyServer | None:
         """Search all sets in the active group for a server by object ID."""
         normalised = object_id_hex.lower().removeprefix("0x")
         for kss in self._config.active_group.key_server_sets:
@@ -139,7 +142,7 @@ class SealClient:
         *,
         package_id: str,
         inner_id: bytes,
-        key_servers: list[tuple],
+        key_servers: list[tuple[str, ...]],
         threshold: int,
         data: bytes,
         encryption_mode: SealDemType = SealDemType.AesGcm256,
@@ -149,14 +152,13 @@ class SealClient:
         from pysui.zklogin_seal._ext import (
             _CRYPTO_AVAILABLE,
             INSTALL_HINT,
-            DemType,
             seal_encrypt,
         )
 
         if not _CRYPTO_AVAILABLE:
             return SuiRpcResult(False, INSTALL_HINT, None)
 
-        group_name = self._config.active_group.network
+        group_name = self._config.active_group.group_name
         server_objects: list[SealKeyServer] = []
         for tup in key_servers:
             set_name = tup[0]
@@ -183,23 +185,21 @@ class SealClient:
             bytes.fromhex(srv.object_id.removeprefix("0x")) for srv in server_objects
         ]
         pkg_id_bytes = bytes.fromhex(package_id.removeprefix("0x"))
-        dem_type = DemType[encryption_mode.value]
-
         try:
-            encrypted_bytes = seal_encrypt(
+            encrypted_bytes, dem_key = seal_encrypt(
                 pkg_id_bytes,
                 inner_id,
                 server_ids,
                 ibe_pks,
                 threshold,
                 data,
-                dem_type,
+                encryption_mode,
                 aad=auth_context,
             )
         except Exception as exc:
             return SuiRpcResult(False, str(exc), None)
 
-        return SuiRpcResult(True, "", SealEncryptedObject.from_bytes(encrypted_bytes))
+        return SuiRpcResult(True, "", (SealEncryptedObject.from_bytes(encrypted_bytes), dem_key))
 
     async def decrypt(
         self,
@@ -226,31 +226,35 @@ class SealClient:
             return SuiRpcResult(False, f"Failed to parse encrypted object: {exc}", None)
 
         package_id_str = "0x" + eo_package_id_bytes.hex()
-        ptb_bcs = transaction_kind[1:]
+        ptb_bcs = transaction_kind[1:]  # strip 1-byte TransactionKind discriminant; caller must pass raw_kind().serialize() output
 
         user_secret_keys: list[tuple[bytes, bytes]] = []
         server_ibe_pks: list[bytes] = []
 
-        for server_id_bytes, _index in eo_services:
-            server_oid = "0x" + server_id_bytes.hex()
-            srv = self._find_server(server_oid)
-            if srv is None:
-                return SuiRpcResult(
-                    False, f"Key server {server_oid} not found in config", None
-                )
+        async with httpx.AsyncClient() as http:
+            for server_id_bytes, _index in eo_services:
+                server_oid = "0x" + server_id_bytes.hex()
+                srv = self._find_server(server_oid)
+                if srv is None:
+                    return SuiRpcResult(
+                        False, f"Key server {server_oid} not found in config", None
+                    )
 
-            try:
-                ibe_pk = await self._fetch_ibe_pk(srv)
-            except ValueError as exc:
-                return SuiRpcResult(False, str(exc), None)
+                try:
+                    ibe_pk = await self._fetch_ibe_pk(srv)
+                except ValueError as exc:
+                    return SuiRpcResult(False, str(exc), None)
 
-            request_body = self._build_fetch_key_request(credentials, ptb_bcs, package_id_str)
+                request_body = self._build_fetch_key_request(credentials, ptb_bcs, package_id_str)
 
-            try:
-                async with httpx.AsyncClient() as client:
-                    resp = await client.post(
+                try:
+                    resp = await http.post(
                         f"{srv.url.rstrip('/')}/v1/fetch_key",
                         json=request_body,
+                        headers={
+                            "Client-Sdk-Version": "1.1.0",
+                            "Client-Sdk-Type": "rust",
+                        },
                         timeout=30.0,
                     )
                     if resp.status_code != 200:
@@ -260,32 +264,42 @@ class SealClient:
                             None,
                         )
                     response_json = resp.json()
-            except Exception as exc:
-                return SuiRpcResult(
-                    False, f"HTTP error fetching key from {srv.url}: {exc}", None
-                )
-
-            decryption_keys = response_json.get("decryption_keys", [])
-            if not decryption_keys:
-                return SuiRpcResult(
-                    False, f"No decryption keys in response from '{srv.alias}'", None
-                )
-
-            for dk in decryption_keys:
-                full_id = base64.b64decode(dk["id"])
-                encrypted_share = base64.b64decode(dk["encrypted_key"])
-                usk = credentials.decrypt_share(encrypted_share)
-                try:
-                    verify_user_secret_key(usk, full_id, ibe_pk)
                 except Exception as exc:
                     return SuiRpcResult(
+                        False, f"HTTP error fetching key from {srv.url}: {exc}", None
+                    )
+
+                decryption_keys = response_json.get("decryption_keys", [])
+                if not decryption_keys:
+                    return SuiRpcResult(
+                        False, f"No decryption keys in response from '{srv.alias}'", None
+                    )
+
+                verified = False
+                for dk in decryption_keys:
+                    raw_id = dk["id"]
+                    full_id = bytes(raw_id) if isinstance(raw_id, list) else base64.b64decode(raw_id)
+                    raw_ek = dk["encrypted_key"]
+                    if isinstance(raw_ek, list):
+                        encrypted_share = b"".join(base64.b64decode(s) for s in raw_ek)
+                    else:
+                        encrypted_share = base64.b64decode(raw_ek)
+                    usk = credentials.decrypt_share(encrypted_share)
+                    try:
+                        verify_user_secret_key(usk, full_id, ibe_pk)
+                        user_secret_keys.append((server_id_bytes, usk))
+                        verified = True
+                        break
+                    except Exception:
+                        continue
+                if not verified:
+                    return SuiRpcResult(
                         False,
-                        f"USK verification failed for server '{srv.alias}': {exc}",
+                        f"USK verification failed for all keys from server '{srv.alias}'",
                         None,
                     )
-                user_secret_keys.append((server_id_bytes, usk))
 
-            server_ibe_pks.append(ibe_pk)
+                server_ibe_pks.append(ibe_pk)
 
         try:
             plaintext = seal_decrypt(

@@ -2,12 +2,12 @@
 # Copyright (c), Frank V. Castellucci
 # SPDX-License-Identifier: Apache-2.0
 """
-scratch/ucs_zklogin_example.py
+ucs_zklogin_example.py
 
 zkLogin flow using ZkClient / ZkSession from pysui.zklogin_seal.
 
 Usage:
-    python scratch/ucs_zklogin_example.py \
+    python ucs_zklogin_example.py \
         --credentials ~/Downloads/client_secret.json \
         [--salt <decimal-string>] \
         [--max-epoch <int>]
@@ -27,6 +27,7 @@ import json
 import httpx
 import urllib.parse
 import webbrowser
+
 
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.zklogin_seal.config import ZkSealConfig

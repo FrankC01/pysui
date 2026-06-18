@@ -289,7 +289,7 @@ async def do_dynamics(client: AsyncClientBase):
     handle_result(
         await client.execute(
             command=cmd.GetDynamicFields(
-                object_id="0xdfa764b29d303acecc801828839108ea81a45e93c3b9ccbe05b0d9a697a2a9ed"
+                object_id="0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75"
             )
         )
     )
@@ -849,8 +849,8 @@ async def main():
                 # Uncomment one group:
                 # group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP,
-                profile_name="devnet",
-                # profile_name="testnet",
+                # profile_name="devnet",
+                profile_name="testnet",
                 # profile_name="mainnet",
             )
         )
@@ -875,7 +875,7 @@ async def main():
         # await do_multiple_object_content(client_init)
         # await do_multiple_object_versions(client_init)
         # await do_objects_for(client_init)
-        # await do_dynamics(client_init)
+        await do_dynamics(client_init)
         # await do_tx(client_init)
         # await do_txs(client_init)
         # await do_tx_kind(client_init)

@@ -28,6 +28,8 @@ Python Client SDK for Sui blockchain
 
 **Release-1.1.0**
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/389) Added optional `pysui[zklogin-seal]` extra providing zkLogin and SEAL support via the `pysui-crypto` Rust/PyO3 extension
+
 ## PyPi current
 
 **Release-1.0.0 - Released 2026-06-08**

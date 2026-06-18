@@ -288,7 +288,7 @@ class TestInit:
 
     def test_activates_first_group_by_default(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        assert cfg.active_group.group_name == "devnet"
+        assert cfg.active_group.group_name == "testnet"
 
     def test_raises_on_unknown_group_name(self, tmp_path):
         ZkSealConfig._initialize_config(from_cfg_path=str(tmp_path))
@@ -390,7 +390,7 @@ class TestMakeActive:
         cfg = _init_cfg(tmp_path)
         cfg._active_group = None
         cfg.make_active(group_name=None)
-        assert cfg.active_group.group_name == "devnet"
+        assert cfg.active_group.group_name == "testnet"
 
     def test_persist_true_saves(self, tmp_path):
         cfg = _init_cfg(tmp_path)
@@ -1024,6 +1024,8 @@ class TestRefreshAllServerUrls:
         await cfg.refresh_all_server_urls(client=client)
         for group in cfg._model.groups:
             for ss in group.key_server_sets:
+                if ss.is_committee:
+                    continue
                 for srv in ss.servers:
                     assert srv.url == "https://new.url.com"
 
@@ -1045,6 +1047,7 @@ class TestRefreshAllServerUrls:
             len(ss.servers)
             for g in cfg._model.groups
             for ss in g.key_server_sets
+            if not ss.is_committee
         )
         await cfg.refresh_all_server_urls(client=client)
         assert client.execute.await_count == total_servers

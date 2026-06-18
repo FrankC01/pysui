@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/389) Added optional `pysui[zklogin-seal]` extra providing zkLogin and SEAL support via the `pysui-crypto` Rust/PyO3 extension
+
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/386) - Added try/finally to close client connection

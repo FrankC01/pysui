@@ -43,6 +43,16 @@ Welcome to pysui's documentation!
 
 .. toctree::
    :maxdepth: 1
+   :caption: zkLogin and SEAL
+
+   zklogin_seal_install
+   zklogin_seal_intro
+   zklogin_seal_config
+   zklogin
+   seal
+
+.. toctree::
+   :maxdepth: 1
    :caption: Features
 
    multi_sig

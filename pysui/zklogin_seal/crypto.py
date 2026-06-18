@@ -209,10 +209,11 @@ class SealCredentials:
 
     def sign_request(self, data: bytes) -> bytes:
         """Ed25519-sign data with the session secret key."""
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        import base64
+        from pysui_fastcrypto import sign_message
 
-        prv = Ed25519PrivateKey.from_private_bytes(self._session_sk)
-        return prv.sign(data)
+        sig_b64 = sign_message(0, self._session_sk, base64.b64encode(data).decode())
+        return base64.b64decode(sig_b64)
 
     def signed_message(self, package_id: str, creation_time: int, ttl_min: int) -> str:
         """Generate a signed request message for key server authentication."""

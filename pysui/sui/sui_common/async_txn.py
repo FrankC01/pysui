@@ -292,7 +292,9 @@ class AsyncSuiTransaction(txbase):
         :return: TransactionData with empty payment and ValidDuring expiration
         :rtype: bcs.TransactionData
         """
-        tx_kind = self.builder.finish_for_inspect()
+        clone = self.builder.shallow_clone()
+        await self._resolve_deferred_inputs(clone)
+        tx_kind = clone.finish_for_inspect()
         _epoch_res, _chain_res = await asyncio.gather(
             self.client.execute(command=cmd.GetBasicCurrentEpochInfo(), timeout=30.0),
             self.client.execute(command=cmd.GetChainIdentifier(), timeout=30.0),

@@ -146,6 +146,8 @@ class ProgrammableTransactionBuilder:
                 for e_idx, e_barg in enumerate(self.inputs):
                     if e_barg.enum_name == "Unresolved" and e_barg.value == key.value:
                         return bcs.Argument("Input", e_idx)
+                    if e_barg.enum_name == "Object" and e_barg.value.to_address_str() == key.value:
+                        return bcs.Argument("Input", e_idx)
             self.inputs[key] = bcs.CallArg("UnresolvedObject", object_arg)
             self.objects_registry[key.value] = object_arg
         else:
