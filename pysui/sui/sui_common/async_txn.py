@@ -12,6 +12,7 @@ import struct as _struct
 from typing import Any, Callable, Optional, Union
 from deprecated.sphinx import versionchanged
 
+from pysui.abstracts import AsyncClientBase
 from pysui.sui.sui_common.txn_base import (
     _TransactionBase,
     _SuiTransactionBase as txbase,
@@ -31,24 +32,31 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.txn_tx_argparse import TxnArgParse, TxnArgMode
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectSummary
 from pysui.sui.sui_common.async_funcs import AsyncLRU
-from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented
+from pysui.sui.sui_common.instrumentation import (
+    instrumented,
+    measure,
+    sync_instrumented,
+)
 
 # Coin reservation constants — used when addressBalance gas mode + GasCoin (txn.gas) is used
-_ACCUMULATOR_ROOT_ID_BYTES = bytes(30) + b'\x0a\xcc'
-_ADDR_0x02_BYTES = bytes(31) + b'\x02'
+_ACCUMULATOR_ROOT_ID_BYTES = bytes(30) + b"\x0a\xcc"
+_ADDR_0x02_BYTES = bytes(31) + b"\x02"
 _ACCUMULATOR_KEY_TYPE_TAG_BCS = (
-    b'\x07' + _ADDR_0x02_BYTES
-    + b'\x0baccumulator'
-    + b'\x03Key'
-    + b'\x01'
-    + b'\x07' + _ADDR_0x02_BYTES
-    + b'\x07balance'
-    + b'\x07Balance'
-    + b'\x01'
-    + b'\x07' + _ADDR_0x02_BYTES
-    + b'\x03sui'
-    + b'\x03SUI'
-    + b'\x00'
+    b"\x07"
+    + _ADDR_0x02_BYTES
+    + b"\x0baccumulator"
+    + b"\x03Key"
+    + b"\x01"
+    + b"\x07"
+    + _ADDR_0x02_BYTES
+    + b"\x07balance"
+    + b"\x07Balance"
+    + b"\x01"
+    + b"\x07"
+    + _ADDR_0x02_BYTES
+    + b"\x03sui"
+    + b"\x03SUI"
+    + b"\x00"
 )
 
 
@@ -58,18 +66,18 @@ def _build_coin_reservation_ref(
 ) -> "bcs.ObjectReference":
     """Synthetic ObjectRef for addressBalance + GasCoin hybrid gas (coin reservation)."""
     digest_bytes = bytearray(32)
-    _struct.pack_into('<Q', digest_bytes, 0, reserved_balance)
-    _struct.pack_into('<I', digest_bytes, 8, epoch)
-    digest_bytes[12:32] = b'\xac' * 20
+    _struct.pack_into("<Q", digest_bytes, 0, reserved_balance)
+    _struct.pack_into("<I", digest_bytes, 8, epoch)
+    digest_bytes[12:32] = b"\xac" * 20
 
-    owner_bytes = bytes.fromhex(owner_str.removeprefix('0x').zfill(64))
-    key_length = _struct.pack('<Q', len(owner_bytes))  # 32 as u64 LE
+    owner_bytes = bytes.fromhex(owner_str.removeprefix("0x").zfill(64))
+    key_length = _struct.pack("<Q", len(owner_bytes))  # 32 as u64 LE
     hash_input = (
-        b'\xf0'                           # domain separator (deriveDynamicFieldID)
-        + _ACCUMULATOR_ROOT_ID_BYTES      # parent: 0x0...0acc (32 bytes)
-        + key_length                      # key byte length as u64 LE
-        + owner_bytes                     # key: owner address (32 bytes)
-        + _ACCUMULATOR_KEY_TYPE_TAG_BCS   # type tag BCS
+        b"\xf0"  # domain separator (deriveDynamicFieldID)
+        + _ACCUMULATOR_ROOT_ID_BYTES  # parent: 0x0...0acc (32 bytes)
+        + key_length  # key byte length as u64 LE
+        + owner_bytes  # key: owner address (32 bytes)
+        + _ACCUMULATOR_KEY_TYPE_TAG_BCS  # type tag BCS
     )
     acc_id_bytes = hashlib.blake2b(hash_input, digest_size=32).digest()
 
@@ -77,7 +85,7 @@ def _build_coin_reservation_ref(
     obj_id_bytes = bytes(a ^ b for a, b in zip(acc_id_bytes, chain_bytes))
 
     return bcs.ObjectReference(
-        ObjectID=bcs.Address.from_str('0x' + obj_id_bytes.hex()),
+        ObjectID=bcs.Address.from_str("0x" + obj_id_bytes.hex()),
         SequenceNumber=0,
         ObjectDigest=bcs.Digest.from_bytes(bytes(digest_bytes)),
     )
@@ -105,7 +113,7 @@ def _unresolved_to_builder_arg(
         carg = bcs.CallArg(
             "Object",
             bcs.ObjectArg(
-                "Recieving" if unres.IsReceiving else "ImmOrOwnedObject",
+                "Receiving" if unres.IsReceiving else "ImmOrOwnedObject",
                 bcs.ObjectReference(
                     co_addy,
                     int(summary.version),
@@ -114,6 +122,18 @@ def _unresolved_to_builder_arg(
             ),
         )
     return (barg, carg)
+
+
+def _invalidates_build(func):
+    """Clears _built_transaction when a PTB command mutates the transaction."""
+    import functools
+
+    @functools.wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        self._built_transaction = None
+        return await func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class AsyncSuiTransaction(txbase):
@@ -162,6 +182,7 @@ class AsyncSuiTransaction(txbase):
             sponsor=initial_sponsor,
         )
         self._executed = False
+        self._built_transaction: Optional[bcs.TransactionData] = None
         self._object_cache = object_cache
         self._argparse = TxnArgParse(client)
 
@@ -170,7 +191,9 @@ class AsyncSuiTransaction(txbase):
         self._object_cache = cache
 
     @AsyncLRU(maxsize=256)
-    @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction._function_meta_args")
+    @instrumented(
+        "pysui.sui.sui_common.async_txn.AsyncSuiTransaction._function_meta_args"
+    )
     async def _function_meta_args(
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
@@ -207,14 +230,18 @@ class AsyncSuiTransaction(txbase):
             raise ValueError(f"{target} {ve.args}")
         raise ValueError(f"Unresolvable target {target}")
 
-    @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction.target_function_summary")
+    @instrumented(
+        "pysui.sui.sui_common.async_txn.AsyncSuiTransaction.target_function_summary"
+    )
     async def target_function_summary(
         self, target: str
     ) -> tuple[bcs.Address, str, str, int, list[pgql_type.OpenMoveTypeGQL]]:
         """Return the argument summary of a target Sui Move function."""
         return await self._function_meta_args(target)
 
-    @instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction._resolve_deferred_inputs")
+    @instrumented(
+        "pysui.sui.sui_common.async_txn.AsyncSuiTransaction._resolve_deferred_inputs"
+    )
     async def _resolve_deferred_inputs(self, builder=None) -> None:
         """Batch-resolve all UnresolvedObjectArg inputs; mutates builder in place.
 
@@ -225,7 +252,9 @@ class AsyncSuiTransaction(txbase):
 
         target = builder if builder is not None else self.builder
         unresolved = target.get_unresolved_inputs()
-        if not unresolved:  # Idempotent: returns early if all inputs are already resolved.
+        if (
+            not unresolved
+        ):  # Idempotent: returns early if all inputs are already resolved.
             return
 
         cache = self._object_cache
@@ -329,9 +358,11 @@ class AsyncSuiTransaction(txbase):
             else:
                 raise ValueError(_res.result_string)
         payment = (
-            [_build_coin_reservation_ref(
-                gas_budget + gas_source_draw, _cei.epoch, pay_addy, chain_id
-            )]
+            [
+                _build_coin_reservation_ref(
+                    gas_budget + gas_source_draw, _cei.epoch, pay_addy, chain_id
+                )
+            ]
             if uses_gas_coin
             else []
         )
@@ -378,7 +409,9 @@ class AsyncSuiTransaction(txbase):
 
         if auto_gas:
             _bal_res = await self.client.execute(
-                command=cmd.GetAddressCoinBalance(owner=self.signer_block.payer_address),
+                command=cmd.GetAddressCoinBalance(
+                    owner=self.signer_block.payer_address
+                ),
                 timeout=30.0,
             )
             if _bal_res.is_ok():
@@ -458,9 +491,54 @@ class AsyncSuiTransaction(txbase):
         :return: The TransactionData BCS structure
         :rtype: bcs.TransactionData
         """
-        return await self._build_txn_data(
-            gas_budget, use_gas_objects, txn_expires_after, use_account_for_gas, auto_gas
+        self._built_transaction = await self._build_txn_data(
+            gas_budget,
+            use_gas_objects,
+            txn_expires_after,
+            use_account_for_gas,
+            auto_gas,
         )
+        return self._built_transaction
+
+    def export_json(self) -> str:
+        """Serialize the transaction to V2 JSON interchange format.
+
+        Works pre-build (gasData fields null) or post-build (fully populated).
+        """
+        from pysui.sui.sui_common.txb_json import serialize_to_json as _to_json
+
+        return _to_json(self)
+
+    @property
+    def built_transaction(self) -> Optional[bcs.TransactionData]:
+        """Return the most recently built TransactionData, or None if not yet built."""
+        return self._built_transaction
+
+    @classmethod
+    async def from_json(
+        cls,
+        *,
+        json_str: str,
+        client: AsyncClientBase,
+        sender: Optional[Union[str, SigningMultiSig]] = None,
+        sponsor: Optional[Union[str, SigningMultiSig]] = None,
+    ) -> tuple["AsyncSuiTransaction", dict]:
+        """Reconstruct an AsyncSuiTransaction from a V2 JSON interchange string.
+
+        :param json_str: V2 JSON interchange string produced by ``export_json``.
+        :type json_str: str
+        :param client: Async client used to construct the transaction.
+        :type client: AsyncClientBase
+        :param sender: Optional override for the transaction sender. If omitted, the sender from the JSON is used.
+        :type sender: Optional[Union[str, SigningMultiSig]]
+        :param sponsor: Optional override for the transaction sponsor. If omitted, the sponsor from the JSON is used (or None if not present).
+        :type sponsor: Optional[Union[str, SigningMultiSig]]
+        :returns: A tuple of the reconstructed transaction and an info dict containing the JSON-sourced sender, sponsor, gas_budget, use_gas_objects, and txn_expires_after.
+        :rtype: tuple[AsyncSuiTransaction, dict]
+        """
+        from pysui.sui.sui_common.txb_json import from_json_data
+
+        return await from_json_data(json_str=json_str, client=client, sender=sender, sponsor=sponsor)
 
     @instrumented("ptb.build")
     async def build(
@@ -538,6 +616,7 @@ class AsyncSuiTransaction(txbase):
         return {self._BUILD_BYTE_STR: tx_bytes, self._SIG_ARRAY: sigs}
 
     @instrumented("ptb.cmd.split_coin")
+    @_invalidates_build
     async def split_coin(
         self,
         *,
@@ -566,6 +645,7 @@ class AsyncSuiTransaction(txbase):
         return self.builder.split_coin(parms[0], encoded_amounts)
 
     @instrumented("ptb.cmd.merge_coins")
+    @_invalidates_build
     async def merge_coins(
         self,
         *,
@@ -604,6 +684,7 @@ class AsyncSuiTransaction(txbase):
         return self.builder.merge_coins(parms[0], resolved)
 
     @instrumented("ptb.cmd.split_coin_equal")
+    @_invalidates_build
     async def split_coin_equal(
         self,
         *,
@@ -643,6 +724,7 @@ class AsyncSuiTransaction(txbase):
 
     @instrumented("ptb.cmd.transfer_objects")
     @versionchanged(version="0.72.0", reason="Support recipient passed as Argument")
+    @_invalidates_build
     async def transfer_objects(
         self,
         *,
@@ -681,6 +763,7 @@ class AsyncSuiTransaction(txbase):
         return self.builder.transfer_objects(parms[0], resolved)
 
     @instrumented("ptb.cmd.transfer_sui")
+    @_invalidates_build
     async def transfer_sui(
         self,
         *,
@@ -708,6 +791,7 @@ class AsyncSuiTransaction(txbase):
         return self.builder.transfer_sui(*parms)
 
     @instrumented("ptb.cmd.public_transfer_object")
+    @_invalidates_build
     async def public_transfer_object(
         self,
         *,
@@ -745,6 +829,7 @@ class AsyncSuiTransaction(txbase):
         )
 
     @instrumented("ptb.cmd.make_move_vector")
+    @_invalidates_build
     async def make_move_vector(
         self,
         *,
@@ -782,6 +867,7 @@ class AsyncSuiTransaction(txbase):
         return self.builder.make_move_vector(type_tag, resolved)
 
     @instrumented("ptb.cmd.move_call")
+    @_invalidates_build
     async def move_call(
         self,
         *,
@@ -821,6 +907,7 @@ class AsyncSuiTransaction(txbase):
         )
 
     @instrumented("ptb.cmd.coin_from_address_accumulator")
+    @_invalidates_build
     async def coin_from_address_accumulator(
         self,
         *,
@@ -858,6 +945,7 @@ class AsyncSuiTransaction(txbase):
         )
 
     @instrumented("ptb.cmd.create_balance")
+    @_invalidates_build
     async def create_balance(
         self,
         *,
@@ -901,6 +989,7 @@ class AsyncSuiTransaction(txbase):
         )
 
     @instrumented("ptb.cmd.withdrawal")
+    @_invalidates_build
     async def withdrawal(
         self,
         *,
@@ -933,6 +1022,7 @@ class AsyncSuiTransaction(txbase):
         return self.builder.input_obj_from_withdrawal(wdt)
 
     @instrumented("ptb.cmd.fund_address_accumulator")
+    @_invalidates_build
     async def fund_address_accumulator(
         self,
         *,
@@ -1003,6 +1093,7 @@ class AsyncSuiTransaction(txbase):
         return result
 
     @instrumented("ptb.cmd.optional_object")
+    @_invalidates_build
     async def optional_object(
         self,
         *,
@@ -1053,6 +1144,7 @@ class AsyncSuiTransaction(txbase):
         )
 
     @instrumented("ptb.cmd.stake_coin")
+    @_invalidates_build
     async def stake_coin(
         self,
         *,
@@ -1093,6 +1185,7 @@ class AsyncSuiTransaction(txbase):
         )
 
     @instrumented("ptb.cmd.unstake_coin")
+    @_invalidates_build
     async def unstake_coin(
         self, *, staked_coin: Union[str, sui_prot.Object]
     ) -> bcs.Argument:
@@ -1122,6 +1215,7 @@ class AsyncSuiTransaction(txbase):
         )
 
     @instrumented("ptb.cmd.publish")
+    @_invalidates_build
     async def publish(
         self, *, project_path: str, args_list: Optional[list[str]] = None
     ) -> bcs.Argument:
@@ -1138,6 +1232,7 @@ class AsyncSuiTransaction(txbase):
         return self.builder.publish(modules, dependencies)
 
     @instrumented("ptb.cmd.publish_upgrade")
+    @_invalidates_build
     async def publish_upgrade(
         self,
         *,
@@ -1204,6 +1299,7 @@ class AsyncSuiTransaction(txbase):
             raise ValueError("Not a valid upgrade cap.")
 
     @instrumented("ptb.cmd.custom_upgrade")
+    @_invalidates_build
     async def custom_upgrade(
         self,
         *,

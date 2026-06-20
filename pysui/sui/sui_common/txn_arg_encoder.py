@@ -283,7 +283,7 @@ async def _encode_option(
         obj = await parser.fetch_or_transpose_object(
             value, inner.type_name == "Receiving", ref == "&mut", inner
         )
-        return bcs.OptionalTypeFactory.as_unresolved_optional(obj)
+        return obj
 
     raw = _raw_value(inner, value)
     return bcs.OptionalTypeFactory.as_optional(bcs.BuilderArg("Pure", [1] + raw))

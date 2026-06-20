@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/389) Added optional `pysui[zklogin-seal]` extra providing zkLogin and SEAL support via the `pysui-crypto` Rust/PyO3 extension
+- [enhancement](https://github.com/FrankC01/pysui/issues/391) Add json export and import compatible with Mysten ts-sdk
 
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/386) - Added try/finally to close client connection
+- [bug](https://github.com/FrankC01/pysui/issues/390) - Option<T> when T is object not handled in PTB argument parse/encode
 
 ### Changed
 
