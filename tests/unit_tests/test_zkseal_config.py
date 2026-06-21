@@ -28,7 +28,7 @@ from pysui.zklogin_seal.config import (
 _PROVER_DEV = "https://prover-dev.mystenlabs.com/v1"
 _PROVER_MAIN = "https://prover.mystenlabs.com/v1"
 _DEFAULT_GROUPS = ["devnet", "testnet", "mainnet"]
-_TESTNET_SETS = ["mysten-testnet", "mysten-testnet-committee"]
+_TESTNET_SETS = ["mysten-testnet", "mysten-testnet-committee", "third-party"]
 _TESTNET_OID_1 = "0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75"
 
 
@@ -213,7 +213,7 @@ class TestInitializeConfig:
         assert len(devnet["zkloginProviders"]) == 3
         assert devnet["keyServerSets"] == []
 
-    def test_testnet_has_two_sets(self, tmp_path):
+    def test_testnet_has_three_sets(self, tmp_path):
         ZkSealConfig._initialize_config(from_cfg_path=str(tmp_path))
         data = json.loads((tmp_path / "ZkSealConfig.json").read_text())
         testnet = next(g for g in data["groups"] if g["groupName"] == "testnet")

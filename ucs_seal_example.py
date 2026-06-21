@@ -44,9 +44,6 @@ ALLOWLIST_OBJECT_ID = (
 CAP_OBJECT_ID = "0x479d48cc3d2db3bebe3e68555bcb27373592e523f36971d9755cdae9d6d51bdb"
 DEMO_PACKAGE_ID = "0xc5ce2742cac46421b62028557f1d7aea8a4c50f651379a79afdf12cd88628807"
 
-BOB_ALIAS = "Primary"
-ALICE_ALIAS = "Secondary"
-
 DEFAULT_ENCRYPTED_PATH = "/tmp/seal_encrypted.bin"
 
 
@@ -84,18 +81,12 @@ async def cmd_create(
 async def cmd_add_address(
     *,
     seal_client: SealClient,
-    pysui_config: PysuiConfiguration,
     args: argparse.Namespace,
 ) -> None:
     """Add an address to the SEAL allowlist (Bob signs, owns the Cap)."""
     print("\n--- add-address ---")
 
-    # Resolve address to add — default to Alice
-    address_to_add = (
-        args.address
-        if args.address
-        else pysui_config.address_for_alias(alias_name=ALICE_ALIAS)
-    )
+    address_to_add = args.address
     print(f"  adding address : {address_to_add}")
 
     # Build PTB: allowlist::add(allowlist_obj, cap, address)
@@ -143,8 +134,11 @@ async def cmd_demo(
         ]
         print("  mode            : mixed (1 non-committee + 1 committee)")
     else:
-        key_servers = [("mysten-testnet", "mysten-testnet-1", "mysten-testnet-2")]
-        print("  mode            : all non-committee")
+        key_servers = [
+            ("mysten-testnet", "mysten-testnet-1", "mysten-testnet-2"),
+            ("third-party", "ruby-nodes"),
+        ]
+        print("  mode            : all non-committee (3 servers, threshold 2)")
 
     encrypt_result = await bob_seal_client.encrypt(
         package_id=DEMO_PACKAGE_ID,
@@ -202,7 +196,7 @@ async def run(pysui_config: PysuiConfiguration, args: argparse.Namespace) -> Non
     bob_seal_client = SealClient(client=bob_pysui_client, config=seal_config)
 
     print(f"  network : {bob_seal_client.config.active_group.group_name}")
-    print(f"  bob     : {pysui_config.active_address}  (alias: {BOB_ALIAS})")
+    print(f"  bob     : {pysui_config.active_address}")
 
     try:
         if args.command == "create":
@@ -213,23 +207,20 @@ async def run(pysui_config: PysuiConfiguration, args: argparse.Namespace) -> Non
         elif args.command == "add-address":
             await cmd_add_address(
                 seal_client=bob_seal_client,
-                pysui_config=pysui_config,
                 args=args,
             )
         elif args.command == "demo":
-            # Alice's client — separate PysuiConfiguration with Secondary as active address
+            # Alice's client — separate PysuiConfiguration with address=args.receiver
             alice_pysui_config = PysuiConfiguration(
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP,
                 profile_name="testnet",
-                alias=ALICE_ALIAS,
+                address=args.receiver,
             )
             alice_pysui_client: AsyncClientBase = client_factory(alice_pysui_config)
             alice_seal_client = SealClient(
                 client=alice_pysui_client, config=seal_config
             )
-            print(
-                f"  alice   : {alice_pysui_config.active_address}  (alias: {ALICE_ALIAS})"
-            )
+            print(f"  alice   : {alice_pysui_config.active_address}")
             try:
                 await cmd_demo(
                     bob_seal_client=bob_seal_client,
@@ -265,9 +256,9 @@ def main() -> None:
     )
     sub_add.add_argument(
         "--address",
-        default=None,
+        required=True,
         metavar="ADDR",
-        help=f"Address to add (default: alias '{ALICE_ALIAS}')",
+        help="Address to add to the allowlist",
     )
 
     # demo
@@ -291,6 +282,12 @@ def main() -> None:
         action="store_true",
         default=False,
         help="Use mixed key servers: 1 non-committee + 1 committee (default: 2 non-committee)",
+    )
+    sub_demo.add_argument(
+        "--receiver",
+        required=True,
+        metavar="ADDR",
+        help="Alice's Sui address (the decryptor)",
     )
 
     args = parser.parse_args()
@@ -328,6 +325,8 @@ if __name__ == "__main__":
         "demo",
         "--data",
         "Monday I've got Friday on my Mind.",
+        "--receiver",
+        "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28",
     ]
     # sys.argv = ["ucs_seal_example.py", "demo", "--data", "hello from Bob", "--out", "/tmp/seal_encrypted.bin"]
     # mixed: 1 non-committee + 1 committee key server

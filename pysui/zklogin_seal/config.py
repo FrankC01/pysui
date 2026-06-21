@@ -194,6 +194,20 @@ class ZkSealConfig:
                                 SealKeyServer(alias="mysten-committee", object_id="0xb012378c9f3799fb5b1a7083da74a4069e3c3f1c93de0b27212a5799ce1e1e98", url="https://seal-aggregator-testnet.mystenlabs.com"),
                             ],
                         ),
+                        SealKeyServerSet(
+                            name="third-party",
+                            is_committee=False,
+                            servers=[
+                                SealKeyServer(alias="ruby-nodes", object_id="0x6068c0acb197dddbacd4746a9de7f025b2ed5a5b6c1b1ab44dade4426d141da2", url="https://seal-testnet.api.rubynodes.io"),
+                                SealKeyServer(alias="nodeinfra", object_id="0x5466b7df5c15b508678d51496ada8afab0d6f70a01c10613123382b1b8131007", url="https://open-seal-testnet.nodeinfra.com"),
+                                SealKeyServer(alias="studio-mirai", object_id="0x164ac3d2b3b8694b8181c13f671950004765c23f270321a45fdd04d40cccf0f2", url="https://open.key-server-testnet.seal.mirai.cloud"),
+                                SealKeyServer(alias="overclock", object_id="0x9c949e53c36ab7a9c484ed9e8b43267a77d4b8d70e79aa6b39042e3d4c434105", url="https://seal-testnet-open.overclock.run"),
+                                SealKeyServer(alias="h2o-nodes", object_id="0x39cef09b24b667bc6ed54f7159d82352fe2d5dd97ca9a5beaa1d21aa774f25a2", url="https://seal-open.sui-testnet.h2o-nodes.com"),
+                                SealKeyServer(alias="triton-one", object_id="0x4cded1abeb52a22b6becb42a91d3686a4c901cf52eee16234214d0b5b2da4c46", url="https://seal.testnet.sui.rpcpool.com"),
+                                SealKeyServer(alias="natsai", object_id="0x3c93ec1474454e1b47cf485a4e5361a5878d722b9492daf10ef626a76adc3dad", url="https://seal-open-test.natsai.xyz"),
+                                SealKeyServer(alias="mhax-io", object_id="0x6a0726a1ea3d62ba2f2ae51104f2c3633c003fb75621d06fde47f04dc930ba06", url="https://seal-testnet-open.suiftly.io"),
+                            ],
+                        ),
                     ],
                 ),
                 ZkSealNetworkGroup(
