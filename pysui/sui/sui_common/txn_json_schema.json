@@ -1,0 +1,442 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pysui/txn_json_schema.json",
+  "title": "Sui V2 Transaction JSON Interchange",
+  "description": "Schema for Sui programmable transaction block (PTB) serialization. Fields marked [pysui extension] are pysui-specific and emitted only in extended mode. Fields marked [gap] are proposed for Mysten TS SDK standardization.",
+  "type": "object",
+  "required": ["version", "sender", "expiration", "gasData", "inputs", "commands"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 2,
+      "description": "Interchange format version. Always 2."
+    },
+    "sender": {
+      "type": "string",
+      "description": "Transaction sender address (0x-prefixed hex, 64 chars)."
+    },
+    "expiration": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["Epoch"],
+          "properties": {
+            "Epoch": {"type": "string", "description": "Epoch number as string."}
+          },
+          "additionalProperties": false
+        }
+      ],
+      "description": "Transaction expiration. Null means no expiry."
+    },
+    "gasData": {
+      "type": "object",
+      "required": ["budget", "price", "payment"],
+      "properties": {
+        "budget": {
+          "oneOf": [{"type": "null"}, {"type": "string"}],
+          "description": "Gas budget as string. Null before build."
+        },
+        "price": {
+          "oneOf": [{"type": "null"}, {"type": "string"}],
+          "description": "Gas price as string. Null before build."
+        },
+        "owner": {
+          "oneOf": [{"type": "null"}, {"type": "string"}],
+          "description": "Gas payment owner address. Null when not yet determined pre-build."
+        },
+        "payment": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "items": {"$ref": "#/$defs/ObjectRef"},
+              "description": "Gas payment objects."
+            }
+          ],
+          "description": "Gas payment. Null before build."
+        }
+      },
+      "additionalProperties": false
+    },
+    "sponsor": {
+      "type": "string",
+      "description": "Optional sponsor address. Present only when gas owner differs from sender."
+    },
+    "env": {
+      "type": "object",
+      "description": "[pysui extension, Gap 1] Network environment. Present only in extended format.",
+      "required": ["name", "url"],
+      "properties": {
+        "name": {"type": "string", "description": "Active profile name."},
+        "url": {"type": "string", "description": "Node RPC URL."},
+        "protocol": {
+          "type": "string",
+          "enum": ["GraphQL", "gRPC"],
+          "description": "[pysui extension] Transport protocol. Optional on import; populated on extended export."
+        }
+      },
+      "additionalProperties": false
+    },
+    "inputs": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/Input"},
+      "description": "Transaction inputs."
+    },
+    "commands": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/Command"},
+      "description": "Transaction commands."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ObjectRef": {
+      "type": "object",
+      "required": ["objectId", "version", "digest"],
+      "properties": {
+        "objectId": {"type": "string"},
+        "version": {"type": "string"},
+        "digest": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "Argument": {
+      "description": "PTB argument reference.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["GasCoin"],
+          "properties": {"GasCoin": {"type": "boolean", "const": true}},
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["Input"],
+          "properties": {"Input": {"type": "integer", "minimum": 0}},
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["Result"],
+          "properties": {"Result": {"type": "integer", "minimum": 0}},
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["NestedResult"],
+          "properties": {
+            "NestedResult": {
+              "type": "array",
+              "items": {"type": "integer", "minimum": 0},
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Input": {
+      "description": "Transaction input.",
+      "oneOf": [
+        {"$ref": "#/$defs/PureInput"},
+        {"$ref": "#/$defs/ObjectInput"},
+        {"$ref": "#/$defs/UnresolvedObjectInput"},
+        {"$ref": "#/$defs/UnresolvedPureInput"},
+        {"$ref": "#/$defs/FundsWithdrawalInput"}
+      ]
+    },
+    "PureInput": {
+      "type": "object",
+      "required": ["Pure"],
+      "properties": {
+        "Pure": {
+          "type": "object",
+          "required": ["bytes"],
+          "properties": {
+            "bytes": {"type": "string", "description": "Base64-encoded BCS bytes."}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ObjectInput": {
+      "type": "object",
+      "required": ["Object"],
+      "properties": {
+        "Object": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["ImmOrOwnedObject"],
+              "properties": {"ImmOrOwnedObject": {"$ref": "#/$defs/ObjectRef"}},
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["SharedObject"],
+              "properties": {
+                "SharedObject": {
+                  "type": "object",
+                  "required": ["objectId", "initialSharedVersion", "mutable"],
+                  "properties": {
+                    "objectId": {"type": "string"},
+                    "initialSharedVersion": {"type": "string"},
+                    "mutable": {"type": "boolean"}
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["Receiving"],
+              "properties": {"Receiving": {"$ref": "#/$defs/ObjectRef"}},
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnresolvedObjectInput": {
+      "type": "object",
+      "required": ["UnresolvedObject"],
+      "properties": {
+        "UnresolvedObject": {
+          "type": "object",
+          "required": ["objectId"],
+          "properties": {
+            "objectId": {"type": "string", "description": "Object ID (0x-prefixed hex)."},
+            "isOptional": {
+              "type": "boolean",
+              "description": "[pysui extension, Gap 2] True if the object argument is optional in the Move function signature."
+            },
+            "isReceiving": {
+              "type": "boolean",
+              "description": "[pysui extension, Gap 2] True if the object is being received (Receiving<T>)."
+            },
+            "typeStr": {
+              "type": "string",
+              "description": "[pysui extension, Gap 2] Move type string of the object parameter, e.g. '0x2::coin::Coin<0x2::sui::SUI>'."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnresolvedPureInput": {
+      "type": "object",
+      "required": ["UnresolvedPure"],
+      "description": "Unresolved pure input. pysui resolves pures eagerly and never emits this on export; present only in documents from external tools.",
+      "properties": {
+        "UnresolvedPure": {
+          "type": "object",
+          "required": ["value"],
+          "properties": {
+            "value": {
+              "description": "Raw Python-typed value (int, str, bool, list, etc.)."
+            },
+            "valueType": {
+              "type": "string",
+              "description": "[gap, Gap 3] Move type annotation for the pure value, e.g. 'u64', 'address', 'vector<u8>'."
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "FundsWithdrawalInput": {
+      "type": "object",
+      "required": ["FundsWithdrawal"],
+      "description": "[pysui extension] Funds withdrawal input. Emitted as $Intent command on export. Not portable in standard mode (no TS SDK support).",
+      "properties": {
+        "FundsWithdrawal": {
+          "type": "object",
+          "required": ["reservation", "typeArg", "withdrawFrom"],
+          "properties": {
+            "reservation": {
+              "type": "object",
+              "required": ["MaxAmountU64"],
+              "properties": {"MaxAmountU64": {"type": "string"}},
+              "additionalProperties": false
+            },
+            "typeArg": {
+              "type": "object",
+              "required": ["Balance"],
+              "properties": {"Balance": {"type": "string"}},
+              "additionalProperties": false
+            },
+            "withdrawFrom": {
+              "type": "object",
+              "description": "Withdrawal source. Exactly one key present (e.g. Sender, Sponsor).",
+              "minProperties": 1,
+              "maxProperties": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Command": {
+      "description": "PTB command.",
+      "oneOf": [
+        {"$ref": "#/$defs/MoveCallCommand"},
+        {"$ref": "#/$defs/TransferObjectsCommand"},
+        {"$ref": "#/$defs/SplitCoinsCommand"},
+        {"$ref": "#/$defs/MergeCoinsCommand"},
+        {"$ref": "#/$defs/PublishCommand"},
+        {"$ref": "#/$defs/MakeMoveVecCommand"},
+        {"$ref": "#/$defs/UpgradeCommand"},
+        {"$ref": "#/$defs/IntentCommand"}
+      ]
+    },
+    "MoveCallCommand": {
+      "type": "object",
+      "required": ["MoveCall"],
+      "properties": {
+        "MoveCall": {
+          "type": "object",
+          "required": ["package", "module", "function", "typeArguments", "arguments"],
+          "properties": {
+            "package": {"type": "string"},
+            "module": {"type": "string"},
+            "function": {"type": "string"},
+            "typeArguments": {"type": "array", "items": {"type": "string"}},
+            "arguments": {"type": "array", "items": {"$ref": "#/$defs/Argument"}}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "TransferObjectsCommand": {
+      "type": "object",
+      "required": ["TransferObjects"],
+      "properties": {
+        "TransferObjects": {
+          "type": "object",
+          "required": ["objects", "address"],
+          "properties": {
+            "objects": {"type": "array", "items": {"$ref": "#/$defs/Argument"}},
+            "address": {"$ref": "#/$defs/Argument"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SplitCoinsCommand": {
+      "type": "object",
+      "required": ["SplitCoins"],
+      "properties": {
+        "SplitCoins": {
+          "type": "object",
+          "required": ["coin", "amounts"],
+          "properties": {
+            "coin": {"$ref": "#/$defs/Argument"},
+            "amounts": {"type": "array", "items": {"$ref": "#/$defs/Argument"}}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "MergeCoinsCommand": {
+      "type": "object",
+      "required": ["MergeCoins"],
+      "properties": {
+        "MergeCoins": {
+          "type": "object",
+          "required": ["destination", "sources"],
+          "properties": {
+            "destination": {"$ref": "#/$defs/Argument"},
+            "sources": {"type": "array", "items": {"$ref": "#/$defs/Argument"}}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "PublishCommand": {
+      "type": "object",
+      "required": ["Publish"],
+      "properties": {
+        "Publish": {
+          "type": "object",
+          "required": ["modules", "dependencies"],
+          "properties": {
+            "modules": {"type": "array", "items": {"type": "string", "description": "Base64-encoded module bytes."}},
+            "dependencies": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "MakeMoveVecCommand": {
+      "type": "object",
+      "required": ["MakeMoveVec"],
+      "properties": {
+        "MakeMoveVec": {
+          "type": "object",
+          "required": ["elements"],
+          "properties": {
+            "type": {
+              "oneOf": [{"type": "null"}, {"type": "string"}],
+              "description": "Optional Move type string."
+            },
+            "elements": {"type": "array", "items": {"$ref": "#/$defs/Argument"}}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpgradeCommand": {
+      "type": "object",
+      "required": ["Upgrade"],
+      "properties": {
+        "Upgrade": {
+          "type": "object",
+          "required": ["modules", "dependencies", "package", "ticket"],
+          "properties": {
+            "modules": {"type": "array", "items": {"type": "string", "description": "Base64-encoded module bytes."}},
+            "dependencies": {"type": "array", "items": {"type": "string"}},
+            "package": {"type": "string"},
+            "ticket": {"$ref": "#/$defs/Argument"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "IntentCommand": {
+      "type": "object",
+      "required": ["$Intent"],
+      "description": "pysui $Intent command. Represents high-level operations.",
+      "properties": {
+        "$Intent": {
+          "type": "object",
+          "required": ["name", "inputs", "data"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "enum": ["FundsWithdrawal", "CoinWithBalance"],
+              "description": "FundsWithdrawal: pysui-only, not portable (no TS SDK support). CoinWithBalance: supported in TS SDK."
+            },
+            "inputs": {"type": "object"},
+            "data": {"type": "object"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -8,8 +8,11 @@
 from __future__ import annotations
 
 import base64
+import functools
 import json
-from typing import TYPE_CHECKING, Any, Optional, Union
+import jsonschema
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union
 
 if TYPE_CHECKING:
     from pysui.abstracts import AsyncClientBase
@@ -112,7 +115,7 @@ def _json_to_obj_ref(obj: dict) -> bcs.ObjectReference:
 # ── CallArg (inputs) ──────────────────────────────────────────────────────────
 
 
-def _call_arg_to_json(ca: bcs.CallArg) -> dict:  # pylint: disable=too-many-return-statements
+def _call_arg_to_json(ca: bcs.CallArg, format: str = "standard") -> dict:  # pylint: disable=too-many-return-statements
     name = ca.enum_name
     if name == "Pure":
         return {"Pure": {"bytes": base64.b64encode(bytes(ca.value)).decode()}}
@@ -143,7 +146,12 @@ def _call_arg_to_json(ca: bcs.CallArg) -> dict:  # pylint: disable=too-many-retu
         }}
     if name == "UnresolvedObject":
         unres = ca.value
-        return {"UnresolvedObject": {"objectId": unres.ObjectStr}}
+        obj_dict: dict = {"objectId": unres.ObjectStr}
+        if format == "extended":
+            obj_dict["isOptional"] = unres.IsOptional
+            obj_dict["isReceiving"] = unres.IsReceiving
+            obj_dict["typeStr"] = unres.TypeStr
+        return {"UnresolvedObject": obj_dict}
     raise ValueError(f"Unknown CallArg variant: {name!r}")
 
 
@@ -185,7 +193,13 @@ def _json_to_call_arg(inp: dict) -> bcs.CallArg:  # pylint: disable=too-many-ret
         uo = inp["UnresolvedObject"]
         return bcs.CallArg(
             "UnresolvedObject",
-            bcs.UnresolvedObjectArg(uo["objectId"], False, False, 0, ""),
+            bcs.UnresolvedObjectArg(
+                uo["objectId"],
+                uo.get("isOptional", False),
+                uo.get("isReceiving", False),
+                0,
+                uo.get("typeStr", ""),
+            ),
         )
     if "UnresolvedPure" in inp:
         return _UnresolvedPure(inp["UnresolvedPure"]["value"])
@@ -320,6 +334,7 @@ def _normalize_address(addr_str: str) -> str:
 def _process_intents(
     input_list: list,
     command_list: list,
+    format: str = "standard",
 ) -> tuple[list, list]:
     """Detect FundsWithdrawal inputs and emit $Intent commands.
 
@@ -336,7 +351,7 @@ def _process_intents(
 
     if not fw_inputs:
         return (
-            [_call_arg_to_json(ca) for ca in input_list],
+            [_call_arg_to_json(ca, format) for ca in input_list],
             [_command_to_json(cmd) for cmd in command_list],
         )
 
@@ -363,13 +378,19 @@ def _process_intents(
     # FW inputs not in cwb_map -> FundsWithdrawal intent (prepended commands)
     fw_intent_inputs = {idx: val for idx, val in fw_inputs.items() if idx not in cwb_map}
 
+    if format == "standard" and fw_intent_inputs:
+        raise ValueError(
+            "$Intent.FundsWithdrawal is not supported in standard mode (no TS SDK support). "
+            "Use format='extended' to serialize transactions containing FundsWithdrawal inputs."
+        )
+
     # Build new input list: remove all FW inputs; remap remaining indices
     new_inputs_json: list = []
     input_remap: dict = {}
     for i, ca in enumerate(input_list):
         if i not in fw_inputs:
             input_remap[i] = len(new_inputs_json)
-            new_inputs_json.append(_call_arg_to_json(ca))
+            new_inputs_json.append(_call_arg_to_json(ca, format))
 
     # Assign Result indices to prepended FW intent commands
     fw_intent_result_map: dict = {}
@@ -435,6 +456,13 @@ def _process_intents(
     return new_inputs_json, final_cmds_json
 
 
+@functools.lru_cache(maxsize=1)
+def _txn_schema() -> dict:
+    schema_path = Path(__file__).parent / "txn_json_schema.json"
+    with schema_path.open() as f:
+        return json.load(f)
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -447,13 +475,21 @@ def _signer_address_str(signer: Any) -> str:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
-def serialize_to_json(txn: AsyncSuiTransaction) -> str:
+def serialize_to_json(
+    txn: AsyncSuiTransaction,
+    format: Literal["standard", "extended"] = "standard",
+) -> str:
     """Serialize an AsyncSuiTransaction to V2 JSON interchange format.
 
     Works at any point: pre-build (gasData fields null) or post-build
     (gasData fully populated from the built TransactionData).
     FundsWithdrawal inputs are emitted as $Intent.FundsWithdrawal or
     $Intent.CoinWithBalance commands as appropriate.
+
+    :param format: Output format. 'standard' (default) emits minimal Mysten-compatible JSON.
+        'extended' adds pysui-specific fields (env, UnresolvedObject type context).
+        Raises ValueError in standard mode if the transaction contains FundsWithdrawal inputs.
+    :type format: Literal["standard", "extended"]
     """
     sig_block = txn._sig_block
     sender = _signer_address_str(sig_block._sender)
@@ -488,7 +524,7 @@ def serialize_to_json(txn: AsyncSuiTransaction) -> str:
         input_list = list(txn.builder.inputs.values())
         command_list = list(txn.builder.commands)
 
-    inputs_json, commands_json = _process_intents(input_list, command_list)
+    inputs_json, commands_json = _process_intents(input_list, command_list, format)
 
     doc: dict[str, Any] = {
         "version": 2,
@@ -500,6 +536,15 @@ def serialize_to_json(txn: AsyncSuiTransaction) -> str:
     }
     if gas_owner != sender:
         doc["sponsor"] = gas_owner
+    if format == "extended":
+        from pysui.sui.sui_common.config.confgroup import GroupProtocol
+        config = txn.client.config
+        _proto = config.model.active_group.protocol
+        _protocol_str = "GraphQL" if _proto == GroupProtocol.GRAPHQL else "gRPC" if _proto == GroupProtocol.GRPC else None
+        _env: dict = {"name": config.active_profile, "url": config.url}
+        if _protocol_str:
+            _env["protocol"] = _protocol_str
+        doc["env"] = _env
 
     return json.dumps(doc, indent=2)
 
@@ -531,6 +576,7 @@ def _rewrite_result_refs(obj: Any, result_map: dict) -> Any:
 def _parse_json_doc(json_str: str) -> tuple[dict, list[bcs.CallArg], list[dict]]:
     """Parse a V2 JSON interchange string into raw components."""
     doc = json.loads(json_str)
+    jsonschema.validate(doc, _txn_schema())
     version = doc.get("version")
     if version != 2:
         raise ValueError(
@@ -539,6 +585,71 @@ def _parse_json_doc(json_str: str) -> tuple[dict, list[bcs.CallArg], list[dict]]
     inputs = [_json_to_call_arg(inp) for inp in doc.get("inputs", [])]
     raw_commands: list[dict] = list(doc.get("commands", []))
     return doc, inputs, raw_commands
+
+
+def _resolve_env_client(
+    env_url: str,
+    client: AsyncClientBase,
+    protocol_hint: Optional[str] = None,
+) -> tuple[AsyncClientBase, bool, Optional[str], Optional[str]]:
+    """Resolve env URL against PysuiConfiguration groups/profiles.
+
+    Returns (resolved_client, profile_switched, group_name, profile_name).
+    Raises ValueError if the URL is not found, the protocol hint is invalid,
+    or the matched group is not gRPC/GraphQL.
+    """
+    from pysui.sui.sui_common.config import PysuiConfiguration
+    from pysui.sui.sui_common.config.confgroup import GroupProtocol
+    from pysui.sui.sui_common.factory import client_factory
+
+    _valid_hint = {"GraphQL", "gRPC"}
+    if protocol_hint is not None and protocol_hint not in _valid_hint:
+        raise ValueError(
+            f"env.protocol '{protocol_hint}' is not valid; must be 'GraphQL' or 'gRPC'."
+        )
+
+    config = client.config
+
+    found_group = None
+    found_profile = None
+    for group in config.model.groups:
+        if protocol_hint and group.protocol.to_string() != protocol_hint:
+            continue
+        for profile in group.profiles:
+            if profile.url == env_url:
+                found_group = group
+                found_profile = profile
+                break
+        if found_group is not None:
+            break
+
+    if found_group is None:
+        raise ValueError(
+            f"env URL '{env_url}' not found in any group in PysuiConfiguration; "
+            "add a GraphQL or gRPC group with a matching profile."
+        )
+
+    if found_group.protocol == GroupProtocol.OTHER:
+        raise ValueError(
+            f"env URL '{env_url}' found in group '{found_group.group_name}' "
+            "but that group is not tagged as GraphQL or gRPC."
+        )
+
+    active_group = config.model.active_group
+    already_active = (
+        active_group.group_name == found_group.group_name
+        and found_group.using_profile == found_profile.profile_name
+    )
+
+    if already_active:
+        return client, False, None, None
+
+    new_config = PysuiConfiguration(
+        group_name=found_group.group_name,
+        profile_name=found_profile.profile_name,
+    )
+    new_client = client_factory(new_config)
+    return new_client, True, found_group.group_name, found_profile.profile_name
 
 
 async def from_json_data(
@@ -558,12 +669,27 @@ async def from_json_data(
     :type sender: Optional[Union[str, SigningMultiSig]]
     :param sponsor: Optional override for the transaction sponsor. If omitted, the sponsor from the JSON is used (or None if not present).
     :type sponsor: Optional[Union[str, SigningMultiSig]]
-    :returns: A tuple of the reconstructed transaction and an info dict containing the JSON-sourced sender, sponsor, gas_budget, use_gas_objects, and txn_expires_after.
+    :returns: A tuple of the reconstructed transaction and an info dict containing the JSON-sourced sender, sponsor, gas_budget, use_gas_objects, txn_expires_after, env_url, profile_switched, group_name, profile_name, and client.
+        If the JSON was serialized with ``format='extended'`` and the ``env`` URL is present, the correct client is resolved automatically.
+        ``profile_switched=True`` indicates a new PysuiConfiguration and client were instantiated; the caller owns both instances after that point.
     :rtype: tuple[AsyncSuiTransaction, dict]
     """
     from pysui.sui.sui_common.txn_base import FundsSource
 
     doc, inputs, raw_commands = _parse_json_doc(json_str)
+
+    env_info = doc.get("env") or {}
+    env_url = env_info.get("url")
+    env_protocol = env_info.get("protocol")
+    active_client = client
+    profile_switched = False
+    switch_group: Optional[str] = None
+    switch_profile: Optional[str] = None
+
+    if env_url:
+        active_client, profile_switched, switch_group, switch_profile = _resolve_env_client(
+            env_url, client, protocol_hint=env_protocol
+        )
 
     unresolved: dict[int, Any] = {
         i: ca.value for i, ca in enumerate(inputs) if isinstance(ca, _UnresolvedPure)
@@ -595,7 +721,7 @@ async def from_json_data(
             pkg, mod, func, param_pos = pure_location[idx]
             key = (pkg, mod, func)
             if key not in func_cache:
-                res = await client.execute(
+                res = await active_client.execute(
                     command=_GetFunction(package=pkg, module_name=mod, function_name=func)
                 )
                 if not res.is_ok():
@@ -612,7 +738,7 @@ async def from_json_data(
     gas_owner = gas_data.get("owner")
     json_sponsor = gas_owner if (gas_owner and gas_owner != json_sender) else None
 
-    txn = await client.transaction(
+    txn = await active_client.transaction(
         initial_sender=sender if sender is not None else json_sender,
         initial_sponsor=sponsor if sponsor is not None else json_sponsor,
     )
@@ -693,5 +819,10 @@ async def from_json_data(
         "gas_budget": int(budget) if budget is not None else None,
         "use_gas_objects": payment if payment else None,
         "txn_expires_after": txn_expires,
+        "env_url": env_url,
+        "profile_switched": profile_switched,
+        "group_name": switch_group,
+        "profile_name": switch_profile,
+        "client": active_client,
     }
     return txn, info

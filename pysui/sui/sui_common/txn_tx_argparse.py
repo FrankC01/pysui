@@ -60,6 +60,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
         is_receiving: bool,
         is_mutable: bool,
         expected_type: Optional[OpenMoveDatatypeBodyGQL] = None,
+        is_optional: bool = False,
     ) -> bcs.ObjectArg:
         """Resolve or defer object reference based on mode."""
         if isinstance(arg, bcs.ObjectArg):
@@ -72,7 +73,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
             return bcs.ObjectArg("SharedObject", arg)
 
         if self._mode == TxnArgMode.DEFERRED:
-            return await self._deferred(arg, is_receiving, is_mutable, expected_type)
+            return await self._deferred(arg, is_receiving, is_mutable, expected_type, is_optional)
         return await self._eager(arg, is_receiving, is_mutable, expected_type)
 
     @instrumented("pysui.sui.sui_common.txn_tx_argparse._ModeContext._deferred")
@@ -82,6 +83,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
         is_receiving: bool,
         is_mutable: bool,
         expected_type: Optional[OpenMoveDatatypeBodyGQL],
+        is_optional: bool = False,
     ) -> bcs.ObjectArg:
         """Return UnresolvedObjectArg, with object_cache lookup first."""
         oid = extract_object_id(arg)
@@ -113,7 +115,7 @@ class _ModeContext:  # pylint: disable=too-few-public-methods
         )
         return bcs.UnresolvedObjectArg.from_flags(  # type: ignore[return-value]
             oid,
-            is_optional=False,
+            is_optional=is_optional,
             is_receiving=is_receiving,
             ref_type=ref_type,
             type_str=type_str,
@@ -183,6 +185,7 @@ class TxnArgParse:
         is_receiving: bool = False,
         is_mutable: bool = False,
         expected_type: Optional[OpenMoveDatatypeBodyGQL] = None,
+        is_optional: bool = False,
     ) -> bcs.ObjectArg:
         """Parse a single argument, resolving or deferring based on mode.
 
@@ -190,7 +193,7 @@ class TxnArgParse:
         """
         ctx = _ModeContext(self._client, mode, object_cache)
         return await ctx.fetch_or_transpose_object(
-            argument, is_receiving, is_mutable, expected_type
+            argument, is_receiving, is_mutable, expected_type, is_optional
         )
 
     @instrumented("pysui.sui.sui_common.txn_tx_argparse.TxnArgParse.build_args")

@@ -9,7 +9,7 @@ import asyncio
 import base64
 import hashlib
 import struct as _struct
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Literal, Optional, Union
 from deprecated.sphinx import versionchanged
 
 from pysui.abstracts import AsyncClientBase
@@ -500,14 +500,21 @@ class AsyncSuiTransaction(txbase):
         )
         return self._built_transaction
 
-    def export_json(self) -> str:
+    def export_json(
+        self, *, format: Literal["standard", "extended"] = "standard"
+    ) -> str:
         """Serialize the transaction to V2 JSON interchange format.
 
         Works pre-build (gasData fields null) or post-build (fully populated).
+
+        :param format: Output format. 'standard' (default) emits minimal Mysten-compatible JSON.
+            'extended' adds pysui-specific fields (env, UnresolvedObject type context).
+            Raises ValueError in standard mode if the transaction contains FundsWithdrawal inputs.
+        :type format: Literal["standard", "extended"]
         """
         from pysui.sui.sui_common.txb_json import serialize_to_json as _to_json
 
-        return _to_json(self)
+        return _to_json(self, format=format)
 
     @property
     def built_transaction(self) -> Optional[bcs.TransactionData]:
@@ -538,7 +545,9 @@ class AsyncSuiTransaction(txbase):
         """
         from pysui.sui.sui_common.txb_json import from_json_data
 
-        return await from_json_data(json_str=json_str, client=client, sender=sender, sponsor=sponsor)
+        return await from_json_data(
+            json_str=json_str, client=client, sender=sender, sponsor=sponsor
+        )
 
     @instrumented("ptb.build")
     async def build(

@@ -281,7 +281,7 @@ async def _encode_option(
         inner.module, inner.type_name
     ):
         obj = await parser.fetch_or_transpose_object(
-            value, inner.type_name == "Receiving", ref == "&mut", inner
+            value, inner.type_name == "Receiving", ref == "&mut", inner, is_optional=True
         )
         return obj
 
@@ -391,6 +391,7 @@ class _BaseArgParser(ABC):
         is_receiving: bool,
         is_mutable: bool,
         expected_type: Optional[OpenMoveDatatypeBodyGQL] = None,
+        is_optional: bool = False,
     ) -> bcs.ObjectArg:
         """Resolve an object reference to a BCS ObjectArg.
 

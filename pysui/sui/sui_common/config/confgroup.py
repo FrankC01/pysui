@@ -25,6 +25,14 @@ class GroupProtocol(IntEnum):
     GRPC = 2
     OTHER = 3
 
+    def to_string(self) -> str:
+        """Return display name for this protocol."""
+        if self == GroupProtocol.GRAPHQL:
+            return "GraphQL"
+        if self == GroupProtocol.GRPC:
+            return "gRPC"
+        return "other"
+
 
 SUI_JSON_RPC_GROUP: str = "sui_json_config"
 SUI_GQL_RPC_GROUP: str = "sui_gql_config"
