@@ -353,7 +353,7 @@ class SerialExecutor:
             )
             if not bal_result.is_ok():
                 raise ValueError(f"Failed to query address balance: {bal_result.result_string}")
-            existing_balance = bal_result.result_data.balance.address_balance
+            existing_balance = bal_result.result_data.balance.address_balance or 0
             self._qp.seed_funds(tracked_balance=existing_balance)
 
             # Step 5b: Only send funds if existing balance is below threshold

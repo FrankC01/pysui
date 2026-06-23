@@ -114,7 +114,7 @@ class _BaseParallelExecutor:
             )
             if not bal_result.is_ok():
                 raise ValueError(f"Failed to query address balance: {bal_result.result_string}")
-            existing_balance = bal_result.result_data.balance.address_balance
+            existing_balance = bal_result.result_data.balance.address_balance or 0
             self._tracked_balance = existing_balance
             if existing_balance < threshold:
                 await self._send_funds_to_account(selected, existing_balance)
