@@ -149,11 +149,12 @@ async def sui_gas(client: PysuiClient, args: argparse.Namespace) -> None:
         if abal_res.is_ok():
             _detail_gas_objects(all_gas)
             balances = abal_res.result_data.balance
+            addr_bal = balances.address_balance or 0
             print(
                 f"\nCoin-All gas: {balances.coin_balance:12} -> {balances.coin_balance/SUI_COIN_DENOMINATOR:>8.4f}"
             )
             print(
-                f"Addr-All gas: {balances.address_balance:12} -> {balances.address_balance/SUI_COIN_DENOMINATOR:>8.4f}"
+                f"Addr-All gas: {addr_bal:12} -> {addr_bal/SUI_COIN_DENOMINATOR:>8.4f}"
             )
             print(
                 f"   Total gas: {balances.balance:12} -> {balances.balance/SUI_COIN_DENOMINATOR:>8.4f}\n"

@@ -849,8 +849,8 @@ async def main():
                 # Uncomment one group:
                 # group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP,
-                # profile_name="devnet",
-                profile_name="testnet",
+                profile_name="devnet",
+                # profile_name="testnet",
                 # profile_name="mainnet",
             )
         )
