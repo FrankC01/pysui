@@ -37,7 +37,7 @@ For zkLogin and SEAL features
 
 ## pysui SDK current (github)
 
-**Release-1.1.0**
+**Release-1.2.0**
 
 Future releases are in branches named `release_X.Y.Z`
 
