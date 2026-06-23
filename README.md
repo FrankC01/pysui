@@ -19,56 +19,36 @@ Python Client SDK for Sui blockchain
 `pip install pysui` if first time or
 `pip install -U pysui` if upgrading.
 
+For zkLogin and SEAL features, install with the optional extra features
+
+`pip install pysui[zklogin-seal]` if first time or
+`pip install -U pysui[zklogin-seal]` if upgrading
+
 ### Without Rust on machine
 
-1. Fetch the latest [pysui-fastcrypto](https://github.com/FrankC01/pysui-fastcrypto) binary from the release assets, unzip and `pip` install it
+1. Fetch the latest [pysui-fastcrypto](https://github.com/FrankC01/pysui-fastcrypto) wheel from the release assets, unzip and `pip` install it
 2. `pip install pysui`
+
+For zkLogin and SEAL features
+
+1. Fetch the pysui-fastcrypto wheel as noted above
+2. Fetch the latest [pysui-crypto](https://github.com/Suitters/pysui-crypto) wheel from the release assets and `pip` install it
+3. `pip install pysui[zklogin-seal]`
 
 ## pysui SDK current (github)
 
 **Release-1.1.0**
 
-- [enhancement](https://github.com/FrankC01/pysui/issues/389) Added optional `pysui[zklogin-seal]` extra providing zkLogin and SEAL support via the `pysui-crypto` Rust/PyO3 extension
+Future releases are in branches named `release_X.Y.Z`
 
 ## PyPi current
 
-**Release-1.0.0 - Released 2026-06-08**
+**Release-1.1.0 - Released 2026-06-23**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
-> **⚠️ Deletion Notice:** Release 1.0.0 has **removed** the legacy JSON-RPC client
-> and synchronous GraphQL client. If your code used either then use the
-> [Migration Guide](https://pysui.readthedocs.io/en/latest/migration_to_pysui_uci.html)
-> on ReadTheDocs.
-
-This is a significant release that redesigns pysui around the **Unified Client Interface (UCI)**.
-It introduces breaking changes — see [CHANGELOG](https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md)
-for the full list.
-
-### Unified Client Interface (UCI)
-
-The **UCI** provides a protocol-agnostic programming model: write application code once and run it
-transparently on either GraphQL or gRPC. The active transport is determined by configuration at
-runtime — no code changes required to switch.
-
-The UCI is built on four pillars:
-
-1. **Thin Client Design** — pysui clients carry no convenience methods such as `get_coins` or
-   `get_object`. All data access goes through typed request objects dispatched via
-   `await client.execute(command=...)`, keeping the client surface small and transport-neutral.
-
-2. **Protocol-Agnostic Command Execution** — Use `await client.execute(command=...)` with any
-   `SuiCommand` subclass. The same code runs identically on both GraphQL and gRPC. Switching
-   protocols requires only a configuration change.
-
-3. **Shared Transaction Infrastructure** — PTBs with unified transaction builders and executor
-   factories work across all protocols. Obtain a transaction builder via
-   `await client.transaction(**kwargs)`, and executors via `await client.serial_executor(options=...)`
-   or `await client.parallel_executor(options=...)`.
-
-4. **Protocol-Level Access** — When you need capabilities beyond `SuiCommand`: use GraphQL
-   QueryNodes via `execute_query_node` for custom queries, or gRPC Requests via
-   `execute_grpc_request` for direct gRPC access.
+This release brings _zkLogin and Mysten SEAL capabilities_ (optional install).
+In addition, _json export and import of transaction (PTB) compatible with Mystens TS-SDK_.
 
 ### FULL Documentation
 
