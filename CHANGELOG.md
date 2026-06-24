@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/386) - Added try/finally to close client connection
-- [bug](https://github.com/FrankC01/pysui/issues/390) - Option<T> when T is object not handled in PTB argument parse/encode
+- [bug](https://github.com/FrankC01/pysui/issues/390) - `Option<T>` when T is object not handled in PTB argument parse/encode
 
 ### Changed
 
@@ -956,11 +956,11 @@ to use PysuiConfiguration from other than default path.
 
 ### Added
 
-- Serialization of **pysui GraphQL SuiTransaction** to **Sui Wallet JSON standard** (_schema version 2_)
+- Serialization of **pysui GraphQL SuiTransaction** to **Sui Wallet JSON standard** (*schema version 2*)
   - `pgql_wallet_ser.serialize_to_wallet_standard`
-- Deserialization of **Sui Wallet JSON standard** (_schema version 2_) to dataclasses
+- Deserialization of **Sui Wallet JSON standard** (*schema version 2*) to dataclasses
   - `pgql_wallet_deser.deserialize_from_wallet_standard`
-- Deserialization of **Sui Wallet JSON standard** (_schema version 2_) to **pysui GraphQL SuiTransaction**
+- Deserialization of **Sui Wallet JSON standard** (*schema version 2*) to **pysui GraphQL SuiTransaction**
   - `pgql_wallet2txn_deser.deserialize_to_transaction`
 
 ### Fixed
@@ -1234,7 +1234,7 @@ fields and format results, while similar, are not guarenteed to be identical. Se
 ### Added
 
 - DEFAULT_SUI_CONFIG_PATH and DEFAULT_SUI_CLIENT_CONFIG constants
-- SuiConfig.pysui_config(_path_to_folder_) - Unique client.yaml, sui.aliases and sui.keystore with persist support.
+- SuiConfig.pysui_config(*path_to_folder*) - Unique client.yaml, sui.aliases and sui.keystore with persist support.
 
 ### Fixed
 
@@ -1290,40 +1290,40 @@ SuiConfig.user_config() regression.
 - Wallet commands that took Sui Address can now take an alias
 - Wallet `new-address` command now takes optional alias name argument [-a,--alias]
 - **Breaking**:
-    - SuiConfig.create_new_keypair_and_address now requires keyword arguments
-    - Wallet `gas` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
-    - Wallet `objects` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
-    - Wallet `faucet` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
-    - Wallet `transfer-object`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet transfer-object -h` for additional command changes
-    - Wallet `transfer-sui`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet transfer-sui -h` for additional command changes
-    - Wallet `pay`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet pay -h` for additional command changes
-    - Wallet `paysui`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet paysui -h` for additional command changes
-    - Wallet `payallsui`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet payallsui -h` for additional command changes
-    - Wallet `split-coin`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet split-coin -h` for additional command changes
-    - Wallet `merge-coin`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet merge-coin -h` for additional command changes
-    - Wallet `split-coin-equally`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet split-coin-equally -h` for additional command changes
-    - Wallet `publish`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet publish -h` for additional command changes
-    - Wallet `call`
-        - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
-        - See `wallet call -h` for additional command changes
+  - SuiConfig.create_new_keypair_and_address now requires keyword arguments
+  - Wallet `gas` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
+  - Wallet `objects` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
+  - Wallet `faucet` command added alias option [-a,--alias] and renamed the address option to [-o,--owner]
+  - Wallet `transfer-object`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet transfer-object -h` for additional command changes
+  - Wallet `transfer-sui`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet transfer-sui -h` for additional command changes
+  - Wallet `pay`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet pay -h` for additional command changes
+  - Wallet `paysui`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet paysui -h` for additional command changes
+  - Wallet `payallsui`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet payallsui -h` for additional command changes
+  - Wallet `split-coin`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet split-coin -h` for additional command changes
+  - Wallet `merge-coin`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet merge-coin -h` for additional command changes
+  - Wallet `split-coin-equally`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet split-coin-equally -h` for additional command changes
+  - Wallet `publish`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet publish -h` for additional command changes
+  - Wallet `call`
+    - Added alias option [-a,--alias] and renamed the signer [-s,--signer] option to [-o,--owner]
+    - See `wallet call -h` for additional command changes
 
 ### Removed
 
@@ -1600,7 +1600,7 @@ built specific to your platform.
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/116) SuiTransaction serialize/deseralize
 - [enhancement](https://github.com/FrankC01/pysui/issues/143) Ability to add a new key to the
-  SuiConfig. The argument can either be a Sui keystring _or_ a dict for importing keys exported from Wallet. The
+  SuiConfig. The argument can either be a Sui keystring *or* a dict for importing keys exported from Wallet. The
   dict must take the form of:
 
   ```python
@@ -1630,7 +1630,7 @@ built specific to your platform.
 
 ### Removed
 
-- `pyroaring` and `bip-utils` libraries. **_You should rebuild your virtual environment using new requirements.txt_**
+- `pyroaring` and `bip-utils` libraries. ***You should rebuild your virtual environment using new requirements.txt***
 - bcs MultiSigLegacy that used `pyroaring` bitmap construct
 
 ## [0.32.0] - 2023-08-03
@@ -1698,7 +1698,7 @@ way a dryRun will be run prior to execution to set the budget.
 - **Deprecating** legacy MultiSig support in favor of Sui 1.4.0 MultiSig changes, will be removed in pysui 0.33.0.
 - TxResponse `checkpoint` field to Optional[str] type, was previously Optional[int]
 - [change](https://github.com/FrankC01/pysui/issues/127) - Protocol constraints
-- [change](https://github.com/FrankC01/pysui/issues/142) - Dependencies update in **_requirements.txt_**
+- [change](https://github.com/FrankC01/pysui/issues/142) - Dependencies update in ***requirements.txt***
 
 ### Removed
 
@@ -1747,7 +1747,7 @@ way a dryRun will be run prior to execution to set the budget.
 - **BREAKING** [change](https://github.com/FrankC01/pysui/issues/132) Transaction package (sui_txn)
 - [change](https://github.com/FrankC01/pysui/issues/134) samples updated to accomodate breaking #132
 - [change](https://github.com/FrankC01/pysui/issues/139) changes to gas payment strategy
-- Generalized raising Value error(s) during transaction execution **_prep_** whereas previously it would exit the application
+- Generalized raising Value error(s) during transaction execution ***prep*** whereas previously it would exit the application
 - Document typo tweaks
 
 ### Removed
@@ -1804,8 +1804,8 @@ use SuiTransaction:
 
 ### Fixed
 
-- `samples/async_gas.py` now returns **_all_** gas objects
-- `samples/wallet.py` "gas" command now returns **_all_** gas objects
+- `samples/async_gas.py` now returns ***all*** gas objects
+- `samples/wallet.py` "gas" command now returns ***all*** gas objects
 - SuiConfig now respects non-standard aliases in `client.yaml`
 - Cleaned up modules still logging to root
 
@@ -2275,9 +2275,9 @@ your usage of `pysui` should consider changing.
 
 ### Changed
 
-- _**Most, if not all, integer values as arguments to RPC methods have been changes in Sui 0.31.0 to strings
+- ***Most, if not all, integer values as arguments to RPC methods have been changes in Sui 0.31.0 to strings
   to support bigger integers for platforms without arbitrarily large numbers (ALN). This has resulted in
-  changes to many `pysui` Builder and result types.**_
+  changes to many `pysui` Builder and result types.***
 - Gas requirements for transactions have increased 1000x on devnet. Use `GetReferenceGasPrice` and `DryRunTransaction` often until you get used to the [changes](https://docs.sui.io/devnet/build/sui-gas-charges).
 - Increased default RPC timeout from 30 to 120 seconds on synch and asynch SuiClients.
 
@@ -2577,7 +2577,7 @@ Breaking changes
 
 - `pending_delegations` field structure change from TableVec to LinkedTableForObjectID
 - GetCheckpointContents now takes `sequence_number` (SuiInteger) vs `digest` (SuiString) as per SUI 0.23.0
-- GetCheckpointContentsBySequence renamed to _GetCheckpointContentsByDigest_ with argument `digest` as per SUI 0.23.0
+- GetCheckpointContentsBySequence renamed to *GetCheckpointContentsByDigest* with argument `digest` as per SUI 0.23.0
 - Updated SuiSystemState result definition to include `safe_mode` field as per SUI 0.22.1
 - Updated CheckpointSummary result definition to include `timestamp_ms` field as per SUI 0.22.1
 

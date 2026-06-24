@@ -9,7 +9,6 @@ This document is for contributors or the curious developer
 Requires:
 
 - Linux or macos (x86_64 or M1)
-- Rust (stable) which also includes rustup and cargo
 - python 3.10 or greater
 - Rust (stable) which also includes rustup and cargo
 - pkg-config
@@ -63,13 +62,12 @@ before touching the integration suite.
 
 ```bash
 pytest tests/unit_tests/       # offline unit tests
-pytest tests/async_tests/      # async unit tests
 ```
 
 Or run the full offline suite together:
 
 ```bash
-pytest tests/unit_tests/ tests/async_tests/
+pytest tests/unit_tests/ 
 ```
 
 ## Integration Tests

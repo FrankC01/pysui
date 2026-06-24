@@ -17,6 +17,7 @@ Ultimatley, the Sui discord "updates" channels are the best places to find when 
 ### pysui release pushes and publishing
 
 We will always accumulate and push changes with `pysui` to github first. However, we will publish to PyPi when:
+
 - MystenLab's introduce breaking changes in their releases that we align `pysui` with
 - **We** introduce breaking changes and/or introduce new features (bumps the minor version)
 - **We** bump versions of any depedencies of `pysui` (bumps minor and/or path version)
