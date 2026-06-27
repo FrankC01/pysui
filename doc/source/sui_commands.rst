@@ -145,6 +145,9 @@ Objects
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectsOwnedByAddress`
      - Fetch all objects owned by an address (paginated)
 
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPartyObjects`
+     - Fetch party objects (ConsensusAddressOwner) owned by an address (paginated)
+
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetDynamicFields`
      - Fetch dynamic fields of an object (paginated)
 
@@ -367,6 +370,9 @@ in a single call.
      - True
      - True
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetObjectsOwnedByAddress`
+     - True
+     - True
+   * - :py:class:`~pysui.sui.sui_common.sui_commands.GetPartyObjects`
      - True
      - True
    * - :py:class:`~pysui.sui.sui_common.sui_commands.GetDynamicFields`
